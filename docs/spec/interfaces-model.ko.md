@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: 08f6ab2a4ca9a54eb94aded0cc4bdfc22ac2fdc44bcdab199aa7d3d0bb165a1c -->
+<!-- source-sha256: 07b78d9b34857aee68ebc87f67a3f5a835e0254779876bd641641df462f35c13 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -314,7 +314,7 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 | CFG-9 | KSTD-2-11-16 | php | implemented | Cancellation::cancel and Db::withCancellation | legacy/packages/php/tests/QueryCancellationTest.php::testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable<br>legacy/packages/php/tests/QueryCancellationTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>legacy/packages/php/tests/QueryCancellationTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | legacy/packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>legacy/packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>legacy/packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | legacy/packages/python/tests/test_query_cancel.py::test_abandoned_query_is_canceled_and_rolled_back_sqlite<br>legacy/packages/python/tests/test_query_cancel_mysql.py::test_abandoned_query_is_canceled_and_rolled_back_mysql<br>legacy/packages/python/tests/query_cancel_mariadb.py::test_abandoned_query_is_canceled_and_rolled_back_mariadb<br>legacy/packages/python/tests/test_query_cancel.py::test_abandoned_query_is_canceled_and_rolled_back_postgres<br>legacy/packages/python/tests/test_query_cancel.py::test_cancel_interrupts_active_statement_and_root_is_reusable |
-| CFG-9 | KSTD-2-11-16 | rust | implemented | dropping the statement future | packages/rust/orm/tests/cases/zone.rs::dropping_a_query_cancels_it |
+| CFG-9 | KSTD-2-11-16 | rust | implemented | dropping the statement future | packages/rust/tests/cases/zone.rs::dropping_a_query_cancels_it |
 | CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | legacy/packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>legacy/packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>legacy/packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres]<br>legacy/packages/ts/tests/model.mjs::cancellation |
 
 모든 runtime에 정확한 실행 case가 있어야 공통 동작이 완료된다. `unresolved` 상태는 지정된 checklist 작업이 해결될 때까지 완료를 막는다.

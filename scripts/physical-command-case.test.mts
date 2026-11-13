@@ -14,14 +14,14 @@ caseTest('dispatches each decimal owner to its native command and rejects unknow
   const extension = '/build/polyspec_orm.so';
   const rustRun = mkdtempSync(join(tmpdir(), 'orm-decimal-rust-'));
   writeFileSync(join(rustRun, 'binaries.json'), JSON.stringify({
-    tests: [{ executable: '/target/all', manifestDir: '/packages/rust/tests', target: 'all', copy: '/run/0-all' }], programs: {},
+    tests: [{ executable: '/target/all', manifestDir: '/packages/rust/programs', target: 'all', copy: '/run/0-all' }], programs: {},
   }));
   const cases = [
     ['go', 'go', ['test', '-tags', 'ormtest', '-json']],
     ['php', 'php', ['vendor-php/bin/phpunit']],
     ['php-extension', process.execPath, [kitRunTests, 'phpunit']],
     ['rust', '/run/0-all', ['decimal_physical::decimal_postgres', '--exact']],
-    ['python', '/venv/bin/python', ['-m', 'packages.python.tests.decimal_model_db']],
+    ['python', '/venv/bin/python', ['-m', 'legacy.packages.python.tests.decimal_model_db']],
     ['typescript', 'node', ['legacy/packages/ts/tests/decimal_model_db.mjs']],
   ] as const;
   for (const [language, expectedProgram, expectedArgs] of cases) {
@@ -29,7 +29,7 @@ caseTest('dispatches each decimal owner to its native command and rejects unknow
     assert.equal(program, expectedProgram, `${language} program`);
     assert.deepEqual(args.slice(0, expectedArgs.length), expectedArgs, `${language} command`);
   }
-  assert.equal(commandEnvironment('rust', { ORM_DECIMAL_RUST_RUN: rustRun })['CARGO_MANIFEST_DIR'], '/packages/rust/tests');
+  assert.equal(commandEnvironment('rust', { ORM_DECIMAL_RUST_RUN: rustRun })['CARGO_MANIFEST_DIR'], '/packages/rust/programs');
   assert.throws(() => command('rust', 'postgres', {}), /ORM_DECIMAL_RUST_RUN is required/);
   rmSync(rustRun, { recursive: true, force: true });
 

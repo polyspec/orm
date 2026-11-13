@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 455a27a5fe97dd9f7c535448696dbdfd5c93dc245d89273ab516492e2adf2c5a -->
+<!-- source-sha256: 5fafa4f8bb2787ec27cfd7bad57f3e003d249e94ba452e73f5bea87496ab4410 -->
 # Conformance
 
 conformance vector의 동작은 recipe
@@ -21,8 +21,8 @@ runner의 결과 helper도 실행한다.
 | `vectors.json` | vector 이름과 그것이 시험하는 requirement. 각 이름은 recipe case이거나 고정 clock body다 |
 | `packages/go/internal/conformance/main.go` | Go runner(`packages/go/model`의 생성 모델) |
 | `packages/php/testing/conformance/runner.php` | PHP runner(PDO), `php-extension`에는 PHP extension을 적재해 쓴다 |
-| `packages/rust/tests/src/conformance.rs` | Rust runner(`polyspec-orm-build`의 모델, sqlx) |
+| `packages/rust/programs/src/conformance.rs` | Rust runner(`polyspec-orm-build`의 모델, sqlx) |
 | `packages/ts/testing/conformance/runner_typescript.mts` | TypeScript runner(native database driver) |
-| `packages/python/testing/conformance/runner_python.py` | Python runner(`orm-gen`이 실행의 Python 모델 directory에 생성한 모델) |
+| `legacy/packages/python/testing/conformance/runner_python.py` | Python runner(`orm-gen`이 실행의 Python 모델 directory에 생성한 모델) |
 | `check/recipe_vectors.mts` | body를 실행해 출력을 비교한다. 그 시험은 `contracts/interfaces.json`의 각 state contract를 recipe case와도 비교한다 |
 | `check/state.mts` | database의 state digest를 출력한다. 시험이 database를 그대로 두었는지 보는 검사가 읽는다 |

@@ -1,5 +1,5 @@
 [package]
-# Its integration tests run as groups of the one test program, packages/rust/tests/tests/all.
+# Its integration tests run as groups of the one test program, packages/rust/programs/tests/all.
 autotests = false
 name = "polyspec-orm-build"
 version = "0.0.31"
@@ -24,7 +24,7 @@ regex = "1"
 sqlx = { workspace = true, optional = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "chrono", "bigdecimal"] }
 bigdecimal = { version = "=0.4.11", optional = true }
 tokio = { version = "1", optional = true, features = ["rt-multi-thread", "macros", "sync"] }
-polyspec-orm = { version = "=0.0.31", path = "../orm", optional = true }
+polyspec-orm = { version = "=0.0.31", path = "..", optional = true }
 url = { version = "2", optional = true }
 futures-util = { version = "=0.3.34", optional = true }
 sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }

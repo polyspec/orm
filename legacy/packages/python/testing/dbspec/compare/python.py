@@ -2,16 +2,16 @@
 # dbspec results in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 # tests/dbspec and the analysis and format of each analysis of hashes.json and sets.json.
 #
-# Usage: python3 -m packages.python.testing.dbspec.compare.python <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>
+# Usage: python3 -m legacy.packages.python.testing.dbspec.compare.python <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>
 import json
 import os
 import sys
 
-# Run with python -m packages.python.testing.dbspec.compare.python from the root, which puts the root on sys.path; the client and
+# Run with python -m legacy.packages.python.testing.dbspec.compare.python from the root, which puts the root on sys.path; the client and
 # ordered-json are the ones installed into the interpreter.
-from packages.python.tests.dbspec_plans import plan_cases
-from packages.python.tests.recipe import mermaid_skeleton
-from packages.python.tests.dbspec_vectors_reader import (
+from legacy.packages.python.tests.dbspec_plans import plan_cases
+from legacy.packages.python.tests.recipe import mermaid_skeleton
+from legacy.packages.python.tests.dbspec_vectors_reader import (
     VectorError,
     check_schema,
     check_vectors,
@@ -19,7 +19,7 @@ from packages.python.tests.dbspec_vectors_reader import (
 
 ROOT = os.path.normpath(
     os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "..", ".."
     )
 )
 
@@ -42,14 +42,14 @@ try:
 except ImportError as error:
     print(
         f"{sys.executable}: {error}; the Python client needs cryptography and PyYAML, so run make orm-install-python "
-        "and set ORM_PYTHON to the interpreter it creates (packages/python/.venv/bin/python)",
+        "and set ORM_PYTHON to the interpreter it creates (legacy/packages/python/.venv/bin/python)",
         file=sys.stderr,
     )
     sys.exit(1)
 
 if len(sys.argv) != 6:
     print(
-        "usage: python3 -m packages.python.testing.dbspec.compare.python <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>",
+        "usage: python3 -m legacy.packages.python.testing.dbspec.compare.python <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>",
         file=sys.stderr,
     )
     sys.exit(2)
@@ -81,7 +81,7 @@ def read_text(path):
 
 
 # read_vectors reads the vector file at path against the schema tests/dbspec/schema/<kind>.schema.json
-# (packages/python/tests/dbspec_vectors_reader.py); a refusal is written to stderr, one line per problem, and ends with 1.
+# (legacy/packages/python/tests/dbspec_vectors_reader.py); a refusal is written to stderr, one line per problem, and ends with 1.
 def read_vectors(path, kind):
     try:
         value = json.loads(read_text(path))

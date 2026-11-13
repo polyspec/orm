@@ -232,7 +232,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 - **PRT-51** PHP — Entry point: `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`; production build가 제외하는 방법: `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다
 - **PRT-52** `polyspec-orm` wheel — Python entry point: `polyspec.orm.testing.fail_next_statement(db, code, message)`; production build가 제외하는 방법: `fail_next_rollback`과 같은 package이며 `polyspec.orm`의 어느 module도 import하지 않는다
 
-statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적용된다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `legacy/packages/go/engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `legacy/packages/go/engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/rust/orm/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `legacy/packages/ts/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `legacy/packages/ts/src/dbspec/introspect.ts:33`, Python `legacy/packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `legacy/packages/python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `legacy/packages/php/src/Dbspec/PlanApply.php:104,120,151,214`와 `legacy/packages/php/src/Dbspec/Dbspec.php:266,731`(`\PDO`), PHP 확장 `polyspec_orm`은 `legacy/packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712`(`\PDO`)이며 구현은 `legacy/packages/php-ext/src/apply.c`와 `introspect.c`에 있다.
+statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적용된다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `legacy/packages/go/engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `legacy/packages/go/engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/rust/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/rust/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `legacy/packages/ts/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `legacy/packages/ts/src/dbspec/introspect.ts:33`, Python `legacy/packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `legacy/packages/python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `legacy/packages/php/src/Dbspec/PlanApply.php:104,120,151,214`와 `legacy/packages/php/src/Dbspec/Dbspec.php:266,731`(`\PDO`), PHP 확장 `polyspec_orm`은 `legacy/packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712`(`\PDO`)이며 구현은 `legacy/packages/php-ext/src/apply.c`와 `introspect.c`에 있다.
 
 ### 3.3 Test clock
 
@@ -265,7 +265,7 @@ test는 자기 클라이언트의 test entry point로 연결의 write 결과를 
 | Go | `legacy/packages/go/engine/ir`, `legacy/packages/go/engine/planner`, `legacy/packages/go/engine/dialect`, `legacy/packages/go/engine/dbspec` DDL |
 | PHP | `legacy/packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
 | PHP extension | 공통 contract 대상이다. native ORM validation/planning은 미완료이며 T182와 KSTD-2-3에서 추적한다. |
-| Rust | `packages/rust/orm/src/engine/`, `packages/rust/schema/src/dbspec/` DDL |
+| Rust | `packages/rust/src/engine/`, `packages/rust/schema/src/dbspec/` DDL |
 | TypeScript | `legacy/packages/ts/src/engine/`, `legacy/packages/ts/src/dbspec/` DDL |
 | Python | `legacy/packages/python/src/polyspec/orm/engine/`, `legacy/packages/python/src/polyspec/orm/dbspec/` DDL |
 

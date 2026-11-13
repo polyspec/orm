@@ -7,9 +7,11 @@ from pathlib import Path
 
 from . import testcase
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 CATALOG = ROOT / "docs" / "spec" / "errors.yaml"
-CODES = ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "codes.py"
+CODES = (
+    ROOT / "legacy" / "packages" / "python" / "src" / "polyspec" / "orm" / "codes.py"
+)
 
 
 def read_catalog() -> list[tuple[str, str]]:
@@ -55,7 +57,7 @@ class CodeCatalogTest(unittest.TestCase):
         self.assertEqual(
             problems,
             [],
-            "; run orm-gen errors --lang python --out packages/python/src/polyspec/orm/codes.py",
+            "; run orm-gen errors --lang python --out legacy/packages/python/src/polyspec/orm/codes.py",
         )
 
     def test_codes_exported_from_package(self):

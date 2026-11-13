@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "schema": "contracts/fixtures/bench/bench.dbs",
+  "schema": "legacy/contracts/fixtures/bench/bench.dbs",
   "languages": {
     "go": {
       "roots": [
@@ -17,7 +17,7 @@
     },
     "rust": {
       "roots": [
-        "packages/rust/orm/src",
+        "packages/rust/src",
         "packages/rust/build/src",
         "packages/rust/schema/src"
       ]
@@ -154,7 +154,7 @@
           "primitive": "dropping the statement future",
           "cases": [
             {
-              "test": "packages/rust/orm/tests/cases/zone.rs",
+              "test": "packages/rust/tests/cases/zone.rs",
               "id": "dropping_a_query_cancels_it"
             }
           ]
@@ -1771,7 +1771,7 @@
           "signature": "public function get(Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool $key): ?Polyspec\\Orm\\Model"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::get",
+          "symbol": "packages/rust/src/collection.rs::Collection < M >::get",
           "signature": "pub fn get (& self , key : impl Into < Key >) -> Option < & M >"
         },
         "typescript": {
@@ -1805,7 +1805,7 @@
           "signature": "public function first(): ?Polyspec\\Orm\\Model"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::first",
+          "symbol": "packages/rust/src/collection.rs::Collection < M >::first",
           "signature": "pub fn first (& self) -> Option < & M >"
         },
         "typescript": {
@@ -1839,7 +1839,7 @@
           "signature": "public function keys(): array"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::keys",
+          "symbol": "packages/rust/src/collection.rs::Collection < M >::keys",
           "signature": "pub fn keys (& self) -> & [Key]"
         },
         "typescript": {
@@ -1875,7 +1875,7 @@
           "signature": "public function connect(Polyspec\\Orm\\Db $db): Polyspec\\Orm\\Collection"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::connect",
+          "symbol": "packages/rust/src/collection.rs::Collection < M >::connect",
           "signature": "pub fn connect (mut self , db : & crate :: Db) -> Self"
         },
         "typescript": {
@@ -1916,7 +1916,7 @@
           "signature": "public function delete(bool $recursive=false): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::delete",
+          "symbol": "packages/rust/src/collection.rs::Collection < M >::delete",
           "signature": "pub async fn delete (& self , recursive : bool) -> Result < () >"
         },
         "typescript": {
@@ -1950,7 +1950,7 @@
           "signature": "public function toArray(): array"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::to_array",
+          "symbol": "packages/rust/src/collection.rs::Collection < M >::to_array",
           "signature": "pub fn to_array (& self) -> crate :: Result < ArrayValue >"
         },
         "typescript": {
@@ -1990,7 +1990,7 @@
           "signature": "public static function connect(string $dsn, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::connect",
+          "symbol": "packages/rust/src/db.rs::Db::connect",
           "signature": "pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db>"
         },
         "typescript": {
@@ -2029,7 +2029,7 @@
           "signature": "public static function connectSchema(string $dsn, Polyspec\\Orm\\Schema $schema, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::connect_schema",
+          "symbol": "packages/rust/src/db.rs::Db::connect_schema",
           "signature": "pub async fn connect_schema(dsn: &str, schema: &Schema, pool_size: u32, cfg: Config) -> Result<Db>"
         },
         "typescript": {
@@ -2069,7 +2069,7 @@
           "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, ?array $audit=null): mixed"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/tx.rs::Db::transaction",
+          "symbol": "packages/rust/src/tx.rs::Db::transaction",
           "signature": "pub fn transaction<F>(&self, f: F) -> Transaction<'_, F>"
         },
         "typescript": {
@@ -2103,7 +2103,7 @@
           "signature": "public function utils(): Polyspec\\Orm\\Utils"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Db::utils",
+          "symbol": "packages/rust/src/utils.rs::Db::utils",
           "signature": "pub fn utils(&self) -> Utils<'_>"
         },
         "typescript": {
@@ -2141,7 +2141,7 @@
           "signature": "public function subscribe(Closure $subscriber): Closure"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/events.rs::Db::subscribe",
+          "symbol": "packages/rust/src/events.rs::Db::subscribe",
           "signature": "pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Result<Subscription>"
         },
         "typescript": {
@@ -2181,7 +2181,7 @@
           "signature": "public function execute(array $step, array $params): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::execute",
+          "symbol": "packages/rust/src/db.rs::Db::execute",
           "signature": "pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()>"
         },
         "typescript": {
@@ -2217,7 +2217,7 @@
           "signature": "public function withRequestHook(Closure $hook): Polyspec\\Orm\\Db"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::with_request_hook",
+          "symbol": "packages/rust/src/db.rs::Db::with_request_hook",
           "signature": "pub fn with_request_hook(&self, hook: impl Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static) -> Db"
         },
         "typescript": {
@@ -2251,7 +2251,7 @@
           "signature": "public function close(): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::close",
+          "symbol": "packages/rust/src/db.rs::Db::close",
           "signature": "pub async fn close (& self)"
         },
         "typescript": {
@@ -2285,7 +2285,7 @@
           "signature": "public function stats(): Polyspec\\Orm\\Stats"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::stats",
+          "symbol": "packages/rust/src/db.rs::Db::stats",
           "signature": "pub fn stats (& self) -> DbStats"
         },
         "typescript": {
@@ -2324,7 +2324,7 @@
           "signature": "public function lock(string $key): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::lock",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::lock",
           "signature": "pub async fn lock(&self, key: &str) -> Result<()>"
         },
         "typescript": {
@@ -2364,7 +2364,7 @@
           "signature": "public function setLocal(string $key, string $value): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::set_local",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::set_local",
           "signature": "pub async fn set_local (& self , key : & str , value : & str) -> Result < () >"
         },
         "typescript": {
@@ -2404,7 +2404,7 @@
           "signature": "public function local(string $key): string"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::local",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::local",
           "signature": "pub fn local (& self , key : & str) -> Result < String >"
         },
         "typescript": {
@@ -2451,7 +2451,7 @@
           "signature": "def was_inserted(self, entity: str, sequence: int) -> bool"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::was_inserted",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::was_inserted",
           "signature": "pub fn was_inserted(&self, entity: &str, sequence: i64) -> Result<bool>"
         },
         "php-extension": {
@@ -2487,7 +2487,7 @@
           "signature": "def backend_waiting_for_lock(self) -> bool"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::backend_waiting_for_lock",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::backend_waiting_for_lock",
           "signature": "pub async fn backend_waiting_for_lock(&self) -> Result<bool>"
         },
         "php-extension": {
@@ -2513,7 +2513,7 @@
           "signature": "public function schema(): Polyspec\\Orm\\SchemaUtils"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::schema",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::schema",
           "signature": "pub fn schema(&self) -> SchemaUtils<'_>"
         },
         "typescript": {
@@ -2552,7 +2552,7 @@
           "signature": "public function register(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::register",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::register",
           "signature": "pub fn register(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
@@ -2592,7 +2592,7 @@
           "signature": "public function install(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::install",
           "signature": "pub async fn install(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
@@ -2633,7 +2633,7 @@
           "signature": "public function addTablesAndColumns(Polyspec\\Orm\\Schema $schema): array"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
           "signature": "pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>>"
         },
         "typescript": {
@@ -2673,7 +2673,7 @@
           "signature": "public function exists(string $schema): bool"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::exists",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::exists",
           "signature": "pub async fn exists (& self , name : & str) -> Result < bool >"
         },
         "typescript": {
@@ -2713,7 +2713,7 @@
           "signature": "public function installed(string $schema, string $table): bool"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::installed",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::installed",
           "signature": "pub async fn installed (& self , name : & str , table : & str) -> Result < bool >"
         },
         "typescript": {
@@ -2750,7 +2750,7 @@
           "signature": "public function empty(): bool"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::empty",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::empty",
           "signature": "pub async fn empty (& self) -> Result < bool >"
         },
         "typescript": {
@@ -2784,7 +2784,7 @@
           "signature": "public function aes(): Polyspec\\Orm\\AesUtils"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::aes",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::aes",
           "signature": "pub fn aes(&self) -> AesUtils<'_>"
         },
         "typescript": {
@@ -2818,7 +2818,7 @@
           "signature": "public function privileges(): Polyspec\\Orm\\PrivilegeUtils"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::privileges",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::privileges",
           "signature": "pub fn privileges (& self) -> PrivilegeUtils < '_ >"
         },
         "typescript": {
@@ -2852,7 +2852,7 @@
           "signature": "public function stats(): Polyspec\\Orm\\Stats"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::stats",
+          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::stats",
           "signature": "pub fn stats (& self) -> DbStats"
         },
         "typescript": {
@@ -2891,7 +2891,7 @@
           "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::AesUtils < '_ >::status",
+          "symbol": "packages/rust/src/utils.rs::AesUtils < '_ >::status",
           "signature": "pub async fn status<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<AesRotationStatus>"
         },
         "typescript": {
@@ -2930,7 +2930,7 @@
           "signature": "public function rotate(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): int"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::AesUtils < '_ >::rotate",
+          "symbol": "packages/rust/src/utils.rs::AesUtils < '_ >::rotate",
           "signature": "pub async fn rotate<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<u64>"
         },
         "typescript": {
@@ -2964,7 +2964,7 @@
           "signature": "public function versions(): array"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::AesKeyring::versions",
+          "symbol": "packages/rust/src/utils.rs::AesKeyring::versions",
           "signature": "pub fn versions (& self) -> Vec < i32 >"
         },
         "typescript": {
@@ -3324,7 +3324,7 @@
           "signature": "public static function introspect(PDO $connection, string $dialect, string $server, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/dbspec.rs::introspect",
+          "symbol": "packages/rust/src/dbspec.rs::introspect",
           "signature": "pub async fn introspect < Q : CatalogQuerier + ? Sized > (connection : & mut Q , dialect : Dialect , server : Server , name : & str) -> Result < Introspection , IntrospectError >"
         },
         "typescript": {
@@ -3684,7 +3684,7 @@
           "signature": "public static function apply(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/dbspec/apply.rs::apply",
+          "symbol": "packages/rust/src/dbspec/apply.rs::apply",
           "signature": "pub async fn apply < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
@@ -3720,7 +3720,7 @@
           "signature": "public static function recover(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/dbspec/apply.rs::recover",
+          "symbol": "packages/rust/src/dbspec/apply.rs::recover",
           "signature": "pub async fn recover < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
@@ -3756,7 +3756,7 @@
           "signature": "public static function rollback(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/dbspec/apply.rs::rollback",
+          "symbol": "packages/rust/src/dbspec/apply.rs::rollback",
           "signature": "pub async fn rollback < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
@@ -3792,7 +3792,7 @@
           "signature": "public static function finalize(PDO $connection, string $dialect, string $server, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/dbspec/apply.rs::finalize",
+          "symbol": "packages/rust/src/dbspec/apply.rs::finalize",
           "signature": "pub async fn finalize < C : ApplyConnection + ? Sized > (connection : & mut C , dialect : Dialect , server : Server , plans : & [Plan] , now : & ApplyClock < '_ > , events : & mut ApplyEvents < '_ >) -> Result < () , ApplyError >"
         },
         "typescript": {
@@ -4271,7 +4271,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Request",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Request",
-        "rust": "packages/rust/orm/src/ir.rs::Request",
+        "rust": "packages/rust/src/ir.rs::Request",
         "typescript": "legacy/packages/ts/src/ir.ts::Request",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRRequest"
       },
@@ -4302,7 +4302,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Query",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Query",
-        "rust": "packages/rust/orm/src/ir.rs::Query",
+        "rust": "packages/rust/src/ir.rs::Query",
         "typescript": "legacy/packages/ts/src/ir.ts::RequestQuery",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRQuery"
       },
@@ -4347,7 +4347,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Columns",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Columns",
-        "rust": "packages/rust/orm/src/ir.rs::Columns",
+        "rust": "packages/rust/src/ir.rs::Columns",
         "typescript": "legacy/packages/ts/src/ir.ts::Projection",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRColumns"
       },
@@ -4371,7 +4371,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Join",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Join",
-        "rust": "packages/rust/orm/src/ir.rs::Join",
+        "rust": "packages/rust/src/ir.rs::Join",
         "typescript": "legacy/packages/ts/src/ir.ts::Join",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRJoin"
       },
@@ -4392,7 +4392,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Relation",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Relation",
-        "rust": "packages/rust/orm/src/ir.rs::Relation",
+        "rust": "packages/rust/src/ir.rs::Relation",
         "typescript": "legacy/packages/ts/src/ir.ts::Relation",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRRelation"
       },
@@ -4411,7 +4411,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::KeyPair",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::KeyPair",
-        "rust": "packages/rust/orm/src/ir.rs::KeyPair",
+        "rust": "packages/rust/src/ir.rs::KeyPair",
         "typescript": "legacy/packages/ts/src/ir.ts::KeyPair",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRKeyPair"
       },
@@ -4425,7 +4425,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Group",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Group",
-        "rust": "packages/rust/orm/src/ir.rs::Group",
+        "rust": "packages/rust/src/ir.rs::Group",
         "typescript": "legacy/packages/ts/src/ir.ts::Group",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRGroup"
       },
@@ -4444,7 +4444,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Item",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Item",
-        "rust": "packages/rust/orm/src/ir.rs::Item",
+        "rust": "packages/rust/src/ir.rs::Item",
         "typescript": "legacy/packages/ts/src/ir.ts::Item",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRItem"
       },
@@ -4465,7 +4465,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Pred",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Pred",
-        "rust": "packages/rust/orm/src/ir.rs::Pred",
+        "rust": "packages/rust/src/ir.rs::Pred",
         "typescript": "legacy/packages/ts/src/ir.ts::Predicate",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRPred"
       },
@@ -4499,7 +4499,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::ColRef",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::ColRef",
-        "rust": "packages/rust/orm/src/ir.rs::ColRef",
+        "rust": "packages/rust/src/ir.rs::ColRef",
         "typescript": "legacy/packages/ts/src/ir.ts::ColumnReferenceIR",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRColRef"
       },
@@ -4516,7 +4516,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Func",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Func",
-        "rust": "packages/rust/orm/src/ir.rs::Func",
+        "rust": "packages/rust/src/ir.rs::Func",
         "typescript": "legacy/packages/ts/src/ir.ts::OrmFunction",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRFunc"
       },
@@ -4533,7 +4533,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::ColFunc",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::ColFunc",
-        "rust": "packages/rust/orm/src/ir.rs::ColFunc",
+        "rust": "packages/rust/src/ir.rs::ColFunc",
         "typescript": "legacy/packages/ts/src/ir.ts::ColumnFunctionIR",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRColFunc"
       },
@@ -4548,7 +4548,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Sub",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Sub",
-        "rust": "packages/rust/orm/src/ir.rs::Sub",
+        "rust": "packages/rust/src/ir.rs::Sub",
         "typescript": "legacy/packages/ts/src/ir.ts::Subquery",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRSub"
       },
@@ -4566,7 +4566,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::JoinedRef",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::JoinedRef",
-        "rust": "packages/rust/orm/src/ir.rs::JoinedRef",
+        "rust": "packages/rust/src/ir.rs::JoinedRef",
         "typescript": "legacy/packages/ts/src/ir.ts::JoinedReference",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRJoinedRef"
       },
@@ -4583,7 +4583,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Order",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Order",
-        "rust": "packages/rust/orm/src/ir.rs::Order",
+        "rust": "packages/rust/src/ir.rs::Order",
         "typescript": "legacy/packages/ts/src/ir.ts::Order",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IROrder"
       },
@@ -4605,7 +4605,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Limit",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Limit",
-        "rust": "packages/rust/orm/src/ir.rs::Limit",
+        "rust": "packages/rust/src/ir.rs::Limit",
         "typescript": "legacy/packages/ts/src/ir.ts::Limit",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRLimit"
       },
@@ -4627,7 +4627,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::IfParent",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::IfParent",
-        "rust": "packages/rust/orm/src/ir.rs::IfParent",
+        "rust": "packages/rust/src/ir.rs::IfParent",
         "typescript": "legacy/packages/ts/src/ir.ts::IfParent",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRIfParent"
       },
@@ -4642,7 +4642,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Assign",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Assign",
-        "rust": "packages/rust/orm/src/ir.rs::Assign",
+        "rust": "packages/rust/src/ir.rs::Assign",
         "typescript": "legacy/packages/ts/src/ir.ts::Assignment",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IRAssign"
       },
@@ -4665,7 +4665,7 @@
       "native": {
         "go": "legacy/packages/go/engine/ir/ir.go::Optimist",
         "php": "legacy/packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Optimist",
-        "rust": "packages/rust/orm/src/ir.rs::Optimist",
+        "rust": "packages/rust/src/ir.rs::Optimist",
         "typescript": "legacy/packages/ts/src/ir.ts::Optimistic",
         "python": "legacy/packages/python/src/polyspec/orm/ir.py::IROptimist"
       },
@@ -4703,7 +4703,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::Page",
+          "symbol": "packages/rust/src/collection.rs::Page",
           "fields": [
             "items",
             "total_count",
@@ -4757,7 +4757,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::LookaheadPage",
+          "symbol": "packages/rust/src/collection.rs::LookaheadPage",
           "fields": [
             "items",
             "page",
@@ -4808,7 +4808,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/collection.rs::GroupLookaheadPage",
+          "symbol": "packages/rust/src/collection.rs::GroupLookaheadPage",
           "fields": [
             "items",
             "page",
@@ -4859,7 +4859,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/utils.rs::AesRotationStatus",
+          "symbol": "packages/rust/src/utils.rs::AesRotationStatus",
           "fields": [
             "current",
             "total",
@@ -5647,7 +5647,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/dbspec/apply.rs::ApplyEvent",
+          "symbol": "packages/rust/src/dbspec/apply.rs::ApplyEvent",
           "fields": [
             "kind",
             "plan",
@@ -5702,7 +5702,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/dbspec/apply.rs::ApplyError",
+          "symbol": "packages/rust/src/dbspec/apply.rs::ApplyError",
           "fields": []
         },
         "typescript": {

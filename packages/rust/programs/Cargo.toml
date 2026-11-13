@@ -1,0 +1,84 @@
+[package]
+name = "polyspec-orm-tests"
+version = "0.0.31"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+build = "build.rs"
+
+# The helpers that the test programs share: the recipe helper (docs/spec/feature-coverage.md FCV-2 to FCV-4).
+[lib]
+path = "src/lib.rs"
+test = false
+
+[[bin]]
+name = "client_bench"
+path = "src/client_bench.rs"
+test = false
+
+[[bin]]
+name = "conformance"
+path = "src/conformance.rs"
+test = false
+
+[[bin]]
+name = "complex"
+path = "../../../examples/complex/rust/main.rs"
+test = false
+
+[[bin]]
+name = "demo"
+path = "../../../examples/thin-slice/rust/main.rs"
+test = false
+
+# The test program of the crate: each module is a recipe entry or a native test file, and each of its tests is the trial
+# <module>::<name> (FCV-3). `--test all -- <module>::` selects a module.
+[[test]]
+name = "all"
+path = "tests/all/main.rs"
+harness = false
+
+# The program of the recipe entries of mariadb, each module a recipe on MariaDB (FCV-3, DIA-200). Its cases need the MariaDB
+# servers, which a runner of the MySQL servers cannot hold, so a plain cargo test leaves it out (test = false) and make
+# mariadb-recipes-check/rust runs it by `--test mariadb`.
+[[test]]
+name = "mariadb"
+path = "tests/mariadb/main.rs"
+harness = false
+test = false
+
+[dependencies]
+# The integration program reports each case's start, result, elapsed time, and its own deadline.
+polyspec-orm-testcase = { path = "../testcase" }
+# the conformance runner fixes the executor clock through the test entry point polyspec_orm::testing.
+polyspec-orm = { path = "..", features = ["test-faults"] }
+# The integration program's database case creates its own database and drops it when it ends.
+polyspec-orm-case-database = { path = "../case-database" }
+# The database path of the recipe helper connects the live catalog of orm-build to the case database.
+polyspec-orm-build = { path = "../build", features = ["live-db"] }
+# The binaries of the examples, the benchmark client and the integration program import the shared helpers from it.
+polyspec-orm-test-support = { path = "../test-support" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+# The native baseline of the performance gate reads a DECIMAL and a NUMERIC price through sqlx as its 128-bit decimal.
+sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "rust_decimal"] }
+# The dbspec.read_set op creates the symbolic links of its tree; the crate holds the platform calls (Rust std has none that is cross-platform).
+symlink = "=0.1.0"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+cpu-time = "=1.0.0"
+serde = { version = "1", features = ["derive"] }
+# unbounded_depth: a recipe may nest deeper than the 128 levels that serde_json reads by default (COD-70 json-depth).
+serde_json = { version = "1", features = ["unbounded_depth"] }
+
+# The coverage test runs the same generator and live-db catalog as build.rs.
+[dev-dependencies]
+polyspec-orm-build = { path = "../build", features = ["live-db"] }
+polyspec-orm-cases = { path = "../tests/cases" }
+polyspec-orm-build-cases = { path = "../build/tests/cases" }
+polyspec-orm-schema-cases = { path = "../schema/tests/cases" }
+polyspec-orm-testcase-cases = { path = "../testcase/tests/cases" }
+
+[build-dependencies]
+polyspec-orm-build = { path = "../build" }
+
+[lints]
+workspace = true

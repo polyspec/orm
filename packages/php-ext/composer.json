@@ -1,0 +1,12 @@
+{
+  "name": "polyspec/orm",
+  "description": "The orm library of polyspec as a PHP extension",
+  "type": "php-ext",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.4"
+  },
+  "php-ext": {
+    "extension-name": "polyspec_orm"
+  }
+}

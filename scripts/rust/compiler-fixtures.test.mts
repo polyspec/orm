@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { caseTest, PROCESS } from '../../tests/testcase.mts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const examples = join(root, 'packages/rust/tests/examples');
+const examples = join(root, 'packages/rust/programs/examples');
 const runner = join(root, 'scripts/rust/compiler-fixtures.mts');
 const toolchain = readFileSync(join(root, 'rust-toolchain.toml'), 'utf8').match(/^channel = "(.*)"$/m)?.[1];
 const fixture = 'generated-typed-getter-positive';
@@ -20,5 +20,5 @@ caseTest('a stale source of the case is overwritten and the scratch directory is
   writeFileSync(join(examples, `${fixture}.rs`), 'stale\n');
   const run = spawnSync(process.execPath, [runner, toolchain, '--case', fixture], { cwd: root, encoding: 'utf8' });
   assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
-  assert.equal(existsSync(examples), false, 'packages/rust/tests/examples is removed after the run');
+  assert.equal(existsSync(examples), false, 'packages/rust/programs/examples is removed after the run');
 });

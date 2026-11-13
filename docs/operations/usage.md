@@ -565,7 +565,7 @@ make orm-test-servers                                        # MySQL, PostgreSQL
 . .runtime/servers/env                                   # the DSN variables of the tests
 go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
-(cd packages/rust && cargo test --workspace)              # Rust client
+make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
 ```
 

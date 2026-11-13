@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: d36a7945fd0072f50afd5bfd5be651ee5a8b0592704204fd784dfb0808d7c913 -->
+<!-- source-sha256: e52bd792f29ddbdcad770cb5f38799794281a2cbdaa7a1447fbd287921158367 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -150,7 +150,8 @@
   읽을 때 `codec_decode`이고 메시지는 `the JSON value holds a string that is no sequence of Unicode scalar values`다.
 - **CORE-61** JSON 값을 member 순서·숫자 텍스트·빈 container와 함께 저장하는 codec stage(COD-9, COD-16)는 코어에서
   `json`이다. 언어 구현은 그것을 쓰던 라이브러리 이름을 따라 `ordered_json`이라 부르지만 코어는 그 이름의 라이브러리에
-  의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓰고 거기서 `ordered_json`은 알 수 없는 stage다. 그런 값의
+  의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓴다. 코어는 `ordered_json`을 같은 encoding의 stage
+  `json`으로 읽으므로, 언어 구현이 읽는 문서를 코어도 읽고, 그 canonical form은 `json`을 쓴다. 그런 값의
   공유 case 값 wrapper는 코어를 나가는 값(CORE-60)과 같이 `json_value`이고(FCV-4), 그 stage를 시험하는 case의 id도
   `json`으로 그것을 부른다. CORE-1의 고정 사본은 언어 구현을 위해 옛 이름을 지킨다.
 

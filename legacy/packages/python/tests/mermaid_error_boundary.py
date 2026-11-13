@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from packages.python.tests.testcase import COMPUTE, main
+from legacy.packages.python.tests.testcase import COMPUTE, main
 from polyspec.orm.dbspec.introspect_catalog import Catalog
 from polyspec.orm.dbspec.mermaid import import_mermaid
 

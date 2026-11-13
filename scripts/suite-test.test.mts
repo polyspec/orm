@@ -69,7 +69,7 @@ caseTest('a suite runs its recipe entries one at a time, after the other files',
 
 caseTest('a file of the suite runs as the runner of its runtime runs one file', COMPUTE, () => {
   assert.deepEqual(suiteCommand('typescript', 'legacy/packages/ts/tests/a.test.mjs').args, ['--conditions=orm-test', '--test', 'legacy/packages/ts/tests/a.test.mjs']);
-  assert.deepEqual(suiteCommand('python', 'legacy/packages/python/tests/test_a.py').args, ['-m', 'unittest', '-v', 'packages.python.tests.test_a']);
+  assert.deepEqual(suiteCommand('python', 'legacy/packages/python/tests/test_a.py').args, ['-m', 'unittest', '-v', 'legacy.packages.python.tests.test_a']);
   const php = suiteCommand('php', 'legacy/packages/php/tests/ATest.php');
   assert.deepEqual([php.program, ...php.args], ['php', 'vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', 'legacy/packages/php/tests/ATest.php']);
   assert.deepEqual(php.env, { ORM_PHP_MODE: 'library' });

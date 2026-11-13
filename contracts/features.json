@@ -74,13 +74,13 @@
         "legacy/packages/ts/tests/model.mjs",
         "legacy/packages/ts/tests/pool_bounds.mjs",
         "legacy/packages/ts/tests/idle-connection-end.mjs",
-        "packages/rust/orm/tests/cases/zone.rs",
+        "packages/rust/tests/cases/zone.rs",
         "legacy/packages/php/tests/CoverageDsnTest.php",
-        "packages/rust/tests/tests/all/integration_program/mod.rs",
-        "packages/rust/tests/tests/all/example_dsn.rs",
+        "packages/rust/programs/tests/all/integration_program/mod.rs",
+        "packages/rust/programs/tests/all/example_dsn.rs",
         "legacy/packages/php/tests/SqliteWithoutMysqlTest.php",
         "legacy/packages/php-ext/tests/OrmExceptionNativeTest.php",
-        "packages/rust/orm/tests/cases/mysql_tls.rs",
+        "packages/rust/tests/cases/mysql_tls.rs",
         "legacy/packages/php/tests/MarkdownTest.php",
         "legacy/packages/php-ext/src/markdown_native.c",
         "legacy/packages/php-ext/src/markdown_native.h",
@@ -88,7 +88,7 @@
         "legacy/packages/php-ext/src/polyspec_orm.c",
         "legacy/packages/ts/tests/markdown.mjs",
         "legacy/packages/go/orm/bind_check_test.go",
-        "packages/rust/orm/tests/unit/bind_vectors.rs",
+        "packages/rust/tests/unit/bind_vectors.rs",
         "legacy/packages/python/tests/test_markdown.py",
         "tests/bind/vectors.json",
         "legacy/packages/python/tests/test_sqlite_version.py",
@@ -100,7 +100,7 @@
         "legacy/packages/php-ext/tests/MysqlSessionNativeTest.php",
         "legacy/packages/ts/tests/sqlite-version.test.mjs",
         "legacy/packages/go/orm/mysqlonly/mysqlonly_test.go",
-        "packages/rust/orm/src/db/sqlite_version_tests.rs",
+        "packages/rust/src/db/sqlite_version_tests.rs",
         "legacy/packages/php/tests/PgsqlPdoAdapterCases.php",
         "legacy/packages/php/tests/PgsqlPdoAdapterTest.php",
         "legacy/packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
@@ -128,9 +128,9 @@
         "legacy/packages/go/orm/recipe_dsn_connection_test.go",
         "legacy/packages/php/tests/DsnConnectionRecipeTest.php",
         "legacy/packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
-        "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
-        "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
-        "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
+        "packages/rust/programs/tests/all/dsn_connection_mysql.rs",
+        "packages/rust/programs/tests/all/dsn_connection_postgres.rs",
+        "packages/rust/programs/tests/all/dsn_connection_sqlite.rs",
         "legacy/packages/ts/tests/dsn_connection-mysql.test.mjs",
         "legacy/packages/ts/tests/dsn_connection-postgres.test.mjs",
         "legacy/packages/ts/tests/dsn_connection-sqlite.test.mjs",
@@ -148,8 +148,8 @@
         "legacy/packages/python/tests/test_dsn_reject_checked_none.py",
         "legacy/packages/python/tests/test_dsn_reject_parameters_none.py",
         "legacy/packages/go/orm/recipe_dsn_reject_test.go",
-        "packages/rust/tests/tests/all/dsn_reject_checked_none.rs",
-        "packages/rust/tests/tests/all/dsn_reject_parameters_none.rs",
+        "packages/rust/programs/tests/all/dsn_reject_checked_none.rs",
+        "packages/rust/programs/tests/all/dsn_reject_parameters_none.rs",
         "legacy/packages/go/orm/recipe_connection_pool_test.go",
         "legacy/packages/ts/tests/connection_pool-mysql.test.mjs",
         "legacy/packages/ts/tests/connection_pool-postgres.test.mjs",
@@ -161,11 +161,11 @@
         "legacy/packages/python/tests/test_connection_pool_sqlite.py",
         "legacy/packages/python/tests/test_connection_pool_markdown.py",
         "legacy/packages/python/tests/connection_pool_mariadb.py",
-        "packages/rust/tests/tests/all/connection_pool_mysql.rs",
-        "packages/rust/tests/tests/all/connection_pool_postgres.rs",
-        "packages/rust/tests/tests/all/connection_pool_sqlite.rs",
-        "packages/rust/tests/tests/all/connection_pool_markdown.rs",
-        "packages/rust/tests/tests/mariadb/connection_pool_mariadb.rs",
+        "packages/rust/programs/tests/all/connection_pool_mysql.rs",
+        "packages/rust/programs/tests/all/connection_pool_postgres.rs",
+        "packages/rust/programs/tests/all/connection_pool_sqlite.rs",
+        "packages/rust/programs/tests/all/connection_pool_markdown.rs",
+        "packages/rust/programs/tests/mariadb/connection_pool_mariadb.rs",
         "legacy/packages/go/orm/sqlite_crashed_holder_test.go",
         "legacy/packages/go/bindmessages/bind_messages_test.go",
         "legacy/packages/go/orm/recipe_model_socket_test.go",
@@ -181,27 +181,27 @@
         "legacy/packages/python/tests/test_bind_messages_none.py",
         "legacy/packages/python/tests/test_dsn_reject_none.py",
         "legacy/packages/python/tests/test_model_socket_mysql.py",
-        "packages/rust/tests/tests/all/bind_messages.rs",
+        "packages/rust/programs/tests/all/bind_messages.rs",
         "legacy/packages/go/bindmessages/markdown_session_test.go",
         "legacy/packages/php/tests/MarkdownSessionRecipeTest.php",
         "legacy/packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
         "legacy/packages/ts/tests/markdown_session.mjs",
         "legacy/packages/python/tests/test_markdown_session_none.py",
-        "packages/rust/tests/tests/all/markdown_session.rs",
-        "packages/rust/tests/tests/all/dsn_reject_none.rs",
-        "packages/rust/tests/tests/all/model_socket_mysql.rs",
+        "packages/rust/programs/tests/all/markdown_session.rs",
+        "packages/rust/programs/tests/all/dsn_reject_none.rs",
+        "packages/rust/programs/tests/all/model_socket_mysql.rs",
         "legacy/packages/ts/tests/dsn_connection-markdown.test.mjs",
         "legacy/packages/ts/tests/dsn_connection-mariadb.test.mjs",
         "legacy/packages/python/tests/test_dsn_connection_markdown.py",
         "legacy/packages/python/tests/dsn_connection_mariadb.py",
-        "packages/rust/tests/tests/all/dsn_connection_markdown.rs",
-        "packages/rust/tests/tests/mariadb/dsn_connection_mariadb.rs",
+        "packages/rust/programs/tests/all/dsn_connection_markdown.rs",
+        "packages/rust/programs/tests/mariadb/dsn_connection_mariadb.rs",
         "legacy/packages/php-ext/tests/DsnConnectionMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ModelSocketMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/DsnConnectionMariadbRecipeTest.php",
         "legacy/packages/php/tests/ModelSocketMariadbRecipeTest.php",
         "legacy/packages/python/tests/model_socket_mariadb.py",
-        "packages/rust/tests/tests/mariadb/model_socket_mariadb.rs",
+        "packages/rust/programs/tests/mariadb/model_socket_mariadb.rs",
         "legacy/packages/ts/tests/model_socket-mariadb.test.mjs"
       ],
       "docs": [
@@ -235,17 +235,17 @@
         },
         {
           "id": "bind-vectors-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts bind-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib bind_check::bind_vectors",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts bind-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib bind_check::bind_vectors",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/unit/bind_vectors.rs",
-            "packages/rust/orm/src/bind_check.rs",
+            "packages/rust/tests/unit/bind_vectors.rs",
+            "packages/rust/src/bind_check.rs",
             "tests/bind/vectors.json"
           ]
         },
         {
           "id": "bind-vectors-python",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_markdown.BindVectors",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_markdown.BindVectors",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_markdown.py",
@@ -281,10 +281,10 @@
         },
         {
           "id": "dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/zone.rs",
+            "packages/rust/tests/cases/zone.rs",
             "contracts/fixtures/zone.dbs"
           ]
         },
@@ -317,18 +317,18 @@
         },
         {
           "id": "dsn-mysql-tls-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-mysql-tls-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- mysql_tls::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-mysql-tls-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- mysql_tls::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/mysql_tls.rs"
+            "packages/rust/tests/cases/mysql_tls.rs"
           ]
         },
         {
           "id": "example-dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts example-dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- example_dsn::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts example-dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- example_dsn::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/all/example_dsn.rs"
+            "packages/rust/programs/tests/all/example_dsn.rs"
           ]
         },
         {
@@ -349,7 +349,7 @@
         },
         {
           "id": "idle-connection-end-python",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.connection_pool.ConnectionPoolTest.test_idle_server_end_discards_connection",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.connection_pool.ConnectionPoolTest.test_idle_server_end_discards_connection",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/connection_pool.py",
@@ -360,16 +360,16 @@
         },
         {
           "id": "idle-connection-end-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::pool_discards_ended_idle_connection --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::pool_discards_ended_idle_connection --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/zone.rs",
+            "packages/rust/tests/cases/zone.rs",
             "packages/rust/case-database/src/lib.rs"
           ]
         },
         {
           "id": "dsn-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_sqlite_version && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_placeholders && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_driver_cells",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_sqlite_version && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_placeholders && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_driver_cells",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_sqlite_version.py",
@@ -381,7 +381,7 @@
         },
         {
           "id": "connection-pool-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.connection_pool",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.connection_pool",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/connection_pool.py",
@@ -613,49 +613,49 @@
             ]
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
-              "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
-              "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
-              "packages/rust/tests/tests/all/connection_pool_mysql.rs",
-              "packages/rust/tests/tests/all/connection_pool_postgres.rs",
-              "packages/rust/tests/tests/all/connection_pool_sqlite.rs"
+              "packages/rust/programs/tests/all/dsn_connection_mysql.rs",
+              "packages/rust/programs/tests/all/dsn_connection_postgres.rs",
+              "packages/rust/programs/tests/all/dsn_connection_sqlite.rs",
+              "packages/rust/programs/tests/all/connection_pool_mysql.rs",
+              "packages/rust/programs/tests/all/connection_pool_postgres.rs",
+              "packages/rust/programs/tests/all/connection_pool_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/dsn_connection_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/dsn_connection_mysql.rs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/connection_pool_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/connection_pool_mysql.rs",
                   "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/dsn_connection_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/dsn_connection_postgres.rs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/connection_pool_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/connection_pool_postgres.rs",
                   "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/dsn_connection_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/dsn_connection_sqlite.rs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/connection_pool_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/connection_pool_sqlite.rs",
                   "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ]
@@ -829,7 +829,7 @@
         "legacy/packages/php-ext/tests/CollectionTest.php",
         "legacy/packages/php/tests/CollectionRecipeTest.php",
         "legacy/packages/go/markdownmodel/recipe_collection_test.go",
-        "packages/rust/tests/tests/all/collection_none.rs",
+        "packages/rust/programs/tests/all/collection_none.rs",
         "tests/collection/collection.json",
         "legacy/packages/python/tests/test_dsl_dynamic_none.py",
         "legacy/packages/ts/tests/dsl_dynamic-none.test.mjs",
@@ -852,23 +852,23 @@
         "legacy/packages/ts/tests/group_rows.types.ts",
         "legacy/packages/ts/tests/aggregate_numeric.mjs",
         "legacy/packages/ts/tests/styled-value-features.mjs",
-        "packages/rust/tests/tests/all/integration_program/mod.rs",
-        "packages/rust/tests/src/plain.rs",
+        "packages/rust/programs/tests/all/integration_program/mod.rs",
+        "packages/rust/programs/src/plain.rs",
         "legacy/packages/go/engine/engine_test.go",
         "legacy/packages/go/engine/compile_bench_test.go",
         "legacy/packages/go/internal/conformance/main_test.go",
         "legacy/packages/go/decimalmodel/decimal_physical_test.go",
         "legacy/packages/php/tests/DecimalModelTest.php",
         "legacy/packages/php/tests/DecimalModelDbTest.php",
-        "packages/rust/tests/tests/all/decimal_physical.rs",
+        "packages/rust/programs/tests/all/decimal_physical.rs",
         "legacy/packages/ts/tests/decimal_model.types.ts",
         "legacy/packages/ts/tests/decimal_model_db.mjs",
         "legacy/packages/go/orm/group_rows_test.go",
         "legacy/packages/go/orm/related_test.go",
         "legacy/packages/php/tests/UnselectedColumnTest.php",
         "legacy/packages/php/tests/UnselectedColumnDbTest.php",
-        "packages/rust/orm/tests/cases/value_types.rs",
-        "packages/rust/tests/tests/all/result_chains.rs",
+        "packages/rust/tests/cases/value_types.rs",
+        "packages/rust/programs/tests/all/result_chains.rs",
         "legacy/packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "legacy/packages/go/orm/shape_test.go",
         "legacy/packages/go/orm/shape_internal_test.go",
@@ -892,12 +892,12 @@
         "legacy/packages/php/tests/ParentSlotExpansionTest.php",
         "legacy/packages/php-ext/tests/ParentSlotExpansionNativeTest.php",
         "legacy/packages/ts/tests/parent-slot-expansion.mjs",
-        "packages/rust/orm/src/driver_parent_slot_tests.rs",
-        "packages/rust/orm/tests/cases/collection_identity.rs",
+        "packages/rust/src/driver_parent_slot_tests.rs",
+        "packages/rust/tests/cases/collection_identity.rs",
         "legacy/packages/ts/tests/collection_identity.mjs",
         "legacy/packages/python/tests/test_collection_identity.py",
         "legacy/packages/python/tests/test_group_rows.py",
-        "packages/rust/orm/src/row.rs",
+        "packages/rust/src/row.rs",
         "legacy/packages/go/model/chain_types_test.go",
         "legacy/packages/php/tests/NativeCellReadTest.php",
         "legacy/packages/ts/tests/chain-types.mjs",
@@ -907,16 +907,16 @@
         "legacy/packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "legacy/packages/php/tests/PageCacheBoundCases.php",
         "legacy/packages/php-ext/tests/ChainNativeSurfaceTest.php",
-        "packages/rust/orm/src/collection.rs",
-        "packages/rust/orm/src/engine/mod.rs",
-        "packages/rust/orm/src/model.rs",
-        "packages/rust/orm/src/driver/tests.rs",
-        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
+        "packages/rust/src/collection.rs",
+        "packages/rust/src/engine/mod.rs",
+        "packages/rust/src/model.rs",
+        "packages/rust/src/driver/tests.rs",
+        "packages/rust/tests/cases/compiler_fixtures.rs",
         "legacy/packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
         "legacy/packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "legacy/packages/php-ext/tests/GroupRowsTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ModelTestExtensionTest.php",
-        "packages/rust/orm/src/value.rs",
+        "packages/rust/src/value.rs",
         "legacy/packages/go/orm/recipe_model_queries_test.go",
         "legacy/packages/php/tests/ModelQueriesRecipeTest.php",
         "legacy/packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
@@ -926,15 +926,15 @@
         "legacy/packages/python/tests/test_model_queries_mysql.py",
         "legacy/packages/python/tests/test_model_queries_postgres.py",
         "legacy/packages/python/tests/test_model_queries_sqlite.py",
-        "packages/rust/tests/tests/all/model_queries_mysql.rs",
-        "packages/rust/tests/tests/all/model_queries_postgres.rs",
-        "packages/rust/tests/tests/all/model_queries_sqlite.rs",
-        "packages/rust/tests/src/bench_set_dispatch.rs",
+        "packages/rust/programs/tests/all/model_queries_mysql.rs",
+        "packages/rust/programs/tests/all/model_queries_postgres.rs",
+        "packages/rust/programs/tests/all/model_queries_sqlite.rs",
+        "packages/rust/programs/src/bench_set_dispatch.rs",
         "legacy/packages/go/orm/recipe_model_queries_chain_test.go",
         "legacy/packages/php/tests/ModelQueriesChainRecipeTest.php",
-        "packages/rust/tests/tests/all/model_queries_chain_mysql.rs",
-        "packages/rust/tests/tests/all/model_queries_chain_postgres.rs",
-        "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
+        "packages/rust/programs/tests/all/model_queries_chain_mysql.rs",
+        "packages/rust/programs/tests/all/model_queries_chain_postgres.rs",
+        "packages/rust/programs/tests/all/model_queries_chain_sqlite.rs",
         "legacy/packages/ts/tests/model_queries_chain-mysql.test.mjs",
         "legacy/packages/ts/tests/model_queries_chain-postgres.test.mjs",
         "legacy/packages/ts/tests/model_queries_chain-sqlite.test.mjs",
@@ -947,8 +947,8 @@
         "legacy/packages/php-ext/tests/DslRecipeTestExtensionTest.php",
         "legacy/packages/ts/tests/dsl-none.test.mjs",
         "legacy/packages/python/tests/test_dsl_none.py",
-        "packages/rust/orm/src/canonical.rs",
-        "packages/rust/tests/tests/all/dsl_none.rs",
+        "packages/rust/src/canonical.rs",
+        "packages/rust/programs/tests/all/dsl_none.rs",
         "legacy/packages/ts/tests/model_queries-markdown.test.mjs",
         "legacy/packages/ts/tests/model_queries-mariadb.test.mjs",
         "legacy/packages/ts/tests/model_queries_chain-markdown.test.mjs",
@@ -957,10 +957,10 @@
         "legacy/packages/python/tests/model_queries_chain_mariadb.py",
         "legacy/packages/python/tests/test_model_queries_markdown.py",
         "legacy/packages/python/tests/model_queries_mariadb.py",
-        "packages/rust/tests/tests/all/model_queries_chain_markdown.rs",
-        "packages/rust/tests/tests/mariadb/model_queries_chain_mariadb.rs",
-        "packages/rust/tests/tests/all/model_queries_markdown.rs",
-        "packages/rust/tests/tests/mariadb/model_queries_mariadb.rs",
+        "packages/rust/programs/tests/all/model_queries_chain_markdown.rs",
+        "packages/rust/programs/tests/mariadb/model_queries_chain_mariadb.rs",
+        "packages/rust/programs/tests/all/model_queries_markdown.rs",
+        "packages/rust/programs/tests/mariadb/model_queries_mariadb.rs",
         "legacy/packages/php-ext/tests/ModelQueriesChainMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ModelQueriesMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/ModelQueriesChainMariadbRecipeTest.php",
@@ -1057,16 +1057,16 @@
         },
         {
           "id": "parent-slot-expansion-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts parent-slot-expansion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::parent_slot_tests::preserves_bare_dollar -- --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts parent-slot-expansion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::parent_slot_tests::preserves_bare_dollar -- --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/driver.rs",
-            "packages/rust/orm/src/driver_parent_slot_tests.rs"
+            "packages/rust/src/driver.rs",
+            "packages/rust/src/driver_parent_slot_tests.rs"
           ]
         },
         {
           "id": "parent-slot-expansion-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_collection_identity CollectionIdentityTest.test_parent_expansion_keeps_bare_dollar",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_collection_identity CollectionIdentityTest.test_parent_expansion_keeps_bare_dollar",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_collection_identity.py",
@@ -1113,7 +1113,7 @@
         },
         {
           "id": "group-rows-python-unit",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/src/polyspec/orm/model_exec.py",
@@ -1126,7 +1126,7 @@
           "shard": "rust",
           "inputs": [
             "Makefile",
-            "packages/rust/orm/src/row.rs"
+            "packages/rust/src/row.rs"
           ]
         },
         {
@@ -1189,12 +1189,12 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- decimal_physical::",
+          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- decimal_physical::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/all/decimal_physical.rs",
+            "packages/rust/programs/tests/all/decimal_physical.rs",
             "contracts/fixtures/dbspec-set.json",
-            "packages/rust/tests/dbspec-set.json"
+            "packages/rust/programs/dbspec-set.json"
           ]
         },
         {
@@ -1273,15 +1273,15 @@
         },
         {
           "id": "values-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- value_types::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- value_types::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/value_types.rs"
+            "packages/rust/tests/cases/value_types.rs"
           ]
         },
         {
           "id": "queries-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_aggregate_numeric && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_aggregate_numeric_driver_values && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_model_json_text && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_styled_sql_null && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_aggregate_numeric.py",
@@ -1296,7 +1296,7 @@
         },
         {
           "id": "model-fields-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_model_fields",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_model_fields",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_model_fields.py",
@@ -1327,10 +1327,10 @@
         },
         {
           "id": "collection-identity-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts collection-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- collection_identity::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts collection-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- collection_identity::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/collection_identity.rs",
+            "packages/rust/tests/cases/collection_identity.rs",
             "tests/collection/keys.json"
           ]
         },
@@ -1412,31 +1412,31 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/model_queries_chain_mysql.rs",
-              "packages/rust/tests/tests/all/model_queries_chain_postgres.rs",
-              "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs"
+              "packages/rust/programs/tests/all/model_queries_chain_mysql.rs",
+              "packages/rust/programs/tests/all/model_queries_chain_postgres.rs",
+              "packages/rust/programs/tests/all/model_queries_chain_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/model_queries_chain_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/model_queries_chain_mysql.rs",
                   "recipe": "contracts/fixtures/model_queries_chain/model_queries_chain.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/model_queries_chain_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/model_queries_chain_postgres.rs",
                   "recipe": "contracts/fixtures/model_queries_chain/model_queries_chain.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/model_queries_chain_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/model_queries_chain_sqlite.rs",
                   "recipe": "contracts/fixtures/model_queries_chain/model_queries_chain.json"
                 }
               ]
@@ -1623,12 +1623,12 @@
         "legacy/packages/php/tests/RuntimeModelTest.php",
         "legacy/packages/ts/tests/model.mjs",
         "legacy/packages/ts/tests/styled-value-features.mjs",
-        "packages/rust/tests/tests/all/integration_program/mod.rs",
+        "packages/rust/programs/tests/all/integration_program/mod.rs",
         "packages/rust/build/tests/cases/generate.rs",
         "legacy/packages/go/decimalmodel/decimal_physical_test.go",
         "legacy/packages/php/tests/DecimalModelTest.php",
         "legacy/packages/php/tests/DecimalModelDbTest.php",
-        "packages/rust/tests/tests/all/decimal_physical.rs",
+        "packages/rust/programs/tests/all/decimal_physical.rs",
         "legacy/packages/ts/tests/decimal_model.types.ts",
         "legacy/packages/ts/tests/decimal_model_db.mjs",
         "legacy/packages/ts/tests/clock.mjs",
@@ -1644,7 +1644,7 @@
         "legacy/packages/python/tests/test_new_values.py",
         "legacy/packages/python/tests/test_sqlite.py",
         "legacy/packages/php-ext/tests/ModelWriteSurfaceTest.php",
-        "packages/rust/orm/tests/unit/time_precision.rs",
+        "packages/rust/tests/unit/time_precision.rs",
         "legacy/packages/php-ext/tests/DecimalModelDbNativeTest.php",
         "legacy/packages/php-ext/tests/DecimalModelSqliteNativeTest.php",
         "legacy/packages/php-ext/tests/DecimalModelTestExtensionTest.php",
@@ -1654,18 +1654,18 @@
         "legacy/packages/php-ext/tests/ModelWritesRecipeTestExtensionTest.php",
         "legacy/packages/ts/tests/model_writes-mysql.test.mjs",
         "legacy/packages/python/tests/test_model_writes_mysql.py",
-        "packages/rust/tests/tests/all/model_writes_mysql.rs",
+        "packages/rust/programs/tests/all/model_writes_mysql.rs",
         "legacy/packages/ts/tests/model_writes-postgres.test.mjs",
         "legacy/packages/python/tests/test_model_writes_postgres.py",
-        "packages/rust/tests/tests/all/model_writes_postgres.rs",
+        "packages/rust/programs/tests/all/model_writes_postgres.rs",
         "legacy/packages/ts/tests/model_writes-sqlite.test.mjs",
         "legacy/packages/python/tests/test_model_writes_sqlite.py",
-        "packages/rust/tests/tests/all/model_writes_sqlite.rs",
+        "packages/rust/programs/tests/all/model_writes_sqlite.rs",
         "legacy/packages/go/orm/recipe_model_writes_chain_test.go",
         "legacy/packages/php/tests/ModelWritesChainRecipeTest.php",
-        "packages/rust/tests/tests/all/model_writes_chain_mysql.rs",
-        "packages/rust/tests/tests/all/model_writes_chain_postgres.rs",
-        "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs",
+        "packages/rust/programs/tests/all/model_writes_chain_mysql.rs",
+        "packages/rust/programs/tests/all/model_writes_chain_postgres.rs",
+        "packages/rust/programs/tests/all/model_writes_chain_sqlite.rs",
         "legacy/packages/ts/tests/model_writes_chain-mysql.test.mjs",
         "legacy/packages/ts/tests/model_writes_chain-postgres.test.mjs",
         "legacy/packages/ts/tests/model_writes_chain-sqlite.test.mjs",
@@ -1681,10 +1681,10 @@
         "legacy/packages/python/tests/model_writes_chain_mariadb.py",
         "legacy/packages/python/tests/test_model_writes_markdown.py",
         "legacy/packages/python/tests/model_writes_mariadb.py",
-        "packages/rust/tests/tests/all/model_writes_chain_markdown.rs",
-        "packages/rust/tests/tests/mariadb/model_writes_chain_mariadb.rs",
-        "packages/rust/tests/tests/all/model_writes_markdown.rs",
-        "packages/rust/tests/tests/mariadb/model_writes_mariadb.rs",
+        "packages/rust/programs/tests/all/model_writes_chain_markdown.rs",
+        "packages/rust/programs/tests/mariadb/model_writes_chain_mariadb.rs",
+        "packages/rust/programs/tests/all/model_writes_markdown.rs",
+        "packages/rust/programs/tests/mariadb/model_writes_mariadb.rs",
         "legacy/packages/php-ext/tests/ModelWritesChainMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ModelWritesMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/RawTextMariadbRecipeTestExtensionTest.php",
@@ -1786,12 +1786,12 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- decimal_physical::",
+          "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- decimal_physical::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/all/decimal_physical.rs",
+            "packages/rust/programs/tests/all/decimal_physical.rs",
             "contracts/fixtures/dbspec-set.json",
-            "packages/rust/tests/dbspec-set.json"
+            "packages/rust/programs/dbspec-set.json"
           ]
         },
         {
@@ -1863,7 +1863,7 @@
         },
         {
           "id": "mysql-found-rows-python",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_mysql_found_rows",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_mysql_found_rows",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_mysql_found_rows.py",
@@ -1872,7 +1872,7 @@
         },
         {
           "id": "writes-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_new_values && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_sqlite",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_new_values && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_sqlite",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_new_values.py",
@@ -1882,12 +1882,12 @@
         },
         {
           "id": "time-precision-rust-unit",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts time-precision-rust-unit -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib db::time_precision_tests::temporal_precision_boundaries_and_fraction_semantics_are_preserved -- --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts time-precision-rust-unit -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib db::time_precision_tests::temporal_precision_boundaries_and_fraction_semantics_are_preserved -- --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/unit/time_precision.rs",
-            "packages/rust/orm/src/db.rs",
-            "packages/rust/orm/src/bind_check.rs"
+            "packages/rust/tests/unit/time_precision.rs",
+            "packages/rust/src/db.rs",
+            "packages/rust/src/bind_check.rs"
           ]
         }
       ],
@@ -1959,31 +1959,31 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/model_writes_chain_mysql.rs",
-              "packages/rust/tests/tests/all/model_writes_chain_postgres.rs",
-              "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs"
+              "packages/rust/programs/tests/all/model_writes_chain_mysql.rs",
+              "packages/rust/programs/tests/all/model_writes_chain_postgres.rs",
+              "packages/rust/programs/tests/all/model_writes_chain_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/model_writes_chain_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/model_writes_chain_mysql.rs",
                   "recipe": "contracts/fixtures/model_writes_chain/model_writes_chain.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/model_writes_chain_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/model_writes_chain_postgres.rs",
                   "recipe": "contracts/fixtures/model_writes_chain/model_writes_chain.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/model_writes_chain_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/model_writes_chain_sqlite.rs",
                   "recipe": "contracts/fixtures/model_writes_chain/model_writes_chain.json"
                 }
               ]
@@ -2160,11 +2160,11 @@
         "legacy/packages/php/tests/ModelTest.php",
         "legacy/packages/php-ext/tests/TransactionFailureNativeTest.php",
         "legacy/packages/ts/tests/model.mjs",
-        "packages/rust/orm/tests/cases/zone.rs",
-        "packages/rust/tests/tests/all/integration_program/mod.rs",
+        "packages/rust/tests/cases/zone.rs",
+        "packages/rust/programs/tests/all/integration_program/mod.rs",
         "legacy/packages/go/orm/goexit_test.go",
         "legacy/packages/go/model/sqlite_concurrency_test.go",
-        "packages/rust/orm/tests/cases/sqlite_concurrency.rs",
+        "packages/rust/tests/cases/sqlite_concurrency.rs",
         "legacy/packages/go/orm/context_reset_test.go",
         "legacy/packages/php/tests/sqlite_concurrency_writer.php",
         "legacy/packages/go/orm/coverage_transaction_failure_test.go",
@@ -2172,7 +2172,7 @@
         "legacy/packages/php/tests/TransactionFailureTest.php",
         "legacy/packages/php/tests/TransactionFailureCases.php",
         "legacy/packages/php/tests/ModelTestFailingPdo.php",
-        "packages/rust/orm/tests/cases/rollback.rs",
+        "packages/rust/tests/cases/rollback.rs",
         "legacy/packages/ts/tests/transaction-failure.mjs",
         "legacy/packages/go/orm/cancelled_session_test.go",
         "legacy/packages/go/orm/transaction_end_test.go",
@@ -2181,13 +2181,13 @@
         "legacy/packages/go/orm/statement_fault_test.go",
         "legacy/packages/go/orm/statement_fault_entry_test.go",
         "legacy/packages/php/tests/StatementFaultTest.php",
-        "packages/rust/orm/tests/cases/statement_fault.rs",
+        "packages/rust/tests/cases/statement_fault.rs",
         "legacy/packages/ts/tests/statement_fault.mjs",
         "legacy/packages/ts/tests/statement_fault_entry.mjs",
         "legacy/packages/python/tests/statement_fault.py",
         "legacy/packages/python/tests/test_statement_fault_entry.py",
-        "packages/rust/orm/src/tx.rs",
-        "packages/rust/orm/src/tx_send_tests.rs",
+        "packages/rust/src/tx.rs",
+        "packages/rust/src/tx_send_tests.rs",
         "legacy/packages/python/tests/test_rollback_fault.py",
         "legacy/packages/python/tests/test_sqlite.py",
         "legacy/packages/python/tests/test_utils_statements.py",
@@ -2200,7 +2200,7 @@
         "legacy/packages/php/tests/OrmExceptionLockWaitTest.php",
         "legacy/packages/ts/tests/driver-error-lock-wait.mjs",
         "legacy/packages/ts/tests/transaction-flow.mjs",
-        "packages/rust/orm/tests/cases/transaction_flow.rs",
+        "packages/rust/tests/cases/transaction_flow.rs",
         "legacy/packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
         "legacy/packages/ts/tests/sqlite-row-lock-restore.mjs",
         "legacy/packages/ts/tests/was-inserted.mjs",
@@ -2221,10 +2221,10 @@
         "legacy/packages/php-ext/tests/UtilsNativeTest.php",
         "legacy/packages/go/orm/catalog_session_error_test.go",
         "legacy/packages/go/orm/sqlite_lock_restore_test.go",
-        "packages/rust/orm/src/utils.rs",
-        "packages/rust/orm/src/db/executor_route_tests.rs",
-        "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs",
-        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
+        "packages/rust/src/utils.rs",
+        "packages/rust/src/db/executor_route_tests.rs",
+        "packages/rust/src/db/sqlite_row_lock_restore_tests.rs",
+        "packages/rust/tests/cases/compiler_fixtures.rs",
         "legacy/packages/php-ext/tests/ModelTestExtensionTest.php",
         "legacy/packages/php-ext/tests/RollbackTestExtensionTest.php",
         "legacy/packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
@@ -2238,9 +2238,9 @@
         "legacy/packages/python/tests/test_transactions_mysql.py",
         "legacy/packages/python/tests/test_transactions_postgres.py",
         "legacy/packages/python/tests/test_transactions_sqlite.py",
-        "packages/rust/tests/tests/all/transactions_mysql.rs",
-        "packages/rust/tests/tests/all/transactions_postgres.rs",
-        "packages/rust/tests/tests/all/transactions_sqlite.rs",
+        "packages/rust/programs/tests/all/transactions_mysql.rs",
+        "packages/rust/programs/tests/all/transactions_postgres.rs",
+        "packages/rust/programs/tests/all/transactions_sqlite.rs",
         "legacy/packages/php-ext/tests/AuditLazyFakePdoTest.php",
         "legacy/packages/go/orm/recipe_utils_test.go",
         "legacy/packages/php/tests/UtilsRecipeTest.php",
@@ -2251,9 +2251,9 @@
         "legacy/packages/python/tests/test_utils_recipe_mysql.py",
         "legacy/packages/python/tests/test_utils_recipe_postgres.py",
         "legacy/packages/python/tests/test_utils_recipe_sqlite.py",
-        "packages/rust/tests/tests/all/utils_recipe_mysql.rs",
-        "packages/rust/tests/tests/all/utils_recipe_postgres.rs",
-        "packages/rust/tests/tests/all/utils_recipe_sqlite.rs",
+        "packages/rust/programs/tests/all/utils_recipe_mysql.rs",
+        "packages/rust/programs/tests/all/utils_recipe_postgres.rs",
+        "packages/rust/programs/tests/all/utils_recipe_sqlite.rs",
         "legacy/packages/ts/tests/transactions-markdown.test.mjs",
         "legacy/packages/ts/tests/transactions-mariadb.test.mjs",
         "legacy/packages/ts/tests/utils_recipe-markdown.test.mjs",
@@ -2262,10 +2262,10 @@
         "legacy/packages/python/tests/transactions_mariadb.py",
         "legacy/packages/python/tests/test_utils_recipe_markdown.py",
         "legacy/packages/python/tests/utils_recipe_mariadb.py",
-        "packages/rust/tests/tests/all/transactions_markdown.rs",
-        "packages/rust/tests/tests/mariadb/transactions_mariadb.rs",
-        "packages/rust/tests/tests/all/utils_recipe_markdown.rs",
-        "packages/rust/tests/tests/mariadb/utils_recipe_mariadb.rs",
+        "packages/rust/programs/tests/all/transactions_markdown.rs",
+        "packages/rust/programs/tests/mariadb/transactions_mariadb.rs",
+        "packages/rust/programs/tests/all/utils_recipe_markdown.rs",
+        "packages/rust/programs/tests/mariadb/utils_recipe_mariadb.rs",
         "legacy/packages/php-ext/tests/TransactionsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/UtilsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/TransactionsMariadbRecipeTest.php",
@@ -2296,7 +2296,7 @@
         },
         {
           "id": "transaction-flow-overlap-python",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_transaction_flow.TransactionConcurrencyTest.test_overlapping_statement_is_rejected",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_transaction_flow.TransactionConcurrencyTest.test_overlapping_statement_is_rejected",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_transaction_flow.py"
@@ -2372,10 +2372,10 @@
         },
         {
           "id": "statement-fault-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-fault-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- statement_fault::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-fault-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- statement_fault::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/statement_fault.rs",
+            "packages/rust/tests/cases/statement_fault.rs",
             "contracts/fixtures/statement_fault.json",
             "contracts/fixtures/rollback.dbs"
           ]
@@ -2414,10 +2414,10 @@
         },
         {
           "id": "rollback-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rollback-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- rollback::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rollback-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- rollback::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/rollback.rs",
+            "packages/rust/tests/cases/rollback.rs",
             "contracts/fixtures/rollback.dbs"
           ]
         },
@@ -2433,11 +2433,11 @@
         },
         {
           "id": "transaction-end-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts transaction-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib tx::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts transaction-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib tx::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/tx.rs",
-            "packages/rust/orm/src/tx_send_tests.rs"
+            "packages/rust/src/tx.rs",
+            "packages/rust/src/tx_send_tests.rs"
           ]
         },
         {
@@ -2482,7 +2482,7 @@
         },
         {
           "id": "transactions-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_rollback_fault && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_utils_statements && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_row_lock_event",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_rollback_fault && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_utils_statements && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_row_lock_event",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_rollback_fault.py",
@@ -2502,10 +2502,10 @@
         },
         {
           "id": "sqlite-concurrency-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts sqlite-concurrency-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- sqlite_concurrency::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts sqlite-concurrency-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- sqlite_concurrency::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/sqlite_concurrency.rs"
+            "packages/rust/tests/cases/sqlite_concurrency.rs"
           ]
         },
         {
@@ -2653,14 +2653,14 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/transactions_mysql.rs",
-              "packages/rust/tests/tests/all/transactions_postgres.rs",
-              "packages/rust/tests/tests/all/transactions_sqlite.rs",
-              "packages/rust/tests/tests/all/utils_recipe_mysql.rs",
-              "packages/rust/tests/tests/all/utils_recipe_postgres.rs",
-              "packages/rust/tests/tests/all/utils_recipe_sqlite.rs"
+              "packages/rust/programs/tests/all/transactions_mysql.rs",
+              "packages/rust/programs/tests/all/transactions_postgres.rs",
+              "packages/rust/programs/tests/all/transactions_sqlite.rs",
+              "packages/rust/programs/tests/all/utils_recipe_mysql.rs",
+              "packages/rust/programs/tests/all/utils_recipe_postgres.rs",
+              "packages/rust/programs/tests/all/utils_recipe_sqlite.rs"
             ],
             "inputs": [
               "contracts/fixtures/bench/dbspec-set.json",
@@ -2670,36 +2670,36 @@
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/transactions_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/transactions_mysql.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/utils_recipe_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/utils_recipe_mysql.rs",
                   "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/transactions_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/transactions_postgres.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/utils_recipe_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/utils_recipe_postgres.rs",
                   "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/transactions_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/transactions_sqlite.rs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/utils_recipe_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/utils_recipe_sqlite.rs",
                   "recipe": "contracts/fixtures/utils/utils.json"
                 }
               ]
@@ -2918,9 +2918,9 @@
         "legacy/packages/ts/tests/statement_events-mysql.test.mjs",
         "legacy/packages/ts/tests/statement_events-postgres.test.mjs",
         "legacy/packages/ts/tests/statement_events-sqlite.test.mjs",
-        "packages/rust/tests/tests/all/statement_events_mysql.rs",
-        "packages/rust/tests/tests/all/statement_events_postgres.rs",
-        "packages/rust/tests/tests/all/statement_events_sqlite.rs",
+        "packages/rust/programs/tests/all/statement_events_mysql.rs",
+        "packages/rust/programs/tests/all/statement_events_postgres.rs",
+        "packages/rust/programs/tests/all/statement_events_sqlite.rs",
         "legacy/packages/go/orm/recipe_statement_events_test.go",
         "legacy/packages/php/tests/StatementEventsRecipeTest.php",
         "legacy/packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
@@ -2928,8 +2928,8 @@
         "legacy/packages/ts/tests/statement_events-mariadb.test.mjs",
         "legacy/packages/python/tests/test_statement_events_markdown.py",
         "legacy/packages/python/tests/statement_events_mariadb.py",
-        "packages/rust/tests/tests/all/statement_events_markdown.rs",
-        "packages/rust/tests/tests/mariadb/statement_events_mariadb.rs",
+        "packages/rust/programs/tests/all/statement_events_markdown.rs",
+        "packages/rust/programs/tests/mariadb/statement_events_mariadb.rs",
         "legacy/packages/php-ext/tests/StatementEventsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/StatementEventsMariadbRecipeTest.php"
       ],
@@ -2957,8 +2957,8 @@
           "command": "make transaction-failure-rust-check",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/tx.rs",
-            "packages/rust/orm/tests/cases/rollback.rs",
+            "packages/rust/src/tx.rs",
+            "packages/rust/tests/cases/rollback.rs",
             "contracts/fixtures/rollback.dbs"
           ]
         }
@@ -3079,11 +3079,11 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/statement_events_mysql.rs",
-              "packages/rust/tests/tests/all/statement_events_postgres.rs",
-              "packages/rust/tests/tests/all/statement_events_sqlite.rs"
+              "packages/rust/programs/tests/all/statement_events_mysql.rs",
+              "packages/rust/programs/tests/all/statement_events_postgres.rs",
+              "packages/rust/programs/tests/all/statement_events_sqlite.rs"
             ],
             "inputs": [
               "contracts/fixtures/statement_events/statement_events.dbs",
@@ -3093,21 +3093,21 @@
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/statement_events_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/statement_events_mysql.rs",
                   "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/statement_events_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/statement_events_postgres.rs",
                   "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/statement_events_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/statement_events_sqlite.rs",
                   "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
               ]
@@ -3237,7 +3237,7 @@
         "legacy/packages/php/tests/RuntimeModelTest.php",
         "legacy/packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "legacy/packages/python/tests/test_new_values.py",
-        "packages/rust/orm/tests/cases/compiler_fixtures.rs",
+        "packages/rust/tests/cases/compiler_fixtures.rs",
         "legacy/packages/ts/tests/chain-types.mjs",
         "legacy/packages/ts/tests/tsc-diagnostics.mjs",
         "legacy/packages/go/model/chain_types_test.go",
@@ -3258,7 +3258,7 @@
         "legacy/packages/ts/tests/generate-scan.mjs",
         "legacy/packages/ts/tests/models-scan.mjs",
         "legacy/packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-        "packages/rust/tests/tests/all/coverage_model_generation.rs",
+        "packages/rust/programs/tests/all/coverage_model_generation.rs",
         "legacy/packages/python/tests/test_orm_gen.py",
         "legacy/packages/python/tests/test_query_methods.py",
         "legacy/packages/python/tests/test_packaging.py",
@@ -3282,7 +3282,7 @@
         "legacy/packages/php/tests/GeneratorTest.php",
         "legacy/packages/php-ext/tests/GeneratorTestExtensionTest.php",
         "legacy/packages/ts/tests/generator-none.test.mjs",
-        "packages/rust/tests/tests/all/generator_none.rs",
+        "packages/rust/programs/tests/all/generator_none.rs",
         "legacy/packages/go/generator/gen_go_sets_test.go",
         "legacy/packages/go/orm/recipe_default_select_set_test.go",
         "legacy/packages/go/orm/recipe_generator_scan_test.go",
@@ -3307,10 +3307,10 @@
         "legacy/packages/ts/tests/runtime_model_entities-none.test.mjs",
         "legacy/packages/ts/tests/runtime_model_plans-none.test.mjs",
         "legacy/packages/python/tests/test_generator_scan_none.py",
-        "packages/rust/tests/tests/all/default_select_set_none.rs",
-        "packages/rust/tests/tests/all/generator_scan_none.rs",
-        "packages/rust/tests/tests/all/runtime_model_entities_none.rs",
-        "packages/rust/tests/tests/all/runtime_model_plans_none.rs"
+        "packages/rust/programs/tests/all/default_select_set_none.rs",
+        "packages/rust/programs/tests/all/generator_scan_none.rs",
+        "packages/rust/programs/tests/all/runtime_model_entities_none.rs",
+        "packages/rust/programs/tests/all/runtime_model_plans_none.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -3386,7 +3386,7 @@
         },
         {
           "id": "generation-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts generation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- generate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts generation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- generate::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/cases/generate.rs",
@@ -3397,7 +3397,7 @@
         },
         {
           "id": "generation-lib-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts generation-lib-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts generation-lib-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/src/generate.rs"
@@ -3405,7 +3405,7 @@
         },
         {
           "id": "generation-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_orm_gen && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_query_methods && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_packaging && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_requires_python",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_orm_gen && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_query_methods && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_packaging && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_requires_python",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_orm_gen.py",
@@ -3480,15 +3480,15 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/orm/tests/cases/compiler_fixtures.rs",
-              "packages/rust/tests/tests/all/coverage_model_generation.rs",
-              "packages/rust/tests/tests/all/generator_none.rs"
+              "packages/rust/tests/cases/compiler_fixtures.rs",
+              "packages/rust/programs/tests/all/coverage_model_generation.rs",
+              "packages/rust/programs/tests/all/generator_none.rs"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/generator_none.rs",
+                  "test": "packages/rust/programs/tests/all/generator_none.rs",
                   "recipe": "contracts/fixtures/generator/generator.json"
                 }
               ]
@@ -3602,7 +3602,7 @@
         "legacy/packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "legacy/packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
         "legacy/packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
-        "packages/rust/tests/tests/all/dbspec_apply_verification_errors_none.rs",
+        "packages/rust/programs/tests/all/dbspec_apply_verification_errors_none.rs",
         "legacy/packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "legacy/packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
         "legacy/packages/go/internal/dialects/apply_clients_physical_test.go",
@@ -3622,12 +3622,12 @@
         "legacy/packages/php/tests/DbspecRulesTest.php",
         "legacy/packages/php/tests/DbspecStressTest.php",
         "packages/rust/schema/tests/cases/dbspec_model.rs",
-        "packages/rust/tests/tests/all/dbspec_render_statements_none.rs",
+        "packages/rust/programs/tests/all/dbspec_render_statements_none.rs",
         "packages/rust/schema/tests/cases/dbspec_runtime.rs",
-        "packages/rust/tests/tests/all/dbspec_introspect_mysql.rs",
-        "packages/rust/tests/tests/all/dbspec_introspect_postgres.rs",
-        "packages/rust/tests/tests/all/dbspec_introspect_sqlite.rs",
-        "packages/rust/tests/tests/all/dbspec_plan_cases_none.rs",
+        "packages/rust/programs/tests/all/dbspec_introspect_mysql.rs",
+        "packages/rust/programs/tests/all/dbspec_introspect_postgres.rs",
+        "packages/rust/programs/tests/all/dbspec_introspect_sqlite.rs",
+        "packages/rust/programs/tests/all/dbspec_plan_cases_none.rs",
         "legacy/packages/ts/tests/dbspec_introspect-mysql.test.mjs",
         "legacy/packages/ts/tests/dbspec_introspect-postgres.test.mjs",
         "legacy/packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
@@ -3646,9 +3646,9 @@
         "legacy/packages/python/tests/test_render_physical_mysql.py",
         "legacy/packages/python/tests/test_render_physical_postgres.py",
         "legacy/packages/python/tests/test_render_physical_sqlite.py",
-        "packages/rust/tests/tests/all/dbspec_render_physical_mysql.rs",
-        "packages/rust/tests/tests/all/dbspec_render_physical_postgres.rs",
-        "packages/rust/tests/tests/all/dbspec_render_physical_sqlite.rs",
+        "packages/rust/programs/tests/all/dbspec_render_physical_mysql.rs",
+        "packages/rust/programs/tests/all/dbspec_render_physical_postgres.rs",
+        "packages/rust/programs/tests/all/dbspec_render_physical_sqlite.rs",
         "legacy/packages/go/orm/recipe_dbspec_render_physical_test.go",
         "legacy/packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
         "legacy/packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
@@ -3683,9 +3683,9 @@
         "legacy/packages/go/engine/dbspec/analyze_test.go",
         "legacy/packages/go/engine/dbspec/set_test.go",
         "legacy/packages/go/orm/recipe_dbspec_read_set_test.go",
-        "packages/rust/tests/tests/all/dbspec_read_set_none.rs",
+        "packages/rust/programs/tests/all/dbspec_read_set_none.rs",
         "packages/rust/schema/tests/cases/dbspec_set_working_directory.rs",
-        "packages/rust/tests/tests/all/dbspec_show_create_introspect_none.rs",
+        "packages/rust/programs/tests/all/dbspec_show_create_introspect_none.rs",
         "legacy/packages/ts/tests/dbspec_read_set-none.test.mjs",
         "legacy/packages/ts/tests/dbspec-set-edges.mjs",
         "legacy/packages/ts/tests/browser-entry.mjs",
@@ -3734,8 +3734,8 @@
         "legacy/packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
         "legacy/packages/php/tests/HashesRecipeTest.php",
         "legacy/packages/php/tests/SetsRecipeTest.php",
-        "packages/rust/tests/tests/all/hashes_none.rs",
-        "packages/rust/tests/tests/all/sets_none.rs",
+        "packages/rust/programs/tests/all/hashes_none.rs",
+        "packages/rust/programs/tests/all/sets_none.rs",
         "legacy/packages/ts/tests/recipe_canonical.mjs",
         "legacy/packages/ts/tests/recipe_normalize.mjs",
         "legacy/packages/ts/tests/recipe_positions.mjs",
@@ -3746,11 +3746,11 @@
         "legacy/packages/go/orm/recipe_hashes_test.go",
         "legacy/packages/go/orm/recipe_sets_test.go",
         "legacy/packages/go/orm/recipe_schema_definition_test.go",
-        "packages/rust/tests/tests/all/schema_definition_none.rs",
+        "packages/rust/programs/tests/all/schema_definition_none.rs",
         "legacy/packages/ts/tests/recipe_schema_definition.mjs",
         "legacy/packages/php/tests/DbspecSetParseRecipeTest.php",
         "legacy/packages/ts/tests/recipe_set_parse.mjs",
-        "packages/rust/tests/tests/all/set_parse_none.rs",
+        "packages/rust/programs/tests/all/set_parse_none.rs",
         "legacy/packages/python/tests/recipe_canonical.py",
         "legacy/packages/python/tests/recipe_normalize.py",
         "legacy/packages/python/tests/recipe_invalid.py",
@@ -3764,7 +3764,7 @@
         "legacy/packages/php-ext/tests/SetsRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/DbspecMermaidRecipeTest.php",
-        "packages/rust/tests/tests/all/dbspec_mermaid_none.rs",
+        "packages/rust/programs/tests/all/dbspec_mermaid_none.rs",
         "legacy/packages/ts/tests/dbspec-mermaid-none.test.mjs",
         "legacy/packages/go/engine/dbspec/recipe_mermaid_test.go",
         "legacy/packages/python/tests/test_dbspec_mermaid_none.py",
@@ -3833,24 +3833,24 @@
         "legacy/packages/python/tests/test_dbspec_limits_none.py",
         "legacy/packages/python/tests/test_dbspec_rules_recipe_none.py",
         "legacy/packages/python/tests/test_dbspec_show_create_introspect_none.py",
-        "packages/rust/tests/tests/all/canonical_none.rs",
-        "packages/rust/tests/tests/all/dbspec_add_tables_steps_none.rs",
-        "packages/rust/tests/tests/all/dbspec_apply_mysql.rs",
-        "packages/rust/tests/tests/all/dbspec_apply_postgres.rs",
-        "packages/rust/tests/tests/all/dbspec_apply_sqlite.rs",
-        "packages/rust/tests/tests/all/dbspec_dialect_refusal_none.rs",
-        "packages/rust/tests/tests/all/dbspec_introspect_messages_none.rs",
-        "packages/rust/tests/tests/all/dbspec_limits_none.rs",
-        "packages/rust/tests/tests/all/dbspec_load_set_none.rs",
-        "packages/rust/tests/tests/all/dbspec_plan_chains_none.rs",
-        "packages/rust/tests/tests/all/dbspec_plan_comparisons_none.rs",
-        "packages/rust/tests/tests/all/dbspec_plan_invalid_none.rs",
-        "packages/rust/tests/tests/all/dbspec_plan_parse_none.rs",
-        "packages/rust/tests/tests/all/dbspec_rules_recipe_none.rs",
-        "packages/rust/tests/tests/all/files_none.rs",
-        "packages/rust/tests/tests/all/invalid_none.rs",
-        "packages/rust/tests/tests/all/normalize_none.rs",
-        "packages/rust/tests/tests/all/positions_none.rs",
+        "packages/rust/programs/tests/all/canonical_none.rs",
+        "packages/rust/programs/tests/all/dbspec_add_tables_steps_none.rs",
+        "packages/rust/programs/tests/all/dbspec_apply_mysql.rs",
+        "packages/rust/programs/tests/all/dbspec_apply_postgres.rs",
+        "packages/rust/programs/tests/all/dbspec_apply_sqlite.rs",
+        "packages/rust/programs/tests/all/dbspec_dialect_refusal_none.rs",
+        "packages/rust/programs/tests/all/dbspec_introspect_messages_none.rs",
+        "packages/rust/programs/tests/all/dbspec_limits_none.rs",
+        "packages/rust/programs/tests/all/dbspec_load_set_none.rs",
+        "packages/rust/programs/tests/all/dbspec_plan_chains_none.rs",
+        "packages/rust/programs/tests/all/dbspec_plan_comparisons_none.rs",
+        "packages/rust/programs/tests/all/dbspec_plan_invalid_none.rs",
+        "packages/rust/programs/tests/all/dbspec_plan_parse_none.rs",
+        "packages/rust/programs/tests/all/dbspec_rules_recipe_none.rs",
+        "packages/rust/programs/tests/all/files_none.rs",
+        "packages/rust/programs/tests/all/invalid_none.rs",
+        "packages/rust/programs/tests/all/normalize_none.rs",
+        "packages/rust/programs/tests/all/positions_none.rs",
         "legacy/packages/ts/tests/dbspec_apply-markdown.test.mjs",
         "legacy/packages/ts/tests/dbspec_apply-mariadb.test.mjs",
         "legacy/packages/ts/tests/dbspec_introspect-markdown.test.mjs",
@@ -3863,12 +3863,12 @@
         "legacy/packages/python/tests/dbspec_introspect_mariadb.py",
         "legacy/packages/python/tests/test_render_physical_markdown.py",
         "legacy/packages/python/tests/render_physical_mariadb.py",
-        "packages/rust/tests/tests/all/dbspec_apply_markdown.rs",
-        "packages/rust/tests/tests/mariadb/dbspec_apply_mariadb.rs",
-        "packages/rust/tests/tests/all/dbspec_introspect_markdown.rs",
-        "packages/rust/tests/tests/mariadb/dbspec_introspect_mariadb.rs",
-        "packages/rust/tests/tests/all/dbspec_render_physical_markdown.rs",
-        "packages/rust/tests/tests/mariadb/dbspec_render_physical_mariadb.rs",
+        "packages/rust/programs/tests/all/dbspec_apply_markdown.rs",
+        "packages/rust/programs/tests/mariadb/dbspec_apply_mariadb.rs",
+        "packages/rust/programs/tests/all/dbspec_introspect_markdown.rs",
+        "packages/rust/programs/tests/mariadb/dbspec_introspect_mariadb.rs",
+        "packages/rust/programs/tests/all/dbspec_render_physical_markdown.rs",
+        "packages/rust/programs/tests/mariadb/dbspec_render_physical_mariadb.rs",
         "legacy/packages/php-ext/tests/DbspecApplyMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/DbspecIntrospectMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/DbspecRenderPhysicalMariadbRecipeTestExtensionTest.php",
@@ -3972,7 +3972,7 @@
           "command": "make dbspec-rust-check",
           "shard": "other",
           "inputs": [
-            "packages/rust/tests/tests/all/dbspec_render_statements_none.rs",
+            "packages/rust/programs/tests/all/dbspec_render_statements_none.rs",
             "packages/rust/schema/tests/cases/dbspec_runtime.rs",
             "packages/rust/schema/tests/cases/dbspec_model.rs",
             "contracts/fixtures/bench/bench.dbs",
@@ -3983,22 +3983,22 @@
             "packages/rust/schema/src/lib.rs",
             "packages/rust/schema/src/dbspec/unicode_word.rs",
             "tests/dbspec/show-create.json",
-            "packages/rust/tests/tests/all/dbspec_show_create_introspect_none.rs",
-            "packages/rust/tests/tests/all/dbspec_read_set_none.rs",
+            "packages/rust/programs/tests/all/dbspec_show_create_introspect_none.rs",
+            "packages/rust/programs/tests/all/dbspec_read_set_none.rs",
             "packages/rust/schema/tests/cases/dbspec_set_working_directory.rs",
             "tests/dbspec/set-files.json",
             "packages/rust/schema/src/dbspec/set.rs",
             "tests/dbspec/set-parse.json",
-            "packages/rust/tests/tests/all/hashes_none.rs",
-            "packages/rust/tests/tests/all/sets_none.rs",
+            "packages/rust/programs/tests/all/hashes_none.rs",
+            "packages/rust/programs/tests/all/sets_none.rs",
             "tests/dbspec/canonical.json",
             "tests/dbspec/normalize.json",
             "tests/dbspec/invalid.json",
             "tests/dbspec/hashes.json",
             "tests/dbspec/sets.json",
-            "packages/rust/tests/tests/all/set_parse_none.rs",
-            "packages/rust/tests/tests/all/dbspec_mermaid_none.rs",
-            "packages/rust/tests/tests/all/dbspec_dialect_refusal_none.rs",
+            "packages/rust/programs/tests/all/set_parse_none.rs",
+            "packages/rust/programs/tests/all/dbspec_mermaid_none.rs",
+            "packages/rust/programs/tests/all/dbspec_dialect_refusal_none.rs",
             "tests/dbspec/dialect-refusal.json"
           ]
         },
@@ -4180,7 +4180,7 @@
         },
         {
           "id": "schema-name-conversion-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts schema-name-conversion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --package polyspec-orm-schema --lib names::tests::snake_case_separates_ascii_uppercase_characters -- --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts schema-name-conversion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --package polyspec-orm-schema --lib names::tests::snake_case_separates_ascii_uppercase_characters -- --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
             "packages/rust/schema/src/names.rs"
@@ -4253,7 +4253,7 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/all/schema_definition_none.rs"
+              "packages/rust/programs/tests/all/schema_definition_none.rs"
             ],
             "inputs": [
               "tests/dbspec/schema-definition.json"
@@ -4262,7 +4262,7 @@
               "none": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/schema_definition_none.rs",
+                  "test": "packages/rust/programs/tests/all/schema_definition_none.rs",
                   "recipe": "tests/dbspec/schema-definition.json"
                 }
               ]
@@ -4380,7 +4380,7 @@
         "legacy/packages/go/orm/timezone_test.go",
         "legacy/packages/php/tests/ModelTest.php",
         "legacy/packages/ts/tests/model.mjs",
-        "packages/rust/orm/tests/cases/zone.rs",
+        "packages/rust/tests/cases/zone.rs",
         "legacy/packages/php/tests/SchemaSetTest.php",
         "legacy/packages/ts/tests/schema-set.mjs",
         "legacy/packages/ts/tests/dbspec_set_decimal-mysql.test.mjs",
@@ -4389,16 +4389,16 @@
         "legacy/packages/python/tests/test_set_decimal_mysql.py",
         "legacy/packages/python/tests/test_set_decimal_postgres.py",
         "legacy/packages/python/tests/test_set_decimal_sqlite.py",
-        "packages/rust/tests/tests/all/dbspec_set_decimal_mysql.rs",
-        "packages/rust/tests/tests/all/dbspec_set_decimal_postgres.rs",
-        "packages/rust/tests/tests/all/dbspec_set_decimal_sqlite.rs",
+        "packages/rust/programs/tests/all/dbspec_set_decimal_mysql.rs",
+        "packages/rust/programs/tests/all/dbspec_set_decimal_postgres.rs",
+        "packages/rust/programs/tests/all/dbspec_set_decimal_sqlite.rs",
         "legacy/packages/go/orm/recipe_dbspec_set_decimal_test.go",
         "legacy/packages/php/tests/DbspecSetDecimalRecipeTest.php",
         "legacy/packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/case_database.php",
         "legacy/packages/ts/tests/case-database.mjs",
         "legacy/packages/go/decimalmodel/schema_set_test.go",
-        "packages/rust/tests/tests/all/decimal_physical.rs",
+        "packages/rust/programs/tests/all/decimal_physical.rs",
         "legacy/packages/go/orm/register_test.go",
         "legacy/packages/ts/tests/dbspec_runtime_db.mjs",
         "legacy/packages/python/tests/test_installed_differences.py",
@@ -4414,14 +4414,14 @@
         "legacy/packages/php-ext/tests/DbspecReleaseHooksTest.php",
         "legacy/packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
-        "packages/rust/tests/tests/all/dbspec_apply_verification_errors_none.rs",
+        "packages/rust/programs/tests/all/dbspec_apply_verification_errors_none.rs",
         "legacy/packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
         "legacy/packages/php-ext/tests/SchemaUtilsNativeTest.php",
         "legacy/packages/go/engine/dbspec/sqlite_lock_result_test.go",
-        "packages/rust/orm/src/schema.rs",
+        "packages/rust/src/schema.rs",
         "packages/rust/schema/src/dbspec/introspect/mysql.rs",
-        "packages/rust/orm/src/dbspec.rs",
-        "packages/rust/orm/src/dbspec/apply.rs",
+        "packages/rust/src/dbspec.rs",
+        "packages/rust/src/dbspec/apply.rs",
         "packages/rust/schema/src/dbspec/introspect/mod.rs",
         "legacy/packages/php-ext/tests/DbspecSqliteLockNativeTest.php",
         "legacy/packages/php-ext/tests/DbspecRulesNativeTest.php",
@@ -4429,9 +4429,9 @@
         "legacy/packages/php-ext/tests/ModelTestExtensionTest.php",
         "legacy/packages/go/orm/recipe_schema_install_test.go",
         "legacy/packages/php/tests/SchemaInstallRecipeTest.php",
-        "packages/rust/tests/tests/all/schema_install_mysql.rs",
-        "packages/rust/tests/tests/all/schema_install_postgres.rs",
-        "packages/rust/tests/tests/all/schema_install_sqlite.rs",
+        "packages/rust/programs/tests/all/schema_install_mysql.rs",
+        "packages/rust/programs/tests/all/schema_install_postgres.rs",
+        "packages/rust/programs/tests/all/schema_install_sqlite.rs",
         "legacy/packages/ts/tests/schema_install-mysql.test.mjs",
         "legacy/packages/ts/tests/schema_install-postgres.test.mjs",
         "legacy/packages/ts/tests/schema_install-sqlite.test.mjs",
@@ -4451,10 +4451,10 @@
         "legacy/packages/python/tests/schema_install_mariadb.py",
         "legacy/packages/python/tests/test_set_decimal_markdown.py",
         "legacy/packages/python/tests/set_decimal_mariadb.py",
-        "packages/rust/tests/tests/all/dbspec_set_decimal_markdown.rs",
-        "packages/rust/tests/tests/mariadb/dbspec_set_decimal_mariadb.rs",
-        "packages/rust/tests/tests/all/schema_install_markdown.rs",
-        "packages/rust/tests/tests/mariadb/schema_install_mariadb.rs",
+        "packages/rust/programs/tests/all/dbspec_set_decimal_markdown.rs",
+        "packages/rust/programs/tests/mariadb/dbspec_set_decimal_mariadb.rs",
+        "packages/rust/programs/tests/all/schema_install_markdown.rs",
+        "packages/rust/programs/tests/mariadb/schema_install_mariadb.rs",
         "legacy/packages/php-ext/tests/DbspecSetDecimalMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/SchemaInstallMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/DbspecSetDecimalMariadbRecipeTest.php",
@@ -4536,7 +4536,7 @@
         },
         {
           "id": "orm-install-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_installed_differences && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_schema_utils && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_dbspec_load_set_none && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_installed_differences.py",
@@ -4590,10 +4590,10 @@
         },
         {
           "id": "install-schema-set-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-schema-set-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all decimal_physical::schema_set",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-schema-set-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all decimal_physical::schema_set",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/all/decimal_physical.rs",
+            "packages/rust/programs/tests/all/decimal_physical.rs",
             "contracts/fixtures/decimal_schema.dbs",
             "contracts/fixtures/bench/bench.dbs",
             "contracts/fixtures/external/*.dbs"
@@ -4670,29 +4670,29 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/all/schema_install_mysql.rs",
-              "packages/rust/tests/tests/all/schema_install_postgres.rs",
-              "packages/rust/tests/tests/all/schema_install_sqlite.rs"
+              "packages/rust/programs/tests/all/schema_install_mysql.rs",
+              "packages/rust/programs/tests/all/schema_install_postgres.rs",
+              "packages/rust/programs/tests/all/schema_install_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/schema_install_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/schema_install_mysql.rs",
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/schema_install_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/schema_install_postgres.rs",
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/schema_install_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/schema_install_sqlite.rs",
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
               ]
@@ -4862,21 +4862,21 @@
         "legacy/packages/go/engine/ir/fuzz_test.go",
         "legacy/packages/go/engine/ir/operators_test.go",
         "legacy/packages/go/engine/dialect/sqlite_test.go",
-        "packages/rust/orm/src/engine/dialect.rs",
-        "packages/rust/tests/src/conformance.rs",
-        "packages/rust/tests/src/conformance_values.rs",
-        "packages/rust/tests/tests/all/conformance_runner.rs",
+        "packages/rust/src/engine/dialect.rs",
+        "packages/rust/programs/src/conformance.rs",
+        "packages/rust/programs/src/conformance_values.rs",
+        "packages/rust/programs/tests/all/conformance_runner.rs",
         "legacy/packages/php/tests/RuntimeModelTest.php",
         "legacy/packages/php/tests/CoveragePlannerTest.php",
-        "packages/rust/orm/tests/unit/coverage_planner.rs",
+        "packages/rust/tests/unit/coverage_planner.rs",
         "legacy/packages/go/engine/planner/restore_test.go",
         "legacy/packages/go/engine/ir/recipe_validate_test.go",
         "legacy/packages/python/tests/test_ir_validate_none.py",
         "legacy/packages/go/engine/ir/params_test.go",
-        "packages/rust/tests/tests/all/ir_validate_none.rs",
+        "packages/rust/programs/tests/all/ir_validate_none.rs",
         "legacy/packages/php/tests/IrValidateRecipeTest.php",
         "legacy/packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
-        "packages/rust/orm/src/testing/ir_request.rs",
+        "packages/rust/src/testing/ir_request.rs",
         "legacy/packages/go/orm/plan_cache_test.go",
         "legacy/packages/php/tests/PlanCacheBoundTest.php",
         "legacy/packages/ts/tests/plan-cache-in.mjs",
@@ -4980,12 +4980,12 @@
         },
         {
           "id": "planner-rust-validate",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- ir_validate_none::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- ir_validate_none::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/engine/validate.rs",
-            "packages/rust/tests/tests/all/ir_validate_none.rs",
-            "packages/rust/orm/src/testing/ir_request.rs",
+            "packages/rust/src/engine/validate.rs",
+            "packages/rust/programs/tests/all/ir_validate_none.rs",
+            "packages/rust/src/testing/ir_request.rs",
             "tests/ir/validate.json"
           ]
         },
@@ -5060,18 +5060,18 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/all/planner_compile_none.rs"
+              "packages/rust/programs/tests/all/planner_compile_none.rs"
             ],
             "inputs": [
               "contracts/fixtures/restore_keys.dbs",
-              "packages/rust/orm/src/engine/mod.rs",
+              "packages/rust/src/engine/mod.rs",
               "tests/planner/compile.json"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/planner_compile_none.rs",
+                  "test": "packages/rust/programs/tests/all/planner_compile_none.rs",
                   "recipe": "tests/planner/compile.json"
                 }
               ]
@@ -5179,7 +5179,7 @@
       "tests": [
         "legacy/packages/go/model/model_test.go",
         "legacy/packages/php/tests/ModelTest.php",
-        "packages/rust/tests/tests/all/integration_program/mod.rs",
+        "packages/rust/programs/tests/all/integration_program/mod.rs",
         "legacy/packages/ts/tests/model.mjs",
         "legacy/packages/python/tests/test_key_prefix.py",
         "legacy/packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
@@ -5188,8 +5188,8 @@
         "legacy/packages/ts/tests/composite_keys-mariadb.test.mjs",
         "legacy/packages/python/tests/test_composite_keys_markdown.py",
         "legacy/packages/python/tests/composite_keys_mariadb.py",
-        "packages/rust/tests/tests/all/composite_keys_markdown.rs",
-        "packages/rust/tests/tests/mariadb/composite_keys_mariadb.rs",
+        "packages/rust/programs/tests/all/composite_keys_markdown.rs",
+        "packages/rust/programs/tests/mariadb/composite_keys_mariadb.rs",
         "legacy/packages/php-ext/tests/CompositeKeysMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/CompositeKeysMariadbRecipeTest.php"
       ],
@@ -5209,7 +5209,7 @@
         },
         {
           "id": "composite-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_key_prefix",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_key_prefix",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_key_prefix.py",
@@ -5285,31 +5285,31 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/composite_keys_mysql.rs",
-              "packages/rust/tests/tests/all/composite_keys_postgres.rs",
-              "packages/rust/tests/tests/all/composite_keys_sqlite.rs"
+              "packages/rust/programs/tests/all/composite_keys_mysql.rs",
+              "packages/rust/programs/tests/all/composite_keys_postgres.rs",
+              "packages/rust/programs/tests/all/composite_keys_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/composite_keys_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/composite_keys_mysql.rs",
                   "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/composite_keys_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/composite_keys_postgres.rs",
                   "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/composite_keys_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/composite_keys_sqlite.rs",
                   "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ]
@@ -5462,11 +5462,11 @@
       "tests": [
         "legacy/packages/go/orm/codec_test.go",
         "legacy/packages/go/orm/aes_rotation_test.go",
-        "packages/rust/orm/tests/cases/aes_keys.rs",
+        "packages/rust/tests/cases/aes_keys.rs",
         "legacy/packages/ts/tests/model.mjs",
         "legacy/packages/ts/tests/codec_case.mjs",
         "legacy/packages/go/orm/fuzz_test.go",
-        "packages/rust/tests/tests/all/integration_program/mod.rs",
+        "packages/rust/programs/tests/all/integration_program/mod.rs",
         "legacy/packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
         "contracts/fixtures/secret_config.dbs",
         "legacy/packages/php/tests/AesVersionCodesTest.php",
@@ -5488,10 +5488,10 @@
         "legacy/packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
         "legacy/packages/ts/tests/codec-none.test.mjs",
         "legacy/packages/python/tests/test_codec_none.py",
-        "packages/rust/tests/tests/all/codec_none.rs",
+        "packages/rust/programs/tests/all/codec_none.rs",
         "legacy/packages/ts/tests/codec-integer-beyond-i64-none.test.mjs",
         "legacy/packages/python/tests/test_codec_integer_beyond_i64_none.py",
-        "packages/rust/tests/tests/all/codec_integer_beyond_i64_none.rs",
+        "packages/rust/programs/tests/all/codec_integer_beyond_i64_none.rs",
         "legacy/packages/php/tests/CodecBytesValueRecipeTest.php",
         "legacy/packages/php-ext/tests/CodecBytesValueRecipeExtensionTest.php",
         "legacy/packages/ts/tests/codec-bytes-value-none.test.mjs",
@@ -5506,7 +5506,7 @@
         "legacy/packages/python/tests/test_codec_json_depth_none.py",
         "legacy/packages/python/tests/test_codec_stack_depth.py",
         "legacy/packages/python/tests/test_codec_yaml_reader_cause.py",
-        "packages/rust/tests/tests/all/codec_json_depth_none.rs",
+        "packages/rust/programs/tests/all/codec_json_depth_none.rs",
         "legacy/packages/ts/tests/codec-lone-surrogate-none.test.mjs",
         "legacy/packages/python/tests/test_codec_lone_surrogate_none.py",
         "legacy/packages/python/tests/test_codec_map_keys_none.py",
@@ -5527,9 +5527,9 @@
         "legacy/packages/python/tests/test_aes_rotation_mysql.py",
         "legacy/packages/python/tests/test_aes_rotation_postgres.py",
         "legacy/packages/python/tests/test_aes_rotation_sqlite.py",
-        "packages/rust/tests/tests/all/aes_rotation_mysql.rs",
-        "packages/rust/tests/tests/all/aes_rotation_postgres.rs",
-        "packages/rust/tests/tests/all/aes_rotation_sqlite.rs",
+        "packages/rust/programs/tests/all/aes_rotation_mysql.rs",
+        "packages/rust/programs/tests/all/aes_rotation_postgres.rs",
+        "packages/rust/programs/tests/all/aes_rotation_sqlite.rs",
         "legacy/packages/php/tests/AesRotationMarkdownTest.php",
         "legacy/packages/php/tests/AesRotationMariadbTest.php",
         "legacy/packages/php-ext/tests/AesRotationMarkdownRecipeExtensionTest.php",
@@ -5538,8 +5538,8 @@
         "legacy/packages/ts/tests/aes_rotation-mariadb.test.mjs",
         "legacy/packages/python/tests/test_aes_rotation_markdown.py",
         "legacy/packages/python/tests/aes_rotation_mariadb.py",
-        "packages/rust/tests/tests/all/aes_rotation_markdown.rs",
-        "packages/rust/tests/tests/mariadb/aes_rotation_mariadb.rs"
+        "packages/rust/programs/tests/all/aes_rotation_markdown.rs",
+        "packages/rust/programs/tests/mariadb/aes_rotation_mariadb.rs"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -5579,11 +5579,11 @@
         },
         {
           "id": "codec-recipe-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts codec-recipe-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- codec_none::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts codec-recipe-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- codec_none::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/all/codec_none.rs",
-            "packages/rust/tests/src/recipe.rs",
+            "packages/rust/programs/tests/all/codec_none.rs",
+            "packages/rust/programs/src/recipe.rs",
             "tests/codec/codec.json"
           ]
         },
@@ -5601,23 +5601,23 @@
         },
         {
           "id": "encryption-codec-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts encryption-codec-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib codec",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts encryption-codec-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib codec",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/codec.rs"
+            "packages/rust/src/codec.rs"
           ]
         },
         {
           "id": "encryption-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts encryption-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- aes_keys::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts encryption-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- aes_keys::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/aes_keys.rs"
+            "packages/rust/tests/cases/aes_keys.rs"
           ]
         },
         {
           "id": "encryption-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_codec_none && legacy/packages/python/.venv/bin/python -m packages.python.tests.test_aes_version_codes",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_codec_none && legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_aes_version_codes",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_codec_none.py",
@@ -5673,9 +5673,9 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/codec_none.rs"
+              "packages/rust/programs/tests/all/codec_none.rs"
             ],
             "inputs": [
               "tests/codec/codec.json"
@@ -5684,7 +5684,7 @@
               "none": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/codec_none.rs",
+                  "test": "packages/rust/programs/tests/all/codec_none.rs",
                   "recipe": "tests/codec/codec.json"
                 }
               ]
@@ -5799,21 +5799,21 @@
         "packages/rust/build/tests/unit/assignment_budget.rs",
         "packages/rust/build/tests/unit/insert_values.rs",
         "packages/rust/build/tests/unit/row_update_budget.rs",
-        "packages/rust/orm/src/driver/tests.rs",
+        "packages/rust/src/driver/tests.rs",
         "legacy/packages/go/orm/recipe_parameter_chunking_test.go",
         "legacy/packages/ts/tests/parameter_chunking-mysql.test.mjs",
         "legacy/packages/python/tests/test_parameter_chunking_mysql.py",
-        "packages/rust/tests/tests/all/parameter_chunking_mysql.rs",
+        "packages/rust/programs/tests/all/parameter_chunking_mysql.rs",
         "legacy/packages/php/tests/ParameterChunkingMysqlTest.php",
         "legacy/packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
         "legacy/packages/ts/tests/parameter_chunking-postgres.test.mjs",
         "legacy/packages/python/tests/test_parameter_chunking_postgres.py",
-        "packages/rust/tests/tests/all/parameter_chunking_postgres.rs",
+        "packages/rust/programs/tests/all/parameter_chunking_postgres.rs",
         "legacy/packages/php/tests/ParameterChunkingPostgresTest.php",
         "legacy/packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
         "legacy/packages/ts/tests/parameter_chunking-sqlite.test.mjs",
         "legacy/packages/python/tests/test_parameter_chunking_sqlite.py",
-        "packages/rust/tests/tests/all/parameter_chunking_sqlite.rs",
+        "packages/rust/programs/tests/all/parameter_chunking_sqlite.rs",
         "legacy/packages/php/tests/ParameterChunkingSqliteTest.php",
         "legacy/packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
         "legacy/packages/php/tests/ParameterChunkingMarkdownTest.php",
@@ -5824,8 +5824,8 @@
         "legacy/packages/ts/tests/parameter_chunking-mariadb.test.mjs",
         "legacy/packages/python/tests/test_parameter_chunking_markdown.py",
         "legacy/packages/python/tests/parameter_chunking_mariadb.py",
-        "packages/rust/tests/tests/all/parameter_chunking_markdown.rs",
-        "packages/rust/tests/tests/mariadb/parameter_chunking_mariadb.rs"
+        "packages/rust/programs/tests/all/parameter_chunking_markdown.rs",
+        "packages/rust/programs/tests/mariadb/parameter_chunking_mariadb.rs"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -5880,11 +5880,11 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/parameter_chunking_mysql.rs",
-              "packages/rust/tests/tests/all/parameter_chunking_postgres.rs",
-              "packages/rust/tests/tests/all/parameter_chunking_sqlite.rs"
+              "packages/rust/programs/tests/all/parameter_chunking_mysql.rs",
+              "packages/rust/programs/tests/all/parameter_chunking_postgres.rs",
+              "packages/rust/programs/tests/all/parameter_chunking_sqlite.rs"
             ],
             "inputs": [
               "contracts/fixtures/parameter_chunking/parameter_chunking.dbs"
@@ -5893,21 +5893,21 @@
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/parameter_chunking_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/parameter_chunking_mysql.rs",
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/parameter_chunking_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/parameter_chunking_postgres.rs",
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/parameter_chunking_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/parameter_chunking_sqlite.rs",
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
               ]
@@ -6123,7 +6123,7 @@
         "legacy/packages/php/tests/DbspecRenderStatementsRecipeTest.php",
         "legacy/packages/ts/tests/dbspec_render_statements-none.test.mjs",
         "legacy/packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
-        "packages/rust/tests/tests/all/dbspec_render_statements_none.rs",
+        "packages/rust/programs/tests/all/dbspec_render_statements_none.rs",
         "legacy/packages/go/orm/refusal_test.go",
         "legacy/packages/php/tests/DriverErrorTest.php",
         "legacy/packages/ts/tests/driver-error.mjs",
@@ -6131,8 +6131,8 @@
         "legacy/packages/go/orm/recipe_immutable_write_test.go",
         "contracts/fixtures/refusal.dbs",
         "legacy/packages/python/tests/test_driver_errors.py",
-        "packages/rust/orm/src/lib.rs",
-        "packages/rust/orm/tests/unit/driver_cause.rs",
+        "packages/rust/src/lib.rs",
+        "packages/rust/tests/unit/driver_cause.rs",
         "legacy/packages/php-ext/tests/DbspecRenderStatementsRecipeTestExtensionTest.php",
         "legacy/packages/python/tests/test_constraints_and_relations_mysql.py",
         "legacy/packages/python/tests/test_constraints_and_relations_postgres.py",
@@ -6140,12 +6140,12 @@
         "legacy/packages/python/tests/test_immutable_write_mysql.py",
         "legacy/packages/python/tests/test_immutable_write_postgres.py",
         "legacy/packages/python/tests/test_immutable_write_sqlite.py",
-        "packages/rust/tests/tests/all/constraints_and_relations_mysql.rs",
-        "packages/rust/tests/tests/all/constraints_and_relations_postgres.rs",
-        "packages/rust/tests/tests/all/constraints_and_relations_sqlite.rs",
-        "packages/rust/tests/tests/all/immutable_write_mysql.rs",
-        "packages/rust/tests/tests/all/immutable_write_postgres.rs",
-        "packages/rust/tests/tests/all/immutable_write_sqlite.rs",
+        "packages/rust/programs/tests/all/constraints_and_relations_mysql.rs",
+        "packages/rust/programs/tests/all/constraints_and_relations_postgres.rs",
+        "packages/rust/programs/tests/all/constraints_and_relations_sqlite.rs",
+        "packages/rust/programs/tests/all/immutable_write_mysql.rs",
+        "packages/rust/programs/tests/all/immutable_write_postgres.rs",
+        "packages/rust/programs/tests/all/immutable_write_sqlite.rs",
         "legacy/packages/ts/tests/constraints_and_relations-markdown.test.mjs",
         "legacy/packages/ts/tests/constraints_and_relations-mariadb.test.mjs",
         "legacy/packages/ts/tests/immutable_write-markdown.test.mjs",
@@ -6154,10 +6154,10 @@
         "legacy/packages/python/tests/constraints_and_relations_mariadb.py",
         "legacy/packages/python/tests/test_immutable_write_markdown.py",
         "legacy/packages/python/tests/immutable_write_mariadb.py",
-        "packages/rust/tests/tests/all/constraints_and_relations_markdown.rs",
-        "packages/rust/tests/tests/mariadb/constraints_and_relations_mariadb.rs",
-        "packages/rust/tests/tests/all/immutable_write_markdown.rs",
-        "packages/rust/tests/tests/mariadb/immutable_write_mariadb.rs",
+        "packages/rust/programs/tests/all/constraints_and_relations_markdown.rs",
+        "packages/rust/programs/tests/mariadb/constraints_and_relations_mariadb.rs",
+        "packages/rust/programs/tests/all/immutable_write_markdown.rs",
+        "packages/rust/programs/tests/mariadb/immutable_write_mariadb.rs",
         "legacy/packages/php-ext/tests/ConstraintsAndRelationsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ImmutableWriteMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/ConstraintsAndRelationsMariadbRecipeTest.php",
@@ -6216,7 +6216,7 @@
         },
         {
           "id": "driver-error-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_driver_errors",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_driver_errors",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_driver_errors.py",
@@ -6225,11 +6225,11 @@
         },
         {
           "id": "driver-error-cause-rust-sqlx-bind",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts driver-error-cause-rust-sqlx-bind -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::cause_message_tests -- --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts driver-error-cause-rust-sqlx-bind -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::cause_message_tests -- --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/unit/driver_cause.rs",
-            "packages/rust/orm/src/driver.rs"
+            "packages/rust/tests/unit/driver_cause.rs",
+            "packages/rust/src/driver.rs"
           ]
         }
       ],
@@ -6349,49 +6349,49 @@
             ]
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/constraints_and_relations_mysql.rs",
-              "packages/rust/tests/tests/all/constraints_and_relations_postgres.rs",
-              "packages/rust/tests/tests/all/constraints_and_relations_sqlite.rs",
-              "packages/rust/tests/tests/all/immutable_write_mysql.rs",
-              "packages/rust/tests/tests/all/immutable_write_postgres.rs",
-              "packages/rust/tests/tests/all/immutable_write_sqlite.rs"
+              "packages/rust/programs/tests/all/constraints_and_relations_mysql.rs",
+              "packages/rust/programs/tests/all/constraints_and_relations_postgres.rs",
+              "packages/rust/programs/tests/all/constraints_and_relations_sqlite.rs",
+              "packages/rust/programs/tests/all/immutable_write_mysql.rs",
+              "packages/rust/programs/tests/all/immutable_write_postgres.rs",
+              "packages/rust/programs/tests/all/immutable_write_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/constraints_and_relations_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/constraints_and_relations_mysql.rs",
                   "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/immutable_write_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/immutable_write_mysql.rs",
                   "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/constraints_and_relations_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/constraints_and_relations_postgres.rs",
                   "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/immutable_write_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/immutable_write_postgres.rs",
                   "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/constraints_and_relations_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/constraints_and_relations_sqlite.rs",
                   "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/immutable_write_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/immutable_write_sqlite.rs",
                   "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ]
@@ -6612,8 +6612,8 @@
         "contracts/fixtures/audit_triggers/audit_triggers.dbs",
         "contracts/fixtures/audit_triggers/dbspec-set.json",
         "legacy/packages/go/orm/audit_transaction_test.go",
-        "packages/rust/orm/tests/cases/audit.rs",
-        "packages/rust/orm/tests/cases/common/audit_rows.rs",
+        "packages/rust/tests/cases/audit.rs",
+        "packages/rust/tests/cases/common/audit_rows.rs",
         "contracts/fixtures/external_audit/external_audit.json",
         "contracts/fixtures/external_audit/member.dbs",
         "contracts/fixtures/external_audit/core.dbs",
@@ -6621,7 +6621,7 @@
       ],
       "tests": [
         "legacy/packages/php/tests/ModelTest.php",
-        "packages/rust/orm/tests/cases/audit.rs",
+        "packages/rust/tests/cases/audit.rs",
         "legacy/packages/ts/tests/model.mjs",
         "legacy/packages/go/orm/audit_transaction_test.go",
         "legacy/packages/php/tests/RuntimeDbTest.php",
@@ -6637,9 +6637,9 @@
         "legacy/packages/go/orm/recipe_external_audit_test.go",
         "legacy/packages/php/tests/ExternalAuditRecipeTest.php",
         "legacy/packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
-        "packages/rust/tests/tests/all/external_audit_mysql.rs",
-        "packages/rust/tests/tests/all/external_audit_postgres.rs",
-        "packages/rust/tests/tests/all/external_audit_sqlite.rs",
+        "packages/rust/programs/tests/all/external_audit_mysql.rs",
+        "packages/rust/programs/tests/all/external_audit_postgres.rs",
+        "packages/rust/programs/tests/all/external_audit_sqlite.rs",
         "legacy/packages/ts/tests/external_audit-mysql.test.mjs",
         "legacy/packages/ts/tests/external_audit-postgres.test.mjs",
         "legacy/packages/ts/tests/external_audit-sqlite.test.mjs",
@@ -6654,10 +6654,10 @@
         "legacy/packages/python/tests/audit_triggers_mariadb.py",
         "legacy/packages/python/tests/test_external_audit_markdown.py",
         "legacy/packages/python/tests/external_audit_mariadb.py",
-        "packages/rust/tests/tests/all/audit_triggers_markdown.rs",
-        "packages/rust/tests/tests/mariadb/audit_triggers_mariadb.rs",
-        "packages/rust/tests/tests/all/external_audit_markdown.rs",
-        "packages/rust/tests/tests/mariadb/external_audit_mariadb.rs",
+        "packages/rust/programs/tests/all/audit_triggers_markdown.rs",
+        "packages/rust/programs/tests/mariadb/audit_triggers_mariadb.rs",
+        "packages/rust/programs/tests/all/external_audit_markdown.rs",
+        "packages/rust/programs/tests/mariadb/external_audit_mariadb.rs",
         "legacy/packages/php-ext/tests/AuditTriggersMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ExternalAuditMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/AuditTriggersMariadbRecipeTest.php",
@@ -6693,10 +6693,10 @@
         },
         {
           "id": "audit-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts audit-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- audit::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts audit-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- audit::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/cases/audit.rs"
+            "packages/rust/tests/cases/audit.rs"
           ]
         }
       ],
@@ -6806,49 +6806,49 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/audit_triggers_mysql.rs",
-              "packages/rust/tests/tests/all/audit_triggers_postgres.rs",
-              "packages/rust/tests/tests/all/audit_triggers_sqlite.rs",
-              "packages/rust/tests/tests/all/external_audit_mysql.rs",
-              "packages/rust/tests/tests/all/external_audit_postgres.rs",
-              "packages/rust/tests/tests/all/external_audit_sqlite.rs"
+              "packages/rust/programs/tests/all/audit_triggers_mysql.rs",
+              "packages/rust/programs/tests/all/audit_triggers_postgres.rs",
+              "packages/rust/programs/tests/all/audit_triggers_sqlite.rs",
+              "packages/rust/programs/tests/all/external_audit_mysql.rs",
+              "packages/rust/programs/tests/all/external_audit_postgres.rs",
+              "packages/rust/programs/tests/all/external_audit_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/audit_triggers_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/audit_triggers_mysql.rs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/external_audit_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/external_audit_mysql.rs",
                   "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/audit_triggers_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/audit_triggers_postgres.rs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/external_audit_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/external_audit_postgres.rs",
                   "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/audit_triggers_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/audit_triggers_sqlite.rs",
                   "recipe": "contracts/fixtures/audit_triggers/audit_triggers.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/external_audit_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/external_audit_sqlite.rs",
                   "recipe": "contracts/fixtures/external_audit/external_audit.json"
                 }
               ]
@@ -7068,7 +7068,7 @@
         "legacy/packages/php-ext/tests/PublicInterfaceSignedRecipeTestExtensionTest.php",
         "legacy/packages/go/orm/package_entry_test.go",
         "legacy/packages/php/tests/PackageEntryPointTest.php",
-        "packages/rust/orm/tests/cases/package_entry.rs",
+        "packages/rust/tests/cases/package_entry.rs",
         "legacy/packages/python/tests/test_package_entry.py",
         "legacy/packages/python/tests/test_orm_gen.py",
         "legacy/packages/python/tests/test_driver_cells.py",
@@ -7079,9 +7079,9 @@
         "legacy/packages/python/tests/test_rollback_fault.py",
         "legacy/packages/php-ext/tests/QueryCancellationNativeTest.php",
         "legacy/packages/php-ext/tests/CodeCatalogTestExtensionTest.php",
-        "packages/rust/orm/src/value.rs",
-        "packages/rust/orm/src/row.rs",
-        "packages/rust/orm/tests/unit/numeric_text.rs",
+        "packages/rust/src/value.rs",
+        "packages/rust/src/row.rs",
+        "packages/rust/tests/unit/numeric_text.rs",
         "legacy/packages/php/tests/GoSerializationTest.php",
         "legacy/packages/php-ext/tests/ModelNativeTest.php",
         "legacy/packages/go/internal/recipe/keys_test.go",
@@ -7093,9 +7093,9 @@
         "legacy/packages/ts/tests/recipe_keys.test.mjs",
         "legacy/packages/python/tests/test_public_interface_none.py",
         "legacy/packages/python/tests/test_recipe_keys.py",
-        "packages/rust/tests/src/recipe_keys.rs",
-        "packages/rust/tests/tests/all/recipe_keys.rs",
-        "packages/rust/tests/tests/all/public_interface_none.rs",
+        "packages/rust/programs/src/recipe_keys.rs",
+        "packages/rust/programs/tests/all/recipe_keys.rs",
+        "packages/rust/programs/tests/all/public_interface_none.rs",
         "legacy/packages/php/tests/ComposerExtensionsTest.php"
       ],
       "docs": [
@@ -7161,27 +7161,27 @@
         },
         {
           "id": "rust-value-types-native-api",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-value-types-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- --exact value::checked_value_tests::invalid_or_lossy_values_report_decode_errors value::checked_value_tests::decimal_texts_read_as_the_nearest_f64 --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-value-types-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib -- --exact value::checked_value_tests::invalid_or_lossy_values_report_decode_errors value::checked_value_tests::decimal_texts_read_as_the_nearest_f64 --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/value.rs"
+            "packages/rust/src/value.rs"
           ]
         },
         {
           "id": "rust-row-value-decoding-native-api",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-row-value-decoding-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib row::native_cell_bytes_tests::sqlite_driver_row_bytes_remain_exact -- --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-row-value-decoding-native-api -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib row::native_cell_bytes_tests::sqlite_driver_row_bytes_remain_exact -- --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/row.rs"
+            "packages/rust/src/row.rs"
           ]
         },
         {
           "id": "numeric-text-rust-unit",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts numeric-text-rust-unit -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib row::numeric_text_tests:: -- --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts numeric-text-rust-unit -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib row::numeric_text_tests:: -- --test-threads=1",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/unit/numeric_text.rs",
-            "packages/rust/orm/src/row.rs"
+            "packages/rust/tests/unit/numeric_text.rs",
+            "packages/rust/src/row.rs"
           ]
         },
         {
@@ -7214,7 +7214,7 @@
         },
         {
           "id": "python-native-codegen-entry",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_orm_gen.OrmGenTest.test_generated_module_imports_and_builds_the_model",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_orm_gen.OrmGenTest.test_generated_module_imports_and_builds_the_model",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_orm_gen.py",
@@ -7224,7 +7224,7 @@
         },
         {
           "id": "python-native-mysql-driver-conversion",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_driver_cells.MysqlCells.test_decimal_and_newdecimal_cells_are_their_exact_text",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_driver_cells.MysqlCells.test_decimal_and_newdecimal_cells_are_their_exact_text",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_driver_cells.py",
@@ -7233,7 +7233,7 @@
         },
         {
           "id": "python-native-mysql-placeholder",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_placeholders.MysqlPlaceholders.test_question_marks_become_format_markers_in_order",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_placeholders.MysqlPlaceholders.test_question_marks_become_format_markers_in_order",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_placeholders.py",
@@ -7242,7 +7242,7 @@
         },
         {
           "id": "python-native-postgres-placeholder",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_placeholders.PostgresPlaceholders.test_numbered_markers_become_named_markers_and_may_repeat",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_placeholders.PostgresPlaceholders.test_numbered_markers_become_named_markers_and_may_repeat",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_placeholders.py",
@@ -7251,7 +7251,7 @@
         },
         {
           "id": "python-native-clock-source",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_below_wall_clamps_and_reanchors",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_clock_source.WallMicrosTest.test_estimate_below_wall_clamps_and_reanchors",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_clock_source.py",
@@ -7260,7 +7260,7 @@
         },
         {
           "id": "python-native-dialect-hooks",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_clock_source.NativeDialectHookTest.test_python_dialect_hooks_keep_their_native_forms",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_clock_source.NativeDialectHookTest.test_python_dialect_hooks_keep_their_native_forms",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_clock_source.py",
@@ -7269,7 +7269,7 @@
         },
         {
           "id": "python-native-test-fault-entry",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_rollback_fault.RollbackFaultEntryTest.test_the_distribution_holds_the_test_entry_point_that_no_import_loads",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_rollback_fault.RollbackFaultEntryTest.test_the_distribution_holds_the_test_entry_point_that_no_import_loads",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_rollback_fault.py",
@@ -7278,7 +7278,7 @@
         },
         {
           "id": "python-native-test-fault-state",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_rollback_fault.NativeFaultEntryUnitTest.test_test_fault_facade_sets_only_the_requested_connection_state",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_rollback_fault.NativeFaultEntryUnitTest.test_test_fault_facade_sets_only_the_requested_connection_state",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_rollback_fault.py",
@@ -7336,7 +7336,7 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/all/public_interface_none.rs"
+              "packages/rust/programs/tests/all/public_interface_none.rs"
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
@@ -7348,7 +7348,7 @@
               "none": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/public_interface_none.rs",
+                  "test": "packages/rust/programs/tests/all/public_interface_none.rs",
                   "recipe": "contracts/fixtures/public_interface/public_interface.json"
                 }
               ]
@@ -7474,11 +7474,11 @@
         "legacy/packages/php/tests/PerfGateTest.php",
         "legacy/packages/php/tests/perf_extensions.php",
         "legacy/packages/php/tests/PerfExtensionsTest.php",
-        "packages/rust/tests/src/client_bench.rs",
-        "packages/rust/tests/tests/all/client_bench_args.rs",
-        "packages/rust/tests/tests/all/client_bench_dsn.rs",
+        "packages/rust/programs/src/client_bench.rs",
+        "packages/rust/programs/tests/all/client_bench_args.rs",
+        "packages/rust/programs/tests/all/client_bench_dsn.rs",
         "legacy/packages/php/tests/CoveragePerformanceGateTest.php",
-        "packages/rust/tests/tests/all/coverage_performance_gate.rs",
+        "packages/rust/programs/tests/all/coverage_performance_gate.rs",
         "legacy/packages/go/bench/statements_test.go",
         "tests/timing/preempted.test.mts",
         "legacy/packages/php/tests/CoveragePerformanceGatePostgresTest.php",
@@ -7507,15 +7507,15 @@
         "legacy/packages/python/tests/test_performance_gate_mysql.py",
         "legacy/packages/python/tests/test_performance_gate_postgres.py",
         "legacy/packages/python/tests/test_performance_gate_sqlite.py",
-        "packages/rust/tests/tests/all/performance_gate_mysql.rs",
-        "packages/rust/tests/tests/all/performance_gate_postgres.rs",
-        "packages/rust/tests/tests/all/performance_gate_sqlite.rs",
+        "packages/rust/programs/tests/all/performance_gate_mysql.rs",
+        "packages/rust/programs/tests/all/performance_gate_postgres.rs",
+        "packages/rust/programs/tests/all/performance_gate_sqlite.rs",
         "legacy/packages/ts/tests/performance_gate-markdown.test.mjs",
         "legacy/packages/ts/tests/performance_gate-mariadb.test.mjs",
         "legacy/packages/python/tests/test_performance_gate_markdown.py",
         "legacy/packages/python/tests/performance_gate_mariadb.py",
-        "packages/rust/tests/tests/all/performance_gate_markdown.rs",
-        "packages/rust/tests/tests/mariadb/performance_gate_mariadb.rs",
+        "packages/rust/programs/tests/all/performance_gate_markdown.rs",
+        "packages/rust/programs/tests/mariadb/performance_gate_mariadb.rs",
         "legacy/packages/php-ext/tests/PerformanceGateMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/PerformanceGateMariadbRecipeTest.php"
       ],
@@ -7548,12 +7548,12 @@
         },
         {
           "id": "client-bench-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts client-bench-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- client_bench_args:: client_bench_dsn::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts client-bench-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- client_bench_args:: client_bench_dsn::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/all/client_bench_args.rs",
-            "packages/rust/tests/tests/all/client_bench_dsn.rs",
-            "packages/rust/tests/src/client_bench.rs"
+            "packages/rust/programs/tests/all/client_bench_args.rs",
+            "packages/rust/programs/tests/all/client_bench_dsn.rs",
+            "packages/rust/programs/src/client_bench.rs"
           ]
         },
         {
@@ -7727,31 +7727,31 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/performance_gate_mysql.rs",
-              "packages/rust/tests/tests/all/performance_gate_postgres.rs",
-              "packages/rust/tests/tests/all/performance_gate_sqlite.rs"
+              "packages/rust/programs/tests/all/performance_gate_mysql.rs",
+              "packages/rust/programs/tests/all/performance_gate_postgres.rs",
+              "packages/rust/programs/tests/all/performance_gate_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/performance_gate_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/performance_gate_mysql.rs",
                   "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/performance_gate_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/performance_gate_postgres.rs",
                   "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/performance_gate_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/performance_gate_sqlite.rs",
                   "recipe": "contracts/fixtures/performance_gate/performance_gate.json"
                 }
               ]
@@ -7809,23 +7809,23 @@
         "legacy/packages/go/markdownmodel/conformance_test.go",
         "legacy/packages/php/tests/MarkdownConformanceTest.php",
         "legacy/packages/python/tests/markdown_conformance.py",
-        "packages/rust/tests/tests/all/markdown_conformance.rs",
+        "packages/rust/programs/tests/all/markdown_conformance.rs",
         "legacy/packages/ts/tests/markdown_conformance.mjs",
         "legacy/packages/ts/tests/markdown_cases.mjs",
         "legacy/packages/go/internal/conformance/main.go",
         "legacy/packages/go/internal/conformance/main_test.go",
         "legacy/packages/php/testing/conformance/runner.php",
         "legacy/packages/ts/testing/conformance/runner_typescript.mts",
-        "packages/rust/tests/src/conformance.rs",
-        "packages/rust/tests/src/conformance_values.rs",
-        "packages/rust/tests/tests/all/conformance_runner.rs",
+        "packages/rust/programs/src/conformance.rs",
+        "packages/rust/programs/src/conformance_values.rs",
+        "packages/rust/programs/tests/all/conformance_runner.rs",
         "legacy/packages/go/orm/recipe_conformance_verification_test.go",
         "legacy/packages/python/tests/test_conformance_verification_mysql.py",
         "legacy/packages/python/tests/test_conformance_verification_postgres.py",
         "legacy/packages/python/tests/test_conformance_verification_sqlite.py",
         "legacy/packages/python/tests/conformance_result.py",
         "legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php",
-        "packages/rust/orm/src/value.rs",
+        "packages/rust/src/value.rs",
         "legacy/packages/ts/tests/conformance_verification-mysql.test.mjs",
         "legacy/packages/ts/tests/conformance_verification-postgres.test.mjs",
         "legacy/packages/ts/tests/conformance_verification-sqlite.test.mjs",
@@ -7835,9 +7835,9 @@
         "legacy/packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
-        "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
-        "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
-        "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
+        "packages/rust/programs/tests/all/conformance_verification_mysql.rs",
+        "packages/rust/programs/tests/all/conformance_verification_postgres.rs",
+        "packages/rust/programs/tests/all/conformance_verification_sqlite.rs",
         "legacy/packages/php/tests/ConformanceVerificationDynamicRecipeTest.php",
         "legacy/packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php",
         "legacy/packages/ts/tests/conformance_verification_dynamic-mysql.test.mjs",
@@ -7864,8 +7864,8 @@
         "legacy/packages/ts/tests/conformance_verification-mariadb.test.mjs",
         "legacy/packages/python/tests/test_conformance_verification_markdown.py",
         "legacy/packages/python/tests/conformance_verification_mariadb.py",
-        "packages/rust/tests/tests/all/conformance_verification_markdown.rs",
-        "packages/rust/tests/tests/mariadb/conformance_verification_mariadb.rs",
+        "packages/rust/programs/tests/all/conformance_verification_markdown.rs",
+        "packages/rust/programs/tests/mariadb/conformance_verification_mariadb.rs",
         "legacy/packages/php-ext/tests/ConformanceVerificationDynamicMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/ConformanceVerificationDynamicMariadbRecipeTest.php"
       ],
@@ -7891,9 +7891,9 @@
             "tests/conformance/check/*.mts",
             "tests/conformance/vectors*.json",
             "legacy/packages/go/internal/conformance/*.go",
-            "packages/rust/tests/src/conformance.rs",
-            "packages/rust/tests/src/conformance_values.rs",
-            "packages/rust/tests/tests/all/conformance_runner.rs",
+            "packages/rust/programs/src/conformance.rs",
+            "packages/rust/programs/src/conformance_values.rs",
+            "packages/rust/programs/tests/all/conformance_runner.rs",
             "legacy/packages/python/testing/conformance/runner_python.py",
             "tests/conformance/schema/vectors.schema.json",
             "scripts/json/schema.mts",
@@ -7913,18 +7913,18 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/conformance --cwd packages/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo build --locked -p polyspec-orm-tests --bin conformance",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/src/conformance.rs",
-            "packages/rust/tests/src/conformance_values.rs"
+            "packages/rust/programs/src/conformance.rs",
+            "packages/rust/programs/src/conformance_values.rs"
           ]
         },
         {
           "id": "conformance-runner-rust-test",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts conformance-runner-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- conformance_runner::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts conformance-runner-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- conformance_runner::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/tests/all/conformance_runner.rs",
-            "packages/rust/tests/src/conformance_values.rs",
-            "packages/rust/tests/src/conformance.rs"
+            "packages/rust/programs/tests/all/conformance_runner.rs",
+            "packages/rust/programs/src/conformance_values.rs",
+            "packages/rust/programs/src/conformance.rs"
           ]
         },
         {
@@ -8094,31 +8094,31 @@
             ]
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
-              "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
-              "packages/rust/tests/tests/all/conformance_verification_sqlite.rs"
+              "packages/rust/programs/tests/all/conformance_verification_mysql.rs",
+              "packages/rust/programs/tests/all/conformance_verification_postgres.rs",
+              "packages/rust/programs/tests/all/conformance_verification_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/conformance_verification_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/conformance_verification_mysql.rs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/conformance_verification_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/conformance_verification_postgres.rs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/conformance_verification_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/conformance_verification_sqlite.rs",
                   "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ]
@@ -8297,9 +8297,9 @@
         "legacy/packages/python/tests/test_catalog_connection_mysql.py",
         "legacy/packages/python/tests/test_catalog_connection_postgres.py",
         "legacy/packages/python/tests/test_catalog_connection_sqlite.py",
-        "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
-        "packages/rust/tests/tests/all/catalog_connection_postgres.rs",
-        "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
+        "packages/rust/programs/tests/all/catalog_connection_mysql.rs",
+        "packages/rust/programs/tests/all/catalog_connection_postgres.rs",
+        "packages/rust/programs/tests/all/catalog_connection_sqlite.rs",
         "legacy/packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
         "legacy/packages/php/tests/CatalogPdoTest.php",
         "legacy/packages/go/orm/catalog_sqlite_sequence_test.go",
@@ -8327,16 +8327,16 @@
         "legacy/packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
         "legacy/packages/python/tests/test_catalog_connection_sqlite_only.py",
         "legacy/packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
-        "packages/rust/tests/tests/all/catalog_connection_sqlite_only.rs",
-        "packages/rust/tests/tests/all/catalog_connection_sqlite_only_markdown.rs",
+        "packages/rust/programs/tests/all/catalog_connection_sqlite_only.rs",
+        "packages/rust/programs/tests/all/catalog_connection_sqlite_only_markdown.rs",
         "legacy/packages/php/tests/CatalogOneConnectionTest.php",
         "legacy/packages/php-ext/tests/CatalogOneConnectionTestExtensionTest.php",
         "legacy/packages/ts/tests/catalog_connection-markdown.test.mjs",
         "legacy/packages/ts/tests/catalog_connection-mariadb.test.mjs",
         "legacy/packages/python/tests/test_catalog_connection_markdown.py",
         "legacy/packages/python/tests/catalog_connection_mariadb.py",
-        "packages/rust/tests/tests/all/catalog_connection_markdown.rs",
-        "packages/rust/tests/tests/mariadb/catalog_connection_mariadb.rs",
+        "packages/rust/programs/tests/all/catalog_connection_markdown.rs",
+        "packages/rust/programs/tests/mariadb/catalog_connection_mariadb.rs",
         "legacy/packages/php-ext/tests/CatalogConnectionMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/CatalogConnectionMariadbRecipeTest.php"
       ],
@@ -8347,7 +8347,7 @@
       "verification": [
         {
           "id": "catalog-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- tool_cells:: tool_columns:: tool_limits:: tool_statement:: tool_values:: row_commit_permit:: row_insert_identity:: row_mutation:: row_snapshot:: typed_binds:: generate:: catalog_driver_seam::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- tool_cells:: tool_columns:: tool_limits:: tool_statement:: tool_values:: row_commit_permit:: row_insert_identity:: row_mutation:: row_snapshot:: typed_binds:: generate:: catalog_driver_seam::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/cases/tool_cells.rs",
@@ -8376,7 +8376,7 @@
         },
         {
           "id": "catalog-lib-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-lib-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-lib-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/unit/mutation_commit.rs",
@@ -8391,7 +8391,7 @@
         },
         {
           "id": "row-insert-identity-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts row-insert-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- row_insert_identity::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts row-insert-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- row_insert_identity::",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/cases/row_insert_identity/expression.rs",
@@ -8400,7 +8400,7 @@
         },
         {
           "id": "tool-db-bind-validation-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-bind-validation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib tool_db::params::tests::bind_validation_checks_exact_bounds_before_driver_encoding -- --exact",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-bind-validation-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib tool_db::params::tests::bind_validation_checks_exact_bounds_before_driver_encoding -- --exact",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/unit/typed_bind_validation.rs"
@@ -8408,7 +8408,7 @@
         },
         {
           "id": "tool-db-native-typed-binds-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_binds_preserve_values_and_typed_nulls --exact",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_binds_preserve_values_and_typed_nulls --exact",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/cases/typed_binds.rs"
@@ -8416,7 +8416,7 @@
         },
         {
           "id": "tool-db-native-typed-writes-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_writes_roundtrip_reject_and_rollback --exact",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_writes_roundtrip_reject_and_rollback --exact",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/cases/typed_binds.rs"
@@ -8436,37 +8436,37 @@
         "kind": "database",
         "owners": {
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
-              "packages/rust/tests/tests/all/catalog_connection_postgres.rs",
-              "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
-              "packages/rust/tests/tests/all/catalog_connection_sqlite_only.rs"
+              "packages/rust/programs/tests/all/catalog_connection_mysql.rs",
+              "packages/rust/programs/tests/all/catalog_connection_postgres.rs",
+              "packages/rust/programs/tests/all/catalog_connection_sqlite.rs",
+              "packages/rust/programs/tests/all/catalog_connection_sqlite_only.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/catalog_connection_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/catalog_connection_mysql.rs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/catalog_connection_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/catalog_connection_postgres.rs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/catalog_connection_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/catalog_connection_sqlite.rs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection.json"
                 },
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/catalog_connection_sqlite_only.rs",
+                  "test": "packages/rust/programs/tests/all/catalog_connection_sqlite_only.rs",
                   "recipe": "contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
                 }
               ]
@@ -8744,8 +8744,8 @@
         "legacy/packages/ts/tests/request_hook-mariadb.test.mjs",
         "legacy/packages/python/tests/test_request_hook_markdown.py",
         "legacy/packages/python/tests/request_hook_mariadb.py",
-        "packages/rust/tests/tests/all/request_hook_markdown.rs",
-        "packages/rust/tests/tests/mariadb/request_hook_mariadb.rs"
+        "packages/rust/programs/tests/all/request_hook_markdown.rs",
+        "packages/rust/programs/tests/mariadb/request_hook_mariadb.rs"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -8785,7 +8785,7 @@
         },
         {
           "id": "request-hook-python",
-          "command": "legacy/packages/python/.venv/bin/python -m packages.python.tests.test_request_hook",
+          "command": "legacy/packages/python/.venv/bin/python -m legacy.packages.python.tests.test_request_hook",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/tests/test_request_hook.py",
@@ -8872,11 +8872,11 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/request_hook_mysql.rs",
-              "packages/rust/tests/tests/all/request_hook_postgres.rs",
-              "packages/rust/tests/tests/all/request_hook_sqlite.rs"
+              "packages/rust/programs/tests/all/request_hook_mysql.rs",
+              "packages/rust/programs/tests/all/request_hook_postgres.rs",
+              "packages/rust/programs/tests/all/request_hook_sqlite.rs"
             ],
             "inputs": [
               "contracts/fixtures/request_hook/request_hook.dbs"
@@ -8885,21 +8885,21 @@
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/request_hook_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/request_hook_mysql.rs",
                   "recipe": "contracts/fixtures/request_hook/request_hook.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/request_hook_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/request_hook_postgres.rs",
                   "recipe": "contracts/fixtures/request_hook/request_hook.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/request_hook_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/request_hook_sqlite.rs",
                   "recipe": "contracts/fixtures/request_hook/request_hook.json"
                 }
               ]
@@ -9075,9 +9075,9 @@
         "legacy/packages/python/tests/test_complex_query_mysql.py",
         "legacy/packages/python/tests/test_complex_query_postgres.py",
         "legacy/packages/python/tests/test_complex_query_sqlite.py",
-        "packages/rust/tests/tests/all/complex_query_mysql.rs",
-        "packages/rust/tests/tests/all/complex_query_postgres.rs",
-        "packages/rust/tests/tests/all/complex_query_sqlite.rs",
+        "packages/rust/programs/tests/all/complex_query_mysql.rs",
+        "packages/rust/programs/tests/all/complex_query_postgres.rs",
+        "packages/rust/programs/tests/all/complex_query_sqlite.rs",
         "legacy/packages/ts/tests/complex_query-mysql.test.mjs",
         "legacy/packages/ts/tests/complex_query-postgres.test.mjs",
         "legacy/packages/ts/tests/complex_query-sqlite.test.mjs",
@@ -9090,10 +9090,10 @@
         "legacy/packages/python/tests/test_fulltext_search_recipe_mysql.py",
         "legacy/packages/python/tests/test_fulltext_search_recipe_postgres.py",
         "legacy/packages/python/tests/test_fulltext_search_recipe_sqlite.py",
-        "packages/rust/tests/tests/all/fulltext_search_recipe_mysql.rs",
-        "packages/rust/tests/tests/all/fulltext_search_recipe_postgres.rs",
-        "packages/rust/tests/tests/all/fulltext_search_recipe_sqlite.rs",
-        "packages/rust/orm/src/request.rs",
+        "packages/rust/programs/tests/all/fulltext_search_recipe_mysql.rs",
+        "packages/rust/programs/tests/all/fulltext_search_recipe_postgres.rs",
+        "packages/rust/programs/tests/all/fulltext_search_recipe_sqlite.rs",
+        "packages/rust/src/request.rs",
         "legacy/packages/python/tests/test_complex_query.py",
         "legacy/packages/php/tests/ComplexQueryMarkdownRecipeTest.php",
         "legacy/packages/php/tests/ComplexQueryMariadbRecipeTest.php",
@@ -9107,10 +9107,10 @@
         "legacy/packages/python/tests/complex_query_mariadb.py",
         "legacy/packages/python/tests/test_fulltext_search_recipe_markdown.py",
         "legacy/packages/python/tests/fulltext_search_recipe_mariadb.py",
-        "packages/rust/tests/tests/all/complex_query_markdown.rs",
-        "packages/rust/tests/tests/mariadb/complex_query_mariadb.rs",
-        "packages/rust/tests/tests/all/fulltext_search_recipe_markdown.rs",
-        "packages/rust/tests/tests/mariadb/fulltext_search_recipe_mariadb.rs",
+        "packages/rust/programs/tests/all/complex_query_markdown.rs",
+        "packages/rust/programs/tests/mariadb/complex_query_mariadb.rs",
+        "packages/rust/programs/tests/all/fulltext_search_recipe_markdown.rs",
+        "packages/rust/programs/tests/mariadb/fulltext_search_recipe_mariadb.rs",
         "legacy/packages/php-ext/tests/FulltextSearchMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/FulltextSearchMariadbRecipeTest.php"
       ],
@@ -9157,31 +9157,31 @@
         "kind": "database",
         "owners": {
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/programs",
             "tests": [
-              "packages/rust/tests/tests/all/complex_query_mysql.rs",
-              "packages/rust/tests/tests/all/complex_query_postgres.rs",
-              "packages/rust/tests/tests/all/complex_query_sqlite.rs"
+              "packages/rust/programs/tests/all/complex_query_mysql.rs",
+              "packages/rust/programs/tests/all/complex_query_postgres.rs",
+              "packages/rust/programs/tests/all/complex_query_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/complex_query_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/complex_query_mysql.rs",
                   "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/complex_query_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/complex_query_postgres.rs",
                   "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/complex_query_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/complex_query_sqlite.rs",
                   "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ]
@@ -9422,9 +9422,9 @@
         "legacy/packages/python/tests/test_statement_runner_mysql.py",
         "legacy/packages/python/tests/test_statement_runner_postgres.py",
         "legacy/packages/python/tests/test_statement_runner_sqlite.py",
-        "packages/rust/tests/tests/all/statement_runner_mysql.rs",
-        "packages/rust/tests/tests/all/statement_runner_postgres.rs",
-        "packages/rust/tests/tests/all/statement_runner_sqlite.rs",
+        "packages/rust/programs/tests/all/statement_runner_mysql.rs",
+        "packages/rust/programs/tests/all/statement_runner_postgres.rs",
+        "packages/rust/programs/tests/all/statement_runner_sqlite.rs",
         "legacy/packages/ts/tests/statement-runner.mjs",
         "legacy/packages/go/orm/statement_runner_test.go",
         "legacy/packages/php/tests/StatementRunnerTest.php",
@@ -9436,8 +9436,8 @@
         "legacy/packages/ts/tests/statement_runner-mariadb.test.mjs",
         "legacy/packages/python/tests/test_statement_runner_markdown.py",
         "legacy/packages/python/tests/statement_runner_mariadb.py",
-        "packages/rust/tests/tests/all/statement_runner_markdown.rs",
-        "packages/rust/tests/tests/mariadb/statement_runner_mariadb.rs",
+        "packages/rust/programs/tests/all/statement_runner_markdown.rs",
+        "packages/rust/programs/tests/mariadb/statement_runner_mariadb.rs",
         "legacy/packages/php-ext/tests/StatementRunnerMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/StatementRunnerMariadbRecipeTest.php"
       ],
@@ -9476,7 +9476,7 @@
         },
         {
           "id": "statement-runner-python",
-          "command": "legacy/packages/python/.venv/bin/python -m unittest packages.python.tests.test_statement_runner -v",
+          "command": "legacy/packages/python/.venv/bin/python -m unittest legacy.packages.python.tests.test_statement_runner -v",
           "shard": "other",
           "inputs": [
             "legacy/packages/python/src/polyspec/orm/utils.py",
@@ -9598,29 +9598,29 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/all/statement_runner_sqlite.rs",
-              "packages/rust/tests/tests/all/statement_runner_mysql.rs",
-              "packages/rust/tests/tests/all/statement_runner_postgres.rs"
+              "packages/rust/programs/tests/all/statement_runner_sqlite.rs",
+              "packages/rust/programs/tests/all/statement_runner_mysql.rs",
+              "packages/rust/programs/tests/all/statement_runner_postgres.rs"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/statement_runner_sqlite.rs",
+                  "test": "packages/rust/programs/tests/all/statement_runner_sqlite.rs",
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ],
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/statement_runner_mysql.rs",
+                  "test": "packages/rust/programs/tests/all/statement_runner_mysql.rs",
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/all/statement_runner_postgres.rs",
+                  "test": "packages/rust/programs/tests/all/statement_runner_postgres.rs",
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ]
@@ -10064,17 +10064,17 @@
       "paths": [
         "packages/rust/build/tests/cases/common/*.rs",
         "packages/rust/build/tests/cases/lib.rs",
-        "packages/rust/orm/tests/cases/common/*.rs",
-        "packages/rust/orm/tests/cases/lib.rs",
+        "packages/rust/tests/cases/common/*.rs",
+        "packages/rust/tests/cases/lib.rs",
         "packages/rust/schema/tests/cases/common/*.rs",
         "packages/rust/schema/tests/cases/lib.rs",
         "packages/rust/testcase/tests/cases/lib.rs",
         "packages/rust/testcase/src/*.rs",
-        "packages/rust/orm/tests/common/*.rs",
-        "packages/rust/tests/tests/all/main.rs"
+        "packages/rust/tests/common/*.rs",
+        "packages/rust/programs/tests/all/main.rs"
       ],
       "tests": [],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/test-helpers -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\""
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/test-helpers -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\""
     },
     {
       "id": "error-codes",
@@ -10082,12 +10082,12 @@
         "docs/spec/errors.yaml",
         "legacy/packages/go/cmd/orm-gen/errors.go",
         "legacy/packages/go/orm/codes.go",
-        "packages/rust/orm/src/kind.rs"
+        "packages/rust/src/kind.rs"
       ],
       "tests": [
         "legacy/packages/go/orm/codes_test.go",
         "legacy/packages/php/tests/CodeCatalogTest.php",
-        "packages/rust/orm/tests/cases/code_catalog.rs",
+        "packages/rust/tests/cases/code_catalog.rs",
         "legacy/packages/ts/tests/code-catalog.mjs",
         "legacy/packages/python/tests/test_code_catalog.py"
       ],
@@ -10306,12 +10306,12 @@
     {
       "id": "rust-clock-integration-test-support",
       "paths": [
-        "packages/rust/orm/tests/cases/common/clock_test_support.rs"
+        "packages/rust/tests/cases/common/clock_test_support.rs"
       ],
       "tests": [
-        "packages/rust/orm/tests/cases/was_inserted.rs"
+        "packages/rust/tests/cases/was_inserted.rs"
       ],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test all -- was_inserted::"
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- was_inserted::"
     },
     {
       "id": "php-database-test-assertions",

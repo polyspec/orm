@@ -40,7 +40,7 @@
       "reason": "the SQLite result code names of the Go module, which orm-gen sqlite-codes writes from docs/spec/sqlite-result-codes.yaml: a go.mod consumer installs the tagged tree, which must hold them (P34)"
     },
     {
-      "path": "packages/rust/orm/src/sqlite_codes.rs",
+      "path": "packages/rust/src/sqlite_codes.rs",
       "reason": "the SQLite result code names of the Rust crate, which orm-gen sqlite-codes writes from docs/spec/sqlite-result-codes.yaml: a Cargo.toml consumer installs the tagged tree, which must hold them (P34)"
     }
   ],

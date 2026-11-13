@@ -28,7 +28,7 @@ type CompilerMessage = {
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '../..');
 const manifest = join(root, 'packages/rust/Cargo.toml');
-const examples = join(root, 'packages/rust/tests/examples');
+const examples = join(root, 'packages/rust/programs/examples');
 const fixtures = readJsonFile<Fixture[]>(join(root, 'packages/rust/testing/compiler-fixtures/cases.json'), join(root, 'scripts/rust/compiler-fixtures.schema.json'));
 const toolchain = process.argv[2];
 const target = process.env.CARGO_TARGET_DIR;
@@ -68,7 +68,7 @@ for (const fixture of fixtures) {
   }
 }
 const known = new Set(fixtures.map(fixture => fixture.id));
-// Each case is one trial of packages/rust/orm/tests/cases/compiler_fixtures.rs, which runs this runner with that case.
+// Each case is one trial of packages/rust/tests/cases/compiler_fixtures.rs, which runs this runner with that case.
 if (requestedCases.length === 0) throw new Error('select a compiler fixture with --case; make rust-compiler-fixtures-check runs every case as its own trial');
 if (new Set(requestedCases).size !== requestedCases.length) throw new Error('compiler fixture selections must be unique');
 for (const id of requestedCases) if (!known.has(id)) throw new Error(`unknown Rust compiler fixture ${id}`);

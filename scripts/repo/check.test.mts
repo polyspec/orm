@@ -84,8 +84,8 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
     ['legacy/packages/python/tests/recipe.py', /testcase\.StepGuard\(test\.id\(\), test\.deadline, testcase\.DATABASE\)/],
     ['packages/rust/testcase/src/lib.rs', /pub const STEP_BUDGET: Duration = Duration::from_millis\(250\);/],
     ['packages/rust/testcase/src/lib.rs', /pub const FIXED_BUDGET: Duration = Duration::from_secs\(60\);/],
-    ['packages/rust/tests/src/recipe.rs', /steps\.map_or\(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget\)/],
-    ['packages/rust/tests/src/recipe.rs', /StepGuard::new\(deadline, polyspec_orm_testcase::DATABASE\)/],
+    ['packages/rust/programs/src/recipe.rs', /steps\.map_or\(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget\)/],
+    ['packages/rust/programs/src/recipe.rs', /StepGuard::new\(deadline, polyspec_orm_testcase::DATABASE\)/],
   ];
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
   // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
@@ -521,14 +521,14 @@ caseTest('a Rust file names no file of another crate by #[path]', COMPUTE, () =>
 });
 
 caseTest('a #[path] into another crate fails the Rust crate check', COMPUTE, () => {
-  const crates = new Set(['packages/rust/a', 'packages/rust/b', 'packages/rust/tests']);
+  const crates = new Set(['packages/rust/a', 'packages/rust/b', 'packages/rust/programs']);
   const sources: Record<string, string> = {
     'packages/rust/a/tests/case.rs': '#[path = "../src/lib.rs"]\nmod own;\n#[path = "../../b/src/shared.rs"]\nmod shared;\n',
-    'examples/complex/rust/main.rs': '#[path = "../../../packages/rust/tests/tests/common/bench_dsn.rs"]\nmod bench_dsn;\n',
+    'examples/complex/rust/main.rs': '#[path = "../../../packages/rust/programs/tests/common/bench_dsn.rs"]\nmod bench_dsn;\n',
   };
   assert.deepEqual(crossCrateErrors(Object.keys(sources), source => sources[source] ?? '', crates), [
     'packages/rust/a/tests/case.rs names ../../b/src/shared.rs by #[path], a file of another crate',
-    'examples/complex/rust/main.rs names ../../../packages/rust/tests/tests/common/bench_dsn.rs by #[path], a file of another crate',
+    'examples/complex/rust/main.rs names ../../../packages/rust/programs/tests/common/bench_dsn.rs by #[path], a file of another crate',
   ]);
 });
 
@@ -543,7 +543,7 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, ()
 // process GRACE after it; run-tests holds no time limit (kit 0.0.105), so the class of a case alone decides when it fails.
 caseTest('every Python run of run-tests goes through the testcase harness and gives run-tests no time limit', COMPUTE, () => {
   const makefile = text('Makefile');
-  assert.match(makefile, /^PYTHON_TESTS = (?:[A-Z_]+=\S+ )*\$\(RUN_TESTS\) python --venv \$\(PYTHON_VENV\) --module packages\.python\.tests\.testcase$/m,
+  assert.match(makefile, /^PYTHON_TESTS = (?:[A-Z_]+=\S+ )*\$\(RUN_TESTS\) python --venv \$\(PYTHON_VENV\) --module legacy\.packages\.python\.tests\.testcase$/m,
     'PYTHON_TESTS runs the testcase harness with no --timeout');
   assert.deepEqual(makefile.split('\n').filter(line => /\$\(RUN_TESTS\) python\b/.test(line) && !line.startsWith('PYTHON_TESTS = ')), [],
     'every Python run of run-tests goes through PYTHON_TESTS');
@@ -1553,15 +1553,15 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
 // The manifest directory case rejects Rust source that reads the package directory with env! at compile time.
 caseTest('Rust source reads the package directory when the program runs', COMPUTE, () => {
   assert.deepEqual(manifestDirErrors({
-    'packages/rust/orm/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
+    'packages/rust/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
     'benchmarks/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
   }), []);
   assert.deepEqual(manifestDirErrors({
-    'packages/rust/orm/tests/a.rs': 'use std::path::PathBuf;\nlet root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");\n',
-    'packages/rust/orm/src/codec.rs': '        let root = concat!(env!( "CARGO_MANIFEST_DIR" ), "/../../../tests/codec");\n',
+    'packages/rust/tests/a.rs': 'use std::path::PathBuf;\nlet root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");\n',
+    'packages/rust/src/codec.rs': '        let root = concat!(env!( "CARGO_MANIFEST_DIR" ), "/../../../tests/codec");\n',
   }), [
-    'packages/rust/orm/tests/a.rs:2 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
-    'packages/rust/orm/src/codec.rs:1 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
+    'packages/rust/tests/a.rs:2 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
+    'packages/rust/src/codec.rs:1 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
   ]);
 });
 
@@ -1577,12 +1577,12 @@ caseTest('a client connects without a probe statement', COMPUTE, () => {
     'legacy/packages/go/orm/db.go': '\tif err := s.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version); err != nil {\n',
     'legacy/packages/php/src/Orm.php': "                    $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();\n",
     'legacy/packages/ts/src/database.ts': "    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { throw error; }\n",
-    'packages/rust/orm/src/db.rs': '                let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;\n',
+    'packages/rust/src/db.rs': '                let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;\n',
   }), [
     'legacy/packages/go/orm/db.go:1 asks the server for the SQLite version; read the library version from the driver',
     'legacy/packages/php/src/Orm.php:1 asks the server for the SQLite version; read the library version from the driver',
     'legacy/packages/ts/src/database.ts:1 sends SELECT 1 to check the connection; open a connection without a statement',
-    'packages/rust/orm/src/db.rs:1 asks the server for the SQLite version; read the library version from the driver',
+    'packages/rust/src/db.rs:1 asks the server for the SQLite version; read the library version from the driver',
   ]);
 });
 
@@ -1701,8 +1701,8 @@ caseTest('a Rust test without a case of its own fails', COMPUTE, () => {
     '}',
     '',
   ].join('\n');
-  assert.deepEqual(rustTestCaseErrors({ 'packages/rust/orm/tests/a.rs': rust }), [
-    'packages/rust/orm/tests/a.rs: bare does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line',
+  assert.deepEqual(rustTestCaseErrors({ 'packages/rust/tests/a.rs': rust }), [
+    'packages/rust/tests/a.rs: bare does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line',
   ]);
 });
 
@@ -2633,13 +2633,13 @@ const nativeFiles: Record<string, string> = {
   'legacy/packages/php/tests/ACases.php': '<?php\ntrait ACases\n{\n    public function testFromTrait(): void {}\n}\n',
   'legacy/packages/go/orm/recipe_a_test.go': 'package orm\n\nfunc TestRecipeANone(t *testing.T) { recipe.Run(t) }\n',
   'legacy/packages/go/orm/only_test.go': 'package orm\n\nfunc TestGoOnly(t *testing.T) {}\n',
-  'packages/rust/orm/tests/cases/a.rs': '#[tokio::main]\n// Requirements: X.\nasync fn a_trial() {}\n\npub fn trials() -> Vec<Trial> {\n    native_trials!("a": a_trial)\n}\n#[test]\n// a comment\nfn an_attributed_test() {}\n',
+  'packages/rust/tests/cases/a.rs': '#[tokio::main]\n// Requirements: X.\nasync fn a_trial() {}\n\npub fn trials() -> Vec<Trial> {\n    native_trials!("a": a_trial)\n}\n#[test]\n// a comment\nfn an_attributed_test() {}\n',
 };
 const nativeInputs = (lines: string[], files: Record<string, string> = nativeFiles) => ({
   // The internal test of Go is not in the inventory: contracts/implementations.json declares it in `internal`, which the inventory leaves out.
-  tests: { go: ['legacy/packages/go/orm/a_test.go', 'legacy/packages/go/orm/recipe_a_test.go', 'legacy/packages/go/orm/only_test.go'], php: ['legacy/packages/php/tests/ATest.php'], rust: ['packages/rust/orm/tests/cases/a.rs'] },
+  tests: { go: ['legacy/packages/go/orm/a_test.go', 'legacy/packages/go/orm/recipe_a_test.go', 'legacy/packages/go/orm/only_test.go'], php: ['legacy/packages/php/tests/ATest.php'], rust: ['packages/rust/tests/cases/a.rs'] },
   features: [
-    { id: 'shared', files: ['legacy/packages/go/orm/a_test.go', 'legacy/packages/go/orm/recipe_a_test.go', 'legacy/packages/php/tests/ATest.php', 'packages/rust/orm/tests/cases/a.rs', 'legacy/packages/go/orm/internal_test.go'] },
+    { id: 'shared', files: ['legacy/packages/go/orm/a_test.go', 'legacy/packages/go/orm/recipe_a_test.go', 'legacy/packages/php/tests/ATest.php', 'packages/rust/tests/cases/a.rs', 'legacy/packages/go/orm/internal_test.go'] },
     { id: 'go-alone', files: ['legacy/packages/go/orm/only_test.go'] },
   ],
   recipeTests: new Set(['legacy/packages/go/orm/recipe_a_test.go']),
@@ -2656,19 +2656,19 @@ const nativeInputs = (lines: string[], files: Record<string, string> = nativeFil
 const unstated = (file: string, name: string) => `${file}: the native test ${name} of the shared feature shared runs no recipe, and no line of FCV-2 names it; make it the cases of a recipe (FCV-2 to FCV-4), or state why it stays native in FCV-2 of docs/spec/feature-coverage.md as in \`${file}\`, \`${name}\``;
 const statedAll = [
   '  - In `legacy/packages/go/orm/a_test.go`, `TestShared` and `TestStated` stay as native tests: a reason.',
-  '  - `a-unit` stays native in PHP and Rust, as an FCV-2 surface: a reason. Its tests: in `legacy/packages/php/tests/ATest.php`, `testOwn` and `testFromTrait`; in `packages/rust/orm/tests/cases/a.rs`, `a_trial`, `an_attributed_test`.',
+  '  - `a-unit` stays native in PHP and Rust, as an FCV-2 surface: a reason. Its tests: in `legacy/packages/php/tests/ATest.php`, `testOwn` and `testFromTrait`; in `packages/rust/tests/cases/a.rs`, `a_trial`, `an_attributed_test`.',
 ];
 caseTest('a native test of a shared behaviour that FCV-2 does not name is a finding', COMPUTE, () => {
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(1))), [unstated('legacy/packages/go/orm/a_test.go', 'TestShared'), unstated('legacy/packages/go/orm/a_test.go', 'TestStated')]);
   // A test that a PHP class takes from a trait of a support file, a Rust trial and a Rust test under a comment are native tests too.
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(0, 1))), [unstated('legacy/packages/php/tests/ATest.php', 'testOwn'), unstated('legacy/packages/php/tests/ATest.php', 'testFromTrait'),
-    unstated('packages/rust/orm/tests/cases/a.rs', 'an_attributed_test'), unstated('packages/rust/orm/tests/cases/a.rs', 'a_trial')]);
+    unstated('packages/rust/tests/cases/a.rs', 'an_attributed_test'), unstated('packages/rust/tests/cases/a.rs', 'a_trial')]);
 });
 
 // A Rust file of cases without native_trials! makes its trials in the harness function `trials`, which is its native test (T400-1).
 // Requirements: FCV-2.
 caseTest('the harness function trials of a Rust file of cases is its native test', COMPUTE, () => {
-  const harness = 'packages/rust/orm/tests/cases/b.rs';
+  const harness = 'packages/rust/tests/cases/b.rs';
   const files = { ...nativeFiles, [harness]: 'pub fn trials() -> Vec<Trial> {\n    cases().map(|c| Trial::test(c.id, run)).collect()\n}\n' };
   const inputs = nativeInputs(statedAll, files);
   const [shared, ...others] = inputs.features;

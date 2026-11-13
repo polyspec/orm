@@ -1,7 +1,7 @@
 # The per-case deadline and the step output of the Python tests. The results are unittest's own: every Python test runs
 # through CaseRunner, a TextTestRunner that prints each case's `... ok`, `FAIL`, `ERROR` or `skipped` line and its
 # tracebacks as unittest does. A test module ends with `main()` of this module, and
-# `python -m packages.python.tests.testcase discover ...` runs a discovered tree. A step is a line of the running case's
+# `python -m legacy.packages.python.tests.testcase discover ...` runs a discovered tree. A step is a line of the running case's
 # output (stdout), as the other implementations print their steps.
 #
 # A case's deadline is the `deadline` attribute of its class (COMPUTE when the class names none). The deadline is
@@ -251,9 +251,9 @@ def main(
 
 
 if __name__ == "__main__":
-    # `python -m packages.python.tests.testcase discover ...` runs a discovered tree through CaseRunner. The tests import
-    # this module as packages.python.tests.testcase, so the run uses that module, whose state step() reads, and not
+    # `python -m legacy.packages.python.tests.testcase discover ...` runs a discovered tree through CaseRunner. The tests import
+    # this module as legacy.packages.python.tests.testcase, so the run uses that module, whose state step() reads, and not
     # this __main__ copy.
-    from packages.python.tests import testcase as harness
+    from legacy.packages.python.tests import testcase as harness
 
     harness.main(module=None)

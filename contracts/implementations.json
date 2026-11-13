@@ -1019,62 +1019,62 @@
         "packages/rust/**/tests/**/coverage_*.rs"
       ],
       "support": [
-        "packages/rust/tests/tests/all/main.rs",
-        "packages/rust/tests/tests/mariadb/main.rs",
-        "packages/rust/tests/tests/all/integration_program/bench_set.rs",
+        "packages/rust/programs/tests/all/main.rs",
+        "packages/rust/programs/tests/mariadb/main.rs",
+        "packages/rust/programs/tests/all/integration_program/bench_set.rs",
         "packages/rust/build/tests/cases/lock_probe/mod.rs",
         "packages/rust/build/tests/cases/row_insert_identity/expression.rs",
-        "packages/rust/orm/tests/cases/common/audit_rows.rs",
+        "packages/rust/tests/cases/common/audit_rows.rs",
         "packages/rust/schema/tests/common/dbspec_cases.rs",
-        "packages/rust/tests/build.rs",
-        "packages/rust/tests/bench_model.rs",
-        "packages/rust/tests/src/client_bench.rs",
+        "packages/rust/programs/build.rs",
+        "packages/rust/programs/bench_model.rs",
+        "packages/rust/programs/src/client_bench.rs",
         "packages/rust/build/src/test_support.rs",
         "packages/rust/build/tests/cases/common/physical_fixture.rs",
         "packages/rust/build/tests/unit/catalog_fixtures.rs",
-        "packages/rust/orm/tests/common/apply_stop.rs",
-        "packages/rust/orm/tests/cases/common/case_database_run.rs",
-        "packages/rust/orm/tests/cases/common/clock_event.rs",
-        "packages/rust/orm/tests/common/plan_cases.rs",
-        "packages/rust/orm/tests/common/plan_recipe.rs",
-        "packages/rust/orm/tests/common/plan_sources.rs",
-        "packages/rust/orm/tests/cases/common/map_rows.rs",
-        "packages/rust/orm/tests/common/or_panic.rs",
-        "packages/rust/orm/tests/cases/common/secret_config.rs",
-        "packages/rust/orm/tests/cases/common/service_model.rs",
-        "packages/rust/orm/tests/cases/common/sqlite_case.rs",
-        "packages/rust/orm/tests/common/test_support.rs",
-        "packages/rust/orm/tests/cases/common/typed_model.rs",
-        "packages/rust/tests/tests/all/common/result_code.rs",
-        "packages/rust/orm/tests/cases/common/clock_test_support.rs",
-        "packages/rust/tests/src/lib.rs",
-        "packages/rust/tests/src/recipe.rs",
-        "packages/rust/tests/src/recipe_apply.rs",
-        "packages/rust/tests/src/recipe_reads.rs",
-        "packages/rust/tests/src/recipe_keys.rs",
-        "packages/rust/tests/src/recipe_generator.rs",
-        "packages/rust/tests/src/plain.rs",
-        "packages/rust/orm/tests/cases/common/or_panic.rs",
-        "packages/rust/tests/tests/all/model_writes/dispatch.rs",
-        "packages/rust/tests/tests/all/fulltext_search/chain.rs",
-        "packages/rust/tests/tests/all/fulltext_search/dispatch.rs",
-        "packages/rust/tests/src/bench_models.rs",
-        "packages/rust/tests/src/bench_set_dispatch.rs",
+        "packages/rust/tests/common/apply_stop.rs",
+        "packages/rust/tests/cases/common/case_database_run.rs",
+        "packages/rust/tests/cases/common/clock_event.rs",
+        "packages/rust/tests/common/plan_cases.rs",
+        "packages/rust/tests/common/plan_recipe.rs",
+        "packages/rust/tests/common/plan_sources.rs",
+        "packages/rust/tests/cases/common/map_rows.rs",
+        "packages/rust/tests/common/or_panic.rs",
+        "packages/rust/tests/cases/common/secret_config.rs",
+        "packages/rust/tests/cases/common/service_model.rs",
+        "packages/rust/tests/cases/common/sqlite_case.rs",
+        "packages/rust/tests/common/test_support.rs",
+        "packages/rust/tests/cases/common/typed_model.rs",
+        "packages/rust/programs/tests/all/common/result_code.rs",
+        "packages/rust/tests/cases/common/clock_test_support.rs",
+        "packages/rust/programs/src/lib.rs",
+        "packages/rust/programs/src/recipe.rs",
+        "packages/rust/programs/src/recipe_apply.rs",
+        "packages/rust/programs/src/recipe_reads.rs",
+        "packages/rust/programs/src/recipe_keys.rs",
+        "packages/rust/programs/src/recipe_generator.rs",
+        "packages/rust/programs/src/plain.rs",
+        "packages/rust/tests/cases/common/or_panic.rs",
+        "packages/rust/programs/tests/all/model_writes/dispatch.rs",
+        "packages/rust/programs/tests/all/fulltext_search/chain.rs",
+        "packages/rust/programs/tests/all/fulltext_search/dispatch.rs",
+        "packages/rust/programs/src/bench_models.rs",
+        "packages/rust/programs/src/bench_set_dispatch.rs",
         "packages/rust/build/tests/cases/lib.rs",
-        "packages/rust/orm/tests/cases/lib.rs",
+        "packages/rust/tests/cases/lib.rs",
         "packages/rust/schema/tests/cases/lib.rs",
         "packages/rust/testcase/tests/cases/lib.rs",
         "packages/rust/build/tests/cases/common/table_column.rs",
-        "packages/rust/orm/tests/cases/common/result_code.rs",
+        "packages/rust/tests/cases/common/result_code.rs",
         "packages/rust/schema/tests/cases/common/or_panic.rs"
       ],
       "internal": [
         {
-          "glob": "packages/rust/tests/tests/all/case_database_mysql.rs",
+          "glob": "packages/rust/programs/tests/all/case_database_mysql.rs",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
-          "glob": "packages/rust/tests/tests/mariadb/case_database_mariadb.rs",
+          "glob": "packages/rust/programs/tests/mariadb/case_database_mariadb.rs",
           "reason": "harness: the drop of a case database leaves the next session of the admin connection with foreign_key_checks 1 (docs/spec/dialects.md DIA-212); it tests the case database harness of the runtime, not a behaviour of the contract"
         },
         {
@@ -1082,15 +1082,15 @@
           "reason": "test: the public surface of the Rust runtime model that no other runtime has, the diagnostics of parse_manifest and the foreign keys, unique key columns, default literal, audit history and action and immutable of runtime_model (FCV-2)"
         },
         {
-          "glob": "packages/rust/orm/src/driver/tests.rs",
+          "glob": "packages/rust/src/driver/tests.rs",
           "reason": "test: calls the crate-private parent-slot expansion and SQLite binding helpers directly; public composite relation behavior is covered by the six-client composite-key feature cases"
         },
         {
-          "glob": "packages/rust/tests/src/markdown.rs",
+          "glob": "packages/rust/programs/src/markdown.rs",
           "reason": "harness: the corpus helpers of the markdown recipe units (the corpus of a case, its file modes and its hand-written files); the cases are bound by the markdown suite units, and the module holds no test of its own"
         },
         {
-          "glob": "packages/rust/tests/src/conformance.rs",
+          "glob": "packages/rust/programs/src/conformance.rs",
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
@@ -1102,7 +1102,7 @@
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/rust/orm/tests/unit/temporal_args.rs",
+          "glob": "packages/rust/tests/unit/temporal_args.rs",
           "reason": "test: a unit test of the crate-private argument conversion of args.rs, reached through super, that turns chrono dates and datetimes into canonical text before binding; the canonical text is the contract of the codec and precision cases (K313)"
         },
         {
@@ -1134,15 +1134,15 @@
           "reason": "harness: tests the Rust case-clock helper that reports process and thread CPU time for test reporting; it is test instrumentation, not ORM behavior"
         },
         {
-          "glob": "packages/rust/tests/tests/all/client_bench_args.rs",
+          "glob": "packages/rust/programs/tests/all/client_bench_args.rs",
           "reason": "harness: tests missing, malformed and nonpositive iteration arguments of the standalone Rust client_bench executable before it connects; this is benchmark CLI validation, not ORM behavior"
         },
         {
-          "glob": "packages/rust/tests/tests/all/client_bench_dsn.rs",
+          "glob": "packages/rust/programs/tests/all/client_bench_dsn.rs",
           "reason": "harness: tests the standalone Rust client_bench executable refuses a missing or empty benchmark DSN before connecting; this is benchmark CLI validation, not the public client DSN contract"
         },
         {
-          "glob": "packages/rust/tests/tests/all/example_dsn.rs",
+          "glob": "packages/rust/programs/tests/all/example_dsn.rs",
           "reason": "harness: tests the standalone complex and demo examples refuse to start without their benchmark DSN; this is example preflight behavior, not the ORM client contract"
         },
         {
@@ -1182,11 +1182,11 @@
           "reason": "test: isolated cause_message_tests exercise Rust build-time SQLx adapter decoding, bounded-statement preflight, and DSN diagnostic causes; shared runtime behavior remains in the declared catalog and tool owner cases (K313)"
         },
         {
-          "glob": "packages/rust/orm/src/db/executor_route_tests.rs",
+          "glob": "packages/rust/src/db/executor_route_tests.rs",
           "reason": "test: exercises the crate-private Executor routing between pool and transaction connections and closed-database error propagation; it is not a shared client behavior unit (K313)"
         },
         {
-          "glob": "packages/rust/orm/src/db/pool_stats_tests.rs",
+          "glob": "packages/rust/src/db/pool_stats_tests.rs",
           "reason": "test: checks the private pool_in_use arithmetic helper and its impossible-snapshot panic; public DbStats values are exercised by the six-client connection-pool-statistics feature (K313)"
         },
         {
@@ -1214,7 +1214,7 @@
           "reason": "test: edits the public Rust structs of a parsed document, a surface the other runtimes do not type this way; parse and emit are covered by dbspec-canonical"
         },
         {
-          "glob": "packages/rust/orm/tests/unit/codec_tests.rs",
+          "glob": "packages/rust/tests/unit/codec_tests.rs",
           "reason": "test: the private helpers of the Rust codec, whose faults a public call cannot reach."
         },
         {
@@ -1226,7 +1226,7 @@
           "reason": "test: calls the private validate for the cause its tokenizer failure keeps; read_statements and read_only_grid_shapes hold the shapes"
         },
         {
-          "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "glob": "packages/rust/tests/unit/coverage_planner.rs",
           "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         },
         {
@@ -1234,11 +1234,11 @@
           "reason": "test: calls the private is_temporal, fraction and precision with forms no server stores, such as datetime(7); temporal_write_and_limits and described_temporal_matrix hold what a server reaches"
         },
         {
-          "glob": "packages/rust/orm/tests/unit/time_precision.rs",
+          "glob": "packages/rust/tests/unit/time_precision.rs",
           "reason": "test: calls the crate-private check_param, time_value, bound_time_value and clock_digits directly, reached through super; the values that a write can hold are the bind_time and bind_datetime cases of tests/bind/messages.json (K313)"
         },
         {
-          "glob": "packages/rust/orm/src/engine/mod.rs",
+          "glob": "packages/rust/src/engine/mod.rs",
           "reason": "test: unit tests of the crate-private compile of the engine, reached through super; the statements of a default now column on each database are the case now_defaults of the recipe conformance_verification (K313)"
         },
         {

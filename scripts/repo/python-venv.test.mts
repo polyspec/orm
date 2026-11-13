@@ -64,10 +64,10 @@ caseTest('orm-install-python builds its venv with the pinned interpreter, never 
     assert.match(result.stdout, /python-venv DIR=/);
     // uv-install of kit installs the client into the venv of the pinned interpreter with one uv sync --locked (kit K850), and the
     // python3 of PATH is never run (KSTD-5-104).
-    assert.match(result.stdout, /\s--no-print-directory uv-install DIR=packages\/python SYNC='--quiet --group test'$/m);
+    assert.match(result.stdout, /\s--no-print-directory uv-install DIR=legacy\/packages\/python SYNC='--quiet --group test'$/m);
     assert.doesNotMatch(result.stdout, /(^|[\s/])python3 -m pip/m);
     // uv sync installs orm editable through a .pth, so make install-link then writes the own link that link-check compares (T291); install-link is the link of kit without the Claude Code hook, which an install without a kit checkout cannot write.
-    const install = result.stdout.search(/\s--no-print-directory uv-install DIR=packages\/python /);
+    const install = result.stdout.search(/\s--no-print-directory uv-install DIR=legacy\/packages\/python /);
     const link = result.stdout.search(/\s--no-print-directory install-link$/m);
     assert.ok(install >= 0 && link > install, 'orm-install-python runs make install-link after uv-install');
   } finally {

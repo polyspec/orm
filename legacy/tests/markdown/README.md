@@ -17,8 +17,8 @@ the result of each case with its `expect`.
 | `packages/go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
 | `packages/php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is the PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`, which runs each case as a data set named by its id |
 | `packages/php-ext/tests/MarkdownConformanceNativeTest.php` | the same cases with the PHP extension loaded, plus a check that generated model operations enter the extension's internal `Model` methods |
-| `packages/python/tests/markdown_conformance.py` | the Python runner, which generates the Python models from the catalog into its temporary directory |
-| `packages/rust/tests/tests/all/markdown_conformance.rs` | the Rust runner, `markdown_conformance`; the `build.rs` of its crate generates the models from the catalog |
+| `legacy/packages/python/tests/markdown_conformance.py` | the Python runner, which generates the Python models from the catalog into its temporary directory |
+| `packages/rust/programs/tests/all/markdown_conformance.rs` | the Rust runner, `markdown_conformance`; the `build.rs` of its crate generates the models from the catalog |
 | `packages/ts/src/models/markdown_fixture` | the TypeScript models generated from the catalog, which the TypeScript runner `packages/ts/tests/markdown_conformance.mjs` checks against the generator before its cases and reports each case as `markdown-conformance/<id>` |
 
 ## Run

@@ -86,7 +86,7 @@ caseTest('an unlisted test selected by the globs of each implementation fails fe
     ['php-extension', 'legacy/packages/php-ext/tests/NewContractProbeTest.php'],
     ['typescript', 'legacy/packages/ts/tests/new-contract-probe.test.mjs'],
     ['python', 'legacy/packages/python/tests/test_new_contract_probe.py'],
-    ['rust', 'packages/rust/orm/tests/unit/new_contract_probe.rs'],
+    ['rust', 'packages/rust/tests/unit/new_contract_probe.rs'],
   ] as const;
   const { tests } = implementationTestInventory(cases.map(([, file]) => file));
   for (const [language, file] of cases) assert.deepEqual(tests[language], [file], `${language} selects ${file}`);

@@ -1,0 +1,31 @@
+[package]
+name = "polyspec-orm-cases"
+version = "0.0.31"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+
+[lib]
+path = "lib.rs"
+test = false
+doctest = false
+
+[dependencies]
+polyspec-orm = { path = "../..", features = ["test-faults"] }
+polyspec-orm-testcase = { path = "../../testcase" }
+polyspec-orm-case-database = { path = "../../case-database" }
+polyspec-orm-case-clock = { path = "../../case-clock" }
+polyspec-orm-test-support = { path = "../../test-support" }
+libsqlite3-sys = { version = "0.37", default-features = false }
+log = "0.4"
+sha2 = "0.10"
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+serde = { version = "1", features = ["derive"] }
+# unbounded_depth: the styled column states nest deeper than the 128 levels that serde_json reads by default (COD-70).
+serde_json = { version = "1", features = ["unbounded_depth"] }
+
+[lints]
+workspace = true

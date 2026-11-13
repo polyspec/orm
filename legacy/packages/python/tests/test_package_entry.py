@@ -1,5 +1,5 @@
 import unittest
-from packages.python.tests import testcase
+from legacy.packages.python.tests import testcase
 
 import polyspec.orm as orm
 

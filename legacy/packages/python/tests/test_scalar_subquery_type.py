@@ -1,6 +1,6 @@
 import json
 import unittest
-from packages.python.tests import testcase
+from legacy.packages.python.tests import testcase
 
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.dialect import dialect_of
@@ -8,20 +8,20 @@ from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
 
-from .coverage_case import REPOSITORY_ROOT
+from .coverage_case import CASE_ROOT
 
 
 def scalar_subquery_case():
     """The planner_scalar_column_subquery step of tests/planner/compile.json and the model of its schema."""
     recipe = json.loads(
-        (REPOSITORY_ROOT / "tests/planner/compile.json").read_text(encoding="utf-8")
+        (CASE_ROOT / "tests/planner/compile.json").read_text(encoding="utf-8")
     )
     case = next(
         case["steps"][0]
         for case in recipe["cases"]
         if case["id"] == "planner_scalar_column_subquery"
     )
-    schema = (REPOSITORY_ROOT / "tests/planner" / case["schema"]).resolve()
+    schema = (CASE_ROOT / "tests/planner" / case["schema"]).resolve()
     return case, model_of_documents(
         parse_document_set([schema.read_text(encoding="utf-8")])
     )

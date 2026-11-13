@@ -13,7 +13,10 @@
     }
   },
   "workspaces": [
-    "packages/*"
+    "packages/dbspec-codemirror",
+    "packages/dbspec-language",
+    "packages/dbspec-lsp",
+    "packages/dbspec-vscode"
   ],
   "scripts": {
     "docs:dev": "vitepress dev docs",

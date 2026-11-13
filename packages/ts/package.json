@@ -1,0 +1,37 @@
+{
+  "name": "@polyspec/orm",
+  "version": "0.0.31",
+  "description": "The orm library of polyspec for Node and the browser",
+  "license": "MIT",
+  "main": "./generated/index.cjs",
+  "types": "./generated/index.d.ts",
+  "exports": {
+    ".": {
+      "browser": {
+        "types": "./wasm/generated/index.d.ts",
+        "default": "./wasm/generated/index.mjs"
+      },
+      "types": "./generated/index.d.ts",
+      "import": "./generated/index.mjs",
+      "require": "./generated/index.cjs"
+    },
+    "./wasm": {
+      "types": "./wasm/generated/index.d.ts",
+      "default": "./wasm/generated/index.mjs"
+    }
+  },
+  "files": [
+    "generated/index.cjs",
+    "generated/index.mjs",
+    "generated/index.d.ts",
+    "wasm/generated/*.mjs",
+    "wasm/generated/*.js",
+    "wasm/generated/*.d.ts",
+    "wasm/generated/*.wasm"
+  ],
+  "optionalDependencies": {
+    "@polyspec/orm-linux-x64-gnu": "0.0.31",
+    "@polyspec/orm-linux-arm64-gnu": "0.0.31",
+    "@polyspec/orm-darwin-arm64": "0.0.31"
+  }
+}

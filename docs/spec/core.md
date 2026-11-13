@@ -175,8 +175,9 @@ the core that differ from the rules that the language implementations of `legacy
   sequence of Unicode scalar values` when the value of its column is read.
 - **CORE-61** The codec stage that stores a JSON value with its member order, number text and empty containers (COD-9,
   COD-16) is `json` in the core. The language implementations name it `ordered_json` after the library that wrote it,
-  and the core depends on no library of that name (CORE-1), so a dbspec document of the core writes `json` and
-  `ordered_json` is an unknown stage there. The value wrapper of a shared case for such a value is `json_value`
+  and the core depends on no library of that name (CORE-1), so a dbspec document of the core writes `json`. The core
+  reads `ordered_json` as the stage `json`, with the same encoding, so a document that the language implementations
+  read is read by the core too, and its canonical form writes `json`. The value wrapper of a shared case for such a value is `json_value`
   (FCV-4), as the value that leaves the core is (CORE-60), and a case that tests the stage names it `json` in its id; the
   fixed copies of CORE-1 keep the old names for the language implementations.
 

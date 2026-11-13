@@ -47,7 +47,7 @@ caseTest('a changed path selects the lint target of its language', 5000, async (
   const targets = (path: string) => rules.filter(rule => rule.paths.some(glob => minimatch(path, glob))).flatMap(rule => rule.targets ?? []);
   const cases: [string, string][] = [
     ['legacy/packages/go/orm/errs.go', 'lint-go'],
-    ['packages/rust/orm/src/errs.rs', 'lint-rust'],
+    ['packages/rust/src/errs.rs', 'lint-rust'],
     ['legacy/packages/python/orm/errs.py', 'lint-python'],
     ['legacy/packages/php/src/Errs.php', 'lint-php'],
     ['scripts/features/owners.mts', 'lint-ts'],
@@ -66,7 +66,7 @@ caseTest('a changed path selects the lint target of its language', 5000, async (
 // cancelled_session_test.go tests cleanup at transaction end. failing_driver_test.go, which that test uses, is a helper, so it selects only its own
 // check (go-test-helpers).
 caseTest('a changed file selects the transaction end tests that it holds or that test it', 5000, async () => {
-  for (const path of ['packages/rust/orm/src/tx.rs', 'packages/rust/orm/src/tx_send_tests.rs'])
+  for (const path of ['packages/rust/src/tx.rs', 'packages/rust/src/tx_send_tests.rs'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust'], path);
   for (const path of ['legacy/packages/go/orm/transaction_end_test.go', 'legacy/packages/go/orm/context_reset_test.go', 'legacy/packages/go/orm/cancelled_session_test.go'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-end-go'], path);
@@ -106,7 +106,7 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
   assert.ok(first);
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by tests/dbspec/schema-definition.json)']);
   // The Rust send tests are a declared input of transaction-end-rust; they are not inputs to interface extraction.
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust']);
 });
 
 caseTest('a missing named fixture is optional and a directory named as a fixture keeps its read error', 5000, async () => {
@@ -173,7 +173,7 @@ caseTest('a declared pattern matches by path segment', 5000, async () => {
   const declared = { one: owner(['docs/*.md']), deep: owner(['docs/**']), rust: owner(['packages/rust/**/*.rs']), any: owner(['**']) };
   assert.deepEqual(targets(selectTargets(declared, ['docs/a/b.md'])), ['deep', 'any']);
   assert.deepEqual(targets(selectTargets(declared, ['docs/a.md'])), ['one', 'deep', 'any']);
-  assert.deepEqual(targets(selectTargets(declared, ['packages/rust/orm/src/lib.rs'])), ['rust', 'any']);
+  assert.deepEqual(targets(selectTargets(declared, ['packages/rust/src/lib.rs'])), ['rust', 'any']);
   assert.deepEqual(targets(selectTargets(declared, ['packages/rust/Cargo.toml'])), ['any']);
 });
 
@@ -212,7 +212,7 @@ caseTest('a selected make target runs with the environments of owner-check and t
 const t42 = [
   'legacy/packages/go/orm/recipe_statement_events_test.go', 'legacy/packages/go/orm/events.go',
   'legacy/packages/php/src/StatementEvent.php', 'legacy/packages/php/tests/StatementEventsRecipeTest.php',
-  'packages/rust/orm/src/events.rs', 'packages/rust/tests/tests/all/statement_events_sqlite.rs',
+  'packages/rust/src/events.rs', 'packages/rust/programs/tests/all/statement_events_sqlite.rs',
   'legacy/packages/ts/src/events.ts', 'legacy/packages/ts/tests/statement_events-sqlite.test.mjs',
   'contracts/fixtures/statement_events/statement_events.dbs',
 ];
@@ -395,9 +395,9 @@ const nameTree = memoryTree({
   'legacy/packages/php/tests/kept_cases.php': "<?php\ntrait KeptCases\n{\n    public function testShared(): void {}\n}\n",
   'legacy/packages/python/tests/test_kept.py': 'class KeptTest(unittest.TestCase):\n    def test_kept(self):\n        pass\n',
   'legacy/packages/ts/tests/kept.mjs': "caseTest('kept/one', 1, () => {});\ncaseTest(`made/${name}`, 1, () => {});\n",
-  'packages/rust/orm/Cargo.toml': 'name = "polyspec-orm"\n',
-  'packages/rust/orm/tests/kept.rs': 'mod more;\n#[test]\nfn kept_case() {}\n',
-  'packages/rust/orm/tests/more.rs': '#[test]\nfn more_case() {}\n',
+  'packages/rust/Cargo.toml': 'name = "polyspec-orm"\n',
+  'packages/rust/tests/kept.rs': 'mod more;\n#[test]\nfn kept_case() {}\n',
+  'packages/rust/tests/more.rs': '#[test]\nfn more_case() {}\n',
 });
 for (const [command, expected] of [
   ["node tests/go-test.mts ./legacy/packages/go/orm -run '^(TestKept|TestRecipeThing)$'", []],
@@ -408,13 +408,13 @@ for (const [command, expected] of [
   ["phpunit -- --filter 'test(Kept|Shared)' legacy/packages/php/tests/KeptTest.php", []],
   ["phpunit -- --filter 'test(Kept|Gone)' legacy/packages/php/tests/KeptTest.php", ['php test: --filter testGone in legacy/packages/php/tests/KeptTest.php']],
   ['phpunit -- legacy/packages/php/tests/GoneTest.php', ['test file: legacy/packages/php/tests/GoneTest.php']],
-  ['python -m unittest packages.python.tests.test_kept.KeptTest.test_kept', []],
-  ['python -m packages.python.tests.test_kept KeptTest.test_kept', []],
-  ['python -m unittest packages.python.tests.test_kept.KeptTest.test_gone', ['python test: packages.python.tests.test_kept.KeptTest.test_gone']],
-  ['python -m unittest packages.python.tests.test_kept.GoneTest', ['python test: packages.python.tests.test_kept.GoneTest']],
-  ['python -m packages.python.tests.test_gone', ['python module: packages.python.tests.test_gone']],
-  ['python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_kept.py -k test_kept', []],
-  ['python -m packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_gone.py', ['python test file: legacy/packages/python/tests/test_gone.py']],
+  ['python -m unittest legacy.packages.python.tests.test_kept.KeptTest.test_kept', []],
+  ['python -m legacy.packages.python.tests.test_kept KeptTest.test_kept', []],
+  ['python -m unittest legacy.packages.python.tests.test_kept.KeptTest.test_gone', ['python test: legacy.packages.python.tests.test_kept.KeptTest.test_gone']],
+  ['python -m unittest legacy.packages.python.tests.test_kept.GoneTest', ['python test: legacy.packages.python.tests.test_kept.GoneTest']],
+  ['python -m legacy.packages.python.tests.test_gone', ['python module: legacy.packages.python.tests.test_gone']],
+  ['python -m legacy.packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_kept.py -k test_kept', []],
+  ['python -m legacy.packages.python.tests.testcase discover -s legacy/packages/python/tests -t . -p test_gone.py', ['python test file: legacy/packages/python/tests/test_gone.py']],
   ["node --test --test-name-pattern='^kept/one$' legacy/packages/ts/tests/kept.mjs", []],
   ["node --test --test-name-pattern='^made/any$' legacy/packages/ts/tests/kept.mjs", []],
   ["node --test --test-name-pattern='^gone/one$' legacy/packages/ts/tests/kept.mjs", ['typescript test: --test-name-pattern ^gone/one$ in legacy/packages/ts/tests/kept.mjs']],

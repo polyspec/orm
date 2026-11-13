@@ -40,7 +40,7 @@ const commands: [string, string, string[]][] = [
   ['go/model', 'go', ['test', ...withTestTags(['-v', '-timeout', '0', '-count=1', './legacy/packages/go/model'])]],
   ['php/model', 'php', ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', 'legacy/packages/php/tests/ModelTest.php']],
   ['typescript/model', 'node', ['legacy/packages/ts/tests/model.mjs']],
-  // The sections of the Rust integration program (packages/rust/tests/tests/all/integration_program) check an empty database and install
+  // The sections of the Rust integration program (packages/rust/programs/tests/all/integration_program) check an empty database and install
   // the bench set, so the check runs that target; tests/cargo-test.mts builds it under the lease of the target directory.
   ['rust/integration', 'node', ['tests/cargo-test.mts', 'integration-program', '--', 'cargo', 'test', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests',
     '--test', 'all', '--', 'integration_program::']],

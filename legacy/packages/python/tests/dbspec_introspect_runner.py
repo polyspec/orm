@@ -2,7 +2,7 @@
 # canonical document on stdout and unsupported object lines "! kind<TAB>table<TAB>name", and "elapsed <ms>" on stderr.
 # make dbspec-introspect-compare-check runs this file with the python in the venv (TestIntrospectCompare).
 #
-# Usage: python -m packages.python.tests.dbspec_introspect_runner <mysql|postgres|sqlite> <uri>
+# Usage: python -m legacy.packages.python.tests.dbspec_introspect_runner <mysql|postgres|sqlite> <uri>
 import sys
 import time
 from urllib.parse import unquote, urlsplit
@@ -31,7 +31,7 @@ def connect(dialect, uri):
 def main() -> None:
     if len(sys.argv) != 3:
         sys.stderr.write(
-            "usage: python packages/python/tests/dbspec_introspect_runner.py <mysql|postgres|sqlite> <uri>\n"
+            "usage: python legacy/packages/python/tests/dbspec_introspect_runner.py <mysql|postgres|sqlite> <uri>\n"
         )
         raise SystemExit(2)
     dialect, uri = sys.argv[1:]

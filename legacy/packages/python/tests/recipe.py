@@ -109,7 +109,10 @@ from .recipe_reads import ReadStep
 from .test_sqlite import generate
 from .vector_case import VectorCase, vector_load_tests
 
+# ROOT is legacy/, which holds the case copies that the recipes read; REPOSITORY_ROOT is the root of the repository, whose
+# tests/interfaces/check the interface.symbols op runs.
 ROOT = Path(__file__).resolve().parents[3]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 
 # NONE is the database part of a recipe without a database (FCV-3).
 NONE = "none"
@@ -358,7 +361,7 @@ def _diagnostics(diagnostics: list) -> str:
 def mermaid_skeleton(document: Any) -> list:
     """The tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key actions
     are left out, since Mermaid does not carry them (the same as the TypeScript helper). The dbspec compare runner
-    (packages/python/testing/dbspec/compare/python.py) checks a Mermaid round trip by it too."""
+    (legacy/packages/python/testing/dbspec/compare/python.py) checks a Mermaid round trip by it too."""
     out = []
     for t in sorted(document.tables, key=lambda t: t.name):
         out.append(f"table {t.name}")
@@ -1482,7 +1485,7 @@ def _interface_symbols() -> None:
     INT-19, INT-57, INT-61, INT-64)."""
     result = subprocess.run(
         ["node", "tests/interfaces/check/main.mts", "-language", "python"],
-        cwd=ROOT,
+        cwd=REPOSITORY_ROOT,
         capture_output=True,
         text=True,
         timeout=280,

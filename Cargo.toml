@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = ["packages/rust", "packages/rust/case-clock", "packages/rust/case-database", "packages/rust/build", "packages/rust/schema", "packages/rust/testcase", "packages/rust/test-support", "packages/rust/programs", "packages/rust/tests/cases", "packages/rust/build/tests/cases", "packages/rust/schema/tests/cases", "packages/rust/testcase/tests/cases", "packages/ts", "packages/ts/wasm", "packages/python", "packages/php-ext", "packages/go/internal/ffi"]
+
+# sqlx 0.9.0 with two fixes. T385.13: over a MySQL Unix socket, caching_sha2_password full authentication sends the cleartext
+# password, which MySQL expects on a socket as on TLS. sqlx 0.9.0 sends a public key request there, which the server reads as a
+# wrong password, so a socket login with a password failed (CFG-10). T435: a connection that names a CA file trusts that file
+# alone; sqlx 0.9.0 added the default roots of the build, so a certificate of an authority that the platform trusts passed
+# (CFG-16, CFG-45). Every crate of the workspace takes sqlx from here.
+[workspace.dependencies]
+sqlx = { version = "0.9", git = "https://github.com/min-0-max/sqlx", tag = "v0.9.0-polyspec.2" }
+
+# The dependencies build without debug information: each feature set of a test build writes its own copy of every dependency into
+# target/debug/deps, and their line tables only scale those copies. The crates of this workspace keep the debug level of the dev
+# profile (line-tables-only on main, 0 in a worktree), so their panics and assertions still name file:line (KSTD-5-93).
+[profile.dev.package."*"]
+debug = 0
+
+# The lints of make lint-rust (T391): every warning fails, and so does an error dropped by a must_use value (P8).
+[workspace.lints.rust]
+warnings = "deny"
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+allow_attributes_without_reason = "deny"
+let_underscore_must_use = "deny"
+let_underscore_untyped = "deny"
+map_err_ignore = "deny"

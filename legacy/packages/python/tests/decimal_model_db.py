@@ -3,7 +3,7 @@
 # generated setters refuse an inexact decimal with CODEC_ENCODE (setters), and a row written and read in a transaction
 # keeps the exact decimal text in the model, its array and the database storage, then rolls back and leaves the
 # database as it was (round_trip). DECIMAL_<DIALECT>_DSN names the database, and a missing one fails the run.
-# Each test builds its own models. `python -m packages.python.tests.decimal_model_db --dialect <name>` runs the
+# Each test builds its own models. `python -m legacy.packages.python.tests.decimal_model_db --dialect <name>` runs the
 # round trip of one dialect, as scripts/decimal-physical-check.mts does; without it every dialect runs.
 import os
 import sys
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         or arguments[1] not in DIALECTS
     ):
         raise SystemExit(
-            "usage: python -m packages.python.tests.decimal_model_db [--dialect mysql|postgres|sqlite]"
+            "usage: python -m legacy.packages.python.tests.decimal_model_db [--dialect mysql|postgres|sqlite]"
         )
     if arguments:
         DecimalModelDbTest.dialects = (arguments[1],)

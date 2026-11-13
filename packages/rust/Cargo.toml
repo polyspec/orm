@@ -1,30 +1,76 @@
-[workspace]
-resolver = "2"
-members = ["case-clock", "case-database", "orm", "build", "schema", "testcase", "test-support", "tests", "orm/tests/cases", "build/tests/cases", "schema/tests/cases", "testcase/tests/cases"]
+[package]
+# Its integration tests run as groups of the one test program, packages/rust/programs/tests/all.
+autotests = false
+name = "polyspec-orm"
+version = "0.0.31"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+description = "Rust ORM: model runtime, SQL planner, and sqlx executor"
+license = "MIT"
+repository = "https://github.com/polyspec/orm"
+readme = "README.md"
+keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
+categories = ["database"]
 
-# sqlx 0.9.0 with two fixes. T385.13: over a MySQL Unix socket, caching_sha2_password full authentication sends the cleartext
-# password, which MySQL expects on a socket as on TLS. sqlx 0.9.0 sends a public key request there, which the server reads as a
-# wrong password, so a socket login with a password failed (CFG-10). T435: a connection that names a CA file trusts that file
-# alone; sqlx 0.9.0 added the default roots of the build, so a certificate of an authority that the platform trusts passed
-# (CFG-16, CFG-45). Every crate of the workspace takes sqlx from here.
-[workspace.dependencies]
-sqlx = { version = "0.9", git = "https://github.com/min-0-max/sqlx", tag = "v0.9.0-polyspec.2" }
+[features]
+# The test entry point is polyspec_orm::testing. The build has it only when this feature is enabled,
+# and no default feature enables it.
+test-faults = []
 
-# The dependencies build without debug information: each feature set of a test build writes its own copy of every dependency into
-# target/debug/deps, and their line tables only scale those copies. The crates of this workspace keep the debug level of the dev
-# profile (line-tables-only on main, 0 in a worktree), so their panics and assertions still name file:line (KSTD-5-93).
-[profile.dev.package."*"]
-debug = 0
+[dependencies]
+# The boundary types that the generated bindings and this core share: the failure of a function that calls back
+# (Failure, Raised), the wait tokens (Io), cancellation (Cancel), the map types (OrderedMap, KeyedMap), the out values
+# of orm_value (OutValue) and the name conversion that generate uses (binding design E-1c, I-2 (4), T-1, T-2, U-1, N-2;
+# CORE-27, CORE-50, CORE-60).
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core" }
+polyspec-orm-schema = { version = "=0.0.31", path = "schema" }
+polyspec-json = { git = "https://github.com/polyspec/json.git", branch = "v1/rust-core" }
+rustls = { version = "0.23", default-features = false, features = ["std"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "json", "ipnet"] }
+# The SQLite library bundled with sqlx. The connection does not ask for that version via SQL; it reads it from this crate.
+libsqlite3-sys = "0.37"
+regex = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+indexmap = "2"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+url = "2"
+# sqlx-postgres uses whoami without its std feature, which reports the OS user
+# as "anonymous"; a DSN without a user must connect as the OS user.
+whoami = "2"
+rand = "0.10"
+flate2 = "1"
+futures-util = "0.3"
+base64 = "0.22"
+aes-gcm = { version = "0.10", features = ["std"] }
+sha2 = "0.10"
+hmac = "0.12"
+# The YAML writer. The yaml stage reads with the YAML reader of orm and no library (docs/spec/codec.md COD-74), so only
+# the feature that writes is built.
+serde-saphyr = { version = "2.0.0", default-features = false, features = ["serialize"] }
 
-# The lints of make lint-rust (T391): every warning fails, and so does an error dropped by a must_use value (P8).
-[workspace.lints.rust]
-warnings = "deny"
-unsafe_code = "deny"
-unused_must_use = "deny"
+[dev-dependencies]
+# The tests make the wait tokens and raised exceptions that only generated code makes (binding design I-2 (4), U-3).
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core", features = ["construct"] }
+# The fault entry point exists only with the feature test-faults. The integration tests of this crate
+# enable it through their own crate, so a test target runs with the feature and the normal build does not.
+polyspec-orm = { path = ".", features = ["test-faults"] }
+# The test case reports its start, result, elapsed time, and its own deadline.
+polyspec-orm-testcase = { path = "testcase" }
+# Used by the test that rejects the end-of-transaction statement with the SQLite authorizer. It is the same version as sqlx-sqlite.
+libsqlite3-sys = { version = "0.37", default-features = false }
+# The coverage test measures the CPU time of its own computation.
+polyspec-orm-case-clock = { path = "case-clock" }
+# The database case creates its own database and deletes it when it ends.
+polyspec-orm-case-database = { path = "case-database" }
+# The helpers that the test targets share: model rows, feature databases, table checks and statement records.
+polyspec-orm-test-support = { path = "test-support" }
+# The registration test installs a logger that counts sqlx's statement log records. It is the version sqlx uses.
+log = "0.4"
 
-[workspace.lints.clippy]
-all = { level = "deny", priority = -1 }
-allow_attributes_without_reason = "deny"
-let_underscore_must_use = "deny"
-let_underscore_untyped = "deny"
-map_err_ignore = "deny"
+# These test targets run a shared vector file with one libtest-mimic trial per case id
+# (polyspec_orm_testcase::trial), so their harness is libtest-mimic.
+[lints]
+workspace = true

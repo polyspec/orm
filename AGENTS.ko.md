@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 6475001105b04622db46e28657293c99733b51b8527af2037b9664fb2d2e712d -->
+<!-- source-sha256: 62a3f03ae66e30d282566aa1480c969e151fd00731c5ee20f70aab789c0b2969 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -39,6 +39,18 @@
   `github.com/polyspec/orm/tests`(`tests/go.mod`)이고, example은 `github.com/polyspec/orm/examples`(`examples/go.mod`)이며,
   root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `legacy/packages/go`를 쓴다.
   Enforced by: `make layout-check`
+- Own: core crate `polyspec-orm`은 계약 `packages/rust/interface.json` 옆의 `packages/rust`이고, `binding scaffold`가
+  쓰는 바인딩 package는 그 옆에 있다: `packages/ts`(Node), `packages/ts/wasm`(WASM), `packages/python`,
+  `packages/php-ext`, `packages/go`(binding design L-1). root의 `Cargo.toml`은 core와 `packages/rust` 아래의 시험
+  crate와 바인딩 crate의 하나뿐인 workspace이고, root의 `Cargo.lock`이 `polyspec-binding-core`의 commit을 포함해 그
+  모두를 고정한다(GN-4, CK-20). scaffold가 쓰는 바인딩 crate는 core를 `../rust`에서 받고, 생성기는 root
+  workspace가 모든 바인딩 crate를 가지는지 검사하기 때문이다. 바인딩 crate는 `make bindings`가 생성 folder를 쓴
+  뒤에만 build되므로, workspace 전체에 대한 cargo 명령은 바인딩 crate를 뺀다(Makefile의 `ORM_RUST_EXCLUDE_BINDINGS`).
+  그 crate는 `make lint-bindings`와 `make test-bindings`가 build한다. 바인딩 Go module `packages/go`는
+  `legacy/packages/go`와 같은 module path를 가지므로 그 명령은 `GOWORK=off`로 실행한다. root의 npm workspace는 이름으로
+  적은 dbspec editor package 넷이다. `packages/ts`는 package `@polyspec/orm`이고, `legacy/packages/ts`도 그 이름을
+  가지기 때문이다.
+  Enforced by: `make bindings-check`, binding scaffold가 쓰는 것과 바인딩 package를 비교한다(CK-19)
 - Own: dbspec의 editor package는 `packages/dbspec-language`(language service와 `dbspec-fmt` 명령),
   `packages/dbspec-lsp`(language server), `packages/dbspec-codemirror`(CodeMirror extension),
   `packages/dbspec-vscode`(VS Code extension)다. 앞의 셋은 client와 함께 npm archive

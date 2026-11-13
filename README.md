@@ -72,11 +72,11 @@ make orm-test-servers                                                   # server
 (cd legacy/packages/go/model && go generate)                                # Go models
 vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 (cd legacy/packages/ts && npm run build)                            # TypeScript models and library
-(cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
+(cd packages/rust && cargo build --release -p polyspec-orm-tests)                # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models
 go test ./legacy/packages/go/... ./tests/... ./examples/...
 npm run typescript:test
-(cd packages/rust && cargo test --workspace)
+make test-rust
 make conformance-check                                                # the native bodies and the state contracts of the conformance recipe
 ```
 

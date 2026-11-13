@@ -4,7 +4,7 @@
 # for one, poolIdleSize bounds the idle connections, poolLifetimeMs closes a connection whose lifetime passed, and a
 # negative value or an idle size above the pool size is CONFIG. Each case runs on SQLite, MySQL and PostgreSQL; MySQL
 # and PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and a missing variable fails the case.
-# Usage: python -m packages.python.tests.connection_pool
+# Usage: python -m legacy.packages.python.tests.connection_pool
 import os
 import subprocess
 import sys
@@ -35,7 +35,7 @@ TEMP = {}
 # One writer process of test_sqlite_several_process_writers_commit_every_row: read-then-write transactions without retries.
 SQLITE_WRITER_PROCESS = """
 import sys
-from packages.python.tests.models import models
+from legacy.packages.python.tests.models import models
 dsn, name, count = sys.argv[1], sys.argv[2], int(sys.argv[3])
 db = models.connect(dsn)
 try:
@@ -271,8 +271,9 @@ class ConnectionPoolTest(unittest.TestCase):
             setup = models.connect(dsn)
             install_bench(setup)
             setup.close()
+            # The repository root, where the module legacy.packages.python.tests imports.
             root = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "..", "..", "..")
+                os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
             )
             children = [
                 subprocess.Popen(

@@ -9,7 +9,7 @@ const RUNNER_SOURCES: [string, string][] = [
   ['legacy/packages/php/tests/Recipe.php', 'OP_UNKNOWN'],
   ['legacy/packages/ts/tests/recipe.mjs', 'OP_UNKNOWN'],
   ['legacy/packages/python/tests/recipe.py', 'OP_UNKNOWN'],
-  ['packages/rust/tests/src/recipe.rs', 'OP_UNKNOWN'],
+  ['packages/rust/programs/src/recipe.rs', 'OP_UNKNOWN'],
   ...Object.values(VECTOR_RUNNERS).flat().map((file): [string, string] => [file, '']),
   ...Object.entries(CASE_RUNNERS).flatMap(([cases, runners]) => Object.values(runners).map(({ file }): [string, string] => [file, `reads ${cases}`])),
 ];
@@ -60,7 +60,7 @@ caseTest('a runner that refuses no op is a finding', COMPUTE, () => {
 });
 
 caseTest('a second runner is a finding', COMPUTE, () => {
-  const refused = tree({ extra: [['packages/rust/orm/src/second.rs', 'OP_UNKNOWN']] });
+  const refused = tree({ extra: [['packages/rust/src/second.rs', 'OP_UNKNOWN']] });
   assert.match(findings(refused).join('\n'), /second\.rs: refuses an op outside the runner/);
 });
 

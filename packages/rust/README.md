@@ -5,10 +5,10 @@
 
 | Crate | Contents |
 |---|---|
-| `polyspec-orm` (`packages/rust/orm`) | the runtime: model builder, request validation, SQL planner for MySQL, PostgreSQL, and SQLite, plan cache, sqlx executor, codecs, DSN parser, transactions, utilities, error codes |
+| `polyspec-orm` (`packages/rust`) | the runtime: model builder, request validation, SQL planner for MySQL, PostgreSQL, and SQLite, plan cache, sqlx executor, codecs, DSN parser, transactions, utilities, error codes |
 | `polyspec-orm-schema` (`packages/rust/schema`) | schema definitions: the dbspec parser, emitter, manifest, renderer, plans, Mermaid export and import, and runtime model, which the runtime and `polyspec-orm-build` share, and SQL statement splitting |
 | `polyspec-orm-build` (`packages/rust/build`) | the build-time generator: reads a dbspec document set, scans the crate's source, and writes the models it calls and the manifest text into `OUT_DIR`; with the `live-db` feature, the catalog and tool database connections |
-| `polyspec-orm-tests` (`packages/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, and `demo` |
+| `polyspec-orm-tests` (`packages/rust/programs`) | `integration`, `conformance`, `client_bench`, `complex`, and `demo` |
 
 Adopting the client needs only these crates. Statements are planned in the process; there is no service to run.
 
@@ -18,7 +18,7 @@ Adopting the client needs only these crates. Statements are planned in the proce
 
 ```toml
 [dependencies]
-polyspec-orm = { path = "…/packages/rust/orm" }
+polyspec-orm = { path = "…/packages/rust" }
 
 [build-dependencies]
 polyspec-orm-build = { path = "…/packages/rust/build" }
@@ -135,7 +135,7 @@ of `Val::as_f64` for ordinary values.
 
 ## Errors
 
-`polyspec_orm::codes` is generated from `docs/spec/errors.yaml` (`orm-gen errors --lang rust --out packages/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/spec/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default). A callback that failed and whose transaction or savepoint rollback failed too returns `Error::Rollback { callback, rollback }` (`ROLLBACK`) with the message `transaction failed (<callback error>) and rollback failed (<rollback error>)`; it keeps both errors and is never retried. A SQLite NOWAIT request that fails and also cannot restore `busy_timeout` returns `Error::Cleanup { primary, cleanup }`; `code()` forwards the primary lock error code, and both errors remain inspectable. A restore-only failure is returned unchanged.
+`polyspec_orm::codes` is generated from `docs/spec/errors.yaml` (`orm-gen errors --lang rust --out packages/rust/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/spec/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default). A callback that failed and whose transaction or savepoint rollback failed too returns `Error::Rollback { callback, rollback }` (`ROLLBACK`) with the message `transaction failed (<callback error>) and rollback failed (<rollback error>)`; it keeps both errors and is never retried. A SQLite NOWAIT request that fails and also cannot restore `busy_timeout` returns `Error::Cleanup { primary, cleanup }`; `code()` forwards the primary lock error code, and both errors remain inspectable. A restore-only failure is returned unchanged.
 
 ## Statement events
 
@@ -165,16 +165,20 @@ through `query`; callers must separately enforce their execution policy.
 Supported tool cells remain NULL, signed integers, text and booleans; unsupported
 types fail rather than being converted. This is not a read-only SQL sandbox.
 
+The root Cargo.toml is the workspace of this crate, its test crates and the binding crates, which build only after
+`make bindings` writes their generated folders, so the commands of the whole workspace leave them out (`BINDINGS`).
+
 ```sh
 cd packages/rust
-cargo clippy --workspace --all-targets -- -D warnings
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
+BINDINGS="--exclude polyspec-orm-node --exclude polyspec-orm-wasm --exclude polyspec-orm-python --exclude polyspec-orm-php-ext --exclude polyspec-orm-go"
+cargo clippy --workspace $BINDINGS --all-targets -- -D warnings
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace $BINDINGS
 cargo build -p polyspec-orm-tests
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_REPLICA_DSN=… ORM_TEST_POSTGRES_REPLICA_DSN=… cargo test -p polyspec-orm-tests --test all -- integration_program::
 ./target/debug/conformance --dsn "mysql://…" ../../contracts/fixtures/bench/bench.dbs
 ```
 
-Each section of the `integration_program` test runs its case on SQLite, MySQL and PostgreSQL, and so does the `zone` test; each section runs in case databases of its own, so `cargo test --workspace` runs the sections in parallel, and `primary_and_replica` also reads the replicas of `ORM_TEST_MYSQL_REPLICA_DSN` and `ORM_TEST_POSTGRES_REPLICA_DSN`; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. A case that installs a schema or checks an empty database creates a database of its own through them and drops it when it ends. The rollback tests end the server session of a transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, which name the servers without a pooler, and the dbspec tests (`dbspec_*`) create and change their databases through them; `dbspec_apply` also requires `ORM_TEST_PGBOUNCER_DSN` for its transaction pooler case; the make targets set both from `.runtime/servers/env`. `conformance`, `complex`, and `demo` read the seeded bench database.
+Each section of the `integration_program` test runs its case on SQLite, MySQL and PostgreSQL, and so does the `zone` test; each section runs in case databases of its own, so `cargo test --workspace $BINDINGS` runs the sections in parallel, and `primary_and_replica` also reads the replicas of `ORM_TEST_MYSQL_REPLICA_DSN` and `ORM_TEST_POSTGRES_REPLICA_DSN`; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. A case that installs a schema or checks an empty database creates a database of its own through them and drops it when it ends. The rollback tests end the server session of a transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, which name the servers without a pooler, and the dbspec tests (`dbspec_*`) create and change their databases through them; `dbspec_apply` also requires `ORM_TEST_PGBOUNCER_DSN` for its transaction pooler case; the make targets set both from `.runtime/servers/env`. `conformance`, `complex`, and `demo` read the seeded bench database.
 The Rust conformance output fails when a bind cannot be represented without loss, or a requested
 selected field or relation is absent. It never
 substitutes null, zero, or replacement text for those errors.

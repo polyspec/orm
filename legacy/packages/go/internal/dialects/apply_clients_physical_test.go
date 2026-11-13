@@ -83,7 +83,7 @@ func applyClientRunners(goRunner, rustRunner, extension, python string) map[stri
 		"typescript":    {args: []string{"node", "packages/ts/testing/dbspec/apply/typescript.mts"}},
 		"rust":          {args: []string{rustRunner}},
 		"php-extension": {args: []string{"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/apply/php-extension.php"}, env: map[string]string{"ORM_PHP_MODE": "extension"}},
-		"python":        {args: []string{python, "-m", "packages.python.tests.dbspec_apply_runner"}},
+		"python":        {args: []string{python, "-m", "legacy.packages.python.tests.dbspec_apply_runner"}},
 	}
 }
 

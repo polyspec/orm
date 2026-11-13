@@ -1,15 +1,15 @@
 # The Python support range of the package states the minor release that CI tests (T115-1).
 #
 # CI runs the package only under the pinned interpreter of make orm-install-python, the Python release of mise.toml, so
-# requires-python of packages/python/pyproject.toml is its minor release and nothing older: its dependency
+# requires-python of legacy/packages/python/pyproject.toml is its minor release and nothing older: its dependency
 # polyspec-ordered-json 0.0.9 requires 3.14, so a floor such as >=3.11 declares a range that the package cannot install on.
 import tomllib
 import unittest
 from pathlib import Path
 from . import testcase
 
-ROOT = Path(__file__).resolve().parents[3]
-PACKAGE = ROOT / "packages/python"
+ROOT = Path(__file__).resolve().parents[4]
+PACKAGE = ROOT / "legacy/packages/python"
 
 
 class RequiresPythonTest(unittest.TestCase):
@@ -32,7 +32,7 @@ class RequiresPythonTest(unittest.TestCase):
         self.assertEqual(
             declared,
             f">={minor}",
-            f"requires-python of packages/python/pyproject.toml must state the tested minor release of the Python of "
+            f"requires-python of legacy/packages/python/pyproject.toml must state the tested minor release of the Python of "
             f'mise.toml ({minor}), not an untested floor; set requires-python = ">={minor}"',
         )
 
