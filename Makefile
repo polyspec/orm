@@ -334,7 +334,10 @@ test-php: ## Run the unit tests of the PHP package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots legacy/packages/php
 test-python: ## Run the unit tests of the Python package with CASES=<pattern>; offline
 	PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner python --roots legacy/packages/python --venv .venv
-test-rust: ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline
+# The Rust recipe public_interface runs tests/interfaces/check/main.mts, which reads legacy/packages/ts/dist, so test-rust builds
+# the TypeScript client (typescript-current) and holds it while its tests run (T339-5-1).
+test-rust: typescript-current ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline
+	$(READ_TYPESCRIPT)
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --test-threads=1
 test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots legacy/packages/ts -- --test-concurrency=1

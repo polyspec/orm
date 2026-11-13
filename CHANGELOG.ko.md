@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3e39a8f03da5e63c31b802b0652802e5c4c7d45e24e5ca44aafbea6436838121 -->
+<!-- source-sha256: a57efe7e96071b1c0610ff56f6d99ecb6e95fa44bddfa12d826c1bdef75fe092 -->
 # 변경 이력
 
 ## Unreleased
@@ -30,6 +30,7 @@
 - Rust 코어의 `Query`는 쓴다(OM-3.1-10, CORE-91): `set(column, value)`는 `orm_value`를 배정하고, `create`는 행을 넣고 identity와 함께 돌려주며, `update`와 `delete`는 질의가 읽은 행이나 set한 primary key의 행을 쓰고, `expect_revision(column, revision)`은 그것을 지킨다. 실패는 `duplicate_key` 같은 원인의 kind를 지킨다. `model::create`, `update`, `delete`와 `Collection::delete`는 생성된 모델이든 `Query`든 어떤 행 타입도 받는다. 계약은 다섯 member를 각각 case 하나와 함께 선언한다.
 - Rust 코어는 `Db` step을 가진다(OM-3.1-11, CORE-92): `StepRunner::new(schema, connection)`와 `run(step)`은 JSON 텍스트로 가진 질의 tree를, `Query`의 member를 그 call의 순서대로, 그 terminal `get`, `gets`, `get_count`, `create`, `update`, `delete`와 함께 실행하고, 행과 그 열, 그 relation 결과, 그 key를 가진 `{"ok": <result>}`이나, `duplicate_key` 같은 실패의 kind를 가진 `{"error": {"kind", "message"}}`를 돌려준다. 그래서 다른 library의 코어가 host에게 질의를 부탁하고 실패의 뜻을 정한다. 모듈 `step`의 타입 `Step`, `QueryTree`, `Call`, `Terminal`, `StepValue`는 그 JSON의 serde 형식이다. 계약은 연결이 필요하므로 case 없이 class `StepRunner`를 선언한다.
 - Rust 코어의 `Db` step은 transaction과 savepoint를 실행한다(OM-3.1-12, CORE-93): option `isolation`, `read_only`, `timeout_ms`, `audit`을 가진 `transaction` step은 `retry` 0인 callback transaction을 열고, `savepoint` step은 가장 안쪽 것의 savepoint를 열며, 뒤따르는 step은 step `end`까지 그 handle에서 실행된다. `end`는 그것을 commit하거나 release하고, `rollback`이면 rollback하며, 그 끝의 결과를 돌려준다. `StepRunner::close`는 열린 것을 rollback하고 그 결과를 돌려주며, 놓인 runner는 자기 transaction을 rollback한다.
+- `make test-rust`는 cargo 시험이 실행되는 동안 `typescript-current`로 TypeScript client를 build하고 `$(READ_TYPESCRIPT)`로 hold한다(T339-5-1): Rust recipe의 case `public_interface_none::interface_symbols`는 `legacy/packages/ts/dist`를 읽는 `tests/interfaces/check/main.mts`를 실행하며, 그 build가 없는 checkout에서 `has no build of the TypeScript client`로 실패했다.
 
 ## 0.0.31
 
