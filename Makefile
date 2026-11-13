@@ -1709,31 +1709,45 @@ orm-test-mysql-privilege-start:
 # start.
 # make orm-test-container KIND=<mysql|postgres|mariadb> starts the test database servers of one kind as a Compose project that
 # bay runs, from the images that config/containers.json pins by their digests, and writes .runtime/containers/<kind>.env
-# (scripts/test-servers-container.mts; CONTRIBUTING.md "Test database servers in containers", BAY1). A check reads it as
-# TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and, for MySQL and
-# PostgreSQL, its replica; the variables of the poolers and of a Unix socket are absent. A kind is started at most once in a
-# checkout, and kinds may run together. Each start is a project of its own below .runtime/containers of this checkout, so two
-# checkouts run their servers at once (T444). make orm-test-container-stop removes the projects of this checkout and their
-# data, and no other project. make orm-test-container-run KIND=<kind> RUN='<command>' starts the servers for that run alone,
-# runs the shell command RUN with the variables of the servers, and removes the project when RUN ends or fails, or when the
-# run gets SIGINT or SIGTERM. BAY_PROGRAM names bay, the only program that these targets run for the servers and their
-# images; it names the program of macOS (BAY5, BAY6). No start pulls an image: make orm-install-container-images, the only
-# target that downloads, pulls the pinned images with bay pull.
+# (scripts/test-servers-container.mts; CONTRIBUTING.md "Test database servers in containers", BAY1, BAY12). A check reads it
+# as TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and, for MySQL
+# and PostgreSQL, its replica; the variables of the poolers and of a Unix socket are absent. A kind is started at most once
+# in a checkout, and kinds may run together. Each start is a project of its own below .runtime/containers of this checkout,
+# so two checkouts run their servers at once (T444). make orm-test-container-stop removes the projects of this checkout and
+# their data, and no other project.
+#
+# The script writes the directory of a run, and the file run.sh of that directory, which needs sh and bay alone, executes
+# it. make orm-test-container-run KIND=<kind> RUN='<command>' starts the servers for that run alone, runs the shell command
+# RUN with the variables of the servers, and removes the project when RUN ends or fails, or when the run gets SIGINT or
+# SIGTERM. RUN is a process of this host; with FORM=runner it runs in the service runner of the project, from a clone of
+# the commit of this checkout, and uses no tool of this host. KEEP=1 keeps the directory of the run, with the tools and
+# the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
+# RUN='<command>' HOST=<ssh host> REMOTE=<directory there> runs the form of the runner on another machine, whose host
+# has sh and bay alone: it sends the directory, runs run.sh there through ssh, brings the report back under
+# .runtime/containers/reports and removes the directory there; PULL=1 pulls the images there first.
+#
+# BAY_PROGRAM names bay, the only program that these targets run for the servers and their images; it names the program
+# of macOS (BAY5, BAY6). No start pulls an image: make orm-install-container-images, the only target that downloads on
+# this machine, pulls the pinned images with bay pull.
 BAY_PROGRAM = /opt/homebrew/bin/bay
-.PHONY: orm-test-container orm-test-container-run orm-test-container-stop orm-install-container-images
+CONTAINER_SERVERS = BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts
+.PHONY: orm-test-container orm-test-container-run orm-test-container-remote orm-test-container-stop orm-install-container-images
 orm-test-container:
-	BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts start $(KIND)
+	$(CONTAINER_SERVERS) start $(KIND)
 
-orm-test-container-run: export ORM_CONTAINER_RUN = $(value RUN)
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_RUN = $(value RUN)
 orm-test-container-run:
-	BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts run $(KIND) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+
+orm-test-container-remote:
+	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts stop
+	LEASE=$(LEASE) $(CONTAINER_SERVERS) stop
 
 orm-install-container-images:
-	$(ONLINE) BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts pull
+	$(ONLINE) $(CONTAINER_SERVERS) pull
 
 # orm-test-container-check runs the tests of scripts/test-servers-container.mts against a stand-in bay that each test
 # writes, so it needs no container and no image (BAY1, T444).
