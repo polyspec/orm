@@ -69,6 +69,9 @@ polyspec-orm-case-database = { path = "case-database" }
 polyspec-orm-test-support = { path = "test-support" }
 # The registration test installs a logger that counts sqlx's statement log records. It is the version sqlx uses.
 log = "0.4"
+# The JSON texts of the flowmark surface are read against their JSON Schemas (contracts/interface/flowmark); the schemas
+# name no remote or file reference, so the resolvers and TLS of the default features are left out.
+jsonschema = { version = "=0.58.6", default-features = false }
 
 # These test targets run a shared vector file with one libtest-mimic trial per case id
 # (polyspec_orm_testcase::trial), so their harness is libtest-mimic.

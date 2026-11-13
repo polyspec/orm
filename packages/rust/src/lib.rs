@@ -13,6 +13,7 @@ pub mod collection;
 pub mod core;
 pub mod db;
 pub mod dbspec;
+pub mod dbspec_json;
 pub mod decimal;
 mod driver;
 pub mod engine;
