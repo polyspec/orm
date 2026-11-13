@@ -387,6 +387,12 @@ impl Query {
         OrmValue::of_column(field, cell)
     }
 
+    /// The values of the columns of the entity that the row read, by column name in the order of the schema (CORE-120).
+    /// A column that the row did not read has no key, and a column whose value is null has the key with `Null`.
+    pub fn to_array(&self) -> Result<IndexMap<String, OrmValue>> {
+        self.read_columns()?.into_iter().map(|column| self.value(&column).map(|value| (column, value))).collect()
+    }
+
     /// The columns of the entity that the row read, in the order of the schema (CORE-92).
     pub(crate) fn read_columns(&self) -> Result<Vec<String>> {
         let manifest = self.core.entity().schema().manifest()?;

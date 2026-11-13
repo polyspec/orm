@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ddc211f117e49bb1fd0cbb8df77b87ec26a5a695ea144a3dad7a09ca551efe51 -->
+<!-- source-sha256: b2a493b8977ef1924531bbb1c81ae963cf75e18b0fc055327bfa3137c44e171d -->
 # 변경 이력
 
 ## Unreleased
+
+- `Query::to_array()`는 행이 읽은 열을 열 이름별 `orm_value`의 map으로, schema의 순서로 돌려준다(OM-3.1-3, CORE-120). 행이 읽지 않은 열은 key가 없고 null인 열은 null 값의 key가 있어서 둘을 구별하며, 행을 읽지 않은 query는 빈 map을 돌려준다. 이 member와 그 case는 아직 compile하거나 실행하지 않았다.
 
 - docs/spec/flowmark-surface.md가 flowmark가 생성된 Go binding으로 orm을 쓰는 방법을 정한다(OM-1.5, FMS-1~FMS-82, 구현되지 않음). flowmark v0.0.15가 쓰는 legacy Go module의 exported 이름 317개는 읽기만 하는 자료 이름 205개, 동작 29개, 만들어 넘기는 값 83개이고, 자료는 `contracts/interface/flowmark/dbspec.schema.json`, `ir.schema.json`, `plan.schema.json`의 형태의 JSON text로 contract의 member 21개와 상수 하나를 통해 넘어간다. 살아 있는 `Db`, load한 runtime model, dialect는 handle이나 그 이름을 넘긴다. 코어에 그 이름의 항목이 없는 57개 가운데 52개는 다른 이름의 public 항목이고, 5개는 public이 아니거나 형태가 다르며, 없는 것은 없다.
 

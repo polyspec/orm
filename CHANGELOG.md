@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- `Query::to_array()` of the Rust core returns the columns that a row read as a map of `orm_value` by column name, in the order of the schema (OM-3.1-3, CORE-120): a column that the row did not read has no key and a null column has its key with null, so the two are told apart, and a query that read no row returns the empty map. The member and its case are not yet compiled or run.
+
 - docs/spec/flowmark-surface.md states how flowmark uses orm through the generated Go binding (OM-1.5, FMS-1 to FMS-82, not implemented): the 317 exported names of the legacy Go module that flowmark v0.0.15 uses are 205 data names that it only reads, 29 operations and 83 values that it builds, and the data crosses as JSON text in the forms of `contracts/interface/flowmark/dbspec.schema.json`, `ir.schema.json` and `plan.schema.json`, through 21 members and one constant of the contract; a live `Db`, a loaded runtime model and a dialect cross as handles and names. Of the 57 names without an item of that name in the core, 52 are a public item under another name, 5 are not public or have another form, and none is absent.
 
 - `make docs-implementation-count-check` reads a number as a count of implementations only when the number starts a word (T458): `countMismatches` of scripts/docs/implementation-count.mts read the 109 of `CORE-109 have no implementation` as a count, so a sentence that names a rule before `implementation`, `client` or `runner` failed. The number of an identifier, after a letter, a digit or a hyphen, counts nothing in English and in Korean. CORE-110 of docs/spec/core.md says again that CORE-41 to CORE-43 and CORE-106 to CORE-109 have no implementation.

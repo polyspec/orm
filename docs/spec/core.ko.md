@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 14d6aa040949e7cc64c4ac81eced1afeaf401791101a1e9ed70a4f0435146dd4 -->
+<!-- source-sha256: 825e860d290b499f618bec4058183755cf149937ad36e5bed365ee7cacc9e1e1 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -216,7 +216,7 @@
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `join`, `leftJoin`, 묶음
   (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`, `getsPage`,
-  `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
+  `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
   `uint`여서 음수 값은 형식이 없다. `count`가 0이면 다음 terminal에서 `config`이고 메시지는 `limit requires a
@@ -294,6 +294,10 @@
   행이 없으면 배정한 행을 넣고, 그 행을 돌려준다. 그 key의 행이 지워지지 않았으면 `row_not_deleted`이고 아무것도 쓰지
   않는다. 둘 다 행을 돌려줄 때 배정을 비운다. `Db` step은 이 둘을 terminal `restore`와 `restore_or_create`로 받고 결과는
   `{"row": <row>}`다(CORE-92). `soft_delete`가 없는 엔티티는 `ir_invalid`다.
+- **CORE-120** `Query`의 행의 `to_array()`는 map을 돌려준다. key는 행이 읽은 엔티티 열의 이름이고 순서는 schema의 순서이며,
+  값은 `value(column)`이 돌려주는 `orm_value`다(CORE-62). 행이 읽지 않은 열은 key가 없다. 그래서 읽지 않은 열과 값이 null인
+  열을 구별한다. relation 결과는 이 map의 key가 아니고 `related`와 `related_rows`가 돌려준다(CORE-88). 행을 읽지 않은
+  `Query`는 빈 map을 돌려준다.
 
 ## 상태 기계
 

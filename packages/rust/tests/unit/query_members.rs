@@ -658,3 +658,38 @@ async fn restore_or_create_restores_or_inserts_the_row() {
     assert_eq!(read.get().await.expect("get").expect("member 1").value("name").expect("name"), OrmValue::Text("Ann".into()), "nothing is written");
     db.close().await;
 }
+
+// Requirements: CORE-120. to_array holds the columns that the row read in the order of the schema: a column that was
+// not read has no key, a null column has its key, and a query that read no row holds nothing.
+#[tokio::test]
+async fn to_array_holds_the_columns_that_the_row_read() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-to-array");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let pairs = |row: &Query| row.to_array().expect("to_array").into_iter().collect::<Vec<_>>();
+    let text = |value: &str| OrmValue::Text(value.into());
+    let mut third = query(&schema, "account", &db);
+    third.where_chain("Seq", vec![int(3)]);
+    assert_eq!(pairs(&third), Vec::new(), "a query that read no row");
+    let row = third.get().await.expect("get").expect("a row");
+    assert_eq!(
+        pairs(&row),
+        vec![("seq".to_owned(), int(3)), ("email".to_owned(), text("c@x")), ("revision".to_owned(), int(0))],
+        "select explicit leaves name out, so the map has no key of it"
+    );
+    let mut all = third.clone();
+    all.add_all_columns();
+    let row = all.get().await.expect("get").expect("a row");
+    assert_eq!(
+        pairs(&row),
+        vec![("seq".to_owned(), int(3)), ("email".to_owned(), text("c@x")), ("name".to_owned(), OrmValue::Null), ("revision".to_owned(), int(0))],
+        "a null column has its key, in the order of the schema"
+    );
+    let mut keyed = third.clone();
+    keyed.remove_all_columns();
+    keyed.add_column("revision");
+    let row = keyed.get().await.expect("get").expect("a row");
+    assert_eq!(pairs(&row), vec![("seq".to_owned(), int(3)), ("revision".to_owned(), int(0))]);
+    db.close().await;
+}

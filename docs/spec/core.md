@@ -270,7 +270,7 @@ the core that differ from the rules that the language implementations of `legacy
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
   groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
-  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`, and an added column of a function or of a subquery
+  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
 - **CORE-85** `limit(offset, count)` reads at most `count` rows after the first `offset` rows of the order (DSL-99).
@@ -356,6 +356,11 @@ the core that differ from the rules that the language implementations of `legacy
   of the key that is not deleted is `row_not_deleted`, and nothing is written. Both clear the assignments when they return a row. The `Db` step
   takes them as the terminals `restore` and `restore_or_create`, whose result is `{"row": <row>}` (CORE-92). An entity
   without `soft_delete` is `ir_invalid`.
+- **CORE-120** `to_array()` of a row of a `Query` returns a map whose keys are the names of the columns of the entity that
+  the row read, in the order of the schema, and whose values are the `orm_value` that `value(column)` returns (CORE-62).
+  A column that the row did not read has no key, so a column that was not read and a column whose value is null are
+  told apart. A relation result is no key of the map; `related` and `related_rows` return it (CORE-88). A `Query` that
+  read no row returns the empty map.
 
 ## State machines
 
