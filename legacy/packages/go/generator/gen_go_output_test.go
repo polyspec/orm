@@ -138,10 +138,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 // returns its path.
 func commandBinary(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs("..")
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := testcase.LegacyPath("packages/go")
 	bin := filepath.Join(t.TempDir(), "orm-gen")
 	build := exec.Command("go", "build", "-o", bin, "./cmd/orm-gen")
 	build.Dir = root
@@ -203,10 +200,7 @@ func namesCommand(t *testing.T, set bool) (string, func(name, body string)) {
 func TestGoGenerationCommandRefusesTheRemovedDocumentFlags(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	bin := commandBinary(t)
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := testcase.LegacyRoot()
 	set := filepath.Join(root, "contracts", "fixtures", "bench", "dbspec-set.json")
 	document := filepath.Join(root, "contracts", "fixtures", "bench", "bench.dbs")
 	for _, flag := range []string{"--schema", "--use"} {

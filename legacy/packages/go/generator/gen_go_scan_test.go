@@ -15,10 +15,7 @@ import (
 // changes into it, and returns a function that writes a file of the module.
 func scannedModule(t *testing.T) func(name, body string) {
 	t.Helper()
-	root, err := filepath.Abs("..")
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := testcase.LegacyPath("packages/go")
 	dir := t.TempDir()
 	write := func(name, body string) {
 		t.Helper()
@@ -239,10 +236,7 @@ func Title() string { return other.Product().Title() }
 // Requirements: DBS-110, DBS-173.
 func TestGeneratedExternalModelReadsItsTable(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	root, err := filepath.Abs("../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := testcase.LegacyRoot()
 	read := func(name string) string {
 		t.Helper()
 		raw, err := os.ReadFile(filepath.Join(root, "contracts/fixtures/external", name))
