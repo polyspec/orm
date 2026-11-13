@@ -3,6 +3,9 @@
 //!
 //! The source is generated into `generated/lib.rs` by `make bindings`; this file only includes it, because an included
 //! file cannot hold the crate's attributes.
-#![allow(unsafe_code, reason = "B-8: the C ABI reads the argument buffer and writes the result buffer through raw pointers")]
+#![allow(
+    unsafe_code,
+    reason = "B-8: the C ABI reads the argument buffer and writes the result buffer through raw pointers"
+)]
 
 include!(concat!(env!("CARGO_MANIFEST_DIR"), "/generated/lib.rs"));

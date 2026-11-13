@@ -13,24 +13,14 @@ crate-type = ["cdylib"]
 
 [features]
 panic-test = []
+codec-test = []
 
 [dependencies]
 polyspec-orm = { path = "../../rust" }
-polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core", features = ["construct"] }
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core", features = ["construct", "lock"] }
+polyspec-json = { git = "https://github.com/polyspec/json.git", branch = "v1/rust-core" }
 wasm-bindgen = "=0.2.130"
 js-sys = "=0.3.107"
 
-[lints.rust]
-warnings = "deny"
-unsafe_code = "deny"
-unused_must_use = "deny"
-
-[lints.clippy]
-all = { level = "deny", priority = -1 }
-allow_attributes_without_reason = "deny"
-unwrap_used = "deny"
-expect_used = "deny"
-let_underscore_must_use = "deny"
-let_underscore_untyped = "deny"
-map_err_ignore = "deny"
-as_conversions = "deny"
+[lints]
+workspace = true

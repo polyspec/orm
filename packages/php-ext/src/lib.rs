@@ -3,8 +3,17 @@
 //!
 //! The source is generated into `generated/lib.rs` by `make bindings`; this file only includes it, because an included
 //! file cannot hold the crate's attributes.
-#![allow(non_snake_case, reason = "G-7: a parameter is named as the PHP named argument, in camelCase")]
-#![allow(clippy::too_many_arguments, reason = "T-4: a record parameter is one argument per field")]
-#![allow(unsafe_code, reason = "B-4: the base classes are found in the engine's class table at module startup")]
+#![allow(
+    non_snake_case,
+    reason = "G-7: a parameter is named as the PHP named argument, in camelCase"
+)]
+#![allow(
+    clippy::too_many_arguments,
+    reason = "T-4: a record parameter is one argument per field"
+)]
+#![allow(
+    unsafe_code,
+    reason = "B-4: the base classes are found in the engine's class table at module startup"
+)]
 
 include!(concat!(env!("CARGO_MANIFEST_DIR"), "/generated/lib.rs"));

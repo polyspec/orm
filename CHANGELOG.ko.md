@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e3ac22633e47cb30df6ab642e4cab00a9feb227a4bce72ad8b8ef5bc1bba2fdb -->
+<!-- source-sha256: d307df7f5c099f9b0cd1c70a6489980796d3b5269dcae8d5ebe9cfaf50be1b29 -->
 # 변경 이력
 
 ## Unreleased
 
+- `Cargo.lock`은 `polyspec-binding-core`를 binding 49a4e97에 고정하고, binding 패키지는 그 binding scaffold가 쓰는 것이다(OM-1.4): 각 binding crate는 자기 lint를 선언하던 대신 루트 workspace의 lint를 받으므로(`lints.workspace = true`) make layout-check가 그 `Cargo.toml`에서 더는 실패하지 않고, `src/lib.rs`의 attribute는 cargo fmt의 줄 너비에 맞는다. Go와 WASM crate는 `polyspec-json`을 이름한다. 코어에는 `binding_core::fault`의 fault 지점이 없으므로 feature `fault-test`를 선언하지 않는다.
 - Rust 코어의 schema parser는 codec stage `ordered_json`을 같은 encoding의 stage `json`으로 읽는다(OM-3.5-3, CORE-61, DBS-69): `codec <column> ordered_json`은 `codec stage "ordered_json" is unknown`으로 거부되었으므로, 언어 구현이 읽는 문서가 그런 stage마다 진단을 받았다. 그런 문서의 canonical form은 `json`을 쓴다.
 - Go, PHP, PHP 확장, Python, TypeScript 언어 구현은 `legacy/packages/`로 옮겨 모든 릴리스에서 빠진다(CORE-1). 그 시험은 `legacy/contracts/fixtures/`와 `legacy/tests/`에 둔 공유 case·fixture·vector의 고정 사본을 읽고, `packages/rust/interface.json`에서 생성하는 바인딩이 그 자리를 대신한다.
 - Breaking (0.x): Rust 코어 `polyspec-orm`은 docs/spec/core.md의 규칙(CORE-1~CORE-60)을 따르고, 언어 구현은 각자 없어질 때까지 자기 규칙을 유지한다: 오류는 닫힌 enum `Kind`의 kind 하나를 가지며(docs/spec/errors.md), 트랜잭션 callback은 handle `Tx`를 받고 savepoint는 `Tx::savepoint`이며, 실행 흐름이 활성 트랜잭션을 두지 않는다.
