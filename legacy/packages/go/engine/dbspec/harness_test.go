@@ -3,7 +3,6 @@ package dbspec
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -13,15 +12,11 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// repositoryRoot is the module root. go test runs tests in the package directory (engine/dbspec), so it goes up two levels
-// from there. It is the path of the checkout being run, not the path where the binary was compiled (runtime.Caller).
-func repositoryRoot(t *testing.T) string {
+// legacyRoot is the legacy directory of the checkout, which holds the vectors that the tests of this package read
+// (testcase.LegacyRoot).
+func legacyRoot(t *testing.T) string {
 	t.Helper()
-	directory, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("cannot read the working directory of the dbspec test: %v", err)
-	}
-	return filepath.Clean(filepath.Join(directory, "..", "..", "..", ".."))
+	return testcase.LegacyRoot()
 }
 
 // asFixture returns v as T. A test table names the shape it expects of a fixture value; another shape is a broken
@@ -97,7 +92,7 @@ func TestLegacyRootFromAnyDirectory(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	want := testcase.LegacyRoot()
 	t.Chdir(testcase.RepositoryRoot())
-	if got := repositoryRoot(t); got != want {
+	if got := legacyRoot(t); got != want {
 		t.Fatalf("the root of the vectors from the repository root is %q, want %q", got, want)
 	}
 }

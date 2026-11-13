@@ -11,7 +11,7 @@ import (
 // the recipe TestRecipeDbspecPlanCases (packages/go/orm), so this package reads them only for its own checks.
 func loadPlanCases(t *testing.T) []plancases.Case {
 	t.Helper()
-	cases, err := plancases.Read(filepath.Join(repositoryRoot(t), "tests", "dbspec", "plan-cases.json"))
+	cases, err := plancases.Read(filepath.Join(legacyRoot(t), "tests", "dbspec", "plan-cases.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d991bfcc3055aa14d6c953ee3d99520ca56e06bf8e46bc074e03b2a06c34c907 -->
+<!-- source-sha256: 8c943646ff24eed4f9440edb40084943356cf4cd5bf56076f81b361f788b3289 -->
 # 변경 이력
 
 ## Unreleased
@@ -39,6 +39,7 @@
 - `make orm-test-container`는 컨테이너의 log 줄을 모두 읽는다(T445): 시작은 컨테이너의 spawn과 각 변경 event에서 log를 읽었는데, libuv는 파일을 one-shot kqueue event로 watch하며 그 event를 시작할 때와 각 event 뒤에 다음 poll 단계에서야 더하므로, 그 사이에 쓰인 줄은 event를 내지 않았고 마지막 줄이 ready 줄인 서버는 시작을 끝없이 기다리게 했다. 이제 시작은 watch의 시작과 각 event 뒤에 poll 단계를 지나 log를 한 번 더 읽는다.
 - Go, TypeScript, PHP, Python, PHP 확장의 dbspec 파서가 codec stage `json`을 `ordered_json`으로 읽습니다(DBS-69). 이 파서들은 `codec doc json`을 `codec stage "json" is unknown`으로 거부했고, core는 `json`을 씁니다(T446).
 - legacy 모듈의 Go 테스트가 `go.work`로 저장소 root를 찾습니다(`testcase.RepositoryRoot`). `internal/dialects`는 init에서 `legacy` 아래의 `contracts/implementations.json`을 열다 panic해 테스트가 하나도 실행되지 않았고, `TestStressDocument`는 없는 `legacy/tests/dbspec/stress.mts`를 실행했습니다. 클라이언트 간 테스트의 runner는 이제 `legacy/` 경로로 저장소 root에서 실행됩니다(T447).
+- legacy Go 모듈의 `internal/buildconstraints`와 `engine/dbspec` 테스트, 그리고 `TestCaseHarnessReportsOnlyFailure`의 fixture가 디렉터리 수를 세지 않고 `testcase.RepositoryRoot`와 `testcase.LegacyRoot`로 root를 찾습니다. `TestGoTestTagsAreReadFromTheRunner`와 `TestNoBuildTagLeavesATestOut`은 `legacy/go.work`와 `legacy/tests/go-test.mts`를 열다 실패했습니다(T447).
 
 ## 0.0.31
 

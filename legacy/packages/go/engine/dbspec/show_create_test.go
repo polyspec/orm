@@ -71,7 +71,7 @@ func TestMySQLShownCheckVectors(t *testing.T) {
 // loadShowCreate reads and decodes tests/dbspec/show-create.json; a failure fails the test.
 func loadShowCreate(t *testing.T) showCreateVectors {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "show-create.json"))
+	raw, err := os.ReadFile(filepath.Join(legacyRoot(t), "tests", "dbspec", "show-create.json"))
 	if err != nil {
 		t.Fatalf("cannot read tests/dbspec/show-create.json: %v; run from a checkout of this repository", err)
 	}

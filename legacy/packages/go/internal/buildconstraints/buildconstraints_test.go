@@ -26,14 +26,10 @@ var platformTags = []string{
 	"unix", "cgo",
 }
 
-// repositoryRoot is the root of the checkout: go test runs in this package's directory.
+// repositoryRoot is the root of the checkout, which holds go.work and tests/go-test.mts (testcase.RepositoryRoot).
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
-	directory, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return filepath.Clean(filepath.Join(directory, "..", "..", "..", ".."))
+	return testcase.RepositoryRoot()
 }
 
 // moduleDirectories reads the modules of go.work, so that a new module of the repository falls under the rule.
