@@ -1,5 +1,6 @@
 //! Literal validation and the canonical literal forms.
 
+use super::lexer::{tokenize, Kind};
 use super::model::Type;
 
 /// A literal as written: a signed number, a word or a string value.
@@ -20,6 +21,37 @@ fn split_number(text: &str) -> (&str, &str) {
 /// The canonical string literal: single quotes, a quote written as `''`.
 pub(crate) fn quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
+}
+
+/// The literal that `text` is, as the parser reads a default value: one token with no space around it, which is a
+/// number, a number whose minus sign is attached, a word or a quoted string (docs/spec/flowmark-surface.md FMS-26).
+/// A text with a line end, with another token or with a character that no token allows is no literal.
+pub(crate) fn literal_value(text: &str) -> Option<Value> {
+    if text.starts_with(' ') || text.ends_with(' ') || text.contains(['\r', '\n']) {
+        return None;
+    }
+    match tokenize(text, 1).as_slice() {
+        [token] => match token.kind {
+            Kind::Number => Some(Value::Number { negative: false, text: token.text.to_owned() }),
+            Kind::Word => Some(Value::Word(token.text.to_owned())),
+            Kind::Str => Some(Value::Str(token.string_value())),
+            Kind::Punct | Kind::Invalid => None,
+        },
+        [minus, number] if minus.is("-") && number.kind == Kind::Number && number.pos.column == minus.pos.column + 1 => {
+            Some(Value::Number { negative: true, text: number.text.to_owned() })
+        }
+        _ => None,
+    }
+}
+
+/// The canonical text of `text`, a literal written as the default of a column of the type `ty`, or `None` when
+/// `text` is no literal of the type (FMS-26). A `text` or `bytes` column has no literal.
+pub fn canonical_literal(ty: Type, text: &str) -> Option<String> {
+    match default_literal(ty, &literal_value(text)?) {
+        Ok(canonical) => Some(canonical),
+        // The refusal says why the literal does not fit; this function answers only whether it is one.
+        Err(_unfit) => None,
+    }
 }
 
 /// Validates a default value against its column type and returns its canonical text.

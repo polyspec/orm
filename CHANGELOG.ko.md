@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5b8b14cf07107b13bf252083fa557c6f815f922a8c423f4f7c32f33fbfbfa0d1 -->
+<!-- source-sha256: d32966be5ec22b1efb1119dc6f91537aab0de773601511ea2a8a7e57df1e9f87 -->
 # 변경 이력
 
 ## Unreleased
+
+- `polyspec_orm_schema::dbspec::json`은 dbspec 값의 JSON 형식을 쓰고 읽으며, `dbspec::canonical_literal`은 텍스트에서 literal을 읽는다(OM-1.5-1, FMS-10부터 FMS-16, FMS-26, FMS-80). 함수는 `type_to_json`과 `type_from_json`, `document_to_json`과 `document_from_json`, `runtime_model_to_json`과 `runtime_model_from_json`, `diagnostic_to_json`과 `position_to_json`이다. 형식에서 읽은 문서는 모든 이름이 기본 위치를 가지고 같은 canonical 텍스트를 가진다. 자기 형식이 아닌 값은 `document.tables[0].engine is no member of the form`처럼 그 member를 이름하는 텍스트로 거부된다. 그 함수와 packages/rust/schema/tests/unit/flowmark_surface.rs의 case 7개는 아직 compile하거나 실행하지 않았다.
 
 - docs/spec/flowmark-surface.md는 처음의 글이 정하지 않은 곳에서 JSON surface의 함수가 무엇을 거부하고 돌려주는지 적는다(OM-1.5-1, FMS-10, FMS-31, FMS-80, FMS-81). `document_to_json`은 result를 돌려주고 형식이 담을 수 없는 문서를 거부한다(primary key가 둘 이상인 table, 두 번 나온 한 줄짜리 setting, list가 둘인 audit setting, canonical 텍스트가 없는 check literal). `runtime_model_to_json`은 `entities`를 가진 object를 쓰고, `manifest_hash`는 `Manifest::to_json`과 `Manifest::from_json`이 가진다. `dbspec_json::parse_set`은 result를 돌려준다. 요청에서 `null`이거나 타입이 다른 member는 `ir_invalid`다. FMS-81의 case는 tests/dbspec/canonical.json의 canonical 텍스트, tests/planner/compile.json의 serde 텍스트, tests/ir/validate.json의 JSON 텍스트를 읽는다. 그 함수는 구현되지 않았다.
 
