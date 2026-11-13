@@ -18,6 +18,7 @@ mod convert;
 mod emit;
 mod file;
 mod introspect;
+pub mod json;
 mod lexer;
 mod literal;
 mod mermaid;
@@ -43,6 +44,7 @@ pub use introspect::{
     catalog_followups, catalog_queries, check_server, hex_bytes, mariadb_catalog_default, read_catalog, uuid_text, CatalogValue, Introspection, Server,
     Unsupported, TEXT_STORAGE_REASON,
 };
+pub use literal::canonical_literal;
 pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};
 pub use plan::{chain, emit_plan, parse_plan, ColumnName, ColumnRename, Plan, TableRename, RULE_CHAIN, RULE_PLAN};
