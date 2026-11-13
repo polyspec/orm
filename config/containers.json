@@ -52,13 +52,13 @@
     }
   },
   "bay": {
-    "version": "v0.0.5",
-    "release": "https://github.com/polyspec/bay/releases/download/v0.0.5",
+    "version": "v0.0.6",
+    "release": "https://github.com/polyspec/bay/releases/download/v0.0.6",
     "sha256": {
-      "darwin_amd64": "247bf172c2bd5362e66cc4cf44a06f25e57759cbc7736572bada2287c3e95c14",
-      "darwin_arm64": "5cf546145353802b378d84c4c914c3e95b9e430556472732b1ce8b6ce4f9f9ca",
-      "linux_amd64": "e8aec2fa24c1b9ed6c2cfd8bdcc367e5fc35f41f66ab6fb544da534bb9ab308d",
-      "linux_arm64": "5e67ed0a1b6aad45dd15a4f8653beed58ab0496896d9cbaefe8f8088bf1b099e"
+      "darwin_amd64": "3d76a9dbb2e2642c44b00123d89b86b66e8ca33d54a5433bd7a164ec00f73211",
+      "darwin_arm64": "644921d8f2e8363a267203a3fdffe2a7da5e7d481dd6388dee14f1abc452bfe9",
+      "linux_amd64": "646b6375b99759872a3398518b4179f9629e994c9bab5063f802a8e2effb77c0",
+      "linux_arm64": "10abbf25650ced52675fec30b11f5bdac199f2adac423041a1796fd498746d67"
     }
   }
 }
