@@ -1019,6 +1019,11 @@ func (p *parser) settingsLine(c *cursor) {
 	stage := func() bool {
 		t, ok := c.member("a codec stage", isCodecStage)
 		if ok {
+			// json is the name of the stage ordered_json in the core, with the same encoding (DBS-69), so the reader
+			// takes it as ordered_json and the canonical form writes ordered_json.
+			if t.text == jsonStage {
+				t.text = "ordered_json"
+			}
 			line.args = append(line.args, t)
 		}
 		return ok

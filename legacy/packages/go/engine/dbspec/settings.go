@@ -13,6 +13,10 @@ var codecStages = map[string]bool{
 	"aes": true, "gz": true, "ip": true,
 }
 
+// jsonStage is the name of the stage ordered_json in the core (DBS-69), which the
+// reader takes as ordered_json.
+const jsonStage = "json"
+
 func isInteger(t Type) bool {
 	return t.Kind == TypeI16 || t.Kind == TypeI32 || t.Kind == TypeI64
 }
@@ -571,5 +575,5 @@ func coordinate(t token) (int64, bool) {
 // isCodecStage reports whether s is a codec stage of the codec setting.
 func isCodecStage(s string) bool {
 	_, ok := codecStages[s]
-	return ok
+	return ok || s == jsonStage
 }

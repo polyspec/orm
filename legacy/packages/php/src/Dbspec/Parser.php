@@ -53,6 +53,8 @@ final class Parser
     private const ONCE_STORAGE = ['store', 'title', 'body', 'order', 'task_marker'];
     /** The codec stages, the fixed words after a codec column (docs/spec/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
+    /** The name of the stage ordered_json in the core (DBS-69). */
+    private const JSON_STAGE = 'json';
     /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
     private const UTF8_CHAR = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|'
         . '[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|'
@@ -1884,6 +1886,13 @@ final class Parser
         }
         if (in_array($token[0], self::CODEC_STAGES, true)) {
             return $this->take('keyword');
+        }
+        // json is the name of the stage ordered_json in the core, with the same encoding (DBS-69), so the reader takes it
+        // as ordered_json and the canonical form writes ordered_json.
+        if ($token[0] === self::JSON_STAGE) {
+            $stage = $this->take('keyword');
+            $stage[0] = 'ordered_json';
+            return $stage;
         }
         $this->cursor++;
         return $token;
