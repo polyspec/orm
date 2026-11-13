@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 62a3f03ae66e30d282566aa1480c969e151fd00731c5ee20f70aab789c0b2969 -->
+<!-- source-sha256: aedae43e89c8a8bf6e89eda184f994a23e06a40750b1ac97130492115b784669 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -32,12 +32,13 @@
   Enforced by: `make repo-check`
 - Refines S5: client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
   `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
-  `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module은 `github.com/polyspec/orm/packages/go`
-  (`legacy/packages/go/go.mod`)다: client(`orm`, `model`과 다른 생성 model), engine(`engine/`), generator(`generator/`),
+  `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. legacy Go module은 디렉터리 경로와 같은
+  `github.com/polyspec/orm/legacy/packages/go`(`legacy/packages/go/go.mod`)다: client(`orm`, `model`과 다른 생성 model), engine(`engine/`), generator(`generator/`),
   `cmd/orm-gen`, `tests/`의 Go program이 import하므로 공개 package인 case harness `testcase`와 process event
   `procevent`, 그리고 `internal/testdb`를 가진다. `tests/`의 Go runner, physical test, 도구 program은 module
   `github.com/polyspec/orm/tests`(`tests/go.mod`)이고, example은 `github.com/polyspec/orm/examples`(`examples/go.mod`)이며,
-  root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `legacy/packages/go`를 쓴다.
+  root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `legacy/packages/go`를 쓴다. `tests/`와
+  `examples/`는 root의 `go.work`로만 그것을 찾으므로, 그 Go 명령은 `GOWORK=off`로는 그것을 찾지 못한다.
   Enforced by: `make layout-check`
 - Own: core crate `polyspec-orm`은 계약 `packages/rust/interface.json` 옆의 `packages/rust`이고, `binding scaffold`가
   쓰는 바인딩 package는 그 옆에 있다: `packages/ts`(Node), `packages/ts/wasm`(WASM), `packages/python`,
@@ -47,7 +48,7 @@
   workspace가 모든 바인딩 crate를 가지는지 검사하기 때문이다. 바인딩 crate는 `make bindings`가 생성 folder를 쓴
   뒤에만 build되므로, workspace 전체에 대한 cargo 명령은 바인딩 crate를 뺀다(Makefile의 `ORM_RUST_EXCLUDE_BINDINGS`).
   그 crate는 `make lint-bindings`와 `make test-bindings`가 build한다. 바인딩 Go module `packages/go`는
-  `legacy/packages/go`와 같은 module path를 가지므로 그 명령은 `GOWORK=off`로 실행한다. root의 npm workspace는 이름으로
+  `github.com/polyspec/orm/packages/go`이고 root의 `go.work`가 묶지 않으므로 그 명령은 `GOWORK=off`로 실행한다. root의 npm workspace는 이름으로
   적은 dbspec editor package 넷이다. `packages/ts`는 package `@polyspec/orm`이고, `legacy/packages/ts`도 그 이름을
   가지기 때문이다.
   Enforced by: `make bindings-check`, binding scaffold가 쓰는 것과 바인딩 package를 비교한다(CK-19)
@@ -272,7 +273,7 @@
 - Own: 그 commit에서 `.github/workflows/ci.yml`의 push 또는 manual run이 성공한 뒤(`ci-passed`) maintainer가 그 run의 id로 release를
   dispatch한다: `gh workflow run release.yml -f run=<id>`. 그 `make release-tag`는 run이 성공했고
   검증한 바로 그 commit이 `origin/main`에 있기를 요구하며, 그 commit에 annotated tag `vX.Y.Z`와 `legacy/packages/go/vX.Y.Z`를 만들어 push한다. 그
-  tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
+  tag가 Go module `github.com/polyspec/orm/legacy/packages/go`를 release한다. 다른 commit에 있거나 lightweight인 tag는 거절한다. 손으로
   tag를 만들고 옮기고 push하는 사람은 없다. tag하기 전에 `scripts/repo/release-run.mts`가 `documents.yml`이나 `docs-pages.yml` 같은
   다른 workflow의 run, 다른 event의 run, 성공하지 않은 run, 그리고 run이 시작한 release에서는 다른 commit의 run을 거부한다.
   Enforced by: `make release-tag`, `make repo-check`
