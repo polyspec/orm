@@ -541,10 +541,8 @@ mod plan_cache_tests {
     use std::collections::HashSet;
     use std::sync::Arc;
 
-    static IDENTITY_SCHEMA: Schema = Schema::new(
-        include_str!("../../../contracts/fixtures/identity_load.dbs"),
-        "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de",
-    );
+    static IDENTITY_SCHEMA: Schema =
+        Schema::new(include_str!("../../../contracts/fixtures/identity_load.dbs"), "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de");
     static PROBE: Entity = Entity {
         name: "load_probe",
         schema: &IDENTITY_SCHEMA,

@@ -119,8 +119,7 @@ mod aggregate_numeric {
 
     /// Runs the case `id` of the fixture: its numeric text reads to the expected binary64 bits, or fails with CODEC_DECODE.
     fn run(id: &str) {
-        let fixture: serde_json::Value =
-            serde_json::from_str(include_str!("../../../contracts/fixtures/aggregate_numeric.json")).expect("aggregate fixture");
+        let fixture: serde_json::Value = serde_json::from_str(include_str!("../../../contracts/fixtures/aggregate_numeric.json")).expect("aggregate fixture");
         assert_eq!(fixture["feature"], "model_queries");
         let cases: Vec<&serde_json::Value> = fixture["cases"].as_array().expect("aggregate cases").iter().filter(|c| c["id"] == id).collect();
         let [case] = cases.as_slice() else { panic!("{id}: the fixture holds the case {} times", cases.len()) };
