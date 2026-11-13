@@ -27,7 +27,7 @@ const VERSION = 'v0.0.0-stand-in+dirty';
 
 // StandIn has the path of the stand-in bay of a test, which is named bay in a directory of its own, so that a stand-in
 // ssh finds it on PATH; the directory of the projects that it holds; and the files that change what it does: while
-// upFails exists, up records its project and exits with 1; while absent exists, images reports each image as missing
+// upFails exists, an up of a file with a server records its project and exits with 1; while absent exists, images reports each image as missing
 // and up -no-pull fails before it records anything; while execFails exists, a step of a server exits with 7; while
 // schema exists, version reports its text as the schema version, and while release exists, its text as the version of
 // bay; while checkFails exists, the command of a run in the runner exits with 5, and while buildFails exists, its
@@ -76,7 +76,7 @@ else if (is('images')) {
   // A second up of a project adds the services that its Compose file now declares and keeps the others.
   appendFileSync(${JSON.stringify(stand.ups)}, JSON.stringify(services().map(service => service.name)) + '\\n');
   writeFileSync(project, process.cwd());
-  if (existsSync(${JSON.stringify(stand.upFails)})) fail('service mysql is unhealthy');
+  if (existsSync(${JSON.stringify(stand.upFails)}) && services().some(service => service.name !== 'runner')) fail('service mysql stopped during healthcheck');
   console.log('all services accept connections');
 } else if (is('down')) rmSync(project, { force: true });
 else if (is('pull')) { if (services().length === 0) fail('compose.yaml has no service'); }
@@ -460,7 +460,7 @@ caseTest('a run in the runner has the service runner, installs it from a bundle 
       assert.ok(environment.includes('ssl-ca=/orm-run/tls/other-ca.pem') && environment.includes(`export ORM_TEST_SERVERS_LEASES='/orm-run/leases'`), environment);
       const ran = commands(stand);
       assert.deepEqual(ran.filter(command => !command.startsWith('exec mysql')), ['plan --json', 'images', 'up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'up -no-pull', 'exec runner sh /orm-run/check.sh',
-        'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'down'], 'the runner is not installed before the servers start, or its memory is not recorded before it is removed');
+        'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'down'], 'the runner is not installed before the servers start, or its memory is not recorded before it is removed');
       // The installation of the runner and the servers do not hold memory at the same time: the first up has the
       // runner alone, and the second adds the servers.
       assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['runner'], ['mysql', 'mysql-replica', 'runner']]);
@@ -482,6 +482,18 @@ caseTest('a run in the runner has the service runner, installs it from a bundle 
       assert.equal(again.status, 5, `run.sh does not end with the status of the command of the run: ${again.stderr}`);
       assert.deepEqual(verbs(stand).filter(verb => verb !== 'exec'), ['images', 'up', 'up', 'down']);
       assert.equal(file(context.root, project, 'report/status'), '5\n');
+
+      // A failed bay up of the servers leaves the output of bay, which names the service and the cause, the last
+      // lines of each service and the failed step in report/, and the run ends with the status of bay.
+      writeFileSync(stand.upFails, '');
+      const failed = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh')], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
+      assert.equal(failed.status, 1, `run.sh does not end with the status of bay up: ${failed.stderr}`);
+      const output = file(context.root, project, 'report/bay-up-servers.log');
+      for (const part of ['bay: service mysql stopped during healthcheck', 'the last lines of mysql\n', 'the last lines of mysql-replica\n']) assert.ok(output.includes(part), `report/bay-up-servers.log misses ${part}: ${output}`);
+      assert.ok(failed.stderr.includes('bay: service mysql stopped during healthcheck'), 'the output of bay up is not in the output of run.sh');
+      assert.equal(file(context.root, project, 'report/bay-up-servers.status'), '1\n');
+      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
+      assert.deepEqual(readdirSync(stand.state), [], 'a failed bay up leaves its project');
     });
   }));
 
@@ -586,7 +598,7 @@ caseTest('a run in the runner with a build command builds before the servers sta
       const project = only(context.root);
       // The build runs in the runner while no server is up; the second up then adds the servers.
       const ran = commands(stand).filter(command => !command.startsWith('exec mysql'));
-      assert.deepEqual(ran.slice(2, 9), ['up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'exec runner sh /orm-run/build.sh', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'up -no-pull', 'exec runner sh /orm-run/check.sh']);
+      assert.deepEqual(ran.slice(2, 10), ['up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'exec runner sh /orm-run/build.sh', 'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'up -no-pull', 'exec runner sh /orm-run/check.sh']);
       assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['runner'], ['mysql', 'mysql-replica', 'runner']]);
       assert.ok(file(context.root, project, 'build.sh').includes(`( 'make' 'test-rust-build' )`), 'build.sh does not run the build command as it was given');
       assert.ok(!file(context.root, project, 'build.sh').includes('servers.env'), 'the build reads the variables of servers that are not up');
@@ -634,9 +646,9 @@ caseTest('a check through a Unix socket is built in the runner and runs in the c
       const check = file(context.root, project, 'socket-check.sh');
       assert.ok(check.includes('. /orm-run/servers.env') && check.includes(`exec '/orm-run/programs/recipe' 'case-socket'`), check);
       const ran = commands(stand).filter(command => !command.startsWith('exec mysql'));
-      assert.deepEqual(ran.slice(2), ['up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'exec runner sh /orm-run/socket-build.sh', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak',
+      assert.deepEqual(ran.slice(2), ['up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'exec runner sh /orm-run/socket-build.sh', 'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak',
         'up -no-pull', 'exec runner sh /orm-run/check.sh', 'exec -e ORM_TEST_MYSQL_SOCKET=/var/run/mysqld/mysqld.sock mysql sh /orm-run/socket-check.sh',
-        'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'down']);
+        'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'down']);
       assert.equal(file(context.root, project, 'report/socket.log'), 'the output of the socket check\n');
       assert.equal(file(context.root, project, 'report/socket-status'), '0\n');
       for (const name of ['run.sh', 'socket-build.sh', 'socket-check.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);

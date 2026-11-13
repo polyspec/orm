@@ -449,9 +449,14 @@ const words = (command: readonly string[]) => command.map(quote).join(' ');
 // of the mismatch DSN is the first word that getent ahostsv4, which prints IPv4 addresses alone, prints for the host
 // name of the primary in the container of the primary.
 //
-// run.sh writes the time of each step to its output and to report/steps.log, and the highest memory and swap of the
-// runner, which the kernel keeps in memory.peak and memory.swap.peak of its cgroup, to report/ after the build and
-// before the project is removed. A kernel without these files leaves the failure of cat in steps.log, and the run goes on:
+// run.sh writes the time of each step to its output and to report/steps.log, with the step and the status of a step that
+// failed, and the memory, the highest memory and the highest swap of the runner, which the kernel keeps in
+// memory.current, memory.peak and memory.swap.peak of its cgroup, to report/ after the build and before the project is
+// removed. The output of each bay up, which names the service that failed and why, and the last lines of the log of each
+// service after a failed bay up are also report/bay-up-runner.log and report/bay-up-servers.log, so the report of a run
+// on another machine shows the cause of a failed start. bay starts the services one after another in the order of
+// their dependencies and waits for the healthcheck of each before it creates the next, so a service after the one that
+// failed has no container, and its logs name none. A kernel without these files leaves the failure of cat in steps.log, and the run goes on:
 // a measurement does not decide a run.
 function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], steps: readonly Step[], primary: string, variables: Record<string, string>, command: readonly string[] | undefined, build: boolean, socket: boolean): string {
   const environment = Object.entries(variables).map(([name, value]) => {
@@ -461,7 +466,7 @@ function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], s
   const runner = form === 'runner';
   const check = command === undefined ? ['say "this directory was written without a command; write a run with make orm-test-container-run"', 'exit 2']
     : [`at "the command of the run"`, runner ? `beside b exec runner sh ${RUN_MOUNT}/check.sh` : `beside sh -c '. "$1/servers.env" && shift && exec "$@"' sh "$dir" ${words(command)}`, 'status=$?'];
-  const logs = (names: readonly string[]) => names.map(name => `    say "the last lines of the service ${name}:"; b logs -n 50 ${quote(name)} >&2`).join('\n');
+  const logs = (file: string, names: readonly string[]) => names.map(name => `    say "the last lines of the service ${name}:"; b logs -n 50 ${quote(name)} 2>&1 | tee -a "$dir/report/${file}.log" >&2`).join('\n');
   return `#!/bin/sh
 # run.sh of the project ${at.name}: the ${kind} servers of a run in the form of the ${form}, written by
 # scripts/test-servers-container.mts. It needs sh and bay alone. BAY_COMMAND is the command of bay, of one or more words,
@@ -498,9 +503,20 @@ beside() {
   return "$ended"
 }
 
-# peaks <suffix>: the highest memory and swap of the runner, from its cgroup.
+# recorded <name> <command>: run a command with its standard output and its error output in the output of run.sh and
+# in report/<name>.log, and return its status, which report/<name>.status keeps, since a pipeline of sh returns the
+# status of tee.
+recorded() {
+  name=$1
+  shift
+  { "$@" 2>&1; printf '%s\\n' "$?" > "$dir/report/$name.status"; } | tee -a "$dir/report/$name.log" >&2
+  read -r ended < "$dir/report/$name.status"
+  return "$ended"
+}
+
+# peaks <suffix>: the memory, the highest memory and the highest swap of the runner, from its cgroup.
 peaks() {
-${runner ? `  for peak in memory.peak memory.swap.peak; do
+${runner ? `  for peak in memory.current memory.peak memory.swap.peak; do
     b exec runner cat "/sys/fs/cgroup/$peak" > "$dir/report/runner-$peak$1" 2>> "$dir/report/steps.log" || say "the runner has no /sys/fs/cgroup/$peak; report/steps.log has the output of cat"
   done` : '  :'}
 }
@@ -514,6 +530,7 @@ down() {
 # failed <status> <what>: a step that failed removes the project and ends the run with its status.
 failed() {
   say "$2 of $project exited with $1"
+  printf '%s %s of %s exited with %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "$project" "$1" >> "$dir/report/steps.log"
   peaks ''
   down
   exit "$1"
@@ -538,9 +555,9 @@ ${runner ? '  cp "$dir/compose.run.yaml" "$dir/compose.yaml" || exit 1\n' : ''} 
   : > "$dir/started"
 ${runner ? `  cp "$dir/compose.build.yaml" "$dir/compose.yaml" || exit 1
   at "bay up of the runner"
-  b up -no-pull >&2 || {
+  recorded bay-up-runner b up -no-pull || {
     status=$?
-${logs(['runner'])}
+${logs('bay-up-runner', ['runner'])}
     failed "$status" "bay up of the runner"
   }
   at "the installation of the runner"
@@ -551,9 +568,9 @@ ${build ? `  at "the build command"
   beside b exec runner sh ${RUN_MOUNT}/socket-build.sh || failed "$?" "bay exec runner sh ${RUN_MOUNT}/socket-build.sh"
 ` : ''}${build || socket ? '  peaks .build\n' : ''}  cp "$dir/compose.run.yaml" "$dir/compose.yaml" || failed 1 "the copy of compose.run.yaml"
 ` : ''}  at "bay up of the servers"
-  b up -no-pull >&2 || {
+  recorded bay-up-servers b up -no-pull || {
     status=$?
-${logs(services.map(service => service.name))}
+${logs('bay-up-servers', services.map(service => service.name))}
     failed "$status" "bay up"
   }
 ${steps.map(step => `  at ${quote(`bay exec ${step.service} ${step.command[0] ?? ''}`)}\n  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${quote(`bay exec ${step.service} ${step.command.join(' ')}`)}`).join('\n')}

@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: ece1a82e7737ae7d88b703af1eeb0b7019d94240145048ac69b9c6ffb07207f0 -->
+<!-- source-sha256: 7535371b3a71b1f2e6aec6b66ec52ce08ddf5db1f59593fd33ab646c9e04200c -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -80,7 +80,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 | `runner-setup.sh`, `build.sh`, `check.sh`, `repo.bundle` | runner 형태: 설치, build command, run의 command, run의 commit |
 | `socket-build.sh`, `socket-check.sh`, `programs/` | Unix socket을 통한 check: runner 안의 build, primary의 container 안의 command, program |
 | `compose.build.yaml`, `compose.run.yaml` | runner 형태: runner만 있는 Compose file과 server가 있는 Compose file. `compose.yaml`은 둘 중 하나의 복사본이다 |
-| `report/` | run이 기록하는 것: `bay-version`, `steps.log`, runner 형태에서는 command의 출력과 status, runner의 memory |
+| `report/` | run이 기록하는 것: `bay-version`, `steps.log`, `bay-up-servers.log`의 `bay up` 출력, runner 형태에서는 `bay-up-runner.log`, command의 출력과 status, runner의 memory |
 
 **run의 두 형태.** run은 두 형태 중 하나다. script가 directory를 쓸 때 형태를 `run.sh`에 기록하고, run이 실행되는 동안 형태는 바뀌지 않는다. host 형태에서 run의 command는 server의 변수를 가진 host의 process이며, Darwin 같은 host system의 결과를 준다. runner 형태(`FORM=runner`)에서 command는 `bay exec runner`로 service `runner` 안에서 실행되고, host에는 이 repository의 tool이 필요 없다. 두 형태는 server의 service와 server를 준비하는 단계가 같다.
 
@@ -137,7 +137,7 @@ runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fus
 
 세 값은 실행하는 쪽이 machine에 맞게 주며, 이 repository는 그 값을 가지고 있지 않다. build의 최고 memory는 job 수에 따라 커지고 machine마다 memory가 다르기 때문이다. `CARGO_BUILD_JOBS`는 cargo의 job 수이고 `runner-setup.sh`가 runner의 cargo 설정에 쓴다. `RUNNER_MEMORY`는 runner의 `mem_limit`이며, 주지 않으면 runner에는 한도가 없다. `SERVER_MEMORY`는 각 server의 `mem_limit`이며, 주지 않으면 4 GiB다. container의 기본값 1 GiB에서는 `mysqld`가 종료되기 때문이다.
 
-`run.sh`는 run이 쓴 것을 기록한다. 각 단계의 시각을 출력과 `report/steps.log`에 쓰고, kernel이 cgroup의 `memory.peak`과 `memory.swap.peak`에 두는 runner의 최고 memory와 swap을 project를 제거하기 전에 `report/runner-memory.peak`과 `report/runner-memory.swap.peak`에, build command 뒤에는 접미사 `.build`를 붙여 쓴다. 이 file이 없는 kernel에서는 실패가 `report/steps.log`에 남고 run은 계속된다. 측정은 run을 판정하지 않기 때문이다.
+`run.sh`는 run이 쓴 것을 기록한다. 각 단계의 시각을 출력과 `report/steps.log`에 쓰고, 실패한 단계는 그 단계와 exit status를 함께 쓴다. kernel이 cgroup의 `memory.current`, `memory.peak`, `memory.swap.peak`에 두는 runner의 memory, 최고 memory, 최고 swap을 project를 제거하기 전에 `report/runner-memory.current`, `report/runner-memory.peak`, `report/runner-memory.swap.peak`에 쓰고, build command 뒤 server가 시작되기 전에는 접미사 `.build`를 붙여 쓴다. 각 `bay up`의 출력은 `run.sh`의 출력과 `report/bay-up-servers.log`에 있고, runner 형태에서는 runner만 시작하는 `bay up`의 출력이 `report/bay-up-runner.log`에 있으며, 그 exit status는 같은 이름에 접미사 `.status`를 붙인 file에 있다. `bay up`이 실패하면 각 service log의 마지막 줄이 그 뒤에 이어진다. `bay`는 실패한 service와 원인을 출력하므로, 다른 machine에서의 run의 보고에서 시작이 실패한 이유를 볼 수 있다. `bay`는 service를 의존 순서대로 하나씩 시작하고 각 service의 healthcheck를 기다린 뒤 다음 service를 만들기 때문에, 실패한 service 뒤의 service에는 container가 없고 그 log가 그것을 보고한다. 이 file이 없는 kernel에서는 실패가 `report/steps.log`에 남고 run은 계속된다. 측정은 run을 판정하지 않기 때문이다.
 
 **다른 machine에서의 run.** `bay`는 자신이 실행되는 machine에서만 project를 시작하고 제거하므로, server를 다른 machine에 두는 것은 run 전체가 그곳에서 실행되는 것이다. `make orm-test-container-remote KIND=<kind> RUN='<command>' HOST=<ssh host> REMOTE=<directory>`는 그 machine의 `bay`의 plan을 `ssh`로 읽어 runner 형태의 run을 쓰고, run의 directory를 tar archive로 `ssh`를 통해 `<directory>/<project>`에 보내고, `ssh <host> sh <directory>/<project>/run.sh`를 실행하고, `report/`를 `.runtime/containers/reports/<project>`로 가져오고, `KEEP=1`이 아니면 그곳의 directory를 제거한다. 그 exit status는 `run.sh`의 것이다. `run.sh`는 machine을 적지 않는다. 이 target만 host와 directory를 적는다.
 
