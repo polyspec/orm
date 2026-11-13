@@ -716,60 +716,90 @@ caseTest('test server sockets stay within the Unix socket path limit for a long 
   assert.notEqual(paths(`${root}x`).sockets.mysql, sockets[0]);
 });
 
-// startLogged waits for its ready line in the log and never waits forever: a ready line that does not come fails the start with
-// the step name and the log path, and a line that is already written when the server starts is seen.
-caseTest('startLogged fails loudly with its step and log path when the ready line never comes', COMPUTE, async () => {
+// startLogged waits for its ready line by the events of its log and of its server, with no deadline (T390, FCV-18): a line
+// that is already written when the server starts is seen, and a cancellation asks the server to end and waits for its exit.
+const QUIET_SERVER = (marker: string): string => `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
+  process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); console.log('started');`;
+
+/** Runs body while the lines that startLogged forwards to the standard error are given to `line`. */
+async function withForwarded(line: (text: string) => void, body: () => Promise<void>): Promise<void> {
+  const originalWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (chunk: string | Uint8Array) => { line(String(chunk)); return true; };
+  try { await body(); } finally { process.stderr.write = originalWrite; }
+}
+
+caseTest('startLogged names what it waits for, and a cancellation asks its server to end and waits for its exit', PROCESS, async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   const log = join(dir, 'silent.log');
+  const marker = join(dir, 'cleaned');
+  const controller = new AbortController();
+  const forwarded: string[] = [];
   try {
-    await assert.rejects(
-      startLogged(dir, 'silent', 'line-never-printed', process.execPath, ['-e', 'setInterval(() => {}, 1000)'], isolatedEnvironment(), 500),
-      (error: Error) => error.message.includes('silent') && error.message.includes(log) && error.message.includes('line-never-printed'),
-    );
+    await withForwarded(text => {
+      forwarded.push(text);
+      // The server has set its handler when its first line is forwarded: the case cancels the start then.
+      if (text.includes('silent: started')) controller.abort(new Error('the case cancels the start'));
+    }, async () => {
+      await assert.rejects(
+        startLogged(dir, 'silent', 'line-never-printed', process.execPath, ['-e', QUIET_SERVER(marker)], isolatedEnvironment(), controller.signal),
+        (error: Error) => {
+          assert.ok(error instanceof TestServerError);
+          assert.match(error.message, /the start of silent was cancelled before it logged 'line-never-printed': the case cancels the start/);
+          assert.ok(error.message.includes(log), error.message);
+          return true;
+        },
+      );
+    });
+    assert.equal(readFileSync(marker, 'utf8'), 'cleaned', 'the server ran its cleanup before the start was reported');
+    assert.ok(forwarded.some(text => text.includes(`silent: waits for the line 'line-never-printed' with no time limit; its log is ${log}`)), forwarded.join(''));
+    assert.ok(forwarded.some(text => /silent: sent SIGTERM to process group \d+ and waits for its exit with no time limit/.test(text)), forwarded.join(''));
   } finally {
     cleanupStartedChild(dir, 'silent');
   }
 });
 
-caseTest('startLogged preserves its timeout and cleanup errors after closing the log watcher', PROCESS, async () => {
+caseTest('startLogged keeps the cancellation and the failure of its request, and forwards no line after it settled', PROCESS, async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-cleanup-')));
   const originalKill = process.kill.bind(process);
-  const originalWrite = process.stderr.write.bind(process.stderr);
   const denied = Object.assign(new Error('process group is not signalable'), { code: 'EPERM' });
+  const controller = new AbortController();
   const forwarded: string[] = [];
-  let pid = 0;
+  const sent: (NodeJS.Signals | number | undefined)[] = [];
   let closeLateWatcher: (() => void) | undefined;
   try {
     process.kill = (target: number, signal?: NodeJS.Signals | number) => {
-      if (target < 0 && signal === 'SIGKILL') { pid = -target; throw denied; }
+      if (target < 0) { sent.push(signal); throw denied; }
       return originalKill(target, signal);
     };
-    process.stderr.write = (chunk: string | Uint8Array) => { forwarded.push(String(chunk)); return true; };
-    await assert.rejects(startLogged(dir, 'blocked', 'never-ready', process.execPath, ['-e', 'setInterval(() => console.log("heartbeat"), 25)'], isolatedEnvironment(), 100), error => {
-      assert.ok(error instanceof TestServerError);
-      assert.match(error.message, /did not log 'never-ready'/);
-      assert.match(error.message, /cleanup of process group/);
-      const cause = error.cause;
-      assert.ok(cause instanceof AggregateError);
-      assert.ok(cause.errors[0] instanceof Error);
-      assert.match(cause.errors[0].message, /did not log 'never-ready'/);
-      assert.strictEqual(cause.errors[1], denied);
-      return true;
-    });
-    assert.ok(pid > 0, 'timeout did not attempt to kill the fake process group');
-    const countAtSettle = forwarded.length;
-    const offset = statSync(join(dir, 'blocked.log')).size;
-    await new Promise<void>(resolveLate => {
-      const late = watch(join(dir, 'blocked.log'), () => {
+    await withForwarded(text => {
+      forwarded.push(text);
+      if (text.includes('blocked: heartbeat')) controller.abort(new Error('the case cancels the start'));
+    }, async () => {
+      await assert.rejects(startLogged(dir, 'blocked', 'never-ready', process.execPath, ['-e', 'setInterval(() => console.log("heartbeat"), 25)'], isolatedEnvironment(), controller.signal), error => {
+        assert.ok(error instanceof TestServerError);
+        assert.match(error.message, /was cancelled before it logged 'never-ready'/);
+        assert.match(error.message, /SIGTERM could not be sent to process group/);
+        const cause = error.cause;
+        assert.ok(cause instanceof AggregateError);
+        assert.ok(cause.errors[0] instanceof Error);
+        assert.match(cause.errors[0].message, /was cancelled before it logged 'never-ready'/);
+        assert.strictEqual(cause.errors[1], denied);
+        return true;
+      });
+      assert.deepEqual(sent, ['SIGTERM'], 'one request, and no SIGKILL after it');
+      const countAtSettle = forwarded.length;
+      const offset = statSync(join(dir, 'blocked.log')).size;
+      await new Promise<void>(resolveLate => {
+        const late = watch(join(dir, 'blocked.log'), () => {
+          if (statSync(join(dir, 'blocked.log')).size > offset) { late.close(); closeLateWatcher = undefined; resolveLate(); }
+        });
+        closeLateWatcher = () => late.close();
         if (statSync(join(dir, 'blocked.log')).size > offset) { late.close(); closeLateWatcher = undefined; resolveLate(); }
       });
-      closeLateWatcher = () => late.close();
-      if (statSync(join(dir, 'blocked.log')).size > offset) { late.close(); closeLateWatcher = undefined; resolveLate(); }
+      assert.equal(forwarded.length, countAtSettle, 'the log watcher forwarded output after the start settled');
     });
-    assert.equal(forwarded.length, countAtSettle, 'the log watcher forwarded output after timeout settlement');
   } finally {
     closeLateWatcher?.();
-    process.stderr.write = originalWrite;
     process.kill = originalKill;
     cleanupStartedChild(dir, 'blocked');
   }
@@ -778,7 +808,7 @@ caseTest('startLogged preserves its timeout and cleanup errors after closing the
 caseTest('startLogged resolves when the ready line is written at once, before its watcher is attached', COMPUTE, async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   try {
-    await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], isolatedEnvironment(), 10_000);
+    await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], isolatedEnvironment());
   } finally {
     cleanupStartedChild(dir, 'early');
   }
