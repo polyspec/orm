@@ -18,6 +18,7 @@ mod convert;
 mod emit;
 mod file;
 mod introspect;
+pub mod json;
 mod lexer;
 mod literal;
 mod mermaid;
