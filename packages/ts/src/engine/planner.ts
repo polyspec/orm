@@ -417,15 +417,9 @@ export class Planner {
         if (kind === 'one' && rc === undefined) sql += this.d.limit(0, 1);
         else if (q.limit) {
           if ('offset_p' in q.limit && 'count_p' in q.limit) {
-            let offset: string;
-            let count: string;
-            if (this.d.name === 'mysql') {
-              offset = b.param(q.limit.offset_p, 'i64');
-              count = b.param(q.limit.count_p, 'i64');
-            } else {
-              count = b.param(q.limit.count_p, 'i64');
-              offset = b.param(q.limit.offset_p, 'i64');
-            }
+            // Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+            const count = b.param(q.limit.count_p, 'i64');
+            const offset = b.param(q.limit.offset_p, 'i64');
             sql += this.d.limit(offset, count);
           } else sql += this.d.limit(q.limit.offset, q.limit.count);
         }

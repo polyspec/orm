@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 331d6f7735f602f38e409c5dafb9467c1764fbea87d5be399d0812ce28b6cb94 -->
+<!-- source-sha256: 7e3d4f120ffd9bdc661f7c762bb97d4c2ffc02df140d86da37b812cfa911d071 -->
 # 변경 이력
 
 ## Unreleased
+
+- 호환 깨짐(0.x): MySQL과 MariaDB는 PostgreSQL과 SQLite처럼 paged read를 `LIMIT n OFFSET off`로 그린다(T426-7, DIA-3). 모든 runtime의 planner가 그렇다. count는 모든 database에서 offset보다 먼저 bind되므로, plan의 bind slot과 `getQuery`의 bind, statement event가 한 순서를 갖는다. 전에는 MySQL이 `LIMIT off, n`을 그리고 offset을 먼저 bind했다. 읽는 행은 바뀌지 않는다.
 
 ## 0.0.33
 

@@ -269,10 +269,10 @@ class MysqlDialect(Dialect):
         return f"{_ascii_lower(col)} LIKE {_ascii_lower(ph)}"
 
     def limit(self, offset, count):
-        return f" LIMIT {offset}, {count}"
+        return f" LIMIT {count} OFFSET {offset}"
 
     def limit_params(self, offset, count):
-        return f" LIMIT {offset}, {count}"
+        return f" LIMIT {count} OFFSET {offset}"
 
     def force_index(self, name):
         return f" FORCE INDEX ({quote_with('`', name)})"

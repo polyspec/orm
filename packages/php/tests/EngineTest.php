@@ -49,7 +49,7 @@ final class EngineTest extends TestCase
 
         $want = [
             'mysql' => 'SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` '
-                . '= ? LIMIT 0, 1',
+                . '= ? LIMIT 1 OFFSET 0',
             'postgres' => 'SELECT "a"."seq" AS "a__seq", "a"."name" AS "a__name" FROM "service" AS "a" WHERE '
                 . '"a"."seq" = $1 LIMIT 1 OFFSET 0',
             'sqlite' => 'SELECT "a"."seq" AS "a__seq", "a"."name" AS "a__name" FROM "service" AS "a" WHERE "a"."seq" '

@@ -259,13 +259,9 @@ final class Planner
                     $sql .= $this->d->limit(0, 1);
                 } elseif (isset($q['limit'])) {
                     if (isset($q['limit']['offset_p'], $q['limit']['count_p'])) {
-                        if ($this->d->name === 'mysql') {
-                            $offset = $b->param($q['limit']['offset_p'], 'i64');
-                            $count = $b->param($q['limit']['count_p'], 'i64');
-                        } else {
-                            $count = $b->param($q['limit']['count_p'], 'i64');
-                            $offset = $b->param($q['limit']['offset_p'], 'i64');
-                        }
+                        // Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+                        $count = $b->param($q['limit']['count_p'], 'i64');
+                        $offset = $b->param($q['limit']['offset_p'], 'i64');
                         $sql .= $this->d->limitParams($offset, $count);
                     } else {
                         $sql .= $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);

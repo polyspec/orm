@@ -2236,7 +2236,7 @@
         {
          "count": {},
          "role": "main",
-         "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?",
+         "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?",
          "tables": [
           "product"
          ]
@@ -2392,7 +2392,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
             }
            ],
            [

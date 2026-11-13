@@ -533,12 +533,9 @@ class Planner:
                 elif q.get("limit"):
                     limit = q["limit"]
                     if "offset_p" in limit and "count_p" in limit:
-                        if self.d.name == "mysql":
-                            offset = b.param(limit["offset_p"], "i64")
-                            count = b.param(limit["count_p"], "i64")
-                        else:
-                            count = b.param(limit["count_p"], "i64")
-                            offset = b.param(limit["offset_p"], "i64")
+                        # Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+                        count = b.param(limit["count_p"], "i64")
+                        offset = b.param(limit["offset_p"], "i64")
                         sql += self.d.limit_params(offset, count)
                     else:
                         sql += self.d.limit(limit["offset"], limit["count"])

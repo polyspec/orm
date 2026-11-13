@@ -80,7 +80,7 @@ fn from_row(r: &sqlx::mysql::MySqlRow) -> sqlx::Result<Author> {
 }
 
 async fn pk_get(pool: &MySqlPool, seq: i64) -> Author {
-    let q = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1");
+    let q = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0");
     let row = sqlx::query(sqlx::AssertSqlSafe(q.clone()))
         .bind(seq)
         .fetch_one(pool)
@@ -90,7 +90,7 @@ async fn pk_get(pool: &MySqlPool, seq: i64) -> Author {
 }
 
 async fn list100(pool: &MySqlPool, service_seq: i64) -> Vec<Author> {
-    let q = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100");
+    let q = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 100 OFFSET 0");
     let rows = sqlx::query(sqlx::AssertSqlSafe(q.clone()))
         .bind(service_seq)
         .bind(false)
@@ -118,7 +118,7 @@ async fn insert(pool: &MySqlPool, i: usize) -> u64 {
 }
 
 async fn relation4(pool: &MySqlPool, service_seq: i64) -> HashMap<i64, Vec<Author>> {
-    let q = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 20");
+    let q = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 20 OFFSET 0");
     let parents: Vec<Author> = sqlx::query(sqlx::AssertSqlSafe(q.clone()))
         .bind(service_seq)
         .fetch_all(pool)
@@ -131,7 +131,7 @@ async fn relation4(pool: &MySqlPool, service_seq: i64) -> HashMap<i64, Vec<Autho
     keys.sort_unstable();
     keys.dedup();
     let ph = vec!["?"; keys.len()].join(", ");
-    let cq = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`user_seq` IN ({ph}) AND `a`.`is_close` = 0 ORDER BY `a`.`seq` DESC LIMIT 0, 200");
+    let cq = format!("SELECT {COLS} FROM `author` AS `a` WHERE `a`.`user_seq` IN ({ph}) AND `a`.`is_close` = 0 ORDER BY `a`.`seq` DESC LIMIT 200 OFFSET 0");
     let mut out: HashMap<i64, Vec<Author>> = HashMap::new();
     for _ in 0..3 {
         let mut qq = sqlx::query(sqlx::AssertSqlSafe(cq.clone()));
