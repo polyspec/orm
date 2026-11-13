@@ -567,14 +567,14 @@ go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generat
 npm run typescript:test                                  # TypeScript client
 make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
-make orm-install-container-images                            # pull the images of config/containers.json with the container engine; the only target that downloads an image
+make orm-install-container-images                            # pull the images of config/containers.json with bay pull; the only target that downloads an image
 make orm-test-container KIND=mysql                           # a MySQL primary and its replica as a Compose project of bay, from the image of config/containers.json; needs bay, and the image on this machine
 . .runtime/containers/mysql.env                              # its DSN variables; a target that reads TEST_ENV takes TEST_ENV=.runtime/containers/mysql.env, MariaDB MARIADB_ENV
 make orm-test-container-stop                                 # remove the projects of this checkout and their data, the project of a killed run included
 make orm-test-container-run KIND=mysql RUN='make test-rust'  # start the servers for this run alone, run RUN with their variables, and remove them when RUN ends, fails or gets SIGINT or SIGTERM
 ```
 
-The container servers are a Compose project of `bay` (CONTRIBUTING.md, "Test database servers in containers"). When a start fails, read its output first: it holds the output of `bay up` and the last lines of each service. `bay status` lists the projects that run on the machine; a project of this checkout is named `orm-<checkout>-<run>` and its files are in `.runtime/containers/<project>`. `bay check` names a part of the machine setup that is missing, which `bay install` applies; this repository runs neither `bay install` nor a command that changes the machine setup.
+The container servers are a Compose project of `bay` (CONTRIBUTING.md, "Test database servers in containers"). When a start fails, read its output first: it holds the output of `bay up` and the last lines of each service. `bay status` lists the projects that run on the machine; a project of this checkout is named `orm-<checkout>-<run>` and its files are in `.runtime/containers/<project>`. `bay check -scope run` names a part of the machine setup that is missing, which `bay install` applies; this repository runs neither `bay install` nor a command that changes the machine setup.
 
 Examples: [`examples/thin-slice`](../../examples/thin-slice) (Go · PHP · Rust, the same JSON) and [`examples/complex`](../../examples/complex) (joins, groups, two-level relations, and aggregates).
 
