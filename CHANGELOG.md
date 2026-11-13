@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- `make interface-check` builds the TypeScript client before its tests, and the hung-extractor cases fail at once with the output of a checker that ended before it started the extractor, instead of at their deadline of 5 minutes (T443).
+
 - The cancellation cases of Go and Rust cancel a SQLite statement that waits for the lock of another connection, as on the servers (T426-9, CFG-9): the Go case no longer cancels before the statement on SQLite, and the Rust cases no longer skip SQLite or drop at a timer. A cancellation during a SQLite lock wait ends the statement only at the busy timeout in Python (T426-11, open).
 
 - The test harnesses prepare every database in one form where one exists (T426-8): the Go apply pairs read `dbspec$plans` unquoted, the TypeScript and Python case databases are created unquoted as in Go, PHP and Rust, a SQLite test DSN no longer states the busy_timeout of CFG-12, so the default is tested, and the TypeScript cancellation handle cases run on a case database on every database. The checklist lists every database branch of the harnesses and recipe runners with its kind; the SQLite cancellation in flight (T426-9) and the SQLite commit of a catalog row change (T426-10) are open.
