@@ -92,6 +92,8 @@ INTEGER_RANGES = {
 STAGES = frozenset(
     {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"}
 )
+# JSON_STAGE is the name of the stage ordered_json in the core (DBS-69).
+JSON_STAGE = "json"
 ACTIONS = frozenset({"restrict", "cascade", "set_null"})
 CONSTRAINT_WORDS = frozenset({"primary", "unique", "index", "foreign", "check"})
 EXPRESSION_WORDS = frozenset(
@@ -1739,6 +1741,10 @@ class DocumentParser:
             self._name(w[0])
             stages = w[1:]
             for s in stages:
+                # json is the name of the stage ordered_json in the core, with the same encoding (DBS-69), so the reader
+                # takes it as ordered_json and the canonical form writes ordered_json.
+                if s.t == JSON_STAGE:
+                    s.t = "ordered_json"
                 if s.t in STAGES:
                     _mark(s, "keyword")
                 elif not self._detached_block:

@@ -57,6 +57,8 @@ const INTEGER_RANGES: Record<string, readonly [bigint, bigint]> = {
 };
 const STAGE_LIST: readonly DbspecCodecStage[] = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
 const STAGES = new Set<string>(STAGE_LIST);
+// JSON_STAGE is the name of the stage ordered_json in the core (DBS-69).
+const JSON_STAGE = 'json';
 const ACTION_LIST: readonly DbspecAction[] = ['restrict', 'cascade', 'set_null'];
 const ACTIONS = new Set<string>(ACTION_LIST);
 const STORAGES: readonly ('files' | 'document' | 'block')[] = ['files', 'document', 'block'];
@@ -1473,7 +1475,9 @@ class DocumentParser {
         if (w === null) return;
         this.mark(w[0], 'name');
         this.name(present(w[0], 'w[0]'));
-        const stages = w.slice(1);
+        // json is the name of the stage ordered_json in the core, with the same encoding (DBS-69), so the reader takes it as
+        // ordered_json and the canonical form writes ordered_json.
+        const stages = w.slice(1).map(s => (s.t === JSON_STAGE ? { ...s, t: 'ordered_json' } : s));
         // R3: a codec stage of the known set is a keyword; another word is a word, with a semantic diagnostic.
         for (const s of stages) if (STAGES.has(s.t)) this.mark(s, 'keyword');
         if (!this.detachedBlock) for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `codec stage ${goQuote(s.t)} is unknown`);

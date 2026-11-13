@@ -4,7 +4,6 @@ package fixture
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -19,11 +18,7 @@ import (
 // case must fail on only that value, and reports it in the form of the case runner: one FAIL line and no PASS line.
 func TestFailingCaseFixture(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	directory, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	cases, err := plancases.Read(filepath.Join(directory, "..", "..", "..", "..", "..", "..", "tests", "dbspec", "plan-cases.json"))
+	cases, err := plancases.Read(filepath.Join(testcase.LegacyRoot(), "tests", "dbspec", "plan-cases.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

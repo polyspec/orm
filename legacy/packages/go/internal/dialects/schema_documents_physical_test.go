@@ -19,8 +19,8 @@ import (
 // tests use as schemas; each document is one set with the documents of its
 // directory that it uses (schemaDocumentSets).
 var schemaDocumentPatterns = []string{
-	filepath.Join(repoRoot, "contracts", "fixtures", "bench", "*.dbs"),
-	filepath.Join(repoRoot, "contracts", "fixtures", "*.dbs"),
+	filepath.Join(legacyRoot, "contracts", "fixtures", "bench", "*.dbs"),
+	filepath.Join(legacyRoot, "contracts", "fixtures", "*.dbs"),
 }
 
 // schemaDocument is one schema document and its set: the texts by name of the

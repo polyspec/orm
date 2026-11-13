@@ -18,7 +18,7 @@ type vectorReader struct {
 func readVectorFile(t *testing.T, name string) (vectorReader, map[string]any) {
 	t.Helper()
 	r := vectorReader{path: filepath.Join("tests", "dbspec", name)}
-	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), r.path))
+	raw, err := os.ReadFile(filepath.Join(legacyRoot(t), r.path))
 	if err != nil {
 		t.Fatal(err)
 	}

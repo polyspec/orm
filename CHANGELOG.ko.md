@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5e87c5fdd2d07e34698a4ee2e1ac17dca62208dbaf6285bcb7480234d9b067aa -->
+<!-- source-sha256: baf9d4cce08ebc4d01efe484b54cf6cb101216cc80b374e51d0cdecac2895994 -->
 # 변경 이력
 
 ## Unreleased
@@ -43,6 +43,9 @@
 - `make test-rust`는 cargo 시험이 실행되는 동안 `typescript-current`로 TypeScript client를 build하고 `$(READ_TYPESCRIPT)`로 hold한다(T339-5-1): Rust recipe의 case `public_interface_none::interface_symbols`는 `legacy/packages/ts/dist`를 읽는 `tests/interfaces/check/main.mts`를 실행하며, 그 build가 없는 checkout에서 `has no build of the TypeScript client`로 실패했다.
 - `make orm-test-container`의 시험 데이터베이스 컨테이너는 그것을 띄운 checkout에 속한다(T444): 이름은 checkout root의 sha256 앞 16진 12자리를 넣은 `polyspec-orm-test-<checkout>-<kind>`이므로, 두 번째 checkout이 `container polyspec-orm-test-mysql exists`로 실패하던 곳에서 두 checkout이 동시에 서버를 띄운다. `make orm-test-container-stop`은 자기 checkout의 컨테이너만 지우고, 실패한 시작은 자기가 띄운 컨테이너를 지우며, `make orm-test-container-run KIND=<kind> RUN='<command>'`는 서버의 변수로 명령을 실행하고 명령이 끝나거나 실패하거나 run이 SIGINT나 SIGTERM을 받으면 컨테이너를 지운다.
 - `make orm-test-container`는 컨테이너의 log 줄을 모두 읽는다(T445): 시작은 컨테이너의 spawn과 각 변경 event에서 log를 읽었는데, libuv는 파일을 one-shot kqueue event로 watch하며 그 event를 시작할 때와 각 event 뒤에 다음 poll 단계에서야 더하므로, 그 사이에 쓰인 줄은 event를 내지 않았고 마지막 줄이 ready 줄인 서버는 시작을 끝없이 기다리게 했다. 이제 시작은 watch의 시작과 각 event 뒤에 poll 단계를 지나 log를 한 번 더 읽는다.
+- Go, TypeScript, PHP, Python, PHP 확장의 dbspec 파서가 codec stage `json`을 `ordered_json`으로 읽습니다(DBS-69). 이 파서들은 `codec doc json`을 `codec stage "json" is unknown`으로 거부했고, core는 `json`을 씁니다(T446).
+- legacy 모듈의 Go 테스트가 `go.work`로 저장소 root를 찾습니다(`testcase.RepositoryRoot`). `internal/dialects`는 init에서 `legacy` 아래의 `contracts/implementations.json`을 열다 panic해 테스트가 하나도 실행되지 않았고, `TestStressDocument`는 없는 `legacy/tests/dbspec/stress.mts`를 실행했습니다. 클라이언트 간 테스트의 runner는 이제 `legacy/` 경로로 저장소 root에서 실행됩니다(T447).
+- legacy Go 모듈의 `internal/buildconstraints`와 `engine/dbspec` 테스트, 그리고 `TestCaseHarnessReportsOnlyFailure`의 fixture가 디렉터리 수를 세지 않고 `testcase.RepositoryRoot`와 `testcase.LegacyRoot`로 root를 찾습니다. `TestGoTestTagsAreReadFromTheRunner`와 `TestNoBuildTagLeavesATestOut`은 `legacy/go.work`와 `legacy/tests/go-test.mts`를 열다 실패했습니다(T447).
 
 ## 0.0.31
 
