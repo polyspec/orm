@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e521d29ad27ed91794af8d9332f52f7ef6352d0fde62a64536d5310aec8a268b -->
+<!-- source-sha256: 836337e743f4c4427f7446214423b9eb35a5db3214f595fee296ea0e52c14c61 -->
 # 변경 이력
 
 ## Unreleased
 
+- 어떤 Rust 파일도 다른 crate의 파일을 `#[path]`로 가리키지 않는다(T455-1). `packages/rust/build/tests/unit/read_only_disposal.rs`는 서버 fixture의 DSN을 얻으려고 cases crate의 `../cases/common/physical_fixture.rs`를 가리켰다. `server_dsn`과 `fixture_dsn`은 이제 `packages/rust/test-support/src/fixture_dsn.rs`에 있다. build crate는 그 crate를 시험 dependency로 받고, cases crate는 두 함수를 다시 export한다. 그래서 `scripts/repo/check.test.mts`의 case `a Rust file names no file of another crate by #[path]`가 통과한다.
 - unit `dbspec`, `runtime_model`, `codec`의 member는 입력이 일으키는 `raises`의 kind마다 `contracts/interface/core.json`에 case를 가진다(OM-1.5-2, FMS-82, CORE-71). case 40개를 추가했고, `make test-rust CASES=interface_cases`의 시험 하나가 case 없는 kind에서 실패한다. 전에는 kind 42개의 case가 없었다. `runtime_model.compile`의 `raises`에서 `operator_unknown`과 `capability_unsupported`를 뺐다(FMS-41). 검증은 모든 dialect가 plan을 세우는 연산자, 함수, 행 잠금만 받아들인다. `db.connect_schema`는 `config`의 case를 가진다. 코어의 case runner는 모든 case를 끝까지 실행하고, 실패한 case마다 member가 일으키거나 돌려준 것을 적는다. 전에는 첫 실패에서 멈췄다. `dbspec.read_set`, `db.execute`, 그리고 `db.connect_schema`의 kind 5개는 case가 없는 채로 남는다(OM-1.5-3).
 - benchmarks/rust/Cargo.lock은 `polyspec-binding-core`를 root Cargo.lock이 고정한 release로 고정한다(OM-1.5-1). benchmark workspace는 `binding_core::OutValues`가 없는 이전 것을 가지고 있어서, benchmarks/rust의 `cargo clippy`가 packages/rust/src/orm_value.rs를 E0432로 compile하지 못했다. `dbspec::canonical_literal`은 default 규칙의 답을 `ok`로 돌려주고, JSON surface의 source는 `cargo fmt`의 형식을 가진다.
 

@@ -2072,6 +2072,7 @@ dependencies = [
  "polyspec-orm-build",
  "polyspec-orm-case-clock",
  "polyspec-orm-schema",
+ "polyspec-orm-test-support",
  "polyspec-orm-testcase",
  "proc-macro2",
  "regex",

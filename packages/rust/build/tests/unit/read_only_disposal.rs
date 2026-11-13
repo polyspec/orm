@@ -1,8 +1,6 @@
 use super::{CatalogConnection, Conn};
 
-#[allow(dead_code, reason = "the fixture helpers of the cases crate; this test uses the DSN of a server alone")]
-#[path = "../cases/common/physical_fixture.rs"]
-mod physical_fixture;
+use polyspec_orm_test_support::fixture_dsn::server_dsn;
 
 #[tokio::test]
 // Requirements: INT-137.
@@ -17,8 +15,8 @@ async fn check() {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => physical_fixture::server_dsn("ORM_TOOLS_MYSQL_DSN"),
-            _ => physical_fixture::server_dsn("ORM_TOOLS_POSTGRES_DSN"),
+            "mysql" => server_dsn("ORM_TOOLS_MYSQL_DSN"),
+            _ => server_dsn("ORM_TOOLS_POSTGRES_DSN"),
         };
         if dialect == "sqlite" {
             let (db, conn, _) = crate::tool_db::open(&dsn).await.unwrap();
