@@ -97,7 +97,7 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
 caseTest('every PHPUnit test class declares its size', COMPUTE, () => {
   // The size states the kind of a case: #[Small] computes in memory, #[Medium] runs statements on a database, #[Large] runs a
   // child process (phpunit.xml.dist); no size sets a time limit.
-  const unsized = [...trackedAll].filter(path => /^packages\/php(?:-ext)?\/tests\/.*Test\.php$/.test(path)).filter(path => {
+  const unsized = [...trackedAll].filter(path => /^legacy\/packages\/php(?:-ext)?\/tests\/.*Test\.php$/.test(path)).filter(path => {
     const source = text(path);
     return /^(?:final )?class \w+Test\b/m.test(source) && !/^#\[(?:\\PHPUnit\\Framework\\Attributes\\)?(?:Small|Medium|Large)\]\s*\n(?:#\[.*\]\s*\n|\/\/.*\n)*(?:final )?class /m.test(source);
   });
@@ -154,7 +154,7 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   const result = spawnSync('make', ['-n', 'build-ts'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
   const generation = result.stdout.indexOf('npm run typescript:build');
-  const build = /runtime-targets\.(?:mjs|mts) build --roots packages\/ts /.exec(result.stdout)?.index ?? -1;
+  const build = /runtime-targets\.(?:mjs|mts) build --roots legacy\/packages\/ts /.exec(result.stdout)?.index ?? -1;
   assert.ok(generation >= 0, 'build-ts does not run the TypeScript model generator');
   assert.ok(build >= 0, 'build-ts does not invoke the TypeScript runtime build');
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
@@ -607,7 +607,7 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   assert.match(makefile, /^codec-check\/php-extension: .*build-php-ext$/m);
   assert.match(
     makefile,
-    /env ORM_PHP_MODE=extension .*--configuration packages\/php-ext\/phpunit\.xml\.dist packages\/php-ext\/tests\/CodecRecipeTestExtensionTest\.php/,
+    /env ORM_PHP_MODE=extension .*--configuration legacy\/packages\/php-ext\/phpunit\.xml\.dist legacy\/packages\/php-ext\/tests\/CodecRecipeTestExtensionTest\.php/,
   );
   for (const [target, source] of [
     ['mermaid-error-php-extension-check', 'legacy/packages/php-ext/tests/MermaidErrorBoundaryTest.php'],
@@ -1571,6 +1571,8 @@ caseTest('Rust source reads the package directory when the program runs', COMPUT
   assert.deepEqual(manifestDirErrors({
     'packages/rust/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
     'benchmarks/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
+    // include! reads the file when the crate compiles and puts no path into the program.
+    'packages/ts/src/lib.rs': 'include!(concat!(env!("CARGO_MANIFEST_DIR"), "/generated/lib.rs"));\n',
   }), []);
   assert.deepEqual(manifestDirErrors({
     'packages/rust/tests/a.rs': 'use std::path::PathBuf;\nlet root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");\n',
@@ -1739,7 +1741,7 @@ caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared cas
   const files: Record<string, string> = {
     'legacy/packages/php/tests/BareTest.php': "<?php\nfinal class BareTest extends PHPUnit\\Framework\\TestCase {}\n",
     'legacy/packages/ts/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
-    'legacy/packages/ts/tests/cased.mjs': "import { cases } from '../../../tests/testcase.mts';\n",
+    'legacy/packages/ts/tests/cased.mjs': "import { cases } from '../../../../tests/testcase.mts';\n",
     'tests/testcase.mts': '',
   };
   const read = (path: string) => files[path];
@@ -2309,7 +2311,7 @@ caseTest('every go.mod declares the module path of its directory', COMPUTE, () =
   assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm\n', 'tools/gen/go.mod': 'module github.com/polyspec/orm/tools/gen\n', 'README.md': '' }), []);
   assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm/v2\n', 'legacy/packages/go/go.mod': 'module github.com/polyspec/orm\n', 'x/go.mod': 'go 1.27\n' }), [
     'go.mod declares the module github.com/polyspec/orm/v2; declare github.com/polyspec/orm, the path of its directory, so go get resolves it and its tags',
-    'legacy/packages/go/go.mod declares the module github.com/polyspec/orm; declare github.com/polyspec/orm/packages/go, the path of its directory, so go get resolves it and its tags',
+    'legacy/packages/go/go.mod declares the module github.com/polyspec/orm; declare github.com/polyspec/orm/legacy/packages/go, the path of its directory, so go get resolves it and its tags',
     'x/go.mod declares the module (none); declare github.com/polyspec/orm/x, the path of its directory, so go get resolves it and its tags',
   ]);
 });
@@ -2416,7 +2418,7 @@ caseTest('the checks read commands with the shell parser', COMPUTE, () => {
     assert.deepEqual(shellSegments(command, 'sh'), ['go test ./legacy/packages/go/orm'], command);
   }
   // A command the parser rejects is an error, never a guess.
-  assert.throws(() => segments("sh -c 'cd legacy/packages/ts", 'sh'), /the shell parser rejects this sh command at \d+: .*: sh -c 'cd packages\/ts/);
+  assert.throws(() => segments("sh -c 'cd legacy/packages/ts", 'sh'), /the shell parser rejects this sh command at \d+: .*: sh -c 'cd legacy\/packages\/ts/);
   assert.throws(() => segments('echo $(RUN_LONG', 'make'), /the make reference at 5 never closes/);
 });
 
