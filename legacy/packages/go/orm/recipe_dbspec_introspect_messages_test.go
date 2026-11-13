@@ -3,8 +3,8 @@ package orm_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestRecipeDbspecIntrospectMessagesNone runs The SQLite unsupported column reason of tests/dbspec/introspect-messages.json on a memory connection (docs/spec/feature-coverage.md FCV-3, FCV-4).

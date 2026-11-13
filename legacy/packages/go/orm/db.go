@@ -20,11 +20,11 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/polyspec/orm/packages/go/engine"
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/plan"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // Config is the connection configuration. Paths and secrets are declared,
@@ -321,7 +321,7 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		msg := message.Sprintf("driver %q is not registered", dsn.driver)
 		// The driver package names are pg and sqlite.
 		if pkg := map[string]string{"postgres": "pg", "sqlite": "sqlite"}[dsn.driver]; pkg != "" {
-			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/packages/go/orm/%s"`, pkg)
+			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/legacy/packages/go/orm/%s"`, pkg)
 		}
 		return nil, configErr("%s", msg)
 	}

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/model"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Requirements: DBS-116, COD-17, COD-20.

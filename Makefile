@@ -3482,7 +3482,7 @@ GO_MODELS_FILE = legacy/packages/go/models.txt
 GO_MODELS_STAMP = $(CURDIR)/legacy/packages/go/go-models.key
 # The inputs of the Go models are legacy/packages/go and the directory of the document set of each entry (named from legacy/packages/go), which holds
 # the set and its documents, so a fixture change regenerates the models that it is read into.
-GO_MODELS_SETS = $(sort $(patsubst ../../%,%,$(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(GO_MODELS_FILE)))))
+GO_MODELS_SETS = $(sort $(patsubst ../../%,legacy/%,$(dir $(shell sed -n 's/^--set \([^ ]*\).*/\1/p' $(GO_MODELS_FILE)))))
 go-models:
 	$(GENERATE_ONCE) $(GO_MODELS_STAMP) "$(GO_VERSION)" legacy/packages/go $(GO_MODELS_SETS) -- sh -c 'cd legacy/packages/go && $(GO) run ./cmd/orm-gen sets $(CURDIR)/$(GO_MODELS_FILE)'
 

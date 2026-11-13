@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Tests of the go/packages scan of the Go generator: hand-written files of the model package, pattern spelling, build tags and the generated relation getter text.

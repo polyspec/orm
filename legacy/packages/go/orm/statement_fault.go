@@ -1,7 +1,7 @@
 package orm
 
 import (
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // stmtFault is the code and message that FailNextStatement set.

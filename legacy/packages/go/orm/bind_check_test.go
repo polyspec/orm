@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // vectorValue reads a value of a bind case as the host value a Go program passes: a JSON

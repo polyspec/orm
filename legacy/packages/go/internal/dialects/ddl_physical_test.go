@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/internal/dbspec/ddlcases"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/ddlcases"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // ddlStep is one step of the behavior vectors of tests/dbspec/ddl.json, read by the shared loader of the dbspec packages.

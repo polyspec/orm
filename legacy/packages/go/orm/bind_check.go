@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
 )
 
 // paramSlot is the logical type of a slot that a parameter fills: a dbspec type kind with the

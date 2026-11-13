@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // splitPlanAllocationLimit bounds what one split count of 70300 values may allocate in all (runtime TotalAlloc). The

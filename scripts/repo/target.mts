@@ -29,13 +29,15 @@ export function targetPathErrors(files: Record<string, string>) {
 // source reads CARGO_MANIFEST_DIR (polyspec_orm_testcase::manifest_dir) at run time.
 
 // manifestDirErrors returns one error for each line in a Rust file of files ({path: text}) that uses env!("CARGO_MANIFEST_DIR").
-// Comment lines (//) are excluded.
+// Comment lines (//) are excluded, and so is the path of an include!(concat!(env!("CARGO_MANIFEST_DIR"), ...)): include! reads that
+// file when the crate compiles and puts no path into the program.
 export function manifestDirErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
     if (!path.endsWith('.rs')) continue;
     text.split('\n').forEach((line: string, index: number) => {
-      if (/^\s*\/\//.test(line) || !/env!\(\s*"CARGO_MANIFEST_DIR"\s*\)/.test(line)) return;
+      const read = line.replace(/\binclude!\(\s*concat!\(\s*env!\(\s*"CARGO_MANIFEST_DIR"\s*\)/g, '');
+      if (/^\s*\/\//.test(line) || !/env!\(\s*"CARGO_MANIFEST_DIR"\s*\)/.test(read)) return;
       errors.push(`${path}:${index + 1} reads CARGO_MANIFEST_DIR at compile time; read it when the test runs`);
     });
   }

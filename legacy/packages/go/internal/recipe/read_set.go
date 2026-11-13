@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
 )
 
 // setTreeEntry is one path of the tree of dbspec.read_set: exactly one field is present.

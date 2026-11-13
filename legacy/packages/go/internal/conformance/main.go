@@ -22,11 +22,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/internal/stmtevent"
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/orm"
-	_ "github.com/polyspec/orm/packages/go/orm/pg"
-	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/legacy/packages/go/internal/stmtevent"
+	"github.com/polyspec/orm/legacy/packages/go/model"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/pg"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
 )
 
 // stmt is one statement event (docs/operations/usage.md "Statement events"). transaction is

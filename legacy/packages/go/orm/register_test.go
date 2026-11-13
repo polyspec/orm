@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // registerFixture is a set in which the external/member document of contracts/fixtures uses the tables of the external/core document.

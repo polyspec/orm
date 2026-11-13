@@ -3,8 +3,8 @@ package orm_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // The statement runner of INT-150 is the recipe contracts/fixtures/statement_runner/statement_runner.json, whose cases every runtime

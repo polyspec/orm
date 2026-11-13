@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // documentSchema is the orm.Schema of a dbspec document set. It builds the manifest text and

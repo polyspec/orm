@@ -3,10 +3,10 @@ package bindmessages_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/bindmodel"
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/bindmodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestRecipeMarkdownSessionNone runs the session recipe, tests/markdown/session.json, without a database (FCV-3, FCV-4): each

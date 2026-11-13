@@ -4,8 +4,8 @@ package orm_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // connectionPoolRecipe is the recipe of the pool options, relative to this package directory.

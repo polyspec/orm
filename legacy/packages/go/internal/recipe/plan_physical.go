@@ -9,11 +9,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/ddlcases"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/ddlcases"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/plancases"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // planHiddenLeft reads the number of tables and columns whose name begins with dbspec$ in the database.

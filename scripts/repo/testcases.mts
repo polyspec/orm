@@ -99,7 +99,7 @@ export function testEntries(command: string): string[] {
   const out: string[] = [];
   for (const match of command.matchAll(/(?:^|[\s;&|(])(?:php|node)((?:\s+-[-\w=]+)*)((?:\s+[\w./-]+\.(?:php|m[jt]s))+)/g))
     for (const path of (match[2] ?? '').trim().split(/\s+/))
-      if (/^packages\/(?:go|ts|php|php-ext|python|rust)\/tests\//.test(path)) out.push(path);
+      if (/^(?:legacy\/packages\/(?:go|ts|php|php-ext|python)|packages\/rust)\/tests\//.test(path)) out.push(path);
   return out;
 }
 
@@ -625,7 +625,7 @@ export function usesTypescriptOutput(path: string, read: Read, seen = new Set<st
 // (`'node', ['<file>', ...]` or `process.execPath, ['<file>', ...]`), and the shell string of an exec or spawn call
 // (`execSync('node [option...] <file>')`). A place where a path is only written as a string (expected output, stub, regular expression, comment) is not a run.
 export function nodeRuns(text: string): string[] {
-  const file = '(packages\\/ts\\/[\\w./-]+\\.mjs)';
+  const file = '(legacy\\/packages\\/ts\\/[\\w./-]+\\.mjs)';
   const forms = [
     new RegExp(`(?:['"]node['"]|process\\.execPath)\\s*,\\s*\\[\\s*['"]${file}['"]`, 'g'),
     new RegExp(`\\b(?:exec|execSync|spawn|spawnSync|execFile|execFileSync)\\(\\s*['"\`]node\\s+(?:--\\S+\\s+)*${file}`, 'g'),

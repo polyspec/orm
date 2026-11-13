@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/polyspec/orm/packages/go/engine"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 	"io"
 	"net"
 	"net/url"
@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // markdownDSN is the flowmark server address, corpus name, and token of a markdown:// DSN

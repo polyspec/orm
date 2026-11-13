@@ -14,7 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-185): the statement message and its

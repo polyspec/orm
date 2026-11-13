@@ -1024,7 +1024,7 @@
           "options": {
             "sources": {
               "go": {
-                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n\t\"github.com/polyspec/orm/packages/go/orm\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.BetweenReadCount([2]int32{1, 2})\n\tm.GtStartDt(orm.Year(), 1)\n\tm.StartDtLtEndDt(model.Author())\n}\n"
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n\t\"github.com/polyspec/orm/legacy/packages/go/orm\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.BetweenReadCount([2]int32{1, 2})\n\tm.GtStartDt(orm.Year(), 1)\n\tm.StartDtLtEndDt(model.Author())\n}\n"
               },
               "typescript": {
                 "example/example.ts": "import { year } from '@polyspec/orm';\nimport { Author } from '../model/models.js';\n\nconst m = new Author();\nm.betweenReadCount([1, 2]);\nm.gtStartDt(year(), 1);\nm.startDtLtEndDt(new Author());\n"
@@ -1170,7 +1170,7 @@
           "options": {
             "sources": {
               "go": {
-                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n\t\"github.com/polyspec/orm/packages/go/orm\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.AliasMine()\n\tm.NewExtra(1)\n\tm.GetExtra()\n\tm.PossibleSeq(1)\n\tm.AddColumnTotal(func(_ *model.AuthorModel) orm.Model { return model.User() })\n}\n"
+                "example/example.go": "package example\n\nimport (\n\t\"example.com/ormexample/model\"\n\t\"github.com/polyspec/orm/legacy/packages/go/orm\"\n)\n\nfunc Use() {\n\tm := model.Author()\n\tm.AliasMine()\n\tm.NewExtra(1)\n\tm.GetExtra()\n\tm.PossibleSeq(1)\n\tm.AddColumnTotal(func(_ *model.AuthorModel) orm.Model { return model.User() })\n}\n"
               },
               "typescript": {
                 "example/example.ts": "import { Author, User } from '../model/models.js';\n\nconst m = new Author();\nm.aliasMine();\nm.newExtra(1);\nm.getExtra();\nm.possibleSeq(1);\nm.addColumnTotal(() => new User());\n"

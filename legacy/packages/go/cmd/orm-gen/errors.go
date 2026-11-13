@@ -16,7 +16,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 type errCode struct{ Code, Origin, Comment string }

@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // introspectConnectionRules are the statements that every client runs on a new connection (docs/spec/dbspec.md "Types",

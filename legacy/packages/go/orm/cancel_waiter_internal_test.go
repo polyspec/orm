@@ -3,7 +3,7 @@ package orm_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // A test of newWaiter, the lock-wait helper that the cancellation tests use to time a cancel.

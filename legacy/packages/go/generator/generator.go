@@ -5,7 +5,7 @@ package generator
 import (
 	"fmt"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // Options describes one deterministic Go generation request.

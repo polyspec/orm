@@ -3,8 +3,8 @@ package orm
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // The update of an unloaded row keeps the assigned columns selected and the key values of its key, so the row

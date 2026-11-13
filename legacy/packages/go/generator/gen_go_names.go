@@ -6,9 +6,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // Method names of generated models are parsed with the grammar of docs/spec/dsl.md.

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // Querier is the connection on which introspection sends catalog queries.

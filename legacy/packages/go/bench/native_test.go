@@ -18,8 +18,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // benchDSN returns the seeded bench database named by ORM_BENCH_MYSQL_DSN; an

@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // Statement kinds of a StatementEvent. The kind comes from the origin of the

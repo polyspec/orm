@@ -3,9 +3,9 @@ package model_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/model"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestCoverageSchemaInstallExisting checks that the bench manifest of the generated model installs into a database where

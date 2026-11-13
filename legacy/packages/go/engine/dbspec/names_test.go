@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestSubtestNamesAreFlat checks that no case name of this package's tests

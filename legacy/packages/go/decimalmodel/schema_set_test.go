@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/polyspec/orm/packages/go/decimalmodel"
-	"github.com/polyspec/orm/packages/go/orm"
-	_ "github.com/polyspec/orm/packages/go/orm/pg"
-	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/legacy/packages/go/decimalmodel"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/pg"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
 
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // schemaSetDatabase is the DSN of the database (internal/testdb) that the case uses alone.

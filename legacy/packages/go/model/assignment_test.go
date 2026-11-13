@@ -3,8 +3,8 @@ package model
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func TestGeneratedAssignmentRejectsInvalidValues(t *testing.T) {

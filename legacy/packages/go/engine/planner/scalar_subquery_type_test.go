@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/dialect"
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/testmodel"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dialect"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testmodel"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 const runtimeDocument = `dbspec 1 runtime

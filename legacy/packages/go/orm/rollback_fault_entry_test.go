@@ -3,7 +3,7 @@ package orm_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestRollbackFaultEntry checks that FailNextRollback is present only in builds with the ormtest build tag:

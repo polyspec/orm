@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/database"
 )
 
 func mysqlProbes() []Probe {

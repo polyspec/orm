@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // MySQL reports a failed CHECK as 3819; its 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE, a DRIVER error (DIA-201).

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 const secondModelDiagram = `dbspec 1 second

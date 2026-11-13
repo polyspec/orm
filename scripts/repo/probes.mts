@@ -5,10 +5,10 @@
 
 // runtimeSource is the source file of the client runtime. Tests, dbspec introspection and generated code are excluded.
 export const runtimeSource = (path: string) =>
-  (/^packages\/go\/orm\/(?:[^/]+|sqlite\/[^/]+|pg\/[^/]+)\.go$/.test(path) && !path.endsWith('_test.go')) ||
-  /^packages\/php\/src\/[^/]+\.php$/.test(path) ||
-  /^packages\/ts\/src\/[^/]+\.ts$/.test(path) ||
-  (/^packages\/rust\/orm\/src\/[^/]+\.rs$/.test(path) && !path.endsWith('_tests.rs'));
+  (/^legacy\/packages\/go\/orm\/(?:[^/]+|sqlite\/[^/]+|pg\/[^/]+)\.go$/.test(path) && !path.endsWith('_test.go')) ||
+  /^legacy\/packages\/php\/src\/[^/]+\.php$/.test(path) ||
+  /^legacy\/packages\/ts\/src\/[^/]+\.ts$/.test(path) ||
+  (/^packages\/rust\/src\/[^/]+\.rs$/.test(path) && !path.endsWith('_tests.rs'));
 
 // connectProbeErrors returns one error for each line of the runtime source in files ({path: text}) that writes a connection probe statement:
 // SQL `sqlite_version()` and TypeScript's `'SELECT 1'`. Comment lines are excluded.

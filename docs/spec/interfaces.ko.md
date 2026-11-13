@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 5ea52334b1ebbd4287ac015683cae36cccfa55b07384f2e1dd9485b574066b34 -->
+<!-- source-sha256: bec9094c6fc05e0dfa366028e65fb641ac1feaeafa7c55c5ee4e2522f9136b77 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -101,7 +101,7 @@ classDiagram
 
 모든 공개 클라이언트는 DSN URI 하나를 받는다. `mysql://`, `postgres://`, `sqlite://`가 데이터베이스 드라이버를 선택한다. 모든 연결은 datetime 값을 UTC로 읽고 쓰며, 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받는다. 호출자는 별도 드라이버 값을 전달하지 않는다.
 
-- **INT-12** `github.com/polyspec/orm/packages/go` Go 모듈 — 공개 연결 호출: `model.Connect(dsn, config)`; 결과: `(*orm.DB, error)`
+- **INT-12** `github.com/polyspec/orm/legacy/packages/go` Go 모듈 — 공개 연결 호출: `model.Connect(dsn, config)`; 결과: `(*orm.DB, error)`
 - **INT-13** `polyspec/orm` PHP client — 공개 연결 호출: `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))`; 결과: `Db`
 - **INT-14** `polyspec-orm` Rust crate — 공개 연결 호출: `model::connect(dsn, pool_size, config).await?`; 결과: `polyspec_orm::Db`
 - **INT-15** `@polyspec/orm` TypeScript package — 공개 연결 호출: generated module의 `connect(dsn, options)`; 결과: `Promise<Db>`
@@ -581,7 +581,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 
 - **INT-97** 유한한 그리드 decimal 셀은 데이터베이스가 선언한 결과 scale의 정확한 평문 decimal 문자열이며, 끝의 0을 포함한다. 이진 부동소수나 고정 정밀도 모델 코덱 값이 되지 않는다.
 - **INT-98** 타입이 정해진 읽기가 선언된 타입으로 나타낼 수 없는 데이터베이스 셀은 `CODEC_DECODE`로 실패한다. 예: 부호 있는 64비트 범위를 넘는 MySQL `UNSIGNED` 값을 부호 있는 정수로 읽는 경우, 정수 2를 불리언으로 읽는 경우, PostgreSQL `NaN`을 유한한 float으로 읽는 경우, SQLite 텍스트를 정수로 읽는 경우.
-- **INT-98a** `github.com/polyspec/orm/packages/go`는 INT-98의 읽기 아래 단계인, 선택된 행의 비공개 decode와 database 값 변환에서 잘못된 scalar를 거부한다.
+- **INT-98a** `github.com/polyspec/orm/legacy/packages/go`는 INT-98의 읽기 아래 단계인, 선택된 행의 비공개 decode와 database 값 변환에서 잘못된 scalar를 거부한다.
 - **INT-99** 타입이 정해진 읽기는 모든 데이터베이스에서 같은 표현으로 각 열을 선언된 타입으로 돌려준다. 16비트 정수는 정수로, uuid는 텍스트로, `time(3)`은 소수 3자리의 텍스트로, date는 날짜로 돌려준다. 삽입이 생략한 열은 모든 데이터베이스에서 데이터베이스 기본값을 가진다.
 - **INT-100** Rust 네이티브 모델 생성: 같은 문서 집합의 모델을 두 번 생성하면 같은 모델, manifest, 외부 텍스트가 나온다. 같은 문서로 crate가 빌드한 모델은, 빌드의 경로를 생성의 경로로 바꾸면 생성된 모델과 같다.
 - **INT-101** precision 없이 선언된 `time`·`datetime` 열은 방언의 기본 정밀도를 가진다: MySQL은 0, PostgreSQL은 6. MySQL은 6을 넘는 정밀도를 거부하며(DIA-54), PostgreSQL은 선언된 정밀도를 선언대로 읽는다. 선언된 정밀도보다 많은 소수 자릿수를 가진 `time`·`datetime` 값을 쓰는 typed 카탈로그 쓰기는 문을 실행하기 전에 `CODEC_ENCODE`로 실패한다.
@@ -597,7 +597,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. InnoDB가 아닌 MySQL 테이블과 트리거가 있는 MySQL 테이블은 거부된다.
 - **INT-106a** `polyspec-orm-build`의 `update_row`, `delete_row`, `insert_row`는 트랜잭션 순서대로 `MutationPhase`를 알린다. 커밋 전에 본 취소는 `JOB_CANCELLED`로 롤백하고, `Locked`는 다른 연결이 행 잠금을 보는 시점이며, `CommitStarted` 뒤의 취소는 커밋을 멈추지 않고, 버려진 future도 시작한 커밋을 끝내며, 명시적 커밋 거부는 `RolledBack`으로, 커밋 중 끊긴 연결은 `Indeterminate`로 끝난다. 이는 Rust의 형식에만 해당한다. 다른 runtime에는 phase 알림과 취소 flag가 없다.
 - **INT-106b** `polyspec-orm-build`의 `update_row`, `delete_row`, `insert_row`는 commit된 변경의 연결을 catalog의 pool로 돌려주어, 그 catalog의 다음 변경이 그 연결을 새 transaction으로 쓰고 연속된 변경이 연결 하나만 열게 한다. 다른 모든 종료는 transaction이 아직 열려 있을 수 있으므로 연결을 닫는다.
-- **INT-106c** `github.com/polyspec/orm/packages/go`의 `UpdateRow`, `DeleteRow`, `InsertRow`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 catalog의 pool로 돌려준다. 모든 runtime에서, 변경을 하나씩 실행하는 catalog의 commit된 insert는 서버 연결 하나에서 쓰며, catalog가 연결 하나를 가지는 PHP와 PHP 확장(INT-157)도 그렇고, `ROW_CONFLICT`로 거부된 insert 뒤에도 다음 insert는 commit된다: recipe `catalog_connection`의 case `committed_mutations_share_one_connection`은 MySQL과 PostgreSQL에서 column의 default가 쓰는 연결 id를 읽는다.
+- **INT-106c** `github.com/polyspec/orm/legacy/packages/go`의 `UpdateRow`, `DeleteRow`, `InsertRow`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 catalog의 pool로 돌려준다. 모든 runtime에서, 변경을 하나씩 실행하는 catalog의 commit된 insert는 서버 연결 하나에서 쓰며, catalog가 연결 하나를 가지는 PHP와 PHP 확장(INT-157)도 그렇고, `ROW_CONFLICT`로 거부된 insert 뒤에도 다음 insert는 commit된다: recipe `catalog_connection`의 case `committed_mutations_share_one_connection`은 MySQL과 PostgreSQL에서 column의 default가 쓰는 연결 id를 읽는다.
 - **INT-106d** `@polyspec/orm`의 `updateRow`, `deleteRow`, `insertRow`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 catalog의 pool로 돌려준다.
 - **INT-106e** `polyspec-orm` Python package의 `update_row`, `delete_row`, `insert_row`는 INT-106b와 같은 조건으로 commit된 변경의 연결을 그 catalog의 다음 session을 위해 남긴다. 남긴 연결이 끝났으면 아무것도 실행하기 전에 새 연결이 그 자리를 잇고, socket을 열지 않는 SQLite file은 전처럼 닫는다.
 - **INT-107** 행 기준(baseline)은 정확한 타입 값을 비교한다: 부동소수 비트, decimal scale, 이진 바이트, 생성 열의 원본 값. 이 중 하나라도 다르면 충돌이다.
@@ -631,7 +631,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-138** 각 구현의 native package 진입점은 소비자 import에 선언된 public client 표면을 노출한다: Go module package, PHP Composer autoloader, 로드된 PHP extension 선언, TypeScript package exports, Python package import, Rust crate root이다. 소비자는 해당 native 형식으로 진입점을 해석해 public 선언을 사용할 수 있으며, test-only 진입점은 별도 요구사항을 따른다.
 - **INT-141** Rust `polyspec-orm` API는 행 값을 위한 `Val`을 공개한다: `Null`, `I64`, `F64`, `Str`, `Bytes`, `DateTime`, `Date`, `Bool`, `Json`, `Ordered`. `Null`은 SQL NULL을 나타내고, `Ordered`는 JSON 리터럴 null을 포함한 ordered JSON을 `Null`과 구분해 보존한다. 공개 typed accessor는 값이 그 타입과 다른 종류이거나 그 타입에서 유효하지 않은 변환, 예를 들어 정수 타입의 소수부나 범위를 넘는 정수에 `CODEC_DECODE`로 실패한다. `as_f64`는 정수나 decimal text를 자릿수와 관계없이 COD-1의 가장 가까운 유한 binary64로 읽으므로, 이 변환은 손실이 있는 변환이 아니다. 공개 `take_*` 메서드는 성공하면 `Val::Null`을 남기고 변환에 실패하면 원래 값을 보존한다. 날짜·시간 및 ordered 값 payload 타입을 사용할 수 있도록 crate는 `chrono`와 `json` (legacy `ordered_json`)을 재노출한다.
 - **INT-142** Rust `polyspec-orm::row` API는 SQLx MySQL, PostgreSQL, SQLite 행을 `DriverRow`로 받는다. `read_cell`과 `read_row`는 이를 `Val`로 디코드하고, `Cells`와 `Src`는 i64, f64, bool, 문자열, datetime, date, styled cell의 타입 지정 읽기를 제공한다. 읽기는 잘못된 cell을 기본값으로 바꾸지 않고 오류를 반환한다.
-- **INT-143** Go의 `github.com/polyspec/orm/packages/go/orm` API는 plan-cache key formatter인 `PlanID(key uint64) string`을 공개한다. 반환값은 왼쪽을 0으로 채운 정확히 16자리의 소문자 16진수다. 이는 Go 전용 package API다.
+- **INT-143** Go의 `github.com/polyspec/orm/legacy/packages/go/orm` API는 plan-cache key formatter인 `PlanID(key uint64) string`을 공개한다. 반환값은 왼쪽을 0으로 채운 정확히 16자리의 소문자 16진수다. 이는 Go 전용 package API다.
 - **INT-144** PHP 패키지 `polyspec/orm`은 `Polyspec\Orm\Go::quote`, `Go::json` 및 `GoMap`을 공개한다. `quote`는 Go 호환 인용 텍스트를 쓰며 출력 가능한 유니코드는 보존하고 제어 문자와 잘못된 UTF-8 바이트는 이스케이프한다. `json`은 Go 호환 문자열 이스케이프(`<`, `>`, `&` 포함)를 사용해 compact 또는 들여쓰기 JSON 텍스트를 쓰며, 잘못된 UTF-8은 U+FFFD로 바꾸고 float 같은 지원하지 않는 값은 거부한다. PHP list는 요소 순서를 유지하고 일반 associative array는 삽입 순서를 유지하며 `GoMap`은 객체 키를 정렬해 쓴다.
 - **INT-145** Python 배포물은 host integration의 native 진입점을 선언한다: `orm-gen` console command(`polyspec.orm.bin_orm_gen:main`), model 생성 함수 `polyspec.orm.generate.python.generate_models`와 `render_models`, scanner `polyspec.orm.generate.scan.scan_model_calls`, driver adapter `polyspec.orm.driver_cells.mysql_conversions`와 `postgres_loaders`, placeholder 선언 `polyspec.orm.placeholders.MYSQL_QUOTES`, `POSTGRES_QUOTES`, `for_mysql`, `for_postgres`, wall-clock source `polyspec.orm.clock.wall_micros`다. 기존 의미는 DSL-128/151/152, COD-2, DIA-197, PRT-33이 소유한다. 이 Python native inventory는 공통 callable signature를 주장하거나 다른 client에 동등 API를 추가하지 않는다.
 - **INT-146** PHP-extension 패키지 `polyspec/orm-php-ext`는 native extension 선언을 통해 INT-144와 같은 `Polyspec\Orm\Go::quote`, `Go::json`, `GoMap` 텍스트 동작을 공개한다. 인용 문자열과 JSON 문서는 Go 호환 이스케이프, 순서, 잘못된 UTF-8 처리 및 지원하지 않는 값 오류를 동일하게 따른다.

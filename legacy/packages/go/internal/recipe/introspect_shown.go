@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
 )
 
 // shownVectors is the file that a dbspec.introspect_shown step names: the canned catalog and the SHOW CREATE TABLE text of each case.

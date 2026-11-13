@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestRelatedAsReportsMismatch checks that when reading a relation result as T, it tells apart the stored value,

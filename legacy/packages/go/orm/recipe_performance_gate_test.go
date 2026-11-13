@@ -3,8 +3,8 @@ package orm_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // performanceGateRecipe is the correctness recipe of the hot-path performance gate, relative to this package directory.

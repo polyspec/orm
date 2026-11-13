@@ -3,8 +3,8 @@ package orm_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // auditTriggersRecipe is the recipe of the audit transactions and their triggers, relative to this package directory.

@@ -1,7 +1,5 @@
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
-github.com/polyspec/orm/packages/go v0.0.18 h1:CHkw8qiVz6KPNLXLxjxO1pGyVeKyMh2TRRZfn6wc9DI=
-github.com/polyspec/orm/packages/go v0.0.18/go.mod h1:dfdIIDtbljpMYUVRZjJPaQ/a4mtms1Y2cM19tmWbcRE=
 golang.org/x/mod v0.42.0 h1:ICeL3t2L30ljSPHHxDnR4fqVcBt/zR2zJAb9juavmQg=
 golang.org/x/mod v0.42.0/go.mod h1:u5fzIrRInkL8MaO1cbRkUHT64v303YIT5KEqpNr7jRs=
 golang.org/x/sync v0.24.0 h1:iqiDrGoDgyuvAKrhLQthUEzU/R378N78gXbBjxed7oA=

@@ -466,6 +466,7 @@ mod tests {
     // with the same categories.
     #[test]
     fn the_enum_is_the_table_of_the_spec() -> Result<(), String> {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let manifest = std::env::var("CARGO_MANIFEST_DIR").map_err(|error| format!("cargo test sets CARGO_MANIFEST_DIR: {error}"))?;
         let spec = std::fs::read_to_string(format!("{manifest}/../../docs/spec/errors.md")).map_err(|error| format!("docs/spec/errors.md: {error}"))?;
         let rows: Vec<(String, String)> = spec
@@ -485,6 +486,7 @@ mod tests {
 
     #[test]
     fn a_kind_is_found_by_its_string_alone() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         for kind in Kind::ALL {
             assert_eq!(Kind::from_str_exact(kind.as_str()), Some(kind));
         }

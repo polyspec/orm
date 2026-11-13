@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // splitReadPlan plans a read whose root IN list may be split (PRT-76) and

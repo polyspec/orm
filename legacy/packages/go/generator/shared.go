@@ -3,7 +3,7 @@ package generator
 import (
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 func pascal(s string) string {

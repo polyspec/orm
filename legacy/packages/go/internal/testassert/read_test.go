@@ -3,7 +3,7 @@ package testassert
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func TestReadColumnReturnsGetterValue(t *testing.T) {

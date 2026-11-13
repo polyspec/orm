@@ -1,15 +1,15 @@
 package orm_test
 
 import (
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/internal/irwhere"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/internal/irwhere"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // A shared case for the request hook (docs/operations/usage.md "Request hook"). It installs contracts/fixtures/request_hook/request_hook.dbs in a SQLite

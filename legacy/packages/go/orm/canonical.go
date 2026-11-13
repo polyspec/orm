@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // canonicalize rewrites r so that its plan, and therefore its plan cache entry,

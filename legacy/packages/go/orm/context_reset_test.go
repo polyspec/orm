@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestTransactionReportsFailedLocalReset checks that when the MySQL local value at the end of a transaction

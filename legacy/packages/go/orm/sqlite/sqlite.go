@@ -1,7 +1,7 @@
 // Package sqlite registers the SQLite driver with the executor. Import it for
 // its side effect in a program that opens a "sqlite" database:
 //
-//	import _ "github.com/polyspec/orm/packages/go/orm/sqlite"
+//	import _ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
 //
 // It is a separate package so a MySQL-only program does not link modernc's
 // SQLite (several megabytes of transpiled C, plus a package init that reads
@@ -16,8 +16,8 @@ import (
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 func init() {

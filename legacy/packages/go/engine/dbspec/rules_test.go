@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // These cases cover rules and canonical forms that the recipes of tests/dbspec

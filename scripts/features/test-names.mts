@@ -194,7 +194,7 @@ const checkGo = (tree: Tree, words: string[], cwd: string, report: Report) => {
 
 type PhpScope = { names: string[]; text: string; cases: string[] };
 
-const phpFiles = (tree: Tree) => tree.files.filter(path => path.endsWith('.php') && /^packages\/php(-ext)?\/tests\//.test(path));
+const phpFiles = (tree: Tree) => tree.files.filter(path => path.endsWith('.php') && /^legacy\/packages\/php(-ext)?\/tests\//.test(path));
 
 // phpScope lists `Namespace\Class::method` of the files and of each class they extend, trait they use or file they require.
 export const phpScope = (tree: Tree, paths: string[]): PhpScope => {

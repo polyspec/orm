@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // showCreateVectors is tests/dbspec/show-create.json: the SHOW CREATE TABLE statements, their CHECK names,

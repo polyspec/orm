@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func TestRelationKeysUseOrderedReferences(t *testing.T) {

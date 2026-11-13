@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/plancases"
 )
 
 // loadPlanCases reads the cases of tests/dbspec/plan-cases.json, the recipe in plan-cases.json. Its cases are run by

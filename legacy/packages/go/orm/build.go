@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // request is one statement under construction: the value-free IR plus values.

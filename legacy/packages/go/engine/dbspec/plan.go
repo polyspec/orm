@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // RulePlan and RuleChain are the diagnostics of a plan document and a plan chain

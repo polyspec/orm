@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/orm"
-	_ "github.com/polyspec/orm/packages/go/orm/pg"
-	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/legacy/packages/go/model"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/pg"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
 
-	"github.com/polyspec/orm/packages/go/internal/benchset"
-	"github.com/polyspec/orm/packages/go/internal/testassert"
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/benchset"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testassert"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // databases returns a case database of its own (internal/testdb) for SQLite,

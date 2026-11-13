@@ -492,7 +492,7 @@ export function runnerIdentity(segment: string): string | undefined {
   if (phpunit) return `phpunit ${phpunit[1]}`;
   const php = /^php\s+(?:-\S+\s+)*([\w./-]+\.php)\b/.exec(command);
   if (php) return `php ${php[1]}`;
-  if (/^node\s+(?:-\S+\s+)*(?:--test\b|(?:packages\/(?:go|ts|php|php-ext|python|rust)|tests)\/)/.test(command)) return 'node test';
+  if (/^node\s+(?:-\S+\s+)*(?:--test\b|(?:legacy\/packages\/(?:go|ts|php|php-ext|python)|packages\/rust|tests)\/)/.test(command)) return 'node test';
   return undefined;
 }
 

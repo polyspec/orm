@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/dialect"
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/plan"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dialect"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // restoreDocument is two soft-delete tables with a unique key. link is an audit

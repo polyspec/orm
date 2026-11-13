@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // A test that the private plan cache key shapeKey reads every field of the Go request struct, through reflection.

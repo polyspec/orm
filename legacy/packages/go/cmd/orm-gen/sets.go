@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/generator"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/generator"
 )
 
 // setsCmd generates or checks every entry of a models file in one run, in the

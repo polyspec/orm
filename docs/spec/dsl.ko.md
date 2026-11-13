@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 894f1767367c891f8807c95d387308ad52601588fdfdd47d2bc2149fb38a005a -->
+<!-- source-sha256: c2ebe91d67efee69536c5096fba826712d511477e414d91904a10b40562cea7a -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -16,7 +16,7 @@
 
 - **DSL-7** 연결 메서드는 `connect` 하나다. 조회한 행이나 컬렉션도 쓰기 전에 같은 메서드를 사용하므로, 복제본에서 읽은 행을 기본 연결로 쓸 수 있다.
 - **DSL-8** PHP는 `(new Product)($slave1)`과 `$row($master)`를 `connect`의 짧은 형태로 허용한다.
-- **DSL-9** `github.com/polyspec/orm/packages/go` client(Go)는 생성된 `model` 패키지의 함수를 사용한다. `model.Product()`는 `*model.ProductModel`을 반환한다.
+- **DSL-9** `github.com/polyspec/orm/legacy/packages/go` client(Go)는 생성된 `model` 패키지의 함수를 사용한다. `model.Product()`는 `*model.ProductModel`을 반환한다.
 - **DSL-10** 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 현재 실행 흐름의 활성 트랜잭션을 사용한다. 트랜잭션 밖에서 `connect` 없는 모델의 종단 작업이나 쓰기는 `CONFIG`를 반환한다.
 
 ## 2. 조건
@@ -85,7 +85,7 @@ Key   = [Operator] Column
 - **DSL-36** `getsByServiceSeqAndIsClose(7, 0)`와 `serviceSeq(7)->andIsClose(0)->gets()`는 같은 조건을 만든다.
 - **DSL-37** 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석하고, Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부하며, PHP는 `--scan`을 주면 같은 메서드를 `@method` 태그로 선언하고 같은 오류를 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method와 그 chain이 받지 않는 인자 개수의 호출을 생성 단계에서 보고한다. 이 거부의 코드는 모두 `CONFIG`다.
 - **DSL-38** 각 언어는 자기 빌드 도구로 생성한다.
-  - **DSL-39** `github.com/polyspec/orm/packages/go` 생성기(Go)는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다. 기본 빌드는 읽을 모든 패키지를 한 번 읽고, 그런 설정은 그 파일을 가진 패키지만 읽으며 다른 모든 패키지의 타입 정보는 기본 빌드에서 가져온다.
+  - **DSL-39** `github.com/polyspec/orm/legacy/packages/go` 생성기(Go)는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/legacy/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다. 기본 빌드는 읽을 모든 패키지를 한 번 읽고, 그런 설정은 그 파일을 가진 패키지만 읽으며 다른 모든 패키지의 타입 정보는 기본 빌드에서 가져온다.
   - **DSL-40** `@polyspec/orm` 생성기(TypeScript)는 `--scan`으로 지정한 파일을 oxc-parser로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src`를 실행한다.
   - **DSL-41** `polyspec-orm-build` crate(Rust)는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `polyspec_orm_build::Builder::set("contracts/fixtures/bench/dbspec-set.json").scan("src").generate()`를 실행하고, `polyspec_orm::models!()`가 결과를 `model` 모듈로 포함한다.
   - **DSL-42** `polyspec/orm` 생성기(PHP)는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace Example\Model --scan src`를 실행한다. `--scan`은 파일이나 디렉터리를 받고 여러 번 쓸 수 있다. 디렉터리는 그 안의 `vendor`와 `node_modules` 디렉터리를 빼고 읽으며, symlink를 만나면 따라가지 않고 상태 1로 생성을 멈춘다. `nikic/php-parser`로 PHP 파일을 읽고, 소스가 그 모델에서 호출하는 체인 메서드(예: `ltSeq`, `andIsClose`, `getsBySeqAndName`)마다 타입이 있는 `@method` 태그를 각 모델 클래스의 주석에 선언하므로 PHPStan이 호출을 찾는다. 호출은 그대로 `__call`로 실행된다. 받는 사람은 생성 클래스 `C`의 `new C`(`use` 별칭 포함), 그 클래스로 선언한 변수·매개변수·반환 타입, 모델의 체인 메서드, `and`·`or`·`not`·`andNot`·`orNot`·`on`·`fetchKey`·`fetchValue`에 준 클로저의 타입 없는 첫 매개변수일 때 모델로 읽는다. 다른 받는 사람의 호출은 태그를 더하지 않는다. 어떤 컬럼·체인·연산자도 받지 않는 이름이나 체인이 받지 않는 인자 개수의 호출은 모델과 메서드 이름을 밝히며 상태 1로 생성을 멈춘다.
@@ -95,7 +95,7 @@ Key   = [Operator] Column
   - **DSL-152** orm-gen이 scan 중 parse하지 못하는 source file은 모든 generator에서 error다: parse되지 않은 file은 그 호출을 숨기므로, generation은 멈추고 아무것도 쓰지 않으며, error는 file과 parser의 position(line, parser가 주면 column)과 message를 명시한다. 어떤 generator도 그 file을 건너뛰거나 warning으로만 보고하지 않는다. 이 error의 code는 `GENERATOR_SCAN_PARSE`이며, 전달 방식은 DSL-44와 같다.
   - **DSL-153** 숫자가 뒤따르지 않는 `$`는 자리표시자가 아니라 글자다. 그래서 parent 슬롯 확장은 그것을 그대로 쓴다. 번호를 붙이는 것은 `$n`뿐이며(DIA-2, DIA-19), literal이나 식별자 안의 `$`에는 번호가 붙지 않는다. 그런 `$`가 있는 statement는 `$`를 바꾸지 않은 같은 글자로 확장된다.
   - **DSL-154** **선언된 query 메서드.** 생성된 model class는 chain 메서드를 스키마의 이름을 기준으로 선언한다: 각 column의 조건 메서드, 두 개 이상 column으로 된 key prefix마다의 tuple 메서드, 정렬 메서드(`orderBy<Col>Asc`), `addColumn<Name>` 메서드, `plus<Col>` 메서드, 각 index의 `forceIndex<Name>` 메서드. 선언된 메서드는 모두 model 자신을 돌려주도록 타입이 정해진다(Python은 `typing.Self`). 그래서 타입 검사기는 chain을 model로 읽는다.
-  - **DSL-157** `github.com/polyspec/orm/packages/go` generator는 Go로 models 파일의 set들을 각 scan이 필요로 하는 순서로 생성한다: 스캔한 package가 다른 set의 generated model을 import하는 set은 그 set 다음에 생성되며, 두 set 사이의 순환은 두 set 이름을 모두 밝히는 오류로 거부한다.
+  - **DSL-157** `github.com/polyspec/orm/legacy/packages/go` generator는 Go로 models 파일의 set들을 각 scan이 필요로 하는 순서로 생성한다: 스캔한 package가 다른 set의 generated model을 import하는 set은 그 set 다음에 생성되며, 두 set 사이의 순환은 두 set 이름을 모두 밝히는 오류로 거부한다.
   - **DSL-158** `@polyspec/orm` generator는 TypeScript로, scan하는 file의 첫 줄에 있는 parse error를 앞에 줄바꿈이 없어도 line 1과 parser가 주는 column으로 보고한다. 이 generator는 parser의 offset을 position으로 직접 바꾼다.
 
 ### 2.3 값 형태
@@ -274,7 +274,7 @@ rows, err := model.Product().Connect(slave1).
 - **DSL-115** `new<Name>`은 계산한 금액이나 화면용 표시 값처럼 행이 출력까지 전달하는 데이터를 추가한다. 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 사용하지 않는다. 조회와 쓰기 뒤에도 `get<Name>()`, `toArray()`, JSON 출력에 포함되며 `create()`가 반환한 모델도 추가한 값을 유지한다.
 - **DSL-116** `new<Name>`에 실제 컬럼 명칭을 사용하면 거부한다. 저장 컬럼 값은 `set<Col>`을 사용한다.
 - **DSL-160** PHP client `polyspec/orm`은 `new<Name>` 호출을 실행 시점에 풀며 실제 컬럼이면 그때 `CONFIG`로 거부한다. PHP-extension client `polyspec/orm-php-ext`, TypeScript client `@polyspec/orm`, Python package `polyspec-orm`도 같다.
-- **DSL-117** `github.com/polyspec/orm/packages/go` 생성기는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 `any`다.
+- **DSL-117** `github.com/polyspec/orm/legacy/packages/go` 생성기는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 `any`다.
 - **DSL-156** `polyspec-orm-build` crate는 읽은 소스가 호출하는 명칭의 `new_<name>`과 `get_<name>`을 생성한다. 값 타입은 공통 값 타입이다.
 
 ```php

@@ -21,14 +21,14 @@ type Runner = {
 };
 
 export const RUNNERS: { [implementation: string]: Runner } = {
-  go: { call: /\brecipe\.Run/, files: /^packages\/go\/internal\/recipe\/[^/]+\.go$/ },
-  php: { call: /\bRecipeCases\b|\b(?:Database|Sqlite)RecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^packages\/php\/tests\/Recipe(Model)?\.php$/ },
-  'php-extension': { call: /\bRecipeCases\b|\b(?:Database|Sqlite)RecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^packages\/php\/tests\/Recipe(Model)?\.php$/ },
-  typescript: { call: /\brunRecipe\b/, files: /^packages\/ts\/tests\/recipe(_model)?\.mjs$/ },
-  python: { call: /\brecipe_tests\b/, files: /^packages\/python\/tests\/recipe(_model)?\.py$/ },
+  go: { call: /\brecipe\.Run/, files: /^legacy\/packages\/go\/internal\/recipe\/[^/]+\.go$/ },
+  php: { call: /\bRecipeCases\b|\b(?:Database|Sqlite)RecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^legacy\/packages\/php\/tests\/Recipe(Model)?\.php$/ },
+  'php-extension': { call: /\bRecipeCases\b|\b(?:Database|Sqlite)RecipeTestCase\b|\bRecipe::|\bextends \w*Test\b/, files: /^legacy\/packages\/php\/tests\/Recipe(Model)?\.php$/ },
+  typescript: { call: /\brunRecipe\b/, files: /^legacy\/packages\/ts\/tests\/recipe(_model)?\.mjs$/ },
+  python: { call: /\brecipe_tests\b/, files: /^legacy\/packages\/python\/tests\/recipe(_model)?\.py$/ },
   rust: {
     call: /\brecipe::\w*trials/,
-    files: /^packages\/rust\/tests\/(src\/(recipe|recipe_apply|bench_set_dispatch)\.rs|tests\/all\/[^/]+\/dispatch\.rs)$/,
+    files: /^packages\/rust\/programs\/(src\/(recipe|recipe_apply|bench_set_dispatch)\.rs|tests\/all\/[^/]+\/dispatch\.rs)$/,
   },
 };
 
@@ -216,10 +216,12 @@ function opsOf(keys: unknown): string[] {
 export function readTree(): Tree {
   const ops = opsOf(JSON.parse(readFileSync(keysFile, 'utf8')));
   const sources = new Map<string, string>();
+  // The language implementations of legacy/packages run the fixed copies of the recipes under legacy/tests and legacy/contracts.
   sourcesUnder(resolve(root, 'packages'), sources);
+  sourcesUnder(resolve(root, 'legacy/packages'), sources);
   const steps = new Set<string>();
   const recipes: string[] = [];
-  for (const file of jsonFiles(root)) {
+  for (const file of jsonFiles(root, ['tests', 'contracts', 'legacy/tests', 'legacy/contracts'])) {
     const found = stepOps(JSON.parse(readFileSync(resolve(root, file), 'utf8')));
     if (found.size === 0) continue;
     recipes.push(file);

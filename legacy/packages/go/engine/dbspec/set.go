@@ -13,7 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // The rules of the set reader (docs/spec/dbspec.md "Document sets").

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 	"golang.org/x/sys/unix"
 )
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // LISTEN connections use pgx directly: the database/sql driver does not

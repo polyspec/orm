@@ -5,13 +5,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/decimalmodel"
-	"github.com/polyspec/orm/packages/go/internal/testassert"
-	"github.com/polyspec/orm/packages/go/orm"
-	_ "github.com/polyspec/orm/packages/go/orm/pg"
-	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/legacy/packages/go/decimalmodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testassert"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/pg"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func decimalPhysical(t *testing.T, env string) {

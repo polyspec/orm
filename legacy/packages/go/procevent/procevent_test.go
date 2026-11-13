@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestWatchExit checks that the wait of WatchExit returns when the process ends, that Alive reports the process

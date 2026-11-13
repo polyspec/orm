@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine"
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func planCacheIdentityLoadFixture(t *testing.T) (*runtimemodel.Model, *Schema) {

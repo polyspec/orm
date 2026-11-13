@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
 )
 
 // Key is a collection key. The integer 7 and the text "7" are different keys.

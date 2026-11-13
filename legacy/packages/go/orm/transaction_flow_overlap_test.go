@@ -3,7 +3,7 @@ package orm
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestTransactionConnectionRejectsOverlappingStatement checks the transaction executor's statement guard.

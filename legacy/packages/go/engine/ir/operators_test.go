@@ -3,8 +3,8 @@ package ir
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func TestStringAndTextSupportOrderedCursorPredicates(t *testing.T) {

@@ -3,8 +3,8 @@ package bindmessages_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestRecipeDslNone runs The chain value recipe, contracts/fixtures/dsl/dsl.json, without a database (FCV-3, FCV-4).

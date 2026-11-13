@@ -28,12 +28,12 @@ import (
 	"time"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
-	"github.com/polyspec/orm/packages/go/engine"
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/plan"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/engine"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 	_ "modernc.org/sqlite"
 )
 

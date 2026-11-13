@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/model"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Requirements: DBS-112, COD-2.

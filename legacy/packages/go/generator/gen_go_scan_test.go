@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // scannedModule creates a module that requires the ORM of this repository,
@@ -35,7 +35,7 @@ func scannedModule(t *testing.T) func(name, body string) {
 		t.Fatal(err)
 	}
 	requires := strings.SplitN(string(gomod), "\n", 2)[1]
-	write("go.mod", "module example.com/ormexample\n"+strings.Replace(requires, "require (", "require (\n\tgithub.com/polyspec/orm/packages/go v0.0.0", 1)+"\nreplace github.com/polyspec/orm/packages/go => "+root+"\n")
+	write("go.mod", "module example.com/ormexample\n"+strings.Replace(requires, "require (", "require (\n\tgithub.com/polyspec/orm/legacy/packages/go v0.0.0", 1)+"\nreplace github.com/polyspec/orm/legacy/packages/go => "+root+"\n")
 	sum, err := os.ReadFile(filepath.Join(root, "go.sum"))
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ import (
 	"testing"
 
 	"example.com/ormexample/model"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 func TestPriceGetterSelection(t *testing.T) {
@@ -152,7 +152,7 @@ import (
 	"testing"
 
 	"example.com/ormexample/model"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 func TestGeneratedNonnullStyledSetterRejectsSqlNull(t *testing.T) {
@@ -259,7 +259,7 @@ func TestGeneratedExternalModelReadsItsTable(t *testing.T) {
 	write("example/example.go", `package example
 
 import (
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 
 	"example.com/ormexample/model"
 )
@@ -280,8 +280,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
 
 	"example.com/ormexample/model"
 )

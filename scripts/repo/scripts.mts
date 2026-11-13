@@ -31,7 +31,7 @@ const otherLanguages = /\.(?:py|rb|pl|pm|lua|java|kt|cs|swift|scala|r)$/i;
 //   the python runner in tests/conformance (file names containing python)
 //   the python runner in tests/dbspec/compare (file names containing python)
 // Other Python programs are not exempt.
-const pythonRunners = /^(?:packages\/python\/|tests\/interfaces\/(?:test_[^/]*|python)\.py$|tests\/conformance\/[^/]*python[^/]*\.py$|tests\/dbspec\/compare\/[^/]*python[^/]*\.py$)/;
+const pythonRunners = /^(?:legacy\/packages\/python\/|tests\/interfaces\/(?:test_[^/]*|python)\.py$|tests\/conformance\/[^/]*python[^/]*\.py$|tests\/dbspec\/compare\/[^/]*python[^/]*\.py$)/;
 
 // toolingLanguageErrors returns one error for each program file of another language among the tracked files.
 export function toolingLanguageErrors(tracked: string[]) {

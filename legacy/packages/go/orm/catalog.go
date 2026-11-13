@@ -18,8 +18,8 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // Budgets of the catalog connection (docs/spec/interfaces.md, "Qualified native Rust table metadata" to "Qualified Rust

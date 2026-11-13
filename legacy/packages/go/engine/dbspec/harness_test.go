@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // repositoryRoot is the module root. go test runs tests in the package directory (engine/dbspec), so it goes up two levels

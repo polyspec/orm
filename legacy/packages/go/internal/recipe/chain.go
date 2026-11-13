@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // chainOps are the model ops of the table path.

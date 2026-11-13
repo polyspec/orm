@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // corpusName is the name of the corpus of a recipe case; each case has a directory of its own.

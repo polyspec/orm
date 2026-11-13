@@ -2,7 +2,7 @@
 
 package recipe
 
-import "github.com/polyspec/orm/packages/go/orm"
+import "github.com/polyspec/orm/legacy/packages/go/orm"
 
 // affectedFields holds nothing without the test entry point of the ormtest build (F15, PRT-58).
 func affectedFields(*orm.DB) map[string]any {

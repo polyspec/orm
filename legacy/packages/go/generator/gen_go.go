@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // Go generator. Every model gets its fixed column methods; the methods named
@@ -288,7 +288,7 @@ func field(c *runtimemodel.Field) string {
 func (g *goGen) write() error {
 	var b bytes.Buffer
 	b.WriteString(generatedHeader)
-	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n\t\"time\"\n\n\t\"github.com/polyspec/orm/packages/go/orm\"\n)\n\n", g.pkg)
+	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n\t\"time\"\n\n\t\"github.com/polyspec/orm/legacy/packages/go/orm\"\n)\n\n", g.pkg)
 	b.WriteString("var _ time.Time\n\n")
 	fmt.Fprintf(&b, "// ManifestHash is the manifestHash of the document set the models were generated from.\nconst ManifestHash = %q\n\n", g.m.ManifestHash)
 	fmt.Fprintf(&b, "// ManifestText is the manifest text of the document set the models were generated from.\nconst ManifestText = %s\n\n", goStringLiteral(g.m.ManifestText))
@@ -465,7 +465,7 @@ func (g *goGen) writeModel(gm *goModel) error {
 	var b bytes.Buffer
 	b.WriteString(generatedHeader)
 	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n", g.pkg)
-	b.WriteString("\t\"time\"\n\n\t\"github.com/polyspec/orm/packages/go/orm\"\n)\n\nvar _ time.Time\n\n")
+	b.WriteString("\t\"time\"\n\n\t\"github.com/polyspec/orm/legacy/packages/go/orm\"\n)\n\nvar _ time.Time\n\n")
 	ent := lowerFirst(gm.ctor) + "Entity"
 	fmt.Fprintf(&b, "// %s is a %s model or row.\ntype %s struct {\n\tm *orm.Core\n", t, e.Name, t)
 	for _, c := range e.Fields {

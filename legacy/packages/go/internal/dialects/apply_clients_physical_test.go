@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/plancases"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // planCaseText is the source and plan text of the tests/dbspec/plan-cases.json case.

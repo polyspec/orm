@@ -26,9 +26,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/database"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/plancases"
 )
 
 // connectionRules is the statements that every client runs on a new connection

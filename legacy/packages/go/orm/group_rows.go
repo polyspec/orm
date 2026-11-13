@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/plan"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 type groupValue struct {

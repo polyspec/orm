@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // errCallback is the error that a transaction callback returns after its steps when its op has fail: true. The

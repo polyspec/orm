@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/procevent"
+	"github.com/polyspec/orm/legacy/packages/go/procevent"
 	"golang.org/x/sys/unix"
 )
 

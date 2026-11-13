@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/plan"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // collectionKeysFixture is tests/collection/keys.json: the collection key identity that every implementation shares.

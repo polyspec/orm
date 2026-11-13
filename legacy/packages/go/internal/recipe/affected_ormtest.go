@@ -5,7 +5,7 @@ package recipe
 import (
 	"strconv"
 
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // affectedFields is the `affected` of the last write on db, the value that the expect of a model write names (F15).

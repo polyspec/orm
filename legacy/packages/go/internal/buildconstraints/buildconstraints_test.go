@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // platformTags are the operating systems and architectures that Go knows (go tool dist list), with unix and cgo.

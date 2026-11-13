@@ -10,10 +10,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dialect"
-	"github.com/polyspec/orm/packages/go/engine/internal/meet"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dialect"
+	"github.com/polyspec/orm/legacy/packages/go/engine/internal/meet"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 const Version = 1
