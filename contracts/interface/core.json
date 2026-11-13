@@ -895,5 +895,36 @@
         "message": "codec_encode: the value is no value of a column: an integer outside i64"
       }
     }
+  ],
+  "query.limit": [
+    {
+      "id": "a_range",
+      "rule": "CORE-85",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "offset": 1,
+      "count": 2,
+      "result": null,
+      "after": [
+        {
+          "on": "receiver",
+          "call": "query.entity",
+          "args": {},
+          "result": "clock_event"
+        }
+      ]
+    }
   ]
 }

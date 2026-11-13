@@ -2719,6 +2719,37 @@
             "path": "polyspec_orm::Query::get_count_by",
             "receiver": "&self"
           }
+        },
+        {
+          "id": "query.limit",
+          "name": [
+            "limit"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "offset"
+              ],
+              "type": "uint",
+              "required": true
+            },
+            {
+              "name": [
+                "count"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::limit",
+            "receiver": "&mut self"
+          }
         }
       ]
     }
@@ -2794,6 +2825,11 @@
       "member": "query.get_count_by",
       "file": "contracts/interface/core.json",
       "group": "query.get_count_by"
+    },
+    {
+      "member": "query.limit",
+      "file": "contracts/interface/core.json",
+      "group": "query.limit"
     },
     {
       "alias": "orm_value",

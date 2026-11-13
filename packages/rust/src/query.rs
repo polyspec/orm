@@ -108,6 +108,12 @@ impl Query {
         }
     }
 
+    /// Reads at most `count` rows after the first `offset` rows of the order (CORE-85). A `count` of 0 is `config` at
+    /// the next terminal.
+    pub fn limit(&mut self, offset: u32, count: u32) {
+        self.core.limit(offset, count);
+    }
+
     /// A copy of the query with the conditions of `chain` joined by `and` (CORE-83).
     fn by(&self, chain: &str, values: Vec<OrmValue>) -> Query {
         let mut out = self.clone();

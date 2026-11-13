@@ -221,6 +221,10 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.order_by(&text(args, "spec", member));
             Returned::Value(Value::Null)
         }
+        ("query.limit", Some(Instance::Query(query))) => {
+            query.limit(uint(args, "offset", member), uint(args, "count", member));
+            Returned::Value(Value::Null)
+        }
         ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
         ("query.where", Some(Instance::Query(query))) => {
             query.where_chain(&text(args, "chain", member), orm_values(args, "values", member)?);

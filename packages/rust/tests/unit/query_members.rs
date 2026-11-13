@@ -41,10 +41,6 @@ fn int(value: i64) -> OrmValue {
     OrmValue::Int64(value)
 }
 
-fn text(value: &str) -> OrmValue {
-    OrmValue::Text(value.into())
-}
-
 /// A SQLite database with the tables of the account schema, the accounts 1 to 3 and the keys 1 and 2 of account 1 and
 /// the key 3 of account 2.
 async fn account_db(scratch: &Scratch, schema: &Schema) -> Db {
