@@ -1710,13 +1710,13 @@ orm-test-mysql-privilege-start:
 # make orm-test-container KIND=<mysql|postgres|mariadb> starts one test database server in an Apple container from the image
 # that config/containers.json pins by its digest, and writes .runtime/containers/<kind>.env (scripts/test-servers-container.mts).
 # A check reads it as TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and,
-# for MySQL and MariaDB, its published Unix socket; the variables of the replicas and the poolers are absent. The container
-# belongs to this checkout: its name holds the identifier of the checkout, so two checkouts run their servers at once (T444).
-# One kind runs at a time in a checkout; make orm-test-container-stop removes the containers of this checkout and their data,
-# and no other container. make orm-test-container-run KIND=<kind> RUN='<command>' starts the server for that run alone, runs
-# the shell command RUN with the variables of the server, and removes the container when RUN ends or fails, or when the run
-# gets SIGINT or SIGTERM. make orm-install-container-images pulls the pinned images. CONTAINER_PROGRAM names the container
-# program, which each of these targets passes to the script.
+# for MySQL and MariaDB, its published Unix socket; the variables of the replicas and the poolers are absent. Each kind runs at
+# most once in a checkout, and kinds may run together. The container belongs to this checkout: its name holds the identifier
+# of the checkout, so two checkouts run their servers at once (T444). make orm-test-container-stop removes the containers of
+# this checkout and their data, and no other container. make orm-test-container-run KIND=<kind> RUN='<command>' starts the
+# server for that run alone, runs the shell command RUN with the variables of the server, and removes the container when RUN
+# ends or fails, or when the run gets SIGINT or SIGTERM. make orm-install-container-images pulls the pinned images.
+# CONTAINER_PROGRAM names the container program, which each of these targets passes to the script.
 CONTAINER_PROGRAM = /opt/homebrew/bin/container
 .PHONY: orm-test-container orm-test-container-run orm-test-container-stop orm-install-container-images
 orm-test-container:

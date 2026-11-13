@@ -569,7 +569,7 @@ make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
 make orm-test-container KIND=mysql                           # one MySQL primary in an Apple container from the image of config/containers.json
 . .runtime/containers/mysql.env                              # its DSN variables; a target that reads TEST_ENV takes TEST_ENV=.runtime/containers/mysql.env, MariaDB MARIADB_ENV
-make orm-test-container-stop                                 # remove the containers of this checkout and their data; then start the next kind
+make orm-test-container-stop                                 # remove the containers of this checkout and their data
 make orm-test-container-run KIND=mysql RUN='make test-rust'  # start the server for this run alone, run RUN with its variables, and remove it when RUN ends, fails or gets SIGINT or SIGTERM
 ```
 

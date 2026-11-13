@@ -12,47 +12,52 @@
 // CONTAINER_PROGRAM names the container program; make passes it. A container belongs to the checkout that started it:
 // its name is polyspec-orm-test-<checkout>-<kind>, where <checkout> is the first 12 hexadecimal digits of the sha256 of
 // the root of the checkout, so two checkouts run their servers at once, and stop removes only the containers of its own
-// checkout. A container of another name is never stopped or removed. One kind runs at a time in a checkout: start
-// refuses while a container of the checkout runs. run starts the server, runs the command with the variables of the
-// environment file, and stops and removes the container when the command ends or fails, or when the run gets SIGINT
-// or SIGTERM, which it forwards to the command; a start that fails removes the container that it started.
+// checkout; a container of another name is never stopped or removed (T444). Each kind runs at most once in a checkout,
+// and kinds may run together: start refuses a kind whose container exists, and a start that fails removes the container
+// of its kind. run starts the server of a kind, runs the command with the variables of the server, and removes that
+// container when the command ends or fails, or when the run gets SIGINT or SIGTERM, which it forwards to the command.
 //
 // The environment file is .runtime/containers/<kind>.env; the MySQL and PostgreSQL files have the variables of the
 // primary of TEST_ENV, the MariaDB file those of the primary of MARIADB_ENV. The DSNs name the address of the container
 // on its network, which the container runtime assigns, and the port of the server in the container. The server has TLS
-// with a certificate that issueTls of scripts/test-servers.mts issues for each start under .runtime/containers/tls: it
-// names the host name of the container, <name>.container.test, so the TLS DSN connects to that name, the DSN with the
+// with a certificate that issueTls of scripts/test-servers.mts issues for each start under .runtime/containers/tls-<kind>:
+// it names the host name of the container, <name>.container.test, so the TLS DSN connects to that name, the DSN with the
 // second CA fails the chain, and the mismatch DSN connects to the address, which the certificate does not name. The Unix
-// socket of MySQL and MariaDB is published at .runtime/containers/<kind>.sock. A replica and a pooler are not started,
-// so their variables are absent and a check that reads them fails, naming the variable.
+// socket of MySQL and MariaDB is published at .runtime/containers/<kind>.sock. A replica and a pooler are not started, so
+// their variables are absent and a check that reads them fails, naming the variable.
 //
-// Waiting for a server is a long operation without a time limit: start follows the log of the container and resolves on
-// the ready line that the server logs after its image finished its initialization, and fails when the log ends first.
+// Waiting for a server is a long operation without a time limit: start reads the output of the attached container on each
+// change of its log file and resolves on the ready line that the server logs after its image finished its
+// initialization, and fails when the container stops first.
 // stop holds the exclusive lease of the servers of the checkout, then stops and removes each container of the checkout.
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, watch, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { createInterface } from 'node:readline';
 import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, TestServerError } from './test-servers.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
 const PREFIX = 'polyspec-orm-test-';
 // TLS_MOUNT is the folder of the TLS files in the container.
 const TLS_MOUNT = '/etc/orm-tls';
+// POSTGRES_KEY is the copy of the key of the PostgreSQL server in the container, outside its data directory.
+const POSTGRES_KEY = '/var/lib/postgresql/orm-tls-key.pem';
 
 type Kind = 'mysql' | 'postgres' | 'mariadb';
 
 // Context is the checkout whose servers a command starts or removes, and the container program that it runs.
 export interface Context { root: string; program: string }
 
-// Folders are the files of the servers of a checkout under its .runtime/containers.
-interface Folders { dir: string; leases: string; tls: string }
+// Folders are the files of the servers of a checkout: .runtime/containers and its leases.
+interface Folders { dir: string; leases: string }
 
 function folders(root: string): Folders {
   const dir = join(root, '.runtime/containers');
-  return { dir, leases: join(dir, 'leases'), tls: join(dir, 'tls') };
+  return { dir, leases: join(dir, 'leases') };
 }
+
+// tlsDir is the folder of the TLS files of the server of kind on the host.
+const tlsDir = (dir: string, kind: Kind) => join(dir, `tls-${kind}`);
 
 interface Server {
   // port is the port of the server in the container.
@@ -76,8 +81,8 @@ interface Server {
 // host path of its published socket, and the folders of its checkout.
 interface Endpoint { address: string; host: string; socket: string; folders: Folders }
 
-const mysqlTls = (host: string, tls: string, ca: string) => `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${tls}/${ca}.pem`;
-const postgresTls = (host: string, tls: string, ca: string) => `postgres://orm@${host}:5432/orm_test?sslmode=verify-full&sslrootcert=${tls}/${ca}.pem`;
+const mysqlTls = (tls: string, host: string, ca: string) => `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${tls}/${ca}.pem`;
+const postgresTls = (tls: string, host: string, ca: string) => `postgres://orm@${host}:5432/orm_test?sslmode=verify-full&sslrootcert=${tls}/${ca}.pem`;
 const mysqlTlsOptions = (kind: Kind) => [`--ssl-ca=${TLS_MOUNT}/ca.pem`, `--ssl-cert=${TLS_MOUNT}/${kind}-cert.pem`, `--ssl-key=${TLS_MOUNT}/${kind}-key.pem`];
 
 // The MySQL and the MariaDB server take the options of the native primary (scripts/test-servers.mts). The temporary
@@ -92,12 +97,13 @@ const SERVERS: Record<Kind, Server> = {
     initialized: 'MySQL init process done', ready: mysqlReady,
     databases: ['mysql', '-uroot', '-e', 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'],
     socket: '/var/run/mysqld/mysqld.sock',
-    variables: ({ address, host, socket, folders: { leases, tls } }) => {
+    variables: ({ address, host, socket, folders: { dir, leases } }) => {
       const mysql = `mysql://root@${address}:3306`;
+      const tls = tlsDir(dir, 'mysql');
       return {
         ORM_TEST_MYSQL_DSN: `${mysql}/orm_test`, ORM_TEST_MYSQL_SERVER_DSN: `${mysql}/orm_test`, ORM_TOOLS_MYSQL_DSN: `${mysql}/orm_tools`,
         ORM_RUN_MYSQL_DSN: `${mysql}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
-        ORM_TEST_MYSQL_TLS_DSN: mysqlTls(host, tls, 'ca'), ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: mysqlTls(host, tls, 'other-ca'), ORM_TEST_MYSQL_TLS_MISMATCH_DSN: mysqlTls(address, tls, 'ca'),
+        ORM_TEST_MYSQL_TLS_DSN: mysqlTls(tls, host, 'ca'), ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: mysqlTls(tls, host, 'other-ca'), ORM_TEST_MYSQL_TLS_MISMATCH_DSN: mysqlTls(tls, address, 'ca'),
         ORM_TEST_MYSQL_SOCKET: socket,
       };
     },
@@ -105,16 +111,19 @@ const SERVERS: Record<Kind, Server> = {
   postgres: {
     port: 5432, data: '/var/lib/postgresql/data',
     environment: ['POSTGRES_USER=orm', 'POSTGRES_HOST_AUTH_METHOD=trust', 'POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C'],
-    arguments: ['postgres', '-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB',
-      '-c', 'ssl=on', '-c', `ssl_cert_file=${TLS_MOUNT}/postgres-cert.pem`, '-c', `ssl_key_file=${TLS_MOUNT}/postgres-key.pem`],
+    // PostgreSQL refuses a key that another user than its own can read, so the key is copied for the user postgres first.
+    arguments: ['sh', '-c', `install -m 0600 -o postgres -g postgres ${TLS_MOUNT}/postgres-key.pem ${POSTGRES_KEY} && exec docker-entrypoint.sh "$@"`, 'sh',
+      'postgres', '-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB',
+      '-c', 'ssl=on', '-c', `ssl_cert_file=${TLS_MOUNT}/postgres-cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`],
     initialized: 'PostgreSQL init process complete', ready: line => line.includes('database system is ready to accept connections'),
     databases: ['psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', 'orm', '-d', 'postgres', '-c', 'CREATE DATABASE orm_test', '-c', 'CREATE DATABASE orm_tools'],
-    variables: ({ address, host, folders: { leases, tls } }) => {
+    variables: ({ address, host, folders: { dir, leases } }) => {
       const postgres = `postgres://orm@${address}:5432`;
+      const tls = tlsDir(dir, 'postgres');
       return {
         ORM_TEST_POSTGRES_DSN: `${postgres}/orm_test`, ORM_TEST_POSTGRES_SERVER_DSN: `${postgres}/orm_test`, ORM_TOOLS_POSTGRES_DSN: `${postgres}/orm_tools`,
         ORM_RUN_POSTGRES_DSN: `${postgres}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
-        ORM_TEST_POSTGRES_TLS_DSN: postgresTls(host, tls, 'ca'), ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(host, tls, 'other-ca'), ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(address, tls, 'ca'),
+        ORM_TEST_POSTGRES_TLS_DSN: postgresTls(tls, host, 'ca'), ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(tls, host, 'other-ca'), ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(tls, address, 'ca'),
       };
     },
   },
@@ -124,11 +133,12 @@ const SERVERS: Record<Kind, Server> = {
     initialized: 'MariaDB init process done', ready: mysqlReady,
     databases: ['mariadb', '-uroot', '-e', 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'],
     socket: '/run/mysqld/mysqld.sock',
-    variables: ({ address, host, socket, folders: { leases, tls } }) => {
+    variables: ({ address, host, socket, folders: { dir, leases } }) => {
       const mariadb = `mysql://root@${address}:3306`;
+      const tls = tlsDir(dir, 'mariadb');
       return {
         ORM_TEST_MARIADB_DSN: `${mariadb}/orm_test`, ORM_TEST_MARIADB_SERVER_DSN: `${mariadb}/orm_test`, ORM_TOOLS_MARIADB_DSN: `${mariadb}/orm_tools`, ORM_TEST_MARIADB_LEASES: leases,
-        ORM_TEST_MARIADB_TLS_DSN: mysqlTls(host, tls, 'ca'), ORM_TEST_MARIADB_TLS_OTHER_CA_DSN: mysqlTls(host, tls, 'other-ca'), ORM_TEST_MARIADB_TLS_MISMATCH_DSN: mysqlTls(address, tls, 'ca'),
+        ORM_TEST_MARIADB_TLS_DSN: mysqlTls(tls, host, 'ca'), ORM_TEST_MARIADB_TLS_OTHER_CA_DSN: mysqlTls(tls, host, 'other-ca'), ORM_TEST_MARIADB_TLS_MISMATCH_DSN: mysqlTls(tls, address, 'ca'),
         ORM_TEST_MARIADB_SOCKET: socket,
       };
     },
@@ -194,27 +204,47 @@ function address(program: string, name: string): string {
   return text;
 }
 
-// ready follows the log of the container and resolves on the ready line after the line of the initialization. Each line
-// is shown on stderr as "test-servers-container: <kind>: <line>".
-function ready(program: string, name: string, kind: Kind, server: Server): Promise<void> {
-  const follow = spawn(program, ['logs', '--follow', name], { stdio: ['ignore', 'pipe', 'pipe'] });
-  const lines = createInterface({ input: follow.stdout });
-  const errors = createInterface({ input: follow.stderr });
-  let initialized = false, done = false;
+// launch starts the container attached, in a new session, with its output appended to .runtime/containers/<kind>.log: the
+// container program outlives this command, and its exit is the event that the container stopped, which a log follower of
+// the container program does not report. The log is read on each change event of the file; each line is shown on stderr as
+// "test-servers-container: <kind>: <line>". It resolves on the ready line after the line of the initialization, and fails
+// when the container stops first, naming the log.
+function launch(context: Context, kind: Kind, server: Server, args: string[]): Promise<void> {
+  const log = join(folders(context.root).dir, `${kind}.log`);
+  writeFileSync(log, '');
+  const fd = openSync(log, 'a');
+  const child = spawn(context.program, args, { detached: true, stdio: ['ignore', fd, fd] });
+  closeSync(fd);
+  const reader = openSync(log, 'r');
+  let offset = 0, pending = '', initialized = false, done = false;
   return new Promise((resolveReady, rejectReady) => {
-    const read = (line: string) => {
-      if (done) return;
-      process.stderr.write(`test-servers-container: ${kind}: ${line}\n`);
-      if (line.includes(server.initialized)) initialized = true;
-      else if (initialized && server.ready(line)) { done = true; follow.kill(); resolveReady(); }
-    };
-    lines.on('line', read);
-    errors.on('line', read);
-    follow.on('error', error => { if (!done) { done = true; rejectReady(new TestServerError(`test-servers-container: container logs ${name}: ${error.message}`)); } });
-    follow.on('exit', (code, signal) => {
+    const finish = (error?: TestServerError) => {
       if (done) return;
       done = true;
-      rejectReady(new TestServerError(`test-servers-container: the log of ${name} ended with ${code ?? signal} before ${kind} was ready; see container logs ${name}`));
+      watcher.close();
+      closeSync(reader);
+      child.unref();
+      if (error) rejectReady(error); else resolveReady();
+    };
+    const read = () => {
+      if (done) return;
+      const chunk = Buffer.alloc(65536);
+      for (let n; (n = readSync(reader, chunk, 0, chunk.length, offset)) > 0; offset += n) pending += chunk.subarray(0, n).toString('utf8');
+      const lines = pending.split('\n');
+      pending = lines.pop() ?? '';
+      for (const line of lines) {
+        if (done) return;
+        process.stderr.write(`test-servers-container: ${kind}: ${line}\n`);
+        if (line.includes(server.initialized)) initialized = true;
+        else if (initialized && server.ready(line)) finish();
+      }
+    };
+    const watcher = watch(log, read);
+    child.on('error', error => finish(new TestServerError(`test-servers-container: ${context.program}: ${error.message}`)));
+    child.on('spawn', read);
+    child.on('exit', (code, signal) => {
+      read();
+      finish(new TestServerError(`test-servers-container: the container of ${kind} stopped with ${code ?? signal} before it was ready; its log is ${log}`));
     });
   });
 }
@@ -229,12 +259,11 @@ function writeEnvironment(file: string, variables: Record<string, string>): void
 }
 
 // start starts the server of a kind for the checkout of context, writes its environment file, and returns its variables.
-// A start that fails after the container was started removes the containers of the checkout.
+// A start that fails after the container was started removes the container of its kind.
 export async function start(kind: Kind, context: Context): Promise<Record<string, string>> {
-  const running = ours(context);
-  if (running.length > 0) throw new TestServerError(`test-servers-container: ${running.join(', ')} of this checkout exists; run make orm-test-container-stop first, one kind runs at a time in a checkout`);
   const server = SERVERS[kind];
   const name = containerName(context.root, kind);
+  if (ours(context).includes(name)) throw new TestServerError(`test-servers-container: ${name} exists; run make orm-test-container-stop first`);
   const dirs = folders(context.root);
   mkdirSync(dirs.leases, { recursive: true });
   const env = join(dirs.dir, `${kind}.env`);
@@ -243,35 +272,38 @@ export async function start(kind: Kind, context: Context): Promise<Record<string
   rmSync(socket, { force: true });
   const host = `${name}.container.test`;
   // The servers of the images read the key as another user than the one that writes it here; these keys sign test data only.
-  rmSync(dirs.tls, { recursive: true, force: true });
-  issueTls(dirs.tls, [[kind, `DNS:${host}`]]);
-  for (const file of [`${kind}-key.pem`, `${kind}-cert.pem`, 'ca.pem']) chmodSync(join(dirs.tls, file), 0o644);
-  container(context.program, ['run', '--detach', '--name', name, '--cpus', '4', '--memory', '4G', '--tmpfs', server.data, '--volume', `${dirs.tls}:${TLS_MOUNT}`,
+  const tls = tlsDir(dirs.dir, kind);
+  rmSync(tls, { recursive: true, force: true });
+  issueTls(tls, [[kind, `DNS:${host}`]]);
+  for (const file of [`${kind}-key.pem`, `${kind}-cert.pem`, 'ca.pem']) chmodSync(join(tls, file), 0o644);
+  const started = launch(context, kind, server, ['run', '--name', name, '--cpus', '4', '--memory', '4G', '--tmpfs', server.data, '--volume', `${tls}:${TLS_MOUNT}`,
     ...(server.socket ? ['--publish-socket', `${socket}:${server.socket}`] : []), '--env', `TZ=${SERVER_TIME_ZONE}`,
     ...server.environment.flatMap(setting => ['--env', setting]), image(kind), ...server.arguments]);
   try {
-    await ready(context.program, name, kind, server);
+    await started;
     container(context.program, ['exec', name, ...server.databases]);
     const variables = server.variables({ address: address(context.program, name), host, socket, folders: dirs });
     writeEnvironment(env, variables);
     return variables;
   } catch (error) {
     console.error(`test-servers-container: start of ${kind} failed; removing ${name}`);
-    remove(context);
+    remove(context, kind);
     throw error;
   }
 }
 
-// remove stops and removes each container of the checkout of context and the files of its servers.
-export function remove(context: Context): void {
-  const dirs = folders(context.root);
-  for (const name of ours(context)) {
+// remove stops and removes the containers of the checkout of context, or the container of kind alone, and the files of
+// their servers.
+export function remove(context: Context, kind?: Kind): void {
+  const { dir } = folders(context.root);
+  const kinds = kind === undefined ? KINDS : [kind];
+  const names = new Set(kinds.map(each => containerName(context.root, each)));
+  for (const name of ours(context).filter(each => names.has(each))) {
     container(context.program, ['stop', name]);
     container(context.program, ['delete', name]);
     console.error(`test-servers-container: removed ${name}`);
   }
-  for (const kind of KINDS) for (const file of [`${kind}.env`, `${kind}.sock`]) rmSync(join(dirs.dir, file), { force: true });
-  rmSync(dirs.tls, { recursive: true, force: true });
+  for (const each of kinds) for (const file of [`${each}.env`, `${each}.sock`, `${each}.log`, `tls-${each}`]) rmSync(join(dir, file), { recursive: true, force: true });
 }
 
 // Signals is where a run receives SIGINT and SIGTERM: the process, or the emitter of a test.
@@ -286,9 +318,9 @@ export interface RunOptions { signals?: Signals; started?: () => void }
 // Ended is how the command of a run ended: its exit code, or the signal that ended it.
 export interface Ended { code: number | null; signal: NodeJS.Signals | null }
 
-// run starts the server of a kind, runs the command with the variables of the server, and removes the containers of the
-// checkout when the command ends or fails, or when the run gets SIGINT or SIGTERM, which it forwards to the command. A
-// signal that comes while the server starts ends the run once the start ends, without the command.
+// run starts the server of a kind, runs the command with the variables of the server, and removes that container when
+// the command ends or fails, or when the run gets SIGINT or SIGTERM, which it forwards to the command. A signal that
+// comes while the server starts ends the run once the start ends, without the command.
 export async function run(kind: Kind, command: readonly string[], context: Context, options: RunOptions = {}): Promise<Ended> {
   const [file, ...args] = command;
   if (file === undefined) throw new TestServerError('test-servers-container: run needs a command after --', 2);
@@ -315,7 +347,7 @@ export async function run(kind: Kind, command: readonly string[], context: Conte
   } finally {
     signals.off('SIGINT', interrupt);
     signals.off('SIGTERM', terminate);
-    remove(context);
+    remove(context, kind);
   }
 }
 
@@ -344,13 +376,14 @@ if (import.meta.main) {
   const [command, kind, separator, ...rest] = process.argv.slice(2);
   try {
     const context: Context = { root: REPOSITORY, program: containerProgram() };
+    const { dir, leases } = folders(REPOSITORY);
     if (command === 'start' && isKind(kind) && separator === undefined) {
       await start(kind, context);
-      console.log(`test-servers-container: ${kind} in ${containerName(REPOSITORY, kind)}; its environment file is ${join(folders(REPOSITORY).dir, `${kind}.env`)}`);
+      console.log(`test-servers-container: ${kind} in ${containerName(REPOSITORY, kind)}; its environment file is ${join(dir, `${kind}.env`)}`);
     } else if (command === 'run' && isKind(kind) && separator === '--' && rest.length > 0) process.exitCode = exitCode(await run(kind, rest, context));
     else if (command === 'stop' && kind === undefined) {
-      mkdirSync(folders(REPOSITORY).leases, { recursive: true });
-      holdExclusiveLease(folders(REPOSITORY).leases);
+      mkdirSync(leases, { recursive: true });
+      holdExclusiveLease(leases);
       remove(context);
     } else if (command === 'pull' && kind === undefined) pull(context.program);
     else throw new TestServerError('usage: test-servers-container.mts start <mysql|postgres|mariadb> | run <mysql|postgres|mariadb> -- <command> [argument...] | stop | pull', 2);
