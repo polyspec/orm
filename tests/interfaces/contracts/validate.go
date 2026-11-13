@@ -2,7 +2,6 @@ package contracts
 
 import (
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"unicode"
@@ -23,7 +22,7 @@ func compact(s string) string {
 var languages = implementationLanguages()
 
 func implementationLanguages() []string {
-	languages := testcase.Implementations(filepath.Join("..", "..", ".."))
+	languages := testcase.Implementations(testcase.RepositoryRoot())
 	return slices.DeleteFunc(languages, func(language string) bool { return language == "php-extension" })
 }
 

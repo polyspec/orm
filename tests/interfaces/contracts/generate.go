@@ -5,12 +5,13 @@ package contracts
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
+
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// source is contracts/interfaces.json, read from the package directory where go test runs (tests/interfaces/contracts);
-// the manifest is the repository's, outside the tests module, so it is read rather than embedded.
-var source, sourceErr = os.ReadFile(filepath.Join("..", "..", "..", "contracts", "interfaces.json"))
+// source is contracts/interfaces.json at the repository root (testcase.RepositoryRoot); the manifest is the repository's,
+// outside the tests module, so it is read rather than embedded.
+var source, sourceErr = os.ReadFile(testcase.RepositoryPath("contracts/interfaces.json"))
 
 type native struct {
 	Symbol    string `json:"symbol"`

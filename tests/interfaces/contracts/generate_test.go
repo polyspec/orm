@@ -3,7 +3,6 @@ package contracts
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -157,7 +156,7 @@ func TestExtensionContractRejectsDrift(t *testing.T) {
 // The language set of the contracts is the implementations of contracts/implementations.json, in their order.
 func TestLanguagesAreTheDeclaredImplementations(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "implementations.json"))
+	raw, err := os.ReadFile(testcase.RepositoryPath("contracts/implementations.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
