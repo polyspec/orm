@@ -63,3 +63,53 @@ caseTest('a schema file is compiled once, and again when its text changes', COMP
     assert.equal(validator(path)([]), true);
   });
 });
+
+// T461: a value of a oneOf names its alternative by a const or an enum of a member, and the report holds the errors
+// of that alternative, not those of the alternatives that the value does not name.
+const SHAPES = { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'array', items: { oneOf: [
+  { type: 'object', additionalProperties: false, required: ['kind', 'radius'], properties: { kind: { const: 'circle' }, radius: { type: 'number' } } },
+  { type: 'object', additionalProperties: false, required: ['kind', 'side'], properties: { kind: { const: 'square' }, side: { type: 'number' } } },
+  { type: 'object', additionalProperties: false, required: ['kind', 'base', 'height'], properties: { kind: { enum: ['triangle', 'wedge'] }, base: { type: 'number' }, height: { type: 'number' } } },
+] } };
+
+caseTest('a refused value of a oneOf is reported by the alternative that it names', COMPUTE, () => {
+  withSchema(SHAPES, schema => {
+    const refused = (text: string): string[] => {
+      let lines: string[] | undefined;
+      assert.throws(() => parseJson<unknown>(text, schema, 's.json'), (error: unknown) => {
+        assert.ok(error instanceof SchemaError);
+        assert.equal(error.issues.length, error.lines.length);
+        lines = error.lines;
+        return true;
+      });
+      return (lines ?? []).map(line => line.split(' {')[0] ?? '').sort();
+    };
+    // The square without its side: the errors of the square, and the line of the oneOf.
+    assert.deepEqual(refused('[{"kind":"circle","radius":1},{"kind":"square"}]'), [
+      's.json: /1 must have required property \'side\'',
+      's.json: /1 must match exactly one schema in oneOf',
+    ]);
+    // An enum names its alternative as a const does.
+    assert.deepEqual(refused('[{"kind":"wedge","base":"wide","height":2}]'), [
+      's.json: /0 must match exactly one schema in oneOf',
+      's.json: /0/base must be number',
+    ]);
+    // A value that names no alternative: the line of the oneOf, with no error of an alternative.
+    assert.deepEqual(refused('[{"kind":"star"}]'), ['s.json: /0 must match exactly one schema in oneOf']);
+  });
+});
+
+// T461: the report of one refused step of a recipe names the step and is short. The step form of the recipe schema is a
+// oneOf of 147 ops, and the report held 4952 lines for one step.
+caseTest('one refused step of a recipe is reported in a few lines', COMPUTE, () => {
+  const root = join(import.meta.dirname, '../..');
+  const schema = join(root, 'scripts/features/schema/recipe.schema.json');
+  const recipe = { requirements: ['FCV-2'], cases: [{ id: 'one', requirements: ['FCV-2'], steps: [{ op: 'dsn.connect', dsn: 'case', expect: { error: 'Not A Code' } }] }] };
+  assert.throws(() => parseJson<unknown>(JSON.stringify(recipe), schema, 'r.json'), (error: unknown) => {
+    assert.ok(error instanceof SchemaError);
+    assert.ok(error.lines.length > 0 && error.lines.length < 40, `${error.lines.length} lines`);
+    assert.ok(error.lines.every(line => line.startsWith('r.json: /cases/0/steps/0')), error.lines.join('\n'));
+    assert.ok(error.lines.some(line => line.includes('/cases/0/steps/0/expect')), error.lines.join('\n'));
+    return true;
+  });
+});
