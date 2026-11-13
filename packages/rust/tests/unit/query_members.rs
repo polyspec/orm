@@ -362,3 +362,78 @@ async fn key_name_keys_the_rows_by_a_column() {
     assert_eq!(error.to_string(), "config: missing is not a column of account");
     db.close().await;
 }
+
+/// A subquery of the account of each key, which reads the column account_seq.
+fn key_accounts(schema: &Schema) -> Query {
+    let mut keys = Query::new(schema, "account_key").expect("query");
+    keys.remove_all_columns();
+    keys.add_column("account_seq");
+    keys
+}
+
+// Requirements: CORE-90. where_in compares a column with the rows of a subquery, Ne negates it, a connector at the
+// start of the name joins it to the conditions before it, and a chain of another operator or key count is config.
+#[tokio::test]
+async fn where_in_compares_a_column_with_a_subquery() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-where-in");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut with_keys = query(&schema, "account", &db);
+    with_keys.order_by("SeqAsc");
+    with_keys.where_in("Seq", key_accounts(&schema));
+    assert_eq!(seqs(&with_keys.gets().await.expect("gets")), [int(1), int(2)], "the accounts that a key references");
+    let mut without = query(&schema, "account", &db);
+    without.where_in("NeSeq", key_accounts(&schema));
+    assert_eq!(seqs(&without.gets().await.expect("gets")), [int(3)], "the account that no key references");
+    let mut joined = query(&schema, "account", &db);
+    joined.where_chain("Seq", vec![int(3)]);
+    joined.where_in("OrSeq", key_accounts(&schema));
+    assert_eq!(joined.get_count().await.expect("count"), 3, "seq = 3 or seq in the subquery");
+    for (chain, message) in [
+        ("GtSeq", "config: a subquery is not accepted by the gt operator"),
+        ("SeqAndEmail", "config: the condition expects 2 values"),
+        ("Missing", "config: Missing is not a column of account"),
+    ] {
+        let mut refused = query(&schema, "account", &db);
+        refused.where_in(chain, key_accounts(&schema));
+        let error = failure(refused.get_count().await, chain);
+        assert_eq!(error.to_string(), message, "chain {chain}");
+    }
+    db.close().await;
+}
+
+// Requirements: CORE-90. A subquery reads one column added with add_column and takes no limit, lock, relation or
+// connection of its own.
+#[tokio::test]
+async fn a_subquery_reads_one_column_and_nothing_else() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-subquery");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut no_column = Query::new(&schema, "account_key").expect("query");
+    no_column.remove_all_columns();
+    let mut limited = key_accounts(&schema);
+    limited.limit(0, 1);
+    let mut locked = key_accounts(&schema);
+    locked.for_share();
+    let mut related = key_accounts(&schema);
+    let mut owner = Query::new(&schema, "account").expect("query");
+    owner.match_pair("AccountSeqWithSeq");
+    related.relation(owner);
+    let mut connected = key_accounts(&schema);
+    connected.connect(Connection::from(&db));
+    for (what, sub, message) in [
+        ("no column", no_column, "config: a subquery model must add exactly one column with add_column_<col>()"),
+        ("a limit", limited, "ir_invalid: subquery may not use limit, relations, lock or columns"),
+        ("a lock", locked, "ir_invalid: subquery may not use limit, relations, lock or columns"),
+        ("a relation", related, "config: a subquery model cannot load relations"),
+        ("a connection", connected, "config: a subquery model cannot have its own connection"),
+    ] {
+        let mut outer = query(&schema, "account", &db);
+        outer.where_in("Seq", sub);
+        let error = failure(outer.get_count().await, what);
+        assert_eq!(error.to_string(), message, "a subquery with {what}");
+    }
+    db.close().await;
+}
