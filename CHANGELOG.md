@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make test-rust` builds the TypeScript client with `typescript-current` and holds it with `$(READ_TYPESCRIPT)` while the cargo tests run (T339-5-1): the case `public_interface_none::interface_symbols` of the Rust recipe runs `tests/interfaces/check/main.mts`, which reads `legacy/packages/ts/dist`, and failed in a checkout without that build with `has no build of the TypeScript client`.
 - `Query::limit(offset, count)` of the Rust core reads at most `count` rows after the first `offset` rows of the order, and a count of 0 is `config` at the next terminal (OM-3.1-4, CORE-85). The contract declares `Query::limit` with one case.
 - `Query` of the Rust core has the row locks `for_update`, `for_share`, `for_update_no_wait` and `for_share_no_wait`, the members `forUpdate`, `forShare`, `forUpdateNoWait` and `forShareNoWait` of the language implementations (OM-3.1-5, CORE-86): the last one called holds, `get` and `gets` take it, a count with a lock is `ir_invalid` and a lock outside a transaction is `config`. The contract declares the four members with a case each.
 - `Query` of the Rust core chooses the columns that its rows read (OM-3.1-6, CORE-87): `add_all_columns` reads every column, `remove_all_columns` keeps the keys, and `add_column(column)` and `remove_column(column)` add and remove one column named as `value` names it; a name that is no column is `config` at the next terminal. The contract declares the four members with a case each.

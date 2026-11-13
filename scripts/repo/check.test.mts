@@ -160,6 +160,22 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
 });
 
+// The Rust recipe public_interface runs tests/interfaces/check/main.mts through packages/rust/programs/src/recipe.rs, and that
+// check reads the entity order from legacy/packages/ts/dist; typescriptReaderErrors sees only the node runs of a recipe, so this
+// test states the prerequisite of test-rust (T339-5-1).
+caseTest('the Rust unit tests build and hold the TypeScript client that the interface check reads (T339-5-1)', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const result = spawnSync('make', ['-n', '--no-print-directory', 'test-rust'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  const lines = result.stdout.split('\n');
+  const build = lines.findIndex(line => line.includes('scripts/typescript/build.mts --current'));
+  const hold = lines.findIndex(line => / hold \S+ shared --wait --pid /.test(line));
+  const tests = lines.findIndex(line => /runtime-targets\.(?:mjs|mts) test --runner cargo /.test(line));
+  assert.ok(tests >= 0, `test-rust runs no cargo tests: ${result.stdout}`);
+  assert.ok(build >= 0 && build < tests, `test-rust runs the cargo tests without building the TypeScript client first (typescript-current): ${result.stdout}`);
+  assert.ok(hold > build && hold < tests, `test-rust does not hold the TypeScript client while its tests read it ($(READ_TYPESCRIPT)): ${result.stdout}`);
+});
+
 caseTest('the Makefile includes no recipe file of @polyspec/kit', COMPUTE, () => {
   // kit 0.0.98 ships no recipes (kit docs/spec/utilities-and-recipes.md): the Makefile states its own targets, which run the
   // utilities of the installed package, and exports its own CARGO_TARGET_DIR, which no include unexports.
