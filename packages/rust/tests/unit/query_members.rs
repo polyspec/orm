@@ -437,3 +437,114 @@ async fn a_subquery_reads_one_column_and_nothing_else() {
     }
     db.close().await;
 }
+
+/// The account of `seq`, read with every column.
+async fn account(schema: &Schema, db: &Db, seq: i64) -> Option<Query> {
+    let mut account = query(schema, "account", db);
+    account.where_chain("Seq", vec![int(seq)]);
+    account.add_all_columns();
+    account.get().await.expect("get")
+}
+
+// Requirements: CORE-91. create inserts the row of the assignments and returns it with its identity, and a row that a
+// unique key refuses fails with duplicate_key.
+#[tokio::test]
+async fn create_inserts_the_row_of_the_assignments() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-create");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut new = query(&schema, "account", &db);
+    new.set("email", OrmValue::Text("d@x".into()));
+    new.set("name", OrmValue::Null);
+    new.set("revision", int(0));
+    let created = new.create().await.expect("create");
+    assert_eq!(created.value("seq").expect("seq"), int(4), "the identity of the new row");
+    assert_eq!(created.value("email").expect("email"), OrmValue::Text("d@x".into()));
+    assert_eq!(account(&schema, &db, 4).await.map(|row| row.value("email").expect("email")), Some(OrmValue::Text("d@x".into())));
+    let mut duplicate = query(&schema, "account", &db);
+    duplicate.set("email", OrmValue::Text("a@x".into()));
+    duplicate.set("revision", int(0));
+    let error = failure(duplicate.create().await, "a second a@x");
+    assert_eq!(error.kind(), crate::Kind::DuplicateKey, "{error}");
+    let error = failure(query(&schema, "account", &db).create().await, "no assignment");
+    assert_eq!(error.to_string(), "config: create requires set_<col> values");
+    db.close().await;
+}
+
+// Requirements: CORE-91. update writes the assignments to the row that the query read or to the row of the primary key
+// that set assigned, and expect_revision writes only while the column holds the revision.
+#[tokio::test]
+async fn update_writes_the_assignments_to_its_row() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-update");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let name = |row: Option<Query>| row.expect("a row").value("name").expect("name");
+    let mut loaded = account(&schema, &db, 2).await.expect("account 2");
+    loaded.set("name", OrmValue::Text("Bea".into()));
+    loaded.update().await.expect("update a read row");
+    assert_eq!(name(account(&schema, &db, 2).await), OrmValue::Text("Bea".into()));
+    let mut keyed = query(&schema, "account", &db);
+    keyed.set("seq", int(1));
+    keyed.set("name", OrmValue::Text("Zed".into()));
+    keyed.update().await.expect("update by a set primary key");
+    assert_eq!(name(account(&schema, &db, 1).await), OrmValue::Text("Zed".into()));
+    let mut keyless = query(&schema, "account", &db);
+    keyless.set("name", OrmValue::Text("Nobody".into()));
+    let error = failure(keyless.update().await, "no row and no key");
+    assert_eq!(error.to_string(), "config: account requires a loaded row or a set primary key seq");
+    let mut stale = account(&schema, &db, 3).await.expect("account 3");
+    stale.set("name", OrmValue::Text("Cy".into()));
+    stale.expect_revision("revision", 5);
+    let error = failure(stale.update().await, "a revision that the row does not hold");
+    assert_eq!(error.kind(), crate::Kind::RevisionChanged, "{error}");
+    let mut fresh = account(&schema, &db, 3).await.expect("account 3");
+    fresh.set("name", OrmValue::Text("Cy".into()));
+    fresh.expect_revision("revision", 0);
+    fresh.update().await.expect("the revision that the row holds");
+    let row = account(&schema, &db, 3).await.expect("account 3");
+    assert_eq!((row.value("name").expect("name"), row.value("revision").expect("revision")), (OrmValue::Text("Cy".into()), int(1)));
+    db.close().await;
+}
+
+// Requirements: CORE-91. set refuses a name that is no column and a value that no column takes.
+#[tokio::test]
+async fn set_refuses_what_no_column_takes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-set");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    for (column, value, message) in [
+        ("missing", OrmValue::Text("x".into()), "config: missing is not a column of account"),
+        ("email", OrmValue::List(vec![]), "codec_encode: the value of a column is a list"),
+        ("email", OrmValue::Map(indexmap::IndexMap::new()), "codec_encode: the value of a column is a map"),
+    ] {
+        let mut new = query(&schema, "account", &db);
+        new.set("revision", int(0));
+        new.set(column, value);
+        let error = failure(new.create().await, column);
+        assert_eq!(error.to_string(), message, "set {column}");
+    }
+    db.close().await;
+}
+
+// Requirements: CORE-91. delete deletes the row that the query read or the row of a set primary key, and a collection
+// of rows deletes each of them.
+#[tokio::test]
+async fn delete_deletes_its_row() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-delete");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    account(&schema, &db, 3).await.expect("account 3").delete().await.expect("delete a read row");
+    assert!(account(&schema, &db, 3).await.is_none());
+    let mut keyed = query(&schema, "account_key", &db);
+    keyed.set("seq", int(3));
+    keyed.delete().await.expect("delete by a set primary key");
+    let mut keys = query(&schema, "account_key", &db);
+    keys.where_chain("AccountSeq", vec![int(1)]);
+    keys.gets().await.expect("gets").delete(false).await.expect("delete the rows of a collection");
+    assert_eq!(query(&schema, "account_key", &db).get_count().await.expect("count"), 0);
+    db.close().await;
+}
