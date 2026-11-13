@@ -11,5 +11,5 @@ import (
 // Requirements: DSL-49, DSL-50, PLN-4.
 func TestRecipeDslNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../contracts/fixtures/dsl/dsl.json", recipe.None, recipe.WithMarkdownSend(markdownSend), recipe.WithModelAssign(modelAssign))
+	recipe.Run(t, testcase.LegacyPath("contracts/fixtures/dsl/dsl.json"), recipe.None, recipe.WithMarkdownSend(markdownSend), recipe.WithModelAssign(modelAssign))
 }

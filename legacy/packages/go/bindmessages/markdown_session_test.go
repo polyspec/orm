@@ -14,7 +14,7 @@ import (
 // Requirements: PRT-66.
 func TestRecipeMarkdownSessionNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/markdown/session.json", recipe.None, recipe.WithMarkdownRead(recipe.MarkdownRead{
+	recipe.Run(t, testcase.LegacyPath("tests/markdown/session.json"), recipe.None, recipe.WithMarkdownRead(recipe.MarkdownRead{
 		Connect: bindmodel.Connect,
 		Read: func(db *orm.DB) error {
 			_, err := bindmodel.Slots().Connect(db).Gets()
