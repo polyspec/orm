@@ -9,11 +9,12 @@
 // second CA of each start, as child processes, so each has the deadline of the class PROCESS.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, watch, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { dirname, join } from 'node:path';
 import { caseTest, PROCESS, withTemporaryDirectory } from '../tests/testcase.mts';
-import { pull, remote, remove, run, start, type Context } from './test-servers-container.mts';
+import { installBay, pull, remote, remove, run, start, type Context } from './test-servers-container.mts';
 import { ORM_ACCOUNTS_SQL, REPLICA_PARTIAL_REVOKES_SQL } from './test-servers.mts';
 
 // ADDRESS is the IPv4 address that the stand-in bay resolves every host name to, SUFFIX the suffix of its host names,
@@ -21,19 +22,21 @@ import { ORM_ACCOUNTS_SQL, REPLICA_PARTIAL_REVOKES_SQL } from './test-servers.mt
 const ADDRESS = '192.168.64.9';
 const SUFFIX = 'stand-in.test';
 const AUTHORITY = '/stand-in/authority.crt';
+// VERSION is the version that the stand-in bay reports: that of a build of a machine, which no release has.
+const VERSION = 'v0.0.0-stand-in+dirty';
 
 // StandIn has the path of the stand-in bay of a test, which is named bay in a directory of its own, so that a stand-in
 // ssh finds it on PATH; the directory of the projects that it holds; and the files that change what it does: while
 // upFails exists, up records its project and exits with 1; while absent exists, images reports each image as missing
 // and up -no-pull fails before it records anything; while execFails exists, a step of a server exits with 7; while
-// schema exists, version reports its text as the schema version; while checkFails exists, the command of a run in the
-// runner exits with 5.
-interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; checkFails: string }
+// schema exists, version reports its text as the schema version, and while release exists, its text as the version of
+// bay; while checkFails exists, the command of a run in the runner exits with 5.
+interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string }
 
 function standIn(dir: string): StandIn {
   const stand: StandIn = {
     bay: join(dir, 'bin/bay'), state: join(dir, 'projects'), calls: join(dir, 'calls.log'),
-    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), checkFails: join(dir, 'check-fails'),
+    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'),
   };
   mkdirSync(stand.state, { recursive: true });
   mkdirSync(dirname(stand.bay), { recursive: true });
@@ -47,7 +50,8 @@ const [option, name, command, ...rest] = process.argv.slice(2);
 const is = (...words) => command === words[0] && rest.join(' ') === words.slice(1).join(' ');
 if (option === 'version') {
   const schema = existsSync(${JSON.stringify(stand.schema)}) ? Number(readFileSync(${JSON.stringify(stand.schema)}, 'utf8')) : 1;
-  console.log(name === '--json' ? JSON.stringify({ version: 'stand-in', schemaVersion: schema }) : 'bay stand-in (0000, modified) go0 test/test schema ' + schema);
+  const version = existsSync(${JSON.stringify(stand.release)}) ? readFileSync(${JSON.stringify(stand.release)}, 'utf8') : ${JSON.stringify(VERSION)};
+  console.log(name === '--json' ? JSON.stringify({ version, schemaVersion: schema }) : 'bay ' + version + ' (0000) go0 test/test schema ' + schema);
   process.exit(0);
 }
 if (option !== '-p' || !name) fail('the stand-in takes the project name from -p', 2);
@@ -388,7 +392,7 @@ caseTest('a start with a missing bay, or a bay of another contract, fails naming
     const [context] = checkouts(dir, stand);
     await removing([context], async () => {
       const missing = join(dir, 'missing');
-      await assert.rejects(start('mysql', { ...context, bay: missing }), new RegExp(`${missing} is missing: it is the program bay, which runs the Compose project of the servers; install bay at that path`));
+      await assert.rejects(start('mysql', { ...context, bay: missing }), new RegExp(`${missing} is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine`));
       writeFileSync(stand.schema, '2');
       await assert.rejects(start('mysql', context), /bay version --json reports the contract schema version 2, and this script is written for 1; install a bay of that contract/);
       assert.deepEqual(projects(context.root), [], 'a start with a missing program leaves a directory');
@@ -451,14 +455,14 @@ caseTest('a run in the runner has the service runner, installs it from a bundle 
       // The kept directory runs again with sh and the stand-in bay alone, and the status of its command is its own.
       writeFileSync(stand.checkFails, '');
       writeFileSync(stand.calls, '');
-      const again = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh')], { env: { PATH: '/usr/bin:/bin', BAY_PROGRAM: stand.bay }, encoding: 'utf8' });
+      const again = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh')], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
       assert.equal(again.status, 5, `run.sh does not end with the status of the command of the run: ${again.stderr}`);
       assert.deepEqual(verbs(stand).filter(verb => verb !== 'exec'), ['images', 'up', 'down']);
       assert.equal(file(context.root, project, 'report/status'), '5\n');
     });
   }));
 
-caseTest('run.sh refuses a bay of another contract and a missing bay before it starts anything (BAY12.1, BAY5)', PROCESS, () =>
+caseTest('run.sh refuses a bay of another contract and a missing bay before it starts anything, compares no version, and records the version of its bay (BAY12.1, BAY5)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -467,14 +471,30 @@ caseTest('run.sh refuses a bay of another contract and a missing bay before it s
       const script = join(containers(context.root), only(context.root), 'run.sh');
       writeFileSync(stand.calls, '');
       writeFileSync(stand.schema, '2');
-      const other = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_PROGRAM: stand.bay }, encoding: 'utf8' });
+      const other = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
       assert.equal(other.status, 1);
       assert.match(other.stderr, /bay version reports another contract schema version than 1, for which this file is written: .* schema 2; install a bay of that contract/);
-      const missing = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_PROGRAM: join(dir, 'missing') }, encoding: 'utf8' });
+      const missing = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: join(dir, 'missing') }, encoding: 'utf8' });
       assert.equal(missing.status, 1);
-      assert.match(missing.stderr, /missing is missing: it is the program bay, which runs the Compose project of the servers; install bay at that path, or name it in BAY_PROGRAM/);
-      assert.deepEqual(commands(stand), [], 'run.sh ran a command of its project for a bay that it refuses');
+      assert.match(missing.stderr, /missing is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND/);
       writeFileSync(stand.schema, '1');
+      assert.deepEqual(commands(stand), [], 'run.sh ran a command of its project for a bay that it refuses');
+      // The bay of a machine is a tool of the machine, as make is: a run takes any version that has the contract,
+      // the build of a developer included, and leaves the line of bay version in its output and in report/.
+      writeFileSync(stand.release, 'v7.8.9-another+dirty');
+      remove(context);
+      await start('postgres', context);
+      const project = only(context.root);
+      assert.equal(file(context.root, project, 'report/bay-version'), 'bay v7.8.9-another+dirty (0000) go0 test/test schema 1\n');
+      assert.ok(!file(context.root, project, 'run.sh').includes(JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).bay.version), 'run.sh reads the release that CI installs');
+      const script2 = join(containers(context.root), project, 'run.sh');
+      // The command of bay may have several words, as sudo -n bay has on a CI runner: each word reaches bay.
+      writeFileSync(stand.calls, '');
+      const words = spawnSync('/bin/sh', [script2, 'down'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: `/usr/bin/env ORM_STAND_IN=1 ${stand.bay}` }, encoding: 'utf8' });
+      assert.equal(words.status, 0, words.stderr);
+      assert.deepEqual(commands(stand), ['down']);
+      const several = await run('mysql', [process.execPath, '-e', ''], { ...context, bay: `/usr/bin/env ORM_STAND_IN=1 ${stand.bay}` });
+      assert.deepEqual(several, { code: 0, signal: null }, 'the script does not run a command of bay with several words');
     });
   }));
 
@@ -504,4 +524,30 @@ caseTest('a run on another machine writes its directory with the plan of that ma
       assert.equal(readFileSync(join(containers(context.root), 'reports', report, 'status'), 'utf8'), '5\n');
       assert.equal(readFileSync(join(containers(context.root), 'reports', report, 'check.log'), 'utf8'), 'the output of the command\n');
     });
+  }));
+
+caseTest('the install target of bay takes the archive of the release that CI installs for the platform, uses it only with its sha256, and leaves bay and bayd in the tools of the checkout (BAY5)', PROCESS, () =>
+  withTemporaryDirectory('orm-containers-', dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    // The archive of a release holds the directory bay_<version>_<system>_<processor> with bay and bayd. The stand-in
+    // curl writes the archive of the test to the file of -o and records its arguments.
+    const platform = `${process.platform}_${process.arch === 'x64' ? 'amd64' : process.arch}`;
+    const name = `bay_v9.9.9_${platform}`;
+    mkdirSync(join(dir, 'release', name), { recursive: true });
+    for (const program of ['bay', 'bayd']) writeFileSync(join(dir, 'release', name, program), `#!/bin/sh\necho ${program}\n`, { mode: 0o755 });
+    const archive = join(dir, `${name}.tar.gz`);
+    assert.equal(spawnSync('tar', ['-C', join(dir, 'release'), '-czf', archive, name]).status, 0);
+    const curl = join(dir, 'curl');
+    writeFileSync(curl, `#!/bin/sh\nprintf '%s\\n' "$*" >> ${JSON.stringify(join(dir, 'curl.log'))}\nwhile [ "$1" != -o ]; do shift; done\ncp ${JSON.stringify(archive)} "$2"\n`, { mode: 0o755 });
+    const sha256 = createHash('sha256').update(readFileSync(archive)).digest('hex');
+    const pin = (sums: Record<string, string>) => ({ version: 'v9.9.9', release: 'https://releases.invalid/bay/v9.9.9', sha256: sums });
+    const tools = join(context.root, 'var/tools/bay');
+    assert.throws(() => installBay({ ...context, curl }, pin({ [platform]: '0'.repeat(64) })), /\.tar\.gz has the sha256 [0-9a-f]{64}, and config\/containers\.json pins 0{64}/);
+    assert.ok(!existsSync(join(tools, 'bay')), 'an archive with another sha256 was installed');
+    installBay({ ...context, curl }, pin({ [platform]: sha256 }));
+    assert.ok(readFileSync(join(dir, 'curl.log'), 'utf8').includes(`https://releases.invalid/bay/v9.9.9/${name}.tar.gz`), 'the archive is not that of the pinned release and platform');
+    for (const program of ['bay', 'bayd']) assert.equal(spawnSync(join(tools, program), { encoding: 'utf8' }).stdout, `${program}\n`);
+    assert.deepEqual(readdirSync(tools).sort(), ['bay', 'bayd'], 'the install target leaves another file than the two programs');
+    assert.throws(() => installBay({ ...context, curl }, pin({})), /config\/containers\.json pins no archive of bay for/);
   }));
