@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import type * as TypeScript from '../../packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js';
+import type * as TypeScript from '../../legacy/packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js';
 import { errorMessage } from '../../tests/errors.mts';
 import { C, commentsOwn, HASH, RUST } from './own-lexer.mts';
 

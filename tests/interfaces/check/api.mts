@@ -19,7 +19,7 @@ export const ERROR_CATALOGS: Record<string, { file: string; pattern: string }> =
  * Rust core declares the closed kind set of docs/spec/errors.md (CORE-3), and its test packages/rust/tests/cases/code_catalog.rs
  * compares those kinds with docs/spec/errors.yaml (CORE-14), so this checker reads no catalog file of it.
  */
-export const KIND_CATALOGS: Record<string, string> = {
+const KIND_CATALOGS: Record<string, string> = {
   rust: 'packages/rust/src/kind.rs',
 };
 

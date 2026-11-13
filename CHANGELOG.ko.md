@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c968654cfbffff3e8602fc3505c7473414e31506f63576298d404e061581c6cc -->
+<!-- source-sha256: 90fe0857e722a34bbf8d422c00054799b10f5ee75c2fe9dd2afd77821a2eecd2 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript와 PHP lint가 다시 통과한다(OM-1.3). 스크립트와 테스트 다섯 개가 TypeScript 클라이언트와 그 testing 도우미를 `packages/ts/`에서 가져왔는데, 언어 구현이 옮겨진 뒤 그 경로는 `legacy/packages/ts/`이다. 그래서 `make lint-ts`가 TS2307과 풀리지 않은 타입의 unsafe 호출로 실패했다. 이제 `legacy/packages/ts/`에서 가져온다. `legacy/packages/php/models.txt`의 항목은 PHP 모델을 루트 `contracts/fixtures/`에서 만들어 `packages/php/`에 썼다. 루트 스키마는 legacy 생성기가 모르는 codec stage `json`을 쓰고, `composer.json`의 autoload는 `packages/php/`를 보지 않는다. 그래서 `make orm-install-php`가 `codec stage "json" is unknown`으로 실패했다. 이제 항목은 `legacy/contracts/fixtures/`와 `legacy/tests/`를 읽고 `legacy/packages/php/`에 쓴다. `tests/interfaces/check/api.mts`의 `KIND_CATALOGS`는 가져가는 모듈이 없으므로 export하지 않고, `scripts/client-db-test.mts`의 `bindingExcludeArguments`는 읽은 contract의 타입을 단언하지 않고 검사한다. `make lint-ts`, `make lint-php`, `make php-model-check`가 통과한다.
 - 라이브러리 `polyspec-orm`의 단위 시험은 데이터베이스 서버가 필요 없다(OM-1.4-1): MySQL이나 PostgreSQL이 필요한 transaction 종료 시험 다섯(`failed_cleanup_discards_the_connection`, `every_failed_cleanup_step_is_reported`, `panicking_callback_ends_its_transaction`, `dropped_transaction_closes_its_connection`, `failed_local_reset_is_reported`)은 같은 기대값으로 Rust 시험 프로그램의 group `transaction_end`가 되었으므로, binding e2e 실행이 서버 없이 돌리는 `cargo test -p polyspec-orm`이 통과한다. 시험 진입점 `polyspec_orm::testing`에는 서버가 connection을 끊은 transaction의 종료 단계인 `killed_transaction_cleanup`과 `killed_transaction_rollback`이 있다.
 - `Cargo.lock`은 `polyspec-binding-core`를 binding 49a4e97에 고정하고, binding 패키지는 그 binding scaffold가 쓰는 것이다(OM-1.4): 각 binding crate는 자기 lint를 선언하던 대신 루트 workspace의 lint를 받으므로(`lints.workspace = true`) make layout-check가 그 `Cargo.toml`에서 더는 실패하지 않고, `src/lib.rs`의 attribute는 cargo fmt의 줄 너비에 맞는다. Go와 WASM crate는 `polyspec-json`을 이름한다. 코어에는 `binding_core::fault`의 fault 지점이 없으므로 feature `fault-test`를 선언하지 않는다.
 - Rust 코어의 schema parser는 codec stage `ordered_json`을 같은 encoding의 stage `json`으로 읽는다(OM-3.5-3, CORE-61, DBS-69): `codec <column> ordered_json`은 `codec stage "ordered_json" is unknown`으로 거부되었으므로, 언어 구현이 읽는 문서가 그런 stage마다 진단을 받았다. 그런 문서의 canonical form은 `json`을 쓴다.

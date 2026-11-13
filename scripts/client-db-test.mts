@@ -163,8 +163,14 @@ export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
 // the generated folders of make bindings, and make test-bindings tests them (ORM_RUST_EXCLUDE_BINDINGS of the Makefile).
 const BINDING_SUFFIX: Record<string, string> = { php: 'php-ext', python: 'python', node: 'node', go: 'go', wasm: 'wasm' };
 export function bindingExcludeArguments(repository: string): string[] {
-  const contract = JSON.parse(readFileSync(resolve(repository, 'packages/rust/interface.json'), 'utf8')) as { core: { crate: string }; targets: string[] };
-  return contract.targets.flatMap(target => ['--exclude', `${contract.core.crate}-${BINDING_SUFFIX[target] ?? target}`]);
+  const file = resolve(repository, 'packages/rust/interface.json');
+  const contract: unknown = JSON.parse(readFileSync(file, 'utf8'));
+  const core: unknown = typeof contract === 'object' && contract !== null && 'core' in contract ? contract.core : undefined;
+  const crate: unknown = typeof core === 'object' && core !== null && 'crate' in core ? core.crate : undefined;
+  const targets: unknown = typeof contract === 'object' && contract !== null && 'targets' in contract ? contract.targets : undefined;
+  if (typeof crate !== 'string' || !Array.isArray(targets) || !targets.every((target): target is string => typeof target === 'string'))
+    throw new Error(`${file} names no core crate and no list of targets`);
+  return targets.flatMap(target => ['--exclude', `${crate}-${BINDING_SUFFIX[target] ?? target}`]);
 }
 
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no
