@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 7521f712b804e9bee7e9c15ffd734e6227d44e532f40423a41163265ad1deb41 -->
+<!-- source-sha256: 64d17c26d4bf4e357e337f937287b786526ff30e7bafd23a53de8f24981f4174 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -64,11 +64,24 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 
 ## 컨테이너의 test database server
 
-`make orm-test-container KIND=<mysql|postgres|mariadb>`와 `make orm-test-container-run KIND=<kind> RUN='<command>'`는 한 kind의 server를 program `bay`가 실행하는 Compose project로 시작한다(`scripts/test-servers-container.mts`). macOS에서는 Apple `container`, Linux에서는 Docker 위에서 실행된다. 모든 단계는 `bay`(`BAY_PROGRAM`)의 command이고 script는 container engine을 실행하지 않는다. script는 자신이 맞춰 쓰인 `bay`의 contract schema version을 요구하며, 그 값은 `bay version --json`이 보고한다.
+`make orm-test-container KIND=<mysql|postgres|mariadb>`와 `make orm-test-container-run KIND=<kind> RUN='<command>'`는 한 kind의 server를 program `bay`가 실행하는 Compose project로 시작한다(`scripts/test-servers-container.mts`). macOS에서는 Apple `container`, Linux에서는 Docker 위에서 실행된다. 모든 단계는 `bay`(`BAY_PROGRAM`)의 command이고 container engine은 직접 실행되지 않는다. script와 그것이 쓰는 `run.sh`는 자신이 맞춰 쓰인 `bay`의 contract schema version을 요구하며, 그 값은 `bay version`이 보고한다.
 
-**run의 project.** 각 start는 자기 checkout에 directory `.runtime/containers/<project>`를 만들고 그 안에 `compose.yaml`과 server의 file을 쓴다. `<project>`는 `orm-<checkout>-<run>`이다. `<checkout>`은 checkout root의 sha256의 앞 16진수 12자리이고, `<run>`은 그 start의 무작위 16진수 8자리다. `bay`의 각 command는 option `-p`로 project 이름을 받고, Compose file은 project를 이름하지 않는다. 그래서 두 checkout도, 한 checkout의 두 run도 project, container, file을 공유하지 않는다. directory는 system의 임시 directory가 아니라 checkout 아래에 있다. server를 제거하기 전에 kill된 run의 project를 `make orm-test-container-stop`이 찾기 위해서다.
+**run은 `sh`와 `bay`만으로 실행된다.** server와 check를 실행하는 machine에는 `sh`, `bay`, `bay`의 container engine만 있으면 된다. 그 host에는 아무것도 설치하지 않고, 그 host의 node, cargo, make, git을 쓰지 않는다. image와 database check는 disk가 넉넉한 machine에서 실행되며 그 machine은 개발 machine이 아니기 때문이다. 그래서 일을 나눈다. `scripts/test-servers-container.mts`는 run의 directory를 쓰기만 하고, 그 directory의 POSIX `sh` file `run.sh`가 실행한다. `run.sh`의 각 단계는 `bay -p <project>`의 command 하나이고 그 exit status가 run을 판정한다. file은 JSON을 읽지 않고, timer를 시작하지 않고, 요청을 반복하지 않는다.
 
-**service.** project에는 server마다 service 하나가 있고 다른 service는 없다.
+**run의 project.** 각 start는 자기 checkout에 directory `.runtime/containers/<project>`를 만든다. `<project>`는 `orm-<checkout>-<run>`이다. `<checkout>`은 checkout root의 sha256의 앞 16진수 12자리이고, `<run>`은 그 start의 무작위 16진수 8자리다. `bay`의 각 command는 option `-p`로 project 이름을 받고, Compose file은 project를 이름하지 않는다. 그래서 두 checkout도, 한 checkout의 두 run도 project, container, file을 공유하지 않는다. directory는 system의 임시 directory가 아니라 checkout 아래에 있다. server를 제거하기 전에 kill된 run의 project를 `make orm-test-container-stop`이 찾기 위해서다. directory에는 다음이 있다.
+
+| File | 내용 |
+|---|---|
+| `compose.yaml` | server의 service, runner 형태에서는 service `runner`도 |
+| `run.sh` | run의 단계. `sh run.sh`는 run 전체, `sh run.sh up`은 server를 시작하고 `servers.env`를 쓰고, `sh run.sh down`은 project를 제거하고, `sh run.sh pull`은 image를 download한다 |
+| `servers.env` | 시작된 server의 변수. `run.sh`가 쓴다 |
+| `tls/other-ca.pem` | TLS case의 두 번째 CA. 아무것도 서명하지 않는다 |
+| `<service>-init/` | service의 초기화 file |
+| `runner-setup.sh`, `check.sh`, `repo.bundle`, `report/` | runner 형태: 설치, run의 command, run의 commit, command가 남기는 것 |
+
+**run의 두 형태.** run은 두 형태 중 하나다. script가 directory를 쓸 때 형태를 `run.sh`에 기록하고, run이 실행되는 동안 형태는 바뀌지 않는다. host 형태에서 run의 command는 server의 변수를 가진 host의 process이며, Darwin 같은 host system의 결과를 준다. runner 형태(`FORM=runner`)에서 command는 `bay exec runner`로 service `runner` 안에서 실행되고, host에는 이 repository의 tool이 필요 없다. 두 형태는 server의 service와 server를 준비하는 단계가 같다.
+
+**service.** project에는 server마다 service 하나가 있고, runner 형태에서는 service `runner`가 있다.
 
 | Kind | Service |
 |---|---|
@@ -78,11 +91,11 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 
 각 service는 `config/containers.json`이 digest로 고정한 image와 `expose`에 server의 port를 적고 key `ports`는 적지 않는다. 그래서 host의 port는 publish되지 않는다. server는 `make orm-test-servers`의 native primary의 설정을 받는다(time zone, 소문자 table 이름, binary log 보존, InnoDB log 공간, PostgreSQL은 WAL과 synchronous standby). 각 image의 data directory는 service의 `tmpfs`이므로 data는 container와 함께 끝나고 volume은 남지 않는다.
 
-**주소.** check는 `bay`가 service에 주는 host 이름으로 server에 닿고, environment의 모든 DSN이 server를 그 이름으로 적는다. script는 host 이름의 형식도 접미사도 가지고 있지 않다. `bay up` 전에 `bay plan --json`에서 각 service의 host 이름을 읽는다. PostgreSQL standby가 command에 primary를 적기 때문이다. 그래서 Compose file은 plan을 위해 한 번, plan의 host 이름으로 한 번 쓴다. start 뒤에는 `bay up --json`의 출력에서 각 service의 host 이름과 IPv4 주소를 읽고, `bay up`이 plan과 다른 host 이름으로 보고하는 service는 start를 실패시킨다.
+**주소.** check는 `bay`가 service에 주는 host 이름으로 server에 닿고, 모든 DSN이 server를 그 이름으로 적는다. script는 host 이름의 형식도 접미사도 가지고 있지 않다. directory를 쓸 때, 그 directory를 실행할 machine의 `bay plan --json`에서 각 service의 host 이름과 certificate의 authority path를 읽어 `compose.yaml`과 `run.sh`에 쓴다. 그래서 Compose file은 plan을 위해 한 번, plan의 host 이름으로 한 번 쓴다. PostgreSQL standby가 command에 primary를 적기 때문이다. mismatch DSN의 IPv4 주소는 start 뒤에만 있다. `run.sh`는 primary의 container 안에서 `getent ahostsv4 <host 이름>`이 출력하는 첫 단어로 이를 읽고(`getent hosts`는 service의 IPv6 주소를 먼저 출력한다), 거기서 주소가 없는 host 이름은 run을 실패시킨다. 그래서 실행하는 `bay`와 다른 `bay`를 위해 쓰인 directory는 실패하고 어디에도 연결하지 않는다.
 
-**준비 완료.** 각 service는 server의 준비 확인 program을 container 안에서 127.0.0.1의 TCP로 실행하는 Compose `healthcheck`를 선언한다. image가 data directory를 초기화하려고 시작하는 임시 server는 socket에서만 listen하기 때문이다. MySQL은 `mysqladmin ping`, PostgreSQL은 `pg_isready`, MariaDB는 image의 script `healthcheck.sh --connect --innodb_initialized`다. PostgreSQL standby는 primary에 대해 조건 `service_healthy`의 `depends_on`을 선언한다. `bay up`이 exit status 0으로 돌아오면 server는 준비된 것이다. script는 그 process 하나만 기다린다. container의 log를 읽지 않고, timer를 시작하지 않고, 요청을 반복하지 않는다. start의 한도는 Compose file의 `healthcheck`이며 `bay`가 그것을 거기에 요구한다. `start_period`는 600초로, image가 data directory를 초기화하는 시간이다. 부하가 있는 machine에서는 그 초기화에 몇 분이 걸리며, 그 시간 안의 실패한 probe는 세지 않는다. 그 뒤에는 1초 간격(`interval`)의 probe 10회(`retries`, `bay`는 1부터 100까지 받는다)가 각각 5초 제한(`timeout`)으로 start를 실패시킨다. container가 멈추면 start는 즉시 실패한다.
+**준비 완료.** 각 service는 server의 준비 확인 program을 container 안에서 127.0.0.1의 TCP로 실행하는 Compose `healthcheck`를 선언한다. image가 data directory를 초기화하려고 시작하는 임시 server는 socket에서만 listen하기 때문이다. MySQL은 `mysqladmin ping`, PostgreSQL은 `pg_isready`, MariaDB는 image의 script `healthcheck.sh --connect --innodb_initialized`다. PostgreSQL standby는 primary에 대해 조건 `service_healthy`의 `depends_on`을 선언한다. `bay up`이 exit status 0으로 돌아오면 server는 준비된 것이다. `run.sh`는 그 command 하나만 기다린다. container의 log를 읽지 않고, timer를 시작하지 않고, 요청을 반복하지 않는다. start의 한도는 Compose file의 `healthcheck`이며 `bay`가 그것을 거기에 요구한다. `start_period`는 600초로, image가 data directory를 초기화하는 시간이다. 부하가 있는 machine에서는 그 초기화에 몇 분이 걸리며, 그 시간 안의 실패한 probe는 세지 않는다. 그 뒤에는 1초 간격(`interval`)의 probe 10회(`retries`, `bay`는 1부터 100까지 받는다)가 각각 5초 제한(`timeout`)으로 start를 실패시킨다. container가 멈추면 start는 즉시 실패한다.
 
-**시작된 server의 준비.** `bay up`이 돌아온 뒤 script는 server를 준비하는 각 단계를 `bay exec`로 그 container 안에서 끝까지, native server의 순서로 실행한다. 0이 아닌 status로 끝난 단계는 그 단계, status, 출력을 적어 start를 실패시킨다.
+**시작된 server의 준비.** `bay up`이 돌아온 뒤 `run.sh`는 server를 준비하는 각 단계를 `bay exec`로 그 container 안에서 끝까지, native server의 순서로 실행한다. 0이 아닌 status로 끝난 단계는 project를 제거하고 그 단계를 적어 그 status로 run을 끝낸다.
 
 | 단계 | 실행되는 곳 | 그곳인 이유 |
 |---|---|---|
@@ -93,19 +106,37 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 | PostgreSQL: standby는 slot `orm_replica`를 통한 primary의 `pg_basebackup`이다 | service `postgres-replica`의 command | standby의 server가 시작하기 전에 data directory를 채운다 |
 | PostgreSQL: database `orm_test`와 `orm_tools` | `bay exec` | native primary처럼 standby가 따라온 뒤에 primary가 만든다 |
 
-**run은 자기 server를 소유한다.** `make orm-test-container-run`은 command가 끝나거나 실패할 때, 그리고 run이 SIGINT나 SIGTERM을 받을 때 `bay down`으로 project를 제거하고 이어서 project의 directory를 제거한다. signal은 command에 전달한다. `bay up`이 실패한 start는 `bay logs`로 각 service의 마지막 줄을 출력하고, 같은 방법으로 project를 제거하고, project와 exit status를 적어 실패한다. `make orm-test-container-stop`은 checkout의 server의 exclusive lease를 잡고 checkout의 모든 project를 제거한다. kill된 run의 project도 포함한다. 다른 checkout의 project는 제거하지 않는다.
+**run은 자기 server를 소유한다.** `run.sh`는 command가 끝나거나 실패할 때, 단계가 실패할 때, 그리고 SIGINT, SIGTERM, SIGHUP에 `bay down`으로 project를 제거한다. 그래서 `ssh` 연결이 끝난 run도 server를 제거한다. run의 command는 이 signal마다 SIGTERM을 받는다. `sh`가 자기 옆에서 시작한 command는 SIGINT를 무시하기 때문이다. `bay up`이 실패한 run은 먼저 `bay logs`로 각 service의 마지막 줄을 출력한다. `run.sh`는 `bay up` 전에 file `started`를, `bay down` 뒤에 file `removed`를 쓴다. `make orm-test-container-run`은 끝난 run의 directory를 제거하고, `started`가 있고 `removed`가 없는 directory, 곧 project가 제거되지 않은 directory는 남긴다. `KEEP=1`은 runner의 tool과 build를 위해 끝난 run의 directory를 남기며, `sh <directory>/run.sh`가 그것을 다시 실행한다. `make orm-test-container-stop`은 checkout의 server의 exclusive lease를 잡고 checkout의 모든 project를 제거한다. kill된 run의 project도 포함한다. 다른 checkout의 project는 제거하지 않는다.
 
-**image.** 어떤 start도 image를 download하지 않는다. script는 `bay up` 전에 `bay images --json`에서 project의 각 image가 machine에 있는지 읽고, image가 없는 start는 그 image와 `make orm-install-container-images`를 적어 실패한다. `bay up`은 `-no-pull`로 실행되며, 이 option은 image가 없으면 아무것도 만들기 전에 실패한다. `make orm-install-container-images`만 download한다. 세 image를 적은 Compose file에 `bay pull`을 실행하고, 그 file의 directory는 제거한다.
+**image.** 어떤 run도 image를 download하지 않는다. `run.sh`는 `bay up` 전에 `bay images`를 실행하고, 이 command는 project의 image가 machine에 없으면 실패하며, run은 `make orm-install-container-images`를 적어 실패한다. `bay up`은 `-no-pull`로 실행되며, 이 option은 image가 없으면 아무것도 만들기 전에 실패한다. 개발 machine에서는 `make orm-install-container-images`만 image를 download한다. server와 runner의 image를 적은 Compose file에 `bay pull`을 실행하고, 그 file의 directory는 제거한다. 다른 machine에서는 `PULL=1`이 실행하는 `sh run.sh pull`이 project의 image를 pull한다.
 
-**변수.** `make orm-test-container`는 마지막 단계 뒤에 `.runtime/containers/<kind>.env`를 쓰고, `make orm-test-container-run`은 같은 변수를 command에 주고 file은 쓰지 않는다. MySQL과 PostgreSQL 변수는 `TEST_ENV`의 primary의 변수이고, MariaDB 변수는 `MARIADB_ENV`의 primary의 변수이며, MySQL과 PostgreSQL에는 replica DSN이 있다. 각 server는 `bay`가 service의 host 이름으로 발급해 container에 mount하는 certificate를 제시하므로 script는 server의 certificate를 발급하지 않는다. TLS DSN은 `bay`의 authority로 이를 검증하며 그 path는 `bay plan --json`이 준다. 두 번째 CA의 DSN은 chain에서 실패한다. 두 번째 CA는 script가 그 start를 위해 발급하며 아무것도 서명하지 않는다. mismatch DSN은 service의 IPv4 주소로 연결하는데 certificate는 그 주소를 적지 않는다. pooler는 시작하지 않는다. 그 변수는 없으며, 그 변수를 읽는 check는 변수 이름을 적어 실패한다.
+**변수.** `run.sh`는 마지막 단계 뒤에 `servers.env`를 쓴다. `make orm-test-container`는 이를 `.runtime/containers/<kind>.env`로 복사하고, run은 그 변수를 command에 준다. MySQL과 PostgreSQL 변수는 `TEST_ENV`의 primary의 변수이고, MariaDB 변수는 `MARIADB_ENV`의 primary의 변수이며, MySQL과 PostgreSQL에는 replica DSN이 있다. 각 server는 `bay`가 service의 host 이름으로 발급해 container에 mount하는 certificate를 제시하므로 script는 server의 certificate를 발급하지 않는다. TLS DSN은 `bay`의 authority로 이를 검증한다. 두 번째 CA의 DSN은 chain에서 실패한다. 두 번째 CA는 script가 그 run을 위해 발급하며 아무것도 서명하지 않는다. mismatch DSN은 primary의 IPv4 주소로 연결하는데 certificate는 그 주소를 적지 않는다. host 형태에서 DSN은 authority와 두 번째 CA를 host의 path로, runner 형태에서는 runner 안의 path로 적는다. pooler는 시작하지 않는다. 그 변수는 없으며, 그 변수를 읽는 check는 변수 이름을 적어 실패한다.
 
-**Unix socket을 통한 check.** `bay`는 Unix socket을 host에 publish하지 않고, container의 socket은 다른 container에서 닿지 않는다. Apple `container`의 container는 각자 kernel을 가지기 때문이다. 그래서 host의 environment에는 `ORM_TEST_MYSQL_SOCKET`과 `ORM_TEST_MARIADB_SOCKET`이 없고, server의 socket으로 연결하는 check는 그 server의 container 안에서 실행된다. BAY8이 구현하는 설계는 다음과 같다. server의 service가 check program의 Linux build가 든 run의 directory를 read-only로 mount한다. script는 image의 socket path와 project의 DSN을 주어 `bay exec -e <변수>=<값> <service> <program>`을 실행하고, `bay exec`의 exit status, 곧 program의 exit status가 check의 결과다. program은 socket 변수를 읽는 recipe runner다. MySQL과 MariaDB의 image는 서로 다른 library를 가지므로 각 program은 Linux용 static executable로 build한다. Linux machine에서는 checkout의 toolchain이 build한다. macOS에서는 project의 service `build`가 build한다. 이 service는 고정된 toolchain image를 끝나지 않는 command로 실행하고, checkout을 read-only로, build의 directory를 mount하며, script는 `bay exec build <build command>`로 build를 실행하고 그 exit status를 읽는다. 한 번 실행되는 service는 쓰지 않는다. `bay up`이 그 종료를 기다리지 않기 때문이다. BAY8이 끝날 때까지 socket 변수를 읽는 check는 변수 이름을 적어 실패한다.
+**service `runner`.** `config/containers.json`이 digest로 고정한 Debian 기반 image를 끝나지 않는 command로 실행한다. 이 repository의 image는 build하지 않고 registry에도 두지 않는다. run의 directory를 `/orm-run`에 mount하고 host의 checkout은 mount하지 않는다. 개발 host와 runner는 서로 다른 system이어서, 한 checkout 안에서는 둘의 tool, package, build output이 서로를 덮어쓰기 때문이다. runner는 `repo.bundle`의 자기 clone `/orm-run/repo`에서 일한다. `repo.bundle`은 script가 쓰는 checkout commit의 Git bundle이다. git은 host가 아니라 runner 안에서 실행된다. 따라서 runner의 run은 commit의 run이며, script는 tracked file이 commit과 다른 checkout을 거부한다. tool(`CARGO_HOME`, `RUSTUP_HOME`, machine의 node), package, cargo target directory는 run의 directory 아래에 있고 named volume은 쓰지 않으므로, directory를 제거하면 모두 사라진다.
 
-**server가 도는 machine.** `bay`는 자신이 실행되는 machine에서만 project를 시작하고 제거한다. 따라서 server를 다른 machine에 두는 것은 run 전체가 그곳으로 옮겨 가는 것이다. Compose project와 check가 그 machine에서, 그 machine의 checkout으로 실행된다. Unix socket을 통한 check는 어느 machine에서든 server의 container 안에서 실행된다.
+`runner-setup.sh`는 container 안에서 root로, 이 문서의 첫 설치 순서대로 runner를 설치한다. Debian package, machine의 node, rustup, clone, `devEngines`의 npm으로 하는 `npm ci`, `make install-tools TOOLS=npm`, `make install-packages`, `make install-tools`, `rust-toolchain.toml`의 Rust toolchain이다. 이것은 설치 단계이며 download한다. package manager 밖에서 download하는 각 file은 `config/containers.json`이 그 processor에 대해 고정한 sha256일 때만 쓴다. 남겨 둔 directory에 이미 있는 단계는 건너뛴다.
+
+| 설치하는 것 | 이유 |
+|---|---|
+| `git` | bundle을 clone한다. repository의 tool이 이를 통해 tracked file을 읽는다 |
+| `make`, `gcc`, `g++`, `pkg-config`, `libssl-dev` | recipe, 그리고 crate와 package가 build하는 native code |
+| `curl`, `ca-certificates`, `xz-utils`, `unzip`, `openssl` | setup과 installer의 download, check의 TLS file |
+| `php8.4-cli`, `php8.4-xml`, `php8.4-mbstring`, `php8.4-curl`, `php8.4-zip`, `composer` | `.php-version`의 PHP와 PHP check가 load하는 extension |
+| `lld` | runner의 Rust build의 linker |
+| nodejs.org의 node tarball, `mise.toml`이 고정한 release | machine의 node. 첫 `npm ci`와 `make install-tools TOOLS=npm`에 필요하다 |
+| `rustup-init`, `config/containers.json`이 고정한 release | `rust-toolchain.toml`의 toolchain을 설치한다 |
+
+runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fuse-ld=lld"]`). memory 3.7 GiB인 machine에서 한 commit의 test를 빈 target directory에서 build하는 데 기본 linker로는 30분과 swap 3.0 GiB, `lld`로는 16분 22초와 0.86 GiB가 들었다. 이 설정은 runner의 `CARGO_HOME`의 `config.toml`이므로 host의 어떤 run도 읽지 않는다. runner는 다른 service처럼 `bay`의 trust와 certificate를 그대로 받는다. `bay`는 자기 file을 `/etc/bay` 아래에 mount하고 image의 certificate store 위에 file을 두지 않으므로, setup은 `ca-certificates`를 다른 package처럼 설치한다. runner의 TLS DSN은 `bay`가 container에 authority를 mount하는 path를 적으며, 그 path는 `bay plan --json`이 준다(`certificate.containerCa`). service는 port가 없고 `restart: "no"`를 선언하므로 멈춰도 다시 시작되지 않는다. runner의 memory 한도는 test build를 위해 server의 두 배인 8 GiB다.
+
+`check.sh`는 clone 안에서 runner의 tool과 `servers.env`의 변수로 run의 command를 실행한다. 그 출력은 `report/check.log`에도 있고, exit status는 `report/status`에 있으며, `ORM_RUN_REPORT`가 command가 더하는 것을 위해 `report/`를 가리킨다.
+
+**다른 machine에서의 run.** `bay`는 자신이 실행되는 machine에서만 project를 시작하고 제거하므로, server를 다른 machine에 두는 것은 run 전체가 그곳에서 실행되는 것이다. `make orm-test-container-remote KIND=<kind> RUN='<command>' HOST=<ssh host> REMOTE=<directory>`는 그 machine의 `bay`의 plan을 `ssh`로 읽어 runner 형태의 run을 쓰고, run의 directory를 tar archive로 `ssh`를 통해 `<directory>/<project>`에 보내고, `ssh <host> sh <directory>/<project>/run.sh`를 실행하고, `report/`를 `.runtime/containers/reports/<project>`로 가져오고, `KEEP=1`이 아니면 그곳의 directory를 제거한다. 그 exit status는 `run.sh`의 것이다. `run.sh`는 machine을 적지 않는다. 이 target만 host와 directory를 적는다.
+
+**Unix socket을 통한 check.** `bay`는 Unix socket을 host에 publish하지 않고, container의 socket은 다른 container에서 닿지 않는다. Apple `container`의 container는 각자 kernel을 가지기 때문이다. 그래서 `servers.env`에는 `ORM_TEST_MYSQL_SOCKET`과 `ORM_TEST_MARIADB_SOCKET`이 없고, server의 socket으로 연결하는 check는 그 server의 container 안에서 실행된다. BAY8이 runner 형태에서 구현하는 설계는 다음과 같다. runner가 socket 변수를 읽는 각 program을 Linux용 static executable로 build한다. MySQL과 MariaDB의 image는 runner와 다른 library를 가지기 때문이다. build는 server의 service가 read-only로 mount하는 run의 directory에 둔다. `run.sh`는 image의 socket path와 project의 DSN을 주어 `bay exec -e <변수>=<값> <server service> <program>`을 실행하고, 그 command의 exit status가 check의 결과다. BAY8이 끝날 때까지 socket 변수를 읽는 check는 변수 이름을 적어 실패한다.
 
 **kind당 start 하나.** `make orm-test-container`는 checkout에서 이미 시작했고 `make orm-test-container-stop`이 아직 제거하지 않은 kind를 거부한다. `.runtime/containers/<kind>.env`가 project 하나를 가리키기 때문이다. `make orm-test-container-run`의 run은 세지 않는다. 각 run은 자기 project를 가지고 공유 file을 쓰지 않는다.
 
-**없는 program.** `BAY_PROGRAM`이 가리키는 program이 없거나 contract schema version이 다른 `bay`이면 start는 아무것도 만들기 전에 실패한다. message는 path, 그 program이 script를 위해 하는 일, 그것을 제공하는 것을 적는다.
+**없는 program.** `BAY_PROGRAM`이 가리키는 program이 없거나 contract schema version이 다른 `bay`이면 start는 아무것도 만들기 전에 실패한다. message는 path, 그 program이 run을 위해 하는 일, 그것을 제공하는 것을 적는다. `run.sh`도 자신을 실행하는 machine에서 project의 첫 command 전에 같은 두 가지를 확인한다.
 
 `make orm-test-container-check`는 이 규칙을 각 test가 쓰는 대역 `bay`로 시험하므로 container도 image도 필요하지 않다.
 
