@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: afa858779cc2803b56661626772b24769af109ffef78c320684bf1a41f12331d -->
+<!-- source-sha256: a1e8fdebb9e5d77195e9219fc02b255ee249d325b97562488963ed33bab8c153 -->
 # 변경 이력
 
 ## Unreleased
+
+- `make test-rust`는 시험 전에 `orm-codes`의 오류 파일을 쓰고, contracts/interfaces.json은 Rust의 `Model.connect`, `Collection.connect`, `Db.transaction`을 코어의 signature로 적는다(T459). case `public_interface_none::interface_symbols`가 `legacy/packages/php/src/Code.php`가 없어서 실패했고, 그 다음에는 CORE-20 이전의 것이던 signature 셋에서 실패했다. signature 셋을 둔 실행은 아직 하지 않았다.
 
 - MySQL이나 PostgreSQL database가 필요한 도구의 Rust 시험은 빠진 변수와 그것을 주는 방법을 적는다(T455). packages/rust/build/tests/cases/common/physical_fixture.rs의 `fixture_dsn`은 `ORM_TOOLS_MYSQL_DSN`이나 `ORM_TOOLS_POSTGRES_DSN`이 없거나 비어 있으면 `<variable> is required; run make orm-test-servers, which starts the databases and writes it`를 돌려주고, `dsn_for`, `row_insert_identity.rs`, `read_only_disposal.rs`가 그것으로 DSN을 읽는다. 전에는 `MySQL fixture DSN: NotPresent`로 panic하거나 변수를 unwrap했다. trial `physical_fixture::fixture_dsn_names_the_missing_variable_and_its_remedy`는 아직 실행하지 않았다.
 

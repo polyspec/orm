@@ -3465,6 +3465,8 @@ lint-ts: typescript-build
 lint-php: orm-codes-php
 # The interface_symbols case of test-php-ext runs interfaces/error-catalogs, which reads the error file of every implementation.
 test-php-ext: orm-codes
+# The case public_interface_none::interface_symbols of test-rust runs the same check, so it reads the same files.
+test-rust: orm-codes
 # The staged commit gate has no ignored generated models; recreate them before linting Go modules.
 lint-go: go-models
 # orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs legacy/packages/php

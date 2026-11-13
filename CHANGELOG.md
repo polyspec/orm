@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- `make test-rust` writes the error files of `orm-codes` before its tests, and contracts/interfaces.json names `Model.connect`, `Collection.connect` and `Db.transaction` of Rust with the signatures of the core (T459): the case `public_interface_none::interface_symbols` failed with a missing `legacy/packages/php/src/Code.php`, and then on the three signatures, which were those before CORE-20. The run with the three signatures is not yet made.
+
 - A Rust test of the tools that needs a MySQL or PostgreSQL database states the variable that is missing and how to provide it (T455): `fixture_dsn` of packages/rust/build/tests/cases/common/physical_fixture.rs returns `<variable> is required; run make orm-test-servers, which starts the databases and writes it` for an unset or empty `ORM_TOOLS_MYSQL_DSN` or `ORM_TOOLS_POSTGRES_DSN`, and `dsn_for`, `row_insert_identity.rs` and `read_only_disposal.rs` read their DSN through it, where they panicked with `MySQL fixture DSN: NotPresent` or unwrapped the variable. The trial `physical_fixture::fixture_dsn_names_the_missing_variable_and_its_remedy` is not yet run.
 
 - `Query::to_array()` of the Rust core returns the columns that a row read as a map of `orm_value` by column name, in the order of the schema (OM-3.1-3, CORE-120): a column that the row did not read has no key and a null column has its key with null, so the two are told apart, and a query that read no row returns the empty map. The member and its case are not yet compiled or run.

@@ -736,7 +736,7 @@
         },
         "rust": {
           "symbol": "packages/rust/build/src/fixed.rs.txt::T::connect",
-          "signature": "pub fn connect(mut self, db: &polyspec_orm::Db) -> Self"
+          "signature": "pub fn connect(mut self, connection: impl Into<polyspec_orm::Connection>) -> Self"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/model.ts::Model.connect",
@@ -1876,7 +1876,7 @@
         },
         "rust": {
           "symbol": "packages/rust/src/collection.rs::Collection < M >::connect",
-          "signature": "pub fn connect (mut self , db : & crate :: Db) -> Self"
+          "signature": "pub fn connect (mut self , connection : impl Into < crate :: Connection >) -> Self"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/model.ts::Collection.connect",
@@ -2070,7 +2070,7 @@
         },
         "rust": {
           "symbol": "packages/rust/src/tx.rs::Db::transaction",
-          "signature": "pub fn transaction<F>(&self, f: F) -> Transaction<'_, F>"
+          "signature": "pub async fn transaction<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T> where F: Fn(Tx) -> Fut, Fut: Future<Output = Result<T>>,"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/database.ts::Db.transaction",
