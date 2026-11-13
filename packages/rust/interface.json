@@ -1570,6 +1570,33 @@
             "path": "polyspec_orm::Db::transaction",
             "receiver": "&self"
           }
+        },
+        {
+          "id": "db.with_cancel",
+          "name": [
+            "with",
+            "cancel"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "cancel"
+              ],
+              "type": "cancel",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "db"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Db::with_cancel",
+            "receiver": "&self"
+          }
         }
       ]
     },

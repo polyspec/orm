@@ -229,6 +229,10 @@ impl TxShared {
             KIND_ROLLBACK_TO => format!("ROLLBACK TO SAVEPOINT {name}"),
             other => return Err(Error::internal(format!("{other} is no savepoint step"))),
         };
+        // A new savepoint is refused after the cancellation; its release and its rollback are sent (CORE-46).
+        if kind == KIND_SAVEPOINT {
+            self.db.ensure_not_canceled()?;
+        }
         let mut guard = self.enter()?;
         let inner = guard.as_mut().ok_or_else(|| Error::config("transaction already finished"))?;
         // A transaction that SQLite rolled back by itself took its savepoints with it (INT-155).
@@ -591,6 +595,8 @@ fn joined(mut errors: Vec<Error>) -> Result<()> {
 
 async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_ms: Option<u64>) -> Result<TxShared> {
     db.ensure_open()?;
+    // The BEGIN of a handle whose cancellation has fired is not sent (CORE-46).
+    db.ensure_not_canceled()?;
     if timeout_ms.is_some() && !matches!(db.pool(), Pool::Postgres(_)) {
         return Err(Error::new(crate::Kind::CapabilityUnsupported, "transaction timeoutMs is supported only by postgres"));
     }

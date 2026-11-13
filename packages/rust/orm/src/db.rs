@@ -638,6 +638,8 @@ pub struct Db {
     pub(crate) inner: Arc<DbInner>,
     /// This handle's request hook. Not shared with other handles of the connection.
     pub(crate) hook: Option<RequestHook>,
+    /// The cancellation of this handle (CORE-45). Not shared with other handles of the connection.
+    pub(crate) cancel: Option<binding_core::Cancel>,
 }
 
 /// The connection pool state.
@@ -983,6 +985,7 @@ impl Db {
                 last_affected: Mutex::new(None),
             }),
             hook: None,
+            cancel: None,
         };
         if owner.set(Arc::downgrade(&db.inner)).is_err() {
             return Err(Error::internal("the owner of a new database was already set"));
@@ -996,7 +999,18 @@ impl Db {
     /// active transactions of the connection; it carries one hook, so this
     /// replaces the hook of a hooked handle.
     pub fn with_request_hook(&self, hook: impl Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static) -> Db {
-        Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)) }
+        Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)), cancel: self.cancel.clone() }
+    }
+
+    /// Returns a handle on the same connection that carries the cancellation `cancel` (CORE-45). The handle shares the
+    /// pool, the caches, the subscribers and the active transactions of the connection and keeps the request hook of
+    /// this handle; it carries one cancellation, so this replaces the cancellation of a handle that has one. A model
+    /// that is connected to the handle, a transaction that it starts and the `Tx` of that transaction carry the same
+    /// cancellation. A statement, a `BEGIN` and a `SAVEPOINT` of the handle after the cancellation fired are
+    /// `canceled` and are not sent; the end of a transaction and of a savepoint is sent whatever the cancellation
+    /// (CORE-46). A statement in progress when the cancellation fires runs to its end (CORE-47).
+    pub fn with_cancel(&self, cancel: binding_core::Cancel) -> Db {
+        Db { inner: self.inner.clone(), hook: self.hook.clone(), cancel: Some(cancel) }
     }
 
     /// The database of the connection: mysql, postgres, sqlite, or markdown, a
@@ -1445,6 +1459,14 @@ impl Db {
         execute_step(Executor::Db(self.clone()), step, params).await
     }
 
+    /// Refuses a statement of a handle whose cancellation has fired, before it is sent (CORE-46).
+    pub(crate) fn ensure_not_canceled(&self) -> Result<()> {
+        match &self.cancel {
+            Some(cancel) if cancel.is_cancelled() => Err(Error::new(crate::Kind::Canceled, "the cancellation of the handle has fired")),
+            _ => Ok(()),
+        }
+    }
+
     pub(crate) fn ensure_open(&self) -> Result<()> {
         if self.inner.closed.load(Ordering::Acquire) {
             return Err(Error::new(crate::Kind::Closed, "database is closed"));
@@ -1556,6 +1578,7 @@ impl Executor {
         params: &[Param],
         parent_vals: Vec<Param>,
     ) -> Result<Vec<DriverRow>> {
+        self.db().ensure_not_canceled()?;
         let origin = Origin { kind, tables, transaction: self.transaction() };
         with_executor_target!(
             self,
@@ -1571,6 +1594,7 @@ impl Executor {
 
     /// Takes SQLite's row lock in the transaction. On other databases, nothing is sent.
     pub(crate) async fn sqlite_row_lock(&self, mode: &str) -> Result<()> {
+        self.db().ensure_not_canceled()?;
         match self {
             Executor::Db(d) => d.sqlite_row_lock(&mut Target::Pool(&d.inner.pool), None, mode).await,
             Executor::Tx(t) => {
@@ -1588,6 +1612,7 @@ impl Executor {
 
     /// Runs the step. If `kind` and `tables` are given, the event carries them.
     pub(crate) async fn execute_as(&self, kind: Option<&str>, tables: Option<&[String]>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
+        self.db().ensure_not_canceled()?;
         let origin = Origin { kind, tables, transaction: self.transaction() };
         with_executor_target!(self, db, target, audit, { db.ensure_open()? }, { db.run_execute(target, origin, st, params, audit.as_ref()).await })
     }
@@ -1772,3 +1797,7 @@ pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
 fn invalid_time_text(col_type: &str) -> Error {
     Error::new(crate::Kind::CodecEncode, format!("{col_type} value is not a {col_type}"))
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/cancel.rs"]
+mod cancel_tests;

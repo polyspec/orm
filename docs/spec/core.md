@@ -118,10 +118,12 @@ the core that differ from the rules that the language implementations of `legacy
 - **CORE-45** `Db::with_cancel(cancel)` returns a handle of the same pool that carries the cancellation `cancel`; it
   changes nothing of the handle it is called on. A model that is connected to the handle, a transaction that the handle
   starts and the `Tx` of that transaction carry the same cancellation. For the core this replaces the four names of
-  CFG-9 (`WithContext`, `withSignal`, `with_future`, `withCancellation`). Not implemented.
+  CFG-9 (`WithContext`, `withSignal`, `with_future`, `withCancellation`).
 - **CORE-46** A statement of a handle whose cancellation has fired fails with `canceled` before it is sent, and the
-  `BEGIN` of a transaction does too. `COMMIT`, `ROLLBACK`, `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT` are sent
-  whatever the cancellation, so a cancelled transaction still ends (CFG-9). Not implemented.
+  `BEGIN` of a transaction and the `SAVEPOINT` of a savepoint do too; such a statement publishes no statement event,
+  and the callback of that transaction or savepoint does not run. The message is `the cancellation of the handle has
+  fired`. `COMMIT`, `ROLLBACK`, `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT` are sent
+  whatever the cancellation, so a cancelled transaction still ends (CFG-9).
 - **CORE-47** A statement in progress when the cancellation fires is ended on its server and fails with `canceled`:
   MySQL and MariaDB by `KILL QUERY <connection id>` on a control connection of the same DSN, after which the connection
   of the statement is closed and not returned to the pool; PostgreSQL by a CancelRequest of the protocol; SQLite by a

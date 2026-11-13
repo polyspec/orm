@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 022e35e3ecbf70d760aaf80cbda11b1f716f3430e2da2b019d3623ac54597636 -->
+<!-- source-sha256: a9a952d3c07fdb83a956dad02cb3c0a0dd2c066c7335fb7ebbb697c38762ff35 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -103,10 +103,10 @@
 - **CORE-45** `Db::with_cancel(cancel)`은 취소 `cancel`을 가진 같은 pool의 handle을 돌려준다. 호출된 handle의 어떤
   것도 바꾸지 않는다. 그 handle에 연결된 모델, 그 handle이 시작한 트랜잭션, 그 트랜잭션의 `Tx`는 같은 취소를 가진다.
   코어에서는 이것이 CFG-9의 네 이름(`WithContext`, `withSignal`, `with_future`, `withCancellation`)을 대신한다.
-  구현되지 않았다.
-- **CORE-46** 취소가 발화한 handle의 문장은 보내기 전에 `canceled`로 실패하고, 트랜잭션의 `BEGIN`도 그렇다. `COMMIT`,
+- **CORE-46** 취소가 발화한 handle의 문장은 보내기 전에 `canceled`로 실패하고, 트랜잭션의 `BEGIN`과 savepoint의
+  `SAVEPOINT`도 그렇다. 그런 문장은 statement event를 내지 않고, 그 트랜잭션이나 savepoint의 callback은 실행되지 않는다.
+  메시지는 `the cancellation of the handle has fired`다. `COMMIT`,
   `ROLLBACK`, `ROLLBACK TO SAVEPOINT`, `RELEASE SAVEPOINT`는 취소와 관계없이 보내므로 취소된 트랜잭션도 끝난다(CFG-9).
-  구현되지 않았다.
 - **CORE-47** 취소가 발화할 때 진행 중인 문장은 그 서버에서 끝나고 `canceled`로 실패한다: MySQL과 MariaDB는 같은 DSN의
   제어 연결에서 `KILL QUERY <connection id>`로 끝내고 그 뒤 문장의 연결은 pool로 돌려주지 않고 닫는다. PostgreSQL은
   protocol의 CancelRequest로, SQLite는 문장을 interrupt하는 progress handler로, markdown 연결은 연결을 닫아서
