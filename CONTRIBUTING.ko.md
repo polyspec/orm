@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 99c950201d321c5e60ea8674aff42de3b0eb3effe0a2b272962a21ac04dcc346 -->
+<!-- source-sha256: a19de17d2be6a5b3e9459b61877050d9a9d0b0cf0281be3c7bcef46b4d8f9f0d -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -85,7 +85,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 - PostgreSQL primary는 role `orm`의 replication을 허용하고 database `orm_test`와 `orm_tools`를 만든다. standby는 primary가 healthy가 된 뒤에 slot `orm_replica`를 통한 primary의 `pg_basebackup`으로 시작한다.
 - MariaDB primary는 database와 account를 만든다.
 
-**준비 완료.** 각 service는 server의 준비 확인 program을 container 안에서 127.0.0.1의 TCP로 실행하는 Compose `healthcheck`를 선언한다. image가 data directory를 초기화하려고 시작하는 임시 server는 socket에서만 listen하기 때문이다. MySQL은 `mysqladmin ping`, PostgreSQL은 `pg_isready`, MariaDB는 image의 script `healthcheck.sh --connect --innodb_initialized`다. replica는 primary에 대해 조건 `service_healthy`의 `depends_on`을 선언한다. `bay up`이 exit status 0으로 돌아오면 server는 준비된 것이다. script는 그 process 하나만 기다린다. container의 log를 읽지 않고, timer를 시작하지 않고, 요청을 반복하지 않는다. `healthcheck`의 간격(1초), probe 하나의 시간 제한(5초), probe 횟수(600)는 `bay`의 probe 설정이며 `bay`는 횟수를 요구한다. 횟수는 부하가 있는 machine에서 start에 걸리는 시간보다 훨씬 크게 정했고, 이를 다 쓴 start는 unhealthy service로 실패한다.
+**준비 완료.** 각 service는 server의 준비 확인 program을 container 안에서 127.0.0.1의 TCP로 실행하는 Compose `healthcheck`를 선언한다. image가 data directory를 초기화하려고 시작하는 임시 server는 socket에서만 listen하기 때문이다. MySQL은 `mysqladmin ping`, PostgreSQL은 `pg_isready`, MariaDB는 image의 script `healthcheck.sh --connect --innodb_initialized`다. replica는 primary에 대해 조건 `service_healthy`의 `depends_on`을 선언한다. `bay up`이 exit status 0으로 돌아오면 server는 준비된 것이다. script는 그 process 하나만 기다린다. container의 log를 읽지 않고, timer를 시작하지 않고, 요청을 반복하지 않는다. `healthcheck`의 간격(1초), probe 하나의 시간 제한(5초), probe 횟수(600)는 Compose `healthcheck`가 `bay`의 probe를 위해 선언하는 값이며, script 자체에는 시간 제한이 없다. 횟수가 600인 이유는 부하가 있는 machine에서 start에 걸리는 시간보다 훨씬 커야 하기 때문이다. 그런 machine에서는 image의 초기화에 몇 분이 걸린다. 횟수를 다 쓴 start는 unhealthy service로 실패한다(BAY10).
 
 **run은 자기 server를 소유한다.** `make orm-test-container-run`은 command가 끝나거나 실패할 때, 그리고 run이 SIGINT나 SIGTERM을 받을 때 `bay down`으로 project를 제거하고 이어서 project의 directory를 제거한다. signal은 command에 전달한다. `bay up`이 실패한 start는 `bay logs`로 각 service의 마지막 줄을 출력하고, 같은 방법으로 project를 제거하고, project와 exit status를 적어 실패한다. `make orm-test-container-stop`은 checkout의 server의 exclusive lease를 잡고 checkout의 모든 project를 제거한다. kill된 run의 project도 포함한다. 다른 checkout의 project는 제거하지 않는다.
 
