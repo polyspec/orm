@@ -10051,6 +10051,49 @@
           }
         }
       ]
+    },
+    {
+      "id": "codec-stage-ordered-json-is-json",
+      "requirements": [
+        "DBS-69"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table t {",
+            "  id i64 identity",
+            "  doc text",
+            "  packed bytes",
+            "  primary key (id)",
+            "  settings {",
+            "    codec doc ordered_json",
+            "    codec packed ordered_json gz",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  doc text",
+                "  packed bytes",
+                "  primary key (id)",
+                "  settings {",
+                "    codec doc json",
+                "    codec packed json gz",
+                "  }",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
