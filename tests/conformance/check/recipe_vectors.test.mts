@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { NO_RECIPE_CASE, RUNNER_SOURCES, compareOutput, declaredBodies, expectations, list, plain, readRecipe, record, runnerCommand, sequenceDifferences, sequenceStatement, type Sequence } from './recipe_vectors.mts';
+import { NO_RECIPE_CASE, RUNNER_SOURCES, compareOutput, compareOutputs, declaredBodies, expectations, fixedClockExpectations, list, plain, readRecipe, record, runnerCommand, sequenceDifferences, sequenceStatement, type Output, type Sequence } from './recipe_vectors.mts';
 import { readJsonFile } from '../../../scripts/json/schema.mts';
 import { COMPUTE, caseTest } from '../../testcase.mts';
 
@@ -49,6 +49,30 @@ caseTest('a result or a statement that differs from its expect fails', COMPUTE, 
   assert.throws(() => { compareOutput('sql', { result: want.result, statements: [{ sql: 'SELECT 2', binds: [1] }] }, want); }, /statement 0 sql/);
   assert.doesNotThrow(() => { compareOutput('masked', { result: want.result, statements: [{ sql: 'SELECT 1', binds: ['$SEQ'] }] }, want); });
   assert.throws(() => { compareOutput('masked text', { result: want.result, statements: [{ sql: 'SELECT 1', binds: ['$SEQ'] }] }, { result: want.result, statements: [{ sql: 'SELECT 1', binds: ['a'] }] }); }, /statement 0 binds/);
+});
+
+// T457: the forms that the conformance rule of AGENTS.md names as an error.
+caseTest('the comparison of a selection refuses an empty selection, an output outside it and a missing output', COMPUTE, () => {
+  const one: Output = { result: 1, statements: [] };
+  const want = new Map<string, Output>([['a', one]]);
+  compareOutputs('go/sqlite', { a: { result: 1, statements: [] } }, want);
+  assert.throws(() => compareOutputs('go/sqlite', {}, new Map<string, Output>()), /go\/sqlite: the selection names no vector/);
+  assert.throws(() => compareOutputs('go/sqlite', { a: { result: 1, statements: [] }, b: { result: 1, statements: [] } }, want), /go\/sqlite: the runner gave the output b, which the selection does not name/);
+  assert.throws(() => compareOutputs('go/sqlite', {}, want), /go\/sqlite: the runner gave no output for a/);
+  assert.throws(() => compareOutputs('go/sqlite', { a: { result: 2, statements: [] } }, want), /go\/sqlite\/a: the result differs from its expect/);
+});
+
+// T457: a fixed-clock case has a nonempty id of its own and exactly the expects of mysql, postgres and sqlite.
+caseTest('a fixed-clock file with no case, an empty or repeated id or other databases is refused', COMPUTE, () => {
+  const held = { result: 1, statements: [] };
+  const expect = { mysql: held, postgres: held, sqlite: held };
+  assert.deepEqual([...fixedClockExpectations({ cases: [{ id: 'a', expect }, { id: 'b', expect }] }, 'sqlite').keys()], ['a', 'b']);
+  assert.throws(() => fixedClockExpectations({ cases: [] }, 'sqlite'), /fixed_clock\.json holds no case/);
+  assert.throws(() => fixedClockExpectations({ cases: [{ id: '', expect }] }, 'sqlite'), /fixed_clock\.json holds a case with an empty id/);
+  assert.throws(() => fixedClockExpectations({ cases: [{ id: 'a', expect }, { id: 'a', expect }] }, 'sqlite'), /fixed_clock\.json holds the case a twice/);
+  assert.throws(() => fixedClockExpectations({ cases: [{ id: 'a', expect: { mysql: held, sqlite: held } }] }, 'sqlite'), /case a states the expects of mysql, sqlite, not exactly those of mysql, postgres, sqlite/);
+  assert.throws(() => fixedClockExpectations({ cases: [{ id: 'a', expect: { ...expect, markdown: held } }] }, 'sqlite'), /case a states the expects of markdown, mysql, postgres, sqlite, not exactly those of mysql, postgres, sqlite/);
+  assert.throws(() => fixedClockExpectations({ cases: [{ id: 'a', expect: {} }] }, 'sqlite'), /case a states the expects of no database, not exactly those of mysql, postgres, sqlite/);
 });
 
 caseTest('every vector name is a recipe case or a fixed-clock body', COMPUTE, () => {
