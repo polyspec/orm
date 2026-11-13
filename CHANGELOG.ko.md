@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a1e8fdebb9e5d77195e9219fc02b255ee249d325b97562488963ed33bab8c153 -->
+<!-- source-sha256: dddf0a1d61ca79e37c300d9f0b5d76170133ed254b08ab8666d6c2ad36568518 -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust 코어의 `Query::restore()`와 `Query::restore_or_create()`는 assignment가 가진 key의 soft delete된 행을 복원하고, `Db` step은 terminal `restore`와 `restore_or_create`를 받으며 그 결과는 `{"row": <row>}`이다(OM-3.1-13, CORE-94). `model::restore`와 `model::restore_or_create`는 생성된 model type이 없는 행을 받고, 두 member는 행을 돌려줄 때 assignment를 비우며, packages/rust/interface.json은 `query.restore`와 `query.restore_or_create`를 적고, contracts/interface/core.json은 connection 없는 case를 가진다. 세 case의 compile은 member가 있기 전에 실패했고, member와 그 case는 아직 실행하지 않았다.
 
 - `make test-rust`는 시험 전에 `orm-codes`의 오류 파일을 쓰고, contracts/interfaces.json은 Rust의 `Model.connect`, `Collection.connect`, `Db.transaction`을 코어의 signature로 적는다(T459). case `public_interface_none::interface_symbols`가 `legacy/packages/php/src/Code.php`가 없어서 실패했고, 그 다음에는 CORE-20 이전의 것이던 signature 셋에서 실패했다. signature 셋을 둔 실행은 아직 하지 않았다.
 
