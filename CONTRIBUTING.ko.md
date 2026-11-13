@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 64d17c26d4bf4e357e337f937287b786526ff30e7bafd23a53de8f24981f4174 -->
+<!-- source-sha256: 29600db00a13dbe9c1200582fa398ad3b9493c121809e81cfa0f544a4ba83643 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -64,7 +64,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 
 ## 컨테이너의 test database server
 
-`make orm-test-container KIND=<mysql|postgres|mariadb>`와 `make orm-test-container-run KIND=<kind> RUN='<command>'`는 한 kind의 server를 program `bay`가 실행하는 Compose project로 시작한다(`scripts/test-servers-container.mts`). macOS에서는 Apple `container`, Linux에서는 Docker 위에서 실행된다. 모든 단계는 `bay`(`BAY_PROGRAM`)의 command이고 container engine은 직접 실행되지 않는다. script와 그것이 쓰는 `run.sh`는 자신이 맞춰 쓰인 `bay`의 contract schema version을 요구하며, 그 값은 `bay version`이 보고한다.
+`make orm-test-container KIND=<mysql|postgres|mariadb>`와 `make orm-test-container-run KIND=<kind> RUN='<command>'`는 한 kind의 server를 program `bay`가 실행하는 Compose project로 시작한다(`scripts/test-servers-container.mts`). macOS에서는 Apple `container`, Linux에서는 Docker 위에서 실행된다. 모든 단계는 `bay`의 command이고 container engine은 직접 실행되지 않는다.
 
 **run은 `sh`와 `bay`만으로 실행된다.** server와 check를 실행하는 machine에는 `sh`, `bay`, `bay`의 container engine만 있으면 된다. 그 host에는 아무것도 설치하지 않고, 그 host의 node, cargo, make, git을 쓰지 않는다. image와 database check는 disk가 넉넉한 machine에서 실행되며 그 machine은 개발 machine이 아니기 때문이다. 그래서 일을 나눈다. `scripts/test-servers-container.mts`는 run의 directory를 쓰기만 하고, 그 directory의 POSIX `sh` file `run.sh`가 실행한다. `run.sh`의 각 단계는 `bay -p <project>`의 command 하나이고 그 exit status가 run을 판정한다. file은 JSON을 읽지 않고, timer를 시작하지 않고, 요청을 반복하지 않는다.
 
@@ -136,7 +136,13 @@ runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fus
 
 **kind당 start 하나.** `make orm-test-container`는 checkout에서 이미 시작했고 `make orm-test-container-stop`이 아직 제거하지 않은 kind를 거부한다. `.runtime/containers/<kind>.env`가 project 하나를 가리키기 때문이다. `make orm-test-container-run`의 run은 세지 않는다. 각 run은 자기 project를 가지고 공유 file을 쓰지 않는다.
 
-**없는 program.** `BAY_PROGRAM`이 가리키는 program이 없거나 contract schema version이 다른 `bay`이면 start는 아무것도 만들기 전에 실패한다. message는 path, 그 program이 run을 위해 하는 일, 그것을 제공하는 것을 적는다. `run.sh`도 자신을 실행하는 machine에서 project의 첫 command 전에 같은 두 가지를 확인한다.
+**`bay`는 machine의 tool이다.** run은 `make`를 쓰듯이 자기 machine의 `bay`를 쓰며, 그 version을 고정하지도 비교하지도 않는다. run의 결과를 바꾸는 것은 release의 번호가 아니라 script와 `run.sh`가 읽는 출력의 contract다. 그래서 둘은 무엇이든 만들기 전에 자신이 맞춰 쓰인 contract schema version을 확인하고, 다르면 실패한다. 그 값은 `bay version`이 보고한다. 개발 machine의 `bay`는 자주 새로 build되므로 번호 비교는 일을 막기만 한다. `run.sh`는 `bay version`의 줄을 자기 출력과 `report/bay-version`에 쓰므로, run의 기록이 그것을 실행한 `bay`를 적는다. 다른 machine에서의 run은 무엇이든 쓰거나 보내기 전에 `ssh`로 그 machine의 `bay`의 contract를 읽는다.
+
+**CI가 설치하는 release.** CI job에는 `bay`가 없어 download해야 하므로, 어느 release를 받는지가 tracked file에 있다. `config/containers.json`은 `bay` 아래에 version, file의 주소, 그 release의 `SHA256SUMS`에서 온 각 platform archive의 sha256을 고정한다. `make orm-install-bay`는 platform의 archive를 download하고, 그 sha256일 때만 쓰며, `bay`와 `bayd`를 checkout의 `var/tools/bay`에 둔다. machine은 아무것도 바꾸지 않는다. `make orm-install-bay-machine`은 `bay install`과 `bay check -scope run`을 실행한다. 전자는 없는 machine 설정을 적용하며 필요한 권한을 요청하고, 후자는 run에 필요한 부분이 없는 동안 실패한다. 사람이나 CI job이 이를 실행하며, 다른 어떤 target도 machine 설정을 바꾸지 않는다. 어떤 run도 이 pin을 읽지 않는다. pin은 한 변경으로 올린다. version, 주소, sha256 네 개가 새 release와 그 `SHA256SUMS`의 값을 받고, release가 다른 contract schema version을 보고하면 script의 `SCHEMA`가 따라가며 그 contract가 Compose file과 `run.sh`에서 바꾸는 것도 함께 바꾼다.
+
+**`bay`의 command.** `run.sh`는 `bay`의 command를 변수 하나 `BAY_COMMAND`에서 받는다. 단어 하나 이상이며, 없으면 `PATH`의 `bay`를 실행하고, Makefile의 값도 그것이다. run을 시작하는 쪽이 이를 정한다. 그 machine에서 `bay`가 어느 user로 실행되는지는 그쪽만 알기 때문이다. `bay`는 자신을 실행한 user의 home 아래에 상태를 두고, Linux에서는 machine 설정과 command에 root가 필요하므로, 한 machine의 모든 command는 같은 user로 실행되어야 한다. user가 암호 없는 `sudo`를 가진 CI runner는 `var/tools/bay/bay`의 path로 `BAY_COMMAND='sudo -n <bay의 path>'`를 정해, `bay install`과 run의 각 command가 root의 것이 되게 한다. `make orm-test-container-remote`는 다른 machine에서의 command인 `REMOTE_BAY_COMMAND`를 그곳에서 시작하는 `run.sh`에 넘긴다.
+
+**없는 program.** `BAY_COMMAND`가 가리키는 program이 없으면 start는 아무것도 만들기 전에 실패한다. message는 그 program과 그것이 run을 위해 하는 일을 적는다. `run.sh`도 자신을 실행하는 machine에서 같은 확인을 한다.
 
 `make orm-test-container-check`는 이 규칙을 각 test가 쓰는 대역 `bay`로 시험하므로 container도 image도 필요하지 않다.
 
