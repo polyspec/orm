@@ -332,3 +332,33 @@ async fn a_relation_child_holds_its_own_lock() {
     assert_eq!(counts, [2, 1, 0]);
     db.close().await;
 }
+
+// Requirements: CORE-89. key_name keys the collection of gets and the rows of a relations result by a column, and a
+// name that is no column is config at the next terminal.
+#[tokio::test]
+async fn key_name_keys_the_rows_by_a_column() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-key-name");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut accounts = query(&schema, "account", &db);
+    accounts.order_by("SeqAsc");
+    let rows = accounts.gets().await.expect("gets");
+    assert_eq!(rows.keys(), [crate::Key::I(1), crate::Key::I(2), crate::Key::I(3)], "the primary key by default");
+    accounts.key_name("email");
+    let rows = accounts.gets().await.expect("gets");
+    assert_eq!(rows.keys(), ["a@x", "b@x", "c@x"].map(|email| crate::Key::S(email.into())));
+    assert_eq!(rows.get(crate::Key::S("b@x".into())).map(|row| row.value("seq").expect("seq")), Some(int(2)));
+    let mut keys = Query::new(&schema, "account_key").expect("query");
+    keys.match_pair("SeqWithAccountSeq");
+    keys.key_name("label");
+    let mut parent = Query::new(&schema, "account").expect("query");
+    parent.relations(keys);
+    let req = crate::request::build(&parent.core, "all");
+    assert_eq!(req.ir.query.relations[0].query.key_by, "label", "a relations result is keyed by the column");
+    let mut unknown = query(&schema, "account", &db);
+    unknown.key_name("missing");
+    let error = failure(unknown.gets().await, "a name that is no column");
+    assert_eq!(error.to_string(), "config: missing is not a column of account");
+    db.close().await;
+}
