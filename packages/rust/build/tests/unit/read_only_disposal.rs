@@ -1,5 +1,9 @@
 use super::{CatalogConnection, Conn};
 
+#[allow(dead_code, reason = "the fixture helpers of the cases crate; this test uses the DSN of a server alone")]
+#[path = "../cases/common/physical_fixture.rs"]
+mod physical_fixture;
+
 #[tokio::test]
 // Requirements: INT-137.
 async fn aborted_read_only_connections_are_not_returned_to_the_pool() {
@@ -13,8 +17,8 @@ async fn check() {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").unwrap(),
+            "mysql" => physical_fixture::server_dsn("ORM_TOOLS_MYSQL_DSN"),
+            _ => physical_fixture::server_dsn("ORM_TOOLS_POSTGRES_DSN"),
         };
         if dialect == "sqlite" {
             let (db, conn, _) = crate::tool_db::open(&dsn).await.unwrap();

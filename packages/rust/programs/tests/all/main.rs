@@ -202,6 +202,7 @@ fn main() {
         polyspec_orm_testcase::Group::new("lock_probe_order", polyspec_orm_build_cases::lock_probe_order::trials),
         polyspec_orm_testcase::Group::new("mysql_tls", polyspec_orm_cases::mysql_tls::trials),
         polyspec_orm_testcase::Group::new("package_entry", polyspec_orm_cases::package_entry::trials),
+        polyspec_orm_testcase::Group::new("physical_fixture", polyspec_orm_build_cases::physical_fixture::trials),
         polyspec_orm_testcase::Group::new("rollback", polyspec_orm_cases::rollback::trials),
         polyspec_orm_testcase::Group::new("row_commit_permit", polyspec_orm_build_cases::row_commit_permit::trials),
         polyspec_orm_testcase::Group::new("row_insert_identity", polyspec_orm_build_cases::row_insert_identity::trials),

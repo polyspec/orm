@@ -15,8 +15,8 @@ use crate::lock_probe;
 async fn open_dialect_fixture(dialect: &str, sqlite_path: &Path) -> (String, polyspec_orm::Db, tool_db::Conn) {
     let dsn = match dialect {
         "sqlite" => format!("sqlite://{}", sqlite_path.display()),
-        "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL owner fixture DSN"),
-        "postgres" => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL owner fixture DSN"),
+        "mysql" => crate::physical_fixture::server_dsn("ORM_TOOLS_MYSQL_DSN"),
+        "postgres" => crate::physical_fixture::server_dsn("ORM_TOOLS_POSTGRES_DSN"),
         _ => panic!("unsupported row-insert fixture dialect {dialect}"),
     };
     let (database, seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
