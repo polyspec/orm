@@ -216,3 +216,119 @@ async fn the_columns_of_a_row_follow_the_column_members() {
     }
     db.close().await;
 }
+
+/// The labels of the rows of the `relations` result `name` of `row`.
+fn labels(row: &Query, name: &str) -> Option<Vec<OrmValue>> {
+    row.related_rows(name).expect("related rows").map(|rows| rows.iter().map(|key| key.value("label").expect("label")).collect())
+}
+
+// Requirements: CORE-88. relations attaches the rows of a separate query by the key of match_pair under the name of
+// alias, relation one row under <entity>_model, and a row reads them by related_rows and related.
+#[tokio::test]
+async fn relations_attach_the_rows_of_a_separate_query() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-relations");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut keys = Query::new(&schema, "account_key").expect("query");
+    keys.match_pair("SeqWithAccountSeq");
+    keys.order_by("SeqAsc");
+    keys.alias("Keys");
+    let mut accounts = query(&schema, "account", &db);
+    accounts.order_by("SeqAsc");
+    accounts.relations(keys);
+    let rows = accounts.gets().await.expect("gets");
+    let rows: Vec<&Query> = rows.models().collect();
+    let k = |label: &str| OrmValue::Text(label.into());
+    assert_eq!(labels(rows[0], "keys"), Some(vec![k("k1"), k("k2")]));
+    assert_eq!(labels(rows[1], "keys"), Some(vec![k("k3")]));
+    assert_eq!(labels(rows[2], "keys"), Some(vec![]), "an account without keys has an empty result");
+    assert_eq!(labels(rows[0], "account_key_models"), None, "the alias names the result");
+    let error = rows[0].related("keys").expect_err("a relations result read as one row");
+    assert_eq!(error.kind(), crate::Kind::Internal, "{error}");
+
+    let mut owner = Query::new(&schema, "account").expect("query");
+    owner.match_pair("AccountSeqWithSeq");
+    let mut key = query(&schema, "account_key", &db);
+    key.where_chain("Seq", vec![int(3)]);
+    key.relation(owner);
+    let row = key.get().await.expect("get").expect("a row");
+    let account = row.related("account_model").expect("related").expect("an account");
+    assert_eq!(account.value("email").expect("email"), OrmValue::Text("b@x".into()));
+    let error = row.related_rows("account_model").expect_err("a relation result read as rows");
+    assert_eq!(error.kind(), crate::Kind::Internal, "{error}");
+    db.close().await;
+}
+
+// Requirements: CORE-85, CORE-88. A child without match_pair is config, a pair that names no columns is config, and a
+// child with a limit is limit_in_relation.
+#[tokio::test]
+async fn a_relation_child_needs_its_key_and_no_limit() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-relation-child");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut unmatched = query(&schema, "account", &db);
+    unmatched.relations(Query::new(&schema, "account_key").expect("query"));
+    let error = failure(unmatched.gets().await, "a child without match_pair");
+    assert_eq!(error.to_string(), "config: relation child account_key requires match_<l>_with_<r>()");
+    let mut pair = Query::new(&schema, "account_key").expect("query");
+    pair.match_pair("SeqWithMissing");
+    let mut paired = query(&schema, "account", &db);
+    paired.relations(pair);
+    let error = failure(paired.gets().await, "a pair that names no columns");
+    assert_eq!(error.to_string(), "config: SeqWithMissing is not <column>With<column>");
+    let mut limited = Query::new(&schema, "account_key").expect("query");
+    limited.match_pair("SeqWithAccountSeq");
+    limited.limit(0, 1);
+    let mut parent = query(&schema, "account", &db);
+    parent.relations(limited);
+    let error = failure(parent.gets().await, "a child with a limit");
+    assert_eq!(error.kind(), crate::Kind::LimitInRelation, "{error}");
+    db.close().await;
+}
+
+// Requirements: CORE-86, CORE-88. A child of relations holds its own lock, which its own statement takes, as the
+// retention reads its locked rows with the requests that reference them.
+#[tokio::test]
+async fn a_relation_child_holds_its_own_lock() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-relation-lock");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let child = |schema: &Schema| {
+        let mut keys = Query::new(schema, "account_key").expect("query");
+        keys.match_pair("SeqWithAccountSeq");
+        keys.remove_all_columns();
+        keys.for_share();
+        keys.alias("keys");
+        keys
+    };
+    let mut parent = Query::new(&schema, "account").expect("query");
+    parent.for_update();
+    parent.relations(child(&schema));
+    let req = crate::request::build(&parent.core, "all");
+    assert!(req.error().is_none(), "{:?}", req.error());
+    assert_eq!(req.ir.query.lock, "update");
+    assert_eq!(req.ir.query.relations[0].query.lock, "share", "the child keeps its own lock");
+    let counts = db
+        .transaction(
+            |tx| {
+                let schema = &schema;
+                async move {
+                    let mut accounts = Query::new(schema, "account")?;
+                    accounts.connect(Connection::from(&tx));
+                    accounts.order_by("SeqAsc");
+                    accounts.for_update();
+                    accounts.relations(child(schema));
+                    let rows = accounts.gets().await?;
+                    rows.models().map(|row| Ok(row.related_rows("keys")?.map_or(0, |keys| keys.len()))).collect::<Result<Vec<usize>>>()
+                }
+            },
+            crate::TransactionOptions::default(),
+        )
+        .await
+        .expect("a locked read with a locked relation");
+    assert_eq!(counts, [2, 1, 0]);
+    db.close().await;
+}
