@@ -117,7 +117,7 @@ impl OrmValue {
     }
 
     /// The parameter of a value that is one value of a statement, or `None` for a value that is none.
-    fn scalar(self) -> std::result::Result<Param, OrmValue> {
+    pub(crate) fn scalar(self) -> std::result::Result<Param, OrmValue> {
         Ok(match self {
             OrmValue::Null => Param::Null,
             OrmValue::Bool(flag) => Param::Bool(flag),

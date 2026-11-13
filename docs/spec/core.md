@@ -262,7 +262,8 @@ the core that differ from the rules that the language implementations of `legacy
   `update` and `delete` is the row that the `Query` read, or, in a `Query` that read no row, the row of the primary key
   that `set` assigned; with neither the write is `config` with the message `<entity> requires a loaded row or a set
   primary key <column>`. A name that is no column of the entity is `config` with the message `<column> is not a column
-  of <entity>`, and a value that the column cannot take is `codec_encode` (CORE-62). A write fails with the kind of its
+  of <entity>`, a list or a map is `codec_encode` with the message `the value of a column is a list` or `a map`, and a
+  value that the column cannot take is `codec_encode` at the write (CORE-62). A write fails with the kind of its
   cause, such as `duplicate_key` (CORE-10).
 - **CORE-92** The `Db` step is a query of the core of another library, held as data, that a host runs with orm without a
   judgement of its own: `StepRunner::new(schema, connection)` runs its steps on `connection` and `run(step)` takes one

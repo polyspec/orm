@@ -24,6 +24,7 @@
 - Rust 코어의 `Query`는 relation 결과를 붙인다(OM-3.1-7, CORE-88): `match_pair(pair)`는 `split_pair`가 읽는 relation key의 구성 요소를 더하고, `alias(name)`은 결과의 이름을 정하며, `relation(child)`와 `relations(child)`는 별도 질의의 행이나 행들을 붙이고, `related(name)`과 `related_rows(name)`은 그것을 읽는다. child는 자기 lock을 지킨다. `Core`의 relation key는 소유한 열 이름을 가지므로 `Core::add_match`는 `&str`을 받는다. 계약은 여섯 member를 각각 case 하나와 함께 선언한다.
 - Rust 코어의 `Query::key_name(column)`은 `gets`의 collection과 `relations` 결과의 행을 primary key 대신 열로 key하고, 열이 아닌 이름은 다음 terminal에서 `config`다(OM-3.1-8, CORE-89). 계약은 case 하나와 함께 그 member를 선언한다.
 - Rust 코어의 `Query::where_in(chain, query)`는 key 하나인 chain 이름의 열을 subquery의 행과 비교하며(`in`, `Ne`이면 `not in`), 다른 연산자, 다른 key 수, 그 열 하나가 없거나 자기 limit, lock, relation, 연결을 가진 subquery를 거절한다(OM-3.1-9, CORE-90). 계약은 case 하나와 함께 그 member를 선언한다.
+- Rust 코어의 `Query`는 쓴다(OM-3.1-10, CORE-91): `set(column, value)`는 `orm_value`를 배정하고, `create`는 행을 넣고 identity와 함께 돌려주며, `update`와 `delete`는 질의가 읽은 행이나 set한 primary key의 행을 쓰고, `expect_revision(column, revision)`은 그것을 지킨다. 실패는 `duplicate_key` 같은 원인의 kind를 지킨다. `model::create`, `update`, `delete`와 `Collection::delete`는 생성된 모델이든 `Query`든 어떤 행 타입도 받는다. 계약은 다섯 member를 각각 case 하나와 함께 선언한다.
 
 ## 0.0.31
 

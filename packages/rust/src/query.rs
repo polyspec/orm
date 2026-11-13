@@ -268,6 +268,49 @@ impl Query {
         Ok(self.core.related_many::<Query>(name)?.map(|rows| rows.models().cloned().collect()))
     }
 
+    /// Assigns `value` to the column `column` for the next write (CORE-91). A name that is no column of the entity is
+    /// `config` and a list or a map is `codec_encode`, each at the next terminal; the column decides at the write whether
+    /// it takes any other value (CORE-62).
+    pub fn set(&mut self, column: &str, value: OrmValue) {
+        if !self.known_column(column) {
+            return;
+        }
+        match value {
+            OrmValue::Json(json) => self.core.set_ordered(column, json.value().clone()),
+            other => match other.scalar() {
+                Ok(param) => self.core.set(column, param),
+                Err(refused) => {
+                    let what = if matches!(refused, OrmValue::Map(_)) { "a map" } else { "a list" };
+                    self.core.fail_err(Error::new(Kind::CodecEncode, format!("the value of a column is {what}")));
+                }
+            },
+        }
+    }
+
+    /// Makes the next `update` or `delete` write only while the integer column `column` holds `revision`; `update` also
+    /// stores `revision + 1` (CORE-91, DSL-108).
+    pub fn expect_revision(&mut self, column: &str, revision: i64) {
+        self.core.expect_revision(column, revision);
+    }
+
+    /// Inserts the row of the assignments and returns the created row with its identity (CORE-91). The assignments are
+    /// cleared.
+    pub async fn create(&mut self) -> Result<Query> {
+        crate::model::create(self).await
+    }
+
+    /// Writes the assignments to the row that the query read or, in a query that read no row, to the row of the primary
+    /// key that `set` assigned (CORE-91).
+    pub async fn update(&mut self) -> Result<()> {
+        crate::model::update(self, false).await
+    }
+
+    /// Deletes the row that the query read or, in a query that read no row, the row of the primary key that `set`
+    /// assigned (CORE-91).
+    pub async fn delete(&self) -> Result<()> {
+        crate::model::delete(self, false).await
+    }
+
     /// A copy of the query with the conditions of `chain` joined by `and` (CORE-83).
     fn by(&self, chain: &str, values: Vec<OrmValue>) -> Query {
         let mut out = self.clone();

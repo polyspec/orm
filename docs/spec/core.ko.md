@@ -226,7 +226,8 @@
   `delete`가 정수 열이 `revision`을 가지고 있는 동안에만 쓰게 한다. `update`와 `delete`의 행은 `Query`가 읽은 행이고,
   행을 읽지 않은 `Query`에서는 `set`이 배정한 primary key의 행이다. 둘 다 없으면 쓰기는 `config`이고 메시지는 `<entity>
   requires a loaded row or a set primary key <column>`이다. 엔티티의 열이 아닌 이름은 `config`이고 메시지는 `<column> is
-  not a column of <entity>`이며, 열이 받을 수 없는 값은 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그
+  not a column of <entity>`이며, list나 map은 `codec_encode`이고 메시지는 `the value of a column is a list`나 `a map`이고,
+  열이 받을 수 없는 값은 쓰기에서 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그
   원인의 kind로 실패한다(CORE-10).
 - **CORE-92** `Db` step은 다른 library의 코어가 데이터로 가진 질의이고, host는 자기 판단 없이 그것을 orm으로 실행한다:
   `StepRunner::new(schema, connection)`는 그 step을 `connection`에서 실행하고, `run(step)`은 step 하나를 JSON 텍스트로

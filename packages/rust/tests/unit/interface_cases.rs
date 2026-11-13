@@ -294,6 +294,24 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             }
             _ => panic!("{member}: query is no query"),
         },
+        ("query.set", Some(Instance::Query(query))) => {
+            query.set(&text(args, "column", member), orm_value(field(args, "value", member), member)?);
+            Returned::Value(Value::Null)
+        }
+        ("query.expect_revision", Some(Instance::Query(query))) => {
+            let revision = field(args, "revision", member).as_i64().unwrap_or_else(|| panic!("{member}: revision is no integer"));
+            query.expect_revision(&text(args, "column", member), revision);
+            Returned::Value(Value::Null)
+        }
+        ("query.create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.create().await?))),
+        ("query.update", Some(Instance::Query(query))) => {
+            query.update().await?;
+            Returned::Value(Value::Null)
+        }
+        ("query.delete", Some(Instance::Query(query))) => {
+            query.delete().await?;
+            Returned::Value(Value::Null)
+        }
         ("query.limit", Some(Instance::Query(query))) => {
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)

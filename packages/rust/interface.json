@@ -3133,6 +3133,183 @@
             "path": "polyspec_orm::Query::where_in",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.set",
+          "name": [
+            "set"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "value"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::set",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.expect_revision",
+          "name": [
+            "expect",
+            "revision"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "revision"
+              ],
+              "type": "int64",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::expect_revision",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.create",
+          "name": [
+            "create"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "query"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::ConditionNotMet"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::create",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.update",
+          "name": [
+            "update"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::ConditionNotMet"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::update",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.delete",
+          "name": [
+            "delete"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::ConditionNotMet"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::delete",
+            "receiver": "&self"
+          }
         }
       ]
     }
@@ -3293,6 +3470,31 @@
       "member": "query.where_in",
       "file": "contracts/interface/core.json",
       "group": "query.where_in"
+    },
+    {
+      "member": "query.set",
+      "file": "contracts/interface/core.json",
+      "group": "query.set"
+    },
+    {
+      "member": "query.expect_revision",
+      "file": "contracts/interface/core.json",
+      "group": "query.expect_revision"
+    },
+    {
+      "member": "query.create",
+      "file": "contracts/interface/core.json",
+      "group": "query.create"
+    },
+    {
+      "member": "query.update",
+      "file": "contracts/interface/core.json",
+      "group": "query.update"
+    },
+    {
+      "member": "query.delete",
+      "file": "contracts/interface/core.json",
+      "group": "query.delete"
     },
     {
       "alias": "orm_value",
