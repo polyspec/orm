@@ -10,7 +10,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { command } from './run.mts';
-import { endGroup, groupProcesses, runStep, signalGroup, processGroupOf } from './step.mts';
+import { endGroup, groupProcesses, runStep, signalGroup, stopGroup, processGroupOf } from './step.mts';
 import { spawn } from 'node:child_process';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -139,11 +139,11 @@ caseTest('signalGroup treats only ESRCH as absent and preserves other native kil
   }
 });
 
-caseTest('process group cleanup attempts SIGKILL after SIGTERM fails and retains both causes', PROCESS, async () => {
-  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore', env: isolatedEnvironment() });
+// T462: a stop is a request. A SIGTERM that cannot be sent is the failure of the cleanup, and no SIGKILL follows it.
+caseTest('a SIGTERM that cannot be sent fails the cleanup and no SIGKILL follows', PROCESS, async () => {
+  const child = spawn(process.execPath, ['-e', 'require("node:net").createServer().listen()'], { detached: true, stdio: 'ignore', env: isolatedEnvironment() });
   const originalKill = process.kill.bind(process);
   const term = Object.assign(new Error('TERM denied'), { code: 'EPERM' });
-  const kill = Object.assign(new Error('KILL invalid'), { code: 'EINVAL' });
   const sent: (NodeJS.Signals | number | undefined)[] = [];
   try {
     await new Promise<void>((resolveSpawn, rejectSpawn) => {
@@ -152,20 +152,111 @@ caseTest('process group cleanup attempts SIGKILL after SIGTERM fails and retains
     });
     process.kill = (_pid: number, signal?: NodeJS.Signals | number) => {
       sent.push(signal);
-      throw signal === 'SIGTERM' ? term : kill;
+      throw term;
     };
-    await assert.rejects(endGroup(child.pid), error => {
-      assert.ok(error instanceof AggregateError);
-      assert.deepEqual(error.errors, [term, kill]);
-      return true;
-    });
-    assert.deepEqual(sent, ['SIGTERM', 'SIGKILL']);
+    await assert.rejects(endGroup(child.pid), error => error === term);
+    assert.deepEqual(sent, ['SIGTERM']);
   } finally {
     process.kill = originalKill;
     if (child.pid && child.exitCode === null && child.signalCode === null) {
       originalKill(-child.pid, 'SIGKILL');
       await new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
     }
+  }
+});
+
+// T462: stopGroup sends SIGTERM, says what it waits for, waits for the event that the owner of the group has for its end,
+// and sends nothing else. The member ends on SIGTERM after its own cleanup, which the wait leaves time for.
+caseTest('stopGroup asks a group to end, names what it waits for and waits for the event of its owner', PROCESS, async () => {
+  const work = mkdtempSync(join(tmpdir(), 'orm-step-stop-'));
+  const marker = join(work, 'cleaned');
+  const script = `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
+    process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); console.log('ready');`;
+  const child = spawn(process.execPath, ['-e', script], { detached: true, stdio: ['ignore', 'pipe', 'ignore'], env: isolatedEnvironment() });
+  const originalKill = process.kill.bind(process);
+  const sent: (NodeJS.Signals | number | undefined)[] = [];
+  try {
+    await new Promise<void>(ready => child.stdout.once('data', () => ready()));
+    const closed = new Promise<void>(close => child.once('close', () => close()));
+    process.kill = (pid: number, signal?: NodeJS.Signals | number) => {
+      sent.push(signal);
+      return originalKill(pid, signal);
+    };
+    const reported: string[] = [];
+    assert.ok(child.pid);
+    assert.deepEqual(await stopGroup(child.pid, closed, line => reported.push(line)), [], 'no member outlives the event');
+    assert.deepEqual(sent, ['SIGTERM']);
+    assert.equal(reported.length, 1, reported.join(' | '));
+    assert.match(reported[0] ?? '', new RegExp(`sent SIGTERM to process group ${child.pid} and waits for its end with no time limit: ${child.pid} `));
+    assert.equal(readFileSync(marker, 'utf8'), 'cleaned', 'the member ran its cleanup before the wait ended');
+    assert.equal(child.exitCode, 0);
+  } finally {
+    process.kill = originalKill;
+    if (child.pid && child.exitCode === null && child.signalCode === null) originalKill(-child.pid, 'SIGKILL');
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+// T462: a member that ignores SIGTERM is named, alive, in the result when the event of its owner has come. It is not killed.
+caseTest('stopGroup names a member that ignores SIGTERM and does not kill it', PROCESS, async () => {
+  const script = "require('node:net').createServer().listen(); process.on('SIGTERM', () => {}); console.log('ready');";
+  const child = spawn(process.execPath, ['-e', script], { detached: true, stdio: ['ignore', 'pipe', 'ignore'], env: isolatedEnvironment() });
+  const originalKill = process.kill.bind(process);
+  const sent: (NodeJS.Signals | number | undefined)[] = [];
+  try {
+    await new Promise<void>(ready => child.stdout.once('data', () => ready()));
+    assert.ok(child.pid);
+    process.kill = (pid: number, signal?: NodeJS.Signals | number) => {
+      sent.push(signal);
+      return originalKill(pid, signal);
+    };
+    const survivors = await stopGroup(child.pid, Promise.resolve(), () => {});
+    assert.equal(survivors.length, 1, survivors.join(' | '));
+    assert.ok(survivors[0]?.startsWith(`${child.pid} `), survivors.join(' | '));
+    assert.deepEqual(sent, ['SIGTERM']);
+    assert.equal(alive(child.pid), true, 'the member is not killed');
+  } finally {
+    process.kill = originalKill;
+    if (child.pid && child.exitCode === null && child.signalCode === null) {
+      originalKill(-child.pid, 'SIGKILL');
+      await new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
+    }
+  }
+});
+
+// T462: an interrupted runner admits no step, asks the group of its step to end and exits after the step has ended and
+// has been checked, with the status of its signal.
+caseTest('an interrupted runner waits for the cleanup of its step before it exits', PROCESS, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'orm-step-interrupt-'));
+  const marker = join(root, 'cleaned');
+  const modulePath = new URL('./step.mts', import.meta.url).pathname;
+  const stepScript = `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
+    process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); console.log('ready');`;
+  const runner = spawn(process.execPath, ['--input-type=module', '-e', `
+    import { runStep } from ${JSON.stringify(modulePath)};
+    const options = { cwd: ${JSON.stringify(root)}, env: { PATH: process.env.PATH }, step: line => console.log(line), label: 'fake' };
+    const first = runStep(process.execPath, ['-e', ${JSON.stringify(stepScript)}], options).then(() => 'passed', error => 'failed: ' + error.message);
+    process.on('SIGTERM', () => { runStep('true', [], options).then(() => console.log('second: admitted'), error => console.log('second: ' + error.message)); });
+    console.log('first: ' + await first);
+  `], { stdio: ['ignore', 'pipe', 'pipe'], env: isolatedEnvironment() });
+  try {
+    let out = '';
+    let err = '';
+    runner.stderr.on('data', chunk => { err += String(chunk); });
+    await new Promise<void>(ready => runner.stdout.on('data', chunk => {
+      out += String(chunk);
+      if (out.includes('ready')) ready();
+    }));
+    assert.ok(runner.pid);
+    process.kill(runner.pid, 'SIGTERM');
+    const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolveExit => runner.once('close', (code, signal) => resolveExit({ code, signal })));
+    assert.deepEqual(result, { code: 143, signal: null }, `${out}\n${err}`);
+    assert.equal(readFileSync(marker, 'utf8'), 'cleaned', 'the step ran its cleanup');
+    assert.match(out, /second: check: the runner was interrupted and admits no step/);
+    assert.match(err, /check: SIGTERM: no step is admitted; sent SIGTERM to the process groups? of 1 steps? and waits for them with no time limit/);
+  } finally {
+    if (runner.pid && runner.exitCode === null && runner.signalCode === null) runner.kill('SIGKILL');
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
@@ -189,7 +280,7 @@ caseTest('failed group cleanup stays tracked and makes an otherwise successful r
     const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolveExit => runner.once('close', (code, signal) => resolveExit({ code, signal })));
     assert.equal(result.signal, null, stderr);
     assert.equal(result.code, 1, `cleanup failure left successful exit status: ${stderr}`);
-    assert.match(stderr, /could not send SIGKILL to process group/);
+    assert.match(stderr, /could not send SIGTERM to process group/);
     const pid = Number(readFileSync(pidFile, 'utf8'));
     assert.ok(pid > 0);
     originalKill(pid, 'SIGKILL');
