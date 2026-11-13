@@ -1707,6 +1707,23 @@ orm-test-mysql-privilege-start:
 # make orm-test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make orm-test-servers does it at the
 # start.
+# make orm-test-container KIND=<mysql|postgres|mariadb> starts one test database server in an Apple container from the image
+# that config/containers.json pins by its digest, and writes .runtime/containers/<kind>.env (scripts/test-servers-container.mts).
+# A check reads it as TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and,
+# for MySQL and MariaDB, its published Unix socket; the variables of the replicas and the poolers are absent. One kind runs at a
+# time; make orm-test-container-stop
+# removes the container and its data. make orm-install-container-images pulls the pinned images.
+.PHONY: orm-test-container orm-test-container-stop orm-install-container-images
+orm-test-container:
+	$(NODE) scripts/test-servers-container.mts start $(KIND)
+
+orm-test-container-stop:
+	$(MAKE) -s $(LEASE)
+	LEASE=$(LEASE) $(NODE) scripts/test-servers-container.mts stop
+
+orm-install-container-images:
+	$(ONLINE) $(NODE) scripts/test-servers-container.mts pull
+
 orm-test-servers-tls:
 	$(NODE) scripts/test-servers.mts tls
 
