@@ -32,7 +32,7 @@
       "PLN-19"
     ],
     "expect": "success",
-    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.transaction_once(|| async { Ok::<(), polyspec_orm::Error>(()) }); }\n"
+    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.transaction(|_tx: polyspec_orm::Tx| async { Ok::<(), polyspec_orm::Error>(()) }, polyspec_orm::TransactionOptions::default()); }\n"
   },
   {
     "id": "generated-private-field-e0616",
@@ -77,7 +77,7 @@
     ],
     "expect": "error",
     "code": "E0599",
-    "diagnostic": "no method named `begin` found for struct `Db`",
+    "diagnostic": "no method named `begin` found for struct `polyspec_orm::Db`",
     "sourceLine": "db.begin()",
     "source": "polyspec_orm::models!();\n// Requirements: PLN-19.\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.begin(); }\n"
   },
@@ -89,7 +89,7 @@
     ],
     "expect": "error",
     "code": "E0599",
-    "diagnostic": "no method named `commit` found for struct `Db`",
+    "diagnostic": "no method named `commit` found for struct `polyspec_orm::Db`",
     "sourceLine": "db.commit()",
     "source": "polyspec_orm::models!();\n// Requirements: PLN-19.\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.commit(); }\n"
   },
@@ -101,7 +101,7 @@
     ],
     "expect": "error",
     "code": "E0599",
-    "diagnostic": "no method named `rollback` found for struct `Db`",
+    "diagnostic": "no method named `rollback` found for struct `polyspec_orm::Db`",
     "sourceLine": "db.rollback()",
     "source": "polyspec_orm::models!();\n// Requirements: PLN-19.\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.rollback(); }\n"
   },
