@@ -1726,12 +1726,28 @@ orm-test-mysql-privilege-start:
 # has sh and bay alone: it sends the directory, runs run.sh there through ssh, brings the report back under
 # .runtime/containers/reports and removes the directory there; PULL=1 pulls the images there first.
 #
-# BAY_PROGRAM names bay, the only program that these targets run for the servers and their images; it names the program
-# of macOS (BAY5, BAY6). No start pulls an image: make orm-install-container-images, the only target that downloads on
-# this machine, pulls the pinned images with bay pull.
-BAY_PROGRAM = /opt/homebrew/bin/bay
-CONTAINER_SERVERS = BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts
-.PHONY: orm-test-container orm-test-container-run orm-test-container-remote orm-test-container-stop orm-install-container-images
+# BAY_COMMAND is the command of bay, the only program that these targets run for the servers and their images. bay is a
+# tool of the machine, as make is: the default is bay of PATH, and a run compares no version of it and checks its
+# contract alone. The one who runs make sets BAY_COMMAND when bay must run as another user: bay keeps its state below
+# the home of the user that runs it and its machine setup needs root on Linux, so a CI runner, a user with sudo without a
+# password, sets BAY_COMMAND='sudo -n <path of bay>' and every command of bay runs as root (BAY6). REMOTE_BAY_COMMAND is
+# the command of bay on the machine of make orm-test-container-remote, bay of its PATH without it. A CI job has no bay
+# and must download one, so config/containers.json pins the release that CI installs with the sha256 of its archives:
+# make orm-install-bay puts it into var/tools/bay and changes nothing of the machine (BAY5), and make
+# orm-install-bay-machine runs bay install, which applies the machine setup that is missing and asks for the rights it
+# needs, and bay check -scope run, which fails while a part that a run needs is missing. No start pulls an image: make
+# orm-install-container-images, the only target that downloads an image on this machine, pulls the pinned images with
+# bay pull.
+BAY_COMMAND ?= bay
+CONTAINER_SERVERS = BAY_COMMAND='$(BAY_COMMAND)' $(if $(REMOTE_BAY_COMMAND),REMOTE_BAY_COMMAND='$(REMOTE_BAY_COMMAND)') $(NODE) scripts/test-servers-container.mts
+.PHONY: orm-test-container orm-test-container-run orm-test-container-remote orm-test-container-stop orm-install-container-images orm-install-bay orm-install-bay-machine
+orm-install-bay:
+	$(ONLINE) $(CONTAINER_SERVERS) install-bay
+
+orm-install-bay-machine:
+	$(BAY_COMMAND) install
+	$(BAY_COMMAND) check -scope run
+
 orm-test-container:
 	$(CONTAINER_SERVERS) start $(KIND)
 

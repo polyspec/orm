@@ -1,5 +1,5 @@
 {
-  "comment": "The images of the test database servers and of the service runner that make orm-test-container starts as a Compose project of bay (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds. make orm-install-container-images pulls them with bay pull, and no start pulls one. runner declares what runner-setup.sh installs in the runner: the packages of Debian, and the sha256 of the node tarball of mise.toml and of rustup-init for each processor that uname -m names.",
+  "comment": "The images of the test database servers and of the service runner that make orm-test-container starts as a Compose project of bay (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds. make orm-install-container-images pulls them with bay pull, and no start pulls one. runner declares what runner-setup.sh installs in the runner: the packages of Debian, and the sha256 of the node tarball of mise.toml and of rustup-init for each processor that uname -m names. bay pins the release of bay that CI installs: its version, the address of its files, and the sha256 of the archive of each platform from SHA256SUMS of that release; make orm-install-bay installs it into var/tools/bay, and no run reads it.",
   "images": {
     "mysql": {
       "version": "8.4.11",
@@ -49,6 +49,16 @@
         "aarch64": "e3853c5a252fca15252d07cb23a1bdd9377a8c6f3efa01531109281ae47f841c",
         "x86_64": "20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c"
       }
+    }
+  },
+  "bay": {
+    "version": "v0.0.2",
+    "release": "https://github.com/polyspec/bay/releases/download/v0.0.2",
+    "sha256": {
+      "darwin_amd64": "e0c1d853f2c4ba55301a3b709a8f99d490dc82b38c5819032ed3717f488b331d",
+      "darwin_arm64": "49a2577ceba7c090db8f23cb0d8c338c1b4d10fc39be51e0631221e49a6d4741",
+      "linux_amd64": "2d160b3677ad5c0e067d6e4790eea8e3a6256577de86d2e1a2e5797e56d5fddf",
+      "linux_arm64": "f1f6affdc191908bf3727fb4d3c0b0c1eaad66f21b89590ffeaa119338c45907"
     }
   }
 }

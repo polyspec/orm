@@ -11,6 +11,7 @@
 //   node scripts/test-servers-container.mts remote <mysql|postgres|mariadb> <host> <directory> [--keep] [--pull] -- <command> [argument...]
 //   node scripts/test-servers-container.mts stop
 //   node scripts/test-servers-container.mts pull
+//   node scripts/test-servers-container.mts install-bay
 //
 // The work is divided, so that a run executes on a machine whose host has only sh and bay. This script writes: the
 // directory .runtime/containers/<project> with compose.yaml, run.sh, the second CA of the TLS cases and the
@@ -43,7 +44,8 @@ import { errorCode } from '../tests/errors.mts';
 import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_WAL, REPLICA_PARTIAL_REVOKES_SQL, TestServerError } from './test-servers.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
-// SCHEMA is the contract schema version of bay that this script and its run.sh are written for.
+// SCHEMA is the contract schema version of bay that this script and its run.sh are written for. A run takes the bay of
+// its machine and compares no version: the contract of the output that it reads is what its result depends on.
 const SCHEMA = 1;
 // BAY_TLS is the folder where bay mounts the certificate of a container, its key and its authority, and INIT_MOUNT the
 // folder whose files an image runs once when it initializes its data directory.
@@ -58,9 +60,10 @@ type Kind = 'mysql' | 'postgres' | 'mariadb';
 // Form is where the command of a run runs: a process of the host, or bay exec in the service runner.
 type Form = 'host' | 'runner';
 
-// Context is the checkout whose servers a command starts or removes, with the program bay. ssh and tar are the
-// programs of a run on another machine; a test names stand-ins.
-export interface Context { root: string; bay: string; ssh?: string; tar?: string }
+// Context is the checkout whose servers a command starts or removes, with the command of bay: its program, or several
+// words, as sudo -n bay on a machine where bay runs as root. ssh and tar are the programs of a run on another machine
+// and curl that of the install target of bay; a test names stand-ins.
+export interface Context { root: string; bay: string; ssh?: string; tar?: string; curl?: string }
 
 // Folders are the files of the servers of a checkout: .runtime/containers and its leases.
 interface Folders { dir: string; leases: string }
@@ -237,10 +240,11 @@ interface At { name: string; dir: string }
 // bay runs a command of bay to its end with its output captured, for a project when at is given, and fails naming the
 // path, what bay does for this script and what provides it when the program is missing.
 function bay(context: Context, args: string[], at?: At): Ran {
-  const ran = spawnSync(context.bay, at ? ['-p', at.name, ...args] : args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...(at ? { cwd: at.dir } : {}) });
+  const [program = '', ...first] = context.bay.split(' ').filter(word => word !== '');
+  const ran = spawnSync(program, [...first, ...(at ? ['-p', at.name] : []), ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...(at ? { cwd: at.dir } : {}) });
   if (ran.error) {
-    if (errorCode(ran.error) === 'ENOENT' && !existsSync(context.bay))
-      throw new TestServerError(`test-servers-container: ${context.bay} is missing: it is the program bay, which runs the Compose project of the servers; install bay at that path and run bay check -scope run, which names the machine setup that bay install applies (no target of this repository installs bay, BAY5)`);
+    if (errorCode(ran.error) === 'ENOENT')
+      throw new TestServerError(`test-servers-container: ${program} is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND`);
     throw new TestServerError(`test-servers-container: ${context.bay}: ${ran.error.message}`);
   }
   return { status: ran.status, signal: ran.signal, stdout: ran.stdout, stderr: ran.stderr };
@@ -252,11 +256,32 @@ function succeeded(ran: Ran, what: string): string {
   return ran.stdout;
 }
 
-// contract fails unless the bay of context has the contract that this script is written for.
-function contract(context: Context): void {
-  const schema = field(JSON.parse(succeeded(bay(context, ['version', '--json']), 'bay version --json')), 'schemaVersion');
+// BayPin is the release of bay that CI installs, which config/containers.json pins: its version, the address of its
+// files, and the sha256 of its archive for each platform, named <system>_<processor> as the archives name it. Only the
+// install target reads it: a run takes the bay of its machine, as it takes make, and checks its contract alone.
+export interface BayPin { version: string; release: string; sha256: Record<string, string> }
+
+function bayPin(): BayPin {
+  const file = join(REPOSITORY, 'config/containers.json');
+  const declared = field(JSON.parse(readFileSync(file, 'utf8')), 'bay');
+  const [version, release, sha256] = [field(declared, 'version'), field(declared, 'release'), field(declared, 'sha256')];
+  if (typeof version !== 'string' || !/^v\d+\.\d+\.\d+$/.test(version) || typeof release !== 'string' || !release.startsWith('https://') || !isRecord(sha256) || !Object.values(sha256).every(each => typeof each === 'string' && /^[0-9a-f]{64}$/.test(each)))
+    throw new TestServerError(`test-servers-container: ${file} pins no release of bay with its version, its address and the sha256 of each archive`);
+  return { version, release, sha256: Object.fromEntries(Object.entries(sha256).map(([platform, each]) => [platform, String(each)])) };
+}
+
+// contracted fails unless what bay version --json printed has the contract that this script is written for; where
+// names the machine of that bay in the failure. What changes the result of a run is the contract of the output that
+// the script and run.sh read, and not the number of a release, so no version is compared.
+function contracted(printed: string, where: string): void {
+  const schema = field(JSON.parse(printed), 'schemaVersion');
   if (schema !== SCHEMA)
-    throw new TestServerError(`test-servers-container: bay version --json reports the contract schema version ${JSON.stringify(schema)}, and this script is written for ${SCHEMA}; install a bay of that contract at ${context.bay}`);
+    throw new TestServerError(`test-servers-container: bay version --json reports the contract schema version ${JSON.stringify(schema)}${where}, and this script is written for ${SCHEMA}; install a bay of that contract`);
+}
+
+// contract fails unless the bay of context has that contract.
+function contract(context: Context): void {
+  contracted(succeeded(bay(context, ['version', '--json']), 'bay version --json'), '');
 }
 
 // text is a property of a value that bay printed, which must be a string; what names the value in the failure.
@@ -388,7 +413,8 @@ function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], s
       : [`b exec runner sh ${RUN_MOUNT}/runner-setup.sh >&2 || failed "$?" "bay exec runner sh ${RUN_MOUNT}/runner-setup.sh"`, `b exec runner sh ${RUN_MOUNT}/check.sh &`];
   return `#!/bin/sh
 # run.sh of the project ${at.name}: the ${kind} servers of a run in the form of the ${form}, written by
-# scripts/test-servers-container.mts. It needs sh and bay alone. BAY_PROGRAM names bay; without it, bay of PATH.
+# scripts/test-servers-container.mts. It needs sh and bay alone. BAY_COMMAND is the command of bay, of one or more words,
+# as sudo -n bay where bay runs as root; without it, bay of PATH.
 #   sh run.sh         the whole run: the servers, the command of the run, and the removal of the project
 #   sh run.sh up      start the servers and write servers.env
 #   sh run.sh down    remove the project
@@ -396,12 +422,12 @@ function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], s
 set -u
 dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd) || exit 1
 cd "$dir" || exit 1
-bay=\${BAY_PROGRAM:-bay}
+bay=\${BAY_COMMAND:-bay}
 project=${quote(at.name)}
 child=
 
 say() { printf 'run.sh: %s\\n' "$*" >&2; }
-b() { "$bay" -p "$project" "$@"; }
+b() { $bay -p "$project" "$@"; }
 
 down() {
   b down >&2 || { say "bay down of $project exited with $?; the project is not removed"; return 1; }
@@ -416,10 +442,14 @@ failed() {
 }
 
 contract() {
-  command -v "$bay" >/dev/null 2>&1 || { say "$bay is missing: it is the program bay, which runs the Compose project of the servers; install bay at that path, or name it in BAY_PROGRAM"; exit 1; }
-  case "$("$bay" version)" in
+  set -- $bay
+  command -v "$1" >/dev/null 2>&1 || { say "$1 is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND"; exit 1; }
+  stated=$($bay version) || { say "$bay version exited with $?"; exit 1; }
+  say "$stated"
+  mkdir -p "$dir/report" && printf '%s\\n' "$stated" > "$dir/report/bay-version"
+  case "$stated" in
     *' schema ${SCHEMA}') ;;
-    *) say "bay version reports another contract schema version than ${SCHEMA}, for which this file is written: $("$bay" version); install a bay of that contract"; exit 1 ;;
+    *) say "bay version reports another contract schema version than ${SCHEMA}, for which this file is written: $stated; install a bay of that contract"; exit 1 ;;
   esac
 }
 
@@ -648,7 +678,7 @@ interface Executed { code: number | null; signal: NodeJS.Signals | null; said: s
 // for the failure. kill, when it is given, receives the call that sends a signal to sh.
 function execute(context: Context, at: At, part: 'up' | 'down' | 'pull' | undefined, kill?: (send: (signal: NodeJS.Signals) => void) => void, started?: () => void): Promise<Executed> {
   return new Promise((resolveRun, rejectRun) => {
-    const child = spawn('sh', [join(at.dir, 'run.sh'), ...(part === undefined ? [] : [part])], { env: { ...process.env, BAY_PROGRAM: context.bay }, stdio: ['ignore', 'inherit', 'pipe'] });
+    const child = spawn('sh', [join(at.dir, 'run.sh'), ...(part === undefined ? [] : [part])], { env: { ...process.env, BAY_COMMAND: context.bay }, stdio: ['ignore', 'inherit', 'pipe'] });
     let said = '';
     child.stderr?.setEncoding('utf8');
     child.stderr?.on('data', (chunk: string) => { process.stderr.write(chunk); said = `${said}${chunk}`.slice(-8192); });
@@ -663,7 +693,7 @@ function execute(context: Context, at: At, part: 'up' | 'down' | 'pull' | undefi
 // keeps its directory, so that stop finds it again; a directory without run.sh was never started.
 function down(context: Context, at: At): void {
   if (existsSync(join(at.dir, 'run.sh'))) {
-    const ran = spawnSync('sh', [join(at.dir, 'run.sh'), 'down'], { env: { ...process.env, BAY_PROGRAM: context.bay }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    const ran = spawnSync('sh', [join(at.dir, 'run.sh'), 'down'], { env: { ...process.env, BAY_COMMAND: context.bay }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     if (ran.error) throw new TestServerError(`test-servers-container: sh: ${ran.error.message}`);
     succeeded({ status: ran.status, signal: ran.signal, stdout: ran.stdout, stderr: ran.stderr }, `sh ${join(at.dir, 'run.sh')} down`);
   }
@@ -773,8 +803,8 @@ function finish(at: At, keep: boolean): void {
 }
 
 // Remote is a run on another machine: the host that ssh names, the directory there that receives the directory of the
-// run, and whether the run pulls the images first.
-export interface Remote { host: string; directory: string; keep?: boolean; pull?: boolean }
+// run, the command of bay there (bay of PATH without it), and whether the run pulls the images first.
+export interface Remote { host: string; directory: string; bay?: string; keep?: boolean; pull?: boolean }
 
 // remote runs a kind in the runner on another machine, whose host needs sh and bay alone. It writes the directory with
 // the plan of the bay of that machine, sends it as a tar archive through ssh, runs ssh <host> sh <directory>/run.sh,
@@ -804,19 +834,25 @@ export function remote(kind: Kind, command: readonly string[], context: Context,
       rmSync(archive, { force: true });
     }
   };
+  // The bay of that machine has the contract of this script: it is read before anything is written or sent.
+  const theirs = where.bay ?? 'bay';
+  if (/['\n]/.test(theirs)) throw new TestServerError(`test-servers-container: the command of bay of ${where.host} holds a quote: ${theirs}`);
+  const stated = program(ssh, [where.host, `${theirs} version --json`], ['ignore', 'pipe', 2]);
+  if (stated.status !== 0) throw new TestServerError(`test-servers-container: ${theirs} version --json on ${where.host} exited with ${stated.status ?? stated.signal}; install bay there, or name its command in REMOTE_BAY_COMMAND`);
+  contracted(stated.stdout, ` on ${where.host}`);
   let there: string | undefined;
   const at = write(kind, context, 'runner', command, planning => {
     there = `${where.directory}/${planning.name}`;
     send(planning.dir, there);
-    const printed = program(ssh, [where.host, `cd ${quote(there)} && bay -p ${quote(planning.name)} plan --json`], ['ignore', 'pipe', 2]);
+    const printed = program(ssh, [where.host, `cd ${quote(there)} && ${theirs} -p ${quote(planning.name)} plan --json`], ['ignore', 'pipe', 2]);
     if (printed.status !== 0) throw new TestServerError(`test-servers-container: bay plan --json of ${planning.name} on ${where.host} exited with ${printed.status ?? printed.signal}`);
     return printed.stdout;
   }, RUNNER_PLACE);
   const target = `${where.directory}/${at.name}`;
   try {
     send(at.dir, target);
-    if (where.pull && program(ssh, [where.host, `sh ${quote(`${target}/run.sh`)} pull`], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: sh run.sh pull of ${at.name} on ${where.host} failed`);
-    const ended = program(ssh, [where.host, `sh ${quote(`${target}/run.sh`)}`], ['ignore', 2, 2]);
+    if (where.pull && program(ssh, [where.host, `BAY_COMMAND=${quote(theirs)} sh ${quote(`${target}/run.sh`)} pull`], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: sh run.sh pull of ${at.name} on ${where.host} failed`);
+    const ended = program(ssh, [where.host, `BAY_COMMAND=${quote(theirs)} sh ${quote(`${target}/run.sh`)}`], ['ignore', 2, 2]);
     const report = `${join(at.dir, 'report')}.tar`;
     const output = openSync(report, 'w');
     try {
@@ -850,11 +886,45 @@ export function pull(context: Context): void {
   mkdirSync(at.dir);
   try {
     writeFileSync(join(at.dir, 'compose.yaml'), yaml({ services: Object.fromEntries([...KINDS, 'runner' as const].map(each => [each, { image: image(each) }])) }));
-    const pulled = spawnSync(context.bay, ['-p', at.name, 'pull'], { cwd: at.dir, stdio: ['ignore', 2, 2] });
-    if (pulled.error) throw new TestServerError(`test-servers-container: ${context.bay}: ${pulled.error.message}`);
+    const pulled = bay(context, ['pull'], at);
+    process.stderr.write(`${pulled.stdout}${pulled.stderr}`);
     if (pulled.status !== 0) throw new TestServerError(`test-servers-container: bay pull of the images of config/containers.json exited with ${pulled.status ?? pulled.signal}`);
   } finally {
     rmSync(at.dir, { recursive: true, force: true });
+  }
+}
+
+// installBay installs the release of bay that CI installs into var/tools/bay of the checkout: it downloads the archive
+// of the platform, uses it only with the sha256 that config/containers.json pins, and publishes bay and bayd, which bay finds
+// beside itself. It changes nothing of the machine: the machine setup is bay install, which the target
+// orm-install-bay-machine runs.
+export function installBay(context: Context, pin: BayPin = bayPin()): void {
+  const platform = `${process.platform}_${process.arch === 'x64' ? 'amd64' : process.arch}`;
+  const sum = pin.sha256[platform];
+  if (sum === undefined) throw new TestServerError(`test-servers-container: config/containers.json pins no archive of bay for ${platform}; add its sha256 from SHA256SUMS of ${pin.release}`);
+  const name = `bay_${pin.version}_${platform}`;
+  const tools = join(context.root, 'var/tools');
+  const staging = join(tools, `bay.${randomBytes(4).toString('hex')}`);
+  mkdirSync(staging, { recursive: true });
+  try {
+    const archive = join(staging, `${name}.tar.gz`);
+    const ran = (file: string, args: string[]) => {
+      const ended = spawnSync(file, args, { encoding: 'utf8', stdio: ['ignore', 2, 2] });
+      if (ended.error) throw new TestServerError(`test-servers-container: ${file}: ${ended.error.message}`);
+      if (ended.status !== 0) throw new TestServerError(`test-servers-container: ${file} ${args.join(' ')} exited with ${ended.status ?? ended.signal}`);
+    };
+    ran(context.curl ?? 'curl', ['-fsSL', `${pin.release}/${name}.tar.gz`, '-o', archive]);
+    const found = createHash('sha256').update(readFileSync(archive)).digest('hex');
+    if (found !== sum) throw new TestServerError(`test-servers-container: ${name}.tar.gz has the sha256 ${found}, and config/containers.json pins ${sum}; the archive is not used`);
+    ran(context.tar ?? 'tar', ['-C', staging, '-xzf', archive]);
+    const target = join(tools, 'bay');
+    mkdirSync(target, { recursive: true });
+    for (const program of ['bay', 'bayd']) {
+      chmodSync(join(staging, name, program), 0o755);
+      renameSync(join(staging, name, program), join(target, program));
+    }
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
   }
 }
 
@@ -867,11 +937,11 @@ function exitCode({ code, signal }: Ended): number {
 if (import.meta.main) {
   const [command, kind, ...rest] = process.argv.slice(2);
   try {
-    const program = process.env['BAY_PROGRAM'];
-    if (!program) throw new TestServerError('test-servers-container: BAY_PROGRAM is unset; run this through make, which names the program bay');
+    const program = process.env['BAY_COMMAND'];
+    if (!program) throw new TestServerError('test-servers-container: BAY_COMMAND is unset; run this through make, which names the command of bay');
     const context: Context = { root: REPOSITORY, bay: program };
     const { dir, leases } = folders(REPOSITORY);
-    const usage = new TestServerError('usage: test-servers-container.mts start <kind> | run <kind> [--runner] [--keep] -- <command> [argument...] | remote <kind> <host> <directory> [--keep] [--pull] -- <command> [argument...] | stop | pull, where <kind> is mysql, postgres or mariadb', 2);
+    const usage = new TestServerError('usage: test-servers-container.mts start <kind> | run <kind> [--runner] [--keep] -- <command> [argument...] | remote <kind> <host> <directory> [--keep] [--pull] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb', 2);
     const separator = rest.indexOf('--');
     const [options, words] = separator < 0 ? [rest, []] : [rest.slice(0, separator), rest.slice(separator + 1)];
     const flags = options.filter(option => option.startsWith('--'));
@@ -883,12 +953,13 @@ if (import.meta.main) {
     } else if (command === 'run' && isKind(kind) && words.length > 0 && names.length === 0 && allowed('--runner', '--keep'))
       process.exitCode = exitCode(await run(kind, words, context, { runner: flags.includes('--runner'), keep: flags.includes('--keep') }));
     else if (command === 'remote' && isKind(kind) && words.length > 0 && names.length === 2 && allowed('--keep', '--pull'))
-      process.exitCode = remote(kind, words, context, { host: names[0] ?? '', directory: names[1] ?? '', keep: flags.includes('--keep'), pull: flags.includes('--pull') });
+      process.exitCode = remote(kind, words, context, { host: names[0] ?? '', directory: names[1] ?? '', keep: flags.includes('--keep'), pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
     else if (command === 'stop' && kind === undefined) {
       mkdirSync(leases, { recursive: true });
       holdExclusiveLease(leases);
       remove(context);
     } else if (command === 'pull' && kind === undefined) pull(context);
+    else if (command === 'install-bay' && kind === undefined) installBay(context);
     else throw usage;
   } catch (error) {
     if (!(error instanceof TestServerError)) throw error;
