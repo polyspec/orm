@@ -26,7 +26,7 @@ const FIXED_CLOCK = 'tests/conformance/check/fixed_clock.json';
 type Step = { op: string; expect?: Record<string, Json>; steps?: Step[]; only?: string[]; sql?: string };
 type Case = { id: string; steps: Step[] };
 type Recipe = { cases: Case[]; seed?: { after?: { sql?: string } } };
-type Output = { result: Json; statements: Json[] };
+export type Output = { result: Json; statements: Json[] };
 export type Sequence = { id: string; expected?: Json; statements?: string[] };
 
 const isObject = (value: Json | undefined): value is { [key: string]: Json } => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -311,15 +311,52 @@ export function expectations(mode: string, database: string): Map<string, Output
       out.set(id, expectedOfCase(recipeCase, database));
     }
   } else if (mode === 'fixed-clock') {
-    const file = record(parseJsonValue(readFileSync(join(root, FIXED_CLOCK), 'utf8'), FIXED_CLOCK));
-    for (const item of list(file.cases)) {
-      const { id, expect } = record(item);
-      const held = record(expect)[database];
-      if (held === undefined) throw new Error(`${FIXED_CLOCK} case ${text(id)} has no expect for ${database}`);
-      out.set(text(id), output(held));
-    }
+    return fixedClockExpectations(parseJsonValue(readFileSync(join(root, FIXED_CLOCK), 'utf8'), FIXED_CLOCK), database);
   } else throw new Error(`unknown mode ${JSON.stringify(mode)}`);
   return out;
+}
+
+/** The databases whose expects a fixed-clock case states. */
+const FIXED_CLOCK_DATABASES = ['mysql', 'postgres', 'sqlite'];
+
+/**
+ * The expectations of the fixed-clock file `file` on one database. A file with no case, a case id that is empty or
+ * repeated, and a case whose expects are not exactly those of mysql, postgres and sqlite are errors: a vector name is
+ * nonempty and unique, and every database states the same names (AGENTS.md, the conformance rule).
+ */
+export function fixedClockExpectations(file: Json, database: string): Map<string, Output> {
+  const out = new Map<string, Output>();
+  for (const item of list(record(file).cases)) {
+    const { id, expect } = record(item);
+    const name = text(id);
+    if (name === '') throw new Error(`${FIXED_CLOCK} holds a case with an empty id`);
+    if (out.has(name)) throw new Error(`${FIXED_CLOCK} holds the case ${name} twice`);
+    const expects = record(expect);
+    const databases = Object.keys(expects).sort();
+    if (JSON.stringify(databases) !== JSON.stringify(FIXED_CLOCK_DATABASES)) {
+      throw new Error(`${FIXED_CLOCK} case ${name} states the expects of ${databases.join(', ') || 'no database'}, not exactly those of ${FIXED_CLOCK_DATABASES.join(', ')}`);
+    }
+    const held = expects[database];
+    if (held === undefined) throw new Error(`${FIXED_CLOCK} case ${name} has no expect for ${database}`);
+    out.set(name, output(held));
+  }
+  if (out.size === 0) throw new Error(`${FIXED_CLOCK} holds no case`);
+  return out;
+}
+
+/**
+ * Compares the outputs of a runner with the expectations of its selection. An empty selection, an output that the
+ * selection does not name and a selected vector without an output are errors (AGENTS.md, the conformance rule).
+ */
+export function compareOutputs(label: string, outputs: { [key: string]: Json }, want: Map<string, Output>): void {
+  if (want.size === 0) throw new Error(`${label}: the selection names no vector`);
+  const extra = Object.keys(outputs).filter(name => !want.has(name));
+  if (extra.length > 0) throw new Error(`${label}: the runner gave the output ${extra.join(', ')}, which the selection does not name`);
+  for (const [name, expected] of want) {
+    const got = outputs[name];
+    if (got === undefined) throw new Error(`${label}: the runner gave no output for ${name}`);
+    compareOutput(`${label}/${name}`, output(got), expected);
+  }
 }
 
 /** The statement of the recipe that moves the PostgreSQL identity sequences past its seed, for a body that creates rows on that seed. */
@@ -362,12 +399,7 @@ async function main(args: string[]): Promise<void> {
       await client.connect();
       try { await client.query(sequenceStatement()); } finally { await client.end(); }
     }
-    const outputs = runner(language, dsn, [...want.keys()]);
-    for (const [name, expected] of want) {
-      const got = outputs[name];
-      if (got === undefined) throw new Error(`the ${language} runner gave no output for ${name}`);
-      compareOutput(`${language}/${database}/${name}`, output(got), expected);
-    }
+    compareOutputs(`${language}/${database}`, runner(language, dsn, [...want.keys()]), want);
   });
   console.log(`ok - ${mode ?? ''} ${language} ${database}: ${[...want.keys()].join(', ')}`);
 }

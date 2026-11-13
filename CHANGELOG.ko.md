@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1c5613b190b02b4f0666d12041048e46a4ea3b4fdd114f44c6fc02fadf57b0b7 -->
+<!-- source-sha256: 67e1b66d18333812d786371e9b3510ef24484cc55f476e24ecd17875350b24ce -->
 # 변경 이력
 
 ## Unreleased
+
+- recipe vector 출력의 비교는 conformance 규칙이 오류라고 적은 형태를 거부한다(T457). tests/conformance/check/recipe_vectors.mts의 `compareOutputs`는 빈 선택을 `<language>/<database>: the selection names no vector`로, 선택이 적지 않은 출력과 출력이 없는 선택된 vector를 실패로 하고, `fixedClockExpectations`는 case가 없는 fixed-clock 파일, 비었거나 반복된 case id, expects가 정확히 mysql, postgres, sqlite의 것이 아닌 case를 실패로 한다. 이 행의 case 둘은 이름으로 통과한다. `make conformance-recipe-vectors-unit`은 통과하지 않는다: recipe의 schema가 다른 case 6개가 읽는 recipe를 거부하고(T460), 그 거부는 보고되기 전에 실행의 memory를 다 쓴다(T461).
 
 - Rust 코어는 docs/spec/flowmark-surface.md의 JSON surface를 binding이 필요 없는 함수로 쓰고 읽는다(OM-1.5-1, FMS-20부터 FMS-50, FMS-80). `polyspec_orm::dbspec_json`(`read_set`, `read_bytes`, `parse_set`, `manifest`, `emit`, `render_statements`, `canonical_literal`, `runtime_model`), `ir::VERSION`과 `polyspec_orm::IR_VERSION`을 가진 `ir::Request::from_json`, `Plan::to_json`, `Step::to_json`, `Step::from_json`, `Manifest::from_json`, `to_json`, `validate`, `param_uses`, `restore_key`, `compile`, `operator_allowed`, `engine::value_function_unit`, `orm_value`의 codec 함수 `decode`, `host_encode`, `host_decode`, `blind_index`, `Db::execute_text`다. 형식에 없는 member, `null`인 member, object 뒤의 텍스트를 가진 요청 텍스트는 `ir_invalid`이고, 자기 형식이 아닌 model, step, 문서, dialect는 `config`이며, diagnostic을 찾은 함수는 실패하지 않고 `{"diagnostics": [..]}`를 돌려준다. `engine::param_uses`는 모든 빌드에 들어가고, `testing::param_uses`는 같은 함수의 값을 돌려준다. 그 함수와 packages/rust/tests/unit/flowmark_surface.rs의 case 11개는 아직 compile하거나 실행하지 않았고, 계약은 그 member를 하나도 선언하지 않는다.
 
