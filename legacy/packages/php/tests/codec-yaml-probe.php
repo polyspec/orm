@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace {
     require __DIR__ . '/fixtures/CodecProbeDumper.php';
-    require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+    require_once __DIR__ . '/repository_root.php';
+    require ormRepositoryRoot() . '/vendor-php/autoload.php';
 
     $operation = $argv[1] ?? '';
     $failure = $argv[2] ?? '';

@@ -34,7 +34,7 @@ function requestHookModels(): void
     register_shutdown_function(static function () use ($work): void {
         exec('rm -rf ' . escapeshellarg($work));
     });
-    $schemaText = (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/request_hook/request_hook.dbs');
+    $schemaText = (string) file_get_contents(ormLegacyRoot() . '/contracts/fixtures/request_hook/request_hook.dbs');
     generateModels(
         ['request_hook.dbs' => $schemaText],
         "$work/source",

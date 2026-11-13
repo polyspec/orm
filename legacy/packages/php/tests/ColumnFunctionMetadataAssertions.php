@@ -16,7 +16,7 @@ final class ColumnFunctionMetadataAssertions
     /** @return array{RuntimeModel, array} */
     private static function fixture(): array
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $recipe = json_decode(
             (string) file_get_contents("$root/tests/planner/compile.json"),
             true,

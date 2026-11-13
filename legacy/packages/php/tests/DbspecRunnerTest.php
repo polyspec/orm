@@ -50,7 +50,7 @@ final class DbspecRunnerTest extends TestCase
 
     public function testCompareRunnerUsesOneSharedOutputSequence(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $stressPath = tempnam(sys_get_temp_dir(), 'dbspec_compare_stress_');
         self::assertNotFalse($stressPath);
         try {
@@ -62,7 +62,7 @@ final class DbspecRunnerTest extends TestCase
                 "$root/tests/dbspec/plan-cases.json",
                 "$root/tests/dbspec/mermaid.json",
             ];
-            $program = dbspec_php_interface_program($root, [
+            $program = dbspec_php_interface_program([
                 'dbspec_write_comparison(Polyspec\\Orm\\Dbspec\\Dbspec::class, ' . var_export($inputs, true) . ');',
             ]);
             [$status, $output, $error] = coverageProcess([PHP_BINARY, '-r', $program], $root);

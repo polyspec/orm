@@ -39,8 +39,8 @@ abstract class PerformanceGateCoverageCase extends TestCase
             $extension = null;
         }
 
-        $root = dirname(__DIR__, 3);
-        $phpunit = $root . '/vendor-php/bin/phpunit';
+        $root = ormLegacyRoot();
+        $phpunit = ormRepositoryRoot() . '/vendor-php/bin/phpunit';
         $config = dirname(__DIR__) . (static::NATIVE_EXTENSION ? '/../php-ext/phpunit.xml.dist' : '/phpunit.xml.dist');
         $test = __DIR__ . '/PerfGateTest.php';
         $command = [PHP_BINARY];

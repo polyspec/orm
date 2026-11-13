@@ -27,7 +27,7 @@ class CollectionIdentityTest extends TestCase
     /** @return array<string, mixed> */
     private static function fixture(): array
     {
-        $src = file_get_contents(__DIR__ . '/../../../tests/collection/keys.json');
+        $src = file_get_contents(ormLegacyRoot() . '/tests/collection/keys.json');
         self::assertIsString(
             $src,
             'tests/collection/keys.json is unreadable; run make orm-check from the checkout root'

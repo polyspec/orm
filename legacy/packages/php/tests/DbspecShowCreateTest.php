@@ -20,7 +20,7 @@ final class DbspecShowCreateTest extends TestCase
     public static function showCreateCases(): iterable
     {
         $data = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/show-create.json'),
+            (string) file_get_contents(ormLegacyRoot() . '/tests/dbspec/show-create.json'),
             true,
             512,
             JSON_THROW_ON_ERROR

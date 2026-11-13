@@ -437,7 +437,7 @@ final class SchemaUtilsNativeTest extends TestCase
 
     private static function benchSharedSchema(): Schema
     {
-        $path = dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench_shared.dbs';
+        $path = ormLegacyRoot() . '/contracts/fixtures/bench/bench_shared.dbs';
         $manifest = Dbspec::manifest(RuntimeModel::files([$path]))->manifest
             ?? throw new OrmException(Code::SCHEMA_INVALID, 'the shared benchmark schema does not parse');
         return new Schema($manifest->manifestText, $manifest->manifestHash);

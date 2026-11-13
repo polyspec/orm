@@ -39,7 +39,7 @@ final class ModelQueriesWritesNativeTest extends TestCase
                 '-r',
                 'exit((new ReflectionClass("Polyspec\\Orm\\Model"))->isInternal() ? 0 : 1);',
             ],
-            dirname(__DIR__, 3),
+            ormLegacyRoot(),
             $environment,
         );
         self::assertSame(0, $status, "native extension child failed: $stderr$stdout");

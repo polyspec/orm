@@ -43,9 +43,9 @@ trait OrmGenProcessCase
     {
         $reader = dirname($model) . '/reader.php';
         file_put_contents($reader, $text);
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $result = OrmGenTestSupport::runProcess(
-            [PHP_BINARY, $reader, "$root/vendor-php/autoload.php", $model, ...$arguments],
+            [PHP_BINARY, $reader, ormRepositoryRoot() . '/vendor-php/autoload.php', $model, ...$arguments],
             $root
         ) ?? throw new \RuntimeException('cannot start the reader');
         [$code, $out, $err] = $result;

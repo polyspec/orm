@@ -22,7 +22,7 @@ final class RecipeKeys
     /** The key table beside the schema that the $schema of the recipe at path names, relative to the recipe's directory. */
     public static function table(string $path, string $schema): array
     {
-        $file = dirname(__DIR__, 3) . '/' . dirname($path) . '/' . dirname($schema) . '/recipe-keys.json';
+        $file = ormLegacyRoot() . '/' . dirname($path) . '/' . dirname($schema) . '/recipe-keys.json';
         return self::$tables[$file] ??= json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
     }
 

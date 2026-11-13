@@ -30,7 +30,7 @@ final class RuntimeModelTest extends TestCase
     private static function bench(): RuntimeModel
     {
         return RuntimeModel::build(
-            RuntimeModel::set(dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json')
+            RuntimeModel::set(ormLegacyRoot() . '/contracts/fixtures/bench/dbspec-set.json')
         );
     }
 
@@ -53,7 +53,7 @@ final class RuntimeModelTest extends TestCase
     // Requirements: DBS-103, DBS-104, DBS-111, DBS-120.
     public function testGeneratedModelsCarryTheManifestHashAndTheModel(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $bench = self::bench();
         $manifest = Dbspec::manifest(RuntimeModel::set("$root/contracts/fixtures/bench/dbspec-set.json"))->manifest;
         $hash = Author::meta()['manifest_hash'];
@@ -137,7 +137,7 @@ final class RuntimeModelTest extends TestCase
     // Requirements: DBS-104, DBS-111, DBS-120.
     public function testGeneratedFilesAreCurrent(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         [$code, $out, $err] = OrmGenTestSupport::run([
             'gen', '--set', "$root/contracts/fixtures/bench/dbspec-set.json", '--out', "$root/packages/php/gen",
             '--namespace', 'Polyspec\\Orm\\Tests\\Model', '--check'

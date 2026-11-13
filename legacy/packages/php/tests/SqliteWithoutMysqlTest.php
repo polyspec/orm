@@ -93,7 +93,7 @@ final class SqliteWithoutMysqlTest extends TestCase
 
     public function testChildLoadsGeneratedModelSchemaBeforeConnecting(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $result = self::runChild([], [
             "$root/packages/php/tests/autoload.php",
             sys_get_temp_dir() . '/unused-php-without-mysql-probe',
@@ -105,7 +105,7 @@ final class SqliteWithoutMysqlTest extends TestCase
 
     public function testSqlitePathLoadsNoMysqlDialectClass(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $manifest = json_decode(
             (string) file_get_contents("$root/packages/php/composer.json"),
             true,

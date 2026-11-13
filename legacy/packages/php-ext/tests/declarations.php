@@ -15,6 +15,7 @@ declare(strict_types=1);
 // extension in its own process with declarations() and compares them with both.
 
 require __DIR__ . '/declarations_functions.php';
+require_once dirname(__DIR__, 2) . '/php/tests/repository_root.php';
 
 if (PHP_SAPI === 'cli' && realpath($argv[0] ?? '') === __FILE__) {
     $mode = $argv[1] ?? '';
@@ -39,7 +40,7 @@ if (PHP_SAPI === 'cli' && realpath($argv[0] ?? '') === __FILE__) {
             array_diff(get_declared_interfaces(), $interfacesBefore)
         ));
     } else {
-        require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+        require ormRepositoryRoot() . '/vendor-php/autoload.php';
         $classes = CLIENT_CLASSES;
         foreach (glob(dirname(__DIR__, 2) . '/php/src/Dbspec/*.php') as $file) {
             $client = new ReflectionClass(EXTENSION_NAMESPACE . basename($file, '.php'));

@@ -35,7 +35,7 @@ class OrmGenCliTest extends TestCase
     /** Runs $command in a new process from the repository root and returns its exit code, stdout and stderr. */
     private static function process(array $command): array
     {
-        return OrmGenTestSupport::runProcess($command, dirname(__DIR__, 3))
+        return OrmGenTestSupport::runProcess($command, ormLegacyRoot())
             ?? throw new \RuntimeException('cannot start ' . implode(' ', $command));
     }
 
@@ -179,7 +179,7 @@ class OrmGenCliTest extends TestCase
     // Requirements: DSL-42.
     public function testTheBinComposerInstallsLoadsTheAutoloader(): void
     {
-        [$code, $out, $err] = self::process([PHP_BINARY, 'vendor-php/bin/orm-gen']);
+        [$code, $out, $err] = self::process([PHP_BINARY, ormRepositoryRoot() . '/vendor-php/bin/orm-gen']);
         self::assertTrue(
             $code === 2 && $out === '' && str_starts_with($err, 'usage: orm-gen gen '),
             "vendor-php/bin/orm-gen: $code $out $err"

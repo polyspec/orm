@@ -21,14 +21,14 @@ foreach ($dirs as $dir) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir", FilesystemIterator::SKIP_DOTS));
     foreach ($it as $file) {
         $path = $file->getRealPath();
-        if ($file->getExtension() === 'php' && !str_starts_with($path, "$root/packages/php/src/Proto/")) {
+        if ($file->getExtension() === 'php' && !str_starts_with($path, "$root/legacy/packages/php/src/Proto/")) {
             $files[] = $path;
         }
     }
 }
 sort($files);
 // Load the runtime before generated subclasses. Top-level bootstrap only registers names.
-$autoload = "$root/packages/php/tests/autoload.php";
+$autoload = "$root/legacy/packages/php/tests/autoload.php";
 if ($loadAutoloader && is_file($autoload)) {
     require_once $autoload;
 }

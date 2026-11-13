@@ -44,9 +44,9 @@ class DbspecPlanTest extends TestCase
 {
     public function testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $plans = ['cases' => [plan_vectors()['cases'][0]]];
-        $program = dbspec_php_interface_program($root, [
+        $program = dbspec_php_interface_program([
             '$plans = ' . var_export($plans, true) . ';',
             'ob_start();',
             '$plan = dbspec_parse_plan(Polyspec\\Orm\\Dbspec\\Dbspec::class, $plans[\'cases\'][0][\'plan\']);',

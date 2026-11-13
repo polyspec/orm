@@ -31,7 +31,7 @@ final class EngineTest extends TestCase
     // manifest check, request validation, and statement form.
     public function testEngine(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
         $engines = [];
         foreach (['mysql', 'postgres', 'sqlite'] as $d) {
@@ -573,7 +573,7 @@ final class EngineTest extends TestCase
     // server; the engine of one server never serves its plan to the other.
     public function testRowLocksByServer(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
         $want = [
             'mysql/mysql' => [

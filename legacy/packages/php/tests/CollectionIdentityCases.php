@@ -17,7 +17,7 @@ trait CollectionIdentityCases
     /** @return array<string, mixed> */
     private static function sharedCollectionFixture(): array
     {
-        $path = dirname(__DIR__, 3) . '/tests/collection/keys.json';
+        $path = ormLegacyRoot() . '/tests/collection/keys.json';
         $source = file_get_contents($path);
         self::assertIsString($source, "cannot read {$path}");
         return json_decode($source, true, 512, JSON_THROW_ON_ERROR);

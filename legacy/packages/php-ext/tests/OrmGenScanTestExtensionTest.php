@@ -16,7 +16,7 @@ final class OrmGenScanTestExtensionTest extends OrmGenScanTest
     {
         parent::setUpBeforeClass();
         self::$previousWorkingDirectory = getcwd() ?: throw new \RuntimeException('cannot read current directory');
-        if (!chdir(dirname(__DIR__, 3))) {
+        if (!chdir(ormLegacyRoot())) {
             throw new \RuntimeException('cannot set the repository as the test working directory');
         }
     }

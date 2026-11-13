@@ -71,7 +71,7 @@ final class ClientGenericsTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         self::$work = $work = sys_get_temp_dir() . '/orm-php-client-generics-' . getmypid();
         is_dir($work) || mkdir($work, 0o700, true);
 
@@ -85,7 +85,7 @@ final class ClientGenericsTest extends TestCase
 
     public function testPhpstanTypesTheTransactionResultAndTheRowsOfAModel(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $work = self::$work;
         // PHPStan loads the autoloader of the repository root (vendor-php), so its autoload file is autoload.php, the
         // autoloader of that root.

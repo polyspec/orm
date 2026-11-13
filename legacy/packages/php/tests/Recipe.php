@@ -126,7 +126,7 @@ final class Recipe
     public static function cases(string $path): array
     {
         if (!isset(self::$caseIds[$path])) {
-            $recipe = RecipeKeys::decoded($path, (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path));
+            $recipe = RecipeKeys::decoded($path, (string) file_get_contents(ormLegacyRoot() . '/' . $path));
             self::$caseIds[$path] = [];
             self::$databaseCaseIds[$path] = [
                 'mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => [], 'mariadb' => [],
@@ -194,7 +194,7 @@ final class Recipe
         if (self::$documentPath !== $path) {
             self::$document = [];
             self::$document = json_decode(
-                (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path),
+                (string) file_get_contents(ormLegacyRoot() . '/' . $path),
                 true,
                 RecipeKeys::DEPTH,
                 JSON_THROW_ON_ERROR
@@ -287,11 +287,11 @@ final class Recipe
             return;
         }
         if ($step['op'] === 'generator.check') {
-            RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
+            RecipeGenerator::checkFiles($step, ormLegacyRoot() . '/' . dirname($path));
             return;
         }
         if ($step['op'] === 'generator.refused') {
-            RecipeGenerator::checkRefused($step, dirname(__DIR__, 3) . '/' . dirname($path));
+            RecipeGenerator::checkRefused($step, ormLegacyRoot() . '/' . dirname($path));
             return;
         }
         if ($step['op'] === 'ir.param_uses') {
@@ -303,7 +303,7 @@ final class Recipe
             return;
         }
         if ($step['op'] === 'generator.generate') {
-            RecipeGenerator::check($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
+            RecipeGenerator::check($step, ormLegacyRoot() . '/' . dirname($path), $database);
             return;
         }
         if (in_array($step['op'], self::DBSPEC_OPS, true)) {
@@ -319,11 +319,11 @@ final class Recipe
             return;
         }
         if ($step['op'] === 'dbspec.render_statements') {
-            self::dbspecRenderStatementsStep($step, dirname(__DIR__, 3) . '/' . dirname($path));
+            self::dbspecRenderStatementsStep($step, ormLegacyRoot() . '/' . dirname($path));
             return;
         }
         if ($step['op'] === 'dbspec.introspect_shown') {
-            self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
+            self::dbspecIntrospectShownStep($step, ormLegacyRoot() . '/' . dirname($path), $database);
             return;
         }
         if ($step['op'] === 'dbspec.apply_fault') {
@@ -399,7 +399,7 @@ final class Recipe
     private static function validateStep(RecipeStep $step, string $path, string $database): void
     {
         $outcome = $step['expect'][$database] ?? Assert::fail("ir.validate has no expect for $database");
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $recipe = self::document($path);
         $schema = realpath(dirname($root . '/' . $path) . '/' . $recipe['schema']);
         if ($schema === false) {
@@ -433,7 +433,7 @@ final class Recipe
     /** The model of the schema of a planner step and its input with the manifest_hash of that schema. */
     private static function plannerRequest(RecipeStep $step, string $path): array
     {
-        $schema = realpath(dirname(dirname(__DIR__, 3) . '/' . $path) . '/' . $step['schema']);
+        $schema = realpath(dirname(ormLegacyRoot() . '/' . $path) . '/' . $step['schema']);
         if ($schema === false) {
             Assert::fail("{$step['op']}: the schema of $path is missing");
         }
@@ -507,7 +507,7 @@ final class Recipe
             Assert::fail('planner.compile runs without a database');
         }
         $outcome = $step['expect'][$database] ?? Assert::fail("planner.compile has no expect for $database");
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $schema = realpath(dirname($root . '/' . $path) . '/' . $step['schema']);
         if ($schema === false) {
             Assert::fail("planner.compile: the schema of $path is missing");
@@ -1161,7 +1161,7 @@ final class Recipe
     private static function dbspecFileStep(RecipeStep $step, string $path, string $database): void
     {
         $expect = $step['expect'][$database] ?? Assert::fail("{$step['op']} has no expect for $database");
-        $dir = dirname(dirname(__DIR__, 3) . '/' . $path);
+        $dir = dirname(ormLegacyRoot() . '/' . $path);
         switch ($step['op']) {
             case 'dbspec.parse_emit':
                 [$texts, $documents] = self::dbspecDocuments($dir, $step['documents']);
@@ -1698,7 +1698,7 @@ final class Recipe
     /** The text of a file that a step names relative to the recipe file (the document and skeleton_of fields). */
     private static function readRecipeFile(string $path, string $file): string
     {
-        $read = Dbspec::readFile(dirname(__DIR__, 3) . '/' . dirname($path) . '/' . $file);
+        $read = Dbspec::readFile(ormLegacyRoot() . '/' . dirname($path) . '/' . $file);
         if ($read->text === null) {
             Assert::fail("read $file: " . json_encode($read->diagnostics));
         }
@@ -2093,7 +2093,7 @@ final class Recipe
         $extension = getenv('ORM_PHP_MODE') === 'extension';
         [$status, $stdout, $stderr] = coverageProcess(
             ['node', 'tests/interfaces/check/main.mts', '-language', $extension ? 'php-extension' : 'php'],
-            dirname(__DIR__, 3),
+            ormRepositoryRoot(),
             null,
             self::INTERFACE_CHECK_DEADLINE
         );
@@ -2686,7 +2686,7 @@ final class Recipe
         if (!in_array($database, self::DATABASES, true)) {
             Assert::fail("recipe $path: unknown database $database");
         }
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $recipe = self::document($path);
         if (!isset($recipe['fixture'])) {
             Assert::fail("recipe $path: no fixture, so it has no database");
@@ -2798,12 +2798,12 @@ final class Recipe
                 'dsn' => $dsn,
                 'corpusDir' => $corpusDir,
                 'schema' => $schema,
-                'fixture' => dirname(__DIR__, 3) . '/' . $recipe['fixture'],
+                'fixture' => ormLegacyRoot() . '/' . $recipe['fixture'],
                 'tablePath' => $recipe['fixture'] !== self::GENERATED_FIXTURE,
                 'bound' => ['database' => ['text' => $name]],
                 'db' => $db,
                 'schema' => $schema,
-                'dir' => dirname(__DIR__, 3) . '/' . dirname($path),
+                'dir' => ormLegacyRoot() . '/' . dirname($path),
                 'fields' => [],
                 'records' => [],
                 'hookBases' => [],

@@ -1887,8 +1887,8 @@ final class Parser
         if (in_array($token[0], self::CODEC_STAGES, true)) {
             return $this->take('keyword');
         }
-        // json is the name of the stage ordered_json in the core, with the same encoding (DBS-69), so the reader takes it
-        // as ordered_json and the canonical form writes ordered_json.
+        // json is the name of the stage ordered_json in the core, with the same encoding (DBS-69), so the reader takes
+        // it as ordered_json and the canonical form writes ordered_json.
         if ($token[0] === self::JSON_STAGE) {
             $stage = $this->take('keyword');
             $stage[0] = 'ordered_json';

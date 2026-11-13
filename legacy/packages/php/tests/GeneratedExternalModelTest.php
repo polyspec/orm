@@ -25,7 +25,7 @@ class GeneratedExternalModelTest extends TestCase
         mkdir($work, 0o700, true);
         try {
             $fixture = static fn(string $name): string => (string) file_get_contents(
-                dirname(__DIR__, 3) . "/contracts/fixtures/external/$name.dbs"
+                ormLegacyRoot() . "/contracts/fixtures/external/$name.dbs"
             );
             generateModels(
                 ['member.dbs' => $fixture('member')],

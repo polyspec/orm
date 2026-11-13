@@ -82,7 +82,7 @@ final class OrmGenTestSupportTest extends TestCase
 
     public function testScanVectorCasesAreKeyedById(): void
     {
-        $file = dirname(__DIR__, 3) . '/tests/generator/php-scan-vectors.json';
+        $file = ormLegacyRoot() . '/tests/generator/php-scan-vectors.json';
         $recorded = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR)['cases'];
         $all = OrmGenTestSupport::phpScanVectorCases();
         self::assertSame(array_column($recorded, 'id'), array_keys($all));

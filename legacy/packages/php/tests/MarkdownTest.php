@@ -113,7 +113,7 @@ class MarkdownTest extends TestCase
         // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot
         // (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindVectors.
         $vectors = json_decode(
-            (string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'),
+            (string) file_get_contents(ormLegacyRoot() . '/tests/bind/vectors.json'),
             true,
             flags: JSON_THROW_ON_ERROR
         );

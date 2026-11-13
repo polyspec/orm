@@ -50,7 +50,7 @@ function coverageAssertColumnNameFailureIsPrevious(callable $read): void
 /** The repository root used by PHP test fixtures. */
 function coverageRepositoryRoot(): string
 {
-    return dirname(__DIR__, 3);
+    return ormLegacyRoot();
 }
 
 /** Reads the JSON of a repository file. Fails if it cannot be read or parsed. */

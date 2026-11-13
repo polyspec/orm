@@ -41,7 +41,7 @@ final class CollectionTest extends TestCase
     /** @return list<array<string, mixed>> */
     private static function identityCases(): array
     {
-        $source = file_get_contents(__DIR__ . '/../../../tests/collection/keys.json');
+        $source = file_get_contents(ormLegacyRoot() . '/tests/collection/keys.json');
         self::assertIsString($source, 'tests/collection/keys.json is unreadable');
         $data = json_decode($source, true, 512, JSON_THROW_ON_ERROR);
         return $data['keys'];

@@ -8,6 +8,8 @@ declare(strict_types=1);
 // documents, file reads, manifest and statement vectors, dbspec_write_plans writes the plan vectors, and
 // dbspec_write_mermaid writes the Mermaid recipe. The two classes have the same methods and result shape.
 
+require_once dirname(__DIR__, 3) . '/tests/repository_root.php';
+
 /** Writes the location and problem of a vector file to stderr and exits with 1. */
 function dbspec_vector_fail(string $path, string $location, string $problem): never
 {
@@ -226,7 +228,7 @@ function dbspec_read_recipe_file(string $path): array
     $text = dbspec_read_input($path);
     $value = dbspec_decode_input($path, $text);
     $schema = json_decode(
-        (string) file_get_contents(dirname(__DIR__, 5) . '/scripts/features/schema/recipe.schema.json'),
+        (string) file_get_contents(ormRepositoryRoot() . '/scripts/features/schema/recipe.schema.json'),
         false,
         512,
         JSON_THROW_ON_ERROR

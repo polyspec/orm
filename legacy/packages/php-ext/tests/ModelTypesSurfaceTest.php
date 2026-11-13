@@ -208,7 +208,7 @@ PHP;
             'assert.exception=1',
             '-r',
             $script,
-            dirname(__DIR__, 3) . '/vendor-php/autoload.php',
+            ormRepositoryRoot() . '/vendor-php/autoload.php',
         ];
         $environment = getenv();
         $environment['ORM_PHP_MODE'] = 'library';
@@ -216,7 +216,7 @@ PHP;
             $command,
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
-            dirname(__DIR__, 3),
+            ormLegacyRoot(),
             $environment,
         );
         self::assertIsResource($process, 'start the PHP canonical oracle without loading the extension');

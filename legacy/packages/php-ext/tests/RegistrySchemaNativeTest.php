@@ -161,7 +161,7 @@ final class RegistrySchemaNativeTest extends TestCase
     public function testModelOfGeneratedTextKeepsTheHeapIntact(): void
     {
         $kept = [];
-        foreach (glob(dirname(__DIR__, 3) . '/contracts/fixtures/*.dbs') ?: [] as $i => $file) {
+        foreach (glob(ormLegacyRoot() . '/contracts/fixtures/*.dbs') ?: [] as $i => $file) {
             $documents = RuntimeModel::parse([basename($file) => (string) file_get_contents($file)]);
             $model = RuntimeModel::build($documents);
             Registry::generated($model->manifestHash, $model->manifestText, $model->externalText);

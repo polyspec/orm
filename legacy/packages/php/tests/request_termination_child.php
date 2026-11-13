@@ -5,7 +5,8 @@ declare(strict_types=1);
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
 
-require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+require_once __DIR__ . '/repository_root.php';
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
 
 [$script, $dsn, $table, $lock] = $argv;
 $db = Orm::connect($dsn, new Config());

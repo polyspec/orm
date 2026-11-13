@@ -13,7 +13,7 @@ function loadGeneratedFixture(
     string $namespace,
     string $outputName = 'models'
 ): void {
-    $path = dirname(__DIR__, 3) . '/contracts/fixtures/' . $documentName;
+    $path = ormLegacyRoot() . '/contracts/fixtures/' . $documentName;
     $document = file_get_contents($path);
     if (!is_string($document)) {
         throw new RuntimeException("cannot read fixture $path");

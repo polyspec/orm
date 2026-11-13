@@ -37,7 +37,7 @@ final class RuntimeDbTest extends TestCase
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $values = "dbspec 1 runtime_values\n\ntable sample {\n"
             . "  seq i64 identity\n  level i16\n  amount i32 default 7\n  label varchar(16) default 'x'\n"
             . "  wide i64\n  ratio f64\n  active bool\n  note text null\n  payload text null\n"

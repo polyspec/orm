@@ -18,7 +18,7 @@ trait PageCacheBoundCases
     public function testInListLengthsShareBucketedPlans(): void
     {
         $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+            RuntimeModel::files([ormLegacyRoot() . '/contracts/fixtures/identity_load.dbs'])
         );
         $engine = new Engine($model, 'sqlite', 1024);
         $cache = new ReflectionProperty(Engine::class, 'plans');
@@ -148,7 +148,7 @@ trait PageCacheBoundCases
     public function testRootPageParametersRejectInvalidValuesAndShapes(): void
     {
         $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+            RuntimeModel::files([ormLegacyRoot() . '/contracts/fixtures/identity_load.dbs'])
         );
         $engine = new Engine($model, 'sqlite', 1024);
         $warm = new Request('all', $model->manifestHash);
@@ -228,7 +228,7 @@ trait PageCacheBoundCases
     private function planCacheIdentityLoadModel(): RuntimeModel
     {
         return RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+            RuntimeModel::files([ormLegacyRoot() . '/contracts/fixtures/identity_load.dbs'])
         );
     }
 

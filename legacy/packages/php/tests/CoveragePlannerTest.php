@@ -45,7 +45,7 @@ final class CoveragePlannerTest extends TestCase
     /** @return array{RuntimeModel, array<string, mixed>} */
     private function scalarColumnSubqueryRequest(): array
     {
-        return plannerScalarColumnSubqueryRequest(dirname(__DIR__, 3));
+        return plannerScalarColumnSubqueryRequest(ormLegacyRoot());
     }
 
     public function testScalarSubqueryMissingPostValidationColumnIsInternal(): void

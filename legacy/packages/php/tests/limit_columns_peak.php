@@ -5,7 +5,8 @@
 // from stdin and prints one JSON line with whether the parse returned a document and the baseline and peak memory.
 declare(strict_types=1);
 
-require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+require_once __DIR__ . '/repository_root.php';
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
 
 $text = (string) stream_get_contents(STDIN);
 $baseline = memory_get_usage();

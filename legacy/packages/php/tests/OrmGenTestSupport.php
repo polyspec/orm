@@ -91,7 +91,7 @@ final class OrmGenTestSupport
     /** @return array<string, array{array<string, mixed>}> the cases of tests/generator/php-scan-vectors.json by id */
     public static function phpScanVectorCases(): array
     {
-        $file = dirname(__DIR__, 3) . '/tests/generator/php-scan-vectors.json';
+        $file = ormLegacyRoot() . '/tests/generator/php-scan-vectors.json';
         $cases = [];
         foreach (json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR)['cases'] as $case) {
             $cases[$case['id']] = [$case];
@@ -218,8 +218,7 @@ final class OrmGenTestSupport
     /** @param list<string> $args @return array{int, string, string} */
     public static function run(array $args): array
     {
-        $root = dirname(__DIR__, 3);
-        $result = self::runProcess([PHP_BINARY, "$root/vendor-php/bin/orm-gen", ...$args]);
+        $result = self::runProcess([PHP_BINARY, ormRepositoryRoot() . '/vendor-php/bin/orm-gen', ...$args]);
         if ($result === null) {
             throw new \RuntimeException('cannot start orm-gen');
         }

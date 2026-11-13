@@ -20,7 +20,7 @@ class CodeCatalogTest extends TestCase
     {
         $out = [];
         $comment = '';
-        foreach (explode("\n", (string) file_get_contents(__DIR__ . '/../../../docs/spec/errors.yaml')) as $line) {
+        foreach (explode("\n", (string) file_get_contents(ormRepositoryRoot() . '/docs/spec/errors.yaml')) as $line) {
             $text = trim($line);
             if (str_starts_with($text, '- code:')) {
                 $parts = explode('#', trim(substr($text, strlen('- code:'))), 2);

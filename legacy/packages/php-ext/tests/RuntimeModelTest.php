@@ -92,7 +92,7 @@ DBSPEC;
     // Requirements: SCH-1.
     public function testSetAndFilesUseTheNativeSetReaderAndReadBytesPath(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $set = "$root/contracts/fixtures/bench/dbspec-set.json";
         $fromSet = RuntimeModel::build(RuntimeModel::set($set));
         $dir = "$root/contracts/fixtures/bench";
@@ -109,7 +109,7 @@ DBSPEC;
     public function testDecimalDocumentSetUsesTheNativeSetReader(): void
     {
         self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $fromSet = RuntimeModel::build(RuntimeModel::set("$root/contracts/fixtures/dbspec-set.json"));
         $fromFiles = RuntimeModel::build(RuntimeModel::files([
             "$root/contracts/fixtures/decimal_schema.dbs",
@@ -234,7 +234,7 @@ DBSPEC;
     // keep no memory (the model of bench.dbs is about 196 KB; before the fix, 50 builds grew by about 9.8 MB).
     public function testRepeatedBuildsReleaseTheModelTree(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $documents = RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]);
         RuntimeModel::build($documents);
         $before = memory_get_usage();

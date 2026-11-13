@@ -93,7 +93,7 @@ class OrmGenScanTest extends TestCase
     private static function runScanDirectory(string $dir, string $out): array
     {
         return self::runScan(
-            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+            ormLegacyRoot() . '/contracts/fixtures/bench/dbspec-set.json',
             $out,
             ['--scan', "$dir/src"]
         );
@@ -116,7 +116,7 @@ class OrmGenScanTest extends TestCase
         return self::generateFromSet(
             $name,
             $sources,
-            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+            ormLegacyRoot() . '/contracts/fixtures/bench/dbspec-set.json',
             $extra
         );
     }
@@ -875,7 +875,7 @@ PHP;
         $args = [
             'gen',
             '--set',
-            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+            ormLegacyRoot() . '/contracts/fixtures/bench/dbspec-set.json',
             '--out',
             "$dir/model",
             '--namespace',
@@ -896,7 +896,7 @@ PHP;
     public function testPhpstanFindsEveryScannedChainMethod(): void
     {
         // The test of DSL-42 (docs/spec).
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $ns = self::NS;
         $used = <<<PHP
 <?php

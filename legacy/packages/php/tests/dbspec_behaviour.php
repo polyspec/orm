@@ -27,7 +27,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 /** The repository root, which outcomes write as <root> so that a recorded message names no machine's path. */
 function behaviour_root(): string
 {
-    return dirname(__DIR__, 3);
+    return ormLegacyRoot();
 }
 
 /**

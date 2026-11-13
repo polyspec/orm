@@ -21,7 +21,7 @@ final class ValidatorNativeTest extends TestCase
     {
         self::assertTrue((new ReflectionClass(Validator::class))->isInternal());
 
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
         return [$model, new Validator($model)];
     }

@@ -17,10 +17,11 @@ if (getenv('ORM_PHP_MODE') === 'extension') {
     );
     exit(1);
 }
-$root = dirname(__DIR__, 4);
-require "$root/vendor-php/autoload.php";
+require dirname(__DIR__, 2) . '/tests/repository_root.php';
+$root = ormLegacyRoot();
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
 require "$root/packages/php/tests/case_clock.php";
-require "$root/tests/dbspec/vectors.php";
+require ormRepositoryRoot() . '/tests/dbspec/vectors.php';
 require "$root/packages/php/tests/dbspec_cases.php";
 require "$root/packages/php/tests/dbspec_plan_cases.php";
 require "$root/packages/php/tests/SqliteLiteralRowsPdo.php";

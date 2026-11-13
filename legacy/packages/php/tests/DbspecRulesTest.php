@@ -59,7 +59,7 @@ function users(array $columns, array $rest = []): array
 function limit_columns_peak_run(string $text): array
 {
     $process = proc_open(
-        [PHP_BINARY, '-d', 'memory_limit=128M', dirname(__DIR__, 3) . '/packages/php/tests/limit_columns_peak.php'],
+        [PHP_BINARY, '-d', 'memory_limit=128M', ormLegacyRoot() . '/packages/php/tests/limit_columns_peak.php'],
         [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
         $pipes,
     );

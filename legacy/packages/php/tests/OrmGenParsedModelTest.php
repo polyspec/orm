@@ -136,7 +136,7 @@ class OrmGenParsedModelTest extends TestCase
 
     public function testTheFormatNamesWhatBuildMakes(): void
     {
-        $set = dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json';
+        $set = ormLegacyRoot() . '/contracts/fixtures/bench/dbspec-set.json';
         self::assertSame(2, RuntimeModel::FORMAT);
         self::assertSame(
             self::FORMAT_FINGERPRINT,

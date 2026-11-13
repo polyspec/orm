@@ -45,7 +45,7 @@ class ModelMethodsTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         self::$work = $work = sys_get_temp_dir() . '/orm-php-model-methods-' . getmypid();
         is_dir("$work/model") || mkdir("$work/model", 0o700, true);
 
@@ -94,7 +94,7 @@ class ModelMethodsTest extends TestCase
     // Requirements: DSL-42, DSL-154, INT-28.
     public function testPhpstanFindsEveryQueryMethodOfAGeneratedModel(): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $work = self::$work;
         // PHPStan keeps its cache in the system temporary directory unless a configuration names one; the
         // cache stays in the case's own folder, which tearDownAfterClass removes.

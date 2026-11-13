@@ -17,7 +17,7 @@ function runPhpstan(
 ): array {
     $command = [
         PHP_BINARY,
-        "$root/vendor-php/bin/phpstan",
+        ormRepositoryRoot() . '/vendor-php/bin/phpstan',
         'analyse',
         '--no-progress',
         '--no-ansi',

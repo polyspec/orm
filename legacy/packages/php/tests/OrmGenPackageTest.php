@@ -28,7 +28,7 @@ class OrmGenPackageTest extends TestCase
         try {
             $set = OrmGenTestSupport::setFile($work, ['typed.dbs']);
             file_put_contents("$work/typed.dbs", OrmGenTestSupport::FIELD_TYPES_DOCUMENT);
-            $autoload = dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+            $autoload = ormRepositoryRoot() . '/vendor-php/autoload.php';
             $run = '$_composer_autoload_path = ' . var_export($autoload, true) . '; '
                 . 'require ' . var_export("$package/bin/orm-gen", true) . ';';
             $result = OrmGenTestSupport::runProcess([

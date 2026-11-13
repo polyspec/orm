@@ -34,7 +34,7 @@ final class DecimalModelDbTest extends TestCase
     {
         $generated = sys_get_temp_dir() . '/orm-decimal-php-' . bin2hex(random_bytes(8));
         $source = sys_get_temp_dir() . '/orm-decimal-source-' . bin2hex(random_bytes(8));
-        $fixture = dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbs';
+        $fixture = ormLegacyRoot() . '/contracts/fixtures/decimal_schema.dbs';
         try {
             generateModels(
                 ['decimal_schema.dbs' => (string) file_get_contents($fixture)],

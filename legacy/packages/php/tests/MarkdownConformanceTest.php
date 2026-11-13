@@ -51,7 +51,11 @@ class MarkdownConformanceTest extends TestCase
     }
 
     // conformanceDir is the directory of the shared suite: cases.json, flowmark.version, corpus/.
-    private const MARKDOWN_CONFORMANCE_DIR = __DIR__ . '/../../../tests/markdown';
+    private static function markdownConformanceDirectory(): string
+    {
+        return ormLegacyRoot() . '/tests/markdown';
+    }
+
     // The module path, which must be the main module of the build that FLOWMARK points at.
     private const FLOWMARK_MODULE = 'github.com/polyspec/flowmark/packages/go';
 
@@ -59,7 +63,7 @@ class MarkdownConformanceTest extends TestCase
     private static function loadCases(): array
     {
         $doc = json_decode(
-            (string) file_get_contents(self::MARKDOWN_CONFORMANCE_DIR . '/cases.json'),
+            (string) file_get_contents(self::markdownConformanceDirectory() . '/cases.json'),
             true,
             512,
             JSON_THROW_ON_ERROR
@@ -81,7 +85,7 @@ class MarkdownConformanceTest extends TestCase
      */
     private static function pinnedFlowmark(): string
     {
-        $pin = trim((string) file_get_contents(self::MARKDOWN_CONFORMANCE_DIR . '/flowmark.version'));
+        $pin = trim((string) file_get_contents(self::markdownConformanceDirectory() . '/flowmark.version'));
         $bin = (string) getenv('FLOWMARK');
         if ($bin === '') {
             throw new RuntimeException(
@@ -170,7 +174,7 @@ class MarkdownConformanceTest extends TestCase
         }
         if (
             !copy(
-                self::MARKDOWN_CONFORMANCE_DIR . '/corpus/dbspec/conformance.dbs',
+                self::markdownConformanceDirectory() . '/corpus/dbspec/conformance.dbs',
                 "{$s->dir}/dbspec/conformance.dbs"
             )
         ) {
@@ -178,7 +182,7 @@ class MarkdownConformanceTest extends TestCase
         }
         if (
             !copy(
-                self::MARKDOWN_CONFORMANCE_DIR . '/corpus/dbspec/dbspec-set.json',
+                self::markdownConformanceDirectory() . '/corpus/dbspec/dbspec-set.json',
                 "{$s->dir}/dbspec/dbspec-set.json"
             )
         ) {
@@ -853,7 +857,7 @@ class MarkdownConformanceTest extends TestCase
         try {
             if (
                 !mkdir("$dir/dbspec", 0o755, true) || !copy(
-                    self::MARKDOWN_CONFORMANCE_DIR . "/catalogs/$name.dbs",
+                    self::markdownConformanceDirectory() . "/catalogs/$name.dbs",
                     "$dir/dbspec/$name.dbs"
                 )
             ) {

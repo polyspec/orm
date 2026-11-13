@@ -19,13 +19,14 @@ final class RecipeGenerator
      */
     public static function checkFiles(RecipeStep $step, string $dir): void
     {
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $work = sys_get_temp_dir() . '/orm-recipe-generator-check-' . bin2hex(random_bytes(8));
         mkdir($work, 0o700, true);
         $out = "$work/model";
         $gen = static function (string ...$extra) use ($root, $dir, $step, $out): array {
             [$status, $stdout, $stderr] = coverageProcess(
-                [PHP_BINARY, 'vendor-php/bin/orm-gen', 'gen', '--set', "$dir/{$step['document_set']}", '--out', $out,
+                [PHP_BINARY, ormRepositoryRoot() . '/vendor-php/bin/orm-gen', 'gen',
+                    '--set', "$dir/{$step['document_set']}", '--out', $out,
                     '--namespace', 'Polyspec\\Orm\\Tests\\RecipeCheck', ...$extra],
                 $root,
             );
@@ -89,10 +90,11 @@ final class RecipeGenerator
                 file_put_contents("$work/$name", $text);
             }
             [$status, $stdout, $stderr] = coverageProcess(
-                [PHP_BINARY, 'vendor-php/bin/orm-gen', 'gen', '--set', "$work/dbspec-set.json", '--out', $out,
+                [PHP_BINARY, ormRepositoryRoot() . '/vendor-php/bin/orm-gen', 'gen',
+                    '--set', "$work/dbspec-set.json", '--out', $out,
                     '--namespace', 'Polyspec\\Orm\\Tests\\RecipeRefused',
                     ...(($step['check'] ?? false) ? ['--check'] : [])],
-                dirname(__DIR__, 3),
+                ormLegacyRoot(),
             );
             Assert::assertSame([1, ''], [$status, $stdout], $stderr);
             $from = 0;

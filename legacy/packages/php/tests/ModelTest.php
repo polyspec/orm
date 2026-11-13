@@ -55,7 +55,7 @@ class ModelTest extends TestCase
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
     {
-        self::$root = dirname(__DIR__, 3);
+        self::$root = ormLegacyRoot();
         self::$documents = [(string) file_get_contents(self::$root . "/contracts/fixtures/bench/bench.dbs")];
         self::$work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
         is_dir(self::$work) || mkdir(self::$work, 0o700, true);

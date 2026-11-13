@@ -52,7 +52,7 @@ function plan_vectors_at(string $plansPath): array
 function plan_vectors(): array
 {
     static $vectors = null;
-    return $vectors ??= plan_vectors_at(dirname(__DIR__, 3) . '/tests/dbspec/plan-cases.json');
+    return $vectors ??= plan_vectors_at(ormLegacyRoot() . '/tests/dbspec/plan-cases.json');
 }
 
 /** @param list<string> $lines */

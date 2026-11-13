@@ -45,7 +45,7 @@ class StatementFaultTest extends TestCase
         require_once dirname(__DIR__) . '/testing/Faults.php';
 
         $fixture = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/statement_fault.json'),
+            (string) file_get_contents(ormLegacyRoot() . '/contracts/fixtures/statement_fault.json'),
             true,
             16,
             JSON_THROW_ON_ERROR
@@ -134,7 +134,7 @@ class StatementFaultTest extends TestCase
     public static function fixtureCases(): iterable
     {
         $fixture = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/statement_fault.json'),
+            (string) file_get_contents(ormLegacyRoot() . '/contracts/fixtures/statement_fault.json'),
             true,
             16,
             JSON_THROW_ON_ERROR

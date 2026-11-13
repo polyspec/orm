@@ -19,7 +19,7 @@ use Polyspec\Orm\Schema;
 function benchShared(): Schema
 {
     $manifest = Dbspec::manifest(
-        RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench_shared.dbs'])
+        RuntimeModel::files([ormLegacyRoot() . '/contracts/fixtures/bench/bench_shared.dbs'])
     )->manifest
         ?? throw new OrmException(Code::SCHEMA_INVALID, 'contracts/fixtures/bench/bench_shared.dbs does not parse');
     return new Schema($manifest->manifestText, $manifest->manifestHash);

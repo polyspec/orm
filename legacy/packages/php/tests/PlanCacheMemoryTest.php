@@ -43,7 +43,7 @@ final class PlanCacheMemoryTest extends TestCase
     public function testPlanCacheRetainsAtMostTheBoundOfPlaceholders(): void
     {
         $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+            RuntimeModel::files([ormLegacyRoot() . '/contracts/fixtures/identity_load.dbs'])
         );
         $engine = new Engine($model, 'sqlite', 256);
         $plans = new ReflectionProperty(Engine::class, 'plans');
@@ -81,7 +81,7 @@ final class PlanCacheMemoryTest extends TestCase
     public function testPlanCacheRetainsAtMostAFewMibOfPlans(): void
     {
         $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+            RuntimeModel::files([ormLegacyRoot() . '/contracts/fixtures/identity_load.dbs'])
         );
         gc_collect_cycles();
         $before = memory_get_usage();
@@ -127,7 +127,7 @@ final class PlanCacheMemoryTest extends TestCase
     public function testPlanCachePromotesHitsAndEvictsTheLeastRecentlyUsedPlan(): void
     {
         $model = RuntimeModel::build(
-            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+            RuntimeModel::files([ormLegacyRoot() . '/contracts/fixtures/identity_load.dbs'])
         );
         $engine = new Engine($model, 'sqlite', 2);
         $plans = new ReflectionProperty(Engine::class, 'plans');

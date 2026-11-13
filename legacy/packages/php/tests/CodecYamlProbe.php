@@ -22,7 +22,7 @@ final class CodecYamlProbe
             $command,
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
-            dirname(__DIR__, 3),
+            ormLegacyRoot(),
             null,
             ['bypass_shell' => true]
         );

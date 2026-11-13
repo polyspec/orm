@@ -907,7 +907,7 @@ final class ModelNativeTest extends TestCase
         foreach ([\Polyspec\Orm\Engine::class, \Polyspec\Orm\Assemble::class] as $class) {
             self::assertTrue((new \ReflectionClass($class))->isInternal(), "$class is a class of the extension");
         }
-        $root = dirname(__DIR__, 3);
+        $root = ormLegacyRoot();
         $model = \Polyspec\Orm\RuntimeModel::build(\Polyspec\Orm\RuntimeModel::parse([
             'zone.dbs' => (string) file_get_contents("$root/contracts/fixtures/zone.dbs"),
         ]));
