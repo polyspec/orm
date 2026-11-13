@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // sqliteQuery is the query part of the BENCH_SQLITE_DSN that scripts/check/databases.mts

@@ -5,8 +5,8 @@ import { join, relative, resolve } from 'node:path';
 
 const BUILD = ['node_modules', 'target', 'vendor', '.venv', 'dist'];
 
-/** jsonFiles lists the JSON files under tests/ and contracts/ of `root`, by path relative to it, in byte order. */
-export function jsonFiles(root: string): string[] {
+/** jsonFiles lists the JSON files under tests/ and contracts/ of `root` (or under `bases`), by path relative to it, in byte order. */
+export function jsonFiles(root: string, bases: readonly string[] = ['tests', 'contracts']): string[] {
   const found: string[] = [];
   const walk = (directory: string): void => {
     if (!existsSync(directory)) return;
@@ -17,7 +17,6 @@ export function jsonFiles(root: string): string[] {
       } else if (entry.name.endsWith('.json')) found.push(relative(root, path));
     }
   };
-  walk(resolve(root, 'tests'));
-  walk(resolve(root, 'contracts'));
+  for (const base of bases) walk(resolve(root, base));
   return found.sort();
 }

@@ -3,7 +3,7 @@ package dbspec
 import (
 	"slices"
 
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // Change is one change of the diff (docs/spec/plans.md "Diff"). Table is the target name,

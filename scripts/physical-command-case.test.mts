@@ -91,13 +91,13 @@ caseTest('matches the exact PHP decimal PHPUnit class and data-set events', COMP
 
 caseTest('matches the exact Go decimal test2json symbol and package pass', COMPUTE, () => {
   const output = [
-    JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 }),
-    JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/packages/go/decimalmodel', Elapsed: 0.03 }),
+    JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/legacy/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 }),
+    JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/legacy/packages/go/decimalmodel', Elapsed: 0.03 }),
   ].join('\n');
   assert.equal(observed('go', 'mysql', output), true);
   assert.equal(observed('go', 'mysql', output.replace('TestDecimalPhysicalMySQL', 'TestOther')), false);
   assert.equal(observed('go', 'mysql', output.split('\n')[0] ?? ''), false);
-  assert.equal(observed('go', 'mysql', `${output}\n${JSON.stringify({ Action: 'fail', Package: 'github.com/polyspec/orm/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 })}`), false);
+  assert.equal(observed('go', 'mysql', `${output}\n${JSON.stringify({ Action: 'fail', Package: 'github.com/polyspec/orm/legacy/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 })}`), false);
 });
 
 caseTest('matches the exact PHP extension decimal native test event', COMPUTE, () => {

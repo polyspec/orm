@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // catalogTemporalDDL is a table in the SQLite form of the dbspec renderer (engine/dbspec/render.go): each TIME and

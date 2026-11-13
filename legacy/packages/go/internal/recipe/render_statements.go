@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // renderStatements runs one dbspec.render_statements step: it parses each document of the case against the others and

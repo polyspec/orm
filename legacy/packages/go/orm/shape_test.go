@@ -3,8 +3,8 @@ package orm
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func TestShapeIgnoresParamValues(t *testing.T) {

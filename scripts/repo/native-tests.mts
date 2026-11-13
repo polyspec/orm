@@ -96,7 +96,7 @@ export const nativeTests = ({ tests, features, recipeTests, caseRunnerTests, fil
     for (const file of files) sharedBy.set(file, [...(sharedBy.get(file) ?? []), feature.id]);
   }
   const traits = new Map(tracked
-    .filter(file => /^packages\/php(-ext)?\/tests\/.*\.php$/.test(file))
+    .filter(file => /^legacy\/packages\/php(-ext)?\/tests\/.*\.php$/.test(file))
     .flatMap(file => [...read(file).matchAll(/^\s*trait (\w+)/gm)].map(([, name = '']): [string, string] => [name, file])));
   // The native tests: the tests of each listed file that runs no recipe, of a shared feature or of one runtime.
   const native = new Map<string, Set<string>>();

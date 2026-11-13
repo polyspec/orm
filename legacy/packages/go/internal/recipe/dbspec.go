@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // readDocuments reads the .dbs files that paths name relative to dir, and parses them with the set of their headers.

@@ -19,8 +19,8 @@ import (
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 	goyaml "go.yaml.in/yaml/v3"
 )
 

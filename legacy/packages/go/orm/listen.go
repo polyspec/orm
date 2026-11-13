@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // Notification is one notification that a LISTEN subscription receives

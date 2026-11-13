@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // rowLockTables is the table that the row lock statement refers to.

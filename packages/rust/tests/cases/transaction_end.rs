@@ -17,8 +17,8 @@ use or_panic::OrPanic;
 fn required_dsn(name: &str) -> String {
     match std::env::var(name) {
         Ok(dsn) if !dsn.is_empty() => dsn,
-        Ok(_) => panic!("{name} is set but empty; database tests never skip"),
-        Err(error) => panic!("{name} is required ({error}); database tests never skip"),
+        Ok(_) => panic!("{name} is set but empty; database tests never skip; run make orm-test-servers or make orm-test-container, which write it"),
+        Err(error) => panic!("{name} is required ({error}); database tests never skip; run make orm-test-servers or make orm-test-container, which write it"),
     }
 }
 
@@ -109,16 +109,6 @@ async fn panicking_callback_ends_its_transaction() {
     db.close().await;
 }
 
-async fn execute(db: &Db, statement: &str) {
-    match db.pool() {
-        Pool::MySql(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
-        Pool::Postgres(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
-        Pool::Sqlite(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
-        Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
-    }
-    .or_panic(|e| format!("{statement}: {e}"));
-}
-
 // A transaction future dropped before it finished closes the connection. The server ends that session's
 // transaction and lock, so another connection takes the lock. The MySQL connection uses TLS, through the ssl-mode of
 // ORM_TEST_MYSQL_TLS_DSN (a DSN without ssl-mode connects without TLS, CFG-44), since sqlx's TLS stream shutdown
@@ -143,7 +133,9 @@ async fn dropped_transaction_closes_its_connection() {
                 let cipher: (String, String) = sqlx::query_as("SHOW SESSION STATUS LIKE 'Ssl_cipher'").fetch_one(pool).await.expect("Ssl_cipher");
                 assert!(!cipher.1.is_empty(), "the MySQL test connection uses TLS");
             }
-            Pool::Sqlite(_) => execute(&db, "CREATE TABLE orm_dropped_probe (id INTEGER PRIMARY KEY)").await,
+            Pool::Sqlite(pool) => {
+                sqlx::raw_sql("CREATE TABLE orm_dropped_probe (id INTEGER PRIMARY KEY)").execute(pool).await.expect("orm_dropped_probe");
+            }
             Pool::Postgres(_) => {}
             Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
         }

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // catalogCode is one code of docs/spec/errors.yaml with the note that its generated constant carries: the origin, then

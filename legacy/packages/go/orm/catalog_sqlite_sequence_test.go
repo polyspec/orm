@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 type sqliteSequenceSnapshot struct {

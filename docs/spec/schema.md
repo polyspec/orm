@@ -17,7 +17,7 @@ The ORM client packages generate models from the document set with their own too
 
 - **SCH-1** Each tool takes the document set only as its [set file](dbspec.md#document-sets) and reads it with its client's set reader; a set file with an error makes the tool print every error and write nothing. Each tool then reads every listed document file with the file reader of its client, which rejects a file that does not start with the dbspec signature as a `signature` error before parsing ([files](dbspec.md#files)); the tool then fails with `SCHEMA_INVALID` and writes no model.
 
-- **SCH-2** The `github.com/polyspec/orm/packages/go` module exposes Go generation to other programs in its package `generator`. `generator.Generate` takes the runtime model of the document set, the output directory, `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping and output stay in the ORM generator.
+- **SCH-2** The `github.com/polyspec/orm/legacy/packages/go` module exposes Go generation to other programs in its package `generator`. `generator.Generate` takes the runtime model of the document set, the output directory, `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping and output stay in the ORM generator.
 
 ## 2. Schema operations
 
@@ -52,7 +52,7 @@ The PHP extension declarations expose the PHP-facing `Dbspec` parse/render/intro
 - **SCH-6** SQLite catalog connections require an existing regular database file and disable automatic file creation. Closing a catalog releases its owned database resources; an operation after close fails with `CATALOG_CLOSED` without sending a statement.
 
 - **SCH-6a** The catalog connection is one shared requirement of Go, PHP, the PHP extension, TypeScript, Python and Rust. Each native package exposes `connect(dsn)`, `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row` and `delete_row`, with the semantics and error codes in [interfaces](interfaces.md). A missing operation or owner case leaves the feature incomplete; implementation-specific wrappers and value representations do not change the shared result, validation, error, snapshot or cleanup behavior. A catalog connection refuses a markdown DSN. The catalog feature's database cases cover MySQL, PostgreSQL and SQLite in every client. A generated column has no default: its describe result has no default expression and its default flag is false, also on PostgreSQL, whose catalog holds the generation expression in the same place as a default.
-- **SCH-6b** The `github.com/polyspec/orm/packages/go` SQLite grid read wraps a query in a CTE that the SQLite query flattener folds into it, so the plan has no `MATERIALIZE` or `CO-ROUTINE` step and the inner `ORDER BY` decides the rows. This belongs to the Go read only: no other runtime wraps the query.
+- **SCH-6b** The `github.com/polyspec/orm/legacy/packages/go` SQLite grid read wraps a query in a CTE that the SQLite query flattener folds into it, so the plan has no `MATERIALIZE` or `CO-ROUTINE` step and the inner `ORDER BY` decides the rows. This belongs to the Go read only: no other runtime wraps the query.
 
 ## 4. Schema installation
 

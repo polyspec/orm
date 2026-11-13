@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // describeTokens renders each token as its line, its source text and its class.

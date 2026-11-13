@@ -9,7 +9,7 @@ import (
 )
 
 // TestCasePackage is the package of the shared case report of the Go tests.
-const TestCasePackage = "github.com/polyspec/orm/packages/go/testcase"
+const TestCasePackage = "github.com/polyspec/orm/legacy/packages/go/testcase"
 
 // TestCaseStart reports each Test or Fuzz function of a test file that does not start its case with
 // legacy/packages/go/testcase (testcase.Start, Group, Run or Of): such a test runs without a RUN line and a deadline. The tests of

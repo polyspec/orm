@@ -15,9 +15,9 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/generator"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/generator"
 )
 
 // generatorOptions is the options object of a generator.generate step (FCV-4): the other document sets it uses, another set generated first, and the scanned
@@ -150,7 +150,7 @@ func generateScanned(t *testing.T, dir, schema string, o generatorOptions) (map[
 		return nil, "", err
 	}
 	requires := strings.SplitN(string(gomod), "\n", 2)[1]
-	module := "module example.com/ormexample\n" + strings.Replace(requires, "require (", "require (\n\tgithub.com/polyspec/orm/packages/go v0.0.0", 1) + "\nreplace github.com/polyspec/orm/packages/go => " + pkgGo + "\n"
+	module := "module example.com/ormexample\n" + strings.Replace(requires, "require (", "require (\n\tgithub.com/polyspec/orm/legacy/packages/go v0.0.0", 1) + "\nreplace github.com/polyspec/orm/legacy/packages/go => " + pkgGo + "\n"
 	sum, err := os.ReadFile(filepath.Join(pkgGo, "go.sum"))
 	if err != nil {
 		return nil, "", err

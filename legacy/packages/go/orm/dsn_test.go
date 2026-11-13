@@ -3,7 +3,7 @@ package orm
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Requirements: CFG-1, CFG-2, CFG-10, CFG-12, CFG-19, CFG-20, CFG-37.

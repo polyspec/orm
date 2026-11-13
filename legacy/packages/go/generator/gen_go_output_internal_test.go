@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Tests of how the Go generator stages, replaces and keeps its output directory around go/packages scanning.

@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 413feb6f3f6b845014831d4fd025176e70a0bd129756ece5c422379d7a43b4ce -->
+<!-- source-sha256: 19fe7edb108cee6a58b2d96e90aca5b2e6474de7a04b3bb3cd69af890b6d6ef8 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `legacy/packages/go/engine/ir/ir.go`와 `legacy/packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -212,7 +212,7 @@ test는 자기 클라이언트의 test entry point로 모든 데이터베이스�
 
 fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 환경 변수는 fault를 설정하지 않는다.
 
-- **PRT-43** `github.com/polyspec/orm/packages/go` Go module — Go entry point: `orm.FailNextRollback(db)`; production build가 제외하는 방법: build tag `ormtest`가 있을 때만 파일을 compile한다(`go test -tags ormtest`). tag가 없으면 함수가 없어 호출이 compile되지 않는다
+- **PRT-43** `github.com/polyspec/orm/legacy/packages/go` Go module — Go entry point: `orm.FailNextRollback(db)`; production build가 제외하는 방법: build tag `ormtest`가 있을 때만 파일을 compile한다(`go test -tags ormtest`). tag가 없으면 함수가 없어 호출이 compile되지 않는다
 - **PRT-44** `polyspec-orm` crate — Rust entry point: `polyspec_orm::testing::fail_next_rollback(&db)`; production build가 제외하는 방법: cargo feature `test-faults`가 있을 때만 module을 compile하며, 어떤 default feature도 이를 켜지 않는다. `[dev-dependencies]`에서 켠다
 - **PRT-45** `@polyspec/orm` package — TypeScript entry point: `@polyspec/orm/testing`의 `failNextRollback(db)`; production build가 제외하는 방법: package는 condition `orm-test`에서만 이 subpath를 export한다. `node --conditions=orm-test`가 없으면 import가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패하고, package entry point는 이 함수를 export하지 않는다. test의 type check는 `customConditions: ["orm-test"]`로 subpath를 찾는다
 - **PRT-46** PHP — Entry point: `Polyspec\Orm\Testing\Faults::failNextRollback($db)`; production build가 제외하는 방법: class는 package의 `testing/Faults.php`에 있고 package autoloader는 이 파일을 연결하지 않는다. process는 그 파일을 경로로 require한 뒤에만 class를 가진다
@@ -238,7 +238,7 @@ statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적
 
 test는 자기 클라이언트의 test entry point로 연결의 clock을 고정한다. entry point는 3.1과 3.2의 fault와 같은 entry point다. entry point는 데이터베이스와 clock, 즉 UTC text `YYYY-MM-DD HH:MM:SS.ffffff`를 받는다. 다른 형식의 clock은 클라이언트의 programmer-error 신호(3.2)로 거부하고 아무것도 고정하지 않는다. 그 뒤로 연결과 그 모든 handle의 `now` slot은 wall clock 대신 그 clock이며, 연결이 닫힐 때까지 유지된다. 데이터베이스 clock(MySQL `CURRENT_TIMESTAMP(p)`, `NOW(6)`)은 고정되지 않는다. DSN, 설정 값, 환경 변수는 clock을 고정하지 않는다.
 
-- **PRT-53** `github.com/polyspec/orm/packages/go` Go module — Go entry point: `orm.FixClock(db, clock)`; production build가 제외하는 방법: `FailNextRollback`과 같은 파일이며 build tag `ormtest`가 있을 때만 compile한다
+- **PRT-53** `github.com/polyspec/orm/legacy/packages/go` Go module — Go entry point: `orm.FixClock(db, clock)`; production build가 제외하는 방법: `FailNextRollback`과 같은 파일이며 build tag `ormtest`가 있을 때만 compile한다
 - **PRT-54** `polyspec-orm` crate — Rust entry point: `polyspec_orm::testing::fix_clock(&db, clock)`; production build가 제외하는 방법: `fail_next_rollback`과 같은 module이며 cargo feature `test-faults`가 있을 때만 compile한다
 - **PRT-55** `@polyspec/orm` package — TypeScript entry point: `@polyspec/orm/testing`의 `fixClock(db, clock)`; production build가 제외하는 방법: `failNextRollback`과 같은 subpath이며 condition `orm-test`에서만 export한다
 - **PRT-56** PHP — Entry point: `Polyspec\Orm\Testing\Faults::fixClock($db, $clock)`; production build가 제외하는 방법: `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다
@@ -250,7 +250,7 @@ conformance runner도 같은 곳에서 가져온다: Go runner는 `-tags ormtest
 
 test는 자기 클라이언트의 test entry point로 연결의 write 결과를 읽는다. entry point는 3.1부터 3.3까지와 같은 entry point다. entry point는 데이터베이스를 받아, 연결과 그 모든 handle에서 마지막으로 성공한 write(insert, update, delete, restore, [5](#_5-markdown-connections) "Write")의 `affected`를 돌려주며, 그런 write가 아직 없으면 값이 없다. 실패한 write는 값을 바꾸지 않는다. 모든 클라이언트는 이 entry point에 답하기 위해서만 이 값을 유지한다. conformance vector `affected_counts`는 insert하는 upsert, update하는 upsert, 이미 그 값을 가진 행의 update, 값을 바꾸는 update 뒤에 이 값을 읽는다.
 
-- **PRT-58** `github.com/polyspec/orm/packages/go` Go module — Go entry point: `(affected, ok)`를 돌려주는 `orm.LastAffected(db)`; production build가 제외하는 방법: `FailNextRollback`과 같은 파일이며 build tag `ormtest`가 있을 때만 compile한다
+- **PRT-58** `github.com/polyspec/orm/legacy/packages/go` Go module — Go entry point: `(affected, ok)`를 돌려주는 `orm.LastAffected(db)`; production build가 제외하는 방법: `FailNextRollback`과 같은 파일이며 build tag `ormtest`가 있을 때만 compile한다
 - **PRT-59** `polyspec-orm` crate — Rust entry point: `Option<u64>`인 `polyspec_orm::testing::last_affected(&db)`; production build가 제외하는 방법: `fail_next_rollback`과 같은 module이며 cargo feature `test-faults`가 있을 때만 compile한다
 - **PRT-60** `@polyspec/orm` package — TypeScript entry point: `number`나 `null`인 `@polyspec/orm/testing`의 `lastAffected(db)`; production build가 제외하는 방법: `failNextRollback`과 같은 subpath이며 condition `orm-test`에서만 export한다
 - **PRT-61** PHP — Entry point: `?int`인 `Polyspec\Orm\Testing\Faults::lastAffected($db)`; production build가 제외하는 방법: `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다

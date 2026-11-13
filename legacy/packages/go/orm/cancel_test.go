@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestWithContextCancels cancels the context of a connection handle while a

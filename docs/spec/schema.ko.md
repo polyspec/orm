@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: bf4b0f4a431063d427181e32ef730e726cb78c11996cd8a1d4abf093d23aace3 -->
+<!-- source-sha256: a376c91953f048e8ffeceffa3cb7008d29847ef64009069067d6c4b62d6b6698 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -18,7 +18,7 @@
 
 - **SCH-1** 각 도구는 document set을 [set 파일](dbspec.ko.md#document-sets)로만 받고 자기 client의 set reader로 읽는다. set 파일에 error가 있으면 도구는 모든 error를 출력하고 아무것도 쓰지 않는다. 그다음 각 도구는 나열된 모든 문서 파일을 자기 client의 file reader로 읽는다. reader는 dbspec signature로 시작하지 않는 파일을 parse 전에 `signature` error로 거부하며([파일](dbspec.md#files)), 그러면 도구는 `SCHEMA_INVALID`로 실패하고 모델을 쓰지 않는다.
 
-- **SCH-2** `github.com/polyspec/orm/packages/go` module은 그 package `generator`로 다른 프로그램에 Go 생성을 제공한다. `generator.Generate`는 document set의 runtime model, 출력 디렉터리, `PackageName`(기본값은 디렉터리 이름), 호출을 생성할 패키지 패턴인 `Scan`을 받는다. 이름 규칙, 필드 대응, 출력은 ORM generator가 책임진다.
+- **SCH-2** `github.com/polyspec/orm/legacy/packages/go` module은 그 package `generator`로 다른 프로그램에 Go 생성을 제공한다. `generator.Generate`는 document set의 runtime model, 출력 디렉터리, `PackageName`(기본값은 디렉터리 이름), 호출을 생성할 패키지 패턴인 `Scan`을 받는다. 이름 규칙, 필드 대응, 출력은 ORM generator가 책임진다.
 
 ## 2. 스키마 작업 {#_2-schema-operations}
 
@@ -53,7 +53,7 @@ PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/int
 - **SCH-6** SQLite Catalog 연결은 기존 regular database file을 요구하고 파일 자동 생성을 끈다. Catalog를 닫으면 소유한 database resource를 해제하고, 닫힌 뒤의 연산은 statement를 보내지 않고 `CATALOG_CLOSED`로 실패한다.
 
 - **SCH-6a** Catalog 연결은 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 요구다. 각 native package는 [인터페이스](interfaces.md)의 의미와 오류 코드를 따르는 `connect(dsn)`, `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 제공한다. 연산이나 owner case가 빠지면 feature는 미완료이며, 구현별 wrapper와 값 표현은 공통 결과, 검증, 오류, snapshot, 정리 동작을 바꾸지 않는다. Catalog 연결은 markdown DSN을 거부한다. Catalog feature의 database case는 모든 client에서 MySQL, PostgreSQL, SQLite를 대상으로 한다. 생성 컬럼은 default가 아니다: describe 결과에 default 식이 없고 default 표지는 false이며, 이는 PostgreSQL에서도 같다. PostgreSQL 카탈로그는 생성 식을 default와 같은 곳에 보관하기 때문이다.
-- **SCH-6b** `github.com/polyspec/orm/packages/go`의 SQLite grid 읽기는 query를 CTE로 감싸고, SQLite의 query flattener가 이를 접으므로 plan에 `MATERIALIZE`와 `CO-ROUTINE` 단계가 없고 안쪽 `ORDER BY`가 행을 정한다. 이는 Go 읽기에만 해당한다. 다른 runtime은 query를 감싸지 않는다.
+- **SCH-6b** `github.com/polyspec/orm/legacy/packages/go`의 SQLite grid 읽기는 query를 CTE로 감싸고, SQLite의 query flattener가 이를 접으므로 plan에 `MATERIALIZE`와 `CO-ROUTINE` 단계가 없고 안쪽 `ORDER BY`가 행을 정한다. 이는 Go 읽기에만 해당한다. 다른 runtime은 query를 감싸지 않는다.
 
 ## 4. 스키마 설치 {#_4-schema-installation}
 

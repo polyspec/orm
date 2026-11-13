@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // failingSQLiteConn is one connection of an in-memory database of the failing SQLite driver, whose failures a test injects;

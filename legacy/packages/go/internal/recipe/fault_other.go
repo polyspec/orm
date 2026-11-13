@@ -5,7 +5,7 @@ package recipe
 import (
 	"errors"
 
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // failNextRollback needs the test entry point, which only a build with the ormtest tag has (PRT-43).

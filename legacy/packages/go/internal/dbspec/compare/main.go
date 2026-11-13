@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/skeleton"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/skeleton"
 )
 
 type testCase struct {

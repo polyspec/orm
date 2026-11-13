@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Runtime-unique (FCV-14): only the Go grid read wraps a query in a CTE, and no public call reads its plan; the rows it returns

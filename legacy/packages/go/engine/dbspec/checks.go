@@ -3,7 +3,7 @@ package dbspec
 import (
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/internal/meet"
+	"github.com/polyspec/orm/legacy/packages/go/engine/internal/meet"
 )
 
 // checkTyper validates the types of one check predicate of table t and

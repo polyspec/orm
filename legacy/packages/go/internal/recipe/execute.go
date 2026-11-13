@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // executeRequest is db.execute (INT-76, DSL-113): it compiles the request of the step against the schema that the step names

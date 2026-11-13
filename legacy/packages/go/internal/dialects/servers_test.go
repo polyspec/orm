@@ -14,7 +14,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
-	"github.com/polyspec/orm/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
 )
 
 // Servers holds the administrative connections that create and drop the

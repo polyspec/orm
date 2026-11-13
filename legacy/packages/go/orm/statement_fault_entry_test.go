@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestStatementFaultEntry checks that FailNextStatement is present only in builds with the ormtest build tag

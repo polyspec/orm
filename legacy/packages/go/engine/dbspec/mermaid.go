@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // RuleMermaid is the diagnostic for a Mermaid line that import could not read (docs/spec/mermaid.md).

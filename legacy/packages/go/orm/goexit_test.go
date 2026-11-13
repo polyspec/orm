@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestTransactionRollsBackWhenTheCallbackLeaves checks a callback that ends

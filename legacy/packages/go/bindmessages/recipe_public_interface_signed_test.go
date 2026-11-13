@@ -4,10 +4,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/bindmodel"
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/bindmodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestRecipePublicInterfaceSignedNone runs the case of the signed limit, which Rust refuses at compile time, without a database

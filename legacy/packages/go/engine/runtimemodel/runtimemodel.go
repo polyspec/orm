@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
 )
 
 // Model is the runtime model of one document set.

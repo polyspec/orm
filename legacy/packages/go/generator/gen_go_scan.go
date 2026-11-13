@@ -342,7 +342,7 @@ func isOrmFunc(info *types.Info, e ast.Expr) bool {
 		return false
 	}
 	obj := info.Uses[sel.Sel]
-	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "github.com/polyspec/orm/packages/go/orm" {
+	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "github.com/polyspec/orm/legacy/packages/go/orm" {
 		return false
 	}
 	switch sel.Sel.Name {

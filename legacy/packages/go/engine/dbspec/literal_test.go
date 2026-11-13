@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestCanonicalLiteral checks CanonicalLiteral for every type with the

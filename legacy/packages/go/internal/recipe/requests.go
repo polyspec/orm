@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/internal/irwhere"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/internal/irwhere"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // hookRecord is one request that a record action of an installed hook saw (FCV-4, hook.records).

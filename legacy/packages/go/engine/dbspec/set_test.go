@@ -3,7 +3,7 @@ package dbspec
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestSetRoot covers the prefix and the root of step 1: no recipe step states the empty prefix of a set path in the working directory (FCV-2).

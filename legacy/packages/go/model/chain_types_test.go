@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/model"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestChainArgumentTypes type-checks calls of generated chain methods against the generated model, as the compiler
@@ -68,8 +68,8 @@ func TestChainArgumentTypes(t *testing.T) {
 
 // The import paths of the packages that a snippet type-checks against.
 const (
-	modelPath = "github.com/polyspec/orm/packages/go/model"
-	ormPath   = "github.com/polyspec/orm/packages/go/orm"
+	modelPath = "github.com/polyspec/orm/legacy/packages/go/model"
+	ormPath   = "github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 // loadModelTypes loads the types of the generated model and of the orm package, by import path.

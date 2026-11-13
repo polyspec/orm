@@ -15,9 +15,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/database"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // main ends with the exit code of run. os.Exit does not run defers, so it is not called inside run: a failed

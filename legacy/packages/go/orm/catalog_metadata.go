@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
 )
 
 // CatalogTableRef names a table by its namespace (the schema, or the database of MySQL) and its name.

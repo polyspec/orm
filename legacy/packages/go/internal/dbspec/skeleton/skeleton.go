@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
 )
 
 // Mermaid writes the tables, columns, primary keys and foreign keys that Mermaid carries, in table-name order; foreign key

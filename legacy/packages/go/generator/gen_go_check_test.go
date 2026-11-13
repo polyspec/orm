@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // requireCheck runs a Go generation check with the ./... scan and checks the

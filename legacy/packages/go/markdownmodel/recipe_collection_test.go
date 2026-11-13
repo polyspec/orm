@@ -3,8 +3,8 @@ package markdownmodel_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/internal/recipe"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/internal/recipe"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestRecipeCollectionNone runs the collection recipe, tests/collection/collection.json, without a database (FCV-3, FCV-4): the

@@ -5,7 +5,7 @@ package testmodel
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // Load returns the runtime model of one dbspec document; a document with

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // refusalChain is one use of the refusals of the case errors of the recipe conformance_verification, as source for the

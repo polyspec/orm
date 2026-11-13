@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/internal/message"
+	"github.com/polyspec/orm/legacy/packages/go/internal/message"
 )
 
 // SQLite catalog queries. They join sqlite_master with table-valued pragmas, to read every

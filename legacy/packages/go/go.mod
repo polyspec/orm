@@ -1,4 +1,4 @@
-module github.com/polyspec/orm/packages/go
+module github.com/polyspec/orm/legacy/packages/go
 
 go 1.27.3
 

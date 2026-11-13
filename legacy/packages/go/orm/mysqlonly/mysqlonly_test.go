@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Requirements: DIA-20.
@@ -53,7 +53,7 @@ func TestOpenWithoutDriverPackageNamesTheImport(t *testing.T) {
 		if orm.ErrorCode(err) != orm.CodeConfig {
 			t.Errorf("Connect(%q): %v, want CONFIG", dsn, err)
 		}
-		if want := `import _ "github.com/polyspec/orm/packages/go/orm/` + pkg + `"`; !strings.Contains(err.Error(), want) {
+		if want := `import _ "github.com/polyspec/orm/legacy/packages/go/orm/` + pkg + `"`; !strings.Contains(err.Error(), want) {
 			t.Errorf("Connect(%q): %v, does not name %s", dsn, err, want)
 		}
 	}

@@ -992,6 +992,7 @@ mod tests {
     // The wait before attempt n is 50 << (n - 1) milliseconds and the jitter (CORE-24).
     #[test]
     fn the_retry_wait_doubles() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(retry_wait(1, 0), std::time::Duration::from_millis(50));
         assert_eq!(retry_wait(2, 19), std::time::Duration::from_millis(119));
         assert_eq!(retry_wait(3, 0), std::time::Duration::from_millis(200));

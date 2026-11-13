@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestVectorLoadersRejectMalformedVectors checks that the engine test, when reading tests/dbspec vectors,

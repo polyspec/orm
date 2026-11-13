@@ -2,7 +2,6 @@ module github.com/polyspec/orm/examples
 
 go 1.27.3
 
-require github.com/polyspec/orm/packages/go v0.0.18
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect

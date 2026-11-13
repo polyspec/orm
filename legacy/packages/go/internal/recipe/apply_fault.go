@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // faultConn wraps a SQLite connection: read failAt of the SQLite master query fails with cause.

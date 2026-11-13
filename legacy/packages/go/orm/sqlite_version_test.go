@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 	sqlite3 "modernc.org/sqlite/lib"
 )
 

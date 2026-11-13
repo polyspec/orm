@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/plancases"
 )
 
 // The vector files as their schemas declare them (tests/dbspec/schema); readVectors has checked every field before it

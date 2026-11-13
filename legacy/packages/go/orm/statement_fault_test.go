@@ -8,8 +8,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // statementFaultFixture is contracts/fixtures/statement_fault.json. code and

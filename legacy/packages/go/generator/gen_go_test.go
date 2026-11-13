@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/testmodel"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testmodel"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // namesManifest is the runtime model of one dbspec document.
@@ -134,7 +134,7 @@ func TestScanGeneratesUsedMethods(t *testing.T) {
 	write("example/example.go", `package example
 
 import (
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 
 	"example.com/ormexample/model"
 )

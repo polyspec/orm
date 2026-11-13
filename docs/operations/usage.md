@@ -81,7 +81,7 @@ Every generator takes the document set as its [set file](../spec/dbspec.md#docum
 ```
 
 ```sh
-go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...
+go run github.com/polyspec/orm/legacy/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
 npx orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src
 orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out model --scan src
@@ -109,7 +109,7 @@ fn main() {
 - `--check` compares the output with the existing files without writing: `gen` of the `orm-gen` of each language that has one. The command prints `differs: <path>` for a file whose content differs, `missing: <path>` for a file that does not exist, and `extra: <path>` for a file of the output directory that holds the generated-code comment and that the generation no longer writes, ordered by path, and exits with status 1 when it prints a line. Current files print nothing and exit with status 0. Python writes one file, `models.py`, so its check prints `missing` or `differs` for it and has no `extra` line. Go `gen --check` runs the same scan as `gen` in a directory under the system temporary directory, so the model package keeps the name and import path of `--out`; its generation failures and status 3 are the same as those of `gen`. Rust generates its models in `build.rs` and has no `gen` command.
 
 ```sh
-go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/legacy/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A request whose `manifest_hash` differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`.
@@ -518,7 +518,7 @@ Python SQL connections can derive a cancellation handle with `db.with_future(fut
 
 | Client | Handle | Hook |
 |---|---|---|
-| Go | `h := db.WithRequestHook(hook)` | `func(r *ir.Request, addParam func(value any) int, params []any) error` of `orm.RequestHook`, which changes `r` in place and reads the bound values in `params`, a copy; `ir` is `github.com/polyspec/orm/packages/go/engine/ir` |
+| Go | `h := db.WithRequestHook(hook)` | `func(r *ir.Request, addParam func(value any) int, params []any) error` of `orm.RequestHook`, which changes `r` in place and reads the bound values in `params`, a copy; `ir` is `github.com/polyspec/orm/legacy/packages/go/engine/ir` |
 | PHP | `$h = $db->withRequestHook($hook)` | `\Closure(Polyspec\Orm\Request $r): void`, which changes `$r->ir` in place, adds a parameter with `$r->param($value)` and reads the bound values in `$r->params` |
 | Rust | `let h = db.with_request_hook(hook);` | `Fn(&mut polyspec_orm::ir::Request, &mut polyspec_orm::RequestParams) -> polyspec_orm::Result<()>`, which changes the request in place, adds a parameter with `params.add(value)` and reads a bound value with `params.get(index)` |
 | TypeScript | `const h = db.withRequestHook(hook)` | `(request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request` of `RequestHook`, which returns the request to plan and reads the bound values in `params`, a frozen copy |

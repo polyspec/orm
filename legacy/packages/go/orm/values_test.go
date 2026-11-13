@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestFuncIR checks the IR function name and the parameters of every value and column function of the DSL

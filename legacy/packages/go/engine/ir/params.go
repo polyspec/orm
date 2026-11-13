@@ -1,8 +1,8 @@
 package ir
 
 import (
-	"github.com/polyspec/orm/packages/go/engine/dialect"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dialect"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // ParamUse is one slot that a request parameter fills: the slot's logical type,

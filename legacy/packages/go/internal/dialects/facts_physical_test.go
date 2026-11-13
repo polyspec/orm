@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // probeDeadline bounds one probe, including its DDL and catalog queries.

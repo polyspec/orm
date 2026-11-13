@@ -6,10 +6,10 @@ package engine
 import (
 	"encoding/json"
 
-	"github.com/polyspec/orm/packages/go/engine/dialect"
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/planner"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dialect"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/planner"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 )
 
 // Engine binds a runtime model to a dialect.

@@ -26,14 +26,14 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
-	"github.com/polyspec/orm/packages/go/internal/testdb"
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/orm"
-	_ "github.com/polyspec/orm/packages/go/orm/pg"
-	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/legacy/packages/go/internal/testdb"
+	"github.com/polyspec/orm/legacy/packages/go/model"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/pg"
+	_ "github.com/polyspec/orm/legacy/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // schemaPath is the path of the recipe schema relative to the repository root; the `$schema` of a recipe names it by its

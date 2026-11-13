@@ -1,7 +1,7 @@
 // Package pg registers the PostgreSQL driver with the executor. Import it for
 // its side effect in a program that opens a "postgres" database:
 //
-//	import _ "github.com/polyspec/orm/packages/go/orm/pg"
+//	import _ "github.com/polyspec/orm/legacy/packages/go/orm/pg"
 //
 // It is a separate package so a MySQL-only program does not link pgx.
 package pg
@@ -21,8 +21,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn/ctxwatch"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 func init() {

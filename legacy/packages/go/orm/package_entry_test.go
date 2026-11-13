@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // TestExternalModuleCanImportClient checks the Go module package as a consumer receives it. A module of its own requires the
@@ -25,7 +25,7 @@ func TestExternalModuleCanImportClient(t *testing.T) {
 	if orm.IsDeadlock(nil) {
 		t.Fatal("nil error reported as a deadlock")
 	}
-	const modulePath = "github.com/polyspec/orm/packages/go"
+	const modulePath = "github.com/polyspec/orm/legacy/packages/go"
 	root := filepath.Join("..", "..", "..")
 	tracked := entryCommand(t, root, nil, "git", "ls-files", "-z", "--", "packages/go")
 	module := filepath.Join(t.TempDir(), "module")

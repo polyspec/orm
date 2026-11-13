@@ -2201,6 +2201,7 @@
         "legacy/packages/ts/tests/driver-error-lock-wait.mjs",
         "legacy/packages/ts/tests/transaction-flow.mjs",
         "packages/rust/tests/cases/transaction_flow.rs",
+        "packages/rust/tests/cases/transaction_end.rs",
         "legacy/packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
         "legacy/packages/ts/tests/sqlite-row-lock-restore.mjs",
         "legacy/packages/ts/tests/was-inserted.mjs",
@@ -10099,7 +10100,7 @@
         "legacy/packages/go/models.txt"
       ],
       "tests": [],
-      "command": "sh -c 'cd legacy/packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; node ../../tests/go-run.mts go-decimal-model github.com/polyspec/orm/packages/go/cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
+      "command": "sh -c 'cd legacy/packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; node ../../tests/go-run.mts go-decimal-model github.com/polyspec/orm/legacy/packages/go/cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
     },
     {
       "id": "go-markdown-model-generated",
@@ -10107,7 +10108,7 @@
         "legacy/packages/go/models.txt"
       ],
       "tests": [],
-      "command": "sh -c 'cd legacy/packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; node ../../tests/go-run.mts go-markdown-model github.com/polyspec/orm/packages/go/cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
+      "command": "sh -c 'cd legacy/packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; node ../../tests/go-run.mts go-markdown-model github.com/polyspec/orm/legacy/packages/go/cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
     },
     {
       "id": "php-markdown-model-generated",

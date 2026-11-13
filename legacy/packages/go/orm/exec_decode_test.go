@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/plan"
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // Requirements: INT-98a.

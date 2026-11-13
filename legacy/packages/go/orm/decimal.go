@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
 // NormalizeDecimal validates a decimal field value and pads it to the declared scale; a value outside it is

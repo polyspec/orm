@@ -3,7 +3,7 @@ package orm
 import (
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // A test of the private fetchKey of a model: a key callback whose result is not a key is refused.

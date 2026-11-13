@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/internal/dbspec/skeleton"
+	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/legacy/packages/go/internal/dbspec/skeleton"
 )
 
 // mermaidStep runs the dbspec.export_mermaid or dbspec.import_mermaid op of s (FCV-4) on the public Mermaid calls (DBS-169) and

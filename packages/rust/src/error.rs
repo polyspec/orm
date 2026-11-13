@@ -244,6 +244,7 @@ mod tests {
     // Requirements: CORE-12.
     #[test]
     fn the_message_is_the_kind_and_the_text() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(Error::no_rows().to_string(), "no_rows: query returned no rows");
         assert_eq!(Error::new(Kind::Busy, "x").to_string(), "busy: x");
     }
@@ -251,6 +252,7 @@ mod tests {
     // Requirements: CORE-25.
     #[test]
     fn a_failed_rollback_keeps_the_callback_failure_unopened() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let error = Error::rollback_failed(CallbackFailure::Kind(Error::new(Kind::Deadlock, "first")), Error::new(Kind::ConnectionLost, "gone"));
         assert_eq!(error.kind(), Kind::RollbackFailed);
         assert_eq!(error.to_string(), "rollback_failed: the rollback failed after the callback failed: connection_lost: gone");
@@ -260,6 +262,7 @@ mod tests {
 
     #[test]
     fn a_cleanup_failure_keeps_the_kind_of_the_operation() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let error = Error::cleanup(Error::new(Kind::Driver, "a"), vec![Error::new(Kind::ConnectionLost, "b")]);
         assert_eq!(error.kind(), Kind::Driver);
         assert_eq!(error.to_string(), "driver: a (cleanup failed: connection_lost: b)");

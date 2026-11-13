@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/testcase"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // searchConsumerImports is the consumer file that calls the producer's operator, after its package clause.
 const searchConsumerImports = `import (
 	"example.com/ormexample/producer"
-	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/legacy/packages/go/orm"
 )
 
 func Search(db *orm.DB) error {
