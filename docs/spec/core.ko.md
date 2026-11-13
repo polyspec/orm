@@ -213,11 +213,13 @@
 - **CORE-89** `key_name(column)`은 `gets`의 `Collection`과 그 `Query`의 `relations` 결과의 행을 primary key 대신 열
   `column`으로 key한다(DSL-70). 엔티티의 열이 아닌 이름은 다음 terminal에서 `config`이고 메시지는 `<column> is not a
   column of <entity>`다.
-- **CORE-90** `where_in(chain, query)`는 chain 이름 `chain`의 열(연산자가 없거나 `Ne`인 key 하나)이 열 하나를 읽는
-  subquery `query`의 행 안에 있다는, `Ne`이면 없다는 조건을 더한다(DSL-53). key 수나 연산자가 다른 chain은 다음
-  terminal에서 `config`이고 메시지는 `where_in takes a chain of one key with no operator or with Ne`다. subquery는 limit,
-  relation, lock, 그 열 하나 밖의 열을 받지 않으며, 그 밖의 것은 `ir_invalid`이고 메시지는 `subquery may not use limit,
-  relations, lock or columns`다.
+- **CORE-90** `where_in(chain, query)`는 chain 이름 `chain`의 열(연산자가 없거나 `Ne`인 key 하나)이 subquery `query`의
+  행 안에 있다는, `Ne`이면 없다는 조건을 더한다. subquery는 그 `add_column`이 더한 열 하나를 읽는다(DSL-53). `And`나
+  `Or`로 시작하는 이름은 그것을 앞선 조건에 잇는다. 다른 연산자의 chain은 `config`이고 메시지는 `a subquery is not
+  accepted by the <op> operator`이며, key가 더 많은 chain은 `config`이고 메시지는 `the condition expects <n> values`다.
+  그 열 하나가 없는 subquery는 `config`이고 메시지는 `a subquery model must add exactly one column with
+  add_column_<col>()`이며, 자기 relation이나 연결을 가진 subquery는 `config`이고, limit이나 lock을 가진 subquery는
+  `ir_invalid`이고 메시지는 `subquery may not use limit, relations, lock or columns`다. 각각 다음 terminal이 돌려준다.
 - **CORE-91** `Query`의 쓰기는 생성된 모델의 쓰기와 같다(DSL-100, DSL-103, DSL-106, DSL-108, DSL-110):
   `set(column, value)`는 다음 쓰기를 위해 열에 `orm_value`를 배정하고, `create`는 배정한 행을 넣고 만든 행을 돌려주며,
   `update`는 배정한 값을 행에 쓰고, `delete`는 행을 지우며, `expect_revision(column, revision)`은 다음 `update`나

@@ -3099,6 +3099,40 @@
             "path": "polyspec_orm::Query::key_name",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.where_in",
+          "name": [
+            "where",
+            "in"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "chain"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "query"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::where_in",
+            "receiver": "&mut self"
+          }
         }
       ]
     }
@@ -3254,6 +3288,11 @@
       "member": "query.key_name",
       "file": "contracts/interface/core.json",
       "group": "query.key_name"
+    },
+    {
+      "member": "query.where_in",
+      "file": "contracts/interface/core.json",
+      "group": "query.where_in"
     },
     {
       "alias": "orm_value",

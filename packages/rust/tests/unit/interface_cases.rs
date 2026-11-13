@@ -287,6 +287,13 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.key_name(&text(args, "column", member));
             Returned::Value(Value::Null)
         }
+        ("query.where_in", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "query", member), member)).await {
+            Instance::Query(sub) => {
+                query.where_in(&text(args, "chain", member), *sub);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: query is no query"),
+        },
         ("query.limit", Some(Instance::Query(query))) => {
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)

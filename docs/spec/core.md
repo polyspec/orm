@@ -248,10 +248,13 @@ the core that differ from the rules that the language implementations of `legacy
   by the column `column` in place of the primary key (DSL-70). A name that is no column of the entity is `config` at the
   next terminal with the message `<column> is not a column of <entity>`.
 - **CORE-90** `where_in(chain, query)` adds the condition that the column of the chain name `chain`, one key with no
-  operator or with `Ne`, is in, or with `Ne` is not in, the rows of the subquery `query`, which reads one column
-  (DSL-53). A chain of another key count or operator is `config` at the next terminal with the message `where_in
-  takes a chain of one key with no operator or with Ne`. The subquery takes no limit, relation, lock or columns other
-  than its one column; another is `ir_invalid` with the message `subquery may not use limit, relations, lock or columns`.
+  operator or with `Ne`, is in, or with `Ne` is not in, the rows of the subquery `query`, which reads the one column that
+  its `add_column` added (DSL-53); a name that starts with `And` or `Or` joins it to the conditions before it. A chain of
+  another operator is `config` with the message `a subquery is not accepted by the <op> operator`, and a chain of more
+  keys `config` with the message `the condition expects <n> values`. A subquery without its one column is `config` with
+  the message `a subquery model must add exactly one column with add_column_<col>()`, one with a relation or a connection
+  of its own is `config`, and one with a limit or a lock is `ir_invalid` with the message `subquery may not use limit,
+  relations, lock or columns`. Each is returned by the next terminal.
 - **CORE-91** The writes of a `Query`, as the writes of a generated model (DSL-100, DSL-103, DSL-106, DSL-108, DSL-110): `set(column, value)`
   assigns an `orm_value` to a column for the next write, `create` inserts the row of the assignments and returns the
   created row, `update` writes the assignments to the row, `delete` deletes the row, and `expect_revision(column,

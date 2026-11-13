@@ -21,6 +21,7 @@
 - `Query` of the Rust core chooses the columns that its rows read (OM-3.1-6, CORE-87): `add_all_columns` reads every column, `remove_all_columns` keeps the keys, and `add_column(column)` and `remove_column(column)` add and remove one column named as `value` names it; a name that is no column is `config` at the next terminal. The contract declares the four members with a case each.
 - `Query` of the Rust core attaches relation results (OM-3.1-7, CORE-88): `match_pair(pair)` adds a component of the relation key read by `split_pair`, `alias(name)` names the result, `relation(child)` and `relations(child)` attach the row or the rows of a separate query, and `related(name)` and `related_rows(name)` read them; a child keeps its own lock. A relation key of `Core` holds owned column names, so `Core::add_match` takes `&str`. The contract declares the six members with a case each.
 - `Query::key_name(column)` of the Rust core keys the collection of `gets` and the rows of a `relations` result by a column in place of the primary key, and a name that is no column is `config` at the next terminal (OM-3.1-8, CORE-89). The contract declares the member with a case.
+- `Query::where_in(chain, query)` of the Rust core compares the column of a chain name of one key with the rows of a subquery, `in` or with `Ne` `not in`, and refuses another operator, another key count and a subquery without its one column or with a limit, a lock, a relation or a connection of its own (OM-3.1-9, CORE-90). The contract declares the member with a case.
 
 ## 0.0.31
 

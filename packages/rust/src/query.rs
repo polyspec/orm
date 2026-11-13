@@ -6,10 +6,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
-use polyspec_orm_schema::chain::{parse_chain, parse_order, split_pair};
+use polyspec_orm_schema::chain::{parse_chain, parse_order, split_pair, ChainKey};
 
+use crate::args::Value;
 use crate::collection::{AnyCollection, Collection, Key};
-use crate::core::Core;
+use crate::core::{Arg, Core};
 use crate::db::Statement;
 use crate::model::{AnyModel, Boxed, LoadedEntity};
 use crate::value::Val;
@@ -55,27 +56,51 @@ impl Query {
     /// `And` or `Or` joins its first condition to the conditions before it with that connector. A refused name or
     /// number of values is `config` at the next terminal.
     pub fn where_chain(&mut self, chain: &str, values: Vec<OrmValue>) {
-        let (connector, name) = match (chain.strip_prefix("And"), chain.strip_prefix("Or")) {
-            (Some(rest), _) if starts_a_word(rest) => ("and", rest),
-            (_, Some(rest)) if starts_a_word(rest) => ("or", rest),
-            _ => ("", chain),
-        };
+        let (connector, name) = split_connector(chain);
         self.chain(connector, name, values);
     }
 
-    fn chain(&mut self, connector: &'static str, name: &str, values: Vec<OrmValue>) {
+    /// Adds the condition that the column of the chain name `chain`, one key with no operator or with `Ne`, is in, or
+    /// with `Ne` is not in, the rows of the subquery `query`, which reads one column that `add_column` added (CORE-90).
+    /// A name that starts with `And` or `Or` joins the condition to the conditions before it with that connector. A
+    /// refused chain or subquery is an error at the next terminal.
+    pub fn where_in(&mut self, chain: &str, query: Query) {
+        if let Some(error) = query.core.err() {
+            return self.core.fail_err(error);
+        }
+        let (connector, name) = split_connector(chain);
+        if let Some(keys) = self.parsed(name) {
+            self.core.chain_parsed(connector, &keys, vec![Arg::Value(Value::Sub(Box::new(query.core)))]);
+        }
+    }
+
+    /// The keys of the chain name `name`; a refused name fails the query with `config` (CORE-82).
+    fn parsed(&mut self, name: &str) -> Option<Vec<ChainKey>> {
         let manifest = match self.core.entity().schema().manifest() {
             Ok(manifest) => manifest,
-            Err(error) => return self.core.fail_err(error),
+            Err(error) => {
+                self.core.fail_err(error);
+                return None;
+            }
         };
         let entity = match manifest.entity(self.core.entity().name()) {
             Ok(entity) => entity,
-            Err(error) => return self.core.fail_err(error),
+            Err(error) => {
+                self.core.fail_err(error);
+                return None;
+            }
         };
-        let keys = match parse_chain(&manifest.model, entity, name) {
-            Ok(keys) => keys,
-            Err(message) => return self.core.fail(message),
-        };
+        match parse_chain(&manifest.model, entity, name) {
+            Ok(keys) => Some(keys),
+            Err(message) => {
+                self.core.fail(message);
+                None
+            }
+        }
+    }
+
+    fn chain(&mut self, connector: &'static str, name: &str, values: Vec<OrmValue>) {
+        let Some(keys) = self.parsed(name) else { return };
         if keys.len() != values.len() {
             return self.core.fail(format!("the condition expects {} values", keys.len()));
         }
@@ -304,6 +329,15 @@ impl Query {
     fn is_column(&self, name: &str) -> Result<bool> {
         let manifest = self.core.entity().schema().manifest()?;
         Ok(manifest.entity(self.core.entity().name())?.field(name).is_some())
+    }
+}
+
+/// The connector of a chain name that starts with `And` or `Or`, and the name after it (CORE-82).
+fn split_connector(chain: &str) -> (&'static str, &str) {
+    match (chain.strip_prefix("And"), chain.strip_prefix("Or")) {
+        (Some(rest), _) if starts_a_word(rest) => ("and", rest),
+        (_, Some(rest)) if starts_a_word(rest) => ("or", rest),
+        _ => ("", chain),
     }
 }
 
