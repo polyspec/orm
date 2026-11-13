@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 23c283a7dbf9408d421362ad99ca0f89f2e59c62173090716beb12ff016fd5ec -->
+<!-- source-sha256: dfc96a938883e1629297f67ec390b20bc409eb5d694585caf5cddc2616d66f1a -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -568,11 +568,14 @@ go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generat
 npm run typescript:test                                  # TypeScript client
 make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
-make orm-test-container KIND=mysql                           # config/containers.json의 이미지로 Apple container 안에 MySQL primary와 그 replica를 띄운다
+make orm-install-container-images                            # config/containers.json의 이미지를 container engine으로 pull한다. 이미지를 download하는 유일한 target이다
+make orm-test-container KIND=mysql                           # config/containers.json의 이미지로 MySQL primary와 그 replica를 bay의 Compose project로 띄운다. bay와 이 machine의 이미지가 필요하다
 . .runtime/containers/mysql.env                              # 그 서버의 DSN 변수. TEST_ENV를 읽는 대상은 TEST_ENV=.runtime/containers/mysql.env, MariaDB는 MARIADB_ENV를 받는다
-make orm-test-container-stop                                 # 이 checkout의 컨테이너와 데이터를 지운다
+make orm-test-container-stop                                 # 이 checkout의 project와 데이터를 지운다. kill된 run의 project도 포함한다
 make orm-test-container-run KIND=mysql RUN='make test-rust'  # 이 run만의 서버를 띄우고 그 변수로 RUN을 실행하며, RUN이 끝나거나 실패하거나 SIGINT나 SIGTERM을 받으면 지운다
 ```
+
+컨테이너 서버는 `bay`의 Compose project다(CONTRIBUTING.md, "컨테이너의 test database server"). start가 실패하면 먼저 그 출력을 읽는다. 출력에는 `bay up`의 출력과 각 service의 마지막 줄이 있다. `bay status`는 machine에서 도는 project를 나열한다. 이 checkout의 project 이름은 `orm-<checkout>-<run>`이고 그 file은 `.runtime/containers/<project>`에 있다. `bay check`는 machine 설정에서 없는 부분을 적고 `bay install`이 그것을 적용한다. 이 repository는 `bay install`도, machine 설정을 바꾸는 command도 실행하지 않는다.
 
 예제: [`examples/thin-slice`](../../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../../examples/complex)(조인·그룹·2단 관계·집계).
 
