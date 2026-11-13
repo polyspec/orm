@@ -63,6 +63,43 @@ No bench or decimal database is shared. `make check-run`, `make feature-owner-ch
 
 A client database case does not use the database that `ORM_TEST_MYSQL_DSN` or `ORM_TEST_POSTGRES_DSN` names and never assumes that it is empty. A case that checks an empty database or installs a schema creates its own database `orm_case_<pid>_<n>` through that DSN, or its own SQLite file `orm-case-<pid>-<n>.sqlite` in the temporary directory, and drops it when it ends, also after a failure; the user of the DSN needs the privilege to create databases. `make case-database-check` leaves a table in both shared databases, runs the model cases currently supported by Go, PHP, TypeScript, Python and Rust; PHP extension database cases remain separately tracked and fails unless they pass and leave the shared databases, their PostgreSQL schemas, the `orm_case_` databases and the `orm-case-` files as they were.
 
+## Test database servers in containers
+
+`make orm-test-container KIND=<mysql|postgres|mariadb>` and `make orm-test-container-run KIND=<kind> RUN='<command>'` start the servers of one kind as a Compose project that the program `bay` runs (`scripts/test-servers-container.mts`): on Apple `container` on macOS and on Docker on Linux. The script starts and removes the servers only through `bay up` and `bay down`. It runs the container engine only for the images, as the rule of the images below states.
+
+**The project of a run.** Each start creates the directory `.runtime/containers/<project>` of its checkout and writes `compose.yaml`, the TLS files and the initialization files of its servers into it. `<project>` is `orm-<checkout>-<run>`: `<checkout>` is the first 12 hexadecimal digits of the sha256 of the root of the checkout, and `<run>` is 8 random hexadecimal digits of that start. The Compose file names the project in its key `name`, because `bay` reads the project name only from that key or from the name of the directory. So two checkouts, and two runs of one checkout, never share a project, a container or a file. The directory is below the checkout, and not below the temporary directory of the system, so that `make orm-test-container-stop` finds the project of a run that was killed before it removed its servers.
+
+**The services.** A project has one service for each server, and no other service:
+
+| Kind | Services |
+|---|---|
+| `mysql` | `mysql`, the primary; `mysql-replica`, its read-only replica |
+| `postgres` | `postgres`, the primary; `postgres-replica`, its standby |
+| `mariadb` | `mariadb`, the primary |
+
+Each service names the image that `config/containers.json` pins by its digest, the port of its server in `expose`, and no key `ports`, so no port of the host is published. A check reaches a server at `<project>-<service>.container.test:<port>`, the name that `bay` gives a service, and every DSN of the environment names the server by that name. A server takes the settings of the native primary of `make orm-test-servers` (time zone, lower-case table names, binary log retention, InnoDB log space, and for PostgreSQL its WAL and its synchronous standby). Its data is in the writable layer of its container, so `bay down` removes the data with the container and no volume is left.
+
+**The setup of a server.** `bay` runs no command in a started container, so each step that prepares a server is a file of the directory `/docker-entrypoint-initdb.d` of its service, which the image runs once, before the server accepts connections over TCP:
+
+- the MySQL primary resets its binary log and then creates the databases `orm_test` and `orm_tools` and the accounts of the user `orm`, so its binary log holds these statements and none of the initialization of the image;
+- the MySQL replica names the primary as its replication source and persists `super_read_only` and `partial_revokes`; it starts after the primary is healthy, reads the binary log of the primary from its first file when its server starts, and so applies the databases and the accounts;
+- the PostgreSQL primary lets the role `orm` replicate and creates the databases `orm_test` and `orm_tools`; the standby starts after the primary is healthy, as a `pg_basebackup` of the primary through the slot `orm_replica`;
+- the MariaDB primary creates the databases and the accounts.
+
+**Readiness.** Each service declares a Compose `healthcheck` that runs the readiness program of its server inside the container, over TCP on 127.0.0.1, because the temporary server that an image starts to initialize a data directory listens only on its socket: `mysqladmin ping` for MySQL, `pg_isready` for PostgreSQL, and `healthcheck.sh --connect --innodb_initialized`, the script of the image, for MariaDB. A replica declares `depends_on` with the condition `service_healthy` on its primary. The servers are ready when `bay up` returns with exit status 0: the script waits for that process alone. It reads no log of a container, starts no timer and repeats no request. The interval (1 s), the time limit of one probe (5 s) and the count of probes (600) of a `healthcheck` are settings of the probe of `bay`, which requires a count; the count is set far above the time a start takes on a loaded machine, and a start that uses it up fails as an unhealthy service.
+
+**A run owns its servers.** `make orm-test-container-run` removes its project with `bay down`, and then the directory of the project, when its command ends or fails and when the run gets SIGINT or SIGTERM, which it forwards to its command. A start whose `bay up` fails prints the last lines of each service with `bay logs`, removes the project in the same way, and fails naming the project and the exit status. `make orm-test-container-stop` holds the exclusive lease of the servers of the checkout and removes every project of the checkout, the project of a killed run included; it never removes a project of another checkout.
+
+**The images.** No start downloads an image. `bay` has no command that pulls an image and no setting that refuses a pull, so before `bay up` the script asks the container engine of the platform (`CONTAINER_PROGRAM`: Apple `container` on macOS) whether each image of the project is on the machine (`image inspect`), and a start with an absent image fails naming the image and `make orm-install-container-images`. That target is the only command that pulls, and it pulls with the engine (`image pull`) until `bay` has a command for it.
+
+**The variables.** `make orm-test-container` writes `.runtime/containers/<kind>.env` after `bay up` returned, and `make orm-test-container-run` gives the same variables to its command and writes no file. The MySQL and PostgreSQL variables are those of the primary of `TEST_ENV`, the MariaDB variables those of the primary of `MARIADB_ENV`, with the replica DSN of MySQL and PostgreSQL. Each server has TLS with a certificate that the script issues for the start and that names the host name of the service: the TLS DSN connects to that name, the DSN with the second CA fails the chain, and the mismatch DSN connects to the IPv4 address that the host name resolves to, which the certificate does not name. No pooler is started, and no Unix socket of a server is on the host, because `bay` publishes none; their variables are absent, and a check that reads one fails naming the variable.
+
+**One start of a kind.** `make orm-test-container` refuses a kind that it has started in the checkout and that `make orm-test-container-stop` has not removed, because `.runtime/containers/<kind>.env` names one project. Runs of `make orm-test-container-run` are not counted: each has its own project and writes no shared file.
+
+**A missing program.** A start fails before it creates anything when `BAY_PROGRAM` or `CONTAINER_PROGRAM` names no program: the message names the path, what the program does for the script, and what provides it.
+
+`make orm-test-container-check` tests these rules against a stand-in `bay` and a stand-in container engine that each test writes, so it needs no container and no image.
+
 ## Interface changes
 
 Update the shared contract, generated artifacts, language clients, examples, and structure checks together. A client-only public feature is incomplete.
