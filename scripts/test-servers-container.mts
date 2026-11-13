@@ -361,11 +361,17 @@ function nodeVersion(): string {
 // directory of the run at RUN_MOUNT. It has no port, and restart "no" states that it is not started again. It keeps the
 // trust and the certificate of bay, as each service does, so its TLS DSNs name the authority that bay mounts in it. The
 // tools of the runner keep their files below the directory of the run (CARGO_HOME, RUSTUP_HOME), so removing the
-// directory removes them. A build of the Rust tests needs more memory than a server: 8g is the limit of the runner.
-function composeFile(kind: Kind, services: readonly Service[], form: Form): string {
+// directory removes them.
+//
+// The memory limit of a service is mem_limit, which the one who runs gives for the machine: limits.server for each
+// server, 4g without it, since mysqld is ended in the 1g that a container has by default, and limits.runner for the
+// runner, which has no limit of this repository, because the memory that a build needs depends on the count of its
+// jobs and on the machine. runnerAlone is the file of the first step of a run in the runner, which starts the runner
+// without the servers.
+function composeFile(kind: Kind, services: readonly Service[], form: Form, limits: Limits, runnerAlone = false): string {
   return yaml({
     services: {
-      ...Object.fromEntries(services.map(service => [service.name, {
+      ...Object.fromEntries((runnerAlone ? [] : services).map(service => [service.name, {
         image: image(kind),
         command: service.command,
         expose: [String(service.port)],
@@ -373,7 +379,7 @@ function composeFile(kind: Kind, services: readonly Service[], form: Form): stri
         tmpfs: [service.data],
         ...(service.init ? { volumes: [`./${service.name}-init:${INIT_MOUNT}:ro`] } : {}),
         cpus: '4',
-        mem_limit: '4g',
+        mem_limit: limits.server ?? '4g',
         ...(service.after === undefined ? {} : { depends_on: { [service.after]: { condition: 'service_healthy' } } }),
         healthcheck: { test: ['CMD', ...service.health], interval: '1s', timeout: '5s', retries: 10, start_period: '600s' },
       }])),
@@ -384,10 +390,25 @@ function composeFile(kind: Kind, services: readonly Service[], form: Form): stri
         restart: 'no',
         volumes: [`.:${RUN_MOUNT}`],
         cpus: '4',
-        mem_limit: '8g',
+        ...(limits.runner === undefined ? {} : { mem_limit: limits.runner }),
       } }),
     },
   });
+}
+
+// Limits are the memory limits that the one who runs gives: of each server and of the runner, as sizes of Compose.
+export interface Limits { server?: string; runner?: string }
+
+// Extra is what a run in the runner is given besides its command: a build command, which runs before the servers
+// start, and the count of the jobs of cargo in the runner.
+interface Extra { build?: readonly string[]; jobs?: number }
+
+// checked fails for a limit that is no size and a count of jobs that is no whole number above 0.
+function checked(limits: Limits, extra: Extra, form: Form): void {
+  for (const [what, size] of [['each server', limits.server], ['the runner', limits.runner]] as const)
+    if (size !== undefined && !/^[1-9]\d*[kmg]$/.test(size)) throw new TestServerError(`test-servers-container: the memory limit ${size} of ${what} is no size such as 2600m or 3g`, 2);
+  if (extra.jobs !== undefined && (!Number.isSafeInteger(extra.jobs) || extra.jobs < 1)) throw new TestServerError(`test-servers-container: the count of cargo jobs ${extra.jobs} is no whole number above 0`, 2);
+  if (form === 'host' && (extra.build !== undefined || extra.jobs !== undefined || limits.runner !== undefined)) throw new TestServerError('test-servers-container: a build command runs in the runner; run with FORM=runner, which also takes the jobs of cargo and the memory limit of the runner', 2);
 }
 
 // quote writes a word of sh that holds text as it is.
@@ -400,17 +421,29 @@ const words = (command: readonly string[]) => command.map(quote).join(' ');
 // the command of the run and removes the project at its end, at a failed step and on SIGINT, SIGTERM and SIGHUP, so a
 // run whose ssh connection ends removes its servers.
 //
-// A command that sh starts in the background ignores SIGINT, so the command of the run gets SIGTERM for each signal.
-// The address of the mismatch DSN is the first word that getent ahostsv4, which prints IPv4 addresses alone, prints for
-// the host name of the primary in the container of the primary.
-function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], steps: readonly Step[], primary: string, variables: Record<string, string>, command: readonly string[] | undefined): string {
+// A run in the runner starts in two steps, so that the installation and the build of the runner and the servers do
+// not hold memory at the same time: bay up starts the runner alone from compose.build.yaml, the runner is installed and
+// runs the build command when the run has one, and a second bay up, from compose.run.yaml, adds the servers and keeps
+// the runner, which that file declares as the first did. compose.yaml, which bay reads, is a copy of one of the two.
+//
+// A long command (the installation, the build, the command of the run) runs beside run.sh, which waits for it, so that
+// a signal ends it at once; a command that sh starts so ignores SIGINT, so it gets SIGTERM for each signal. The address
+// of the mismatch DSN is the first word that getent ahostsv4, which prints IPv4 addresses alone, prints for the host
+// name of the primary in the container of the primary.
+//
+// run.sh writes the time of each step to its output and to report/steps.log, and the highest memory and swap of the
+// runner, which the kernel keeps in memory.peak and memory.swap.peak of its cgroup, to report/ after the build and
+// before the project is removed. A kernel without these files leaves the failure of cat in steps.log, and the run goes on:
+// a measurement does not decide a run.
+function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], steps: readonly Step[], primary: string, variables: Record<string, string>, command: readonly string[] | undefined, build: boolean): string {
   const environment = Object.entries(variables).map(([name, value]) => {
     if (/['\n\r\\`]/.test(value) || /\$(?!\{(?:address|dir)\})/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a character that run.sh does not write: ${value}`);
     return `export ${name}='${value}'`;
   });
+  const runner = form === 'runner';
   const check = command === undefined ? ['say "this directory was written without a command; write a run with make orm-test-container-run"', 'exit 2']
-    : form === 'host' ? [`( . "$dir/servers.env" && exec ${words(command)} ) &`]
-      : [`b exec runner sh ${RUN_MOUNT}/runner-setup.sh >&2 || failed "$?" "bay exec runner sh ${RUN_MOUNT}/runner-setup.sh"`, `b exec runner sh ${RUN_MOUNT}/check.sh &`];
+    : [`at "the command of the run"`, runner ? `beside b exec runner sh ${RUN_MOUNT}/check.sh` : `beside sh -c '. "$1/servers.env" && shift && exec "$@"' sh "$dir" ${words(command)}`, 'status=$?'];
+  const logs = (names: readonly string[]) => names.map(name => `    say "the last lines of the service ${name}:"; b logs -n 50 ${quote(name)} >&2`).join('\n');
   return `#!/bin/sh
 # run.sh of the project ${at.name}: the ${kind} servers of a run in the form of the ${form}, written by
 # scripts/test-servers-container.mts. It needs sh and bay alone. BAY_COMMAND is the command of bay, of one or more words,
@@ -422,6 +455,7 @@ function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], s
 set -u
 dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd) || exit 1
 cd "$dir" || exit 1
+mkdir -p "$dir/report" || exit 1
 bay=\${BAY_COMMAND:-bay}
 project=${quote(at.name)}
 child=
@@ -429,7 +463,32 @@ child=
 say() { printf 'run.sh: %s\\n' "$*" >&2; }
 b() { $bay -p "$project" "$@"; }
 
+# at <step>: the time of a step, in the output and in report/steps.log.
+at() {
+  stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  say "$stamp $*"
+  printf '%s %s\\n' "$stamp" "$*" >> "$dir/report/steps.log"
+}
+
+# beside <command>: run a long command beside this file and wait for it, so that a signal ends it at once.
+beside() {
+  "$@" >&2 &
+  child=$!
+  wait "$child"
+  ended=$?
+  child=
+  return "$ended"
+}
+
+# peaks <suffix>: the highest memory and swap of the runner, from its cgroup.
+peaks() {
+${runner ? `  for peak in memory.peak memory.swap.peak; do
+    b exec runner cat "/sys/fs/cgroup/$peak" > "$dir/report/runner-$peak$1" 2>> "$dir/report/steps.log" || say "the runner has no /sys/fs/cgroup/$peak; report/steps.log has the output of cat"
+  done` : '  :'}
+}
+
 down() {
+  at "bay down"
   b down >&2 || { say "bay down of $project exited with $?; the project is not removed"; return 1; }
   : > "$dir/removed"
 }
@@ -437,6 +496,7 @@ down() {
 # failed <status> <what>: a step that failed removes the project and ends the run with its status.
 failed() {
   say "$2 of $project exited with $1"
+  peaks ''
   down
   exit "$1"
 }
@@ -446,7 +506,7 @@ contract() {
   command -v "$1" >/dev/null 2>&1 || { say "$1 is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND"; exit 1; }
   stated=$($bay version) || { say "$bay version exited with $?"; exit 1; }
   say "$stated"
-  mkdir -p "$dir/report" && printf '%s\\n' "$stated" > "$dir/report/bay-version"
+  printf '%s\\n' "$stated" > "$dir/report/bay-version"
   case "$stated" in
     *' schema ${SCHEMA}') ;;
     *) say "bay version reports another contract schema version than ${SCHEMA}, for which this file is written: $stated; install a bay of that contract"; exit 1 ;;
@@ -455,15 +515,29 @@ contract() {
 
 up() {
   contract
-  b images >&2 || { say "an image of $project is not on this machine; run make orm-install-container-images, which pulls the images of config/containers.json, or sh $dir/run.sh pull"; exit 1; }
+${runner ? '  cp "$dir/compose.run.yaml" "$dir/compose.yaml" || exit 1\n' : ''}  b images >&2 || { say "an image of $project is not on this machine; run make orm-install-container-images, which pulls the images of config/containers.json, or sh $dir/run.sh pull"; exit 1; }
   rm -f "$dir/removed"
   : > "$dir/started"
+${runner ? `  cp "$dir/compose.build.yaml" "$dir/compose.yaml" || exit 1
+  at "bay up of the runner"
   b up -no-pull >&2 || {
     status=$?
-${services.map(service => `    say "the last lines of the service ${service.name}:"; b logs -n 50 ${quote(service.name)} >&2`).join('\n')}
+${logs(['runner'])}
+    failed "$status" "bay up of the runner"
+  }
+  at "the installation of the runner"
+  beside b exec runner sh ${RUN_MOUNT}/runner-setup.sh || failed "$?" "bay exec runner sh ${RUN_MOUNT}/runner-setup.sh"
+${build ? `  at "the build command"
+  beside b exec runner sh ${RUN_MOUNT}/build.sh || failed "$?" "bay exec runner sh ${RUN_MOUNT}/build.sh"
+  peaks .build
+` : ''}  cp "$dir/compose.run.yaml" "$dir/compose.yaml" || failed 1 "the copy of compose.run.yaml"
+` : ''}  at "bay up of the servers"
+  b up -no-pull >&2 || {
+    status=$?
+${logs(services.map(service => service.name))}
     failed "$status" "bay up"
   }
-${steps.map(step => `  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${quote(`bay exec ${step.service} ${step.command.join(' ')}`)}`).join('\n')}
+${steps.map(step => `  at ${quote(`bay exec ${step.service} ${step.command[0] ?? ''}`)}\n  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${quote(`bay exec ${step.service} ${step.command.join(' ')}`)}`).join('\n')}
   resolved=$(b exec ${quote(kind)} getent ahostsv4 ${quote(primary)}) || failed "$?" ${quote(`bay exec ${kind} getent ahostsv4 ${primary}`)}
   address=\${resolved%%[!0-9.]*}
   case "$address" in
@@ -479,24 +553,21 @@ ENVIRONMENT
 interrupted() {
   trap '' INT TERM HUP
   if [ -n "$child" ]; then kill -s TERM "$child" 2>/dev/null; wait "$child"; fi
-  down
+  if [ -e "$dir/started" ]; then peaks ''; down; fi
   exit "$1"
 }
 
 case "\${1:-}" in
   up) up ;;
   down) down ;;
-  pull) contract; b pull >&2 || { status=$?; say "bay pull of $project exited with $status"; exit "$status"; } ;;
+  pull) contract; ${runner ? 'cp "$dir/compose.run.yaml" "$dir/compose.yaml" || exit 1; ' : ''}b pull >&2 || { status=$?; say "bay pull of $project exited with $status"; exit "$status"; } ;;
   '')
     trap 'interrupted 130' INT
     trap 'interrupted 143' TERM
     trap 'interrupted 129' HUP
     up
     ${check.join('\n    ')}
-    child=$!
-    wait "$child"
-    status=$?
-    child=
+    peaks ''
     down || exit 1
     exit "$status"
     ;;
@@ -511,8 +582,10 @@ esac
 //
 // lld is the linker of the Rust builds of the runner: with the default linker a build of the tests on a machine with
 // 3.7 GiB of memory took 30 minutes and 3.0 GiB of swap, and with lld 16 minutes and 0.86 GiB. The setting is the
-// config.toml of the CARGO_HOME of the runner, so no run of the host reads it.
-function setupFile(): string {
+// config.toml of the CARGO_HOME of the runner, so no run of the host reads it. jobs, when the run is given it, is the
+// count of the jobs of cargo there: the highest memory of a build grows with it, so the one who runs sets it for the
+// machine, and this repository holds no value of it.
+function setupFile(jobs: number | undefined): string {
   const { packages, node, rustup } = runner();
   const version = nodeVersion();
   // PLATFORMS are the names of nodejs.org for the processors that uname -m names.
@@ -558,7 +631,9 @@ cat > "$CARGO_HOME/config.toml" <<'CARGO'
 [target.aarch64-unknown-linux-gnu]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]${jobs === undefined ? '' : `
+[build]
+jobs = ${jobs}`}
 CARGO
 cat > "$run/runner.env" <<TOOLS
 export PATH='$run/node/bin:$CARGO_HOME/bin:$PATH'
@@ -601,6 +676,21 @@ exit "$(cat "$run/report/status")"
 `;
 }
 
+// buildFile is build.sh, which runs the build command of a run in the runner, in the clone, with the tools of the runner
+// and without the variables of the servers, which are not up. Its output is also report/build.log and its exit status
+// report/build-status.
+function buildFile(command: readonly string[]): string {
+  return `#!/bin/sh
+# build.sh: the build command of the run in the service runner, written by scripts/test-servers-container.mts.
+run=${RUN_MOUNT}
+. "$run/runner.env"
+export ORM_RUN_REPORT="$run/report"
+cd "$run/repo" || exit 1
+{ ( ${words(command)} ); echo "$?" > "$run/report/build-status"; } 2>&1 | tee "$run/report/build.log"
+exit "$(cat "$run/report/build-status")"
+`;
+}
+
 // Written is what the directory of a run was written with.
 interface Written extends At { kind: Kind; form: Form }
 
@@ -610,7 +700,8 @@ type Plan = (at: At) => string;
 // write writes the directory of a run and returns its project. The plan is that of the machine that runs the directory,
 // so the Compose file is written once for the plan, with no host name, and once with the host names of the plan, which
 // the standby of PostgreSQL names in its command. A write that fails removes the directory.
-function write(kind: Kind, context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; other: string; authority: (planned: Planned) => string }): Written {
+function write(kind: Kind, context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; other: string; authority: (planned: Planned) => string }, limits: Limits = {}, extra: Extra = {}): Written {
+  checked(limits, extra, form);
   const dirs = folders(context.root);
   mkdirSync(dirs.leases, { recursive: true });
   const name = `orm-${checkout(context.root)}-${randomBytes(4).toString('hex')}`;
@@ -618,7 +709,7 @@ function write(kind: Kind, context: Context, form: Form, command: readonly strin
   mkdirSync(at.dir);
   try {
     const file = join(at.dir, 'compose.yaml');
-    writeFileSync(file, composeFile(kind, SERVERS[kind].services(() => 'unplanned.invalid'), form));
+    writeFileSync(file, composeFile(kind, SERVERS[kind].services(() => 'unplanned.invalid'), form, limits));
     const stated = planned(plan(at), kind);
     const { host } = stated;
     const services = SERVERS[kind].services(host);
@@ -630,15 +721,18 @@ function write(kind: Kind, context: Context, form: Form, command: readonly strin
       writeFileSync(join(init, service.init.file), service.init.text);
       chmodSync(join(init, service.init.file), 0o644);
     }
-    writeFileSync(file, composeFile(kind, services, form));
+    writeFileSync(file, composeFile(kind, services, form, limits));
     // The second CA signs nothing: the DSN that names it fails the chain of the certificate of the server.
     issueTls(join(at.dir, 'tls'), []);
     const variables = SERVERS[kind].variables({ host, ipv4: '${address}', authority: place.authority(stated), other: place.other, leases: place.leases });
-    writeFileSync(join(at.dir, 'run.sh'), runFile(at, kind, form, services, SERVERS[kind].steps(host), host(kind), variables, command));
+    writeFileSync(join(at.dir, 'run.sh'), runFile(at, kind, form, services, SERVERS[kind].steps(host), host(kind), variables, command, extra.build !== undefined));
     if (form === 'runner') {
       if (command === undefined) throw new TestServerError('test-servers-container: a run in the runner needs a command');
-      writeFileSync(join(at.dir, 'runner-setup.sh'), setupFile());
+      writeFileSync(join(at.dir, 'compose.run.yaml'), composeFile(kind, services, form, limits));
+      writeFileSync(join(at.dir, 'compose.build.yaml'), composeFile(kind, services, form, limits, true));
+      writeFileSync(join(at.dir, 'runner-setup.sh'), setupFile(extra.jobs));
       writeFileSync(join(at.dir, 'check.sh'), checkFile(command));
+      if (extra.build !== undefined) writeFileSync(join(at.dir, 'build.sh'), buildFile(extra.build));
       bundle(context.root, join(at.dir, 'repo.bundle'));
     }
     return at;
@@ -711,7 +805,7 @@ const claim = (dir: string, kind: Kind) => join(dir, `${kind}.project`);
 
 // start starts the servers of a kind for the checkout of context, writes the environment file of the kind, and returns
 // its variables. It refuses a kind that is started in the checkout, because the environment file names one project.
-export async function start(kind: Kind, context: Context): Promise<Record<string, string>> {
+export async function start(kind: Kind, context: Context, limits: Limits = {}): Promise<Record<string, string>> {
   const { dir, leases } = folders(context.root);
   mkdirSync(dir, { recursive: true });
   try {
@@ -722,7 +816,7 @@ export async function start(kind: Kind, context: Context): Promise<Record<string
   }
   try {
     contract(context);
-    const at = write(kind, context, 'host', undefined, localPlan(context), hostPlace(leases));
+    const at = write(kind, context, 'host', undefined, localPlan(context), hostPlace(leases), limits);
     const ended = await execute(context, at, 'up');
     if (ended.code !== 0) {
       // run.sh removed the project when a step failed after bay up; a part that failed before it started nothing.
@@ -763,8 +857,13 @@ export interface RunOptions { signals?: Signals; started?: () => void }
 export interface Ended { code: number | null; signal: NodeJS.Signals | null }
 
 // RunForm is how a run runs its command: in the runner instead of on the host, and with its directory kept at its end,
-// so that a later sh run.sh of that directory finds the installed tools and the build of the commit.
-export interface RunForm { runner?: boolean; keep?: boolean }
+// so that a later sh run.sh of that directory finds the installed tools and the build of the commit; with a build
+// command, which runs in the runner before the servers start; with a count of the jobs of cargo in the runner; and with
+// the memory limits of the runner and of each server.
+export interface RunForm { runner?: boolean; keep?: boolean; build?: readonly string[]; jobs?: number; runnerMemory?: string; serverMemory?: string }
+
+const limitsOf = (form: RunForm): Limits => ({ ...(form.runnerMemory === undefined ? {} : { runner: form.runnerMemory }), ...(form.serverMemory === undefined ? {} : { server: form.serverMemory }) });
+const extraOf = (form: RunForm): Extra => ({ ...(form.build === undefined ? {} : { build: form.build }), ...(form.jobs === undefined ? {} : { jobs: form.jobs }) });
 
 // run writes the directory of a run of a kind and runs its run.sh, which starts the servers, runs the command with
 // their variables, and removes the project when the command ends or fails, or when the run gets SIGINT or SIGTERM,
@@ -782,7 +881,7 @@ export async function run(kind: Kind, command: readonly string[], context: Conte
   try {
     contract(context);
     const { leases } = folders(context.root);
-    const at = write(kind, context, options.runner ? 'runner' : 'host', command, localPlan(context), options.runner ? RUNNER_PLACE : hostPlace(leases));
+    const at = write(kind, context, options.runner ? 'runner' : 'host', command, localPlan(context), options.runner ? RUNNER_PLACE : hostPlace(leases), limitsOf(options), extraOf(options));
     const ended = await execute(context, at, undefined, kill => { send = kill; if (received !== undefined) kill(received); }, options.started);
     finish(at, options.keep === true);
     return received !== undefined ? { code: null, signal: received } : { code: ended.code, signal: ended.signal };
@@ -804,7 +903,7 @@ function finish(at: At, keep: boolean): void {
 
 // Remote is a run on another machine: the host that ssh names, the directory there that receives the directory of the
 // run, the command of bay there (bay of PATH without it), and whether the run pulls the images first.
-export interface Remote { host: string; directory: string; bay?: string; keep?: boolean; pull?: boolean }
+export interface Remote extends RunForm { host: string; directory: string; bay?: string; pull?: boolean }
 
 // remote runs a kind in the runner on another machine, whose host needs sh and bay alone. It writes the directory with
 // the plan of the bay of that machine, sends it as a tar archive through ssh, runs ssh <host> sh <directory>/run.sh,
@@ -847,7 +946,7 @@ export function remote(kind: Kind, command: readonly string[], context: Context,
     const printed = program(ssh, [where.host, `cd ${quote(there)} && ${theirs} -p ${quote(planning.name)} plan --json`], ['ignore', 'pipe', 2]);
     if (printed.status !== 0) throw new TestServerError(`test-servers-container: bay plan --json of ${planning.name} on ${where.host} exited with ${printed.status ?? printed.signal}`);
     return printed.stdout;
-  }, RUNNER_PLACE);
+  }, RUNNER_PLACE, limitsOf(where), extraOf(where));
   const target = `${where.directory}/${at.name}`;
   try {
     send(at.dir, target);
@@ -941,19 +1040,30 @@ if (import.meta.main) {
     if (!program) throw new TestServerError('test-servers-container: BAY_COMMAND is unset; run this through make, which names the command of bay');
     const context: Context = { root: REPOSITORY, bay: program };
     const { dir, leases } = folders(REPOSITORY);
-    const usage = new TestServerError('usage: test-servers-container.mts start <kind> | run <kind> [--runner] [--keep] -- <command> [argument...] | remote <kind> <host> <directory> [--keep] [--pull] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb', 2);
+    const usage = new TestServerError('usage: test-servers-container.mts start <kind> [--server-memory=<size>] | run <kind> [--runner] [--keep] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | remote <kind> <host> <directory> [--keep] [--pull] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb', 2);
     const separator = rest.indexOf('--');
     const [options, words] = separator < 0 ? [rest, []] : [rest.slice(0, separator), rest.slice(separator + 1)];
     const flags = options.filter(option => option.startsWith('--'));
     const names = options.filter(option => !option.startsWith('--'));
-    const allowed = (...known: string[]) => flags.every(flag => known.includes(flag));
-    if (command === 'start' && isKind(kind) && rest.length === 0) {
-      await start(kind, context);
+    const allowed = (...known: string[]) => flags.every(flag => known.includes(flag.split('=')[0] ?? ''));
+    const value = (name: string) => flags.find(flag => flag.startsWith(`${name}=`))?.slice(name.length + 1);
+    // BUILD of make reaches this script as ORM_CONTAINER_BUILD, a shell command as RUN is.
+    const built = process.env['ORM_CONTAINER_BUILD'];
+    const form = (): RunForm => ({
+      keep: flags.includes('--keep'),
+      ...(built ? { build: ['/bin/sh', '-c', built] } : {}),
+      ...(value('--jobs') === undefined ? {} : { jobs: Number(value('--jobs')) }),
+      ...(value('--runner-memory') === undefined ? {} : { runnerMemory: value('--runner-memory') ?? '' }),
+      ...(value('--server-memory') === undefined ? {} : { serverMemory: value('--server-memory') ?? '' }),
+    });
+    const sizes = ['--jobs', '--runner-memory', '--server-memory'];
+    if (command === 'start' && isKind(kind) && words.length === 0 && names.length === 0 && allowed('--server-memory')) {
+      await start(kind, context, limitsOf(form()));
       console.log(`test-servers-container: ${kind} is started; its environment file is ${join(dir, `${kind}.env`)}`);
-    } else if (command === 'run' && isKind(kind) && words.length > 0 && names.length === 0 && allowed('--runner', '--keep'))
-      process.exitCode = exitCode(await run(kind, words, context, { runner: flags.includes('--runner'), keep: flags.includes('--keep') }));
-    else if (command === 'remote' && isKind(kind) && words.length > 0 && names.length === 2 && allowed('--keep', '--pull'))
-      process.exitCode = remote(kind, words, context, { host: names[0] ?? '', directory: names[1] ?? '', keep: flags.includes('--keep'), pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
+    } else if (command === 'run' && isKind(kind) && words.length > 0 && names.length === 0 && allowed('--runner', '--keep', ...sizes))
+      process.exitCode = exitCode(await run(kind, words, context, { ...form(), runner: flags.includes('--runner') }));
+    else if (command === 'remote' && isKind(kind) && words.length > 0 && names.length === 2 && allowed('--keep', '--pull', ...sizes))
+      process.exitCode = remote(kind, words, context, { ...form(), host: names[0] ?? '', directory: names[1] ?? '', pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
     else if (command === 'stop' && kind === undefined) {
       mkdirSync(leases, { recursive: true });
       holdExclusiveLease(leases);

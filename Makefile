@@ -1720,8 +1720,12 @@ orm-test-mysql-privilege-start:
 # it. make orm-test-container-run KIND=<kind> RUN='<command>' starts the servers for that run alone, runs the shell command
 # RUN with the variables of the servers, and removes the project when RUN ends or fails, or when the run gets SIGINT or
 # SIGTERM. RUN is a process of this host; with FORM=runner it runs in the service runner of the project, from a clone of
-# the commit of this checkout, and uses no tool of this host. KEEP=1 keeps the directory of the run, with the tools and
-# the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
+# the commit of this checkout, and uses no tool of this host. A run in the runner starts the runner alone, installs it,
+# runs the shell command BUILD when it is given, and only then starts the servers, so that the build and the servers do
+# not hold memory at the same time. CARGO_BUILD_JOBS is the count of the jobs of cargo in the runner, and RUNNER_MEMORY
+# and SERVER_MEMORY are the memory limits of the runner and of each server (sizes of Compose, such as 2600m); the one
+# who runs gives them for the machine, and this file holds no value of them. KEEP=1 keeps the directory of the run,
+# with the tools and the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
 # RUN='<command>' HOST=<ssh host> REMOTE=<directory there> runs the form of the runner on another machine, whose host
 # has sh and bay alone: it sends the directory, runs run.sh there through ssh, brings the report back under
 # .runtime/containers/reports and removes the directory there; PULL=1 pulls the images there first.
@@ -1748,15 +1752,17 @@ orm-install-bay-machine:
 	$(BAY_COMMAND) install
 	$(BAY_COMMAND) check -scope run
 
+CONTAINER_LIMITS = $(if $(CARGO_BUILD_JOBS),--jobs=$(CARGO_BUILD_JOBS)) $(if $(RUNNER_MEMORY),--runner-memory=$(RUNNER_MEMORY)) $(if $(SERVER_MEMORY),--server-memory=$(SERVER_MEMORY))
 orm-test-container:
-	$(CONTAINER_SERVERS) start $(KIND)
+	$(CONTAINER_SERVERS) start $(KIND) $(if $(SERVER_MEMORY),--server-memory=$(SERVER_MEMORY))
 
 orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_RUN = $(value RUN)
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_BUILD = $(value BUILD)
 orm-test-container-run:
-	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-remote:
-	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)
