@@ -431,6 +431,12 @@ caseTest('a run in the runner has the service runner, installs it from a bundle 
       for (const part of ['apt-get install -y --no-install-recommends git make gcc g++ curl ca-certificates', ' lld ', 'sha256sum -c', 'https://nodejs.org/dist/v', 'https://static.rust-lang.org/rustup/archive/',
         'rustflags = ["-C", "link-arg=-fuse-ld=lld"]', 'cat > "$CARGO_HOME/config.toml"', 'git -C "$run/repo" fetch -q "$run/repo.bundle" HEAD', 'make install-tools TOOLS=npm\nmake install-packages\nmake install-tools\nrustup toolchain install'])
         assert.ok(setup.includes(part), `runner-setup.sh misses ${part}`);
+      // sh reads each written file: a file with a syntax error fails here and not in a container.
+      for (const name of ['run.sh', 'runner-setup.sh', 'check.sh']) {
+        const read = spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)], { encoding: 'utf8' });
+        assert.equal(read.status, 0, `sh does not read ${name}: ${read.stderr}`);
+      }
+      assert.match(setup, /^ {2}aarch64\) platform=linux-arm64 node_sum=[0-9a-f]{64} rustup_sum=[0-9a-f]{64} ;;$/m, 'runner-setup.sh pins no file of a processor');
       const bundled = spawnSync('git', ['bundle', 'verify', join(containers(context.root), project, 'repo.bundle')], { cwd: context.root, encoding: 'utf8' });
       assert.equal(bundled.status, 0, `repo.bundle is no bundle of the commit: ${bundled.stderr}`);
       assert.ok(file(context.root, project, 'check.sh').includes(`( 'make' 'CASES=a '\\''quoted'\\'' case' 'test-rust' )`), 'check.sh does not run the command of the run as it was given');

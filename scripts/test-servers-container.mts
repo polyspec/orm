@@ -485,7 +485,13 @@ esac
 function setupFile(): string {
   const { packages, node, rustup } = runner();
   const version = nodeVersion();
-  const cases = (sums: Record<string, string>) => Object.entries(sums).map(([processor, sum]) => `    ${processor}) echo ${sum} ;;`).join('\n');
+  // PLATFORMS are the names of nodejs.org for the processors that uname -m names.
+  const PLATFORMS: Record<string, string> = { aarch64: 'linux-arm64', x86_64: 'linux-x64' };
+  const processors = Object.keys(node).map(processor => {
+    const [platform, rustupSum] = [PLATFORMS[processor], rustup.sha256[processor]];
+    if (platform === undefined || rustupSum === undefined) throw new TestServerError(`test-servers-container: config/containers.json pins the node of the processor ${processor}, for which it pins no rustup or this script knows no platform of nodejs.org`);
+    return `  ${processor}) platform=${platform} node_sum=${node[processor]} rustup_sum=${rustupSum} ;;`;
+  });
   return `#!/bin/sh
 # runner-setup.sh: the installation of the service runner, written by scripts/test-servers-container.mts.
 set -eu
@@ -495,14 +501,10 @@ apt-get update
 apt-get install -y --no-install-recommends ${packages.join(' ')}
 
 processor=$(uname -m)
-sum() {
-  found=$(case "$processor" in
-$1
-    *) ;;
-  esac)
-  [ -n "$found" ] || { echo "runner-setup.sh: config/containers.json pins no file of $2 for the processor $processor" >&2; exit 1; }
-  echo "$found"
-}
+case "$processor" in
+${processors.join('\n')}
+  *) echo "runner-setup.sh: config/containers.json pins no file for the processor $processor" >&2; exit 1 ;;
+esac
 # fetch <url> <sha256> <file>: a downloaded file is used only when it has the pinned sha256.
 fetch() {
   curl -fsSL -o "$3" "$1"
@@ -510,14 +512,13 @@ fetch() {
 }
 
 if [ ! -x "$run/node/bin/node" ]; then
-  case "$processor" in aarch64) platform=linux-arm64 ;; x86_64) platform=linux-x64 ;; *) platform=$processor ;; esac
-  fetch "https://nodejs.org/dist/v${version}/node-v${version}-$platform.tar.xz" "$(sum '${cases(node)}' node)" "$run/node.tar.xz"
+  fetch "https://nodejs.org/dist/v${version}/node-v${version}-$platform.tar.xz" "$node_sum" "$run/node.tar.xz"
   mkdir -p "$run/node"
   tar -xJf "$run/node.tar.xz" --strip-components=1 -C "$run/node"
   rm "$run/node.tar.xz"
 fi
 if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
-  fetch "https://static.rust-lang.org/rustup/archive/${rustup.version}/$processor-unknown-linux-gnu/rustup-init" "$(sum '${cases(rustup.sha256)}' rustup)" "$run/rustup-init"
+  fetch "https://static.rust-lang.org/rustup/archive/${rustup.version}/$processor-unknown-linux-gnu/rustup-init" "$rustup_sum" "$run/rustup-init"
   chmod +x "$run/rustup-init"
   "$run/rustup-init" -y --no-modify-path --default-toolchain none
   rm "$run/rustup-init"
