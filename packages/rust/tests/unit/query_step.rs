@@ -53,7 +53,10 @@ async fn account_db(scratch: &Scratch, schema: &Schema) -> Db {
 /// The outcome of the step `step` that `runner` ran, as JSON.
 async fn run(runner: &mut StepRunner, step: &Value) -> Value {
     let outcome = runner.run(&step.to_string()).await;
-    serde_json::from_str(&outcome).unwrap_or_else(|error| panic!("the outcome {outcome} is no JSON: {error}"))
+    match serde_json::from_str(&outcome) {
+        Ok(value) => value,
+        Err(error) => panic!("the outcome {outcome} is no JSON: {error}"),
+    }
 }
 
 fn query_step(query: Value, terminal: &str) -> Value {
@@ -176,7 +179,11 @@ async fn a_step_that_the_runner_cannot_read_returns_its_kind() {
             "config",
         ),
         ("an entity of no table", query_step(json!({"entity": "ledger", "calls": []}), "get"), "entity_unknown"),
-        ("a chain of no column", query_step(json!({"entity": "account", "calls": [{"call": "where", "chain": "Missing", "values": [int64(1)]}]}), "get"), "config"),
+        (
+            "a chain of no column",
+            query_step(json!({"entity": "account", "calls": [{"call": "where", "chain": "Missing", "values": [int64(1)]}]}), "get"),
+            "config",
+        ),
     ] {
         let outcome = run(&mut runner, &step).await;
         assert_eq!(error_kind(&outcome), kind, "{what}: {outcome}");

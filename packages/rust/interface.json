@@ -3312,6 +3312,98 @@
           }
         }
       ]
+    },
+    {
+      "id": "step_runner",
+      "name": [
+        "step",
+        "runner"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "core_type": "polyspec_orm::StepRunner",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "step_runner.new",
+          "name": [
+            "new"
+          ],
+          "kind": "static",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "schema"
+              ],
+              "type": {
+                "unit": "schema"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "connection"
+              ],
+              "type": {
+                "unit": "connection"
+              },
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "step_runner"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::StepRunner::new"
+          }
+        },
+        {
+          "id": "step_runner.run",
+          "name": [
+            "run"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "step"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::StepRunner::run",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "step_runner.close",
+          "name": [
+            "close"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::StepRunner::close",
+            "receiver": "&mut self"
+          }
+        }
+      ]
     }
   ],
   "changes": [],

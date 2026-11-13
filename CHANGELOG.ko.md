@@ -25,6 +25,7 @@
 - Rust 코어의 `Query::key_name(column)`은 `gets`의 collection과 `relations` 결과의 행을 primary key 대신 열로 key하고, 열이 아닌 이름은 다음 terminal에서 `config`다(OM-3.1-8, CORE-89). 계약은 case 하나와 함께 그 member를 선언한다.
 - Rust 코어의 `Query::where_in(chain, query)`는 key 하나인 chain 이름의 열을 subquery의 행과 비교하며(`in`, `Ne`이면 `not in`), 다른 연산자, 다른 key 수, 그 열 하나가 없거나 자기 limit, lock, relation, 연결을 가진 subquery를 거절한다(OM-3.1-9, CORE-90). 계약은 case 하나와 함께 그 member를 선언한다.
 - Rust 코어의 `Query`는 쓴다(OM-3.1-10, CORE-91): `set(column, value)`는 `orm_value`를 배정하고, `create`는 행을 넣고 identity와 함께 돌려주며, `update`와 `delete`는 질의가 읽은 행이나 set한 primary key의 행을 쓰고, `expect_revision(column, revision)`은 그것을 지킨다. 실패는 `duplicate_key` 같은 원인의 kind를 지킨다. `model::create`, `update`, `delete`와 `Collection::delete`는 생성된 모델이든 `Query`든 어떤 행 타입도 받는다. 계약은 다섯 member를 각각 case 하나와 함께 선언한다.
+- Rust 코어는 `Db` step을 가진다(OM-3.1-11, CORE-92): `StepRunner::new(schema, connection)`와 `run(step)`은 JSON 텍스트로 가진 질의 tree를, `Query`의 member를 그 call의 순서대로, 그 terminal `get`, `gets`, `get_count`, `create`, `update`, `delete`와 함께 실행하고, 행과 그 열, 그 relation 결과, 그 key를 가진 `{"ok": <result>}`이나, `duplicate_key` 같은 실패의 kind를 가진 `{"error": {"kind", "message"}}`를 돌려준다. 그래서 다른 library의 코어가 host에게 질의를 부탁하고 실패의 뜻을 정한다. 모듈 `step`의 타입 `Step`, `QueryTree`, `Call`, `Terminal`, `StepValue`는 그 JSON의 serde 형식이다. 계약은 연결이 필요하므로 case 없이 class `StepRunner`를 선언한다.
 
 ## 0.0.31
 

@@ -110,13 +110,16 @@ fn statement(query: &Query, kind: &str, dialect: crate::Dialect) -> Result<Strin
     Ok(plan.steps[0].sql.clone())
 }
 
+/// A lock member with the lock that it sets and its clause on MySQL and on PostgreSQL.
+type LockCase = (fn(&mut Query), &'static str, &'static str, &'static str);
+
 // Requirements: CORE-86. Each of the four locks sets the lock of the request, the last one called holds, and MySQL and
 // PostgreSQL render it after the statement.
 #[test]
 fn the_four_locks_set_the_lock_of_the_request() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let schema = account_schema();
-    let cases: [(fn(&mut Query), &str, &str, &str); 4] = [
+    let cases: [LockCase; 4] = [
         (Query::for_update, "update", " FOR UPDATE", " FOR UPDATE"),
         (Query::for_share, "share", " LOCK IN SHARE MODE", " FOR SHARE"),
         (Query::for_update_no_wait, "update_nowait", " FOR UPDATE NOWAIT", " FOR UPDATE NOWAIT"),

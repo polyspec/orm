@@ -911,7 +911,10 @@ fn assign_model<M: AnyModel + Clone>(model: &mut M, name: &str, value: Val) -> R
 
 /// The row that the descriptor of a core made, as the row type `M` of the write that made it.
 fn row_of<M: AnyModel>(row: Box<dyn AnyModel>) -> Result<M> {
-    row.into_any().downcast::<M>().map(|row| *row).map_err(|_other| Error::internal(format!("the descriptor made a row that is no {}", std::any::type_name::<M>())))
+    row.into_any()
+        .downcast::<M>()
+        .map(|row| *row)
+        .map_err(|_other| Error::internal(format!("the descriptor made a row that is no {}", std::any::type_name::<M>())))
 }
 
 fn typed<M: Model>(m: Box<dyn AnyModel>) -> M {

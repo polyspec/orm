@@ -297,7 +297,8 @@ the core that differ from the rules that the language implementations of `legacy
 - **CORE-70** The interface contract of the core is `packages/rust/interface.json`. It declares a unit or a member only
   when the core has it and every type of its signature is a type of the contract. The value alias `orm_value`
   (CORE-62) and the members of `Query` that take or return it are declared: `where`, `value`, `get_by` and
-  `get_count_by`. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
+  `get_count_by`. The members of `Query` of CORE-85 to CORE-91 and the class `StepRunner` of CORE-92 and CORE-93 are
+  declared; `StepRunner` needs a connection, so its members have no case (CORE-72). Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Tx::execute` (a plan step), `Db::subscribe` (an
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), the field `audit_source`
   of `Config` (a function), the field `audit` of `TransactionOptions`, `Key`, `GroupRow`, `GroupRows` and `Statement`

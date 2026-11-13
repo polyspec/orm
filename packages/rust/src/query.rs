@@ -12,7 +12,7 @@ use crate::args::Value;
 use crate::collection::{AnyCollection, Collection, Key};
 use crate::core::{Arg, Core};
 use crate::db::Statement;
-use crate::model::{AnyModel, Boxed, LoadedEntity};
+use crate::model::{AnyModel, Boxed, LoadedEntity, RelatedValue};
 use crate::value::Val;
 use crate::{Connection, Error, Kind, OrmValue, Result, Schema};
 
@@ -369,10 +369,37 @@ impl Query {
         OrmValue::of_column(field, cell)
     }
 
+    /// The columns of the entity that the row read, in the order of the schema (CORE-92).
+    pub(crate) fn read_columns(&self) -> Result<Vec<String>> {
+        let manifest = self.core.entity().schema().manifest()?;
+        let entity = manifest.entity(self.core.entity().name())?;
+        Ok(entity.fields.iter().filter(|field| self.core.field_ready(&field.name)).map(|field| field.name.clone()).collect())
+    }
+
+    /// The relation results of the row by their names, in the order that the row holds them (CORE-92).
+    pub(crate) fn related_results(&self) -> Result<Vec<(String, Related)>> {
+        let Some(row) = self.core.row.as_ref() else { return Ok(Vec::new()) };
+        let mut out = Vec::with_capacity(row.related.len());
+        for (name, related) in &row.related {
+            let result = match &related.value {
+                RelatedValue::Many(_) => Related::Many(self.related_rows(name)?.unwrap_or_default()),
+                RelatedValue::One(_) => Related::One(self.related(name)?.map(Box::new)),
+            };
+            out.push((name.clone(), result));
+        }
+        Ok(out)
+    }
+
     fn is_column(&self, name: &str) -> Result<bool> {
         let manifest = self.core.entity().schema().manifest()?;
         Ok(manifest.entity(self.core.entity().name())?.field(name).is_some())
     }
+}
+
+/// A relation result of a row: the row of a `relation` or the rows of a `relations` (CORE-88).
+pub(crate) enum Related {
+    One(Option<Box<Query>>),
+    Many(Vec<Query>),
 }
 
 /// The connector of a chain name that starts with `And` or `Or`, and the name after it (CORE-82).

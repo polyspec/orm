@@ -30,6 +30,7 @@ mod request;
 pub mod row;
 pub mod schema;
 mod sqlite_codes;
+pub mod step;
 #[cfg(feature = "test-faults")]
 pub mod testing;
 pub mod tx;
@@ -60,6 +61,7 @@ pub use query::Query;
 pub use schema::{Manifest, Schema, SchemaRef};
 pub use serde;
 pub use serde_json;
+pub use step::StepRunner;
 pub use tx::{transaction_conflict, Connection, Isolation, TransactionOptions, Tx, DEFAULT_RETRY};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
 pub use value::{Param, StyledValue, Val};
