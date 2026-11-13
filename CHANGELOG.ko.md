@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0ee484e50ea3de496e813f9df0b09773f15fbd709fae90f5d3558dd06e3f2bae -->
+<!-- source-sha256: e3ac22633e47cb30df6ab642e4cab00a9feb227a4bce72ad8b8ef5bc1bba2fdb -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust 코어의 schema parser는 codec stage `ordered_json`을 같은 encoding의 stage `json`으로 읽는다(OM-3.5-3, CORE-61, DBS-69): `codec <column> ordered_json`은 `codec stage "ordered_json" is unknown`으로 거부되었으므로, 언어 구현이 읽는 문서가 그런 stage마다 진단을 받았다. 그런 문서의 canonical form은 `json`을 쓴다.
 - Go, PHP, PHP 확장, Python, TypeScript 언어 구현은 `legacy/packages/`로 옮겨 모든 릴리스에서 빠진다(CORE-1). 그 시험은 `legacy/contracts/fixtures/`와 `legacy/tests/`에 둔 공유 case·fixture·vector의 고정 사본을 읽고, `packages/rust/interface.json`에서 생성하는 바인딩이 그 자리를 대신한다.
 - Breaking (0.x): Rust 코어 `polyspec-orm`은 docs/spec/core.md의 규칙(CORE-1~CORE-60)을 따르고, 언어 구현은 각자 없어질 때까지 자기 규칙을 유지한다: 오류는 닫힌 enum `Kind`의 kind 하나를 가지며(docs/spec/errors.md), 트랜잭션 callback은 handle `Tx`를 받고 savepoint는 `Tx::savepoint`이며, 실행 흐름이 활성 트랜잭션을 두지 않는다.
 - Breaking (0.x): Rust 코어에서 codec stage `ordered_json`은 `json`이고, 공유 case의 값 wrapper `{"ordered_json": ...}`는 `{"json_value": ...}`다(CORE-61). 옛 이름은 그 stage를 쓰던 라이브러리의 이름이었고 코어는 그 라이브러리를 더는 쓰지 않는다. 코어의 dbspec 문서는 `codec <column> json`을 쓰고, 그 stage를 시험하는 case는 id에서 그것을 `json`으로 부르며, legacy 언어 구현의 고정 사본은 옛 이름을 지킨다. Rust crate는 ordered-json release `v0.0.25` 대신 `polyspec-json`과 `polyspec-binding-core`를 받고, 생성된 model은 `polyspec_orm::polyspec_json::Value`를 쓴다.

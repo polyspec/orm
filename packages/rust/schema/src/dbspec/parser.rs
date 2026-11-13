@@ -50,6 +50,8 @@ pub(crate) fn reserved(text: &str) -> bool {
 const COLUMN: &str = "a column name";
 
 pub(crate) const CODEC_STAGES: [&str; 8] = ["json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"];
+/// The name of the codec stage `json` in the language implementations, which the core reads as `json` (CORE-61).
+const LEGACY_JSON_STAGE: &str = "ordered_json";
 
 #[derive(Clone, Debug)]
 pub(crate) struct Diag {
@@ -1427,6 +1429,13 @@ impl Parser {
                 let mut stages = vec![self.word(&mut cursor, codec_stage, "a codec stage")?];
                 while cursor.peek().is_some() {
                     stages.push(self.word(&mut cursor, codec_stage, "a codec stage")?);
+                }
+                // ordered_json is the name of the stage json in the language implementations, with the same encoding
+                // (CORE-61), so the core reads it as json and its canonical form writes json.
+                for stage in &mut stages {
+                    if stage.text == LEGACY_JSON_STAGE {
+                        stage.text = String::from("json");
+                    }
                 }
                 for (index, stage) in stages.iter().enumerate() {
                     if !CODEC_STAGES.contains(&stage.text.as_str()) {
