@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: e52bd792f29ddbdcad770cb5f38799794281a2cbdaa7a1447fbd287921158367 -->
+<!-- source-sha256: 77e592ab6ecf97acf39cd85690ae006cbd859050cd118d1ca0f4cb5ebcccff1e -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
