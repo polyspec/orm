@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 28357ef2cdc566314457298ef8e349563d5b8ccf77c26a0812e73fce47440a92 -->
+<!-- source-sha256: c0402018172b6065e4720df5ff8b59921958c770617daab2a5d53bed0bfad875 -->
 # 변경 이력
 
 ## Unreleased
 
+- `make documents-stamp`는 source가 바뀐 한국어 짝을 보고하지 않는다(OM-1.4). `docs/operations/interface-implementation.md`, `docs/operations/remediation-plan.md`, `packages/rust/README.md`, `tests/`와 `legacy/tests/`의 README(codec, conformance, markdown)의 짝은 core를 `packages/rust`로 옮긴 경로를 이미 담고 있었고, 지금의 source로 stamp되었다.
 - `make orm-test-container-check`의 대역 컨테이너 process는 그것을 띄운 process보다 오래 남지 않는다(T444, HR-87). 대역은 `stop`까지 분리된 채 돌았으므로, runner가 deadline에서 끝낸 시험 process나 `removing` 전에 실패한 시험이 대역을 남겼다. 이제 대역의 각 run은 `removing`이 시험을 위해 듣는 Unix socket `lifeline`에 연결하고, 그 연결이 닫히면 끝난다. 듣는 process가 죽으면 kernel이 연결을 닫는다. shell 대역은 명령 `hold`로 lifeline을 잡는다. 새 시험은 lifeline을 듣는 driver process에서 MySQL을 띄우고, driver를 SIGKILL로 끝낸 뒤 모든 run이 끝났기를 요구한다. lifeline이 없으면 시험은 deadline에서 실패한다. process가 끝나지 않는다는 사건은 없기 때문이다. FIFO로 만든 lifeline은 동작하지 않았다. FIFO 하나의 reader 둘 가운데 하나만 끝을 읽었다. 대역의 `stop`은 이미 끝난 run을 멈춘 것으로 받는다.
 - `make orm-test-container KIND=mysql`의 MySQL replica는 `partial_revokes`를 켜고, MySQL과 MariaDB primary는 `ORM_ACCOUNTS_SQL`의 계정 `orm`@`127.0.0.1`과 `orm`@`localhost`를 만든다(T444). `make orm-test-servers`의 native 서버가 그렇게 한다. `catalog_connection`의 case `row_change_with_partial_revokes_enabled`(INT-119)는 replica의 `partial_revokes`를 읽고, socket이나 pooler로 `orm`으로 연결하는 case는 그 계정이 필요하다. `make orm-test-container-check`는 대역 container program으로 두 문장을 시험한다.
 - `make orm-test-container-check`의 시험은 실패할 때도 checkout의 컨테이너를 지운다(T444). `remove` 전에 단언이 실패한 시험은 대역 컨테이너 process를 실행 뒤에도 남겼고, 이 check의 실패한 실행들이 남긴 process 13개가 그것을 보였다. 이제 각 시험은 본문을 `removing` 안에서 돌리고, `removing`은 `finally`에서 checkout의 컨테이너를 지운다. 대역 `exec` 호출의 기록은 검사한 문자열 목록으로 읽는다.
