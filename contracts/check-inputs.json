@@ -275,6 +275,18 @@
         "**"
       ]
     },
+    "orm-test-container-check": {
+      "scope": "owner",
+      "needs": [],
+      "inputs": [
+        "scripts/test-servers-container.mts",
+        "scripts/test-servers-container.test.mts",
+        "scripts/test-servers.mts",
+        "config/containers.json",
+        "tests/testcase.mts",
+        "tests/environment.mts"
+      ]
+    },
     "orm-test-servers-check": {
       "scope": "owner",
       "needs": [

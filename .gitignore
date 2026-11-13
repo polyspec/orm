@@ -19,11 +19,13 @@
 
 /node_modules/
 /packages/*/node_modules/
+/legacy/packages/ts/node_modules/
 /legacy/packages/ts/testing/interfaces/typescript/node_modules/
 /tests/interfaces/typescript/node_modules/
 /vendor-php/
 /legacy/packages/php/vendor/
 /legacy/packages/php-ext/vendor/
+/packages/php-ext/vendor/
 # The environment that mise installs beside the lock of a pypi tool.
 /.mise/locks/*/*/.venv/
 /docs/.vitepress/cache/
@@ -31,6 +33,7 @@
 /docs/.vitepress/.temp/
 /.runtime/
 /legacy/packages/python/.venv/
+/packages/python/.venv/
 # The build tree and the metadata that the setuptools build of uv sync writes beside the source (make orm-install-python).
 /legacy/packages/python/build/
 /legacy/packages/python/src/*.egg-info/

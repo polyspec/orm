@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 847ebfa15f910a8c886c5c5757d63c9fa256674d73054c7894dd3da6e7bd4f94 -->
+<!-- source-sha256: 6c6d1437ca1e22f83e90fca666551873a75d1dde673739af1382a32e71527a81 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -63,6 +63,8 @@ release하는 manifest는 legacy/packages/ts/package.json, legacy/packages/php/c
 Rust crate는 다른 언어의 manifest를 release하지 않는다. packages/rust/Cargo.toml은 생성된 binding과 함께 쓰는 polyspec crate 둘을 branch `v1/rust-core`의 git dependency로 받는다: `polyspec-json`(`orm_value`와 codec stage `ordered_json`의 JSON 값)은 github.com/polyspec/json에서, `polyspec-binding-core`(경계 type과 generate의 이름 변환)는 github.com/polyspec/binding에서 받으며, Cargo.lock과 benchmarks/rust/Cargo.lock이 각각의 commit을 고정한다. `polyspec-json`은 같은 `polyspec-binding-core`에 의존하므로 lock에는 그것이 하나만 있다. Rust crate는 ordered-json release `v0.0.25`에 더는 의존하지 않는다. 그 release는 위 legacy client의 의존성으로 남는다.
 
 root의 Cargo.toml이 하나뿐인 Cargo workspace다: packages/rust의 core crate `polyspec-orm`, packages/rust 아래의 시험 crate, binding scaffold가 core 옆에 쓰는 바인딩 crate packages/ts, packages/ts/wasm, packages/python, packages/php-ext, packages/go/internal/ffi를 가지며, root의 Cargo.lock이 그 모두를 고정한다. 바인딩 crate는 `make bindings`가 생성 folder를 쓴 뒤에만 build되므로 `make build-rust`, `make test-rust`, `make lint-rust`와 workspace 전체에 대한 다른 cargo 명령은 바인딩 crate를 빼고, `make lint-bindings`와 `make test-bindings`가 그것을 build한다.
+
+Go module은 넷이다. `github.com/polyspec/orm/legacy/packages/go`(legacy/packages/go/go.mod)는 Go client, 그 engine, generator, harness이며 module 경로는 그 디렉터리의 경로다. `github.com/polyspec/orm/packages/go`(packages/go/go.mod)는 binding scaffold가 쓰는 Go binding이다. `github.com/polyspec/orm/tests`와 `github.com/polyspec/orm/examples`는 tests/의 Go program과 예제다. root의 go.work는 legacy/packages/go, tests, examples를 묶는다. 그 경로의 release가 없으므로 tests와 examples의 go.mod는 legacy/packages/go를 require하지 않고 workspace에서만 찾는다. 그래서 tests나 examples의 Go 명령은 root의 go.work로 돌고, `GOWORK=off`로는 legacy/packages/go를 찾지 못한다. go.work는 packages/go를 묶지 않으므로 binding의 명령은 `GOWORK=off`로 돈다(Makefile의 `GO_BINDING_ENV`).
 
 ## 생성되는 error code source
 

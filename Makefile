@@ -406,8 +406,8 @@ test-wasm: node-package
 # test-go-bindings is the part of test-go that tests the Go binding packages/go: the static library with the test
 # features (binding GN-13b), copied into the RUN_TARGET of the run, which Go links through CGO_LDFLAGS, gofmt and go vet,
 # then the generated tests on go test. GOTOOLCHAIN=local: a go of another release than the go directive of
-# packages/go/go.mod fails instead of fetching that release. GOWORK=off: the go.work of the root joins
-# legacy/packages/go, whose module path is the one of packages/go, so the binding module is built as a module of its own.
+# packages/go/go.mod fails instead of fetching that release. GOWORK=off: the go.work of the root joins legacy/packages/go,
+# tests and examples and not packages/go, so the binding module is built as a module of its own.
 GOFMT := $(KIT_TOOLS)/mise/shims/gofmt
 GO_BINDING_RELEASE = $(shell sed -n 's/^go \(.*\)$$/\1/p' packages/go/go.mod)
 GO_BINDING_ENV = GOWORK=off GOTOOLCHAIN=local CGO_LDFLAGS=-L$(RUN_TARGET)/debug GOFLAGS=-tags=polyspec_panic_test,polyspec_codec_test
