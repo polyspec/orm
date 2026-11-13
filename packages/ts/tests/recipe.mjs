@@ -1250,7 +1250,7 @@ const OPS = {
   'hook.records'(_, context) {
     const counts = {};
     for (const record of context.records) counts[record.entity] = (counts[record.entity] ?? 0) + 1;
-    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }], ...(record.param === undefined ? [] : [['param', record.param]])] }));
+    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }], ...(record.param === undefined ? [] : [['param', record.param]]), ...(record.read === undefined ? [] : [['read', record.read]])] }));
     return { value: { array: list }, counts };
   },
 };
@@ -2469,9 +2469,11 @@ function installHook(s, context) {
     value: a.value === undefined ? undefined : native(databaseValue(stepArgument(a.value, context), context)),
     nested: a.nested === true,
     code: a.error,
+    read: a.read,
   }));
   context.records = [];
-  const hooked = base.withRequestHook((query, addParam, params) => {
+  // The hook is asynchronous: the client awaits it before it plans the request (INT-78).
+  const hooked = base.withRequestHook(async (query, addParam, params) => {
     for (const a of actions) {
       if (!kindMatches(a.kinds, query.kind)) continue;
       switch (a.action) {
@@ -2494,6 +2496,14 @@ function installHook(s, context) {
         case 'invalid_param':
           andWhere(query, { column: a.column, op: 'eq', p: query.n_params + 5 });
           break;
+        case 'locked_read': {
+          // The hook reads with its lock in a transaction of another connection before the client plans the request, and a
+          // refusal of that read fails the operation unchanged.
+          let read;
+          await connectionOf(a.read, context).transaction(async () => { read = (await chainBuilt(a.read, context).gets()).values().length; }, { retry: 0 });
+          context.records.push({ kind: query.kind, entity: query.entity, read: { int: String(read) } });
+          break;
+        }
         case 'record':
           context.records.push({ kind: query.kind, entity: query.entity });
           break;

@@ -24,6 +24,8 @@ type hookRecord struct {
 	entity string
 	// param is the wrapper of the bound value of a record_param action, or nil.
 	param any
+	// read is the number of rows that a locked_read action read, or -1.
+	read int
 }
 
 // auditSourceSpec is the audit_source of a model.connect (FCV-4, CFG-8): the values that the source returns, or a source
@@ -92,6 +94,9 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			members := []any{[]any{"kind", map[string]any{"text": r.kind}}, []any{"entity", map[string]any{"text": r.entity}}}
 			if r.param != nil {
 				members = append(members, []any{"param", r.param})
+			}
+			if r.read >= 0 {
+				members = append(members, []any{"read", map[string]any{"int": strconv.Itoa(r.read)}})
 			}
 			list = append(list, map[string]any{"object": members})
 			counts[r.entity]++
@@ -196,6 +201,9 @@ type hookAction struct {
 	value  any
 	nested bool
 	code   string
+	// read is the model read of a locked_read action, and db the connection it runs on.
+	read *chainStep
+	db   *orm.DB
 }
 
 // installHook binds the connection of s to the connection that model.connect opened with the actions of s as its request
@@ -220,11 +228,23 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 			Value  json.RawMessage `json:"value"`
 			Nested bool            `json:"nested"`
 			Error  string          `json:"error"`
+			Read   json.RawMessage `json:"read"`
 		}
 		if err := json.Unmarshal(raw, &h); err != nil {
 			return outcome{}, err
 		}
 		a := hookAction{action: h.Action, column: h.Column, nested: h.Nested, code: h.Error}
+		if len(h.Read) > 0 {
+			var read chainStep
+			if err := json.Unmarshal(h.Read, &read); err != nil {
+				return outcome{}, err
+			}
+			db, isDB := c.bound[read.Connection].api.(*orm.DB)
+			if !isDB {
+				return outcome{}, fmt.Errorf("hook.install: the read of %s names connection %q, which model.connect did not bind", h.Action, read.Connection)
+			}
+			a.read, a.db = &read, db
+		}
 		if err := json.Unmarshal(h.Kinds, &a.kinds); err != nil {
 			return outcome{}, err
 		}
@@ -269,8 +289,28 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 			case "invalid_param":
 				p := r.NParams + 5
 				irwhere.And(&r.Query, ir.Pred{Column: a.column, Op: "eq", P: &p})
+			case "locked_read":
+				// The hook reads with its lock in a transaction of another connection before the client plans the request,
+				// and a refusal of that read fails the operation unchanged (INT-78).
+				read := -1
+				err := a.db.Transaction(func() error {
+					core, err := chainBuilt(*a.read, a.db, c)
+					if err != nil {
+						return err
+					}
+					rows, err := orm.Gets[*tableRow](core)
+					if err != nil {
+						return err
+					}
+					read = len(rows.Slice())
+					return nil
+				}, orm.Retry(0))
+				if err != nil {
+					return err
+				}
+				c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity, read: read})
 			case "record":
-				c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity})
+				c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity, read: -1})
 			case "record_param":
 				for _, assignment := range r.Set {
 					if assignment.Column != a.column || assignment.P == nil {
@@ -280,10 +320,12 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 					if err != nil {
 						return err
 					}
-					c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity, param: w})
+					c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity, param: w, read: -1})
 				}
 			case "fail":
 				return &ir.Error{Code: a.code, Msg: "request hook refused " + r.Kind}
+			default:
+				return fmt.Errorf("hook action %s is unknown", a.action)
 			}
 		}
 		return nil

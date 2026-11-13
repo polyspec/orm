@@ -11163,6 +11163,66 @@
               "pattern": "^[A-Z][A-Z0-9_]*$"
             }
           }
+        },
+        {
+          "type": "object",
+          "description": "Reads model with lock on another connection, in a transaction of that connection, before the client plans the request; a refusal of the read fails the operation unchanged, and a read records the number of its rows (INT-78).",
+          "required": [
+            "action",
+            "kinds",
+            "read"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "locked_read"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "read": {
+              "type": "object",
+              "required": [
+                "connection",
+                "model",
+                "order",
+                "lock"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "connection": {
+                  "$ref": "#/$defs/name"
+                },
+                "model": {
+                  "$ref": "#/$defs/model"
+                },
+                "where": {
+                  "type": "object",
+                  "propertyNames": {
+                    "$ref": "#/$defs/name"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/$defs/argument"
+                  }
+                },
+                "order": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^-?[a-z_][a-z0-9_]*$"
+                  }
+                },
+                "lock": {
+                  "enum": [
+                    "update",
+                    "share",
+                    "update_nowait",
+                    "share_nowait"
+                  ]
+                }
+              }
+            }
+          }
         }
       ]
     },

@@ -13,7 +13,10 @@
     "PLN-16",
     "DIA-161",
     "INT-38",
-    "PRT-65"
+    "PRT-65",
+    "INT-49",
+    "DIA-209",
+    "DIA-221"
   ],
   "fixture": "contracts/fixtures/request_hook/dbspec-set.json",
   "cases": [
@@ -4044,6 +4047,732 @@
                   }
                 ]
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "hook_reads_with_lock_on_another_connection",
+      "requirements": [
+        "INT-78",
+        "INT-49"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "other"
+        },
+        {
+          "op": "model.create",
+          "model": "HookItem",
+          "values": {
+            "part": {
+              "text": "l"
+            },
+            "label": {
+              "text": "locked"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "hook.install",
+          "connection": "db",
+          "hooks": [
+            {
+              "action": "locked_read",
+              "kinds": [
+                "all"
+              ],
+              "read": {
+                "connection": "other",
+                "model": "HookItem",
+                "where": {
+                  "part": {
+                    "text": "l"
+                  }
+                },
+                "order": [
+                  "id"
+                ],
+                "lock": "update_nowait"
+              }
+            }
+          ]
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "HookItem",
+          "where": {
+            "part": {
+              "text": "l"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "columns": [
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "locked"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "locked"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "locked"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "hook_lock_refused_in_a_transaction",
+      "databases_differ": "SQLite and a flowmark corpus admit one write transaction at a time and begin it with BEGIN IMMEDIATE (DIA-221), so the transaction of the hook on another connection waits behind the transaction that holds the write lock and ends with CANCELED when the busy timeout expires (errors.yaml CANCELED), where MySQL and PostgreSQL read the row beside a transaction of the handle and refuse a row lock that another transaction holds with LOCK_NOT_AVAILABLE (DIA-209).",
+      "requirements": [
+        "INT-78",
+        "INT-49",
+        "DIA-209",
+        "DIA-221"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "other"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.create",
+          "model": "HookItem",
+          "values": {
+            "part": {
+              "text": "l"
+            },
+            "label": {
+              "text": "locked"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "hook.install",
+          "connection": "db",
+          "hooks": [
+            {
+              "action": "locked_read",
+              "kinds": [
+                "all"
+              ],
+              "read": {
+                "connection": "other",
+                "model": "HookItem",
+                "where": {
+                  "part": {
+                    "text": "l"
+                  }
+                },
+                "order": [
+                  "id"
+                ],
+                "lock": "update_nowait"
+              }
+            }
+          ]
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "db",
+              "model": "HookItem",
+              "where": {
+                "part": {
+                  "text": "l"
+                }
+              },
+              "order": [
+                "id"
+              ],
+              "columns": [
+                "label"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "locked"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "text": "locked"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "error": "CANCELED"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "holder",
+              "model": "HookItem",
+              "where": {
+                "part": {
+                  "text": "l"
+                }
+              },
+              "order": [
+                "id"
+              ],
+              "columns": [
+                "label"
+              ],
+              "lock": "update",
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "locked"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "text": "locked"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "text": "locked"
+                      }
+                    ]
+                  ]
+                }
+              }
+            },
+            {
+              "op": "model.query",
+              "connection": "db",
+              "model": "HookItem",
+              "where": {
+                "part": {
+                  "text": "l"
+                }
+              },
+              "order": [
+                "id"
+              ],
+              "columns": [
+                "label"
+              ],
+              "expect": {
+                "mysql": {
+                  "error": "LOCK_NOT_AVAILABLE"
+                },
+                "postgres": {
+                  "error": "LOCK_NOT_AVAILABLE"
+                },
+                "sqlite": {
+                  "error": "CANCELED"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "HookItem",
+          "where": {
+            "part": {
+              "text": "l"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "columns": [
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "locked"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "locked"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "locked"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "all"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "read",
+                        {
+                          "int": "1"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
             }
           }
         }

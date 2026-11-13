@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 52e07a28af65463254cecb90a94ac59a39aaa69d8a4302e28438b8f88e814ccd -->
+<!-- source-sha256: 907b3a2b34cfa4286ed2c332a0cfe25045a158191a46e4a2a2ad857a27fe3d38 -->
 # 변경 이력
 
 ## Unreleased
+
+- TypeScript와 Rust의 request hook은 비동기일 수 있고, client는 request를 plan하기 전에 그것을 기다린다(T441, INT-78). TypeScript `RequestHook`은 request나 그 promise를 돌려준다. Rust `RequestHook`은 client가 기다리는 `HookFuture`를 돌려주므로 `with_request_hook`은 `|r, p| Box::pin(async move { ...; Ok(()) })`를 받는다(0.x에서 호환 깨짐). 그래서 모든 client의 hook은 client가 request를 plan하기 전에 두 번째 연결에서 행 잠금으로 읽을 수 있다. `contracts/fixtures/request_hook`의 공통 case가 그런 읽기를 여섯 runtime과 다섯 database에서 실행한다. MySQL과 PostgreSQL은 잡힌 행을 `LOCK_NOT_AVAILABLE`로 거부하고, SQLite와 flowmark는 두 번째 writer를 busy timeout에서 `CANCELED`로 끝낸다(DIA-221). recipe helper가 모르는 hook action은 이제 다른 runtime처럼 Go에서도 실패한다.
 
 - branch 검사는 recipe step이 부르는 vector case를 따라갑니다(T426-6, FCV-16). 한 dialect용 dbspec vector나 일부 dialect 전용 항목은 recipe case의 분기이며 이유가 필요합니다. dialect만 다른 introspection vector는 모든 database에서 한 번 실행하고, ddl.json round trip을 되풀이하던 둘은 지웠습니다. MySQL ALTER 회귀 시험은 모든 database에서 실행하며, `addTablesAndColumns`의 추가 전용 step은 SQLite와 함께 MySQL과 PostgreSQL에도 적었습니다(SCH-8, INT-56).
 

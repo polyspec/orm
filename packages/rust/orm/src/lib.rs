@@ -45,7 +45,7 @@ pub use array::ArrayValue;
 pub use chrono;
 pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
 pub use core::Core;
-pub use db::{AuditSource, Config, Db, DbStats, QueryPlanStep, RequestHook, RequestParams, Statement};
+pub use db::{AuditSource, Config, Db, DbStats, HookFuture, QueryPlanStep, RequestHook, RequestParams, Statement};
 pub use engine::Dialect;
 pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};
 pub use model::{AnyModel, Entity, Model};
