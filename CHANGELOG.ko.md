@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2cbd4488bd4e7798962e14975306632df96a6a336bfae254b38b983156062373 -->
+<!-- source-sha256: a89eed1b0cc61b8015db3e2b69b5f10050d81c43118845b6d025e1128975a507 -->
 # 변경 이력
 
 ## Unreleased
+
+- schema가 거부하는 recipe는 거부된 step의 op의 오류와 함께 보고된다(T461, FCV-17). scripts/features/schema/recipe.schema.json의 step 형식은 `op`를 discriminator로 이름하고, 형태가 여럿인 op 일곱 개는 맨 위에 자기 `op`의 const를 적으며, scripts/json/schema.mts의 reader는 ajv의 discriminator를 켠다. 거부된 step 하나는 1085개이던 오류가 9개로, 거부된 코드 346개를 가진 conformance_verification recipe는 687008개와 72 M 글자의 메시지이던 것이 9451개로 보고된다. 전에는 시험 실행이 보고 없이 8 GB를 가졌다.
 
 - contracts/fixtures/의 모든 recipe가 다시 scripts/features/schema/recipe.schema.json의 값이다(T460, CORE-2, CORE-3). schema의 오류 코드는 공유 case가 적는 소문자 kind이거나 legacy/contracts/fixtures/의 고정 사본이 적는 대문자 코드이고, case는 contracts/fixtures/core/의 case가 가진 `supersedes`를 이름한다. schema는 공유 recipe 파일 94개 가운데 50개를 거부했고, 그 가운데 conformance_verification의 case 123개 중 54개가 있었다. contracts/interfaces.json의 state contract와 그 recipe case의 비교는 대문자 코드와 그 kind를 같은 오류로 보고, 실패한 callback의 실행기 코드는 `callback`이며, catalog_connection recipe의 `refused_code`는 `driver`다. `make conformance-recipe-vectors-unit`은 13 case를 통과하고, scripts/features의 recipe 시험은 115 case를 통과한다.
 

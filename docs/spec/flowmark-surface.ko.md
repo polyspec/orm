@@ -201,7 +201,7 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   결과는 각 statement의 `sql`이다. 이 member는 구현되지 않았다. dialect의 이름은 `dbspec_json::render_statements`가 읽는다.
 - **FMS-26** `dbspec.canonical_literal(column_type, literal)`은 그 타입의 열의 default로서 `literal`의 canonical
   텍스트를 돌려주고, `literal`이 그 타입의 literal이 아니면 아무것도 돌려주지 않는다. `column_type`은 타입의 JSON
-  텍스트다(FMS-11). Go가 예약한 단어인 `type`은 parameter 이름으로 쓰지 않는다.
+  텍스트다(FMS-11). parameter는 `type`이라는 이름을 쓰지 않는다. Go가 그 단어를 예약한다.
   literal은 앞뒤에 공백이 없는 token 하나다: 빼기 부호가 붙어 있는 수, 단어, 따옴표로 감싼 문자열이다. `text`나
   `bytes` 열에는 literal이 없다. 이 member는 `CanonicalLiteral`을 전달한다. 이 member는 구현되지 않았다.
   `packages/rust/schema/src/dbspec/literal.rs`의 `dbspec::canonical_literal`이 텍스트에서 literal을 읽고, parser가 읽은

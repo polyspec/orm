@@ -952,6 +952,9 @@
     },
     "step": {
       "type": "object",
+      "discriminator": {
+        "propertyName": "op"
+      },
       "required": [
         "op"
       ],
@@ -1621,6 +1624,15 @@
     },
     "ops": {
       "schema.install": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "schema.install"
+          }
+        },
         "oneOf": [
           {
             "type": "object",
@@ -4606,6 +4618,15 @@
         }
       },
       "model.creates": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "model.creates"
+          }
+        },
         "anyOf": [
           {
             "type": "object",
@@ -4788,6 +4809,15 @@
         }
       },
       "model.update": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "model.update"
+          }
+        },
         "oneOf": [
           {
             "type": "object",
@@ -5043,6 +5073,15 @@
         }
       },
       "model.delete": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "model.delete"
+          }
+        },
         "oneOf": [
           {
             "type": "object",
@@ -5219,6 +5258,15 @@
         ]
       },
       "model.count": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "model.count"
+          }
+        },
         "anyOf": [
           {
             "type": "object",
@@ -5343,6 +5391,15 @@
         ]
       },
       "model.get_by": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "model.get_by"
+          }
+        },
         "anyOf": [
           {
             "type": "object",
@@ -5589,6 +5646,15 @@
         ]
       },
       "model.query": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "model.query"
+          }
+        },
         "anyOf": [
           {
             "type": "object",
