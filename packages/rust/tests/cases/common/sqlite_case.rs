@@ -54,6 +54,6 @@ pub async fn database(prefix: &str, name: &str) -> Database {
     let dsn = format!("sqlite://{}", dir.join(format!("{name}.sqlite")).display());
     let db = Db::connect(&dsn, 1, polyspec_orm::Config::default()).await.unwrap();
     db.utils().schema().install(&SCHEMA).await.unwrap();
-    db.close().await;
+    db.close_async().await;
     Database { dsn, dir }
 }

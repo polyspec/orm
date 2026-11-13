@@ -260,7 +260,7 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
                 Some(true) => Some(db.utils().run(async |frame| frame.run("utility", &[], "SHOW SESSION STATUS LIKE 'Ssl_version'", &[]).await).await),
                 _ => None,
             };
-            db.close().await;
+            db.close_async().await;
             match session_read {
                 Some(Ok(rows)) => {
                     let want: Vec<&str> = config["session_read"]["row"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
@@ -432,14 +432,14 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
                 if call == "transactions" {
                     let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await.map_err(|error| format!("connect: {error}"))?;
                     let nested: polyspec_orm::Result<()> = db
-                        .transaction(
-                            |tx: polyspec_orm::Tx| async move { tx.savepoint(|_savepoint: polyspec_orm::Tx| async { Ok(()) }).await },
+                        .transaction_async(
+                            |tx: polyspec_orm::Tx| async move { tx.savepoint_async(|_savepoint: polyspec_orm::Tx| async { Ok(()) }).await },
                             polyspec_orm::TransactionOptions { read_only: Some(true), ..Default::default() },
                         )
                         .await;
                     nested.map_err(|error| format!("the read-only transaction: {error}"))?;
-                    let last = db.transaction(|_tx: polyspec_orm::Tx| async { Ok(()) }, polyspec_orm::TransactionOptions::default()).await;
-                    db.close().await;
+                    let last = db.transaction_async(|_tx: polyspec_orm::Tx| async { Ok(()) }, polyspec_orm::TransactionOptions::default()).await;
+                    db.close_async().await;
                     return Ok(last);
                 }
                 // One pooled connection, so the second read runs on the session of the first.
@@ -448,7 +448,7 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
                 if call == "read_twice" {
                     bind_model::Slots::new().connect(&db).gets().await.map_err(|error| format!("the second read: {error}"))?;
                 }
-                db.close().await;
+                db.close_async().await;
                 Ok(first)
             })
         })
@@ -2502,7 +2502,7 @@ impl SendStep {
     async fn call(&self, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
         if let Some(read_only) = self.begin {
             let options = polyspec_orm::TransactionOptions { read_only: Some(read_only), ..Default::default() };
-            return db.transaction(|_tx: polyspec_orm::Tx| async { Ok(()) }, options).await;
+            return db.transaction_async(|_tx: polyspec_orm::Tx| async { Ok(()) }, options).await;
         }
         if self.contains {
             return match &self.value {
@@ -2601,7 +2601,7 @@ fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
                         model.get_count().await.map(drop)
                     }
                 };
-                db.close().await;
+                db.close_async().await;
                 result
             })
         })
@@ -2977,7 +2977,7 @@ mod database {
                         let mut result = Ok(());
                         for write in 0..writes {
                             result = db
-                                .transaction(
+                                .transaction_async(
                                     |tx: Tx| async move {
                                         model::Service::new().connect(&tx).get_count().await?;
                                         model::Service::new().connect(&tx).set_name(format!("w{index}-{write}")).create().await?;
@@ -2990,7 +2990,7 @@ mod database {
                                 break;
                             }
                         }
-                        db.close().await;
+                        db.close_async().await;
                         result.map_err(|e| e.to_string())
                     })
                 })
@@ -3001,7 +3001,7 @@ mod database {
             .map_err(|e| e.to_string())??;
         let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
         let count = model::Service::new().connect(&db).get_count().await.map_err(|e| e.to_string());
-        db.close().await;
+        db.close_async().await;
         count
     }
 
@@ -3654,7 +3654,7 @@ mod database {
         let dsn = run.target.dsn.to_owned();
         let db = Db::connect(&dsn, 1, Config::default()).await.map_err(|e| format!("database {}: connect: {e}", run.database))?;
         let result = case_on(&db, run).await;
-        db.close().await;
+        db.close_async().await;
         result
     }
 
@@ -3835,8 +3835,8 @@ mod database {
         };
         let result = match parent {
             Some(_) if named => Err(polyspec_orm::Error::config("a savepoint takes no options")),
-            Some(parent) => parent.savepoint(callback).await,
-            None => db.transaction(callback, options).await,
+            Some(parent) => parent.savepoint_async(callback).await,
+            None => db.transaction_async(callback, options).await,
         };
         state.into_inner().1.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
         match result {
@@ -4154,7 +4154,7 @@ mod database {
             Ok(None) => Err(format!("the bind_cell row {seq} is not selected")),
             Err(error) => Err(error.to_string()),
         };
-        db.close().await;
+        db.close_async().await;
         Ok(match body? {
             None => json!({ "null": true }),
             Some(text) => json!({ "text": text }),
@@ -4235,7 +4235,7 @@ mod database {
             "schema.connect" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
                 let connected = Db::connect_schema(&context.dsn, &schema, 1, Config::default()).await.map_err(orm)?;
-                connected.close().await;
+                connected.close_async().await;
                 Output::fields(ok_value())
             }
             "schema.add_tables_and_columns" => {
@@ -5840,7 +5840,7 @@ mod database {
             Pool::MySql(pool) => mysql_replica_wait(pool, context.database).await,
             Pool::Sqlite(_) | Pool::Markdown(_) => Err("replica.await runs on a server database".to_owned()),
         };
-        source.close().await;
+        source.close_async().await;
         awaited
     }
 
@@ -5916,7 +5916,7 @@ mod database {
             }
             Pool::Sqlite(_) | Pool::Markdown(_) => return Err("session.end runs on a server database".into()),
         };
-        admin.close().await;
+        admin.close_async().await;
         ended.map_err(|e| format!("the transaction session holds a lock on {table}: {e}"))
     }
 
@@ -7638,7 +7638,7 @@ mod tables {
                         let (db, active, peak, open, begun, gate) = (db.clone(), active.clone(), peak.clone(), open.clone(), begun.clone(), gate.clone());
                         tasks.push(local.spawn_local(async move {
                             let (db, active, peak, open, begun, gate) = (&db, &active, &peak, &open, &begun, &gate);
-                            db.transaction(
+                            db.transaction_async(
                                 |_tx: Tx| async move {
                                     let now = active.fetch_add(1, Ordering::SeqCst) + 1;
                                     peak.fetch_max(now, Ordering::SeqCst);

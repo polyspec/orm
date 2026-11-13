@@ -825,7 +825,7 @@ impl Db {
         schema.registered()?;
         let db = Db::connect(dsn, pool_size, cfg).await?;
         if let Err(error) = db.register(schema) {
-            db.close().await;
+            db.close_async().await;
             return Err(error);
         }
         Ok(db)
@@ -1078,8 +1078,16 @@ impl Db {
         }
     }
 
-    /// Closes the pool and clears cached plans. Calling it more than once is safe.
-    pub async fn close(&self) {
+    /// Closes the pool as a state machine (CORE-102, CORE-105): the member `db.close` of the contract. The machine owns
+    /// this clone of the handle, gives one I/O step, the close of the pool, and calls no language code.
+    #[must_use]
+    pub fn close(self) -> crate::tx::Close {
+        crate::tx::Close::new(self)
+    }
+
+    /// Closes the pool and clears cached plans. Calling it more than once is safe. This is the form that Rust code
+    /// awaits (CORE-102).
+    pub async fn close_async(&self) {
         self.inner.closed.store(true, Ordering::Release);
         self.inner.plans.lock().unwrap().clear();
         self.inner.plan_order.lock().unwrap().clear();

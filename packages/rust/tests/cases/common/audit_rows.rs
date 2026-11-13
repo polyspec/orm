@@ -115,7 +115,7 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         ..Default::default()
     };
     let seq = adb
-        .transaction(
+        .transaction_async(
             |tx: polyspec_orm::Tx| async move {
                 let mut item = new_item("first");
                 item.core_mut().connect(&tx);
@@ -126,7 +126,7 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         .await
         .or_panic(|e| format!("{driver}: transaction: {e}"));
     for (title, actor) in [("second", "send"), ("third", "once")] {
-        adb.transaction(
+        adb.transaction_async(
             |tx: polyspec_orm::Tx| async move {
                 let mut item = changed_item(seq, title);
                 item.core_mut().connect(&tx);
@@ -138,7 +138,7 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         .or_panic(|e| format!("{driver}: transaction {actor}: {e}"));
     }
     let without = adb
-        .transaction(
+        .transaction_async(
             |tx: polyspec_orm::Tx| async move {
                 let mut item = changed_item(seq, "fourth");
                 item.core_mut().connect(&tx);
@@ -160,5 +160,5 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         ],
         "{driver}: history rows"
     );
-    adb.close().await;
+    adb.close_async().await;
 }

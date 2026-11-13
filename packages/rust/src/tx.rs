@@ -17,6 +17,10 @@ use crate::utils::Utils;
 use crate::value::{Param, Val};
 use crate::{Error, Kind, Result};
 
+mod machine;
+
+pub use machine::{Close, Savepoint, SavepointIo, Transaction, TransactionIo};
+
 /// One active transaction.
 pub(crate) struct TxShared {
     pub(crate) db: Db,
@@ -399,8 +403,9 @@ impl Tx {
     /// that succeeds releases the savepoint. A callback that fails or panics reverts the work after the savepoint and
     /// releases it, and its failure is returned unchanged; when the savepoint cannot be ended too, the result is
     /// `rollback_failed` (CORE-25). A panic is the error `internal` (CORE-26). While the callback runs, every statement
-    /// through this handle is `busy` (CORE-22).
-    pub async fn savepoint<T, F, Fut>(&self, callback: F) -> Result<T>
+    /// through this handle is `busy` (CORE-22). This is the form that Rust code awaits, whose callback returns a future
+    /// (CORE-102).
+    pub async fn savepoint_async<T, F, Fut>(&self, callback: F) -> Result<T>
     where
         F: FnOnce(Tx) -> Fut,
         Fut: Future<Output = Result<T>>,
@@ -413,6 +418,18 @@ impl Tx {
         let ended = self.savepoint_at(depth, callback).await;
         self.shared.running.store(self.depth, Ordering::Release);
         ended
+    }
+
+    /// Runs `callback` in a savepoint of the transaction as a state machine (CORE-102, CORE-103): the member
+    /// `tx.savepoint` of the contract. The machine owns this clone of the handle and the callback, sends `SAVEPOINT` in
+    /// its first step, calls `callback` with the handle of the savepoint on the thread that drives it, and releases the
+    /// savepoint after the value that the callback returned is settled, or rolls it back after a failure, which it
+    /// returns unchanged.
+    pub fn savepoint<F>(self, callback: F) -> Savepoint<F>
+    where
+        F: FnMut(Tx) -> std::result::Result<binding_core::Passthrough, binding_core::Failure<Error>>,
+    {
+        Savepoint::new(self, callback)
     }
 
     async fn savepoint_at<T, F, Fut>(&self, depth: u32, callback: F) -> Result<T>
@@ -526,8 +543,8 @@ impl Db {
     /// callback that succeeds commits. A callback that fails or panics rolls back, and its failure is returned unchanged
     /// (CORE-25), a panic as `internal` (CORE-26); when the rollback fails too, the result is `rollback_failed`. A failure
     /// of the kind `deadlock`, of the callback or of the commit, runs the whole callback again after the wait of CORE-24,
-    /// `retry` times at most.
-    pub async fn transaction<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T>
+    /// `retry` times at most. This is the form that Rust code awaits, whose callback returns a future (CORE-102).
+    pub async fn transaction_async<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T>
     where
         F: Fn(Tx) -> Fut,
         Fut: Future<Output = Result<T>>,
@@ -575,6 +592,18 @@ impl Db {
             attempt += 1;
             tokio::time::sleep(retry_wait(attempt, rand::random::<u64>() % 20)).await;
         }
+    }
+
+    /// Runs `callback` in a new transaction as a state machine (CORE-102 to CORE-104): the member `db.transaction` of
+    /// the contract. The machine owns this clone of the handle, the callback and the options, sends `BEGIN` in its first
+    /// step, calls `callback` with the transaction handle on the thread that drives it, and commits after the value that
+    /// the callback returned is settled, or rolls back after a failure, which it returns unchanged. A failure of the
+    /// kind `deadlock` runs these steps again after the wait of CORE-24, and calls `callback` once per attempt.
+    pub fn transaction<F>(self, callback: F, options: TransactionOptions) -> Transaction<F>
+    where
+        F: FnMut(Tx) -> std::result::Result<binding_core::Passthrough, binding_core::Failure<Error>>,
+    {
+        Transaction::new(self, callback, options)
     }
 }
 
@@ -870,6 +899,10 @@ pub(crate) mod killed {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/machine.rs"]
+mod machine_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_support::Scratch;
@@ -894,7 +927,7 @@ mod tests {
         sqlx::query("INSERT INTO orm_once_probe (id) VALUES (1), (2)").execute(pool).await.unwrap();
 
         assert_eq!(probe_row_count(&db).await, 2);
-        db.close().await;
+        db.close_async().await;
     }
 
     #[test]
@@ -934,7 +967,7 @@ mod tests {
         let db = sqlite_db(&tmp, "retry.sqlite").await;
         let runs = &AtomicU32::new(0);
         let ended = db
-            .transaction(
+            .transaction_async(
                 |_tx: Tx| async move {
                     if runs.fetch_add(1, Ordering::SeqCst) < 2 {
                         return Err(transaction_conflict("conflict"));
@@ -947,7 +980,7 @@ mod tests {
         assert!(matches!(ended, Ok(7)) && runs.load(Ordering::SeqCst) == 3, "two conflicts, then a commit: {ended:?}");
         runs.store(0, Ordering::SeqCst);
         let ended = db
-            .transaction(
+            .transaction_async(
                 |_tx: Tx| async move {
                     runs.fetch_add(1, Ordering::SeqCst);
                     Err::<(), _>(transaction_conflict("always"))
@@ -957,9 +990,9 @@ mod tests {
             .await;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Deadlock && error.text() == "always"), "{ended:?}");
         assert_eq!(runs.load(Ordering::SeqCst), 1, "retry 0 runs once");
-        let ended = db.transaction(|_tx: Tx| async move { Err::<(), _>(Error::config("not retried")) }, TransactionOptions::default()).await;
+        let ended = db.transaction_async(|_tx: Tx| async move { Err::<(), _>(Error::config("not retried")) }, TransactionOptions::default()).await;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Config && error.text() == "not retried"), "{ended:?}");
-        db.close().await;
+        db.close_async().await;
     }
 
     // A statement on a pool whose one connection a transaction holds waits up to pool_acquire_timeout_ms and fails with
@@ -973,20 +1006,20 @@ mod tests {
         let db = Db::connect(&format!("sqlite://{}", tmp.join("pool.sqlite").display()), 1, config).await.expect("connect");
         let other = db.clone();
         let inside = db
-            .transaction(
+            .transaction_async(
                 |_tx: Tx| {
                     let other = other.clone();
-                    async move { Ok(other.transaction(|_inner: Tx| async { Ok(()) }, once()).await.err().map(|error| error.kind())) }
+                    async move { Ok(other.transaction_async(|_inner: Tx| async { Ok(()) }, once()).await.err().map(|error| error.kind())) }
                 },
                 once(),
             )
             .await
             .expect("the outer transaction commits");
         assert_eq!(inside, Some(Kind::PoolTimeout), "the second transaction waits for the one connection");
-        db.close().await;
-        let after = db.transaction(|_tx: Tx| async { Ok(()) }, once()).await;
+        db.close_async().await;
+        let after = db.transaction_async(|_tx: Tx| async { Ok(()) }, once()).await;
         assert!(matches!(&after, Err(error) if error.kind() == Kind::Closed), "{after:?}");
-        db.close().await;
+        db.close_async().await;
     }
 
     // The wait before attempt n is 50 << (n - 1) milliseconds and the jitter (CORE-24).
@@ -1007,7 +1040,7 @@ mod tests {
         let db = sqlite_db(&tmp, "panic.sqlite").await;
         execute(&db, "CREATE TABLE orm_panic_probe (id INTEGER PRIMARY KEY)").await;
         let ended = db
-            .transaction(
+            .transaction_async(
                 |tx: Tx| async move {
                     tx.run(KIND_UTILITY, &[], "INSERT INTO orm_panic_probe (id) VALUES (1)", &[]).await?;
                     panic!("callback panicked")
@@ -1017,11 +1050,11 @@ mod tests {
             .await;
         let ended: Result<()> = ended;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Internal && error.text() == "the callback panicked: callback panicked"), "{ended:?}");
-        let ended = db.transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| async move { panic!("savepoint panicked") }).await }, once()).await;
+        let ended = db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async move { panic!("savepoint panicked") }).await }, once()).await;
         let ended: Result<()> = ended;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Internal), "{ended:?}");
         assert_eq!(probe_row_count_of(&db, "orm_panic_probe").await, 0, "the panicked transaction rolled back");
-        db.close().await;
+        db.close_async().await;
     }
 
     async fn probe_row_count_of(db: &Db, table: &str) -> i64 {
@@ -1038,17 +1071,17 @@ mod tests {
         let tmp = Scratch::new("orm-savepoint");
         let db = sqlite_db(&tmp, "savepoint.sqlite").await;
         execute(&db, "CREATE TABLE orm_savepoint_probe (id INTEGER PRIMARY KEY)").await;
-        db.transaction(
+        db.transaction_async(
             |tx: Tx| async move {
                 tx.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (1)", &[]).await?;
                 let inner = tx
-                    .savepoint(|savepoint: Tx| async move {
+                    .savepoint_async(|savepoint: Tx| async move {
                         savepoint.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (2)", &[]).await?;
                         Err::<(), _>(Error::config("inner failed"))
                     })
                     .await;
                 assert!(matches!(&inner, Err(error) if error.kind() == Kind::Config && error.text() == "inner failed"), "{inner:?}");
-                tx.savepoint(
+                tx.savepoint_async(
                     |savepoint: Tx| async move { savepoint.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (3)", &[]).await.map(drop) },
                 )
                 .await
@@ -1058,7 +1091,7 @@ mod tests {
         .await
         .expect("the outer transaction commits");
         assert_eq!(probe_row_count_of(&db, "orm_savepoint_probe").await, 2, "rows 1 and 3");
-        db.close().await;
+        db.close_async().await;
     }
 
     async fn execute(db: &Db, statement: &str) {
@@ -1152,24 +1185,24 @@ mod tests {
         };
         deny_on_sqlite(&db, DENY_ROLLBACK).await;
         let read_only = || TransactionOptions { read_only: Some(true), ..once() };
-        let error = db.transaction(|_tx: Tx| async { Err::<(), _>(Error::config("callback failed")) }, once()).await.expect_err("rollback");
+        let error = db.transaction_async(|_tx: Tx| async { Err::<(), _>(Error::config("callback failed")) }, once()).await.expect_err("rollback");
         both(&error, "config: callback failed");
         deny_on_sqlite(&db, DENY_ROLLBACK).await;
-        let error = db.transaction(|_tx: Tx| panics(), once()).await.expect_err("the callback panics");
+        let error = db.transaction_async(|_tx: Tx| panics(), once()).await.expect_err("the callback panics");
         both(&error, "internal: the callback panicked: callback panicked");
         deny_on_sqlite(&db, DENY_QUERY_ONLY_ON).await;
-        let error = db.transaction(|_tx: Tx| async { Ok(()) }, read_only()).await.expect_err("begin");
+        let error = db.transaction_async(|_tx: Tx| async { Ok(()) }, read_only()).await.expect_err("begin");
         assert!(error.to_string().contains("not authorized"), "begin: {error}");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
-        db.transaction(|_tx: Tx| async { Ok(()) }, once()).await.expect("a transaction after the failed begin");
+        db.transaction_async(|_tx: Tx| async { Ok(()) }, once()).await.expect("a transaction after the failed begin");
         deny_on_sqlite(&db, DENY_QUERY_ONLY_OFF).await;
-        let error = db.transaction(|_tx: Tx| async { Ok(()) }, read_only()).await.expect_err("commit");
+        let error = db.transaction_async(|_tx: Tx| async { Ok(()) }, read_only()).await.expect_err("commit");
         assert!(error.to_string().contains("not authorized"), "commit: {error}");
         deny_on_sqlite(&db, DENY_QUERY_ONLY_OFF).await;
-        let error = db.transaction(|_tx: Tx| async { Err::<(), _>(Error::config("callback failed")) }, read_only()).await.expect_err("mode reset");
+        let error = db.transaction_async(|_tx: Tx| async { Err::<(), _>(Error::config("callback failed")) }, read_only()).await.expect_err("mode reset");
         both(&error, "config: callback failed");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
-        db.close().await;
+        db.close_async().await;
     }
 
     // If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which end a savepoint, fails, the failure of the callback, a panic
@@ -1188,14 +1221,14 @@ mod tests {
         for denied in [DENY_SAVEPOINT_ROLLBACK, DENY_SAVEPOINT_RELEASE, DENY_SAVEPOINT_END] {
             deny_on_sqlite(&db, denied).await;
             let error = db
-                .transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| async { Err::<(), _>(Error::config("callback failed")) }).await }, once())
+                .transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async { Err::<(), _>(Error::config("callback failed")) }).await }, once())
                 .await
                 .expect_err("callback error");
             both(&format!("callback error {denied}"), &error.to_string());
             if denied == DENY_SAVEPOINT_END {
                 assert_eq!(error.to_string().matches("not authorized").count(), 2, "both savepoint statements are reported: {error}");
             }
-            let error = db.transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| panics()).await }, once()).await.expect_err("the callback panics");
+            let error = db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| panics()).await }, once()).await.expect_err("the callback panics");
             assert!(
                 error.kind() == Kind::RollbackFailed
                     && matches!(error.callback_error(), Some(crate::CallbackFailure::Kind(callback)) if callback.kind() == Kind::Internal),
@@ -1203,9 +1236,9 @@ mod tests {
             );
         }
         deny_on_sqlite(&db, DENY_SAVEPOINT_RELEASE).await;
-        let error = db.transaction(|tx: Tx| async move { tx.savepoint(|_savepoint: Tx| async { Ok(()) }).await }, once()).await.expect_err("release");
+        let error = db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async { Ok(()) }).await }, once()).await.expect_err("release");
         assert!(error.to_string().contains("not authorized"), "release: {error}");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
-        db.close().await;
+        db.close_async().await;
     }
 }

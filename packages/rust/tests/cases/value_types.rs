@@ -86,7 +86,7 @@ async fn runtime_value_types() {
         assert_eq!(got.values["opens"].as_string().unwrap(), "08:30:00.250", "{driver}: time(3) text");
         assert_eq!(got.values["day"].as_date().unwrap(), day, "{driver}: date");
         assert!(got.values["payload"].is_null(), "{driver}: a selected styled SQL NULL remains SQL NULL on read");
-        db.close().await;
+        db.close_async().await;
         database.drop().await;
         polyspec_orm_testcase::step(format_args!("runtime_value_types {driver}"));
     }

@@ -420,7 +420,7 @@ async fn run_case(member: &str, case: &Value) {
     }
     for made in [receiver, result].into_iter().flatten() {
         if let Instance::Db(db) = made {
-            db.close().await;
+            db.close_async().await;
         }
     }
 }

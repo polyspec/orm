@@ -1473,7 +1473,8 @@
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Db::close",
-            "receiver": "&self"
+            "receiver": "&self",
+            "machine": true
           }
         },
         {
@@ -1587,7 +1588,8 @@
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Db::transaction",
-            "receiver": "&self"
+            "receiver": "&self",
+            "machine": true
           }
         },
         {
@@ -1688,7 +1690,8 @@
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Tx::savepoint",
-            "receiver": "&self"
+            "receiver": "&self",
+            "machine": true
           }
         }
       ]

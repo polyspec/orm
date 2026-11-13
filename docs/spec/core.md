@@ -359,9 +359,11 @@ the core that differ from the rules that the language implementations of `legacy
 
 ## State machines
 
-CORE-100 to CORE-105 are not implemented: `Db::transaction`, `Tx::savepoint` and `Db::close` are futures that borrow
-their receiver, and the contract names no `machine`. They wait for a release of `polyspec-binding-core` that has
-`Passthrough`, `Step::Await` and `Machine::settle`, which the release that `Cargo.lock` pins does not have.
+CORE-100 to CORE-105 are implemented in `packages/rust/src/tx/machine.rs`, and the contract names `machine` on the three
+members. They need a `polyspec-binding-core` that has `Passthrough`, `Step::Await` and `Machine::settle`, which the
+release that `Cargo.lock` pins does not have: until the lock pins a release that has them, the workspace builds only
+with a development provider of `.links` that has them. The contract has no case of the three members, because each
+needs a database (CORE-72); the tests of the core drive each machine step by step.
 
 - **CORE-100** The members `db.transaction`, `tx.savepoint` and `db.close` of the contract name `"machine": true` in
   their `core`, because each has `wait: async_driver` and reaches language code: the first two call a function of the
@@ -383,8 +385,9 @@ their receiver, and the contract names no `machine`. They wait for a release of 
   `polyspec_orm::Error`, which carries its kind and its whole message (CORE-12). A `Passthrough` is a value of the
   language that the core moves and never reads: the value that the callback returned is the value that the member
   returns. The functions that Rust code awaits, `Db::transaction_async(&self, callback, options)` and
-  `Tx::savepoint_async(&self, callback)`, whose callback returns a future, keep the rules of CORE-20 to CORE-26 and are
-  no members of the contract; the step runner of CORE-93 calls them.
+  `Tx::savepoint_async(&self, callback)`, whose callback returns a future, and `Db::close_async(&self)` keep the rules
+  of CORE-20 to CORE-26 and of CORE-31 and are no members of the contract; the step runner of CORE-93 calls the first
+  two.
 - **CORE-103** The machine of `Db::transaction` and of `Tx::savepoint` gives these steps, and makes no I/O itself:
   1. `Io`: the opening, which borrows a connection and sends `BEGIN` with the options (CORE-20), or sends `SAVEPOINT`
      after the check of CORE-22 and CORE-23. A failure of the opening ends the machine with `Done(Err(Failure::Kind))`,

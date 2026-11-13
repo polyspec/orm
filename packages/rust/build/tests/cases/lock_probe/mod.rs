@@ -17,7 +17,7 @@ fn on_own_connection(dsn: &str, probe: impl FnOnce(tool_db::Conn) -> std::pin::P
         runtime.block_on(async move {
             let (database, connection, _) = tool_db::open(&dsn).await.expect("probe connection");
             let held = probe(connection).await;
-            database.close().await;
+            database.close_async().await;
             held
         })
     })

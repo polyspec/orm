@@ -34,7 +34,7 @@ async fn close_dialect_fixture(
     catalog.close().await;
     seed.exec(&format!("DROP TABLE {table}"), &[]).await.expect(drop_message);
     drop(seed);
-    database.close().await;
+    database.close_async().await;
     polyspec_orm_testcase::step(format_args!("{dialect} finished"));
 }
 

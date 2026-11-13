@@ -79,7 +79,7 @@ async fn empty_argument_refused(driver: &str, dsn: &str) {
     assert!(refused.is_err(), "{driver}: an empty message panics");
     create(&db, "kept").await.or_panic(|e| format!("{driver}: a refused arming leaves the next insert running: {e}"));
     assert_eq!(count(&db).await, 1, "{driver}: the insert ran");
-    db.close().await;
+    db.close_async().await;
 }
 
 /// Runs one case in its own case database within its deadline, then drops the database.

@@ -312,13 +312,13 @@ impl StepRunner {
                 }
                 let options = options.transaction()?;
                 let db = db.clone();
-                self.open(move |parts| tokio::spawn(async move { db.transaction(move |tx| serve(tx, Arc::clone(&parts)), options).await })).await
+                self.open(move |parts| tokio::spawn(async move { db.transaction_async(move |tx| serve(tx, Arc::clone(&parts)), options).await })).await
             }
             Step::Savepoint => {
                 let Some(parent) = self.frames.last().map(|frame| frame.handle.clone()) else {
                     return Err(Error::config("a savepoint step needs an open transaction"));
                 };
-                self.open(move |parts| tokio::spawn(async move { parent.savepoint(move |sp| serve(sp, parts)).await })).await
+                self.open(move |parts| tokio::spawn(async move { parent.savepoint_async(move |sp| serve(sp, parts)).await })).await
             }
             Step::End { rollback } => self.end(rollback).await.map(|()| json!({})),
         }

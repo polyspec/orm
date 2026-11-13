@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: a122ae8563bd659cab35f968be7f0488e0019af37a048e011b0112f0c754fb41 -->
+<!-- source-sha256: 9db9e735d9ac9fe4f3782fd7ede01735716b2c99154703b7bc727109f27fdfff -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -297,9 +297,11 @@
 
 ## 상태 기계
 
-CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savepoint`, `Db::close`는 receiver를 빌리는 future이고,
-계약은 `machine`을 이름하지 않는다. `Passthrough`, `Step::Await`, `Machine::settle`이 있는 `polyspec-binding-core` release를
-기다리며, `Cargo.lock`이 고정한 release에는 이 셋이 없다.
+CORE-100부터 CORE-105는 `packages/rust/src/tx/machine.rs`에 구현되어 있고, 계약은 세 멤버에 `machine`을 이름한다. 이
+구현에는 `Passthrough`, `Step::Await`, `Machine::settle`이 있는 `polyspec-binding-core`가 필요한데, `Cargo.lock`이 고정한
+release에는 이 셋이 없다: lock이 이 셋이 있는 release를 고정할 때까지 workspace는 이 셋이 있는 `.links`의 개발 provider로만
+build된다. 계약에는 세 멤버의 case가 없다. 셋 다 데이터베이스가 필요하기 때문이다(CORE-72). 코어의 시험이 각 기계를 한
+단계씩 구동한다.
 
 - **CORE-100** 계약의 멤버 `db.transaction`, `tx.savepoint`, `db.close`는 `core`에 `"machine": true`를 이름한다. 셋 다
   `wait: async_driver`이고 언어 코드에 닿기 때문이다: 앞의 둘은 언어의 함수를 호출하고, `Db`나 `Tx`의 instance는 멤버가
@@ -318,9 +320,10 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
   - `Db::close(self)`. `Done`은 `Result<(), E>`이다.
   `F`는 `FnMut(Tx) -> Result<binding_core::Passthrough, Failure<E>>`이고, `E`는 코어의 error인 `polyspec_orm::Error`로,
   kind와 메시지 전체를 가진다(CORE-12). `Passthrough`는 코어가 옮기기만 하고 읽지 않는 언어의 값이다: 콜백이 돌려준 값이
-  멤버가 돌려주는 값이다. Rust 코드가 await하는 함수 `Db::transaction_async(&self, callback, options)`와
-  `Tx::savepoint_async(&self, callback)`는 콜백이 future를 돌려주며, CORE-20부터 CORE-26의 규칙을 그대로 따르고 계약의
-  멤버가 아니다. CORE-93의 step runner가 이 둘을 호출한다.
+  멤버가 돌려주는 값이다. Rust 코드가 await하는 함수는 콜백이 future를 돌려주는
+  `Db::transaction_async(&self, callback, options)`와 `Tx::savepoint_async(&self, callback)`, 그리고
+  `Db::close_async(&self)`다. 셋은 CORE-20부터 CORE-26과 CORE-31의 규칙을 그대로 따르고 계약의 멤버가 아니다. CORE-93의
+  step runner가 앞의 둘을 호출한다.
 - **CORE-103** `Db::transaction`과 `Tx::savepoint`의 상태 기계는 다음 단계를 내고, 스스로 I/O를 하지 않는다:
   1. `Io`: 시작. 연결을 빌리고 옵션과 함께 `BEGIN`을 보내거나(CORE-20), CORE-22와 CORE-23의 검사 뒤에 `SAVEPOINT`를
      전송한다. 시작이 실패하면 기계는 `Done(Err(Failure::Kind))`로 끝나고 콜백은 실행되지 않는다.

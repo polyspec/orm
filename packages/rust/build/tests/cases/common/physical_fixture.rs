@@ -26,7 +26,7 @@ pub fn dsn_for(dialect: &str, sqlite_path: &Path) -> String {
 /// Drops the supplied connection, closes the database, then records the dialect step in that order.
 pub async fn finish_physical_dialect<C>(database: polyspec_orm::Db, connection: C, dialect: &str, result: &str) {
     drop(connection);
-    database.close().await;
+    database.close_async().await;
     polyspec_orm_testcase::step(format_args!("{dialect} {result}"));
 }
 

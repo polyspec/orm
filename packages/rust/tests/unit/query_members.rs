@@ -95,7 +95,7 @@ async fn limit_reads_a_range_of_the_order() {
     none.limit(0, 0);
     let error = failure(none.gets().await, "a count of 0");
     assert_eq!(error.to_string(), "config: limit requires a non-negative offset and a positive count");
-    db.close().await;
+    db.close_async().await;
 }
 
 /// The statement of the first step of the request `kind` of `query` for `dialect`, as a connection of that dialect plans
@@ -154,7 +154,7 @@ async fn a_lock_needs_a_transaction() {
     let error = failure(outside.get().await, "a lock outside a transaction");
     assert_eq!(error.to_string(), "config: row locks are allowed only inside a transaction");
     let locked = db
-        .transaction(
+        .transaction_async(
             |tx| {
                 let schema = &schema;
                 async move {
@@ -170,7 +170,7 @@ async fn a_lock_needs_a_transaction() {
         .await
         .expect("a locked read in a transaction");
     assert_eq!(locked, Some(OrmValue::Text("b@x".into())));
-    db.close().await;
+    db.close_async().await;
 }
 
 /// The message of the value of `column` of `row`: `Ok` with the value, or the error text.
@@ -217,7 +217,7 @@ async fn the_columns_of_a_row_follow_the_column_members() {
         let error = failure(unknown.get().await, member);
         assert_eq!(error.to_string(), "config: missing is not a column of account", "{member}");
     }
-    db.close().await;
+    db.close_async().await;
 }
 
 /// The labels of the rows of the `relations` result `name` of `row`.
@@ -260,7 +260,7 @@ async fn relations_attach_the_rows_of_a_separate_query() {
     assert_eq!(account.value("email").expect("email"), OrmValue::Text("b@x".into()));
     let error = failure(row.related_rows("account_model"), "a relation result read as rows");
     assert_eq!(error.kind(), crate::Kind::Internal, "{error}");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-85, CORE-88. A child without match_pair is config, a pair that names no columns is config, and a
@@ -288,7 +288,7 @@ async fn a_relation_child_needs_its_key_and_no_limit() {
     parent.relations(limited);
     let error = failure(parent.gets().await, "a child with a limit");
     assert_eq!(error.kind(), crate::Kind::LimitInRelation, "{error}");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-86, CORE-88. A child of relations holds its own lock, which its own statement takes, as the
@@ -315,7 +315,7 @@ async fn a_relation_child_holds_its_own_lock() {
     assert_eq!(req.ir.query.lock, "update");
     assert_eq!(req.ir.query.relations[0].query.lock, "share", "the child keeps its own lock");
     let counts = db
-        .transaction(
+        .transaction_async(
             |tx| {
                 let schema = &schema;
                 async move {
@@ -333,7 +333,7 @@ async fn a_relation_child_holds_its_own_lock() {
         .await
         .expect("a locked read with a locked relation");
     assert_eq!(counts, [2, 1, 0]);
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-89. key_name keys the collection of gets and the rows of a relations result by a column, and a
@@ -363,7 +363,7 @@ async fn key_name_keys_the_rows_by_a_column() {
     unknown.key_name("missing");
     let error = failure(unknown.gets().await, "a name that is no column");
     assert_eq!(error.to_string(), "config: missing is not a column of account");
-    db.close().await;
+    db.close_async().await;
 }
 
 /// A subquery of the account of each key, which reads the column account_seq.
@@ -403,7 +403,7 @@ async fn where_in_compares_a_column_with_a_subquery() {
         let error = failure(refused.get_count().await, chain);
         assert_eq!(error.to_string(), message, "chain {chain}");
     }
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-90. A subquery reads one column added with add_column and takes no limit, lock, relation or
@@ -438,7 +438,7 @@ async fn a_subquery_reads_one_column_and_nothing_else() {
         let error = failure(outer.get_count().await, what);
         assert_eq!(error.to_string(), message, "a subquery with {what}");
     }
-    db.close().await;
+    db.close_async().await;
 }
 
 /// The account of `seq`, read with every column.
@@ -472,7 +472,7 @@ async fn create_inserts_the_row_of_the_assignments() {
     assert_eq!(error.kind(), crate::Kind::DuplicateKey, "{error}");
     let error = failure(query(&schema, "account", &db).create().await, "no assignment");
     assert_eq!(error.to_string(), "config: create requires set_<col> values");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-91. update writes the assignments to the row that the query read or to the row of the primary key
@@ -508,7 +508,7 @@ async fn update_writes_the_assignments_to_its_row() {
     fresh.update().await.expect("the revision that the row holds");
     let row = account(&schema, &db, 3).await.expect("account 3");
     assert_eq!((row.value("name").expect("name"), row.value("revision").expect("revision")), (OrmValue::Text("Cy".into()), int(1)));
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-91. set refuses a name that is no column and a value that no column takes.
@@ -529,7 +529,7 @@ async fn set_refuses_what_no_column_takes() {
         let error = failure(new.create().await, column);
         assert_eq!(error.to_string(), message, "set {column}");
     }
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-91. delete deletes the row that the query read or the row of a set primary key, and a collection
@@ -549,7 +549,7 @@ async fn delete_deletes_its_row() {
     keys.where_chain("AccountSeq", vec![int(1)]);
     keys.gets().await.expect("gets").delete(false).await.expect("delete the rows of a collection");
     assert_eq!(query(&schema, "account_key", &db).get_count().await.expect("count"), 0);
-    db.close().await;
+    db.close_async().await;
 }
 
 /// One table with a `soft_delete` setting and a unique email.
@@ -620,14 +620,14 @@ async fn restore_restores_the_soft_deleted_row_of_its_key() {
     assert_eq!(unchanged.value("name").expect("name"), OrmValue::Text("Ann".into()), "a row that is not deleted is not written");
     let error = failure(by_email(&schema, &db, "z@x").restore().await, "no row of the key");
     assert_eq!(error.kind(), crate::Kind::NoRows, "{error}");
-    db.close().await;
+    db.close_async().await;
     let accounts = account_schema();
     let account_db = account_db(&scratch, &accounts).await;
     let mut account = query(&accounts, "account", &account_db);
     account.set("email", OrmValue::Text("a@x".into()));
     let error = failure(account.restore().await, "an entity without soft_delete");
     assert_eq!(error.kind(), crate::Kind::IrInvalid, "{error}");
-    account_db.close().await;
+    account_db.close_async().await;
 }
 
 // Requirements: CORE-94. restore_or_create restores the soft-deleted row of the key or inserts the row of the
@@ -656,5 +656,5 @@ async fn restore_or_create_restores_or_inserts_the_row() {
     let mut read = query(&schema, "member", &db);
     read.where_chain("Email", vec![OrmValue::Text("a@x".into())]);
     assert_eq!(read.get().await.expect("get").expect("member 1").value("name").expect("name"), OrmValue::Text("Ann".into()), "nothing is written");
-    db.close().await;
+    db.close_async().await;
 }

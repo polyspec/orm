@@ -112,6 +112,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         page_length: page.items.len(),
     };
     println!("{}", serde_json::to_string(&out)?);
-    db.close().await;
+    db.close_async().await;
     Ok(())
 }

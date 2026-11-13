@@ -95,7 +95,7 @@ impl CaseDatabase {
             Err(e) => panic!("case database {name}: admin connection: {e}"),
         };
         let created = execute(&db, &format!("CREATE DATABASE {name}")).await;
-        db.close().await;
+        db.close_async().await;
         if let Err(e) = created {
             panic!("case database {name}: create: {e}");
         }
@@ -218,7 +218,7 @@ async fn remove(admin: Option<&str>, name: &str, path: Option<&Path>) -> Result<
         },
         _ => execute(&db, &format!("DROP DATABASE {name} WITH (FORCE)")).await,
     };
-    db.close().await;
+    db.close_async().await;
     result
 }
 
@@ -235,7 +235,7 @@ pub async fn next_admin_checks(driver: &str) -> i64 {
     };
     let Pool::MySql(pool) = db.pool() else { panic!("{driver} is no server of the MySQL dialect") };
     let checks = sqlx::query_scalar::<_, i64>("SELECT CAST(@@SESSION.foreign_key_checks AS SIGNED)").fetch_one(pool).await;
-    db.close().await;
+    db.close_async().await;
     match checks {
         Ok(checks) => checks,
         Err(e) => panic!("read foreign_key_checks: {e}"),
