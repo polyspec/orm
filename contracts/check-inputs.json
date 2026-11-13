@@ -912,6 +912,19 @@
       ],
       "inputs": []
     },
+    "rust-lock-check": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "benchmarks/rust/Cargo.toml",
+        "benchmarks/rust/Cargo.lock",
+        "packages/rust/**/Cargo.toml",
+        "packages/rust/Cargo.lock",
+        "packages/rust/testing/interfaces/Cargo.lock"
+      ]
+    },
     "rust-150-check": {
       "scope": "owner",
       "needs": [
@@ -3021,19 +3034,6 @@
         "legacy/packages/php/src/OrmException.php"
       ]
     },
-    "connection-pool-resource-bounds-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "legacy/packages/ts/tests/pool_bounds.mjs",
-        "legacy/packages/ts/tests/case-database.mjs",
-        "tests/testcase.mts"
-      ]
-    },
     "connection-utc-php-extension-check": {
       "scope": "owner",
       "needs": [
@@ -3719,6 +3719,22 @@
         "legacy/packages/python/tests/recipe.py",
         "packages/rust/programs/tests/all/ir_validate_none.rs",
         "packages/rust/src/testing/ir_request.rs"
+      ]
+    },
+    "recipe-branches-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "scripts/features/recipe-branches.mts",
+        "scripts/features/recipe-branches.test.mts",
+        "scripts/features/recipe-files.mts",
+        "contracts/**/*.json",
+        "tests/**/*.json",
+        "docs/spec/*.md",
+        "tests/testcase.mts"
       ]
     },
     "recipe-runners-check": {

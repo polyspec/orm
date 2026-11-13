@@ -17,7 +17,9 @@ static zval *privilege_utils_db(zval *object)
     return zend_read_property(privilege_utils_ce, Z_OBJ_P(object), "db", sizeof("db") - 1, true, &rv);
 }
 
-static bool privilege_utils_table(zval *db, zend_string *table, zend_string **quoted, zend_string **schema)
+/* Refuses a dialect other than PostgreSQL, after the arguments of the call are checked, so that an invalid argument is the
+ * same CONFIG on every database (INT-59, DIA-225). */
+static bool privilege_utils_supported(zval *db)
 {
     zval driver;
     if (!privilege_utils_method(db, "driver", &driver, 0, NULL)) return false;
@@ -27,6 +29,11 @@ static bool privilege_utils_table(zval *db, zend_string *table, zend_string **qu
         db_throw_orm("CAPABILITY_UNSUPPORTED", "table privileges are supported only by postgres");
         return false;
     }
+    return true;
+}
+
+static bool privilege_utils_table(zend_string *table, zend_string **quoted, zend_string **schema)
+{
     const char *dot = memchr(ZSTR_VAL(table), '.', ZSTR_LEN(table));
     if (dot == NULL || memchr(dot + 1, '.', ZSTR_LEN(table) - (size_t)(dot + 1 - ZSTR_VAL(table))) != NULL) {
         db_throw_orm("CONFIG", "a qualified table name is required");
@@ -63,7 +70,7 @@ static zval *privilege_utils_table_role(zval *object, zend_string *table, zend_s
     zend_string **qualified, zend_string **schema, zend_string **quoted_role)
 {
     zval *db = privilege_utils_db(object);
-    if (privilege_utils_table(db, table, qualified, schema) && privilege_utils_role(role, quoted_role)) {
+    if (privilege_utils_table(table, qualified, schema) && privilege_utils_role(role, quoted_role)) {
         return db;
     }
     if (*qualified != NULL) zend_string_release(*qualified);
@@ -138,6 +145,12 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, grantTable)
         Z_PARAM_STR(role)
     ZEND_PARSE_PARAMETERS_END();
     PRIVILEGE_RESOLVE_TABLE_ROLE();
+    if (!privilege_utils_supported(db)) {
+        zend_string_release(qualified);
+        zend_string_release(schema);
+        zend_string_release(quoted_role);
+        RETURN_THROWS();
+    }
     zend_string *first = strpprintf(0, "GRANT USAGE ON SCHEMA \"%s\" TO %s", ZSTR_VAL(schema), ZSTR_VAL(quoted_role));
     zend_string *second = strpprintf(0, "GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO %s", ZSTR_VAL(qualified), ZSTR_VAL(quoted_role));
     zval tables, result;
@@ -190,6 +203,13 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, revokeTable)
         zend_string_release(quoted_role);
         RETURN_THROWS();
     }
+    if (!privilege_utils_supported(db)) {
+        zend_string_release(normalized);
+        zend_string_release(qualified);
+        zend_string_release(schema);
+        zend_string_release(quoted_role);
+        RETURN_THROWS();
+    }
     zend_string *sql = strpprintf(0, "REVOKE %s ON %s FROM %s", ZSTR_VAL(normalized), ZSTR_VAL(qualified), ZSTR_VAL(quoted_role));
     zval tables, result;
     array_init(&tables);
@@ -218,8 +238,12 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, inspectTable)
     ZEND_PARSE_PARAMETERS_END();
     zval *db = privilege_utils_db(ZEND_THIS);
     zend_string *qualified = NULL, *schema = NULL;
-    if (!privilege_utils_table(db, table, &qualified, &schema)) RETURN_THROWS();
+    if (!privilege_utils_table(table, &qualified, &schema)) RETURN_THROWS();
     zend_string_release(schema);
+    if (!privilege_utils_supported(db)) {
+        zend_string_release(qualified);
+        RETURN_THROWS();
+    }
     zend_string *sql = zend_string_init(
         "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), "
         "has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), "

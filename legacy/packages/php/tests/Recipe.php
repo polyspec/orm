@@ -3459,6 +3459,10 @@ final class Recipe
                                 array_map(self::toValue(...), $statement['params'] ?? []),
                             );
                         }
+                        // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+                        if (isset($s['hold_ms'])) {
+                            usleep($s['hold_ms'] * 1000);
+                        }
                         if (isset($s['conflict'])) {
                             throw Orm::transactionConflict($s['conflict']);
                         }
@@ -3523,6 +3527,7 @@ final class Recipe
                         ['kind', ['text' => $record['kind']]],
                         ['entity', ['text' => $record['entity']]],
                         ...(isset($record['param']) ? [['param', $record['param']]] : []),
+                        ...(isset($record['read']) ? [['read', $record['read']]] : []),
                     ]];
                 }
                 return ['value' => ['array' => $list], 'counts' => $counts];
@@ -3999,6 +4004,7 @@ final class Recipe
             'value' => array_key_exists('value', $a) ? self::nativeValue($a['value']) : null,
             'nested' => ($a['nested'] ?? false) === true,
             'code' => $a['error'] ?? '',
+            'read' => $a['read'] ?? null,
         ], $hooks);
         return static function (Request $r) use (&$context, $actions): void {
             foreach ($actions as $a) {
@@ -4031,6 +4037,24 @@ final class Recipe
                         break;
                     case 'invalid_param':
                         self::andWhere($r->ir, ['column' => $a['column'], 'op' => 'eq', 'p' => count($r->params) + 5]);
+                        break;
+                    case 'locked_read':
+                        // The hook reads with its lock in a transaction of another connection before the
+                        // client plans the request, and a refusal of that read fails the operation unchanged
+                        // (INT-78).
+                        $read = new RecipeStep($a['read']);
+                        $count = 0;
+                        self::connectionOf($read, $context)->transaction(
+                            function () use ($read, &$context, &$count): void {
+                                $count = count(self::chainBuilt($read, $context)->gets());
+                            },
+                            retry: 0,
+                        );
+                        $context['records'][] = [
+                            'kind' => $r->ir['kind'],
+                            'entity' => $r->ir['entity'] ?? '',
+                            'read' => ['int' => (string) $count],
+                        ];
                         break;
                     case 'record':
                         $context['records'][] = [
@@ -4173,8 +4197,8 @@ final class Recipe
     /**
      * query.search (FCV-4, PRT-75): the count of a fulltext_boolean chain over the columns, through the fulltext
      * chain of the model. The request is compiled on the dialect of the case connection (DIA-187 refuses SQLite), and
-     * its bind values are those of the statement: the DIA-6 transform on MySQL, which refuses a blank text with
-     * IR_INVALID, and the text as it is on PostgreSQL.
+     * its bind values are those of the statement: the DIA-6 transform of the dialect, which refuses a blank text with
+     * IR_INVALID, and binds its terms on MySQL and the text as it is on PostgreSQL.
      */
     private static function querySearch(RecipeStep $s, array $context): array
     {

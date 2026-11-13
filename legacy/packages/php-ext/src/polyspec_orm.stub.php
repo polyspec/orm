@@ -1953,6 +1953,7 @@ final class Catalog
     private int $netWriteTimeout = 0;
     private bool $streamLeft = false;
     private float $reopenUntil = 0.0;
+    private ?Db $killer = null;
 
     public static function connect(string $dsn): Catalog {}
     public function dialect(): string {}

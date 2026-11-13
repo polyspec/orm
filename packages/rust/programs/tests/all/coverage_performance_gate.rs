@@ -49,12 +49,11 @@ impl Workload {
         }
     }
 
-    fn expected_binds(self, database: &str) -> Vec<Param> {
-        match (self, database) {
-            (Self::Pk, "mysql") => vec![Param::I64(42), Param::I64(0), Param::I64(1)],
-            (Self::List100, "mysql") => vec![Param::I64(7), Param::Bool(false), Param::I64(0), Param::I64(100)],
-            (Self::Pk, _) => vec![Param::I64(42), Param::I64(1), Param::I64(0)],
-            (Self::List100, _) => vec![Param::I64(7), Param::Bool(false), Param::I64(100), Param::I64(0)],
+    /// The binds of the query, one order on every database: the page count binds before the offset (DIA-3).
+    fn expected_binds(self) -> Vec<Param> {
+        match self {
+            Self::Pk => vec![Param::I64(42), Param::I64(1), Param::I64(0)],
+            Self::List100 => vec![Param::I64(7), Param::Bool(false), Param::I64(100), Param::I64(0)],
         }
     }
 
@@ -261,7 +260,7 @@ async fn coverage_hot_path_gate_for(expected: &str) {
     let native = Native::connect(expected, &dsn).await;
     for workload in [Workload::Pk, Workload::List100] {
         let statement = workload.query(&db).await.expect("build client query");
-        assert_eq!(statement.binds, workload.expected_binds(expected), "{} native bindings must mirror the model query", workload.name());
+        assert_eq!(statement.binds, workload.expected_binds(), "{} native bindings must mirror the model query", workload.name());
         // The rows of pk (pk_lookup) and list100 (list_descending) are checked by performance_gate on every database, so the
         // native read is not compared with the client read here.
         for _ in 0..100 {

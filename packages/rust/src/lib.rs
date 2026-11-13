@@ -49,7 +49,7 @@ pub use array::ArrayValue;
 pub use chrono;
 pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
 pub use core::Core;
-pub use db::{AuditSource, Config, Db, DbStats, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS};
+pub use db::{AuditSource, Config, Db, DbStats, HookFuture, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS};
 pub use engine::Dialect;
 pub use error::{CallbackFailure, Error};
 pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};

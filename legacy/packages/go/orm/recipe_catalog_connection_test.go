@@ -16,7 +16,7 @@ var catalogConnectionRecipe = testcase.LegacyPath("contracts/fixtures/catalog_co
 // Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
 // Requirements: SCH-3.
 // Requirements: COD-31, INT-4, INT-8, INT-97.
-// Requirements: INT-119, INT-121.
+// Requirements: INT-121.
 func TestRecipeCatalogConnectionMysql(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, catalogConnectionRecipe, "mysql")
@@ -36,7 +36,7 @@ func TestRecipeCatalogConnectionMariadb(t *testing.T) {
 // Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
 // Requirements: CFG-28, CFG-41.
 // Requirements: COD-31, INT-4, INT-8, INT-97.
-// Requirements: INT-119, INT-121.
+// Requirements: INT-121.
 func TestRecipeCatalogConnectionPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, catalogConnectionRecipe, "postgres")
@@ -47,7 +47,7 @@ func TestRecipeCatalogConnectionPostgres(t *testing.T) {
 // INT-136, SCH-6a.
 // Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
 // Requirements: COD-31, INT-4, INT-8, INT-97.
-// Requirements: INT-119, INT-121.
+// Requirements: INT-121.
 func TestRecipeCatalogConnectionSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, catalogConnectionRecipe, "sqlite")

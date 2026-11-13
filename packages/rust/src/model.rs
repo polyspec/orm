@@ -459,12 +459,12 @@ fn val_param_key(p: &Param) -> String {
 
 /// Applies the request hook of the handle the model runs on to req before planning. The handle is the handle the model is bound to, and
 /// if there is no connection, it is the handle that started the transaction (docs/operations/usage.md "Request hook").
-fn hook_request(conn: &Option<Connection>, ex: &Executor, req: &mut Req) -> Result<()> {
+async fn hook_request(conn: &Option<Connection>, ex: &Executor, req: &mut Req) -> Result<()> {
     let db = match conn {
         Some(connection) => connection.db(),
         None => ex.db(),
     };
-    apply_request_hook(db, req)
+    apply_request_hook(db, req).await
 }
 
 /// The row lock of a read: the lock of its root, or else of its first relation step, depth first, that has one (PRT-8).
@@ -491,7 +491,7 @@ async fn select(ex: &Executor, conn: &Option<Connection>, req: &mut Req) -> Resu
 /// Runs a read. With `keep`, the size of a lookahead page, the root rows past `keep` set `has_next` and are dropped before
 /// the relation steps read their parents (INT-164).
 async fn select_page(ex: &Executor, conn: &Option<Connection>, req: &mut Req, keep: Option<usize>) -> Result<QueryResult> {
-    hook_request(conn, ex, req)?;
+    hook_request(conn, ex, req).await?;
     let db = ex.db().clone();
     // The lock of the request, at the root or on a relation step, is checked and taken once, before any statement (PRT-8).
     let lock = checked_lock(ex, req)?;
@@ -1053,7 +1053,7 @@ async fn scalar(c: &Core, kind: &str) -> Result<Vec<Val>> {
     if kind == "sum" || kind == "avg" {
         req.ir.agg = c.agg.clone();
     }
-    hook_request(&c.conn, &ex, &mut req)?;
+    hook_request(&c.conn, &ex, &mut req).await?;
     let db = ex.db().clone();
     let (plan, slots) = split_read_plan(&db, &mut req).await?;
     let st = &plan.steps[0];
@@ -1141,7 +1141,7 @@ fn page_request(c: &Core, page: u32, per_page: u32) -> Result<(Executor, Core, R
 /// The steps of the plan that `gets_page` runs, in their order, without executing it.
 pub async fn get_page_plan_steps(c: &Core, page: u32, per_page: u32) -> Result<Vec<QueryPlanStep>> {
     let (ex, q, mut req) = page_request(c, page, per_page)?;
-    hook_request(&q.conn, &ex, &mut req)?;
+    hook_request(&q.conn, &ex, &mut req).await?;
     checked_lock(&ex, &req)?;
     let plan = ex.db().plan(&mut req).await?;
     Ok(plan.steps.iter().map(|st| QueryPlanStep { role: st.role.clone(), tables: st.tables.clone(), sql: st.sql.clone() }).collect())
@@ -1151,7 +1151,7 @@ pub async fn get_page_plan_steps(c: &Core, page: u32, per_page: u32) -> Result<V
 pub async fn get_query(c: &Core) -> Result<Statement> {
     let ex = terminal(c)?;
     let mut req = build(c, "all");
-    hook_request(&c.conn, &ex, &mut req)?;
+    hook_request(&c.conn, &ex, &mut req).await?;
     let audit = match &ex {
         Executor::Tx(t) => t.audit(),
         Executor::Db(_) => None,
@@ -1246,7 +1246,7 @@ async fn write_after_hook(ex: &Executor, conn: &Option<Connection>, req: &mut Re
 }
 
 async fn write_request(ex: &Executor, conn: &Option<Connection>, req: &mut Req, after: impl FnOnce(&Req) -> Result<()>) -> Result<(Val, u64)> {
-    hook_request(conn, ex, req)?;
+    hook_request(conn, ex, req).await?;
     after(req)?;
     let db = ex.db().clone();
     let plan = db.plan(req).await?;

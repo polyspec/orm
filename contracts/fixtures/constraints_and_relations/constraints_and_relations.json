@@ -302,6 +302,7 @@
   "cases": [
     {
       "id": "constraint_errors",
+      "databases_differ": "The code of a violated key is the same on every database (CFG-33); its message is the text of the server, which the step holds with message_holds and SQLite ends with its result code (FCV-4, PRT-79).",
       "requirements": [
         "CFG-33"
       ],
@@ -701,6 +702,7 @@
     },
     {
       "id": "sqlite_driver_error_ends_with_its_result_code",
+      "databases_differ": "Only SQLite has an extended result code, which ends the message of its driver error (PRT-79, CFG-33).",
       "requirements": [
         "CFG-33",
         "INT-154",

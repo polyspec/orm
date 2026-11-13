@@ -4458,8 +4458,9 @@ def _utils_groups(step: dict, context: dict) -> dict:
 
 
 def _pool_transactions(step: dict, context: dict) -> dict:
-    """Count transactions in threads of their own: the first hold of them stay open until hold have
-    begun, so the pool shows the connections that they take at once (CFG-4, CFG-5)."""
+    """Count read-only transactions in threads of their own: the first hold of them stay open until hold
+    have begun, so the pool shows the connections that they take at once (CFG-4, CFG-5). A read-only
+    transaction takes no write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221)."""
     db = _connection_of(step, context)
     lock = threading.Lock()
     gate = threading.Event()
@@ -4480,7 +4481,7 @@ def _pool_transactions(step: dict, context: dict) -> dict:
 
     with ThreadPoolExecutor(max_workers=step["transactions"]) as pool:
         flows = [
-            pool.submit(db.transaction, body, {"retry": 0})
+            pool.submit(db.transaction, body, {"retry": 0, "readOnly": True})
             for _ in range(step["transactions"])
         ]
     for flow in flows:
@@ -4577,6 +4578,9 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 kind=statement["kind"],
                 tables=statement["tables"],
             )
+        # hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+        if "hold_ms" in step:
+            time.sleep(step["hold_ms"] / 1000)
         if "conflict" in step:
             raise transaction_conflict(step["conflict"])
         return last
@@ -4752,6 +4756,7 @@ def _install_hook(step: dict, context: dict) -> None:
             else None,
             "nested": h.get("nested") is True,
             "code": h.get("error", ""),
+            "read": h.get("read"),
         }
         for h in hooks
     ]
@@ -4785,6 +4790,22 @@ def _install_hook(step: dict, context: dict) -> None:
                 and_where(
                     query,
                     {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
+            elif action == "locked_read":
+                # The hook reads with its lock in a transaction of another connection before the client plans the
+                # request, and a refusal of that read fails the operation unchanged (INT-78).
+                read = [0]
+
+                def locked(spec: dict = a["read"]) -> None:
+                    read[0] = len(_chain_built(spec, context).gets().values())
+
+                _connection_of(a["read"], context).transaction(locked, {"retry": 0})
+                context["records"].append(
+                    {
+                        "kind": query["kind"],
+                        "entity": query["entity"],
+                        "read": {"int": str(read[0])},
+                    }
                 )
             elif action == "record":
                 context["records"].append(
@@ -4828,6 +4849,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
                 ["kind", {"text": record["kind"]}],
                 ["entity", {"text": record["entity"]}],
                 *([["param", record["param"]]] if "param" in record else []),
+                *([["read", record["read"]]] if "read" in record else []),
             ]
         }
         for record in records

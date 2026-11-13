@@ -11,6 +11,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"time"
 	"unicode/utf8"
 
 	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
@@ -223,6 +224,9 @@ func runFrame(s databaseStep, c *databaseContext) (outcome, error) {
 				return err
 			}
 			rows = result.Rows
+		}
+		if hold := s.k("hold_ms").HoldMs; hold > 0 {
+			time.Sleep(time.Duration(hold) * time.Millisecond)
 		}
 		if s.k("conflict").Conflict != "" {
 			return orm.TransactionConflict(s.k("conflict").Conflict)

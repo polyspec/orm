@@ -1,6 +1,6 @@
 {
   "manifest_version": 1,
-  "contract_version": "0.0.31",
+  "contract_version": "0.0.33",
   "source": {
     "read_order": [
       "contracts/features.json",
@@ -72,7 +72,6 @@
         "legacy/packages/php/tests/ModelTest.php",
         "legacy/packages/php-ext/tests/ConnectionUtcNativeTest.php",
         "legacy/packages/ts/tests/model.mjs",
-        "legacy/packages/ts/tests/pool_bounds.mjs",
         "legacy/packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/tests/cases/zone.rs",
         "legacy/packages/php/tests/CoverageDsnTest.php",

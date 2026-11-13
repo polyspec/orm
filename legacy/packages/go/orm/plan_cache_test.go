@@ -150,10 +150,8 @@ func TestPlanCachePagedReadBindsPageValues(t *testing.T) {
 				t.Fatalf("%s page %d has %d cache entries, want one", driver, page, got)
 			}
 			step := c.plan.Steps[0]
-			wantParams := []int{0, 1, 2}
-			if driver != "mysql" {
-				wantParams = []int{0, 2, 1}
-			}
+			// Every dialect renders LIMIT count OFFSET offset, so the count binds before the offset (DIA-3).
+			wantParams := []int{0, 2, 1}
 			gotParams := make([]int, len(step.BindSlots))
 			for i, slot := range step.BindSlots {
 				gotParams[i] = slot.Param

@@ -101,7 +101,8 @@ export async function createCaseDatabase(dialect, step) {
     };
   }
   if (!(dialect in adminEnv)) throw new Error(`unknown dialect ${dialect}`);
-  const { dsn: base } = await admin(dialect, dialect !== 'postgres' ? `CREATE DATABASE \`${name}\`` : `CREATE DATABASE "${name}"`);
+  // The name is lower-case letters, digits and underscores, which every server takes unquoted.
+  const { dsn: base } = await admin(dialect, `CREATE DATABASE ${name}`);
   step(`database ${name} created`);
   return {
     dialect, name, path: null, dsn: relatedDsn(base, name),
@@ -204,4 +205,17 @@ export function dropDiscardsItsSession(dialect) {
     if (Number(rows[0].checks) !== 1) throw new Error(`the next admin session has foreign_key_checks ${rows[0].checks}, want 1`);
     step('the next admin session has foreign_key_checks 1');
   });
+}
+
+// The SQLite pool of db opens a connection when a statement or a session first needs one (CFG-5a): install runs on the state
+// of each connection that is idle now and of each that the pool opens later, so a fault of the test driver reaches every one.
+export function onSqliteConnections(db, install) {
+  const pool = db.pool.pool;
+  for (const connection of pool.idle) install(connection.state);
+  const dial = pool.dial;
+  pool.dial = async signal => {
+    const connection = await dial(signal);
+    install(connection.state);
+    return connection;
+  };
 }

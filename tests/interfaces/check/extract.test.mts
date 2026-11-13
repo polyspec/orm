@@ -106,11 +106,22 @@ for (const signalName of ['SIGKILL', 'SIGTERM'] as const) {
     await withHolders(async (holders, directory) => {
       const checker = spawn(process.execPath, ['tests/interfaces/check/main.mts', '-language', 'python'], {
         cwd: root,
-        stdio: 'ignore',
+        stdio: ['ignore', 'pipe', 'pipe'],
         env: isolatedEnvironment({ ORM_PYTHON: hungExtractor(directory), ORM_HANG_PORT: String(holders.port) }),
       });
+      let output = '';
+      checker.stdout.on('data', chunk => { output += chunk; });
+      checker.stderr.on('data', chunk => { output += chunk; });
+      // A checker that ends before it starts the extractor fails the case with what it printed, so the case does not wait
+      // for its deadline on an extractor that never starts.
+      const early = new Promise<Error>(done => {
+        checker.once('exit', (code, ended) => {
+          done(new Error(`the checker ended (${code ?? ended}) before it started the extractor:\n${output}`));
+        });
+      });
       try {
-        const held = await holders.both;
+        const held = await Promise.race([holders.both, early]);
+        if (held instanceof Error) throw held;
         checker.kill(signalName);
         await closed(held, signal);
       } finally {

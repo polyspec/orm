@@ -483,6 +483,7 @@
   },
   {
    "id": "joined_child_keeps_its_scalar_subquery_order_and_index",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect (DIA-1, DIA-2), with the index hint of each server (DIA-7), and SQLite sums an integer column in parts, since its own SUM stops at 64 bits (DIA-218).",
    "requirements": [
     "DSL-74",
     "DSL-90",
@@ -800,6 +801,7 @@
   },
   {
    "id": "null_collection_key_is_refused_after_one_select",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "PRT-35"
    ],
@@ -1114,6 +1116,7 @@
   },
   {
    "id": "group_rows_send_only_reads_and_sum_to_the_row_count",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); NULLS FIRST or LAST on PostgreSQL, where MySQL and SQLite order a NULL first ascending by themselves (DIA-13).",
    "requirements": [
     "INT-31"
    ],
@@ -3776,6 +3779,7 @@
   },
   {
    "id": "relation_condition_follows_the_padded_composite_parent_keys",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "PRT-40",
     "DSL-82"

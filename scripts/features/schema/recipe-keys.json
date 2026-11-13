@@ -11,6 +11,7 @@
     "version"
   ],
   "case": [
+    "databases_differ",
     "deadline",
     "id",
     "install",
@@ -343,6 +344,7 @@
       "as",
       "expect",
       "index",
+      "only",
       "op",
       "page",
       "page_with"
@@ -356,6 +358,7 @@
     ],
     "catalog.update_row": [
       "expect",
+      "only",
       "op",
       "set",
       "snapshot"
@@ -603,6 +606,7 @@
       "conflict",
       "connection",
       "expect",
+      "hold_ms",
       "only",
       "op",
       "statements"

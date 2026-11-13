@@ -1988,12 +1988,12 @@ static zend_string *contains_binary_sql(pctx *c, pbinds *b, zend_string *lhs, Ha
 }
 
 /* Planner::renderPred of a full-text predicate: Dialect::fulltext over the qualified columns, the value bound as text through
- * the transform fulltext_boolean in the boolean mode (DIA-6). A dialect without full-text search gives null (DIA-187). */
+ * the transform of the dialect in the boolean mode (DIA-6). A dialect without full-text search gives null (DIA-187). */
 static zend_string *fulltext_sql(pctx *c, pbinds *b, pscope *s, HashTable *p, const char *ops)
 {
     fns_init();
-    /* Dialect::fulltext over the qualified columns; the value is bound as text through the transform fulltext_boolean in
-     * the boolean mode (DIA-6). A dialect without full-text search gives null: OPERATOR_NOT_ALLOWED (DIA-187). */
+    /* Dialect::fulltext over the qualified columns; the value is bound as text through the transform of the dialect in the
+     * boolean mode (DIA-6). A dialect without full-text search gives null: OPERATOR_NOT_ALLOWED (DIA-187). */
     zval *qcols = qualified(c, s, lst(p, "cols"));
     OKP(qcols);
     pthunk tv = {c, b, gl(p, "p", 0), 0, NULL, NULL};
@@ -2525,16 +2525,9 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
                     zend_string *type = zend_string_init("i64", sizeof("i64") - 1, 0);
                     zend_string *empty = ZSTR_EMPTY_ALLOC();
                     zend_string *offset, *count;
-                    zval name_rv;
-                    zval *name = zend_read_property(Z_OBJCE_P(c->dialect), Z_OBJ_P(c->dialect), "name", sizeof("name") - 1, 0, &name_rv);
-                    bool mysql = name != NULL && Z_TYPE_P(name) == IS_STRING && zend_string_equals_literal(Z_STR_P(name), "mysql");
-                    if (mysql) {
-                        offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
-                        count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
-                    } else {
-                        count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
-                        offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
-                    }
+                    /* Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3). */
+                    count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
+                    offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
                     zend_string_release(type);
                     zend_string_release(empty);
                     if (offset == NULL || count == NULL) return NULL;
@@ -3516,6 +3509,27 @@ static pstep *restart_identity_step(pctx *c, HashTable *r)
     return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), newlist(c), tables);
 }
 
+/* The root query of a page, counted or lookahead: a query without an order is ordered by the primary key of its entity, or
+ * by its group_by columns for a grouped lookahead page, ascending in their order, so that consecutive pages neither repeat nor
+ * skip a row (INT-64, INT-164). */
+static HashTable *page_query(pctx *c, HashTable *r, bool grouped)
+{
+    if (count_of(lst(r, "order")) != 0) return r;
+    HashTable *columns = grouped ? lst(r, "group_by") : lst(entity(c, gs(c, r, "entity")), "pk");
+    zval *order = newlist(c);
+    zval *column;
+    ZEND_HASH_FOREACH_VAL(columns, column) {
+        ZVAL_DEREF(column);
+        zval *item = newlist(c);
+        put(item, "column", column);
+        lpush(order, item);
+    } ZEND_HASH_FOREACH_END();
+    zval *copy = keep(c);
+    ZVAL_ARR(copy, zend_array_dup(r));
+    put(copy, "order", order);
+    return Z_ARRVAL_P(copy);
+}
+
 /* Planner::compile: the plan of a validated request as the PHP array. */
 static bool compile_body(pctx *c, HashTable *r, zval *ret)
 {
@@ -3524,7 +3538,8 @@ static bool compile_body(pctx *c, HashTable *r, zval *ret)
     const char *k = ZSTR_VAL(kind);
     pstep *st = NULL;
     if (strcmp(k, "paginate") == 0) {
-        pstep *main = select_step(c, steps, r, "all", ZSTR_EMPTY_ALLOC(), NULL, true);
+        /* The root of a chain without an order is ordered by its primary key (INT-64). */
+        pstep *main = select_step(c, steps, page_query(c, r, false), "all", ZSTR_EMPTY_ALLOC(), NULL, true);
         OKB(main);
         OKB(select_step(c, steps, r, "count", ZSTR_EMPTY_ALLOC(), NULL, false));
         pscope *root = scopes(c, r, fmt(c, "a"), NULL);
@@ -3536,25 +3551,7 @@ static bool compile_body(pctx *c, HashTable *r, zval *ret)
     } else if (strcmp(k, "lookahead_paginate") == 0 || strcmp(k, "group_lookahead_paginate") == 0) {
         /* One statement and its relations, with no count: the root limit reads one row past the page (INT-164). */
         bool grouped = strcmp(k, "group_lookahead_paginate") == 0;
-        HashTable *q = r;
-        if (count_of(lst(r, "order")) == 0) {
-            /* A query without an order is ordered by the primary key, or by its group_by columns, ascending in their
-             * order, so that consecutive pages neither repeat nor skip a row. */
-            HashTable *columns = grouped ? lst(r, "group_by") : lst(entity(c, gs(c, r, "entity")), "pk");
-            zval *order = newlist(c);
-            zval *column;
-            ZEND_HASH_FOREACH_VAL(columns, column) {
-                ZVAL_DEREF(column);
-                zval *item = newlist(c);
-                put(item, "column", column);
-                lpush(order, item);
-            } ZEND_HASH_FOREACH_END();
-            zval *copy = keep(c);
-            ZVAL_ARR(copy, zend_array_dup(r));
-            put(copy, "order", order);
-            q = Z_ARRVAL_P(copy);
-        }
-        OKB(select_step(c, steps, q, grouped ? "group_count" : "all", ZSTR_EMPTY_ALLOC(), NULL, false));
+        OKB(select_step(c, steps, page_query(c, r, grouped), grouped ? "group_count" : "all", ZSTR_EMPTY_ALLOC(), NULL, false));
     } else if (strcmp(k, "insert") == 0) {
         st = insert_step(c, r);
         OKB(st);

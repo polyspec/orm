@@ -107,7 +107,6 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
     ['a step that compares its result without expect', change(database, ['cases', 0, 'steps', decode, 'expect'])],
     ['model.connect with expect', change(database, ['cases', 0, 'steps', 0, 'expect'], at(database, ['cases', 0, 'steps', decode, 'expect']))],
     ['sql.exec without its reason', change(database, ['cases', 0, 'steps', 1, 'reason'])],
-    ['SQL for two of the three databases', change(database, ['cases', 0, 'steps', 1, 'sql', 'sqlite'])],
     ['an int as a JSON number', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: 1 })],
     ['an int that is not a decimal', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: '1e3' })],
     ['a value with two wrappers', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: '1', text: '1' })],
@@ -142,11 +141,18 @@ function expectFaults(recipe: Json): string[] {
     for (const step of steps) {
       if (step === null || typeof step !== 'object' || Array.isArray(step)) continue;
       const only = Array.isArray(step.only) ? step.only.map(String) : inherited;
-      for (const key of ['expect', 'expect_unnamed']) {
-        const expect = step[key];
-        if (expect === null || typeof expect !== 'object' || Array.isArray(expect) || expect === undefined) continue;
+      // An expect and a statement by database name exactly the databases that run the step, so that no entry stands in for a
+      // database that does not run it (T426).
+      const maps: [string, Json | undefined][] = [['expect', step.expect], ['expect_unnamed', step.expect_unnamed], ['sql', step.sql]];
+      if (Array.isArray(step.statements)) {
+        step.statements.forEach((statement, index) => {
+          if (statement !== null && typeof statement === 'object' && !Array.isArray(statement)) maps.push([`statements/${index}/sql`, statement.sql]);
+        });
+      }
+      for (const [key, map] of maps) {
+        if (map === null || typeof map !== 'object' || Array.isArray(map) || map === undefined) continue;
         const servers = (names: string[]) => names.filter(name => name !== 'markdown' && name !== 'mariadb').sort().join(',');
-        const named = Object.keys(expect);
+        const named = Object.keys(map);
         const want = servers(only);
         if (servers(named) !== want || (named.includes('markdown') && !only.includes('sqlite')) || (named.includes('mariadb') && !only.includes('mysql'))) {
           faults.push(`${where} ${label(step.op)} ${key} names ${[...named].sort().join(',')}, want ${want}`);
@@ -163,7 +169,7 @@ function expectFaults(recipe: Json): string[] {
   return faults;
 }
 
-caseTest('an expect names exactly the databases that run its step', COMPUTE, () => {
+caseTest('an expect and a statement by database name exactly the databases that run their step', COMPUTE, () => {
   const database = read(resolve(fixtures, 'database.json'));
   const decode = 2;
   const expect = at(database, ['cases', 0, 'steps', decode, 'expect']);
@@ -174,6 +180,8 @@ caseTest('an expect names exactly the databases that run its step', COMPUTE, () 
   assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'an expect without one database');
   assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'only'], ['postgres'])), [], 'a case with only whose expect names the others');
   assert.notDeepEqual(expectFaults(change(change(database, ['cases', 0, 'steps', decode, 'only'], ['postgres']), ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'a step with only whose expect leaves it out');
+  assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', 1, 'sql', 'sqlite'])), [], 'SQL for two of the three databases that run the step');
+  assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', 1, 'only'], ['mysql'])), [], 'SQL for a database that does not run the step');
   assert.deepEqual(recipeFiles.flatMap(file => expectFaults(jsonFile(file)).map(fault => `${file}: ${fault}`)), []);
 });
 

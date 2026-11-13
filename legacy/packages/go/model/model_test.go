@@ -26,9 +26,6 @@ func databases(t *testing.T) map[string]*orm.DB {
 	out := map[string]*orm.DB{}
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		dsn := testdb.New(t, driver)
-		if driver == "sqlite" {
-			dsn += "?_pragma=busy_timeout(5000)"
-		}
 		db, err := model.Connect(dsn, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 		if err != nil {
 			t.Fatalf("%s: %v", driver, err)

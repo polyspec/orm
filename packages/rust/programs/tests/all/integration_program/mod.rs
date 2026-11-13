@@ -163,10 +163,11 @@ impl Target {
         t
     }
 
-    /// Connects to a new case database for `driver` (MySQL, PostgreSQL) or a new SQLite file.
+    /// Connects to a new case database for `driver` (MySQL, PostgreSQL) or a new SQLite file. A SQLite DSN states no
+    /// busy_timeout, so the connection waits for a lock as long as CFG-12 sets.
     async fn empty(driver: &str) -> Target {
         let database = CaseDatabase::create(driver).await;
-        let dsn = if driver == "sqlite" { format!("{}?_pragma=busy_timeout(5000)", database.dsn()) } else { database.dsn().to_owned() };
+        let dsn = database.dsn().to_owned();
         let db = crate::model::connect(&dsn, TARGET_POOL_SIZE, config()).await.or_panic(|e| format!("{driver}: {e}; waited on {}", waits_on(driver)));
         Target { driver: database.driver(), dsn, db, _wait: NamesItsWait(database.driver()), database }
     }

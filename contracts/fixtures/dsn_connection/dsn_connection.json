@@ -25,6 +25,7 @@
   "cases": [
     {
       "id": "dsn_connection",
+      "databases_differ": "The scheme of a DSN selects the dialect, which the step reads back by its name (CFG-1).",
       "requirements": [
         "CFG-1"
       ],
@@ -74,6 +75,7 @@
     },
     {
       "id": "dsn_parameters_of_this_page",
+      "databases_differ": "Each driver takes its own DSN parameters, sslmode and host on PostgreSQL and the busy timeout pragma on SQLite (CFG-2, CFG-12, CFG-19).",
       "requirements": [
         "CFG-2",
         "CFG-19",
@@ -208,6 +210,7 @@
     },
     {
       "id": "sqlite_file_name_is_the_path",
+      "databases_differ": "Only a SQLite DSN names a local file (CFG-26).",
       "requirements": [
         "CFG-26"
       ],
@@ -231,6 +234,7 @@
     },
     {
       "id": "sqlite_refused_dsn_creates_no_file",
+      "databases_differ": "Only a SQLite DSN names a local file, which a refused DSN must leave uncreated (CFG-12, CFG-26).",
       "requirements": [
         "CFG-12"
       ],
@@ -272,6 +276,7 @@
     },
     {
       "id": "sqlite_path_opens_the_percent_decoded_file",
+      "databases_differ": "Only a SQLite DSN names a local file by its path (CFG-11).",
       "requirements": [
         "CFG-11"
       ],
@@ -361,6 +366,7 @@
     },
     {
       "id": "sqlite_invalid_path_is_config_and_creates_no_file",
+      "databases_differ": "Only a SQLite DSN names a local file by its path (CFG-11).",
       "requirements": [
         "CFG-11"
       ],
@@ -408,6 +414,7 @@
     },
     {
       "id": "mysql_session_settings",
+      "databases_differ": "The session sql_mode and statement bound are MySQL's own settings, max_statement_time on MariaDB (CFG-3, DIA-208).",
       "requirements": [
         "CFG-3",
         "DIA-208"
@@ -445,6 +452,7 @@
     },
     {
       "id": "plain_dsn_connects_without_tls",
+      "databases_differ": "A TLS connection and its server identity are a network server's own, which a SQLite file has not (CFG-26); the MySQL case states its own default (CFG-44).",
       "requirements": [
         "CFG-44"
       ],
@@ -476,6 +484,7 @@
     },
     {
       "id": "mysql_tls_verifies_the_server_identity",
+      "databases_differ": "A TLS connection and its server identity are a network server's own, which a SQLite file has not (CFG-26), and each server checks it in its own options (CFG-16).",
       "requirements": [
         "CFG-16"
       ],
@@ -501,6 +510,7 @@
     },
     {
       "id": "mysql_tls_refuses_an_untrusted_identity",
+      "databases_differ": "A TLS connection and its server identity are a network server's own, which a SQLite file has not (CFG-26), and each server checks it in its own options (CFG-16).",
       "requirements": [
         "CFG-16"
       ],
@@ -532,6 +542,7 @@
     },
     {
       "id": "postgres_plain_dsn_connects_without_tls",
+      "databases_differ": "A TLS connection and its server identity are a network server's own, which a SQLite file has not (CFG-26); the PostgreSQL case states its own default (CFG-47).",
       "requirements": [
         "CFG-47"
       ],
@@ -562,6 +573,7 @@
     },
     {
       "id": "postgres_tls_verifies_the_server_identity",
+      "databases_differ": "A TLS connection and its server identity are a network server's own, which a SQLite file has not (CFG-26), and each server checks it in its own options (CFG-45).",
       "requirements": [
         "CFG-45"
       ],
@@ -592,6 +604,7 @@
     },
     {
       "id": "postgres_tls_refuses_an_untrusted_identity",
+      "databases_differ": "A TLS connection and its server identity are a network server's own, which a SQLite file has not (CFG-26), and each server checks it in its own options (CFG-45).",
       "requirements": [
         "CFG-45"
       ],
@@ -623,6 +636,7 @@
     },
     {
       "id": "postgres_unreadable_sslrootcert_is_refused",
+      "databases_differ": "The sslrootcert parameter is PostgreSQL's own (CFG-46).",
       "requirements": [
         "CFG-46",
         "INT-187"
@@ -645,6 +659,7 @@
     },
     {
       "id": "connection_is_utc_by_default",
+      "databases_differ": "The time zone of a session is read with each server's own statement, and MySQL also reports its global and system zones, which the server sets; SQLite has no session time zone to read and stores UTC text, which the steps of every database compare (CFG-2, DIA-24, DIA-57).",
       "requirements": [
         "CFG-2",
         "DIA-57",
@@ -899,6 +914,10 @@
         },
         {
           "op": "utils.run",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "connection": "db",
           "statements": [
             {
@@ -906,8 +925,7 @@
               "tables": [],
               "sql": {
                 "mysql": "SELECT @@session.time_zone, @@GLOBAL.time_zone, @@system_time_zone",
-                "postgres": "SELECT current_setting('TimeZone')",
-                "sqlite": "SELECT 'UTC'"
+                "postgres": "SELECT current_setting('TimeZone')"
               }
             }
           ],
@@ -943,19 +961,6 @@
                   }
                 ]
               }
-            },
-            "sqlite": {
-              "value": {
-                "array": [
-                  {
-                    "array": [
-                      {
-                        "text": "UTC"
-                      }
-                    ]
-                  }
-                ]
-              }
             }
           }
         }
@@ -963,6 +968,7 @@
     },
     {
       "id": "connection_timezone_utc",
+      "databases_differ": "The time zone of a session is read with each server's own statement, and MySQL also reports its global and system zones, which the server sets; SQLite has no session time zone to read and stores UTC text, which the steps of every database compare (CFG-2, DIA-24, DIA-57).",
       "requirements": [
         "CFG-2",
         "DIA-57",
@@ -1218,6 +1224,10 @@
         },
         {
           "op": "utils.run",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "connection": "db",
           "statements": [
             {
@@ -1225,8 +1235,7 @@
               "tables": [],
               "sql": {
                 "mysql": "SELECT @@session.time_zone, @@GLOBAL.time_zone, @@system_time_zone",
-                "postgres": "SELECT current_setting('TimeZone')",
-                "sqlite": "SELECT 'UTC'"
+                "postgres": "SELECT current_setting('TimeZone')"
               }
             }
           ],
@@ -1262,19 +1271,6 @@
                   }
                 ]
               }
-            },
-            "sqlite": {
-              "value": {
-                "array": [
-                  {
-                    "array": [
-                      {
-                        "text": "UTC"
-                      }
-                    ]
-                  }
-                ]
-              }
             }
           }
         }
@@ -1282,6 +1278,7 @@
     },
     {
       "id": "connection_timezone_offset",
+      "databases_differ": "The time zone of a session is read with each server's own statement, and MySQL also reports its global and system zones, which the server sets; SQLite has no session time zone to read and stores UTC text, which the steps of every database compare (CFG-2, DIA-24, DIA-57).",
       "requirements": [
         "CFG-2",
         "DIA-57",
@@ -1537,6 +1534,10 @@
         },
         {
           "op": "utils.run",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
           "connection": "db",
           "statements": [
             {
@@ -1544,8 +1545,7 @@
               "tables": [],
               "sql": {
                 "mysql": "SELECT @@session.time_zone, @@GLOBAL.time_zone, @@system_time_zone",
-                "postgres": "SELECT current_setting('TimeZone')",
-                "sqlite": "SELECT 'UTC'"
+                "postgres": "SELECT current_setting('TimeZone')"
               }
             }
           ],
@@ -1581,19 +1581,6 @@
                   }
                 ]
               }
-            },
-            "sqlite": {
-              "value": {
-                "array": [
-                  {
-                    "array": [
-                      {
-                        "text": "UTC"
-                      }
-                    ]
-                  }
-                ]
-              }
             }
           }
         }
@@ -1601,6 +1588,7 @@
     },
     {
       "id": "sqlite_refuses_a_date_only_datetime",
+      "databases_differ": "Only SQLite stores a datetime as text, which a date alone does not fill (DIA-57).",
       "requirements": [
         "CFG-2",
         "DIA-57"
@@ -1633,6 +1621,7 @@
     },
     {
       "id": "statement_timeout_cancels_and_keeps_the_connection",
+      "databases_differ": "MySQL and PostgreSQL bound a statement with a session setting, while SQLite has no session timeout and its bound is the busy timeout, which its own case states (CFG-6).",
       "requirements": [
         "CFG-6"
       ],
@@ -1765,6 +1754,7 @@
     },
     {
       "id": "statement_timeout_through_a_pooler",
+      "databases_differ": "The pooler of the case is PgBouncer, which serves PostgreSQL alone (CFG-27).",
       "requirements": [
         "CFG-27",
         "CFG-28",
@@ -2628,6 +2618,7 @@
     },
     {
       "id": "sqlite_lock_past_busy_timeout_is_canceled",
+      "databases_differ": "Only SQLite waits for the lock of another connection up to its busy timeout (CFG-12, INT-154).",
       "requirements": [
         "CFG-12",
         "INT-154"
@@ -2751,6 +2742,7 @@
     },
     {
       "id": "sqlite_read_during_a_write_sees_committed_rows",
+      "databases_differ": "Only SQLite locks the whole file for a write, in its journal mode (CFG-13).",
       "requirements": [
         "CFG-13"
       ],
@@ -2844,6 +2836,7 @@
     },
     {
       "id": "sqlite_statement_timeout_keeps_the_busy_timeout",
+      "databases_differ": "SQLite has no session timeout, so its statement bound is the busy timeout (CFG-6).",
       "requirements": [
         "CFG-6"
       ],
@@ -2926,6 +2919,7 @@
     },
     {
       "id": "primary_and_replica_use_their_own_connections",
+      "databases_differ": "A replica is a server's own; SQLite is single-node and has no replica (CFG-21, CFG-26).",
       "requirements": [
         "CFG-21",
         "CFG-22",
@@ -3136,6 +3130,7 @@
     },
     {
       "id": "replica_rejects_a_write",
+      "databases_differ": "A replica is a server's own; SQLite is single-node, and its read-only file has its own case (CFG-24, CFG-26).",
       "requirements": [
         "CFG-24"
       ],
@@ -3234,6 +3229,7 @@
     },
     {
       "id": "sqlite_read_only_file_rejects_a_write",
+      "databases_differ": "Only SQLite opens a read-only file, the counterpart of a replica (CFG-24).",
       "requirements": [
         "CFG-24"
       ],
@@ -3305,6 +3301,7 @@
     },
     {
       "id": "channel_outside_its_range_is_config",
+      "databases_differ": "Notifications are PostgreSQL's own (DIA-192).",
       "requirements": [
         "DIA-192"
       ],
@@ -3421,6 +3418,7 @@
     },
     {
       "id": "payload_outside_its_range_is_driver",
+      "databases_differ": "Notifications are PostgreSQL's own (DIA-193).",
       "requirements": [
         "DIA-193"
       ],
@@ -3527,6 +3525,7 @@
     },
     {
       "id": "notification_arrives_with_its_commit_in_order",
+      "databases_differ": "Notifications are PostgreSQL's own (DIA-193, DIA-194).",
       "requirements": [
         "DIA-193",
         "DIA-194",
@@ -3677,6 +3676,7 @@
     },
     {
       "id": "unlisten_stops_delivery_and_a_receive_past_its_deadline_closes",
+      "databases_differ": "Notifications are PostgreSQL's own (DIA-195).",
       "requirements": [
         "DIA-195"
       ],
@@ -3774,6 +3774,7 @@
     },
     {
       "id": "lost_listener_connection_ends_the_subscription",
+      "databases_differ": "Notifications are PostgreSQL's own (DIA-194).",
       "requirements": [
         "DIA-194"
       ],
@@ -3825,6 +3826,7 @@
     },
     {
       "id": "other_databases_refuse_notify_and_listen",
+      "databases_differ": "The databases without notifications refuse them before any statement (DIA-196).",
       "requirements": [
         "DIA-196",
         "PRT-74"

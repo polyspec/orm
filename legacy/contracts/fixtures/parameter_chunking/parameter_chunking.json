@@ -24,11 +24,7 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "INSERT INTO chunk_author (seq, name) WITH d AS (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) SELECT s.v, CONCAT('author-', s.v) FROM (SELECT a.n + 10 * b.n + 100 * c.n + 1000 * e.n + 10000 * f.n + 1 AS v FROM d a, d b, d c, d e, d f) s WHERE s.v <= 70000",
-            "postgres": "INSERT INTO chunk_author (seq, name) SELECT g, 'author-' || g FROM generate_series(1, 70000) AS g",
-            "sqlite": "WITH RECURSIVE g(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM g WHERE i < 70000) INSERT INTO chunk_author (seq, name) SELECT i, 'author-' || i FROM g"
-          },
+          "sql": "INSERT INTO chunk_author (seq, name) WITH d AS (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) SELECT s.v, CONCAT('author-', s.v) FROM (SELECT a.n + 10 * b.n + 100 * c.n + 1000 * e.n + 10000 * f.n + 1 AS v FROM d a, d b, d c, d e, d f) s WHERE s.v <= 70000",
           "reason": "seeds the author rows 1 to 70000 with set-based SQL in each database, so the IN list can count them"
         },
         {
@@ -430,6 +426,7 @@
     },
     {
       "id": "model_parameter_after_schema_change",
+      "databases_differ": "Each server changes the type of a column in its own statement, and SQLite makes the table again; the statement prepared before the change then runs again on every server (DIA-222).",
       "requirements": [
         "CFG-28"
       ],
@@ -491,11 +488,36 @@
         },
         {
           "op": "sql.exec",
-          "only": [
-            "postgres"
-          ],
           "reason": "changes the type of the column the statement the model read prepared compares with its parameter",
-          "sql": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer"
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name INT NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer",
+            "sqlite": "CREATE TABLE chunk_author_new (seq INTEGER PRIMARY KEY, name INTEGER NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "copies the rows of the SQLite table into the replacement table",
+          "sql": "INSERT INTO chunk_author_new (seq, name, batch_no) SELECT seq, name, batch_no FROM chunk_author"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "drops the old SQLite table",
+          "sql": "DROP TABLE chunk_author"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "renames the replacement table to the case table",
+          "sql": "ALTER TABLE chunk_author_new RENAME TO chunk_author"
         },
         {
           "op": "model.query",
@@ -546,6 +568,7 @@
     },
     {
       "id": "model_write_parameter_after_schema_change",
+      "databases_differ": "Each server changes the type of a column in its own statement, and SQLite makes the table again; the write prepared before the change then runs again on every server (DIA-222).",
       "requirements": [
         "CFG-28"
       ],
@@ -570,11 +593,36 @@
         },
         {
           "op": "sql.exec",
-          "only": [
-            "postgres"
-          ],
           "reason": "changes the type of the column the write the model prepared assigns its parameter to",
-          "sql": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer"
+          "sql": {
+            "mysql": "ALTER TABLE chunk_author MODIFY name INT NOT NULL",
+            "postgres": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer",
+            "sqlite": "CREATE TABLE chunk_author_new (seq INTEGER PRIMARY KEY, name INTEGER NOT NULL, batch_no INTEGER)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "copies the rows of the SQLite table into the replacement table",
+          "sql": "INSERT INTO chunk_author_new (seq, name, batch_no) SELECT seq, name, batch_no FROM chunk_author"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "drops the old SQLite table",
+          "sql": "DROP TABLE chunk_author"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "renames the replacement table to the case table",
+          "sql": "ALTER TABLE chunk_author_new RENAME TO chunk_author"
         },
         {
           "op": "model.create",
@@ -643,6 +691,7 @@
     },
     {
       "id": "model_text_parameter_refused_after_schema_change",
+      "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which has no ALTER COLUMN, makes the table again; a SQLite column keeps the text that MySQL and PostgreSQL refuse, since its declared type selects an affinity only (DIA-38).",
       "requirements": [
         "CFG-28"
       ],
@@ -663,12 +712,11 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
           "reason": "SQLite changes the type of a column by making its table again, here with a column of INTEGER affinity",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name INTEGER NOT NULL, batch_no INTEGER)"
-          }
+          "sql": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name INTEGER NOT NULL, batch_no INTEGER)"
         },
         {
           "op": "model.create",
@@ -742,12 +790,11 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
           "reason": "SQLite changes the type of a column by making its table again, here with a column of DATE affinity",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name DATE NOT NULL, batch_no INTEGER)"
-          }
+          "sql": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name DATE NOT NULL, batch_no INTEGER)"
         },
         {
           "op": "model.create",
@@ -809,6 +856,7 @@
     },
     {
       "id": "model_decimal_text_parameter_after_schema_change",
+      "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which has no ALTER COLUMN, makes the table again (DIA-38, DIA-219).",
       "requirements": [
         "CFG-28",
         "DIA-219"
@@ -830,12 +878,11 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
           "reason": "SQLite changes the type of a column by making its table again, here with a column of NUMERIC affinity",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
-          }
+          "sql": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
         },
         {
           "op": "model.create",
@@ -1005,6 +1052,7 @@
     },
     {
       "id": "model_numeric_text_parameter_refused_after_schema_change",
+      "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which has no ALTER COLUMN, makes the table again; a SQLite column keeps the text that MySQL and PostgreSQL refuse, since its declared type selects an affinity only (DIA-38, DIA-219).",
       "requirements": [
         "CFG-28",
         "DIA-219"
@@ -1026,12 +1074,11 @@
         },
         {
           "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
           "reason": "SQLite changes the type of a column by making its table again, here with a column of NUMERIC affinity",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
-          }
+          "sql": "CREATE TABLE chunk_author (seq INTEGER PRIMARY KEY, name NUMERIC NOT NULL, batch_no INTEGER)"
         },
         {
           "op": "model.create",
@@ -1189,6 +1236,7 @@
     },
     {
       "id": "root_in_split_statements",
+      "databases_differ": "The bind limit of a statement is 999 on SQLite and 65535 on MySQL and PostgreSQL, so only SQLite splits this in list into more statements (PRT-41, PRT-76).",
       "requirements": [
         "PLN-44",
         "PRT-76",

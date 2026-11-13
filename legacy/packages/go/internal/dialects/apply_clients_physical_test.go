@@ -270,11 +270,8 @@ func checkFinalizedPythonState(t *testing.T, dialect, uri string) {
 	t.Helper()
 	db := openURI(t, dialect, uri)
 	defer testcase.Close(t, db)
-	quote := `"`
-	if dialect == "mysql" {
-		quote = "`"
-	}
-	rows, err := db.Query("SELECT name, state FROM " + quote + "dbspec$plans" + quote + " ORDER BY name")
+	// Every server takes the history table name unquoted: MySQL, MariaDB, PostgreSQL and SQLite allow $ after its first letter.
+	rows, err := db.Query("SELECT name, state FROM dbspec$plans ORDER BY name")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,11 +362,7 @@ func checkHistory(t *testing.T, dialect, uri string, want []string) {
 	t.Helper()
 	db := openURI(t, dialect, uri)
 	defer testcase.Close(t, db)
-	q := `"`
-	if dialect == "mysql" {
-		q = "`"
-	}
-	rows, err := db.Query("SELECT name, from_hash, to_hash, state, step, steps, applied_at FROM " + q + "dbspec$plans" + q + " ORDER BY name")
+	rows, err := db.Query("SELECT name, from_hash, to_hash, state, step, steps, applied_at FROM dbspec$plans ORDER BY name")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -43,6 +43,7 @@
   "cases": [
     {
       "id": "round_trip_ddl_types_and_defaults",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -68,6 +69,7 @@
     },
     {
       "id": "round_trip_ddl_keys_indexes_foreign_keys",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -93,6 +95,7 @@
     },
     {
       "id": "round_trip_ddl_checks_in_dialect_form",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -118,6 +121,7 @@
     },
     {
       "id": "round_trip_ddl_immutable_and_audit",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -143,6 +147,7 @@
     },
     {
       "id": "round_trip_ddl_use_across_documents",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -168,6 +173,7 @@
     },
     {
       "id": "round_trip_ddl_audit_columns",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -193,6 +199,7 @@
     },
     {
       "id": "round_trip_ddl_history_name_hashed_by_rule",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -218,6 +225,7 @@
     },
     {
       "id": "round_trip_ddl_audit_tables",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -243,6 +251,7 @@
     },
     {
       "id": "round_trip_ddl_audit_encrypted_column",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -268,6 +277,7 @@
     },
     {
       "id": "round_trip_schema_bench",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -294,6 +304,7 @@
     },
     {
       "id": "round_trip_schema_bench_reader",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -321,6 +332,7 @@
     },
     {
       "id": "round_trip_schema_bench_shared",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -347,6 +359,7 @@
     },
     {
       "id": "round_trip_schema_aes_chain",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -373,6 +386,7 @@
     },
     {
       "id": "round_trip_schema_audit",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -399,6 +413,7 @@
     },
     {
       "id": "round_trip_schema_audit_columns",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -425,6 +440,7 @@
     },
     {
       "id": "round_trip_schema_clock",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -451,6 +467,7 @@
     },
     {
       "id": "round_trip_schema_clock_mark",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -477,6 +494,7 @@
     },
     {
       "id": "round_trip_schema_decimal_schema",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -503,6 +521,7 @@
     },
     {
       "id": "round_trip_schema_identity_load",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -529,6 +548,7 @@
     },
     {
       "id": "round_trip_schema_ip_hex",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -555,6 +575,7 @@
     },
     {
       "id": "round_trip_schema_refusal",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -581,6 +602,7 @@
     },
     {
       "id": "round_trip_schema_restore",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -607,6 +629,7 @@
     },
     {
       "id": "round_trip_schema_restore_keys",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -633,6 +656,7 @@
     },
     {
       "id": "round_trip_schema_rollback",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -659,6 +683,7 @@
     },
     {
       "id": "round_trip_schema_secret_config",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -685,6 +710,7 @@
     },
     {
       "id": "round_trip_schema_time_precision",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -711,6 +737,7 @@
     },
     {
       "id": "round_trip_schema_zone",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
         "DIA-133",
         "DIA-198"
@@ -737,6 +764,7 @@
     },
     {
       "id": "mysql_unsupported",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -758,6 +786,7 @@
     },
     {
       "id": "mysql_expression_default",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the construct is an expression default (DIA-205).",
       "requirements": [
         "DIA-133",
         "DIA-205"
@@ -780,6 +809,7 @@
     },
     {
       "id": "mysql_functional_index",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the construct is a functional index, which MariaDB refuses with 1064 (DIA-70).",
       "requirements": [
         "DIA-133",
         "DIA-70"
@@ -805,6 +835,7 @@
     },
     {
       "id": "mysql_fk_set_default",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the construct is a foreign key with SET DEFAULT (DIA-143).",
       "requirements": [
         "DIA-133",
         "DIA-143"
@@ -827,6 +858,7 @@
     },
     {
       "id": "postgres_unsupported",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -848,6 +880,7 @@
     },
     {
       "id": "postgres_other_schema",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133), where the construct exists.",
       "requirements": [
         "DIA-133"
       ],
@@ -869,6 +902,7 @@
     },
     {
       "id": "sqlite_unsupported",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -890,6 +924,7 @@
     },
     {
       "id": "mysql_dependents_once",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133), where the construct exists.",
       "requirements": [
         "DIA-133"
       ],
@@ -911,6 +946,7 @@
     },
     {
       "id": "sqlite_table_items",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133), where the construct exists.",
       "requirements": [
         "DIA-133"
       ],
@@ -932,6 +968,7 @@
     },
     {
       "id": "sqlite_check_non_ascii_word",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133), where the construct exists.",
       "requirements": [
         "DIA-133"
       ],
@@ -953,6 +990,7 @@
     },
     {
       "id": "sqlite_check_non_ascii_literal",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133), where the construct exists.",
       "requirements": [
         "DIA-133"
       ],
@@ -974,6 +1012,7 @@
     },
     {
       "id": "sqlite_primary_key_null",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133), where the construct exists.",
       "requirements": [
         "DIA-133"
       ],
@@ -994,103 +1033,76 @@
       ]
     },
     {
-      "id": "mysql_checks_after_alter",
+      "id": "checks_after_alter",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "mysql"
+        "DIA-133",
+        "DIA-198"
       ],
       "steps": [
         {
           "op": "dbspec.introspect",
           "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "mysql-checks-after-alter",
+          "case": "checks-after-alter",
           "expect": {
             "mysql": {
               "queries": 9
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "mysql_time_precision_after_alter",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "mysql"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "mysql-time-precision-after-alter",
-          "expect": {
-            "mysql": {
-              "queries": 9
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "mysql_uuid_check_literal",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "mysql"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "mysql-uuid-check-literal",
-          "expect": {
-            "mysql": {
-              "queries": 9
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "postgres_uuid_check_literal",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "postgres"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "postgres-uuid-check-literal",
-          "expect": {
+            },
             "postgres": {
               "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
             }
           }
         }
       ]
     },
     {
-      "id": "sqlite_uuid_check_literal",
+      "id": "time_precision_after_alter",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "sqlite"
+        "DIA-133",
+        "DIA-198"
       ],
       "steps": [
         {
           "op": "dbspec.introspect",
           "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "sqlite-uuid-check-literal",
+          "case": "time-precision-after-alter",
           "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
+            "sqlite": {
+              "queries": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "uuid_check_literal",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
+      "requirements": [
+        "DIA-133",
+        "DIA-198"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect",
+          "vectors": "../../../tests/dbspec/introspect.json",
+          "case": "uuid-check-literal",
+          "expect": {
+            "mysql": {
+              "queries": 9
+            },
+            "postgres": {
+              "queries": 7
+            },
             "sqlite": {
               "queries": 3
             }
@@ -1100,6 +1112,7 @@
     },
     {
       "id": "mysql_generated_column",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -1121,6 +1134,7 @@
     },
     {
       "id": "postgres_generated_column",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -1141,187 +1155,24 @@
       ]
     },
     {
-      "id": "mysql_hashed_history_names",
+      "id": "audit_and_immutable",
+      "databases_differ": "Introspection spends a number of catalog queries fixed by each dialect, 9 on MySQL, 7 on PostgreSQL and 3 on SQLite (DIA-198).",
       "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "mysql"
+        "DIA-133",
+        "DIA-198"
       ],
       "steps": [
         {
           "op": "dbspec.introspect",
           "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "mysql-hashed-history-names",
+          "case": "audit-and-immutable",
           "expect": {
             "mysql": {
               "queries": 9
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "postgres_hashed_history_names",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "postgres"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "postgres-hashed-history-names",
-          "expect": {
+            },
             "postgres": {
               "queries": 7
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "sqlite_hashed_history_names",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "sqlite"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "sqlite-hashed-history-names",
-          "expect": {
-            "sqlite": {
-              "queries": 3
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "mysql_audit_and_immutable",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "mysql"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "mysql-audit-and-immutable",
-          "expect": {
-            "mysql": {
-              "queries": 9
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "postgres_audit_and_immutable",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "postgres"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "postgres-audit-and-immutable",
-          "expect": {
-            "postgres": {
-              "queries": 7
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "sqlite_audit_and_immutable",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "sqlite"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "sqlite-audit-and-immutable",
-          "expect": {
-            "sqlite": {
-              "queries": 3
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "mysql_audit_tables",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "mysql"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "mysql-audit-tables",
-          "expect": {
-            "mysql": {
-              "queries": 9
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "postgres_audit_tables",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "postgres"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "postgres-audit-tables",
-          "expect": {
-            "postgres": {
-              "queries": 7
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": "sqlite_audit_tables",
-      "requirements": [
-        "DIA-133"
-      ],
-      "only": [
-        "sqlite"
-      ],
-      "steps": [
-        {
-          "op": "dbspec.introspect",
-          "vectors": "../../../tests/dbspec/introspect.json",
-          "case": "sqlite-audit-tables",
-          "expect": {
+            },
             "sqlite": {
               "queries": 3
             }
@@ -1331,6 +1182,7 @@
     },
     {
       "id": "mysql_fulltext_index",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -1352,6 +1204,7 @@
     },
     {
       "id": "postgres_fulltext_index",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -1373,6 +1226,7 @@
     },
     {
       "id": "sqlite_fulltext_table",
+      "databases_differ": "The vector is DDL in the native form of its dialect, and introspection reads that server's own catalog (DIA-133); the same construct of the other dialects has its own vector.",
       "requirements": [
         "DIA-133"
       ],
@@ -1394,17 +1248,25 @@
     },
     {
       "id": "catalog_query_failure",
+      "databases_differ": "The catalog queries that fail are those of a dialect other than the case database, the SQLite catalog on MySQL and PostgreSQL and the MySQL catalog on SQLite, whose catalog tables the other server has not (DIA-133, DIA-224).",
       "requirements": [
         "DIA-133"
-      ],
-      "only": [
-        "sqlite"
       ],
       "steps": [
         {
           "op": "dbspec.introspect",
-          "catalog_of": "mysql",
+          "catalog_of": {
+            "mysql": "sqlite",
+            "postgres": "sqlite",
+            "sqlite": "mysql"
+          },
           "expect": {
+            "mysql": {
+              "failed": true
+            },
+            "postgres": {
+              "failed": true
+            },
             "sqlite": {
               "failed": true
             }
@@ -1427,6 +1289,7 @@
     },
     {
       "id": "plan_physical_rename_table_and_column",
+      "databases_differ": "SQLite stores a decimal as its integer scaled by 10^S, so the raw insert of the data writes 550 there for 5.50 (DIA-25).",
       "requirements": [
         "PLN-102"
       ],
@@ -1453,6 +1316,7 @@
     },
     {
       "id": "plan_physical_widen_columns",
+      "databases_differ": "SQLite stores a decimal as its integer scaled by 10^S (DIA-25), and a time and a datetime as text with exactly p fraction digits, which the raw queries read (DIA-24).",
       "requirements": [
         "PLN-102"
       ],
@@ -1505,6 +1369,7 @@
     },
     {
       "id": "plan_physical_rename_with_renderer_checks",
+      "databases_differ": "A uuid is a native uuid on PostgreSQL, written as its text, and 16 bytes on MySQL and SQLite, written as a blob literal (DIA-27).",
       "requirements": [
         "PLN-102"
       ],
@@ -1531,6 +1396,7 @@
     },
     {
       "id": "plan_physical_drop_tables_with_triggers_and_keys",
+      "databases_differ": "Only PostgreSQL keeps the body of a trigger as a function in pg_proc, which the plan drops with its table (DIA-104).",
       "requirements": [
         "PLN-102"
       ],
@@ -1557,6 +1423,7 @@
     },
     {
       "id": "plan_physical_representative",
+      "databases_differ": "SQLite stores a decimal as its integer scaled by 10^S, so the raw insert of the data writes 550 there for 5.50 (DIA-25).",
       "requirements": [
         "PLN-102"
       ],

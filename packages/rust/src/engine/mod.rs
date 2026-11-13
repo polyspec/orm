@@ -255,7 +255,7 @@ mod tests {
             ..Default::default()
         };
         for (dialect, sql, params) in [
-            (Dialect::MySql, "LIMIT ?, ?", vec![0, 1]),
+            (Dialect::MySql, "LIMIT ? OFFSET ?", vec![1, 0]),
             (Dialect::Postgres, "LIMIT $1 OFFSET $2", vec![1, 0]),
             (Dialect::Sqlite, "LIMIT ? OFFSET ?", vec![1, 0]),
         ] {

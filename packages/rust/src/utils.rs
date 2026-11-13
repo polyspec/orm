@@ -460,10 +460,16 @@ pub struct PrivilegeUtils<'a> {
 }
 
 impl PrivilegeUtils<'_> {
-    fn table(&self, table: &str) -> Result<(String, String)> {
+    /// Refuses a dialect other than PostgreSQL, after the arguments of the call are checked, so that an invalid argument is
+    /// the same CONFIG on every database (INT-59, DIA-225).
+    fn supported(&self) -> Result<()> {
         if self.u.db.sql_driver() != "postgres" {
             return Err(Error::new(crate::Kind::CapabilityUnsupported, "table privileges are supported only by postgres"));
         }
+        Ok(())
+    }
+
+    fn table(table: &str) -> Result<(String, String)> {
         let parts: Vec<&str> = table.split('.').collect();
         if parts.len() != 2 || !valid_key(parts[0]) || !valid_key(parts[1]) {
             return Err(Error::config("a qualified table name is required"));
@@ -480,8 +486,9 @@ impl PrivilegeUtils<'_> {
 
     /// Grants schema usage and SELECT, INSERT, UPDATE, DELETE on a table.
     pub async fn grant_table(&self, table: &str, role: &str) -> Result<()> {
-        let (schema, qualified) = self.table(table)?;
+        let (schema, qualified) = Self::table(table)?;
         let role = Self::role(role)?;
+        self.supported()?;
         let tables = [table.to_owned()];
         self.u
             .run_executor(async |ex: &Executor| {
@@ -494,7 +501,7 @@ impl PrivilegeUtils<'_> {
 
     /// Revokes one privilege on a table.
     pub async fn revoke_table(&self, table: &str, privilege: &str, role: &str) -> Result<()> {
-        let (_, qualified) = self.table(table)?;
+        let (_, qualified) = Self::table(table)?;
         let role = Self::role(role)?;
         let tables = [table.to_owned()];
         let given = privilege;
@@ -504,6 +511,7 @@ impl PrivilegeUtils<'_> {
             // The refusal names the privilege as the caller gave it.
             return Err(Error::config(format!("unsupported table privilege {}", polyspec_orm_schema::message::quote(given))));
         }
+        self.supported()?;
         self.u
             .run_executor(async |ex: &Executor| {
                 self.u.exec(ex, KIND_UTILITY, &tables, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[], &[]).await?;
@@ -514,7 +522,8 @@ impl PrivilegeUtils<'_> {
 
     /// The privileges of the current user on a table.
     pub async fn inspect_table(&self, table: &str) -> Result<TablePrivileges> {
-        let (_, qualified) = self.table(table)?;
+        let (_, qualified) = Self::table(table)?;
+        self.supported()?;
         let sql = "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')";
         let rows = self.u.query(&self.u.read()?, KIND_UTILITY, &[table.to_owned()], sql.into(), &[Param::Str(qualified)], &["text"]).await?;
         let r = rows.into_iter().next().ok_or_else(|| Error::internal("privilege query returned no row"))?;

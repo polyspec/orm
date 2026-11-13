@@ -709,11 +709,6 @@ export const ORM_ACCOUNTS_SQL = ['127.0.0.1', 'localhost']
   .map(host => `CREATE USER IF NOT EXISTS 'orm'@'${host}' IDENTIFIED BY 'orm'; GRANT ALL ON *.* TO 'orm'@'${host}';`)
   .join(' ');
 
-// The replica enables partial_revokes, a setting of the whole server that the shared primary cannot hold: a catalog row change on
-// it is refused, which is the case row_change_with_partial_revokes_enabled (INT-119). A source without it replicates to a replica
-// with it. The statement is idempotent, so start runs it on a new server and on one that already runs.
-export const REPLICA_PARTIAL_REVOKES_SQL = 'SET GLOBAL partial_revokes = ON';
-
 // proxysqlConfig declares the two settings a client relies on when it stops reading a result (CFG-34, CFG-35).
 export function proxysqlConfig(p: Paths, ports: Ports): string {
   return proxysqlConfigOf({ data: p.proxysqlData, admin: p.sockets.proxysqlAdmin, adminPgsql: p.sockets.proxysqlAdminPgsql, pgsql: p.sockets.proxysqlPgsql,
@@ -764,7 +759,6 @@ mysql_users=
 // connections. The admin and PostgreSQL interfaces listen on Unix sockets only.
 async function startProxysql(p: Paths, ports: Ports): Promise<void> {
   mysqlAt(ports.mysql, ORM_ACCOUNTS_SQL);
-  mysqlAt(ports.mysqlReplica, REPLICA_PARTIAL_REVOKES_SQL);
   mkdirSync(p.proxysqlData, { recursive: true });
   writeFileSync(join(p.dir, 'proxysql.cnf'), proxysqlConfig(p, ports));
   // ProxySQL logs the consulting notice after its listeners are bound.
@@ -775,7 +769,10 @@ async function startProxysql(p: Paths, ports: Ports): Promise<void> {
 // startPgbouncer pools the connections to the PostgreSQL primary in transaction mode over at most four server
 // connections per database. PgBouncer keeps the protocol-level prepared statements of each client and sets
 // the tracked parameters of the client, including statement_timeout sent as a startup parameter, on every server
-// connection it assigns to the client.
+// connection it assigns to the client. It offers no TLS to a client, and its server connections use none either, as
+// the backends of ProxySQL: the primary offers TLS (CFG-45), which PgBouncer would otherwise prefer, and pg_stat_ssl
+// of a pooled session reads the link of PgBouncer, so a plain DSN through it reads the plain link that the client has
+// (CFG-47).
 async function startPgbouncer(p: Paths, ports: Ports): Promise<void> {
   writeFileSync(join(p.dir, 'pgbouncer-users.txt'), '"orm" ""\n');
   writeFileSync(join(p.dir, 'pgbouncer.ini'), `[databases]
@@ -792,6 +789,7 @@ default_pool_size = 4
 max_client_conn = 500
 max_prepared_statements = 200
 track_extra_parameters = statement_timeout
+server_tls_sslmode = disable
 `);
   // PgBouncer logs "process up" after it listens on its sockets.
   await startLogged(p.dir, 'pgbouncer', 'process up', 'pgbouncer', [join(p.dir, 'pgbouncer.ini')]);
@@ -810,7 +808,6 @@ async function start(p: Paths): Promise<void> {
     run(process.execPath, [join(ROOT, 'scripts/test-servers-mysql.mts'), join(ROOT, 'scripts/test-servers.mts'), p.dir, String(ports.mysql), String(ports.mysqlReplica), String(MYSQL_LOWER_CASE)],
       { env: { ...process.env, LEASES: p.leases } });
     mysqlAt(ports.mysql, ORM_ACCOUNTS_SQL);
-    mysqlAt(ports.mysqlReplica, REPLICA_PARTIAL_REVOKES_SQL);
     writeEnvironment(p, ports);
     console.log(`test-servers: running; environment ${p.env}`);
     // This reuse path never restarts mysqld or rewrites PostgreSQL's pg_hba.conf. To adopt startup policy changes, use

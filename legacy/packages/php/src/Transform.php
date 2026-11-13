@@ -37,7 +37,7 @@ final class Transform
         if (!mb_check_encoding($v, 'UTF-8')) {
             throw new OrmException(Code::CODEC_ENCODE, "$kind requires a UTF-8 text");
         }
-        if ($kind === 'fulltext_boolean' && self::fulltextBoolean($v) === '') {
+        if (($kind === 'fulltext_boolean' || $kind === 'fulltext_text') && self::fulltextBoolean($v) === '') {
             throw new OrmException(Code::IR_INVALID, 'fulltext search text has no term');
         }
         return self::apply($kind, $v);

@@ -3,6 +3,7 @@
 # use. A caller gives the DSN of the server (ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN, checked by the caller).
 import contextlib
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -35,13 +36,14 @@ def server_database(dialect: str, dsn: str, name: str):
     """Creates the empty database name on the server of dsn, gives its DSN, and drops it and closes the administrative
     connection when the case ends. The drop is the last statement of that connection, so the foreign_key_checks that it
     turns off (DIA-212) reach no later statement."""
+    if re.fullmatch(r"[a-z][a-z0-9_]*", name) is None:
+        raise ValueError(
+            f"case database name {name!r}: lower-case letters, digits and underscores, which every server takes unquoted"
+        )
     admin = admin_connection(dialect, dsn)
     try:
-        if dialect in ("mysql", "mariadb"):
-            with admin.cursor() as cursor:
-                cursor.execute(f"CREATE DATABASE `{name}`")
-        else:
-            admin.execute(f'CREATE DATABASE "{name}"')
+        with admin.cursor() as cursor:
+            cursor.execute(f"CREATE DATABASE {name}")
         try:
             with testcase.ending(
                 f"drop of {name}", lambda: drop_ended(dialect, dsn, name)

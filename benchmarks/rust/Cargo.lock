@@ -1257,7 +1257,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -1285,7 +1285,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-bench"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "mysql_async",
  "polyspec-orm",
@@ -1297,14 +1297,14 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-clock"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "rustix",
 ]
 
 [[package]]
 name = "polyspec-orm-schema"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "regex",
  "same-file",
@@ -1315,7 +1315,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-test-support"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-orm",
  "polyspec-orm-case-clock",
@@ -1326,7 +1326,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "libtest-mimic",
  "tokio",

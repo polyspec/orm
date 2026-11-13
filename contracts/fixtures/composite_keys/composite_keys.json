@@ -12,6 +12,7 @@
   "cases": [
     {
       "id": "composite_key_rows",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
       "requirements": [
         "DSL-82",
         "INT-87",

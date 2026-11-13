@@ -1228,6 +1228,7 @@
     },
     {
       "id": "nowait_lock_held_by_another_transaction",
+      "databases_differ": "SQLite admits one write transaction at a time, so a second transaction waits at its BEGIN IMMEDIATE and never reaches the row lock that MySQL and PostgreSQL refuse with LOCK_NOT_AVAILABLE (DIA-209, DIA-221).",
       "only": [
         "mysql",
         "postgres"
@@ -1970,6 +1971,7 @@
     },
     {
       "id": "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+      "databases_differ": "A transaction timeout is the statement_timeout of a PostgreSQL transaction, which MySQL and SQLite do not have, so they refuse timeoutMs with CAPABILITY_UNSUPPORTED (DSL-125, INT-42).",
       "requirements": [
         "DSL-125",
         "INT-42"
@@ -2083,6 +2085,7 @@
     },
     {
       "id": "a_locked_statement_ends_at_timeout_ms",
+      "databases_differ": "A transaction timeout is the statement_timeout of a PostgreSQL transaction, which MySQL and SQLite do not have (DSL-125, INT-42).",
       "only": [
         "postgres"
       ],
@@ -2227,6 +2230,7 @@
     },
     {
       "id": "mysql_lock_wait_expiry_is_canceled",
+      "databases_differ": "The lock wait timeout of a statement, 1205, is MySQL's own (CFG-6).",
       "only": [
         "mysql"
       ],
@@ -2597,6 +2601,7 @@
     },
     {
       "id": "a_locked_sqlite_writer_is_canceled_and_not_retried",
+      "databases_differ": "SQLite ends a write that waits for the lock of another connection after its busy timeout and reports no deadlock (PLN-24, CFG-12).",
       "only": [
         "sqlite"
       ],
@@ -2738,6 +2743,7 @@
     },
     {
       "id": "a_real_deadlock_is_retried_and_both_flows_commit",
+      "databases_differ": "A deadlock between two row locks happens on MySQL and PostgreSQL; SQLite admits one writer and reports no deadlock (PLN-24).",
       "only": [
         "mysql",
         "postgres"
@@ -2832,6 +2838,7 @@
     },
     {
       "id": "rollback_failed_reports_both_errors",
+      "databases_differ": "The rollback fails because the server ends the session of the transaction, which SQLite, a file without a server, has not (CFG-15).",
       "requirements": [
         "CFG-15"
       ],
@@ -2903,6 +2910,7 @@
     },
     {
       "id": "an_idle_limit_of_the_server_ends_the_connection_of_a_transaction",
+      "databases_differ": "The idle limit is a server's own setting, wait_timeout on MySQL and idle_in_transaction_session_timeout on PostgreSQL, and SQLite has no server to end a connection, so its transaction commits both rows (CFG-15, DIA-201).",
       "not_through_pooler": "the idle limit is a setting of the server session; a pooler keeps the client session and holds or replaces the server connection, so the limit does not end the connection of the client",
       "requirements": [
         "DIA-201",
@@ -3100,6 +3108,7 @@
     },
     {
       "id": "savepoint_rollback_failed_reports_both_errors",
+      "databases_differ": "The rollback fails because the server ends the session of the transaction, which SQLite, a file without a server, has not (CFG-15).",
       "requirements": [
         "CFG-15"
       ],
@@ -3193,6 +3202,7 @@
     },
     {
       "id": "sqlite_rolled_back_transaction_reports_the_trigger",
+      "databases_differ": "Only SQLite rolls a transaction back by itself, after RAISE(ROLLBACK) (INT-155).",
       "requirements": [
         "INT-155"
       ],
@@ -3276,6 +3286,7 @@
     },
     {
       "id": "sqlite_rolled_back_savepoint_reports_the_trigger",
+      "databases_differ": "Only SQLite rolls a savepoint back by itself, after RAISE(ROLLBACK) (INT-155).",
       "requirements": [
         "INT-155"
       ],
@@ -3722,6 +3733,7 @@
     },
     {
       "id": "a_failed_commit_does_not_consume_the_rollback_fault",
+      "databases_differ": "The COMMIT fails on a deferred foreign key, which PostgreSQL and SQLite check at COMMIT and MySQL does not have (DIA-76).",
       "requirements": [
         "INT-72"
       ],
@@ -3920,6 +3932,7 @@
     },
     {
       "id": "a_failed_begin_does_not_consume_the_rollback_fault",
+      "databases_differ": "Only the BEGIN IMMEDIATE of SQLite fails while another connection holds the write lock; MySQL and PostgreSQL begin and wait at the row (DIA-221, PLN-24).",
       "requirements": [
         "INT-72",
         "PLN-24"
@@ -4099,6 +4112,7 @@
     },
     {
       "id": "a_statement_fault_refuses_the_next_statement",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
       "requirements": [
         "PRT-48",
         "PRT-49",
@@ -4466,6 +4480,7 @@
     },
     {
       "id": "a_statement_fault_in_a_transaction_refuses_the_insert_and_not_the_begin",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
       "requirements": [
         "PRT-48",
         "PRT-49",
@@ -5078,6 +5093,7 @@
     },
     {
       "id": "sqlite_writers_commit_every_row",
+      "databases_differ": "Only SQLite admits one writer at a time, which its writers wait for up to the busy timeout (CFG-12).",
       "requirements": [
         "CFG-12"
       ],

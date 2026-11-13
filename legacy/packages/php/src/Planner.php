@@ -23,7 +23,8 @@ final class Planner
         switch ($r['kind']) {
             case 'paginate':
                 // The parent page comes first, then its count, then the relation reads.
-                $main = $this->selectStep($steps, $r, 'all', '', null, true);
+                // The root of a chain without an order is ordered by its primary key (INT-64).
+                $main = $this->selectStep($steps, $this->pageQuery($r), 'all', '', null, true);
                 $this->selectStep($steps, $r, 'count', '', null);
                 $root = $this->scopes($r, 'a', null);
                 if ($main->assemble === null) {
@@ -36,7 +37,7 @@ final class Planner
                 // One statement and its relations, with no count: the root limit reads one row past the page (INT-164).
                 $this->selectStep(
                     $steps,
-                    $this->lookaheadQuery($r),
+                    $this->pageQuery($r),
                     $r['kind'] === 'lookahead_paginate' ? 'all' : 'group_count',
                     '',
                     null
@@ -65,10 +66,11 @@ final class Planner
     }
 
     /**
-     * The root query of a lookahead page: a query without an order is ordered by the primary key of its entity, or by
-     * its group_by columns, ascending in their order, so that consecutive pages neither repeat nor skip a row.
+     * The root query of a page, counted or lookahead: a query without an order is ordered by the primary key of its
+     * entity, or by its group_by columns for a grouped lookahead page, ascending in their order, so that consecutive
+     * pages neither repeat nor skip a row (INT-64, INT-164).
      */
-    private function lookaheadQuery(array $r): array
+    private function pageQuery(array $r): array
     {
         if (($r['order'] ?? []) !== []) {
             return $r;
@@ -257,13 +259,9 @@ final class Planner
                     $sql .= $this->d->limit(0, 1);
                 } elseif (isset($q['limit'])) {
                     if (isset($q['limit']['offset_p'], $q['limit']['count_p'])) {
-                        if ($this->d->name === 'mysql') {
-                            $offset = $b->param($q['limit']['offset_p'], 'i64');
-                            $count = $b->param($q['limit']['count_p'], 'i64');
-                        } else {
-                            $count = $b->param($q['limit']['count_p'], 'i64');
-                            $offset = $b->param($q['limit']['offset_p'], 'i64');
-                        }
+                        // Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+                        $count = $b->param($q['limit']['count_p'], 'i64');
+                        $offset = $b->param($q['limit']['offset_p'], 'i64');
                         $sql .= $this->d->limitParams($offset, $count);
                     } else {
                         $sql .= $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);

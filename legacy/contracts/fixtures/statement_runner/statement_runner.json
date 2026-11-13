@@ -10,6 +10,7 @@
   "cases": [
     {
       "id": "outside_opens_and_ends_a_transaction",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
       "requirements": [
         "INT-150",
         "INT-77"
@@ -882,6 +883,7 @@
     },
     {
       "id": "inside_joins_the_active_transaction",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
       "requirements": [
         "INT-150",
         "INT-77"
@@ -1537,6 +1539,7 @@
     },
     {
       "id": "statement_binds_its_params_and_names_its_kind_and_tables",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
       "requirements": [
         "INT-150",
         "INT-77"
@@ -2535,6 +2538,7 @@
     },
     {
       "id": "opened_transaction_commits_its_writes",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
       "requirements": [
         "INT-150",
         "INT-77"
@@ -2668,6 +2672,7 @@
     },
     {
       "id": "failed_statement_is_its_database_code_and_rolls_back",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
       "requirements": [
         "INT-150",
         "INT-77"
@@ -3698,6 +3703,7 @@
     },
     {
       "id": "refused_write_is_its_database_code",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
       "requirements": [
         "INT-150",
         "INT-77"
@@ -3831,6 +3837,7 @@
     },
     {
       "id": "joined_statements_roll_back_with_the_outer_transaction",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
       "requirements": [
         "INT-150",
         "INT-77"
@@ -4746,6 +4753,7 @@
     },
     {
       "id": "retryable_error_of_the_function_runs_it_once",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
       "requirements": [
         "INT-150",
         "INT-48"
@@ -5215,6 +5223,7 @@
     },
     {
       "id": "a_server_error_number_is_read_by_the_table_of_its_server",
+      "databases_differ": "Each server refuses an option of its own CREATE TABLE, so the statement that produces a server error number is that server's (DIA-201).",
       "requirements": [
         "DIA-201",
         "INT-150"
@@ -5289,6 +5298,7 @@
     },
     {
       "id": "a_text_literal_compares_by_code_point_under_the_collation_it_states",
+      "databases_differ": "Each server states the collation of a text literal in its own form, COLLATE utf8mb4_0900_bin on MySQL, COLLATE \"C\" on PostgreSQL and the binary comparison of SQLite, and reads its connection encoding from its own setting (DIA-202).",
       "requirements": [
         "DIA-202",
         "INT-150"

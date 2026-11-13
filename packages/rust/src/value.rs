@@ -442,6 +442,12 @@ pub fn transform(kind: &str, s: &str) -> crate::Result<String> {
             }
             out
         }
+        "fulltext_text" => {
+            if fulltext_boolean(s).is_empty() {
+                return Err(crate::engine::err(crate::Kind::IrInvalid, "fulltext search text has no term"));
+            }
+            s.to_owned()
+        }
         _ => return Err(crate::Error::config(format!("unknown value transform {kind}"))),
     })
 }

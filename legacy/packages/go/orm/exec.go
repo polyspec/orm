@@ -323,10 +323,13 @@ func transformParam(kind string, v any) (any, error) {
 	if !utf8.ValidString(s) {
 		return nil, codecErr(CodeCodecEncode, "%s requires a UTF-8 text", kind)
 	}
-	if kind == "fulltext_boolean" {
+	if kind == "fulltext_boolean" || kind == "fulltext_text" {
 		out := plan.FulltextBoolean(s)
 		if out == "" {
 			return nil, codecErr(CodeIrInvalid, "fulltext search text has no term")
+		}
+		if kind == "fulltext_text" {
+			return s, nil
 		}
 		return out, nil
 	}

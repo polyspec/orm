@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: c2ebe91d67efee69536c5096fba826712d511477e414d91904a10b40562cea7a -->
+<!-- source-sha256: 0d0cb2fac8e0c24328fc26655ffd2a1e74e07e965de96f9b138be075b9ffeac4 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -149,7 +149,7 @@ Key   = [Operator] Column
 
 - **DSL-66** `getSum()`과 `getAvg()`는 데이터베이스의 숫자 스칼라를 가장 가까운 유한 IEEE 754 binary64 값으로 변환하며 정확히 중간인 값은 짝수 쪽으로 반올림한다. SQL `SUM`과 `AVG`는 null 값을 건너뛰고, 남은 값이 없으면 일치하는 행이 없든 모든 값이 null이든 null scalar를 준다. 그러면 `getSum()`은 값이 없는 합인 0을, `getAvg()`는 null을 반환한다. 값이 없는 평균은 정의되지 않으며 0은 지어낸 평균이기 때문이다. 숫자가 아닌 값, 유한하지 않은 값, 범위 초과 값은 모든 클라이언트에서 text `aggregate scalar is not a finite number`와 함께 `CODEC_DECODE`를 반환한다. 행 컬럼 디코딩에는 무손실 변환 규칙을 유지한다.
 - **DSL-161** 정확한 컬럼, 즉 scale이 0인 정수 컬럼(`i16`, `i32`, `i64`)이나 scale이 S인 `decimal(P,S)` 컬럼의 합과 평균은 DSL-66의 한 번의 변환까지 정확하게 유지되며, 그 전에는 어떤 binary64 값도 만들지 않는다. 합은 값들의 정확한 합이며, MySQL과 PostgreSQL은 이를 decimal text로, SQLite와 markdown은 executor가 합치는 DIA-202의 16비트 부분의 네 합으로 반환한다. decimal이면 그 정수는 합 × 10^S다(DIA-25). 평균은 데이터베이스의 `AVG`가 아니다. MySQL은 `AVG`를 소수 S + 4자리로, PostgreSQL은 유효 숫자 16자리 이상으로 반올림하고, SQLite는 binary64를 거친다. 그래서 planner는 모든 방언에서 `avg<Col>()`에 `SUM(c), COUNT(c)`를 선택하고(SQLite와 markdown에서는 `SUM(c)` 대신 DIA-202의 네 합과 셀), executor가 정확한 합을 개수로 나눈 몫을 0에서 먼 쪽으로 반올림해 평균의 정해진 scale인 소수 S + 16자리로 만들며, DSL-66이 그 값을 변환한다. 개수가 0이면 DSL-66의 null 평균이다. `f64` 컬럼이면 executor가 binary64 합을 개수로 나누며, 이는 모든 데이터베이스의 `AVG`와 같다.
-- **DSL-67** `getsPage`는 페이지 쿼리와 같은 조건 및 조인으로 행 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다. 그룹 모델은 `getsPage`에 사용할 수 없다. DSL-99를 참조한다.
+- **DSL-67** `getsPage`는 페이지 쿼리와 같은 조건 및 조인으로 행 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 체인이 순서를 선언하지 않으면 페이지 쿼리는 lookahead 페이지처럼(INT-164) primary key를 key 컬럼 순서대로 오름차순으로 정렬하므로, 이어지는 페이지는 행을 되풀이하거나 건너뛰지 않는다. count 쿼리에는 순서가 없다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다. 그룹 모델은 `getsPage`에 사용할 수 없다. DSL-99를 참조한다.
 - **DSL-68** 방언이 SQL 문장을 정하므로 `getQuery`는 연결한 모델이나 활성 트랜잭션에서만 사용할 수 있으며 아니면 `CONFIG`를 반환한다.
 - **DSL-69** 종단 작업은 체인 값 외의 인자를 받지 않는다. 종단 작업은 모델을 바꾸지 않으므로 두 번째 종단 작업도 같은 SQL 문장을 만든다.
 - **DSL-70** `keyName<Col>()`은 컬렉션 키 컬럼을 정한다. `fetchKey(fn)`은 컬렉션 키를 계산한다. `fetchValue(fn)`은 조회한 각 행 값을 콜백 결과로 바꾼다.

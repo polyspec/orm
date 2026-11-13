@@ -406,6 +406,7 @@
       "kind": "policy",
       "reason": "the copy of a built test binary of this repository, by a clone where the file system has one; no ecosystem tool names it for this copy"
     },
+    "scripts/features/recipe-branches.mts": {"kind": "policy", "reason": "the rule of this repository that a branch of a recipe on a database states its reason (FCV-16); no ecosystem tool knows the recipe format"},
     "scripts/features/recipe-keys.mts": {
       "kind": "policy",
       "reason": "generates the key table of the recipe format of this repository from its schema, which every runner reads (FCV-2 to FCV-4)"

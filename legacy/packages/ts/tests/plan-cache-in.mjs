@@ -57,9 +57,10 @@ caseTest('root page placeholders retain dialect SQL and bind order', COMPUTE, ()
   for (const dialect of ['mysql', 'postgres', 'sqlite']) {
     const plan = new Engine(model, dialect).compile(request);
     const step = plan.steps[0];
-    const expectedParams = dialect === 'mysql' ? [0, 1, 2] : [0, 2, 1];
+    // Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+    const expectedParams = [0, 2, 1];
     assert.deepEqual(step.bind_slots.map(slot => slot.param), expectedParams, `${dialect} parameter order`);
-    assert.match(step.sql, dialect === 'mysql' ? /LIMIT \?, \?$/ : /LIMIT \$2 OFFSET \$3$|LIMIT \? OFFSET \?$/);
+    assert.match(step.sql, /LIMIT \$2 OFFSET \$3$|LIMIT \? OFFSET \?$/);
   }
 });
 

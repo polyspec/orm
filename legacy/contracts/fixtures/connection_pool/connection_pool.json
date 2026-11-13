@@ -17,10 +17,6 @@
       "requirements": [
         "CFG-4"
       ],
-      "only": [
-        "mysql",
-        "postgres"
-      ],
       "steps": [
         {
           "op": "model.connect",
@@ -46,6 +42,14 @@
                 "in_use": 0,
                 "idle": 1
               }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
             }
           }
         }
@@ -55,10 +59,6 @@
       "id": "an_unset_or_zero_pool_size_opens_at_most_ten",
       "requirements": [
         "CFG-4"
-      ],
-      "only": [
-        "mysql",
-        "postgres"
       ],
       "steps": [
         {
@@ -78,6 +78,14 @@
               }
             },
             "postgres": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "sqlite": {
               "json": {
                 "max_open_connections": 10,
                 "open_connections": 1,
@@ -111,6 +119,14 @@
                 "in_use": 0,
                 "idle": 1
               }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
             }
           }
         }
@@ -120,10 +136,6 @@
       "id": "transactions_wait_at_the_open_maximum",
       "requirements": [
         "CFG-4"
-      ],
-      "only": [
-        "mysql",
-        "postgres"
       ],
       "steps": [
         {
@@ -143,6 +155,12 @@
               }
             },
             "postgres": {
+              "json": {
+                "peak": 2,
+                "open": 2
+              }
+            },
+            "sqlite": {
               "json": {
                 "peak": 2,
                 "open": 2
@@ -170,6 +188,14 @@
                 "in_use": 0,
                 "idle": 2
               }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 2,
+                "open_connections": 2,
+                "in_use": 0,
+                "idle": 2
+              }
             }
           }
         }
@@ -179,10 +205,6 @@
       "id": "the_idle_size_closes_what_it_does_not_keep",
       "requirements": [
         "CFG-5"
-      ],
-      "only": [
-        "mysql",
-        "postgres"
       ],
       "steps": [
         {
@@ -207,6 +229,12 @@
                 "peak": 3,
                 "open": 3
               }
+            },
+            "sqlite": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
             }
           },
           "transactions": 3
@@ -230,6 +258,14 @@
                 "in_use": 0,
                 "idle": 1
               }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
             }
           }
         }
@@ -239,10 +275,6 @@
       "id": "an_unset_idle_size_keeps_the_pool_size",
       "requirements": [
         "CFG-5"
-      ],
-      "only": [
-        "mysql",
-        "postgres"
       ],
       "steps": [
         {
@@ -266,6 +298,12 @@
                 "peak": 3,
                 "open": 3
               }
+            },
+            "sqlite": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
             }
           },
           "transactions": 3
@@ -283,6 +321,14 @@
               }
             },
             "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            },
+            "sqlite": {
               "json": {
                 "max_open_connections": 3,
                 "open_connections": 3,
@@ -326,14 +372,11 @@
     },
     {
       "id": "a_connection_within_its_lifetime_is_reused",
+      "databases_differ": "Each database keeps a session value in its own form, a user variable on MySQL, a setting on PostgreSQL and a pragma on SQLite and a flowmark session (PRT-72), so the statement that marks a connection and the statement that reads the mark are stated per database; the result is the same.",
       "requirements": [
         "CFG-5"
       ],
-      "only": [
-        "mysql",
-        "postgres"
-      ],
-      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+            "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
       "steps": [
         {
           "op": "model.connect",
@@ -351,7 +394,7 @@
               "sql": {
                 "mysql": "SET @pool_mark = 1",
                 "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
-                "sqlite": "SELECT 1"
+                "sqlite": "PRAGMA cache_size = -4097"
               }
             },
             {
@@ -360,7 +403,7 @@
               "sql": {
                 "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
                 "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
-                "sqlite": "SELECT 1"
+                "sqlite": "SELECT CASE WHEN cache_size = -4097 THEN 1 ELSE 0 END FROM pragma_cache_size"
               }
             }
           ],
@@ -379,6 +422,19 @@
               }
             },
             "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
               "value": {
                 "array": [
                   {
@@ -403,7 +459,7 @@
               "sql": {
                 "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
                 "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
-                "sqlite": "SELECT 1"
+                "sqlite": "SELECT CASE WHEN cache_size = -4097 THEN 1 ELSE 0 END FROM pragma_cache_size"
               }
             }
           ],
@@ -422,6 +478,19 @@
               }
             },
             "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
               "value": {
                 "array": [
                   {
@@ -440,14 +509,11 @@
     },
     {
       "id": "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
+      "databases_differ": "Each database keeps a session value in its own form, a user variable on MySQL, a setting on PostgreSQL and a pragma on SQLite and a flowmark session (PRT-72), so the statement that marks a connection and the statement that reads the mark are stated per database; the result is the same.",
       "requirements": [
         "CFG-5"
       ],
-      "only": [
-        "mysql",
-        "postgres"
-      ],
-      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+            "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
       "steps": [
         {
           "op": "model.connect",
@@ -465,19 +531,16 @@
               "sql": {
                 "mysql": "SET @pool_mark = 1",
                 "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
-                "sqlite": "SELECT 1"
+                "sqlite": "PRAGMA cache_size = -4097"
               }
             },
             {
               "kind": "utility",
               "tables": [],
-              "sql": {
-                "mysql": "SELECT 1 FROM (SELECT SLEEP(1)) AS slept",
-                "postgres": "SELECT 1 FROM pg_sleep(1)",
-                "sqlite": "SELECT 1"
-              }
+              "sql": "SELECT 1"
             }
           ],
+          "hold_ms": 1000,
           "expect": {
             "mysql": {
               "value": {
@@ -493,6 +556,19 @@
               }
             },
             "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
               "value": {
                 "array": [
                   {
@@ -517,7 +593,7 @@
               "sql": {
                 "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
                 "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
-                "sqlite": "SELECT 1"
+                "sqlite": "SELECT CASE WHEN cache_size = -4097 THEN 1 ELSE 0 END FROM pragma_cache_size"
               }
             }
           ],
@@ -547,6 +623,19 @@
                   }
                 ]
               }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
             }
           }
         }
@@ -554,14 +643,11 @@
     },
     {
       "id": "an_idle_connection_past_its_lifetime_is_closed",
+      "databases_differ": "Each database keeps a session value in its own form, a user variable on MySQL, a setting on PostgreSQL and a pragma on SQLite and a flowmark session (PRT-72), so the statement that marks a connection and the statement that reads the mark are stated per database; the result is the same.",
       "requirements": [
         "CFG-5"
       ],
-      "only": [
-        "mysql",
-        "postgres"
-      ],
-      "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
+            "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
       "steps": [
         {
           "op": "model.connect",
@@ -584,7 +670,7 @@
               "sql": {
                 "mysql": "SET @pool_mark = 1",
                 "postgres": "SELECT set_config('orm.pool_mark', '1', false)",
-                "sqlite": "SELECT 1"
+                "sqlite": "PRAGMA cache_size = -4097"
               }
             },
             {
@@ -593,7 +679,7 @@
               "sql": {
                 "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
                 "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
-                "sqlite": "SELECT 1"
+                "sqlite": "SELECT CASE WHEN cache_size = -4097 THEN 1 ELSE 0 END FROM pragma_cache_size"
               }
             }
           ],
@@ -612,6 +698,19 @@
               }
             },
             "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
               "value": {
                 "array": [
                   {
@@ -633,13 +732,10 @@
             {
               "kind": "utility",
               "tables": [],
-              "sql": {
-                "mysql": "SELECT 1 FROM (SELECT SLEEP(2)) AS slept",
-                "postgres": "SELECT 1 FROM pg_sleep(2)",
-                "sqlite": "SELECT 1"
-              }
+              "sql": "SELECT 1"
             }
           ],
+          "hold_ms": 2000,
           "expect": {
             "mysql": {
               "value": {
@@ -655,6 +751,19 @@
               }
             },
             "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
               "value": {
                 "array": [
                   {
@@ -688,6 +797,14 @@
                 "in_use": 0,
                 "idle": 0
               }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 0,
+                "in_use": 0,
+                "idle": 0
+              }
             }
           }
         },
@@ -701,7 +818,7 @@
               "sql": {
                 "mysql": "SELECT IF(@pool_mark IS NULL, 0, 1)",
                 "postgres": "SELECT CASE WHEN current_setting('orm.pool_mark', true) = '1' THEN 1 ELSE 0 END",
-                "sqlite": "SELECT 1"
+                "sqlite": "SELECT CASE WHEN cache_size = -4097 THEN 1 ELSE 0 END FROM pragma_cache_size"
               }
             }
           ],
@@ -720,6 +837,19 @@
               }
             },
             "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
               "value": {
                 "array": [
                   {
@@ -770,10 +900,6 @@
       "requirements": [
         "CFG-22a"
       ],
-      "only": [
-        "mysql",
-        "postgres"
-      ],
       "steps": [
         {
           "op": "model.connect",
@@ -802,6 +928,12 @@
                 "peak": 3,
                 "open": 3
               }
+            },
+            "sqlite": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
             }
           }
         },
@@ -824,6 +956,14 @@
                 "in_use": 0,
                 "idle": 3
               }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
             }
           }
         },
@@ -840,6 +980,14 @@
               }
             },
             "postgres": {
+              "json": {
+                "max_open_connections": 5,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "sqlite": {
               "json": {
                 "max_open_connections": 5,
                 "open_connections": 1,

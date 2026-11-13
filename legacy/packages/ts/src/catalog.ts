@@ -1302,10 +1302,14 @@ function postgresSettingsRead(sql: string): string {
   return `WITH catalog_read AS MATERIALIZED (\n${sql.slice(0, end)}\n) SELECT catalog_read.*, ${POSTGRES_OUTPUT_SETTINGS} FROM catalog_read`;
 }
 
-/** A bound session: one pooled connection inside one transaction. It is discarded when it ends without an acknowledged COMMIT, so a session setting never returns to the pool. */
+/** A bound session: one pooled connection inside one transaction. It returns to the pool when it ends with an acknowledged COMMIT or ROLLBACK (CFG-35) and is discarded otherwise, so a session setting never returns to the pool. */
 class Session {
   /** Set when a read stopped a statement before its end: the connection then holds rows that were not read, and only a discard is safe. */
   public stopped = false;
+  /** Set when a MySQL stop killed its statement and the scan read the end of it: the connection is usable (CFG-35). */
+  private killed = false;
+  /** Kills the statement of a MySQL connection id through the kill connection of the catalog; set on MySQL only (CFG-35). */
+  public kill: ((threadId: number) => Promise<boolean>) | undefined;
 
   /** The PostgreSQL output settings when the transaction began (INT-186); undefined on MySQL and SQLite. */
   private settings: string[] | undefined;
@@ -1405,7 +1409,16 @@ class Session {
         out.rows.push(cells);
         return true;
     };
+    const kill = this.kill;
+    const threadId = this.session.threadId;
+    const stop = kill === undefined || threadId === undefined ? {} : {
+      stop: async (): Promise<boolean> => {
+        this.killed = await kill(threadId);
+        return this.killed;
+      },
+    };
     await this.session.scan(statement, bound, {
+      ...stop,
       columns: columns => {
         if (columns.length < width) {
           failure = err(CODE_METADATA, 'the read returned fewer columns than its output settings');
@@ -1464,12 +1477,13 @@ class Session {
         overflow = undefined;
       }
     }
+    // A statement that a kill ended has been read to its end, so its connection holds no row.
     if (failure !== undefined) {
-      this.stopped = true;
+      this.stopped = !this.killed;
       throw failure;
     }
     if (overflow !== undefined) {
-      this.stopped = true;
+      this.stopped = !this.killed;
       throw err(CODE_LIMIT, overflow);
     }
     return out;
@@ -1665,47 +1679,17 @@ class Session {
   }
 
   /**
-   * Refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a server may hide a trigger from the account (INT-119).
-   * The statement lists the setting when it is not OFF; MariaDB has no partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207).
+   * Refuses a MySQL row change on a table whose engine is not InnoDB, as only InnoDB rolls a failed verification back (INT-106).
+   * A trigger of the table needs no check: the verification of the written row sees what it changed (INT-110).
    */
-  public async mysqlPartialRevokesOff(): Promise<void> {
-    const partial = (await this.rawRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", [], 1, 4096)).rows;
-    if (partial.length !== 0) {
-      throw err(CODE_UNSUPPORTED, 'MySQL partial-revoke visibility requires verification');
-    }
-  }
-
-  /** Refuses a MySQL row change unless the account and the table are verified (mutation.rs, mysql_safety). */
   public async mysqlSafety(metadata: CatalogTableMetadata): Promise<void> {
     const unsupported = (reason: string): OrmError => err(CODE_UNSUPPORTED, reason);
-    const account = (await this.rawRows('SELECT CURRENT_USER()', [], 1, 4096)).rows;
-    const [accountRow] = account;
-    if (account.length !== 1 || accountRow === undefined || accountRow.length !== 1) throw unsupported('unverifiable MySQL account');
-    const text = textOf(accountRow[0], 'MySQL account');
-    const at = text.lastIndexOf('@');
-    if (at < 0) throw unsupported('unverifiable MySQL account');
-    const grantee = `'${text.slice(0, at)}'@'${text.slice(at + 1)}'`;
-
-    const grants = (await this.rawRows(
-      "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' " +
-        "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' " +
-        "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
-      [grantee, grantee, metadata.table.namespace, grantee, metadata.table.namespace, metadata.table.name],
-      16,
-      4096,
-    )).rows;
-    if (!grants.some(row => row.length === 1 && row[0] === 'TRIGGER')) throw unsupported('MySQL trigger visibility is unverified');
-
     const engine = (await this.rawRows('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
       [metadata.table.namespace, metadata.table.name], 2, 4096)).rows;
     const [engineRow] = engine;
     if (engine.length !== 1 || engineRow === undefined || engineRow.length !== 1 || typeof engineRow[0] !== 'string' || engineRow[0].toLowerCase() !== 'innodb') {
       throw unsupported('MySQL requires InnoDB');
     }
-
-    const triggers = (await this.rawRows('SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1',
-      [metadata.table.namespace, metadata.table.name], 1, 4096)).rows;
-    if (triggers.length !== 0) throw unsupported('MySQL triggers require effect verification');
   }
 }
 
@@ -1744,6 +1728,11 @@ export class CatalogConnection {
   private closed = false;
   /** Until when a refused connect is a socket of this catalog still on the server (CFG-35). */
   private reopenUntil = 0;
+  /**
+   * The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at its first stop
+   * and keeps it until close, so that no stop closes a connection that a later stop must open again.
+   */
+  private killer: DriverSession | undefined;
 
   /** @internal */
   public constructor(public readonly dialect: DriverName, private readonly pool: DriverPool) {}
@@ -1752,7 +1741,29 @@ export class CatalogConnection {
   public async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
+    this.killer?.release(false);
+    this.killer = undefined;
     await this.pool.close();
+  }
+
+  /**
+   * Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens (CFG-35). It
+   * answers false when the server refuses that connection or the kill, and a kill connection that failed is closed.
+   */
+  private async killQuery(threadId: number): Promise<boolean> {
+    try {
+      this.killer ??= await this.reserveConnection();
+      await this.killer.control(`KILL QUERY ${threadId}`, [], noop);
+      return true;
+    // catch-any -- every failure of the kill connection or of its KILL QUERY leaves the stop to close its socket (CFG-35)
+    } catch {
+      if (this.killer !== undefined) {
+        this.killer.release(true);
+        this.killer = undefined;
+        this.reopenUntil = Date.now() + 2000;
+      }
+      return false;
+    }
   }
 
   /** Fails with CATALOG_CLOSED once close has run. */
@@ -1789,6 +1800,7 @@ export class CatalogConnection {
   private async begin(readOnly: boolean): Promise<Session> {
     this.ensureOpen();
     const session = new Session(this.dialect, await this.reserveConnection(), this.pool.server);
+    if (this.dialect === 'mysql') session.kill = async threadId => this.killQuery(threadId);
     try {
       // SQLite has one connection that every session shares, so each session sets query_only itself and does not inherit it.
       if (this.dialect === 'sqlite') await session.control(`PRAGMA query_only=${readOnly ? 'ON' : 'OFF'}`);
@@ -1828,7 +1840,6 @@ export class CatalogConnection {
     const session = await this.begin(false);
     let value: T;
     try {
-      if (this.dialect === 'mysql') await session.mysqlPartialRevokesOff();
       value = await work(session);
       await session.settingsUnchanged();
     } catch (error) {
@@ -1864,6 +1875,8 @@ export class CatalogConnection {
   /**
    * Ends a session and returns the error to throw, joined with a failed rollback. A session that a read stopped early is discarded
    * without a rollback on MySQL and PostgreSQL, where the discard ends the server's transaction; SQLite's shared connection is rolled back.
+   * A session whose ROLLBACK the server acknowledged holds no lock and no state of its own, so the next session takes its connection
+   * and a catalog runs its sessions on one connection (CFG-35).
    */
   private async endSession(session: Session, error: unknown): Promise<OrmError | undefined> {
     let failure: OrmError | undefined = error === undefined ? undefined : driverError(this.dialect, error);
@@ -1875,6 +1888,12 @@ export class CatalogConnection {
         failure = failure === undefined
           ? err(CODE_ROLLBACK, `rollback: ${rolled.message}`, rolled)
           : err(CODE_ROLLBACK, `${failure.message}; rollback: ${rolled.message}`, failure);
+        this.discard(session);
+        return failure;
+      }
+      if (!session.stopped) {
+        session.release(false);
+        return failure;
       }
     }
     this.discard(session);

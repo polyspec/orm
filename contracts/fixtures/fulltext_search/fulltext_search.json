@@ -12,6 +12,7 @@
   "cases": [
     {
       "id": "normalize_alpha_beta",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
       "requirements": [
         "DSL-32",
         "DSL-33",
@@ -68,6 +69,7 @@
     },
     {
       "id": "normalize_quotes_and_operators",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
       "requirements": [
         "DSL-32",
         "DSL-33",
@@ -124,6 +126,7 @@
     },
     {
       "id": "normalize_tilde",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
       "requirements": [
         "DSL-32",
         "DSL-33",
@@ -180,6 +183,7 @@
     },
     {
       "id": "blank_text",
+      "databases_differ": "dbspec has no full-text index, so MySQL creates its FULLTEXT index natively, which PostgreSQL does not need (DIA-71), and SQLite has no full-text search on a table (DIA-187).",
       "requirements": [
         "DSL-32",
         "DSL-33",
@@ -215,12 +219,7 @@
               "error": "ir_invalid"
             },
             "postgres": {
-              "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE to_tsvector('simple', coalesce(\"a\".\"name\", '') || ' ' || coalesce(\"a\".\"description\", '')) @@ websearch_to_tsquery('simple', $1)",
-              "params": [
-                {
-                  "text": "  \t "
-                }
-              ]
+              "error": "ir_invalid"
             },
             "sqlite": {
               "error": "operator_not_allowed"
@@ -231,6 +230,7 @@
     },
     {
       "id": "chain_fulltext_boolean",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
       "requirements": [
         "DSL-32",
         "DSL-33",
@@ -284,6 +284,7 @@
     },
     {
       "id": "chain_fulltext",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
       "requirements": [
         "DSL-32",
         "DSL-33",

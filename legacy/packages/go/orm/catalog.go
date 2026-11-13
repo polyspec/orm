@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
@@ -62,6 +63,12 @@ type CatalogConnection struct {
 	closed  atomic.Bool
 	// reopenUntil is when, in Unix nanoseconds, a refused connect stops being a socket of this catalog still on the server (CFG-35).
 	reopenUntil atomic.Int64
+	// killMu guards kill, the MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog
+	// opens it at its first stop and keeps it until Close, so that no stop closes a connection that a later stop must reopen.
+	killMu sync.Mutex
+	kill   *sql.Conn
+	// ids holds the MySQL connection id of each driver connection of the pool, read once when a session first takes it.
+	ids sync.Map
 }
 
 // ConnectCatalog opens the catalog connection of a mysql, postgres, sqlite or markdown DSN. A SQLite
@@ -146,7 +153,63 @@ func (c *CatalogConnection) Dialect() string { return c.dialect }
 // Close releases the connection pool. An operation after Close fails with CATALOG_CLOSED and sends no statement.
 func (c *CatalogConnection) Close() error {
 	c.closed.Store(true)
-	return c.db.Close()
+	c.killMu.Lock()
+	var err error
+	if c.kill != nil {
+		if closeErr := c.kill.Close(); closeErr != nil {
+			err = mapDriverErr(closeErr, c.db.server)
+		}
+		c.kill = nil
+	}
+	c.killMu.Unlock()
+	return errors.Join(err, c.db.Close())
+}
+
+// connectionID is the MySQL connection id of conn: the thread id of its server session, or, through ProxySQL, the id of its
+// ProxySQL session, which ProxySQL answers for the statement itself and which its KILL QUERY names (CFG-35). It is read once for
+// each connection of the pool.
+func (c *CatalogConnection) connectionID(ctx context.Context, conn *sql.Conn) (key any, id int64, err error) {
+	if err := conn.Raw(func(driverConn any) error {
+		key = driverConn
+		return nil
+	}); err != nil {
+		return nil, 0, mapDriverErr(err, c.db.server)
+	}
+	if known, ok := c.ids.Load(key); ok {
+		if id, ok := known.(int64); ok {
+			return key, id, nil
+		}
+	}
+	if err := conn.QueryRowContext(ctx, "SELECT CONNECTION_ID()").Scan(&id); err != nil {
+		return nil, 0, mapDriverErrContext(err, ctx, c.db.server)
+	}
+	c.ids.Store(key, id)
+	return key, id, nil
+}
+
+// killQuery ends the running statement of the MySQL connection id through the kill connection of the catalog, which it opens at
+// the first stop and keeps (CFG-35). The killed statement ends with an error on its own connection, which stays open. A kill
+// connection that fails is closed, and the next stop opens another.
+func (c *CatalogConnection) killQuery(ctx context.Context, id int64) error {
+	c.killMu.Lock()
+	defer c.killMu.Unlock()
+	if c.kill == nil {
+		conn, err := c.acquire(ctx)
+		if err != nil {
+			return err
+		}
+		c.kill = conn
+	}
+	if _, err := c.kill.ExecContext(ctx, "KILL QUERY "+strconv.FormatInt(id, 10)); err != nil {
+		// database/sql closes a connection whose Raw callback reports driver.ErrBadConn, and Raw returns that error.
+		if rawErr := c.kill.Raw(func(any) error { return driver.ErrBadConn }); rawErr != nil && !errors.Is(rawErr, driver.ErrBadConn) {
+			err = errors.Join(err, rawErr)
+		}
+		c.kill = nil
+		c.reopenUntil.Store(time.Now().Add(2 * time.Second).UnixNano())
+		return err
+	}
+	return nil
 }
 
 // ensureOpen fails with CATALOG_CLOSED once Close has run.
@@ -157,12 +220,19 @@ func (c *CatalogConnection) ensureOpen() error {
 	return nil
 }
 
-// catalogSession is one pooled connection inside one transaction. The connection is discarded when the session ends without
-// an acknowledged COMMIT, so a session setting such as the SQLite query_only pragma never returns to the pool.
+// catalogSession is one pooled connection inside one transaction. A session whose transaction ended with an acknowledged
+// COMMIT or ROLLBACK returns its connection to the pool, a read-only SQLite session after it turned query_only off; any other
+// session discards it.
 type catalogSession struct {
 	catalog *CatalogConnection
-	// stopped is set when a budget stopped a read: the cancel of the read closed the socket on MySQL and PostgreSQL.
+	// stopped is set when a budget stopped a read by closing its socket: the cancel of the read on PostgreSQL, and on MySQL when
+	// no kill ended the statement (CFG-35).
 	stopped bool
+	// readOnly is set for a read-only session.
+	readOnly bool
+	// key and id are the driver connection and the MySQL connection id of a MySQL session; nil and 0 elsewhere.
+	key     any
+	id      int64
 	ctx     context.Context
 	conn    *sql.Conn
 	dialect string
@@ -226,18 +296,16 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 	if err := c.ensureOpen(); err != nil {
 		return nil, err
 	}
-	conn, err := c.db.sql.Conn(ctx)
-	// A socket that this catalog closed holds its place in max_user_connections until the server ends that thread. The server
-	// announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35 from the close (within
-	// 40 ms measured). A connect that follows no close of this catalog fails at once.
-	for catalogConnectionsFull(err) && time.Now().UnixNano() < c.reopenUntil.Load() {
-		time.Sleep(10 * time.Millisecond)
-		conn, err = c.db.sql.Conn(ctx)
-	}
+	conn, err := c.acquire(ctx)
 	if err != nil {
 		return nil, mapDriverErrContext(err, ctx, c.db.server)
 	}
-	s := &catalogSession{catalog: c, ctx: ctx, conn: conn, dialect: c.dialect, server: c.db.server}
+	s := &catalogSession{catalog: c, ctx: ctx, conn: conn, dialect: c.dialect, server: c.db.server, readOnly: readOnly}
+	if c.dialect == "mysql" {
+		if s.key, s.id, err = c.connectionID(ctx, conn); err != nil {
+			return nil, s.discard(err)
+		}
+	}
 	if readOnly && c.dialect == "sqlite" {
 		if _, err := conn.ExecContext(ctx, "PRAGMA query_only=ON"); err != nil {
 			return nil, s.discard(mapDriverErrContext(err, ctx, c.db.server))
@@ -281,6 +349,18 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 	return s, nil
 }
 
+// acquire takes a connection of the pool. A socket that this catalog closed holds its place in max_user_connections until the
+// server ends that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of
+// CFG-35 from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+func (c *CatalogConnection) acquire(ctx context.Context) (*sql.Conn, error) {
+	conn, err := c.db.sql.Conn(ctx)
+	for catalogConnectionsFull(err) && time.Now().UnixNano() < c.reopenUntil.Load() {
+		time.Sleep(10 * time.Millisecond)
+		conn, err = c.db.sql.Conn(ctx)
+	}
+	return conn, err
+}
+
 // catalogBegin is the statement that opens the transaction of a session.
 func catalogBegin(dialect string, readOnly bool) string {
 	switch {
@@ -314,6 +394,9 @@ func (s *catalogSession) discard(err error) error {
 	}
 	if s.dialect == "mysql" {
 		s.catalog.reopenUntil.Store(time.Now().Add(2 * time.Second).UnixNano())
+		if s.key != nil {
+			s.catalog.ids.Delete(s.key)
+		}
 	}
 	return err
 }
@@ -346,8 +429,19 @@ func (s *catalogSession) end(err error) error {
 			Msg:   fmt.Sprintf("rollback: %v", mapped),
 			Cause: mapped,
 		})
+		return s.discard(err)
 	}
-	return s.discard(err)
+	// The transaction has ended, so the connection holds no lock and no state of the session: the pool keeps it for the next
+	// session, and a catalog runs its sessions on one connection (CFG-35). query_only is a setting of the SQLite connection.
+	if s.readOnly && s.dialect == "sqlite" {
+		if _, offErr := s.conn.ExecContext(s.ctx, "PRAGMA query_only=OFF"); offErr != nil {
+			return s.discard(errors.Join(err, mapDriverErrContext(offErr, s.ctx, s.server)))
+		}
+	}
+	if releaseErr := s.release(); releaseErr != nil {
+		return errors.Join(err, releaseErr)
+	}
+	return err
 }
 
 // catalogRead runs fn in a fresh read-only session and ends the session with its outcome.
@@ -386,11 +480,6 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 	s, err := c.begin(ctx, false)
 	if err != nil {
 		return zero, err
-	}
-	if c.dialect == "mysql" {
-		if err := s.mysqlPartialRevokesOff(); err != nil {
-			return zero, s.end(err)
-		}
 	}
 	value, err := fn(s)
 	if err != nil {
@@ -505,10 +594,18 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 	defer func() {
 		if stopped {
 			// The budget error is the one reported: a close that the stop interrupted may fail, as the stop ended the read,
-			// so its error stays only as a cause of the budget error.
-			s.stopped = true
-			cancel()
-			if closeErr := rows.Close(); closeErr != nil {
+			// so its error stays only as a cause of the budget error. A MySQL stop kills the statement through the kill
+			// connection of the catalog, and the connection of the read stays open; when that kill fails, as when the server
+			// refuses the kill connection, the cancel closes the socket, as it does on PostgreSQL (CFG-35).
+			var killErr error
+			if s.dialect == "mysql" {
+				killErr = s.catalog.killQuery(s.ctx, s.id)
+			}
+			if s.dialect != "mysql" || killErr != nil {
+				s.stopped = true
+				cancel()
+			}
+			if closeErr := errors.Join(killErr, rows.Close()); closeErr != nil {
 				var coded *ir.Error
 				if errors.As(err, &coded) {
 					raw, err = catalogRaw{}, &ir.Error{Code: coded.Code, Msg: coded.Msg, Cause: errors.Join(coded.Cause, closeErr)}

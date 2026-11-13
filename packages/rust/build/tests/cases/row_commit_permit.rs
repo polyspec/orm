@@ -20,12 +20,7 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
             let dsn = physical_fixture::dsn_for(dialect, &path);
             let (db, mut seed, _) = tool_db::open(&dsn).await.unwrap();
             let name = format!("orm_commit_permit_{}", std::process::id());
-            seed.exec(
-                &format!("CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL){}", if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }),
-                &[],
-            )
-            .await
-            .unwrap();
+            seed.exec(&format!("CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL)"), &[]).await.unwrap();
             seed.exec(&format!("INSERT INTO {name}(id,n) VALUES(1,10)"), &[]).await.unwrap();
             let mut catalog = CatalogConnection::connect(&dsn).await.unwrap();
             let table = TableRef { namespace: catalog.current_namespace().await.unwrap(), name: name.clone() };

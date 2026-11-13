@@ -7,6 +7,7 @@
   "cases": [
     {
       "id": "text_into_bytes_column_stores_its_bytes",
+      "databases_differ": "The stored bytes are read by each server's own function, HEX on MySQL and SQLite and encode on PostgreSQL, which has no HEX; SQLite also reads the storage class, since its column type selects an affinity only (DIA-38).",
       "requirements": [
         "PRT-67"
       ],

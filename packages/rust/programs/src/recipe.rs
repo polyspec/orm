@@ -4408,6 +4408,10 @@ mod database {
                         for (kind, tables, sql, params) in &statements {
                             last = frame.run(kind, tables, sql, params).await?;
                         }
+                        // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+                        if let Some(hold) = crate::recipe_reads::read(step, "hold_ms")["hold_ms"].as_u64() {
+                            tokio::time::sleep(std::time::Duration::from_millis(hold)).await;
+                        }
                         if let Some(message) = crate::recipe_reads::read(step, "conflict")["conflict"].as_str() {
                             return Err(polyspec_orm::transaction_conflict(message));
                         }
@@ -4702,8 +4706,8 @@ mod database {
             }
             // dbspec.ddl_behavior (FCV-4, DIA-113): the statements of a case of the vectors file and its behavior steps.
             // dbspec.introspect (FCV-4, DIA-133, DIA-198): the rendered documents on the case database, then the public introspect.
-            "dbspec.introspect" if crate::recipe_reads::read(step, "catalog_of")["catalog_of"].is_string() => {
-                introspect_failure_step(step, &context.dsn).await.map_err(fault)?;
+            "dbspec.introspect" if !crate::recipe_reads::read(step, "catalog_of")["catalog_of"].is_null() => {
+                introspect_failure_step(step, context.database, &context.dsn).await.map_err(fault)?;
                 Output::fields(json!({ "failed": true }))
             }
             "dbspec.introspect" => Output::fields(introspect_step(step, context.database, &context.dsn, context.dir).await.map_err(fault)?),
@@ -5680,13 +5684,16 @@ mod database {
         Ok(dbspec::manifest(&[&combined]).map_err(|e| format!("{e:?}"))?.schema_text)
     }
 
-    /// The empty case database with the catalog queries of another dialect: their failure is the error of the call (DIA-133).
-    /// The only case runs on SQLite, and on a corpus, with the queries of MySQL.
-    async fn introspect_failure_step(step: &Value, dsn: &str) -> Result<(), String> {
+    /// The empty case database with the catalog queries of another dialect, which catalog_of names for every database or per
+    /// database: their failure is the error of the call (DIA-133).
+    async fn introspect_failure_step(step: &Value, database: &str, dsn: &str) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _};
-        let (dialect, server) = match crate::recipe_reads::read(step, "catalog_of")["catalog_of"].as_str() {
+        let other = &crate::recipe_reads::read(step, "catalog_of")["catalog_of"];
+        let other = other.as_str().or_else(|| other[dialect_key(database, other)].as_str());
+        let (dialect, server) = match other {
             Some("mysql") => (dbspec::Dialect::MySql, Server::MySql),
             Some("postgres") => (dbspec::Dialect::Postgres, Server::Postgres),
+            Some("sqlite") => (dbspec::Dialect::Sqlite, Server::Sqlite),
             other => return Err(format!("catalog_of {other:?} has no introspection failure case")),
         };
         let failed =
@@ -6182,9 +6189,9 @@ mod tables {
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 9] = ["one", "all", "count", "group_count", "sum", "avg", "paginate", "lookahead_paginate", "group_lookahead_paginate"];
 
-    /// A request that a record action of the installed hook saw: its kind, its table and the wrapper of the bound value of a
-    /// record_param action (hook.records).
-    type Record = (String, String, Option<Value>);
+    /// A request that a record action of the installed hook saw: its kind, its table, the wrapper of the bound value of a
+    /// record_param action and the row count of a locked_read action (hook.records).
+    type Record = (String, String, Option<Value>, Option<Value>);
 
     /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -7041,10 +7048,13 @@ mod tables {
             let records = self.records.lock().expect("the records").clone();
             let mut counts = Map::new();
             let mut list = Vec::new();
-            for (kind, entity, param) in &records {
+            for (kind, entity, param, read) in &records {
                 let mut members = vec![json!(["kind", { "text": kind }]), json!(["entity", { "text": entity }])];
                 if let Some(param) = param {
                     members.push(json!(["param", param]));
+                }
+                if let Some(read) = read {
+                    members.push(json!(["read", read]));
                 }
                 list.push(json!({ "object": members }));
                 let n = counts.get(entity).and_then(Value::as_u64).map_or(1, |n| n + 1);
@@ -7517,9 +7527,20 @@ mod tables {
                         Some(base) => base.clone(),
                         None => db,
                     };
+                    for action in actions.iter().filter(|action| action.action == "locked_read") {
+                        let name = action.read["connection"].as_str().unwrap_or_default();
+                        if !self.handles.contains_key(name) {
+                            return Err(format!("hook.install: the read of locked_read names connection {name:?}, which model.connect did not bind").into());
+                        }
+                    }
                     let records = self.records.clone();
                     records.lock().expect("the records").clear();
-                    let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
+                    let (actions, handles) = (Arc::new(actions), Arc::new(self.handles.clone()));
+                    // The hook is a future that the client awaits before it plans the request (INT-78).
+                    let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| {
+                        let (actions, records, handles) = (actions.clone(), records.clone(), handles.clone());
+                        Box::pin(async move { run_hook(&actions, &records, &handles, request, params).await })
+                    });
                     // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
                     let target = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or(connection);
                     self.bases.insert(target.to_owned(), base);
@@ -7622,9 +7643,10 @@ mod tables {
                 }
                 // The groups that the value of utils() holds (INT-134): each is a value of its own type, read through its call.
                 "pool.transactions" => {
-                    // Count transactions at once: the first hold of them stay open until hold have begun, so the pool
-                    // shows the connections that they take at once (CFG-4, CFG-5). A transaction future is not Send, so
-                    // the tasks run on a LocalSet.
+                    // Count read-only transactions at once: the first hold of them stay open until hold have begun, so the
+                    // pool shows the connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no
+                    // write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221). A transaction future is
+                    // not Send, so the tasks run on a LocalSet.
                     use std::sync::atomic::{AtomicU32, Ordering};
                     use std::sync::Arc;
                     let count = crate::recipe_reads::read(step, "transactions")["transactions"].as_u64().unwrap_or(0);
@@ -7653,7 +7675,7 @@ mod tables {
                                     active.fetch_sub(1, Ordering::SeqCst);
                                     Ok(())
                                 },
-                                TransactionOptions::default(),
+                                TransactionOptions { read_only: Some(true), ..Default::default() },
                             )
                             .await
                         }));
@@ -7819,6 +7841,8 @@ mod tables {
         value: Option<Param>,
         nested: bool,
         code: String,
+        /// The model read of a locked_read action.
+        read: Value,
     }
 
     fn hook_actions(raw: &Value) -> Result<Vec<HookAction>, String> {
@@ -7839,6 +7863,7 @@ mod tables {
                 value,
                 nested: hook["nested"].as_bool() == Some(true),
                 code: hook["error"].as_str().map(str::to_owned).unwrap_or_default(),
+                read: hook["read"].clone(),
             });
         }
         Ok(out)
@@ -7882,8 +7907,37 @@ mod tables {
         }
     }
 
+    /// The error of a hook action that the recipe states wrongly.
+    fn hook_step(message: String) -> OrmError {
+        crate::recipe_error::runner_error("step", message)
+    }
+
+    /// The hook reads with its lock in a transaction of another connection before the client plans the request, and a
+    /// refusal of that read fails the operation unchanged (INT-78); it returns the number of rows read.
+    async fn locked_read(read: &Value, handles: &HashMap<String, Db>) -> polyspec_orm::Result<usize> {
+        let name = read["connection"].as_str().unwrap_or_default();
+        let db = handles.get(name).ok_or_else(|| hook_step(format!("locked_read names connection {name:?}, which model.connect did not bind")))?;
+        let model = read["model"].as_str().ok_or_else(|| hook_step("locked_read names no model".into()))?;
+        db.transaction(
+            |tx: Tx| async move {
+                let mut core = core_of(model).map_err(hook_step)?;
+                core.connect(&tx);
+                Build { db: Some(Connection::from(&tx)), handles: handles.clone(), ..Build::default() }.query(&mut core, read, true).map_err(hook_step)?;
+                Ok(gets(&TableRow::from_core(core)).await?.models().count())
+            },
+            TransactionOptions { retry: Some(0), ..Default::default() },
+        )
+        .await
+    }
+
     /// Runs the actions of the installed hook on one request, in order.
-    fn run_hook(actions: &[HookAction], records: &Mutex<Vec<Record>>, request: &mut Request, params: &mut RequestParams) -> polyspec_orm::Result<()> {
+    async fn run_hook(
+        actions: &[HookAction],
+        records: &Mutex<Vec<Record>>,
+        handles: &HashMap<String, Db>,
+        request: &mut Request,
+        params: &mut RequestParams,
+    ) -> polyspec_orm::Result<()> {
         for action in actions {
             if !kind_matches(&action.kinds, &request.kind) {
                 continue;
@@ -7915,11 +7969,20 @@ mod tables {
                     let p = request.n_params + 5;
                     and_where(&mut request.query, equal_pred(&action.column, p));
                 }
-                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None)),
+                ("locked_read", _) => {
+                    let read = locked_read(&action.read, handles).await?;
+                    records.lock().expect("the records").push((
+                        request.kind.clone(),
+                        request.query.entity.clone(),
+                        None,
+                        Some(json!({ "int": read.to_string() })),
+                    ));
+                }
+                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None, None)),
                 ("record_param", _) => {
                     for assignment in request.set.iter().filter(|assignment| assignment.column == action.column) {
                         let param = assignment.p.and_then(|p| params.get(p)).map(super::statement::bind_wrapper);
-                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
+                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param, None));
                     }
                 }
                 ("fail", _) => return Err(crate::recipe_error::error_of_code(&action.code, format!("request hook refused {}", request.kind))),

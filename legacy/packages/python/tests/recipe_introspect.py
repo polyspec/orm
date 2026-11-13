@@ -148,7 +148,11 @@ def _op_dbspec_introspect(step: dict, context: dict) -> dict:
     native, dsn = context["database"], context["dsn"]
     database = _sql_dialect(native)
     if "catalog_of" in step:
-        return _catalog_query_failure(step["catalog_of"], native, dsn)
+        # The other dialect, for every database or per database.
+        other = step["catalog_of"]
+        return _catalog_query_failure(
+            other if isinstance(other, str) else other[database], native, dsn
+        )
     texts, vector = _texts(step, context["dir"])
     documents = _parse_set(texts)
     rendered = render_dbspec(documents, database)

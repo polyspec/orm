@@ -2,7 +2,7 @@
 # Its integration tests run as groups of the one test program, packages/rust/programs/tests/all.
 autotests = false
 name = "polyspec-orm"
-version = "0.0.31"
+version = "0.0.33"
 edition = "2021"
 rust-version = "1.99.0"
 publish = false
@@ -24,7 +24,7 @@ test-faults = []
 # of orm_value (OutValue) and the name conversion that generate uses (binding design E-1c, I-2 (4), T-1, T-2, U-1, N-2;
 # CORE-27, CORE-50, CORE-60).
 polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core" }
-polyspec-orm-schema = { version = "=0.0.31", path = "schema" }
+polyspec-orm-schema = { version = "=0.0.33", path = "schema" }
 polyspec-json = { git = "https://github.com/polyspec/json.git", branch = "v1/rust-core" }
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "json", "ipnet"] }
