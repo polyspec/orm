@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 89e7cf773b1b37e501183ba8b4e233cc791199a010949da1e600f2c347c29df1 -->
+<!-- source-sha256: aadb93bfefdbe38fc3db26f36e773a4d3672827da952f7cf6e5a1c3b5fdb1e49 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1854,3 +1854,4 @@
 | OM-5.2 | `Db::with_cancel(cancel)`은 취소를 가진 handle을 돌려주고, 취소가 발화한 뒤 그 handle의 문장, `BEGIN`, `SAVEPOINT`는 `canceled`이며 아무것도 보내지 않고, 트랜잭션의 끝은 그래도 보낸다(CORE-45, CORE-46). Red: `Db`에 취소를 받는 member가 없다. | `packages/rust/orm/src/db.rs`; `packages/rust/orm/src/tx.rs`; `packages/rust/orm/tests/unit/cancel.rs`; `packages/rust/interface.json`; docs/spec/core.md CORE-45, CORE-46 | `make test-rust CASES=cancel` | [v] |
 | OM-5.2-1 | 진행 중인 문장은 그 취소가 발화하면 서버에서 끝난다(CORE-47): SQLite는 progress handler로, MySQL과 MariaDB는 제어 연결의 `KILL QUERY`로, markdown 연결은 연결을 닫아서, PostgreSQL은 CancelRequest로 끝내며, 고정된 sqlx 릴리스 `v0.9.0-polyspec.2`에는 CancelRequest가 없다. | `packages/rust/orm/src/db.rs`; `packages/rust/orm/src/driver.rs`; `packages/rust/Cargo.toml`이 고정한 sqlx 릴리스; docs/spec/core.md CORE-47 | `make test-rust CASES=cancel` | [ ] |
 | OM-5.2-2 | PHP `Cancellation`은 상태 파일을 가진다(CORE-41~CORE-44). CORE-41~CORE-43이 적지 않은 규칙 여덟 개를 기다린다: 임시 파일과 상태 파일의 이름, `0`과 `1` 밖의 표시 바이트 값, 레코드의 형식, 한 파일을 쓰는 쪽들의 상호 배제, fork된 자식이 소멸될 때 하는 일, 파일 읽기나 쓰기 실패의 kind, `cancel()`이 여는 제어 연결의 자격, `Cancellation`을 코어의 취소에 잇는 타입. | `packages/rust/orm/src`; docs/spec/core.md CORE-41~CORE-44 | `make test-rust CASES=cancel` | [ ] |
+| OM-8.1 | 모든 한국어 쌍은 그 영어 파일이 말하는 것을 말하고 그 파일의 sha256을 가진다. Red: 쌍 17개가 이전 영어 파일의 sha256을 가지고, `make docs-check`는 `legacy/tests/`의 README의 죽은 링크 12개를 보고한다. 그 링크는 세 디렉터리 위에 있는 파일을 두 디렉터리 위로 가리킨다. | `*.ko.md` 파일 17개; `legacy/tests/conformance/README.md`, `legacy/tests/interfaces/README.md`, `legacy/tests/markdown/README.md`와 그 쌍 | `make docs-check` | [v] |

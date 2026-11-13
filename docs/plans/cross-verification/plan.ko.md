@@ -1,5 +1,5 @@
 <!-- doc-id: plan-cross-verification -->
-<!-- source-sha256: 3683093b3a286fe802d957def5e2ed7a80d7e4868765a0c9690109a0218d2abb -->
+<!-- source-sha256: 2f50325bc8fbd56643c3faa9c7aab7006e1a3df151e2266015f5d7974becfb80 -->
 # corpus SQLite 연결의 여섯 runtime과 네 database 교차 검증
 
 [English](plan.md)

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 704d31df4e850813f303621f7ddaacafba00d8434aaf3cc5c02f0c36755c9fd0 -->
+<!-- source-sha256: ecd662f1f97649ef9183f4bf0e62bc2698fbc9367124fa83a60557239b296a1e -->
 # 변경 이력
 
 ## Unreleased
@@ -14,6 +14,7 @@
 
 - Breaking (0.x): Rust 코어의 `Query`의 값은 `orm_value`다(OM-3.5, CORE-60, CORE-62~CORE-64). `polyspec_orm::OrmValue`의 kind는 null, boolean, `int`, `int64`, float, 텍스트, bytes, JSON 값, list, map이고, 열 값의 kind는 열의 타입이 정한다: `i64` 열의 정수는 크기와 관계없이 `int64`이고, 날짜·시각·날짜시각은 정규 텍스트, decimal은 정확한 텍스트다. `Query::where_chain`, `get_by`, `gets_by`, `get_count_by`는 `Vec<Arg>` 대신 `Vec<OrmValue>`를 받고, `Query::value`는 `Val` 대신 `OrmValue`를 돌려준다. list는 key의 값 목록, `Between` key의 쌍, tuple key의 값 묶음 목록이고, 조건 값으로 준 map이나 JSON 값은 `codec_encode`다. `orm_value::from_host`는 언어의 값을 읽고 열의 값이 아닌 것을 `codec_encode`로 거부하며, `orm_value::to_host`는 값을 한 단계씩 기술한다. 계약은 값 alias `orm_value`와 `Query`의 member `where`, `value`, `get_by`, `get_count_by`를 선언하고, `contracts/interface/core.json`은 case 36개를 담으며 35개는 member 14개의 것이고 하나는 alias의 것이다. `Cargo.lock`은 `polyspec-binding-core`를 그 브랜치에서 `OutValues`를 가진 commit에 고정한다.
 - Breaking (0.x): Rust 코어의 `Schema::load`가 불러온 schema는 그것을 가리키는 값들이 소유하고, 그 가운데 마지막이 놓이면 메모리가 돌아온다(OM-3.1-2, CORE-80, CORE-81). 프로세스는 불러온 모든 schema의 세 텍스트, `Query`가 이름한 엔티티마다의 descriptor 하나, 등록된 모든 schema의 사본 하나를 끝날 때까지 가지고 있었다. `Schema`는 `Clone`이고 그 사본은 텍스트와 이미 만들어진 runtime model을 공유한다. `Schema::text`, `external`, `hash`는 `&'static str`이 아니라 schema만큼 사는 텍스트를 돌려준다. core는 descriptor를 `EntityRef`로 이름하며 그것은 생성된 모델의 static이거나 `Query`의 공유된 `LoadedEntity`다. 그래서 `Core::entity`는 `&EntityRef`를 돌려주고, 그 `name()`, `schema()`, `entity_schema()`가 `Entity`의 field를 대신한다. `Core::of(EntityRef)`는 어느 쪽의 core든 만들고, `Core::new(&'static Entity)`와 생성된 코드는 바뀌지 않는다. `Req::schema`는 `SchemaRef`이고 `Req::new`는 `impl Into<SchemaRef>`를 받는다.
+- 문서: 영어 파일이 stamp 뒤에 바뀐 한국어 쌍 17개가 다시 영어와 같은 내용을 말하고 stamp되었다(`PRINCIPLES`, `docs/operations/`의 문서 다섯, `docs/plans/`의 plan과 checklist 다섯, `examples/thin-slice`, `legacy/packages/php`, `packages/rust`와 `tests/`의 디렉터리 넷의 README). 한국어 파일은 영어가 `legacy/packages/<runtime>`이라 하는 곳에 `packages/<runtime>`을 두고 있었고, `remediation-plan`, `usage`, `perf`, `interface-implementation`과 checklist의 행은 줄여 썼거나 다른 내용을 말했다. `legacy/tests/conformance`, `interfaces`, `markdown`의 README는 `docs/spec`과 `contracts/interfaces.json`을 그 파일이 있는 세 디렉터리 위로 링크한다. `make docs-check`가 그 링크 12개를 죽은 링크로 보고했다.
 ## 0.0.31
 
 - Breaking (0.x): insert는 model의 조건이 성립할 때만 쓴다(T436, PRT-85에서 PRT-89까지, DSL-162). `create()`, `creates()`, 그리고 `duplication()`과 `create()`는 model에 둔 조건을 insert의 `where`로 받으며, column에 대한 조건은 insert가 쓰는 값을 비교한다. 문은 모든 row를 쓰거나 하나도 쓰지 않는 `INSERT ... SELECT` 하나이고, subquery는 쓰는 table을 포함한 모든 table을 문 이전 상태로 읽으며, 성립하지 않는 조건은 새 code `CONDITION_NOT_MET`으로 실패하고 아무것도 쓰지 않으며, 그런 insert가 열었을 감사 기록도 함께 취소된다(DBS-87). 이전에는 insert가 model의 조건을 버렸다. limepie의 요청이다.

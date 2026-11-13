@@ -4,13 +4,13 @@
 The behaviour of the conformance vectors is the recipe
 [`conformance_verification`](../../contracts/fixtures/conformance_verification/conformance_verification.json), which each
 of the six implementations runs on MySQL, PostgreSQL and SQLite through its recipe helper
-([feature coverage](../../docs/spec/feature-coverage.md) FCV-3). A new behaviour is a new case of that recipe.
+([feature coverage](../../../docs/spec/feature-coverage.md) FCV-3). A new behaviour is a new case of that recipe.
 
 What cannot be a recipe step stays here, as a native body in the runner of each implementation:
 
 - the bodies that call generated methods, which a recipe step does not reach; each output compares with the expects of the
   recipe case of the same name;
-- the fixed-clock bodies, because `FixClock` is a test entry point of each client ([protocol](../../docs/spec/protocol.md)
+- the fixed-clock bodies, because `FixClock` is a test entry point of each client ([protocol](../../../docs/spec/protocol.md)
   3.3); each output compares with `check/fixed_clock.json`.
 
 `make conformance-check` runs both on the bench databases of its run (`make orm-check` or `make run-databases`), and the

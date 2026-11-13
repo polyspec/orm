@@ -1,16 +1,16 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: eafb608ca23dd231d6fcbf008c24edeeabd77700ae27bc38d6604fe9971baf67 -->
+<!-- source-sha256: 455a27a5fe97dd9f7c535448696dbdfd5c93dc245d89273ab516492e2adf2c5a -->
 # Conformance
 
 conformance vector의 동작은 recipe
 [`conformance_verification`](../../contracts/fixtures/conformance_verification/conformance_verification.json)이며, 여섯
 구현 각각이 자기 recipe helper로 MySQL, PostgreSQL, SQLite에서 실행한다
-([feature coverage](../../docs/spec/feature-coverage.ko.md) FCV-3). 새 동작은 그 recipe의 새 case다.
+([feature coverage](../../../docs/spec/feature-coverage.ko.md) FCV-3). 새 동작은 그 recipe의 새 case다.
 
 recipe step이 될 수 없는 것은 여기 남으며, 각 구현의 runner에 native body로 있다.
 
 - generated method를 호출하는 body: recipe step이 닿지 못한다. 각 출력은 같은 이름의 recipe case expect와 비교한다.
-- 고정 clock body: `FixClock`은 각 client의 test 진입점이다([protocol](../../docs/spec/protocol.ko.md)
+- 고정 clock body: `FixClock`은 각 client의 test 진입점이다([protocol](../../../docs/spec/protocol.ko.md)
   3.3). 각 출력은 `check/fixed_clock.json`과 비교한다.
 
 `make conformance-check`는 자기 실행의 bench database(`make orm-check` 또는 `make run-databases`)에서 둘을 실행하고,

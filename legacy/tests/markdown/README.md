@@ -2,7 +2,7 @@
 # Markdown corpus conformance
 
 A markdown connection is a SQLite connection whose statements a flowmark server answers on a corpus
-([dialects](../../docs/spec/dialects.md)). The recipes run on it as on every database; these cases cover what only a corpus
+([dialects](../../../docs/spec/dialects.md)). The recipes run on it as on every database; these cases cover what only a corpus
 has: its documents, keys unique without regard to case, files edited outside the engine and the
 catalogs it installs. Each client runs the cases of `cases.json` on one corpus that a flowmark server serves and compares
 the result of each case with its `expect`.
@@ -48,7 +48,7 @@ A case's result is a JSON value compared with `expect` after both are read as JS
 
 - a model is its array form (`toArray`), a collection the list of the array forms in collection order, and a
   grouped count the list of its group rows;
-- a `date` value is its runtime value model text `YYYY-MM-DD` ([protocol](../../docs/spec/protocol.md#_5-markdown-connections)),
+- a `date` value is its runtime value model text `YYYY-MM-DD` ([protocol](../../../docs/spec/protocol.md#_5-markdown-connections)),
   whatever type the client holds it in: a client whose array form writes a date as a datetime writes it as that text;
 - a count, a sum, an average and the row count of a write are numbers, and `paginate` is
   `{"items", "total_count", "total_pages"}`;

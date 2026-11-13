@@ -1,8 +1,8 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 7fe44269bbb01e4b8d43ecda8bdd7161b4927286641aa6f90ddc4f41e3b4fd49 -->
+<!-- source-sha256: 552b1c4922654b60ec2f6c5433c88ad8599e0aa66a1a745daca3d4b8c27acabd -->
 # 사용법
 
-하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
+하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
 대상 DB는 MySQL 8(기본), PostgreSQL 12+, SQLite 3.46+.
 
 쿼리는 생성된 모델에서 시작하고 `connect`로 열린 데이터베이스 연결을 받는다. 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다.
@@ -18,9 +18,9 @@
 |---|---|
 | Go 1.27+ | 엔진·생성기·Go 클라이언트 |
 | MySQL 8.0.2+ / MariaDB 10.2+ | 1차 대상. PostgreSQL 12+, SQLite 3.46+도 같은 플랜으로 동작 |
-| PHP 8.4+ (`pdo_mysql`) | PHP 클라이언트에 필요하다. PostgreSQL에는 `pdo_pgsql`과 `ext-pgsql`, SQLite에는 `pdo_sqlite`를 추가한다. PostgreSQL 취소는 `ext-pgsql`을 사용한다. |
-| Rust 1.98+ | Rust 클라이언트를 쓸 때만 |
-| Node.js 22.16+ | TypeScript 클라이언트를 쓸 때만 |
+| PHP 8.4+ (`pdo_mysql`) | PHP에 필요하다. PostgreSQL에는 `pdo_pgsql`과 `ext-pgsql`, SQLite에는 `pdo_sqlite`를 추가한다. PostgreSQL 취소는 `ext-pgsql`을 사용한다. |
+| Rust 1.98+ | Rust에 필요하다 |
+| Node.js 22.16+ | TypeScript에 필요하다 |
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
@@ -103,11 +103,11 @@ fn main() {
 | Python | `orm-gen gen`(Python package) | 스키마나 scan한 소스가 바뀐 뒤 |
 | Rust | `polyspec-orm-build` crate | `cargo build` 때마다 `build.rs`에서 실행. `polyspec_orm::models!()`가 모델을 `model` 모듈로 포함한다 |
 
-- 모든 생성기는 model의 모든 key(primary key, unique key, index)의 모든 prefix마다 유형 있는 메서드를 schema에서 선언한다. 소스가 `--scan`으로 지정되었는지, 그 소스가 호출하는지와 상관없다. 한 column은 그 column 메서드이고(예: `audit_seq` index의 `auditSeq`), 여러 column은 tuple 메서드이다(예: `tupleAccountSeqWithProjectSeq`). Go, Rust, TypeScript, PHP, Python은 이 메서드를 생성된 model에 선언한다. Python과 PHP는 모든 column의 조건 메서드와 column 메서드도 model을 반환하는 유형으로 선언하고, 그 밖의 체인 이름은 실행 시점에 해석한다. scan은 소스가 호출하는 체인 메서드를 더하며, 체인 문법이 받지 않는 이름은 빌드를 멈춘다. PHP는 schema가 열거하는 메서드를 생성된 model마다 선언해 PHPStan 같은 정적 분석기가 그것을 찾게 한다: 모든 column의 조건 메서드, 두 column 이상인 모든 key prefix의 tuple 메서드, 모든 column의 `addColumn<Col>`, `removeColumn<Col>`, `groupBy<Col>`, `keyName<Col>`, `orderBy<Col>Asc`, `orderBy<Col>Desc`, 모든 숫자 column의 `plus<Col>`, `minus<Col>`, `sum<Col>`, `avg<Col>`, 모든 index의 `forceIndex<Index>`. 각 메서드는 그 이름의 체인을 실행하므로 체인이 만드는 쿼리를 만든다. `--scan`을 주면 PHP는 소스가 호출하는 체인 메서드도 `@method` 태그로 선언하고 체인 문법이 받지 않는 이름은 빌드를 멈춘다([dsl.md](../spec/dsl.ko.md)). `--scan`이 없으면 그 밖의 체인 이름은 schema가 열거하지 않으므로 PHP가 호출 시점에 `__call`로 해석한다: `lbName`이나 `gtSeq` 같은 연산자 체인, `seqAndName` 같은 여러 column의 체인, `and`나 `or`로 이은 조건, finder `getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`, 여러 column의 정렬, `join<Pair>`, `leftJoin<Pair>`, `match<Pair>`, `alias<Name>`, `new<Name>`, `possible<Col>`, 더한 column의 `addColumn<Name>`, 더한 값이나 relation의 `get<Name>`.
+- 모든 생성기는 model의 모든 key(primary key, unique key, index)의 모든 prefix마다 유형 있는 메서드를 schema에서 선언한다. `--scan`으로 지정한 소스가 그 메서드를 호출하는지와 상관없다. 한 column은 그 column 메서드이고(예: `audit_seq` index의 `auditSeq`), 여러 column은 tuple 메서드이다(예: `tupleAccountSeqWithProjectSeq`). Go, Rust, TypeScript, PHP, Python은 이 메서드를 생성된 model에 선언한다. Python과 PHP는 모든 column의 조건 메서드와 column 메서드도 model을 반환하는 유형으로 선언하고, 그 밖의 체인 이름은 실행 시점에 해석한다. scan은 소스가 호출하는 체인 메서드를 더하며, 체인 문법이 받지 않는 이름은 빌드를 멈춘다. PHP는 schema가 열거하는 메서드를 생성된 model마다 선언해 PHPStan 같은 정적 분석기가 그것을 찾게 한다: 모든 column의 조건 메서드, 두 column 이상인 모든 key prefix의 tuple 메서드, 모든 column의 `addColumn<Col>`, `removeColumn<Col>`, `groupBy<Col>`, `keyName<Col>`, `orderBy<Col>Asc`, `orderBy<Col>Desc`, 모든 숫자 column의 `plus<Col>`, `minus<Col>`, `sum<Col>`, `avg<Col>`, 모든 index의 `forceIndex<Index>`. 각 메서드는 그 이름의 체인을 실행하므로 체인이 만드는 쿼리를 만든다. `--scan`을 주면 PHP는 scan한 소스가 호출하는 체인 메서드도 `@method` 태그로 선언하고 체인 문법이 받지 않는 이름은 빌드를 멈춘다([dsl.md](../spec/dsl.ko.md)). `--scan`이 없으면 그 밖의 체인 이름은 schema가 열거하지 않으므로 PHP가 호출 시점에 `__call`로 해석한다: `lbName`이나 `gtSeq` 같은 연산자 체인, `seqAndName` 같은 여러 column의 체인, `and`나 `or`로 이은 조건, finder `getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`, 여러 column의 정렬, `join<Pair>`, `leftJoin<Pair>`, `match<Pair>`, `alias<Name>`, `new<Name>`, `possible<Col>`, 더한 column의 `addColumn<Name>`, 더한 값이나 relation의 `get<Name>`.
 - 생성 모델은 document와 scan한 소스에만 의존하고 path를 쓴 방식에는 의존하지 않는다: scan과 output path를 상대 path나 절대 path로, `./`를 넣어, 또는 끝에 `/`를 붙여 써도, PHP set 파일 path를 상대 path, 절대 path, `./`를 넣은 path로 써도 같은 파일이 나온다. Rust `include_str!`은 manifest file의 path를 output directory의 canonical path로 쓴다.
-- TypeScript scan은 receiver가 생성 모델로 해석되는 호출에 대해서만 메서드를 선언하며, 그 모델에 선언한다. receiver는 다음 경우에 모델로 해석된다: 생성 class `C`의 `new C()`(import alias나 namespace import를 거친 경우 포함), 모델에 묶였거나 모델 class 타입을 가진 변수나 parameter, 선언된 반환 타입이 모델이거나, 반환 타입 없이 식 본문이나 유일한 `return` 문이 모델인 function이나 arrow function, 모델의 체인 메서드, 모델의 `and`, `or`, `on`, `fetchKey`, `fetchValue`, `addColumn…`에 넘긴 callback의 타입 없는 첫 parameter, `as C` 타입을 붙인 식, operand가 모델인 conditional expression `c ? a : b`나 nullish default `a ?? b`(그것으로 다시 대입된 변수는 operand가 될 수 있는 모든 모델을 가진다), 모델의 행: `get`이나 `getBy…`를 await한 결과, 또는 모델 collection(`gets`나 `getsBy…`를 await한 결과, 그 `values()`나 `filter(…)`, spread 복사본, `Collection<C>`나 `C[]` 타입의 값)의 원소를 `for … of`, index, `first`, `get`, `at`, `find`, `map`, `forEach`, `filter`, `find`, `some`, `every`의 callback으로 얻은 것. model이 아닌 class의 `this.enabled()`처럼 그 밖의 receiver에 대한 호출은 메서드를 더하지 않는다. 그런 receiver의 호출에 타입이 필요하면 receiver에 모델 타입을 준다.
+- TypeScript scan은 receiver가 생성 모델로 해석되는 호출에 대해서만 메서드를 선언하며, 그 모델에 선언한다. receiver는 다음 경우에 모델로 해석된다: 생성 class `C`의 `new C()`(import alias나 namespace import를 거친 경우 포함), 모델에 묶였거나 모델 class 타입을 가진 변수나 parameter, 선언된 반환 타입이 모델이거나, 반환 타입 없이 식 본문이나 유일한 `return` 문이 모델인 function이나 arrow function, 모델의 체인 메서드, 모델의 `and`, `or`, `on`, `fetchKey`, `fetchValue`, `addColumn…`에 넘긴 callback의 타입 없는 첫 parameter, `as C` 타입을 붙인 식, operand가 모델인 conditional expression `c ? a : b`나 nullish default `a ?? b`(그것으로 다시 대입된 변수는 operand가 될 수 있는 모든 모델을 가진다), 모델의 행: `get`이나 `getBy…`를 await한 결과, 또는 모델 collection(`gets`나 `getsBy…`를 await한 결과, 그 `values()`나 `filter(…)`, spread 복사본, `Collection<C>`나 `C[]` 타입의 값)의 원소를 `for … of`, index, `first`, `get`, `at`, `find`, 또는 `map`, `forEach`, `filter`, `find`, `some`, `every`의 callback으로 얻은 것. model이 아닌 class의 `this.enabled()`처럼 그 밖의 receiver에 대한 호출은 메서드를 더하지 않는다. 그런 receiver의 호출에 타입이 필요하면 receiver에 모델 타입을 준다.
 - `orm-gen gen --lang go`는 scan 회차마다 `--out` 옆의 임시 디렉터리에 파일을 쓰고, scan이 수렴한 뒤에만 `--out`의 생성 파일을 교체한다. 생성 헤더가 없는 파일은 그대로 유지한다. 생성이 실패하면 `--out`을 바꾸지 않으며 `orm-gen`은 상태 1로 종료한다. 이 실패에는 잘못된 체인 호출, 수렴하지 않는 scan, 로드할 수 없는 scan 대상 패키지, 컴파일되지 않는 생성 코드가 포함된다. scan이 수렴했지만 scan한 패키지가 다른 이유로 컴파일되지 않으면 `--out`은 완전한 모델을 담고 `orm-gen`은 상태 3으로 종료한다.
-- `--check`는 출력을 쓰지 않고 기존 파일과 비교한다. 대상은 Go·PHP·TypeScript·Python `orm-gen`의 `gen`이다. 명령은 내용이 다른 파일에 `differs: <path>`, 없는 파일에 `missing: <path>`, 출력 디렉터리에서 생성 코드 주석을 가지고 있지만 생성이 더 이상 쓰지 않는 파일에 `extra: <path>`를 경로 순서로 출력하고, 한 줄이라도 출력하면 상태 1로 종료한다. 파일이 최신이면 아무것도 출력하지 않고 상태 0으로 종료한다. Python은 파일 하나 `models.py`를 쓰므로 그 검사는 그 파일에 `missing`이나 `differs`를 출력하며 `extra` 줄은 없다. Go `gen --check`는 `gen`과 같은 scan을 시스템 임시 디렉터리 아래의 디렉터리에서 실행하므로 모델 패키지는 `--out`의 이름과 import 경로를 유지한다. 생성 실패와 상태 3은 `gen`과 같다. Rust는 `build.rs`에서 모델을 생성하며 `gen` 명령이 없다.
+- `--check`는 출력을 쓰지 않고 기존 파일과 비교한다. 대상은 `orm-gen`이 있는 각 언어에서 그 도구의 `gen`이다. 명령은 내용이 다른 파일에 `differs: <path>`, 없는 파일에 `missing: <path>`, 출력 디렉터리에서 생성 코드 주석을 가지고 있지만 생성이 더 이상 쓰지 않는 파일에 `extra: <path>`를 경로 순서로 출력하고, 한 줄이라도 출력하면 상태 1로 종료한다. 파일이 최신이면 아무것도 출력하지 않고 상태 0으로 종료한다. Python은 파일 하나 `models.py`를 쓰므로 그 검사는 그 파일에 `missing`이나 `differs`를 출력하며 `extra` 줄은 없다. Go `gen --check`는 `gen`과 같은 scan을 시스템 임시 디렉터리 아래의 디렉터리에서 실행하므로 모델 패키지는 `--out`의 이름과 import 경로를 유지한다. 생성 실패와 상태 3은 `gen`과 같다. Rust는 `build.rs`에서 모델을 생성하며 `gen` 명령이 없다.
 
 ```sh
 go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./... --check
@@ -144,7 +144,7 @@ $master = \Polyspec\Orm\Tests\Model\connect($masterDsn, new Config(aesKey: $aesK
 $master->utils()->schema()->register(\Module\Orm\schema());
 ```
 
-generated model의 `bootstrap.php`는 `MANIFEST_TEXT`, `MANIFEST_HASH`, schema 값 `schema()`, connect helper `connect()`를 정의한다. `connect()`는 `Orm::connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록하며, 모든 요청은 `manifestHash`를 포함한다. `Orm::connect`는 set 없이 연결을 연다. `$db->utils()->schema()->register(\Module\Orm\schema())`는 다른 generated model의 set, 여기서는 module set을 statement 없이 같은 연결에 등록하므로, 요청마다 연결을 여는 서버는 쓰는 모든 set을 그 연결에 등록한다. `$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())`는 배포할 때 set을 설치하고 데이터베이스를 확인한 뒤 연결에 등록한다. `new Config(poolSize: 1)`은 요청마다 연결하는 대신 php-fpm worker마다 연결 하나를 요청을 넘어 유지한다([설정](../spec/config.ko.md)). 연결은 세션 설정을 유지하며, 끝난 요청이 열어 둔 트랜잭션은 그 lock과 local 값과 함께 rollback된다.
+generated model의 `bootstrap.php`는 `MANIFEST_TEXT`, `MANIFEST_HASH`, schema 값 `schema()`, connect helper `connect()`를 정의한다. 이 helper는 `Orm::connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록하며, 모든 요청은 `manifestHash`를 포함한다. `Orm::connect`는 set 없이 연결을 연다. `$db->utils()->schema()->register(\Module\Orm\schema())`는 다른 generated model의 set, 여기서는 module set을 statement 없이 같은 연결에 등록하므로, 요청마다 연결을 여는 서버는 쓰는 모든 set을 그 연결에 등록한다. `$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())`는 배포할 때 set을 설치하고 데이터베이스를 확인한 뒤 연결에 등록한다. `new Config(poolSize: 1)`은 요청마다 연결하는 대신 php-fpm worker마다 연결 하나를 요청을 넘어 유지한다([설정](../spec/config.ko.md)). 연결은 세션 설정을 유지하며, 끝난 요청이 열어 둔 트랜잭션은 그 lock과 local 값과 함께 rollback된다.
 
 ### Rust
 
@@ -164,9 +164,9 @@ const master = await connect(masterDsn, { aesKey });
 await master.utils().schema().install(SCHEMA);
 ```
 
-`orm-gen gen --set <dbspec-set.json>`은 dbspec document set을 set 파일에서 `readDbspecSet`으로 읽고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
+`orm-gen gen --set <dbspec-set.json>`은 dbspec document set을 set 파일에서 `readDbspecSet`으로 읽고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. 이 helper는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
 
-각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](../spec/schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하고 빠진 index를 만들며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다. 빠진 unique key도 있는 row에서 실패할 수 있어 plan에서 다루므로 `SCHEMA_DIFFERS`다([schema.md](../spec/schema.md#_5-adding-tables-and-columns)). 둘 다 실행할 때 데이터베이스를 확인한다. `connection.utils().schema().register(schema)`와 connect helper는 데이터베이스를 읽지 않고 연결마다 set을 등록한다([schema.md](../spec/schema.md#_6-schema-registration)).
+각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](../spec/schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하고 빠진 index를 만들며, 빠진 unique key를 포함한 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다. 그런 차이는 기존 row에서 실패할 수 있고 plan에 속하기 때문이다([schema.md](../spec/schema.md#_5-adding-tables-and-columns)). 둘 다 실행할 때 데이터베이스를 확인한다. `connection.utils().schema().register(schema)`와 connect helper는 데이터베이스를 읽지 않고 연결마다 set을 등록한다([schema.md](../spec/schema.md#_6-schema-registration)).
 
 ---
 
@@ -290,7 +290,7 @@ $row->newIsMember(true);                                                        
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 선택한 행 잠금을 실행하며 `NoWait`는 행을 사용할 수 없으면 즉시 실패한다. SQLite는 잠금 접미사를 만들지 않고 네 모드 모두 ORM 트랜잭션 범위의 데이터베이스 잠금 행을 사용한다. SQLite 쓰기 트랜잭션은 시작할 때 데이터베이스 쓰기 잠금을 얻으므로 그 안의 잠금 요청은 기다리지 않고 성공하며, 잠금 대기는 트랜잭션 시작에서 일어난다([런타임 연결](../spec/config.md)).
 - `Db::withCancellation($source)`는 PHP 취소 핸들을 파생한다. PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 후자가 같은 연결을 통해 취소를 전송한다. `timeoutMs`도 PostgreSQL 문 실행 시간을 제한한다.
 - test는 자기 클라이언트의 test fault로 모든 데이터베이스에서 트랜잭션의 rollback을 실패시킨다. production build는 이 fault를 포함하거나 load하지 않는다([protocol §3.1](../spec/protocol.md#_3-1-test-faults)). Go는 `-tags ormtest`와 `orm.FailNextRollback(db)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_rollback(&db)`, TypeScript는 `node --conditions=orm-test`에서 `@polyspec/orm/testing`의 `failNextRollback(db)`, PHP는 `require 'vendor/polyspec/orm/testing/Faults.php'` 뒤의 `Polyspec\Orm\Testing\Faults::failNextRollback($db)`를 사용한다. callback이 실패한 다음 트랜잭션은 rollback되고 callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다.
-- test는 자기 클라이언트의 statement fault로 연결의 다음 statement가 주어진 code와 message로 모든 데이터베이스에서 실패하게 한다([protocol §3.2](../spec/protocol.ko.md#_3-2-test-statement-fault)). Go는 `-tags ormtest`와 `orm.FailNextStatement(db, code, message)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_statement(&db, code, message)`, TypeScript는 `node --conditions=orm-test`와 `@polyspec/orm/testing`의 `failNextStatement(db, code, message)`, PHP는 `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, Python은 `polyspec.orm.testing.fail_next_statement(db, code, message)`를 쓴다. statement는 데이터베이스로 가지 않고, 클라이언트는 그 code와 message의 `OrmException`으로 보고하며, fault는 그 statement가 소비한다.
+- test는 자기 클라이언트의 statement fault로 연결의 다음 statement가 주어진 code와 message로 모든 데이터베이스에서 실패하게 한다([protocol §3.2](../spec/protocol.ko.md#_3-2-test-statement-fault)). Go는 `-tags ormtest`와 `orm.FailNextStatement(db, code, message)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_statement(&db, code, message)`, TypeScript는 `node --conditions=orm-test`와 `@polyspec/orm/testing`의 `failNextStatement(db, code, message)`, PHP는 `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, Python은 `polyspec.orm.testing.fail_next_statement(db, code, message)`를 쓴다. statement는 전송되지 않고, 클라이언트는 그 code와 message의 `OrmException`으로 보고하며, fault는 그 statement가 소비한다.
 
 ```go
 err := master.Transaction(func() error {
@@ -374,7 +374,7 @@ let row = Membership::new().connect(&master).set_team_id(1).set_member_id(2).set
 const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).setRole('owner').restore();
 ```
 
-- key는 hook 뒤 요청의 지정 값과, 함수, 값 함수, ref, subquery 없는 컬럼의 `eq` 조건이 모든 primary key 컬럼에 값을 주면 primary key이고, 그렇지 않으면 컬럼 모두에 값을 주는 첫 unique key(이름 순서)다. key 값은 null, raw, plus, minus가 아닌 일반 값이다. key 컬럼의 지정 값은 조건이고, 나머지 지정 값은 새 값이며 `update`처럼 할당한다. hook이 더한 조건은 restore를 더 좁힌다. key의 값이 없으면 문장 없이 `IR_INVALID`로 실패하며, primary key나 soft delete 컬럼의 새 값, `soft_delete`가 없는 테이블도 그렇다.
+- key는 hook 뒤 요청의 지정 값과, 함수, 값 함수, ref, subquery 없는 컬럼의 `eq` 조건이 모든 primary key 컬럼에 값을 주면 primary key이고, 그렇지 않으면 컬럼 모두에 값을 주는 첫 unique key(이름 순서)다. key 값은 null, raw, plus, minus가 아닌 일반 값이다. key 컬럼의 지정 값은 조건이고, 나머지 지정 값은 새 값이며 `update`처럼 할당한다. hook이 더한 조건은 restore를 더 좁힌다. key의 값이 없으면 restore는 어떤 문장보다 먼저 `IR_INVALID`로 실패하며, primary key나 soft delete 컬럼의 새 값, `soft_delete`가 없는 테이블도 그렇다.
 - 지워지지 않은 행은 바뀌지 않은 채 반환되며 새 값을 포함해 아무것도 쓰지 않는다. 어떤 행도 갖지 않은 key는 `NO_ROWS`로 실패한다.
 - `audit` setting이 있는 테이블에서 restore는 다른 update와 같다. audit 값을 가진 트랜잭션 안에서 실행하고, audit 기록의 key를 audit 컬럼에 쓰며, trigger가 그 버전을 history 테이블에 기록한다. audit이 없으면 `CONFIG`로 실패한다.
 - restore는 soft delete처럼 `updated` 컬럼을 할당하지 않는다. update와 읽기는 문장 두 개이며, 트랜잭션 안에서는 한 상태를 본다.
@@ -429,7 +429,7 @@ $b->getJsonSetting()['a'];
 
 ## 9. 여러 데이터베이스
 
-같은 문장은 세 데이터베이스에서 같은 결과를 만들며 SQL 문장 텍스트만 방언별로 다르다. 규칙과 예외는 [dialects.md](../spec/dialects.md)에 있다.
+같은 문장은 문장 텍스트가 방언별로 달라도 세 데이터베이스에서 같은 결과를 만든다. 규칙과 예외는 [dialects.md](../spec/dialects.md)에 있다.
 
 `connection.utils().schema().install(...)`은 연결의 dialect로 document set을 렌더링한다([schema.md](../spec/schema.md#_4-schema-installation)).
 
@@ -449,7 +449,7 @@ $b->getJsonSetting()['a'];
 | 스키마가 라이브 DB와 같은지 | 데이터베이스를 introspect하고 schema text를 document set과 비교한다([schema.md](../spec/schema.md#_2-schema-operations)) |
 | 생성물이 최신인지 | 언어별 생성기 실행 후 `git diff --exit-code` |
 | Statement event | 연결의 `subscribe`. client가 보내는 모든 statement([statement event](#statement-events)) |
-| key를 지킨 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
+| key를 가진 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | handle의 모든 request를 plan 전에 바꾸기 | 연결의 `withRequestHook`([request hook](#request-hook)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](../spec/dsl.md)) |
 | 실행 없이 페이지의 문장 보기 | 연결한 모델의 `getPagePlanSteps(page, perPage)` ([dsl.md](../spec/dsl.md)) |
@@ -481,15 +481,15 @@ $b->getJsonSetting()['a'];
 
 client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, 복제한 Rust 값, Python `with_request_hook`)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript, Python) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
 
-모든 client는 같은 transaction 제어 statement를 실행한다:
+모든 client는 같은 transaction 제어 statement를 보낸다:
 
 | Dialect | 시작 | 끝 |
 |---|---|---|
-| MySQL | `SET TRANSACTION ISOLATION LEVEL <level>`(isolation이 있으면 `utility`), 그다음 `START TRANSACTION` 또는 `START TRANSACTION READ ONLY` | `COMMIT` 또는 `ROLLBACK` |
-| PostgreSQL | option에 따라 ` ISOLATION LEVEL <level>`과 ` READ ONLY`를 붙인 `BEGIN`, 그다음 `SET LOCAL statement_timeout = <ms>`(`timeoutMs`가 있으면 `utility`) | `COMMIT` 또는 `ROLLBACK` |
+| MySQL | `SET TRANSACTION ISOLATION LEVEL <level>`(`utility`, isolation이 있을 때), 그다음 `START TRANSACTION` 또는 `START TRANSACTION READ ONLY` | `COMMIT` 또는 `ROLLBACK` |
+| PostgreSQL | option에 따라 ` ISOLATION LEVEL <level>`과 ` READ ONLY`를 붙인 `BEGIN`, 그다음 `SET LOCAL statement_timeout = <ms>`(`utility`, `timeoutMs`가 있을 때) | `COMMIT` 또는 `ROLLBACK` |
 | SQLite | `BEGIN IMMEDIATE`, 읽기 전용 transaction은 `BEGIN`, 그다음 option에 따라 `PRAGMA read_uncommitted = 1`과 `PRAGMA query_only = 1`(`utility`) | 같은 `PRAGMA`를 0으로, 그다음 `COMMIT` 또는 `ROLLBACK` |
 
-`<level>`은 `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE` 중 하나다. SQLite 연결의 첫 transaction 전에 client는 transaction 밖에서 `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`로 row lock table을 만든다. 중첩 transaction은 `SAVEPOINT orm_sp_<depth>`와 `RELEASE SAVEPOINT orm_sp_<depth>`를 실행하고, callback이 실패하면 `ROLLBACK TO SAVEPOINT orm_sp_<depth>` 다음 `RELEASE`를 실행한다. MySQL transaction이 끝나기 전에 client는 이름 lock을 `SELECT RELEASE_LOCK(?)`로 풀고 지역 값을 key 순서로 ``SET @`orm.<key>` = NULL``로 지운다. MySQL이나 PostgreSQL transaction의 context나 signal이 취소되면 client는 `ROLLBACK` 대신 session을 닫는다. 취소된 SQLite transaction은 그래도 `PRAGMA` mode를 되돌리고 `ROLLBACK`으로 끝난다.
+`<level>`은 `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE` 중 하나다. SQLite 연결의 첫 transaction 전에 client는 transaction 밖에서 `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`로 row lock table을 만든다. 중첩 transaction은 `SAVEPOINT orm_sp_<depth>`와 `RELEASE SAVEPOINT orm_sp_<depth>`를 보내고, callback이 실패한 뒤에는 `ROLLBACK TO SAVEPOINT orm_sp_<depth>` 다음 `RELEASE`를 보낸다. MySQL transaction이 끝나기 전에 client는 이름 lock을 `SELECT RELEASE_LOCK(?)`로 풀고 지역 값을 key 순서로 ``SET @`orm.<key>` = NULL``로 지운다. MySQL이나 PostgreSQL transaction의 context나 signal이 취소되면 client는 `ROLLBACK` 대신 session을 닫는다. 취소된 SQLite transaction은 그래도 `PRAGMA` mode를 되돌리고 `ROLLBACK`으로 끝난다.
 
 물리 연결을 여는 statement(time zone 같은 session 설정, SQLite version 읽기), statement의 준비, protocol 수준의 취소는 event가 아니다.
 
@@ -546,7 +546,7 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 | `LIMIT_IN_RELATION` | 관계 자식이 `limit`를 사용했다. `groupLimit(n)`을 사용한다 |
 | `OPTIMISTIC_LOCK` | `update(true)`가 더 새로운 `updated_ts`를 발견했다. 다시 읽고 재시도한다 |
 | `LOCK_NOT_AVAILABLE` | `*_nowait` 행 잠금이 즉시 잠금을 얻지 못했다. transaction conflict로 재시도하지 않는다 |
-| `DUPLICATE_KEY` / `DEADLOCK` | 원문을 유지한 드라이버 오류. 교착 오류는 트랜잭션 재시도 뒤에 반환된다 |
+| `DUPLICATE_KEY` / `DEADLOCK` | 원문을 유지한 드라이버 오류. deadlock은 트랜잭션 재시도를 따른다 |
 | `WRITE_CONFLICT` | markdown 연결의 `COMMIT`이 transaction이 읽은 뒤 engine 밖에서 바뀐 corpus 파일을 찾았다. 파일과 줄을 적는다. `DEADLOCK`과 달리 retry option이 있어도 재시도하지 않는다 |
 | `CANCELED` | 문이 끝나기 전에 중단되었다. 취소, 시간 제한, 또는 SQLite `busy_timeout`이 끝날 때까지 다른 연결이 잠금을 놓지 않은 경우이며 재시도하지 않는다 |
 | `READ_ONLY` | 쓰기가 읽기 전용 서버나 연결에 도달했다. replica, 읽기 전용 트랜잭션, 읽기 전용으로 열린 SQLite 데이터베이스가 해당한다. 쓰기는 primary 연결에서 실행한다 |

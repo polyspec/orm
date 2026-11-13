@@ -1,8 +1,8 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: e87c1779f7a36ba08dc1d04bca8945a7f1ae34f4062c32f0740539797ff0215c -->
+<!-- source-sha256: 840d9ad8ec027ca5af5d9e39cce30e195ebf533c1c188ed796647cf576c3f0f0 -->
 # 성능
 
-모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
+모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 검사는 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
 
 드라이버 결과의 측정 환경: Apple M3 Pro, macOS, MySQL 8.4.11 로컬 유닉스 소켓(`/tmp/mysql.sock`), `orm_bench.author` 10만 행, 단일 연결, p50. 원자료: `docs/operations/perf-raw-go-native.txt`, `docs/operations/perf-raw-rust-native.txt`, `docs/operations/perf-raw-rust-native-2.txt`.
 
@@ -19,7 +19,7 @@
 
 ## 2. 실행기 규칙
 
-**F1 — pool 클라이언트는 문 text를 연결마다 한 번 prepare하고 재사용하며, 짧은 연결은 문마다 round trip 하나로 실행한다.** Go에서 prepared statement 없는 `QueryContext(args)`(prepare, 실행, close의 세 번 왕복)는 PK 행에 100µs, 캐시한 statement로는 38µs가 걸린다. Go(pgx statement cache), Rust(sqlx), TypeScript(`pg` named statement), Python(`prepare_threshold=0`인 psycopg) 클라이언트는 요청보다 오래 사는 연결을 가지므로, 각 연결은 문 text를 한 번 prepare한 뒤 server가 유지하는 plan으로 bind하고 실행하며, PHP는 `Db`마다 연결 하나를 유지한다. PHP 연결은 요청 하나 동안만 살아서 유지한 prepare를 다시 쓰지 못하므로, PHP 클라이언트는 문과 bind를 round trip 하나로 실행한다(F4). `server_transactions_postgres`(recipe `statement_events`, PostgreSQL에서 text 5개의 문 8개)의 `model_statements` page가 쓰는 server transaction은 새 연결의 첫 실행 / 두 번째 실행에서 Go 13 / 8(pgx는 Parse와 Describe를 자기 round trip으로 전송한다), Rust 13 / 8(sqlx 0.9는 자기 round trip으로 prepare하며 round trip 하나의 mode가 없다), Python 13 / 8(psycopg는 자기 round trip으로 prepare한다. 기본 문턱 5에서는 8 / 9였는데, text의 다섯 번째 실행이 두 번째 실행에서 그 text를 prepare했다), TypeScript 8 / 8(`pg`는 Parse를 첫 Bind, Execute와 함께 전송한다), PHP 8 / 8이다. 측정 근거(Go, PostgreSQL, bench database, `GetBySeq`, `GetsByServiceSeqAndIsClose`, `GetCountByServiceSeq`와 10행 목록으로 된 page, 연결 4개의 pool과 worker 4개, warm-up 200 page 뒤 800~1600 page, 부하가 큰 기계에서 세 번): 모든 문을 prepare 없이 round trip 하나로 실행하는 pgx `exec` query mode와 비교해 statement cache는 steady state p50이 24~44% 빨랐고(5.5~6.3ms 대 7.8~8.9ms), page당 backend CPU가 22~31% 적었으며(2.2~2.5ms 대 2.9~3.0ms), 초당 page가 20~33% 많았다. 새 연결의 첫 page는 0~9% 느렸다(5.1~8.1ms 대 5.1~7.6ms). MySQL에서 같은 비교(driver 쪽 interpolation 대 server 쪽 prepare)는 기계의 noise 안에 있었고, Go MySQL 클라이언트, Rust MySQL 클라이언트, TypeScript MySQL 클라이언트는 server 쪽 prepare를 유지하며, PHP 클라이언트(emulated PDO prepare)와 Python 클라이언트(PyMySQL)는 client에서 bind를 interpolation한다.
+**F1 — pool 클라이언트는 문 text를 연결마다 한 번 prepare하고 재사용하며, 짧은 연결은 문마다 round trip 하나로 실행한다.** Go에서 prepared statement 없는 `QueryContext(args)`(prepare, 실행, close의 세 번 왕복)는 PK 행에 100µs, 캐시한 statement로는 38µs가 걸린다. Go(pgx statement cache), Rust(sqlx), TypeScript(`pg` named statement), Python(`prepare_threshold=0`인 psycopg) 클라이언트는 요청보다 오래 사는 연결을 가지므로, 각 연결은 문 text를 한 번 prepare한 뒤 server가 유지하는 plan으로 bind하고 실행하며, PHP는 `Db`마다 연결 하나를 유지한다. PHP 연결은 요청 하나 동안만 살아서 유지한 prepare를 다시 쓰지 못하므로, PHP 클라이언트는 문과 bind를 round trip 하나로 실행한다(F4). `server_transactions_postgres`(recipe `statement_events`, PostgreSQL에서 text 5개의 문 8개)의 `model_statements` step의 server transaction은 새 연결의 첫 실행 / 두 번째 실행에서 Go 13 / 8(pgx는 Parse와 Describe를 자기 round trip으로 전송한다), Rust 13 / 8(sqlx 0.9는 자기 round trip으로 prepare하며 round trip 하나의 mode가 없다), Python 13 / 8(psycopg는 자기 round trip으로 prepare한다. 기본 문턱 5에서는 8 / 9였는데, text의 다섯 번째 실행이 두 번째 실행에서 그 text를 prepare했다), TypeScript 8 / 8(`pg`는 Parse를 첫 Bind, Execute와 함께 전송한다), PHP 8 / 8이다. 측정 근거(Go, PostgreSQL, bench database, `GetBySeq`, `GetsByServiceSeqAndIsClose`, `GetCountByServiceSeq`와 10행 목록으로 된 page, 연결 4개의 pool과 worker 4개, warm-up 200 page 뒤 800~1600 page, 부하가 큰 기계에서 세 번): 모든 문을 prepare 없이 round trip 하나로 실행하는 pgx `exec` query mode와 비교해 statement cache는 steady state p50이 24~44% 빨랐고(5.5~6.3ms 대 7.8~8.9ms), page당 backend CPU가 22~31% 적었으며(2.2~2.5ms 대 2.9~3.0ms), 초당 page가 20~33% 많았다. 새 연결의 첫 page는 0~9% 느렸다(5.1~8.1ms 대 5.1~7.6ms). MySQL에서 같은 비교(driver 쪽 interpolation 대 server 쪽 prepare)는 기계의 noise 안에 있었고, Go MySQL 클라이언트, Rust MySQL 클라이언트, TypeScript MySQL 클라이언트는 server 쪽 prepare를 유지하며, PHP 클라이언트(emulated PDO prepare)와 Python 클라이언트(PyMySQL)는 client에서 bind를 interpolation한다.
 
 **F2 — sqlx PK 지연은 드라이버 자체 비용이다.** sqlx는 풀 크기 1과 전용 연결에서도 PK 행을 약 80µs에 읽으며, 이는 Go와 PDO의 두 배다. 차이는 tokio 작업 전환과 프로토콜 파싱에서 생긴다.
 
@@ -31,7 +31,7 @@
 
 ## 3. 회귀 검사 (`make perf-check`)
 
-검사는 한 프로세스에서 생성 클라이언트와 같은 결과의 네이티브 코드를 측정한다. 준비 작업 100쌍 뒤에 순서를 번갈아 바꾸는 인접한 1,000쌍을 측정하고, 쌍별 client/native 비율의 중앙값을 한도와 비교한다. 한 쌍을 느리게 하는 부하는 그 쌍의 양쪽을 함께 느리게 하므로 중앙값 비율은 기계 부하를 따르지 않는다. 각 검사는 CPU마다 바쁜 프로세스 하나를 함께 실행한 상태(`TestHotPathGateUnderLoad`, PHP 검사는 `ORM_PERF_CPU_LOAD=1`)에서도 실행한다. 양쪽은 같은 SQL text를 실행한다. `make perf-check`는 gate 전에 Go 네이티브 statement를 생성 클라이언트가 실행하는 statement와 비교하는 `TestNativeStatementsEqualClient`와 모든 네이티브 읽기 workload를 벤치 데이터베이스에서 실행하는 `TestNativeWorkloadsRead`를 실행한다. 모든 클라이언트의 네이티브 쪽은 타입 변환까지 수행한다. PHP 기준 코드는 셀을 디코딩하고 클라이언트 조립과 같은 타입 변환으로 행 값을 만든다. 비율은 클라이언트 기계 부분만 잰다. 모델 객체 생성은 행당 약 0.1µs로 측정된 클라이언트 작업이며 클라이언트 쪽에 남는다. 중앙값 비율이 한도를 넘으면 경고로 보고한다(`WARNING` 줄, CI summary, GitHub warning annotation). 성능은 측정하고 보고할 뿐 검사를 실패시키지 않는다(AGENTS.md).
+검사는 한 프로세스에서 생성 클라이언트와 같은 결과의 네이티브 코드를 측정한다. 준비 작업 100쌍 뒤에 순서를 번갈아 바꾸는 인접한 1,000쌍을 측정하고, 쌍별 client/native 비율의 중앙값을 한도와 비교한다. 한 쌍을 느리게 하는 부하는 그 쌍의 양쪽을 함께 느리게 하므로 중앙값 비율은 기계 부하를 따르지 않는다. 각 검사는 CPU마다 바쁜 프로세스 하나를 함께 실행한 상태(`TestHotPathGateUnderLoad`, PHP 검사는 `ORM_PERF_CPU_LOAD=1`)에서도 실행한다. 양쪽은 같은 SQL text를 실행한다. `make perf-check`는 검사 전에 Go 네이티브 statement를 생성 클라이언트가 실행하는 statement와 비교하는 `TestNativeStatementsEqualClient`와 모든 네이티브 읽기 workload를 벤치 데이터베이스에서 실행하는 `TestNativeWorkloadsRead`를 실행한다. 모든 클라이언트의 네이티브 쪽은 타입이 있는 값으로 읽는다. PHP 기준 코드는 클라이언트 장치 없이 셀을 디코딩하고 클라이언트 조립과 같은 타입 변환으로 행 값을 만든다. 그래서 비율은 타입 변환 자체가 아니라 그 장치를 잰다. 모델 객체 생성은 행당 약 0.1µs로 측정된 클라이언트 작업이며 비율의 클라이언트 쪽에 남는다. 중앙값 비율이 한도를 넘으면 경고로 보고한다(`WARNING` 줄, CI summary, GitHub warning annotation). 성능은 측정하고 보고할 뿐 검사를 실패시키지 않는다(AGENTS.md).
 
 | 클라이언트 | PK 한도 | 100행 한도 | 검사 |
 |---|---:|---:|---|
@@ -44,7 +44,7 @@ SQL projection과 bind, 기대한 PK 결과와 정렬된 결과는 세 데이터
 
 `make perf-check`의 별도 Go/PHP 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드한 MySQL 벤치 데이터베이스를 읽고, `make perf-check`가 함께 실행하는 Go 측정과 `make feature-performance-check`는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다. 필요한 DSN이 없으면 검사에 실패하며, 요청하지 않은 로컬/다른 database로 대체하지 않는다.
 
-변환을 포함한 기준 코드에서 PHP 8.4.25 로컬 소켓은 PK 비율 1.20–1.31, 100행 비율 1.06–1.12를 보였다. PK 비율은 쿼리당 약 10.5µs인 요청 조립과 계획 고정 비용이 지배한다.
+변환을 포함한 기준 코드에서 PHP 8.4.25 로컬 소켓은 여러 실행에서 PK 비율 1.20–1.31, 100행 비율 1.06–1.12를 보였다. PK 비율은 쿼리당 약 10.5µs인 요청 조립과 계획 고정 비용이 지배한다.
 
 비율은 하드웨어에 따라 달라지고 왕복 시간이 길수록 1에 가까워진다. 한도는 경고의 기준값이다. 바꾸려면 측정 결과와 이 문서의 갱신이 필요하다.
 
@@ -59,9 +59,9 @@ SQL projection과 bind, 기대한 PK 결과와 정렬된 결과는 세 데이터
 
 `benchmarks/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 반복 횟수는 `native`, `driver_compare`, `client_bench`의 필수 인자다. 인자가 없거나 program의 최소값(3, 10, 1) 이상의 정수가 아니면 program은 연결하기 전에 status 1로 끝난다. 드라이버 교체에는 측정된 2배 개선이 필요하다. 두 작업 모두 조건을 충족하지 않으므로 Rust 클라이언트는 sqlx를 유지한다. `make rust-driver-check`는 `driver_compare`와 sqlx 기준 `native`를 `ORM_BENCH_MYSQL_DSN`의 시드된 벤치 데이터베이스에서 적은 반복 횟수로 실행하고, 둘 다 모든 작업의 row를 읽고 status 0으로 끝나지 않으면 실패한다. 지연 시간은 CI 통과 조건이 아니다.
 
-## 5. 최신 기준 실행
+## 5. 최신 회귀 검사 실행
 
-2026-09-27 시드한 MySQL 벤치 데이터베이스에서 `make perf-check`가 통과했다. Go 기준은 PK 클라이언트 49.0µs, 네이티브 46.0µs(비율 1.08), 100행 클라이언트 388.0µs, 네이티브 321.0µs(1.21)였고 CPU 부하에서는 각각 40.0µs 대 37.0µs(1.07), 363.0µs 대 298.0µs(1.21)였다. PHP 기준은 PK 81.0µs 대 72.0µs(1.13), 100행 813.8µs 대 712.9µs(1.14)였고 CPU 부하에서는 65.3µs 대 56.5µs(1.15), 1836.2µs 대 1569.8µs(1.15)였다. 모든 값은 3절의 한도 안에 있다.
+2026-09-27 시드한 MySQL 벤치 데이터베이스에서 `make perf-check`가 통과했다. Go 검사는 PK 클라이언트 49.0µs, 네이티브 46.0µs(비율 1.08), 100행 클라이언트 388.0µs, 네이티브 321.0µs(1.21)였고 CPU 부하에서는 각각 40.0µs 대 37.0µs(1.07), 363.0µs 대 298.0µs(1.21)였다. PHP 검사는 PK 81.0µs 대 72.0µs(1.13), 100행 813.8µs 대 712.9µs(1.14)였고 CPU 부하에서는 65.3µs 대 56.5µs(1.15), 1836.2µs 대 1569.8µs(1.15)였다. 모든 값은 3절의 한도 안에 있다.
 
 ## 6. 결정 요약
 
@@ -76,12 +76,12 @@ SQL projection과 bind, 기대한 PK 결과와 정렬된 결과는 세 데이터
 
 ## 7. bench database
 
-bench database는 `scripts/bench-db.mts`가 만든다. `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`의 database를 다시 만들고, TypeScript bench model로 `contracts/fixtures/bench/bench.dbs`를 설치하고, `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql`, `benchmarks/sql/seed.sqlite.sql`을 실행한 뒤 TypeScript client의 host codec으로 인증된 host 형식의 AES와 blind-index 값을 채운다.
+`scripts/bench-db.mts`는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`이 이름한 database를 다시 만들고, TypeScript bench model로 `contracts/fixtures/bench/bench.dbs`를 설치하고, `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql`, `benchmarks/sql/seed.sqlite.sql`을 실행한 뒤 AES와 blind-index column을 TypeScript client의 host codec으로 인증된 host 형식으로 채운다.
 
 ## 8. 공통 클라이언트 기준값
 
 `contracts/performance-references.json`은 `performance_gate`의 여섯 클라이언트, 세 database, 두 workload 조합마다 하나의 고정 비율을 선언한다. `make feature-performance-check`가 native 측정값을 이 선언과 비교한다. 기준값을 넘으면 측정값, 기준값과 machine을 담은 경고를 출력하며 correctness 실패로 처리하지 않는다. 원시 관측값은 자동으로 기준값이 되지 않는다.
 
-통과한 check run 하나에서 각 runtime/database/workload 조합의 첫 번째 실행에서 관측한 비율을 기록한다. 두 번째 실행은 그 기준값과 비교해 진단 정보로 보고하며, 여유값을 더하거나 두 번째 실행값으로 기준값을 높이지 않는다. 두 실행의 원시 측정값과 원시 기록의 경로, SHA-256, 측정 시각, machine identity를 보존한다. 3절의 Go 및 PHP `make perf-check` MySQL 한도는 별도로 유지하며 변경하지 않는다.
+통과한 check run 하나에서 각 runtime/database/workload 조합의 첫 번째 실행에서 관측한 비율을 기록한다. 두 번째 실행은 그 기준값과 비교해 진단 정보로 보고하며, 여유값을 더하거나 두 번째 실행값으로 기준값을 높이지 않는다. 두 실행과 원시 기록의 경로, SHA-256, 측정 시각, machine identity를 보존한다. 3절의 Go 및 PHP `make perf-check` MySQL 한도는 별도로 유지하며 변경하지 않는다.
 
 `make run-databases TARGETS=feature-performance-check`가 측정하고, `node scripts/features/performance-reference.mts record <check run id>`는 `.runtime/check/<check run id>/record.json`의 run이 HEAD의 깨끗한 checkout에서 통과했고(record의 `clean`, `commit`, `tree`), 그 feature-performance-check target이 통과했으며 그 target 동안 만들어진 `var/evidence/performance_gate`의 관측 파일 정확히 하나를 보고했을 때만 그 run을 기록한다. machine 및 원시 관측값 digest와 함께 check run ID와 source commit을 기록한다. 그 밖의 관측값은 진단용이다. 측정하는 machine은 run 동안 다른 것을 실행하지 않는다: 그 machine을 공유하는 session들이 그 시간대를 합의하므로 동시 개발이 기준값에 들어가지 않는다.

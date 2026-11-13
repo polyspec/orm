@@ -1,5 +1,5 @@
 <!-- doc-id: examples-thin-slice-readme -->
-<!-- source-sha256: a1f8f67a714f53f9ddc2b61d34a0e67ad6ac1a1cb4243f845f5fe3ca781f8787 -->
+<!-- source-sha256: 253f399e7eb2f24b3ab53dfc376c62952cf519bc702aee6ea153588281a4e032 -->
 # Thin-slice 데모
 
 같은 문장을 파일 다섯 개로 쓰고, stdout에 같은 JSON을 출력한다.

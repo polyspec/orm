@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: eafb608ca23dd231d6fcbf008c24edeeabd77700ae27bc38d6604fe9971baf67 -->
+<!-- source-sha256: 3ef30df3c099e8d71cb1925a1dc211f5c0a442a4cda8c166163ef83e64a54e64 -->
 # Conformance
 
 conformance vector의 동작은 recipe
@@ -10,7 +10,7 @@ conformance vector의 동작은 recipe
 recipe step이 될 수 없는 것은 여기 남으며, 각 구현의 runner에 native body로 있다.
 
 - generated method를 호출하는 body: recipe step이 닿지 못한다. 각 출력은 같은 이름의 recipe case expect와 비교한다.
-- 고정 clock body: `FixClock`은 각 client의 test 진입점이다([protocol](../../docs/spec/protocol.ko.md)
+- 고정 clock body: `FixClock`이 각 client의 test 진입점이기 때문이다([protocol](../../docs/spec/protocol.ko.md)
   3.3). 각 출력은 `check/fixed_clock.json`과 비교한다.
 
 `make conformance-check`는 자기 실행의 bench database(`make orm-check` 또는 `make run-databases`)에서 둘을 실행하고,

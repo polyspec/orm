@@ -1,8 +1,8 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 7fd0dbbb29d19a6b8eeceee4d407d7e9e8d51e7d16295f6ecc3f159b5b28fd37 -->
+<!-- source-sha256: 80489acf89e6463d822e7e941a98d520bfe08f3afbaab70b2b2e52f1958f367d -->
 # Markdown corpus 적합성
 
-markdown 연결은 flowmark server가 corpus에서 문장에 답하는 SQLite 연결이다([dialect](../../docs/spec/dialects.ko.md)).
+markdown 연결은 flowmark server가 corpus에서 문장에 답하는 SQLite 연결이다([dialect](../../../docs/spec/dialects.ko.md)).
 recipe는 다른 모든 데이터베이스처럼 그 위에서 실행되고, 이 case들은 corpus에만 있는 것을 다룬다: document,
 대소문자를 가리지 않고 unique한 key, engine 밖에서 편집된 파일, corpus가 install하는 catalog. 각 클라이언트는
 flowmark server가 제공하는 corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 그 `expect`와 비교한다.
@@ -48,7 +48,7 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 
 - model은 그 배열 형태(`toArray`)이고, collection은 collection 순서의 배열 형태 목록이며, 묶은 개수는 그 group 행의
   목록이다.
-- `date` 값은 클라이언트가 어떤 type으로 갖든 runtime value model의 text `YYYY-MM-DD`([프로토콜](../../docs/spec/protocol.ko.md#_5-markdown-connections))다.
+- `date` 값은 클라이언트가 어떤 type으로 갖든 runtime value model의 text `YYYY-MM-DD`([프로토콜](../../../docs/spec/protocol.ko.md#_5-markdown-connections))다.
   배열 형태가 date를 datetime으로 쓰는 클라이언트는 그 text로 쓴다.
 - 개수, 합, 평균, 쓰기의 행 수는 숫자이고, `paginate`는 `{"items", "total_count", "total_pages"}`다.
 - 실패한 case는 `{"error": <code>}`, 곧 오류의 orm code이며, `write_conflict`는 `{"error": <code>, "name": <name>}`,

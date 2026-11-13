@@ -1,5 +1,5 @@
 <!-- doc-id: tests-bind-readme -->
-<!-- source-sha256: 2be1447b430a501f0dac58a1d8a6c2ada158a0314046be88d8fb577233c0fb6c -->
+<!-- source-sha256: 5787380b98492edf2452f5d5244fb299ef30b0400b9da60abbfcf519761ad909 -->
 # Bind vector
 
 bind 경로의 case는 recipe다: `messages.json`은 모든 runtime에서, `messages-dynamic.json`은 compile 시점 type이 없는 runtime에서,

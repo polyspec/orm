@@ -1,7 +1,7 @@
 <!-- doc-id: tests-interfaces-readme -->
 # Common interface checks
 
-[contracts/interfaces.json](../../contracts/interfaces.json) defines the interface structure. Update it together with the [interface structure document](../../docs/spec/interfaces.md).
+[contracts/interfaces.json](../../../contracts/interfaces.json) defines the interface structure. Update it together with the [interface structure document](../../../docs/spec/interfaces.md).
 
 The checker verifies these requirements:
 
