@@ -435,7 +435,9 @@ async fn instance(value: &Value, what: &str) -> Instance {
 /// The keys of a case that are no parameter of its member (binding G-5).
 const RESERVED: [&str; 8] = ["id", "note", "rule", "raises", "result", "receiver", "after", "faults"];
 
-async fn run_case(member: &str, case: &Value) {
+/// Runs one case of `member` and adds to `failures` each difference between what the case states and what the member did:
+/// the test runs every case to its end and then names every case that failed (HR-86 of the checks, CORE-71).
+async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
     let fields = case.as_object().unwrap_or_else(|| panic!("{member}: a case is an object"));
     let id = fields.get("id").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: a case has an id"));
     let what = format!("{member} {id}");
@@ -450,15 +452,25 @@ async fn run_case(member: &str, case: &Value) {
     let mut result = None;
     match (outcome, fields.get("raises")) {
         (Err(error), Some(raises)) => {
-            assert_eq!(raises.get("kind").and_then(Value::as_str), Some(error.kind().as_str()), "{what}: kind of {error}");
-            assert_eq!(raises.get("category").and_then(Value::as_str), Some(error.category().as_str()), "{what}: category of {error}");
-            assert_eq!(raises.get("message").and_then(Value::as_str), Some(error.to_string().as_str()), "{what}: message");
+            let raised = serde_json::json!({"kind": error.kind().as_str(), "category": error.category().as_str(), "message": error.to_string()});
+            if raises != &raised {
+                failures.push(format!("{what}: the case expects {raises}, and the member raised {raised}"));
+            }
+            return;
         }
-        (Err(error), None) => panic!("{what}: failed with {error}"),
-        (Ok(_), Some(raises)) => panic!("{what}: succeeded, and the case expects {raises}"),
+        (Err(error), None) => {
+            failures.push(format!("{what}: failed with {error} ({})", error.kind().as_str()));
+            return;
+        }
+        (Ok(_), Some(raises)) => {
+            failures.push(format!("{what}: succeeded, and the case expects {raises}"));
+            return;
+        }
         (Ok(Returned::Value(value)), None) => {
             let expected = fields.get("result").unwrap_or_else(|| panic!("{what}: the case states no result"));
-            assert_eq!(&value, expected, "{what}: result");
+            if &value != expected {
+                failures.push(format!("{what}: the case expects the result {expected}, and the member returned {value}"));
+            }
         }
         (Ok(Returned::Instance(instance)), None) => {
             assert!(fields.get("result").is_none(), "{what}: a class result is observed by after, not by result");
@@ -522,6 +534,7 @@ async fn the_core_passes_the_cases_of_its_contract() {
     assert!(!rows.is_empty(), "the contract names no cases");
     let mut ran = 0usize;
     let mut members = 0usize;
+    let mut failures = Vec::new();
     for row in rows {
         assert_eq!(row["file"].as_str(), Some("contracts/interface/core.json"), "{row}: the case file that this test reads");
         let name = row["group"].as_str().expect("a row of cases names its group");
@@ -531,7 +544,7 @@ async fn the_core_passes_the_cases_of_its_contract() {
             (Some(member), None) => {
                 members += 1;
                 for case in group {
-                    run_case(member, case).await;
+                    run_case(member, case, &mut failures).await;
                     ran += 1;
                 }
             }
@@ -545,4 +558,46 @@ async fn the_core_passes_the_cases_of_its_contract() {
         }
     }
     polyspec_orm_testcase::step(format_args!("ran {ran} cases of {members} members and the alias orm_value"));
+    assert!(failures.is_empty(), "{} of {ran} cases failed:\n{}", failures.len(), failures.join("\n"));
+}
+
+/// The kinds of `raises` that no case of the case form can raise, each with its reason.
+const KINDS_WITHOUT_A_CASE: [(&str, &str, &str); 1] =
+    [("dbspec.read_set", "config", "the member raises it for a path that is no Unicode text, and a case gives a path as a text")];
+
+// Requirements: FMS-7, CORE-71. Each member of the units `dbspec`, `runtime_model` and `codec`, which read no
+// database, has a case that raises each kind of its `raises` (binding CK-22). A kind of the category internal needs no
+// case, because no input raises it.
+#[test]
+fn a_member_of_the_json_surface_has_a_case_of_each_kind_that_it_raises() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let contract: Value = serde_json::from_str(CONTRACT).expect("packages/rust/interface.json is JSON");
+    let cases: Value = serde_json::from_str(CASES).expect("contracts/interface/core.json is JSON");
+    let mut missing = Vec::new();
+    let mut read = 0usize;
+    for unit in contract["units"].as_array().expect("the contract has units") {
+        if !["dbspec", "runtime_model", "codec"].contains(&unit["id"].as_str().expect("a unit has an id")) {
+            continue;
+        }
+        for member in unit["members"].as_array().expect("a unit of the JSON surface has members") {
+            let id = member["id"].as_str().expect("a member has an id");
+            let group = cases[id].as_array().map_or(&[][..], Vec::as_slice);
+            for path in member["raises"].as_array().expect("a member states its raises") {
+                let path = path.as_str().expect("a row of raises is the path of a kind");
+                let kind = crate::Kind::ALL
+                    .into_iter()
+                    .find(|kind| path == format!("polyspec_orm::Kind::{kind:?}"))
+                    .unwrap_or_else(|| panic!("{id}: {path} is no kind of the core"));
+                read += 1;
+                if kind.category().as_str() == "internal" || KINDS_WITHOUT_A_CASE.iter().any(|(member, name, _)| *member == id && *name == kind.as_str()) {
+                    continue;
+                }
+                if !group.iter().any(|case| case["raises"]["kind"].as_str() == Some(kind.as_str())) {
+                    missing.push(format!("{id}: no case raises {}", kind.as_str()));
+                }
+            }
+        }
+    }
+    assert!(read > 0, "the units of the JSON surface state no kind");
+    assert!(missing.is_empty(), "{} kinds have no case:\n{}", missing.len(), missing.join("\n"));
 }
