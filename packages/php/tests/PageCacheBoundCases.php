@@ -67,7 +67,8 @@ trait PageCacheBoundCases
                 $this->assertSame(['where', $page * 20, 20], $params);
                 $plan = $engine->plan($canonical);
                 $step = $plan['steps'][0];
-                $expected = $driver === 'mysql' ? [0, 1, 2] : [0, 2, 1];
+                // Every dialect renders LIMIT count OFFSET offset, so the count binds first (DIA-3).
+                $expected = [0, 2, 1];
                 $this->assertSame(
                     $expected,
                     array_column($step['bind_slots'], 'param'),
