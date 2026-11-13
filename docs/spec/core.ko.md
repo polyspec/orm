@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 4263e05c7f7fede0518863793eb19abaaa98fce63c6d84ab3139ff15ecea8a42 -->
+<!-- source-sha256: 09ac67a23e13795e3534b65dd78e2970538bb22336a685d8a31ee1666725a382 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -119,3 +119,19 @@
   의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓰고 거기서 `ordered_json`은 알 수 없는 stage다. 그런 값의
   공유 case 값 wrapper는 코어를 나가는 값(CORE-60)과 같이 `json_value`이고(FCV-4), 그 stage를 시험하는 case의 id도
   `json`으로 그것을 부른다. CORE-1의 고정 사본은 언어 구현을 위해 옛 이름을 지킨다.
+
+## 인터페이스 계약
+
+- **CORE-70** 코어의 인터페이스 계약은 `packages/rust/interface.json`이다. 계약은 코어가 가지고 있고 시그니처의 모든
+  타입이 계약의 타입인 unit과 member만 선언한다. 값이 열의 값인 member는 구현되지 않은 `orm_value`(CORE-60)를
+  기다리며 선언하지 않는다: `Tx::run`, `Tx::execute`, `Db::subscribe`, `Db::with_request_hook`, `Config`의 field
+  `audit_source`, `TransactionOptions`의 field `audit`, `Key`, `GroupRow`, `GroupRows`, `Statement`. `Utils`와 그
+  부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의 타입을 받으므로 이것들도
+  선언하지 않는다.
+- **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
+  형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
+  전체(CORE-12)를 적는다. 코어는 그 모든 group을 계약이 이름하는 함수로 실행하고, 시험이 부를 수 없는 member를
+  이름하는 group은 실패한다.
+- **CORE-72** 데이터베이스가 필요한 case는 구현되지 않았다: SQLite DSN은 절대 경로를 담고(CFG-11) 서버 DSN은 실행이
+  주는데, case 형식에는 그 어느 쪽의 값도 없다. `contracts/interface/core.json`은 문장을 보내지 않는 case만 담고,
+  데이터베이스가 필요한 member는 코어의 시험이 시험한다.

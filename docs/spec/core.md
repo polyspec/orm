@@ -138,3 +138,19 @@ the core that differ from the rules that the language implementations of `legacy
   `ordered_json` is an unknown stage there. The value wrapper of a shared case for such a value is `json_value`
   (FCV-4), as the value that leaves the core is (CORE-60), and a case that tests the stage names it `json` in its id; the
   fixed copies of CORE-1 keep the old names for the language implementations.
+
+## Interface contract
+
+- **CORE-70** The interface contract of the core is `packages/rust/interface.json`. It declares a unit or a member only
+  when the core has it and every type of its signature is a type of the contract. A member whose values are values of
+  columns waits for `orm_value` (CORE-60), which is not implemented, and is not declared: `Tx::run`, `Tx::execute`,
+  `Db::subscribe`, `Db::with_request_hook`, the field `audit_source` of `Config`, the field `audit` of
+  `TransactionOptions`, `Key`, `GroupRow`, `GroupRows` and `Statement`. `Utils` and its parts borrow their handle, and
+  `Collection`, `Page` and `LookaheadPage` take the type of a generated model, so they are not declared either.
+- **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
+  names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
+  instance value, and a failure states its kind, its category and its whole message (CORE-12). The core runs every such
+  group by the functions that the contract names, and a group that names a member that the test cannot call fails.
+- **CORE-72** A case that needs a database is not implemented: a SQLite DSN holds an absolute path (CFG-11) and a
+  server DSN is given by the run, and the case form has no value for either. `contracts/interface/core.json` holds only
+  cases that send no statement, and the members that need a database are tested by the tests of the core.

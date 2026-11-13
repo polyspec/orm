@@ -321,6 +321,10 @@ macro_rules! models {
 mod or_panic;
 
 #[cfg(test)]
+#[path = "../tests/unit/interface_cases.rs"]
+mod interface_cases;
+
+#[cfg(test)]
 mod sqlite_code_tests {
     use super::*;
 
