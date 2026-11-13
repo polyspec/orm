@@ -18,7 +18,7 @@ import (
 // benchModel is the runtime model of contracts/fixtures/bench/bench.dbs.
 func benchModel(t *testing.T) *runtimemodel.Model {
 	t.Helper()
-	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/bench/bench.dbs")
+	m, err := runtimemodel.LoadFiles(testcase.LegacyPath("contracts/fixtures/bench/bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}
