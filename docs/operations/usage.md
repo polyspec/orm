@@ -575,6 +575,7 @@ make orm-test-container KIND=mysql                           # a MySQL primary a
 make orm-test-container-stop                                 # remove the projects of this checkout and their data, the project of a killed run included
 make orm-test-container-run KIND=mysql RUN='make test-rust'  # start the servers for this run alone, run RUN with their variables on this host, and remove them when RUN ends, fails or gets SIGINT or SIGTERM
 make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'  # the same with RUN in the service runner, from a clone of the commit; KEEP=1 keeps the directory with its tools and its build
+make orm-test-container-run KIND=mysql FORM=runner BUILD='<build command>' RUN='make test-rust' CARGO_BUILD_JOBS=<count> RUNNER_MEMORY=<size> SERVER_MEMORY=<size>  # build in the runner before the servers start; the jobs of cargo and the memory limits are given for the machine
 make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory>  # the run in the runner on another machine, whose host has sh and bay alone; PULL=1 pulls the images there
 ```
 
