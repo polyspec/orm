@@ -239,9 +239,13 @@ function launch(context: Context, kind: Kind, server: Server, args: string[]): P
         else if (initialized && server.ready(line)) finish();
       }
     };
-    const watcher = watch(log, read);
+    // libuv watches the file through kqueue in one-shot mode: it submits the watch in the poll phase of the loop and submits
+    // it again after each event callback, and kqueue reports only the writes that follow a submission. A write before the
+    // first submission or during a callback sends no event, so every read runs from setImmediate, in the check phase after
+    // the submission, and reads those writes; every later write sends an event.
+    const watcher = watch(log, () => setImmediate(read));
+    setImmediate(read);
     child.on('error', error => finish(new TestServerError(`test-servers-container: ${context.program}: ${error.message}`)));
-    child.on('spawn', read);
     child.on('exit', (code, signal) => {
       read();
       finish(new TestServerError(`test-servers-container: the container of ${kind} stopped with ${code ?? signal} before it was ready; its log is ${log}`));
