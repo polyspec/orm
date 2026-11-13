@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 8c02555c23617f397c47de0939b7e5a8245a408f6a05ef127e76afc87f232018 -->
+<!-- source-sha256: 32466ebc2ae7a325ca9dc6542dfe289ff1649d2c1f18886561d8aa129a94ba18 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -577,6 +577,7 @@ make orm-test-container-stop                                 # 이 checkout의 p
 make orm-test-container-run KIND=mysql RUN='make test-rust'  # 이 run만의 서버를 띄우고 이 host에서 그 변수로 RUN을 실행하며, RUN이 끝나거나 실패하거나 SIGINT나 SIGTERM을 받으면 지운다
 make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'  # 같은 run을 commit의 clone으로 service runner 안에서 실행한다. KEEP=1은 tool과 build가 든 directory를 남긴다
 make orm-test-container-run KIND=mysql FORM=runner BUILD='<build command>' RUN='make test-rust' CARGO_BUILD_JOBS=<count> RUNNER_MEMORY=<size> SERVER_MEMORY=<size>  # server가 시작하기 전에 runner 안에서 build한다. cargo의 job 수와 memory 한도는 machine에 맞게 준다
+make orm-test-container-run KIND=mysql FORM=runner SOCKET_BUILD='<build command>' SOCKET_RUN='<check command>' RUN='make test-rust'  # runner 안에서 static program도 build하고 socket 변수와 함께 primary의 container 안에서 실행한다
 make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory>  # host에 sh와 bay만 있는 다른 machine에서 runner의 run을 실행한다. PULL=1은 그곳에서 image를 pull한다
 ```
 
