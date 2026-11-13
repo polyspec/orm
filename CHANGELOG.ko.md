@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 84eba3913957c8fa05949a8967bc9e01a0470a93aaf40da2d1dc5235631dd5ec -->
+<!-- source-sha256: 2cbd4488bd4e7798962e14975306632df96a6a336bfae254b38b983156062373 -->
 # 변경 이력
 
 ## Unreleased
+
+- contracts/fixtures/의 모든 recipe가 다시 scripts/features/schema/recipe.schema.json의 값이다(T460, CORE-2, CORE-3). schema의 오류 코드는 공유 case가 적는 소문자 kind이거나 legacy/contracts/fixtures/의 고정 사본이 적는 대문자 코드이고, case는 contracts/fixtures/core/의 case가 가진 `supersedes`를 이름한다. schema는 공유 recipe 파일 94개 가운데 50개를 거부했고, 그 가운데 conformance_verification의 case 123개 중 54개가 있었다. contracts/interfaces.json의 state contract와 그 recipe case의 비교는 대문자 코드와 그 kind를 같은 오류로 보고, 실패한 callback의 실행기 코드는 `callback`이며, catalog_connection recipe의 `refused_code`는 `driver`다. `make conformance-recipe-vectors-unit`은 13 case를 통과하고, scripts/features의 recipe 시험은 115 case를 통과한다.
 
 - contract의 class parameter는 코어가 받는 borrow를 적는다(OM-1.5, binding GN-6h). `query.new`와 `step_runner.new`의 `schema`는 `&`이고, `query.relation`과 `query.relations`의 `child`, `query.where_in`의 `query`는 `value`다. 생성기는 그것이 없는 class parameter를 거부한다(`a class parameter names the borrow that the core takes in core`).
 

@@ -232,6 +232,11 @@
         "only": {
           "$ref": "#/$defs/only"
         },
+        "supersedes": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the case of the shared recipe of the same path that this case of contracts/fixtures/core/ replaces for the core (docs/spec/core.md CORE-2): the steps are those of that case, and the expectations differ."
+        },
         "databases_differ": {
           "description": "Why the case runs a step on some databases only, or states a different statement or outcome per database: the server lacks the feature or gives its own answer, which the item of docs/spec that the text names states, most often a DIA item (T426). A branch where the orm answers differently, or where one statement valid on every server would do, is fixed instead; scripts/features/recipe-branches.mts refuses a branch without this reason and a reason without a branch.",
           "type": "string",
@@ -843,7 +848,7 @@
           "properties": {
             "error": {
               "type": "string",
-              "pattern": "^[A-Z][A-Z0-9_]*$"
+              "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
             },
             "message": {
               "type": "string",
@@ -865,7 +870,7 @@
             "rollback": {
               "description": "The code of the error of the failed rollback that a ROLLBACK error keeps; its message holds the text of that error (CFG-15).",
               "type": "string",
-              "pattern": "^[A-Z][A-Z0-9_]*$"
+              "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
             },
             "keeps_callback": {
               "description": "A ROLLBACK error keeps the error that the callback of its transaction returned (CFG-15).",
@@ -3891,12 +3896,12 @@
                 "properties": {
                   "error": {
                     "type": "string",
-                    "pattern": "^[A-Z_]+$",
+                    "pattern": "^([A-Z_]+|[a-z_]+)$",
                     "description": "The code of the error that the public call returns before any message is sent."
                   },
                   "text": {
                     "type": "string",
-                    "pattern": "^[A-Z_]+: ",
+                    "pattern": "^([A-Z_]+|[a-z_]+): ",
                     "description": "The whole text of that error, its code first, as every client writes it (PRT-32a, INT-163)."
                   }
                 }
@@ -4021,7 +4026,7 @@
           },
           "code": {
             "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]*$"
+            "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
           },
           "message": {
             "type": "string",
@@ -7523,7 +7528,7 @@
           "refused_code": {
             "description": "With refused_message: the code of the error of that refusal.",
             "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]*$"
+            "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
           },
           "connects": {
             "description": "With refused_message: the number of connections that the client opens for the reconnect. The runner relays the reconnect through a TCP listener of its own on 127.0.0.1 in front of the host and port of the DSN, which counts the connections it accepts, and compares the count when the refused reconnect has returned; the listener closes with the step.",
@@ -7939,7 +7944,7 @@
                     "properties": {
                       "error": {
                         "type": "string",
-                        "pattern": "^[A-Z][A-Z0-9_]*$"
+                        "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
                       },
                       "message": {
                         "type": "string",
@@ -9352,7 +9357,7 @@
             "properties": {
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               }
             }
           },
@@ -9377,7 +9382,7 @@
               },
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               },
               "message_suffix": {
                 "description": "The text that the message of the error ends with.",
@@ -9423,7 +9428,7 @@
               },
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               }
             }
           },
@@ -9565,7 +9570,7 @@
             "properties": {
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               }
             }
           }
@@ -9638,7 +9643,7 @@
             "properties": {
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               },
               "message": {
                 "description": "The whole text of the error, its code included.",
@@ -9702,7 +9707,7 @@
               },
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               },
               "message_suffix": {
                 "description": "The text that the message of the error ends with.",
@@ -9751,7 +9756,7 @@
             "properties": {
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               },
               "message": {
                 "description": "The whole text of the error, its code included.",
@@ -9810,7 +9815,7 @@
             "properties": {
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               },
               "message": {
                 "description": "The whole text of the error, its code included.",
@@ -9856,7 +9861,7 @@
             "properties": {
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               }
             }
           }
@@ -9872,7 +9877,7 @@
           },
           "error": {
             "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]*$"
+            "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
           }
         }
       },
@@ -9907,7 +9912,7 @@
             "properties": {
               "error": {
                 "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]*$"
+                "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
               },
               "message_suffix": {
                 "description": "The text that the error message ends with.",
@@ -11172,7 +11177,7 @@
             },
             "error": {
               "type": "string",
-              "pattern": "^[A-Z][A-Z0-9_]*$"
+              "pattern": "^([A-Z][A-Z0-9_]*|[a-z][a-z0-9_]*)$"
             }
           }
         },

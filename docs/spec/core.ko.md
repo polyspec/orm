@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 1a0126506ea5a7d842fb4a5954f23b8855c0b153cf0f6aa7ff800f9702b7e38b -->
+<!-- source-sha256: 7a5c77b268ef6f2c594866ca38dd0bea10cbde0e9072eb49f23589cafc75c037 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -19,7 +19,10 @@
 - **CORE-3** 오류를 기대하는 공유 recipe case와 공유 vector는 그 kind를 코어가 쓰는 대로 소문자로(`no_rows`), 기대
   메시지는 `<kind>: <text>`로 적고, Rust 실행기는 둘을 그대로 비교한다. 실행기 자신이 알리는 case의 언어 코드 실패는 kind가
   아닌 실행기의 코드(`callback`, `step`, `subscriber`)를 가진다. 언어 구현은 카탈로그 코드를 대문자로 유지하고 CORE-1의
-  고정 사본을 읽는다.
+  고정 사본을 읽는다. 공유 case와 그 고정 사본은 schema 하나, `scripts/features/schema/recipe.schema.json`을 이름하므로,
+  그 schema의 오류 코드는 소문자 kind이거나 대문자 코드이고, 그 case 형식은 `supersedes`를 이름한다(CORE-2). 공유 case를
+  `contracts/interfaces.json`의 state contract와 비교하는 검사는, state contract가 언어 구현이 돌려주는 코드를 적으므로,
+  대문자 코드와 그 kind를 같은 오류로 본다(CORE-10).
 
 ## 오류
 

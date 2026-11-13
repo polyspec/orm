@@ -21,7 +21,7 @@ caseTest('each body with generated methods has the expects of its recipe case on
     const want = expectations('generated', database);
     assert.deepEqual([...want.keys()], ['terminal_by', 'terminal_reuse', 'relation_empty', 'aes_values', 'hex_malformed', 'empty_reads', 'now_defaults', 'delete_recursive', 'affected_counts']);
     assert.equal(record(want.get('terminal_by')?.result).count, 40);
-    assert.deepEqual(want.get('hex_malformed')?.result, { odd_length: 'CODEC_DECODE', white_space: 'CODEC_DECODE' });
+    assert.deepEqual(want.get('hex_malformed')?.result, { odd_length: 'codec_decode', white_space: 'codec_decode' });
     assert.ok((want.get('terminal_by')?.statements.length ?? 0) > 0);
     assert.deepEqual(want.get('now_defaults')?.result, { created_equals_updated: true, created_near_clock: true });
     assert.deepEqual(list(want.get('now_defaults')?.statements).map(statement => record(statement).transaction), [1, 1, 1, 1, 1]);

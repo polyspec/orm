@@ -10840,7 +10840,7 @@
         {
           "op": "catalog.reconnect",
           "user_from_database": "o1_",
-          "refused_code": "DRIVER",
+          "refused_code": "driver",
           "refused_message": "max_user_connections",
           "connects": 1
         },

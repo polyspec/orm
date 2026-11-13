@@ -153,13 +153,20 @@ const RESULT_SHAPES: Record<string, (steps: Json[]) => Json> = {
   ...shapes,
   // The last expect of the case is the count that shows the connection still works after the refusals.
   errors: steps => steps.filter(step => typeof step === 'string'),
-  transactions: ([first, second, count = noStep(), rows, local = noStep(), left = noStep()]) => [first === 'CALLBACK', count, size(rows), local, second === 'CALLBACK', left],
+  // A callback that failed is the code `callback` of the runner, which is no kind (CORE-3).
+  transactions: ([first, second, count = noStep(), rows, local = noStep(), left = noStep()]) => [first === 'callback', count, size(rows), local, second === 'callback', left],
 };
 
 /** The case whose counts come from the seed of the recipe: its result compares in shape, and a number need only be a number. */
 const SEED_SHAPES: Record<string, (steps: Json[]) => Json> = {
   terminal_reuse: terminalReuse,
 };
+
+/**
+ * The kind of a code of the catalog: its lower-case form (CORE-10). A state contract states the code that the language
+ * implementations return, in capitals, and a shared recipe case states the kind (CORE-3), so the two name one error.
+ */
+const kindOfCode = (code: string): string | undefined => (/^[A-Z][A-Z0-9_]*$/.test(code) ? code.toLowerCase() : undefined);
 
 const isNumber = (value: Json): boolean => typeof value === 'number' || (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value));
 
@@ -179,6 +186,7 @@ function resultDifferences(stated: Json, built: Json, loose: boolean, path = '$'
     const names = new Set([...Object.keys(stated), ...Object.keys(built)]);
     return [...names].flatMap(name => resultDifferences(member(stated, name), member(built, name), loose, `${path}.${name}`));
   }
+  if (typeof stated === 'string' && kindOfCode(stated) === built) return [];
   return JSON.stringify(stated) === JSON.stringify(built) ? [] : [`${path}: ${JSON.stringify(stated)} in the contract, ${JSON.stringify(built)} in the case`];
 }
 
@@ -222,14 +230,17 @@ function resultValueDifferences(name: string, result: Json, recipeCase: Case, da
   for (const leaf of leaves(result).filter(item => !MASKED.has(item))) {
     const message = /^"([A-Z][A-Z0-9_]*): (.*)"$/.exec(leaf);
     if (message !== null) {
-      if (!have.has(JSON.stringify(message[1]))) out.push(`the code of the message ${leaf} of the contract is in no expect of the case`);
+      if (!have.has(JSON.stringify(kindOfCode(message[1] ?? '')))) out.push(`the code of the message ${leaf} of the contract is in no expect of the case`);
       const body = message[2] ?? '';
       if (!suffixes.some(suffix => body.endsWith(suffix))) out.push(`the message ${leaf} of the contract has no message_suffix in the case`);
       continue;
     }
-    const count = have.get(leaf) ?? 0;
+    // A code of the catalog is found by its kind, which the case states.
+    const code = /^"([A-Z][A-Z0-9_]*)"$/.exec(leaf);
+    const stated = code === null ? leaf : JSON.stringify(kindOfCode(code[1] ?? ''));
+    const count = have.get(stated) ?? 0;
     if (count === 0) out.push(`the result value ${leaf} of the contract is in no expect of the case`);
-    else have.set(leaf, count - 1);
+    else have.set(stated, count - 1);
   }
   return out;
 }

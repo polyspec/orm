@@ -19,7 +19,8 @@
     "only",
     "requirements",
     "seed",
-    "steps"
+    "steps",
+    "supersedes"
   ],
   "step": {
     "dsn.connect": [

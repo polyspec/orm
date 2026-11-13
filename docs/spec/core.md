@@ -22,7 +22,10 @@ the core that differ from the rules that the language implementations of `legacy
   case (`no_rows`), and an expected message as `<kind>: <text>`; the Rust runners compare both as they are. A failure of
   the language code of a case that the runner itself reports has a code of the runner that is no kind (`callback`,
   `step`, `subscriber`). The language implementations keep the codes of the catalog in capitals and read the fixed copies
-  of CORE-1.
+  of CORE-1. The shared cases and their fixed copies name one schema, `scripts/features/schema/recipe.schema.json`, so an
+  error code of that schema is a kind in lower case or a code in capitals, and its case form names `supersedes` (CORE-2).
+  A check that compares a shared case with a state contract of `contracts/interfaces.json`, which states the code that the
+  language implementations return, takes a code in capitals and its kind as one error (CORE-10).
 
 ## Errors
 
