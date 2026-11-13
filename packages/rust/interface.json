@@ -3074,6 +3074,31 @@
             "receiver": "&self"
           },
           "optional_reason": "CORE-88"
+        },
+        {
+          "id": "query.key_name",
+          "name": [
+            "key",
+            "name"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::key_name",
+            "receiver": "&mut self"
+          }
         }
       ]
     }
@@ -3224,6 +3249,11 @@
       "member": "query.related_rows",
       "file": "contracts/interface/core.json",
       "group": "query.related_rows"
+    },
+    {
+      "member": "query.key_name",
+      "file": "contracts/interface/core.json",
+      "group": "query.key_name"
     },
     {
       "alias": "orm_value",

@@ -164,6 +164,14 @@ impl Query {
         }
     }
 
+    /// Keys the collection of `gets`, and the rows of a `relations` result of the query, by the column `column` in place
+    /// of the primary key (CORE-89). A name that is no column of the entity is `config` at the next terminal.
+    pub fn key_name(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.key_name(column);
+        }
+    }
+
     /// Whether `column` is a column of the entity; a name that is none fails the query with `config`, which the next
     /// terminal returns (CORE-87).
     fn known_column(&mut self, column: &str) -> bool {

@@ -283,6 +283,10 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Some(rows) => panic!("{member}: the case runner observes no list of {} rows", rows.len()),
             None => Returned::Value(Value::Null),
         },
+        ("query.key_name", Some(Instance::Query(query))) => {
+            query.key_name(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
         ("query.limit", Some(Instance::Query(query))) => {
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)
