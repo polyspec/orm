@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 907b3a2b34cfa4286ed2c332a0cfe25045a158191a46e4a2a2ad857a27fe3d38 -->
+<!-- source-sha256: 331d6f7735f602f38e409c5dafb9467c1764fbea87d5be399d0812ce28b6cb94 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.33
 
 - TypeScript와 Rust의 request hook은 비동기일 수 있고, client는 request를 plan하기 전에 그것을 기다린다(T441, INT-78). TypeScript `RequestHook`은 request나 그 promise를 돌려준다. Rust `RequestHook`은 client가 기다리는 `HookFuture`를 돌려주므로 `with_request_hook`은 `|r, p| Box::pin(async move { ...; Ok(()) })`를 받는다(0.x에서 호환 깨짐). 그래서 모든 client의 hook은 client가 request를 plan하기 전에 두 번째 연결에서 행 잠금으로 읽을 수 있다. `contracts/fixtures/request_hook`의 공통 case가 그런 읽기를 여섯 runtime과 다섯 database에서 실행한다. MySQL과 PostgreSQL은 잡힌 행을 `LOCK_NOT_AVAILABLE`로 거부하고, SQLite와 flowmark는 두 번째 writer를 busy timeout에서 `CANCELED`로 끝낸다(DIA-221). recipe helper가 모르는 hook action은 이제 다른 runtime처럼 Go에서도 실패한다.
 
