@@ -216,3 +216,7 @@ impl AnyModel for Query {
 #[cfg(test)]
 #[path = "../tests/unit/query.rs"]
 mod query_tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/query_members.rs"]
+mod query_members_tests;
