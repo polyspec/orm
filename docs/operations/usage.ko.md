@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 0bd52ea59e2f67a605a5497a96842cdca3419fe1078351025085ce9351b2e048 -->
+<!-- source-sha256: 610c741fe67ab07b728a608df3275b1ff584f579139c95268e28919189c0b939 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -568,6 +568,8 @@ go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generat
 npm run typescript:test                                  # TypeScript client
 make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
+make orm-install-bay                                         # CI용: config/containers.json이 고정한 bay의 release를 var/tools/bay에 설치한다. machine은 바꾸지 않는다. run은 PATH의 bay를 쓴다
+make orm-install-bay-machine                                 # bay install과 bay check -scope run: bay의 machine 설정이며 필요한 권한을 요청한다
 make orm-install-container-images                            # config/containers.json의 이미지를 bay pull로 pull한다. 이미지를 download하는 유일한 target이다
 make orm-test-container KIND=mysql                           # config/containers.json의 이미지로 MySQL primary와 그 replica를 bay의 Compose project로 띄운다. bay와 이 machine의 이미지가 필요하다
 . .runtime/containers/mysql.env                              # 그 서버의 DSN 변수. TEST_ENV를 읽는 대상은 TEST_ENV=.runtime/containers/mysql.env, MariaDB는 MARIADB_ENV를 받는다

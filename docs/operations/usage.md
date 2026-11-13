@@ -567,6 +567,8 @@ go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generat
 npm run typescript:test                                  # TypeScript client
 make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
+make orm-install-bay                                         # for CI: install the release of bay that config/containers.json pins into var/tools/bay; changes nothing of the machine. A run takes the bay of PATH
+make orm-install-bay-machine                                 # bay install and bay check -scope run: the machine setup of bay, which asks for the rights it needs
 make orm-install-container-images                            # pull the images of config/containers.json with bay pull; the only target that downloads an image
 make orm-test-container KIND=mysql                           # a MySQL primary and its replica as a Compose project of bay, from the image of config/containers.json; needs bay, and the image on this machine
 . .runtime/containers/mysql.env                              # its DSN variables; a target that reads TEST_ENV takes TEST_ENV=.runtime/containers/mysql.env, MariaDB MARIADB_ENV
