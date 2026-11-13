@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1d83a7dc77cd80b5cfe523f78c6457ffa01cfe49f57c581b5efd5702b26041cb -->
+<!-- source-sha256: 10803287ec6099b7ca5c2146e6ce42b18bcb1fb9bf7a96310992846f7d2a631b -->
 # 변경 이력
 
 ## Unreleased
 
+- `make orm-test-container-check`의 시험은 실패할 때도 checkout의 컨테이너를 지운다(T444). `remove` 전에 단언이 실패한 시험은 대역 컨테이너 process를 실행 뒤에도 남겼고, 이 check의 실패한 실행들이 남긴 process 13개가 그것을 보였다. 이제 각 시험은 본문을 `removing` 안에서 돌리고, `removing`은 `finally`에서 checkout의 컨테이너를 지운다. 대역 `exec` 호출의 기록은 검사한 문자열 목록으로 읽는다.
 - `make orm-test-container KIND=mysql`과 `KIND=postgres`는 primary의 replica를 두 번째 컨테이너 `polyspec-orm-test-<checkout>-<kind>-replica`에 띄우고, `make orm-test-servers`가 native primary에 하듯 `ORM_TEST_MYSQL_REPLICA_DSN`과 `ORM_TEST_POSTGRES_REPLICA_DSN`을 쓴다(T444). 그것이 없어서 replica DSN을 읽는 Python 시험 9개가 실패했다. MySQL replica는 이미지가 primary를 초기화한 뒤 primary가 초기화하는 binary log를 첫 파일부터 읽고 `super_read_only`이다. PostgreSQL replica는 slot `orm_replica`를 쓰는 primary의 `pg_basebackup`이고, primary는 native primary의 설정대로 그것을 `synchronous_standby_names`에 `synchronous_commit=local`로 적고 `wal_keep_size=0`을 둔다. 두 replica는 primary가 `orm_test`와 `orm_tools`를 만들기 전에 primary를 따른다. native MariaDB 서버에 replica가 없으므로 MariaDB에는 replica가 없다. `make orm-test-container-check`는 대역 container program으로 이 단계의 순서를 시험하고, 실제 MySQL 시작에서 primary의 쓰기가 replica에 적용된다.
 - `make repo-check`가 다시 통과한다(T444). `contracts/check-inputs.json`은 `orm-test-container-check`의 입력을 선언한다. 그 항목이 없어서 `make repo-check`가 `orm-test-container-check declares no needs`로 실패했다.
 - `make layout-check`가 다시 통과한다(OM-1.3). `config/layout.yml`은 Rust core와 binding이 언어 구현을 대신할 때까지 그 구현을 담는 root 폴더 `legacy/`를, 이유와 그것을 지우는 단계(V-6)와 함께 허용한다. root의 `.gitignore`는 옮긴 TypeScript client와 binding package가 만드는 설치 폴더 `legacy/packages/ts/node_modules/`, `packages/php-ext/vendor/`, `packages/python/.venv/`를 무시한다. `docs/operations/packaging.md`는 Go module 넷을 적는다. `tests/`와 `examples/`의 module은 root의 `go.work`로만 `legacy/packages/go`를 찾으므로 그 Go 명령은 `GOWORK=off`로는 그것을 찾지 못하고, `go.work`가 `packages/go`를 묶지 않으므로 Go binding의 명령은 `GOWORK=off`로 돈다.

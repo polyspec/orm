@@ -44,6 +44,23 @@ else { console.error('unknown command ' + command); process.exit(2); }
   return { program, state };
 }
 
+// strings is the JSON list of strings of a line of exec.log.
+function strings(line: string): string[] {
+  const parsed: unknown = JSON.parse(line);
+  if (!Array.isArray(parsed) || !parsed.every((item): item is string => typeof item === 'string')) throw new Error(`exec.log holds no list of strings: ${line}`);
+  return parsed;
+}
+
+// removing runs the body of a test and then removes the containers of its checkouts, also when the body fails, so that no
+// process of the stand-in outlives the test.
+async function removing(contexts: Context[], body: () => Promise<void>): Promise<void> {
+  try {
+    await body();
+  } finally {
+    for (const context of contexts) remove(context);
+  }
+}
+
 const checkouts = (dir: string, program: string): [Context, Context] => {
   const [first, second] = [join(dir, 'first'), join(dir, 'second')];
   for (const root of [first, second]) mkdirSync(root, { recursive: true });
@@ -54,113 +71,123 @@ caseTest('two checkouts start a server of the same kind at once, each in a conta
   withTemporaryDirectory('orm-containers-', async dir => {
     const { program, state } = standIn(dir);
     const [first, second] = checkouts(dir, program);
-    // A container of another name, such as one that an earlier form of the script started, is never touched.
-    writeFileSync(join(state, 'polyspec-orm-test-mysql'), '0');
-    assert.notEqual(containerName(first.root, 'mysql'), containerName(second.root, 'mysql'));
-    await Promise.all([start('mysql', first), start('mysql', second)]);
-    const both = (root: string) => [containerName(root, 'mysql'), `${containerName(root, 'mysql')}-replica`];
-    assert.deepEqual(readdirSync(state).sort(), [...both(first.root), ...both(second.root), 'polyspec-orm-test-mysql'].sort());
-    for (const { root } of [first, second]) assert.ok(existsSync(join(root, '.runtime/containers/mysql.env')), `${root} has no environment file`);
-    remove(first);
-    assert.deepEqual(readdirSync(state).sort(), [...both(second.root), 'polyspec-orm-test-mysql'].sort());
-    assert.ok(!existsSync(join(first.root, '.runtime/containers/mysql.env')), 'remove leaves the environment file of its checkout');
-    assert.ok(existsSync(join(second.root, '.runtime/containers/mysql.env')), 'remove of one checkout removes the environment file of another');
-    remove(second);
-    assert.deepEqual(readdirSync(state), ['polyspec-orm-test-mysql']);
+    await removing([first, second], async () => {
+      // A container of another name, such as one that an earlier form of the script started, is never touched.
+      writeFileSync(join(state, 'polyspec-orm-test-mysql'), '0');
+      assert.notEqual(containerName(first.root, 'mysql'), containerName(second.root, 'mysql'));
+      await Promise.all([start('mysql', first), start('mysql', second)]);
+      const both = (root: string) => [containerName(root, 'mysql'), `${containerName(root, 'mysql')}-replica`];
+      assert.deepEqual(readdirSync(state).sort(), [...both(first.root), ...both(second.root), 'polyspec-orm-test-mysql'].sort());
+      for (const { root } of [first, second]) assert.ok(existsSync(join(root, '.runtime/containers/mysql.env')), `${root} has no environment file`);
+      remove(first);
+      assert.deepEqual(readdirSync(state).sort(), [...both(second.root), 'polyspec-orm-test-mysql'].sort());
+      assert.ok(!existsSync(join(first.root, '.runtime/containers/mysql.env')), 'remove leaves the environment file of its checkout');
+      assert.ok(existsSync(join(second.root, '.runtime/containers/mysql.env')), 'remove of one checkout removes the environment file of another');
+      remove(second);
+      assert.deepEqual(readdirSync(state), ['polyspec-orm-test-mysql']);
+    });
   }));
 
 caseTest('a start of MySQL starts its replica, which follows the primary from the first binary log, before the databases (T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const { program } = standIn(dir);
     const [context] = checkouts(dir, program);
-    const primary = containerName(context.root, 'mysql');
-    const replica = `${primary}-replica`;
-    const variables = await start('mysql', context);
-    assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], 'mysql://root@192.168.64.9:3306/orm_test');
-    assert.match(readFileSync(join(context.root, '.runtime/containers/mysql.env'), 'utf8'), /^export ORM_TEST_MYSQL_REPLICA_DSN='mysql:\/\/root@192\.168\.64\.9:3306\/orm_test'$/m);
-    const execs = readFileSync(join(dir, 'exec.log'), 'utf8').trim().split('\n').map(line => JSON.parse(line) as string[]);
-    assert.deepEqual(execs.map(([name, , , , sql]) => [name, sql?.split(';')[0]]), [
-      [primary, 'RESET BINARY LOGS AND GTIDS'],
-      [replica, "CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.64.9', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1"],
-      [primary, 'CREATE DATABASE orm_test'],
-    ], 'the replica does not follow the primary before the databases are created');
-    remove(context);
+    await removing([context], async () => {
+      const primary = containerName(context.root, 'mysql');
+      const replica = `${primary}-replica`;
+      const variables = await start('mysql', context);
+      assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], 'mysql://root@192.168.64.9:3306/orm_test');
+      assert.match(readFileSync(join(context.root, '.runtime/containers/mysql.env'), 'utf8'), /^export ORM_TEST_MYSQL_REPLICA_DSN='mysql:\/\/root@192\.168\.64\.9:3306\/orm_test'$/m);
+      const execs = readFileSync(join(dir, 'exec.log'), 'utf8').trim().split('\n').map(strings);
+      assert.deepEqual(execs.map(([name, , , , sql]) => [name, sql?.split(';')[0]]), [
+        [primary, 'RESET BINARY LOGS AND GTIDS'],
+        [replica, "CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.64.9', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1"],
+        [primary, 'CREATE DATABASE orm_test'],
+      ], 'the replica does not follow the primary before the databases are created');
+      remove(context);
+    });
   }));
 
 caseTest('a run removes its container when its command ends, fails or gets SIGINT or SIGTERM (T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const { program, state } = standIn(dir);
     const [context] = checkouts(dir, program);
-    const node = process.execPath;
-    const ended = await run('mysql', [node, '-e', 'if (!process.env.ORM_TEST_MYSQL_DSN) process.exit(9)'], context);
-    assert.deepEqual(ended, { code: 0, signal: null }, 'the command does not read the DSN of its server');
-    assert.deepEqual(readdirSync(state), [], 'a run that ended leaves its container');
-    const failed = await run('mysql', [node, '-e', 'process.exit(3)'], context);
-    assert.deepEqual(failed, { code: 3, signal: null });
-    assert.deepEqual(readdirSync(state), [], 'a run that failed leaves its container');
-    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-      const signals = new EventEmitter();
-      // The run calls started once its command has spawned; the test sends the signal then, and the run forwards it.
-      const waiting = run('mysql', [node, '-e', 'setInterval(() => {}, 2 ** 30)'], context, {
-        signals, started: () => signals.emit(signal),
-      });
-      assert.deepEqual(await waiting, { code: null, signal }, `a run that got ${signal} does not end its command with it`);
-      assert.deepEqual(readdirSync(state), [], `a run that got ${signal} leaves its container`);
-      assert.ok(!existsSync(join(context.root, '.runtime/containers/mysql.env')), `a run that got ${signal} leaves its environment file`);
-    }
+    await removing([context], async () => {
+      const node = process.execPath;
+      const ended = await run('mysql', [node, '-e', 'if (!process.env.ORM_TEST_MYSQL_DSN) process.exit(9)'], context);
+      assert.deepEqual(ended, { code: 0, signal: null }, 'the command does not read the DSN of its server');
+      assert.deepEqual(readdirSync(state), [], 'a run that ended leaves its container');
+      const failed = await run('mysql', [node, '-e', 'process.exit(3)'], context);
+      assert.deepEqual(failed, { code: 3, signal: null });
+      assert.deepEqual(readdirSync(state), [], 'a run that failed leaves its container');
+      for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+        const signals = new EventEmitter();
+        // The run calls started once its command has spawned; the test sends the signal then, and the run forwards it.
+        const waiting = run('mysql', [node, '-e', 'setInterval(() => {}, 2 ** 30)'], context, {
+          signals, started: () => signals.emit(signal),
+        });
+        assert.deepEqual(await waiting, { code: null, signal }, `a run that got ${signal} does not end its command with it`);
+        assert.deepEqual(readdirSync(state), [], `a run that got ${signal} leaves its container`);
+        assert.ok(!existsSync(join(context.root, '.runtime/containers/mysql.env')), `a run that got ${signal} leaves its environment file`);
+      }
+    });
   }));
 
 caseTest('a start that fails removes the container that it started (T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const { program, state } = standIn(dir);
     const [context] = checkouts(dir, program);
-    // This stand-in records the container, and its attached run ends without the line of a ready server, so the start fails.
-    writeFileSync(join(dir, 'container.mjs'), `#!${process.execPath}
-import { readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-const state = ${JSON.stringify(state)};
-const [command, ...rest] = process.argv.slice(2);
-if (command === 'list') console.log(JSON.stringify(readdirSync(state).map(id => ({ configuration: { id } }))));
-else if (command === 'run') { writeFileSync(join(state, rest[rest.indexOf('--name') + 1]), '0'); console.log('the server stopped'); process.exit(1); }
-else if (command === 'stop') {}
-else if (command === 'delete') rmSync(join(state, rest[0]));
-else process.exit(2);
-`);
-    await assert.rejects(start('mysql', context), /stopped with 1 before it was ready/);
-    assert.deepEqual(readdirSync(state), [], 'a failed start leaves its container');
+    await removing([context], async () => {
+      // This stand-in records the container, and its attached run ends without the line of a ready server, so the start fails.
+      writeFileSync(join(dir, 'container.mjs'), `#!${process.execPath}
+  import { readdirSync, rmSync, writeFileSync } from 'node:fs';
+  import { join } from 'node:path';
+  const state = ${JSON.stringify(state)};
+  const [command, ...rest] = process.argv.slice(2);
+  if (command === 'list') console.log(JSON.stringify(readdirSync(state).map(id => ({ configuration: { id } }))));
+  else if (command === 'run') { writeFileSync(join(state, rest[rest.indexOf('--name') + 1]), '0'); console.log('the server stopped'); process.exit(1); }
+  else if (command === 'stop') {}
+  else if (command === 'delete') rmSync(join(state, rest[0]));
+  else process.exit(2);
+  `);
+      await assert.rejects(start('mysql', context), /stopped with 1 before it was ready/);
+      assert.deepEqual(readdirSync(state), [], 'a failed start leaves its container');
+    });
   }));
 
 caseTest('a start reads the lines that the container writes before the watch of its log takes effect (T445)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const { state } = standIn(dir);
     const [context] = checkouts(dir, join(dir, 'container.sh'));
-    const written = join(dir, 'written');
-    const quiet = join(dir, 'quiet');
-    for (const fifo of [written, quiet]) execFileSync('mkfifo', [fifo]);
-    // The run of this stand-in writes both lines, tells the test through the FIFO written, and then stays quiet, as a
-    // server does after its ready line, by opening the FIFO quiet, which no process writes, until stop ends its process.
-    writeFileSync(join(dir, 'container.sh'), `#!/bin/sh
-state=${JSON.stringify(state)}
-command=$1; shift
-case $command in
-  run)
-    name=; previous=
-    for argument in "$@"; do [ "$previous" = --name ] && name=$argument; previous=$argument; done
-    printf '%s' $$ > "$state/$name"
-    printf 'MySQL init process done. Ready for start up.\\n[Server] /usr/sbin/mysqld: ready for connections. Version: 8.4.11  port: 3306\\n'
-    printf 'written' > ${JSON.stringify(written)}
-    exec cat ${JSON.stringify(quiet)} ;;
-  *) exec ${JSON.stringify(join(dir, 'container.mjs'))} "$command" "$@" ;;
-esac
-`);
-    chmodSync(join(dir, 'container.sh'), 0o755);
-    const started = start('mysql', context);
-    // The spawn of the container queued its spawn event before this tick, so the start has read the empty log when this
-    // tick runs, and the poll phase that registers the watch of the log comes after it: the tick holds the loop until the
-    // stand-in has written its lines, so they come before the watch takes effect.
-    process.nextTick(() => readFileSync(written, 'utf8'));
-    await started;
-    assert.deepEqual(readdirSync(state).sort(), [containerName(context.root, 'mysql'), `${containerName(context.root, 'mysql')}-replica`].sort());
-    remove(context);
-    assert.deepEqual(readdirSync(state), []);
+    await removing([context], async () => {
+      const written = join(dir, 'written');
+      const quiet = join(dir, 'quiet');
+      for (const fifo of [written, quiet]) execFileSync('mkfifo', [fifo]);
+      // The run of this stand-in writes both lines, tells the test through the FIFO written, and then stays quiet, as a
+      // server does after its ready line, by opening the FIFO quiet, which no process writes, until stop ends its process.
+      writeFileSync(join(dir, 'container.sh'), `#!/bin/sh
+  state=${JSON.stringify(state)}
+  command=$1; shift
+  case $command in
+    run)
+      name=; previous=
+      for argument in "$@"; do [ "$previous" = --name ] && name=$argument; previous=$argument; done
+      printf '%s' $$ > "$state/$name"
+      printf 'MySQL init process done. Ready for start up.\\n[Server] /usr/sbin/mysqld: ready for connections. Version: 8.4.11  port: 3306\\n'
+      printf 'written' > ${JSON.stringify(written)}
+      exec cat ${JSON.stringify(quiet)} ;;
+    *) exec ${JSON.stringify(join(dir, 'container.mjs'))} "$command" "$@" ;;
+  esac
+  `);
+      chmodSync(join(dir, 'container.sh'), 0o755);
+      const started = start('mysql', context);
+      // The spawn of the container queued its spawn event before this tick, so the start has read the empty log when this
+      // tick runs, and the poll phase that registers the watch of the log comes after it: the tick holds the loop until the
+      // stand-in has written its lines, so they come before the watch takes effect.
+      process.nextTick(() => readFileSync(written, 'utf8'));
+      await started;
+      assert.deepEqual(readdirSync(state).sort(), [containerName(context.root, 'mysql'), `${containerName(context.root, 'mysql')}-replica`].sort());
+      remove(context);
+      assert.deepEqual(readdirSync(state), []);
+    });
   }));
