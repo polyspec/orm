@@ -1,4 +1,4 @@
-// The tests of scripts/test-servers-container.mts (T440). They run the script against a stand-in container program that
+// The tests of scripts/test-servers-container.mts (T444). They run the script against a stand-in container program that
 // each test writes into its own directory: the program keeps one file per container under its state directory and
 // prints the log lines of a ready MySQL server, so the tests need no container runtime and no image. Each test names
 // two checkouts by two directories of its own.
@@ -45,7 +45,7 @@ const checkouts = (dir: string, program: string): [Context, Context] => {
   return [{ root: first, program }, { root: second, program }];
 };
 
-caseTest('two checkouts start a server of the same kind at once, each in a container of its own (T440)', COMPUTE, () =>
+caseTest('two checkouts start a server of the same kind at once, each in a container of its own (T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const { program, state } = standIn(dir);
     const [first, second] = checkouts(dir, program);
@@ -63,7 +63,7 @@ caseTest('two checkouts start a server of the same kind at once, each in a conta
     assert.deepEqual(readdirSync(state), ['polyspec-orm-test-mysql']);
   }));
 
-caseTest('a run removes its container when its command ends, fails or gets SIGINT or SIGTERM (T440)', COMPUTE, () =>
+caseTest('a run removes its container when its command ends, fails or gets SIGINT or SIGTERM (T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const { program, state } = standIn(dir);
     const [context] = checkouts(dir, program);
@@ -86,7 +86,7 @@ caseTest('a run removes its container when its command ends, fails or gets SIGIN
     }
   }));
 
-caseTest('a start that fails removes the container that it started (T440)', COMPUTE, () =>
+caseTest('a start that fails removes the container that it started (T444)', COMPUTE, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const { program, state } = standIn(dir);
     const [context] = checkouts(dir, program);
