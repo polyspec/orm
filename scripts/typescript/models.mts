@@ -18,7 +18,7 @@ const clientScans = [
   'tests/paginate-order.mjs', 'tests/parent-slot-expansion.mjs', 'tests/recipe.mjs', 'tests/recipe_model.mjs',
   'tests/split-plan.test.mjs', 'tests/sqlite_writer_child.mjs', 'tests/styled-value-checks.mjs',
   'tests/transaction-flow.mjs', 'tests/typecheck.ts',
-  '../../examples/thin-slice/ts/main.mts',
+  '../../../examples/thin-slice/ts/main.mts',
 ];
 
 /** The client's models and each fixture model set in its own generated directory. */

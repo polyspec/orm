@@ -16,11 +16,11 @@ export const ERROR_CATALOGS: Record<string, { file: string; pattern: string }> =
 
 /**
  * The implementations whose errors are kinds rather than codes of docs/spec/errors.yaml, with the file that declares them: the
- * Rust core declares the closed kind set of docs/spec/errors.md (CORE-3), and its test packages/rust/orm/tests/cases/code_catalog.rs
+ * Rust core declares the closed kind set of docs/spec/errors.md (CORE-3), and its test packages/rust/tests/cases/code_catalog.rs
  * compares those kinds with docs/spec/errors.yaml (CORE-14), so this checker reads no catalog file of it.
  */
 export const KIND_CATALOGS: Record<string, string> = {
-  rust: 'packages/rust/orm/src/kind.rs',
+  rust: 'packages/rust/src/kind.rs',
 };
 
 /** The implementations of orm (contracts/implementations.json). */

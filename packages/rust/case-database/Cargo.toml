@@ -9,7 +9,7 @@ license = "MIT"
 
 [dependencies]
 # The management connection is opened with orm, the same DSN resolution the tests use.
-polyspec-orm = { path = "../orm" }
+polyspec-orm = { path = ".." }
 # Reports the databases it created and dropped as STEP lines of the running case.
 polyspec-orm-testcase = { path = "../testcase" }
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres"] }

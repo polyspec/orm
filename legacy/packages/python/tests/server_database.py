@@ -15,7 +15,7 @@ import pymysql
 from . import testcase
 from .runner_connect import mysql_connect
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 
 
 def with_database(dsn: str, name: str) -> str:
@@ -128,9 +128,9 @@ class DropDiscardsItsSessionCase:
         name = f"orm_drop_exit_{uuid.uuid4().hex[:12]}"
         program = (
             "import sys\n"
-            "from packages.python.tests import testcase\n"
-            "from packages.python.tests.server_database import admin_connection, server_database, with_database\n"
-            "from packages.python.tests.runner_connect import mysql_connect\n"
+            "from legacy.packages.python.tests import testcase\n"
+            "from legacy.packages.python.tests.server_database import admin_connection, server_database, with_database\n"
+            "from legacy.packages.python.tests.runner_connect import mysql_connect\n"
             "dialect, dsn, name = sys.argv[1:4]\n"
             "with server_database(dialect, dsn, name) as case_dsn:\n"
             "    session = mysql_connect(case_dsn)\n"

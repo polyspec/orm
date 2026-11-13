@@ -39,7 +39,7 @@ before(() => { delete process.env.NODE_TEST_CONTEXT; });
 const ownerTests: Record<string, string> = {
   go: 'legacy/packages/go/orm/dsn_test.go', php: 'legacy/packages/php/tests/DsnTest.php',
   'php-extension': 'legacy/packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'legacy/packages/python/tests/test_utils_statements.py',
-  rust: 'packages/rust/orm/tests/cases/zone.rs', typescript: 'legacy/packages/ts/tests/typecheck.ts',
+  rust: 'packages/rust/tests/cases/zone.rs', typescript: 'legacy/packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'legacy/packages/go/model/model_test.go';
 
@@ -164,49 +164,49 @@ caseTest('only the go and php entries name a symbol', COMPUTE, () => {
 
 caseTest('Rust coverage maps nested modules to the most specific Cargo test target', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
-  const nestedIntegration = join(root, 'packages/rust/tests/tests/integration/coverage_model_writes.rs');
+  const nestedIntegration = join(root, 'packages/rust/programs/tests/integration/coverage_model_writes.rs');
   const targets = [
-    { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
-    { name: 'other', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/other.rs'), test: true },
+    { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/programs/tests/integration/main.rs'), test: true },
+    { name: 'other', kind: ['test'], src_path: join(root, 'packages/rust/programs/tests/other.rs'), test: true },
   ];
   assert.deepEqual(cargoTargetArgs(targets, [nestedIntegration]), ['--test', 'integration']);
 
   const moduleTarget = { name: 'features', kind: ['test'],
-    src_path: join(root, 'packages/rust/tests/tests/features/main.rs'), test: true };
+    src_path: join(root, 'packages/rust/programs/tests/features/main.rs'), test: true };
   const libTarget = { name: 'polyspec-orm', kind: ['lib'],
-    src_path: join(root, 'packages/rust/orm/src/lib.rs'), test: true };
+    src_path: join(root, 'packages/rust/src/lib.rs'), test: true };
   assert.deepEqual(cargoTargetArgs([libTarget, moduleTarget],
-    [join(root, 'packages/rust/tests/tests/features/coverage_nested.rs')]), ['--test', 'features']);
+    [join(root, 'packages/rust/programs/tests/features/coverage_nested.rs')]), ['--test', 'features']);
 
   assert.throws(() => cargoTargetArgs([
-    { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration.rs'), test: true },
-    { name: 'nested', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
+    { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/programs/tests/integration.rs'), test: true },
+    { name: 'nested', kind: ['test'], src_path: join(root, 'packages/rust/programs/tests/integration/main.rs'), test: true },
   ], [nestedIntegration]), /maps to 2 Cargo test targets at its most specific module root/);
 });
 
 caseTest('Rust coverage runs a module of a test program through the filter of its module path', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
-  const program = { name: 'all', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/all/main.rs'), test: true };
-  const alone = { name: 'zone', kind: ['test'], src_path: join(root, 'packages/rust/orm/tests/cases/zone.rs'), test: true };
-  const library = { name: 'polyspec-orm', kind: ['lib'], src_path: join(root, 'packages/rust/orm/src/lib.rs'), test: true };
+  const program = { name: 'all', kind: ['test'], src_path: join(root, 'packages/rust/programs/tests/all/main.rs'), test: true };
+  const alone = { name: 'zone', kind: ['test'], src_path: join(root, 'packages/rust/tests/cases/zone.rs'), test: true };
+  const library = { name: 'polyspec-orm', kind: ['lib'], src_path: join(root, 'packages/rust/src/lib.rs'), test: true };
   const targets = [library, program, alone];
-  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/transactions_mysql.rs')), 'transactions_mysql::');
-  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/integration_program/mod.rs')), 'integration_program::');
-  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/tests/all/main.rs')), undefined);
-  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/tests/cases/zone.rs')), undefined);
-  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/orm/src/driver.rs')), undefined);
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/programs/tests/all/transactions_mysql.rs')), 'transactions_mysql::');
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/programs/tests/all/integration_program/mod.rs')), 'integration_program::');
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/programs/tests/all/main.rs')), undefined);
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/tests/cases/zone.rs')), undefined);
+  assert.equal(cargoModuleFilter(targets, join(root, 'packages/rust/src/driver.rs')), undefined);
 });
 
 caseTest('Rust coverage finds a test that a test case crate holds and the one program runs', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
-  const main = join(root, 'packages/rust/tests/tests/all/main.rs');
+  const main = join(root, 'packages/rust/programs/tests/all/main.rs');
   const modules = programCaseModules(main, 'Group::new("zone", polyspec_orm_cases::zone::trials),\nGroup::new("lock", polyspec_orm_build_cases::lock::trials),\nGroup::new("own", own::trials),\n');
-  assert.deepEqual([...modules], [[join(root, 'packages/rust/orm/tests/cases/zone.rs'), 'zone'], [join(root, 'packages/rust/build/tests/cases/lock.rs'), 'lock']]);
+  assert.deepEqual([...modules], [[join(root, 'packages/rust/tests/cases/zone.rs'), 'zone'], [join(root, 'packages/rust/build/tests/cases/lock.rs'), 'lock']]);
 });
 
 caseTest('Rust coverage maps explicit library path modules to the library test target', COMPUTE, async () => {
   const root = new URL('../..', import.meta.url).pathname;
-  const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', join(root, 'packages/rust/orm/Cargo.toml')], root, null, process.env, () => {});
+  const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', join(root, 'packages/rust/Cargo.toml')], root, null, process.env, () => {});
   assert.ifError(metadata.error);
   const project: unknown = JSON.parse(metadata.stdout ?? '{}');
   assert.ok(typeof project === 'object' && project !== null && 'packages' in project && Array.isArray(project.packages),
@@ -222,7 +222,7 @@ caseTest('Rust coverage maps explicit library path modules to the library test t
   assert.ok(pkg, 'Cargo metadata has no ORM package');
   const libTarget = pkg.targets.find(target => target.kind.includes('lib'));
   assert.ok(libTarget, 'Cargo metadata has no ORM library test target');
-  const path = join(root, 'packages/rust/orm/tests/unit/coverage_planner.rs');
+  const path = join(root, 'packages/rust/tests/unit/coverage_planner.rs');
   const modules = await cargoPathModuleFiles(pkg.targets);
   assert.ok(modules.some(module => module.target === libTarget.name && module.file === path), 'the ORM library no longer declares the planner unit module');
   assert.deepEqual(cargoTargetArgs(pkg.targets, [path], modules), ['--lib']);
@@ -230,8 +230,8 @@ caseTest('Rust coverage maps explicit library path modules to the library test t
 
 caseTest('Rust coverage uses the workspace manifest and applies only supported features to the selected crate', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
-  const workspaceManifest = cargoWorkspaceManifestPath(join(root, 'packages/rust'));
-  assert.equal(workspaceManifest, join(root, 'packages/rust/Cargo.toml'));
+  const workspaceManifest = cargoWorkspaceManifestPath(root);
+  assert.equal(workspaceManifest, join(root, 'Cargo.toml'));
   assert.throws(() => cargoWorkspaceManifestPath(undefined), /cargo metadata has no workspace_root/);
   const orm = { name: 'polyspec-orm', manifest_path: '', targets: [], features: { 'test-faults': [] }, dependencies: [] };
   const build = { name: 'polyspec-orm-build', manifest_path: '', targets: [], features: { 'live-db': [] }, dependencies: [] };
@@ -528,13 +528,13 @@ caseTest('database owner files are scoped by command and every declared owner fi
   assert.deepEqual(checkSampleCoverage(manifest, reports), []);
 
   const rust = defined(feature.coverage.owners.rust);
-  rust.tests = ['packages/rust/tests/shared.rs'];
+  rust.tests = ['packages/rust/programs/shared.rs'];
   rust.commands = Object.fromEntries(databases.map(database => [database, [{
-    runner: 'cargo', test: 'packages/rust/tests/shared.rs', cases: ['first', 'second'],
+    runner: 'cargo', test: 'packages/rust/programs/shared.rs', cases: ['first', 'second'],
   }]]));
   for (const database of databases) {
     const report = defined(reports[`sample/owner/rust/${database}`]);
-    for (const execution of report) execution.tests = ['packages/rust/tests/shared.rs'];
+    for (const execution of report) execution.tests = ['packages/rust/programs/shared.rs'];
   }
   assert.deepEqual(checkSampleCoverage(manifest, reports), []);
 
@@ -801,13 +801,13 @@ async function exportLease(root: string): Promise<() => void> {
 
 // The fixture crate of the overlap case is written and built in a setup, a long operation without a deadline, so the
 // `cargo test --no-run` of the case finds it built and only the FIFO decides the overlap, whatever the load (T335).
-const overlapRustFile = 'packages/rust/orm/src/lib.rs';
+const overlapRustFile = 'packages/rust/src/lib.rs';
 let overlapRoot = '';
 setup('coverage overlap fixture crate', async () => {
   overlapRoot = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-overlap-')));
   await mkdir(join(overlapRoot, overlapRustFile, '..'), { recursive: true });
   await writeFile(join(overlapRoot, 'packages/rust/Cargo.toml'), '[workspace]\nmembers = ["orm"]\nresolver = "2"\n');
-  await writeFile(join(overlapRoot, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
+  await writeFile(join(overlapRoot, 'packages/rust/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
   await writeFile(join(overlapRoot, overlapRustFile), '#[cfg(test)] mod tests { #[test] fn first() { std::fs::write(std::env::var_os("ORM_RECIPE_RESULTS").unwrap(), "CASE first PASS\\n").unwrap(); } }\n');
   execFileSync('cargo', ['test', '--no-run', '--manifest-path', join(overlapRoot, 'packages/rust/Cargo.toml'), '--package', 'coverage_overlap', '--lib'], { stdio: 'inherit' });
 });
@@ -821,7 +821,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', P
   const cargoArguments = join(root, 'cargo-arguments');
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['rust', 'php']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
-      rust: { part: 'packages/rust/orm', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'] }] } },
+      rust: { part: 'packages/rust', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'] }] } },
       php: { part: 'legacy/packages/php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'], symbol: 'testFirst' }] } },
     } } }] };
   const path = process.env.PATH;
@@ -914,7 +914,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', PR
   const cases: { language: string; part: string; file: string; runner: string; symbol?: string }[] = [
     { language: 'go', part: 'legacy/packages/go/orm', file: 'legacy/packages/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
     { language: 'php', part: 'legacy/packages/php/tests', file: 'legacy/packages/php/tests/OwnerTest.php', runner: 'php', symbol: 'testFirst' },
-    { language: 'rust', part: 'packages/rust/orm', file: 'packages/rust/orm/src/lib.rs', runner: 'cargo' },
+    { language: 'rust', part: 'packages/rust', file: 'packages/rust/src/lib.rs', runner: 'cargo' },
   ];
   let restoreLease = (): void => {};
   try {
@@ -924,7 +924,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', PR
     await writeFile(join(root, defined(cases[0]).file), `package orm\n${GO_REPORTING_TEST}`);
     await writeFile(join(root, defined(cases[1]).file), '<?php\n');
     await phpunitStub(root, defined(cases[1]).file, PASSED);
-    await writeFile(join(root, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
+    await writeFile(join(root, 'packages/rust/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
     // Like cargo test, the CARGO_MANIFEST_DIR at run time is the package directory that owns the test file.
     await writeFile(join(root, defined(cases[2]).file), '#[cfg(test)] mod tests { #[test] fn first() { ' +
       'assert_eq!(std::env::var("CARGO_MANIFEST_DIR").as_deref(), Ok(env!("CARGO_MANIFEST_DIR"))); ' +
@@ -946,11 +946,11 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', PR
     }
     // If there is no test binary that compiles a declared Rust test file, a test of the same name in another file
     // is not execution evidence.
-    const unused = 'packages/rust/orm/src/unused.rs';
+    const unused = 'packages/rust/src/unused.rs';
     await writeFile(join(root, unused), '#[test] fn first() {}\n');
     const uncompiled: SampleManifest = { features: [{ id: 'sample', status: 'partial', tests: testsOf(['rust']),
       coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
-        rust: { part: 'packages/rust/orm', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused, cases: ['first'] }] } },
+        rust: { part: 'packages/rust', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused, cases: ['first'] }] } },
       } } }] };
     assert.match((await runSelected(uncompiled, root, ['owner/rust'])).join('\n'), /no test binary compiles .*unused\.rs/);
     // A skipped Go test exits 0 and writes no line, so it is no pass.
@@ -987,7 +987,7 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', PROCESS, async
     await mkdir(join(root, 'legacy/packages/python/tests'), { recursive: true });
     await mkdir(join(root, 'bin'));
     await writeFile(join(root, owner), '');
-    await writeFile(interpreter, `#!/bin/sh\n[ "$#" = 2 ] && [ "$1" = -m ] && [ "$2" = packages.python.tests.owner ] && [ "$PWD" = ${JSON.stringify(root)} ] || exit 2\necho 'CASE first PASS' >> "$ORM_RECIPE_RESULTS"\n`);
+    await writeFile(interpreter, `#!/bin/sh\n[ "$#" = 2 ] && [ "$1" = -m ] && [ "$2" = legacy.packages.python.tests.owner ] && [ "$PWD" = ${JSON.stringify(root)} ] || exit 2\necho 'CASE first PASS' >> "$ORM_RECIPE_RESULTS"\n`);
     await chmod(interpreter, 0o755);
     process.env.ORM_PYTHON = interpreter;
     assert.deepEqual(await runSelected(manifest, root, ['owner/python']), []);

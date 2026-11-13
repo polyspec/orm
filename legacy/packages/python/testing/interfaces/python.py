@@ -5,7 +5,7 @@
 # "<class key>#field.<name>"; a value is {"signature": the class header, the signature or the annotation, "exported": true}.
 # Only names without a leading underscore are read, so every declaration read is exported.
 #
-# Usage: python3 packages/python/testing/interfaces/python.py <root> <source-root>...
+# Usage: python3 legacy/packages/python/testing/interfaces/python.py <root> <source-root>...
 import ast
 import json
 import os
@@ -242,7 +242,7 @@ def package_names(root: str, source_path: str) -> set[str] | None:
 def main() -> None:
     if len(sys.argv) < 3:
         sys.exit(
-            "usage: python3 packages/python/testing/interfaces/python.py <root> <source-root>..."
+            "usage: python3 legacy/packages/python/testing/interfaces/python.py <root> <source-root>..."
         )
     root = os.path.abspath(sys.argv[1])
     sys.stdout.write(

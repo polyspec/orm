@@ -12,11 +12,11 @@ from pathlib import Path
 from . import testcase
 
 TESTS = Path(__file__).resolve().parent
-REPOSITORY_ROOT = TESTS.parents[2]
+REPOSITORY_ROOT = TESTS.parents[3]
 
 SAMPLE = textwrap.dedent("""
     import unittest
-    from packages.python.tests import testcase
+    from legacy.packages.python.tests import testcase
 
 
     class Sample(unittest.TestCase):
@@ -81,7 +81,7 @@ def run_sample(*names: str, env: dict | None = None) -> subprocess.CompletedProc
             [
                 sys.executable,
                 "-m",
-                "packages.python.tests.testcase",
+                "legacy.packages.python.tests.testcase",
                 "discover",
                 "-s",
                 directory,
@@ -224,7 +224,7 @@ class StreamTest(unittest.TestCase):
         code = textwrap.dedent("""
             import sys
             import unittest
-            from packages.python.tests import testcase
+            from legacy.packages.python.tests import testcase
 
 
             class Sample(unittest.TestCase):

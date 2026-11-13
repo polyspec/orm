@@ -1,5 +1,5 @@
 {
-  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "schema": "../../contracts/fixtures/bench/bench.dbs",
   "requirements": ["PRT-1", "PRT-4","PRT-6","PRT-8","PRT-10","PRT-12","PRT-14","PRT-16","PRT-17","PRT-18","PRT-20","PRT-21","PRT-22","PRT-24","PRT-78","DBS-59","DBS-113","DSL-113","DSL-128","INT-164","PRT-83","PRT-85"],
   "cases": [

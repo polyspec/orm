@@ -32,11 +32,11 @@ name = "driver_compare"
 path = "src/driver_compare.rs"
 
 [dependencies]
-# The sqlx of the orm workspace (packages/rust/Cargo.toml), so the native baseline runs the driver that orm runs.
+# The sqlx of the orm workspace (the root Cargo.toml), so the native baseline runs the driver that orm runs.
 sqlx = { version = "0.9", git = "https://github.com/min-0-max/sqlx", tag = "v0.9.0-polyspec.2", features = ["runtime-tokio", "mysql", "chrono"] }
 mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-polyspec-orm = { path = "../../packages/rust/orm" }
+polyspec-orm = { path = "../../packages/rust" }
 polyspec-orm-test-support = { path = "../../packages/rust/test-support" }
 
 [profile.release]

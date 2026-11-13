@@ -56,7 +56,7 @@ export const CASE_RUNNERS: Record<string, Record<string, CaseRunner>> = {
     'php-extension': { file: 'legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php', tests: ['testMarkdownConformance'] },
     typescript: { file: 'legacy/packages/ts/tests/markdown_conformance.mjs', tests: [] },
     python: { file: 'legacy/packages/python/tests/markdown_conformance.py', tests: [] },
-    rust: { file: 'packages/rust/tests/tests/all/markdown_conformance.rs', tests: ['trials'] },
+    rust: { file: 'packages/rust/programs/tests/all/markdown_conformance.rs', tests: ['trials'] },
   },
 };
 
@@ -71,7 +71,7 @@ export const caseRunnerTests = (): Set<string> =>
 export const READERS: Record<string, string> = {
   'legacy/packages/ts/tests/recipe_keys.test.mjs': 'the unit test of the key check of the TypeScript runner; its recipes are inputs of that check',
   'legacy/packages/python/tests/test_recipe_keys.py': 'the unit test of the key check of the Python runner; its recipes are inputs of that check',
-  'packages/rust/tests/tests/all/recipe_keys.rs': 'the unit test of the key check of the Rust runner; its recipes are inputs of that check',
+  'packages/rust/programs/tests/all/recipe_keys.rs': 'the unit test of the key check of the Rust runner; its recipes are inputs of that check',
   'legacy/packages/php/tests/RecipeKeysTest.php': 'the unit test of the key check of the PHP runner; its recipes are inputs of that check',
   'legacy/packages/ts/tests/dbspec-set-edges.mjs': 'reads the cases of tests/dbspec/set-files.json through parseSet, a call that only TypeScript has (DBS-176)',
   'legacy/packages/ts/tests/dbspec-begin-exclusive-lock.mjs': 'reads one plan of tests/dbspec/plan-cases.json to hold a lock that only the TypeScript apply test observes',

@@ -1,5 +1,5 @@
 <!-- doc-id: tests-codec-readme -->
-<!-- source-sha256: 707eb705a7261abca10857631cc9f4ceddb72d44ad031d33b00434ed22e0324f -->
+<!-- source-sha256: ff31d16eb50130fd1146544d65cb7b5aee5360147c659d931b1c6e056b8dffda -->
 # 코덱 recipe
 
 `codec.json`은 `docs/spec/feature-coverage.md`(FCV-2~FCV-4)의 코덱 recipe다. 각 case는 database 없이 공개 코덱 호출
@@ -13,8 +13,8 @@
 | PHP | `packages/php/tests/CodecRecipeTest.php`의 `CodecRecipeTest::testNone` |
 | PHP 확장 | `packages/php-ext/tests/CodecRecipeTestExtensionTest.php`의 `CodecRecipeTestExtensionTest::testNone` |
 | TypeScript | `packages/ts/tests/codec-none.test.mjs` |
-| Python | `packages/python/tests/test_codec_none.py` |
-| Rust | `packages/rust/tests`의 test `codec_none` |
+| Python | `legacy/packages/python/tests/test_codec_none.py` |
+| Rust | `packages/rust/programs`의 test `codec_none` |
 
 그 곁에서, 한 runtime의 값이 담지 못하는 case는 그 입력을 값으로 담는 runtime의 recipe가 담는다(`docs/spec/codec.md`
 COD-70): `codec-bytes-value.json`(bytes, Rust를 뺀 모든 runtime), `codec-integer-beyond-i64.json`(i64를 넘는 정수, PHP와
@@ -30,9 +30,9 @@ TypeScript), `codec-json-depth.json`(값 단계마다 encode와 decode에서 256
 `CodecOrderedJsonTextTest`(`packages/php/tests/CodecOrderedJsonTextTest.php`)와 그 PHP 확장 짝
 `CodecOrderedJsonTextExtensionTest`(`packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php`), TypeScript
 `codec/ordered-json-text-is-unicode`(`packages/ts/tests/codec-errors.test.mjs`), Python
-`test_ordered_json_refuses_a_text_that_is_not_unicode`(`packages/python/tests/test_codec_ordered_json_text.py`)다.
+`test_ordered_json_refuses_a_text_that_is_not_unicode`(`legacy/packages/python/tests/test_codec_ordered_json_text.py`)다.
 `StyledValue.payload()`가 하던 자기만의 검사의 Python native test `test_rejects_unsupported_payloads`,
-`test_rejects_a_cycle`, `test_deep_nesting_is_bounded`(`packages/python/tests/test_values.py`)는 그 검사와 함께
+`test_rejects_a_cycle`, `test_deep_nesting_is_bounded`(`legacy/packages/python/tests/test_values.py`)는 그 검사와 함께
 없어졌다(`docs/spec/codec.md` COD-73): `codec-non-finite-value.json`, `codec-bytes-value.json`, `codec-json-depth.json`이
 단계에서 그 case를 담고, `test_a_cycle_is_no_codec_value`는 어떤 recipe 값도 담지 못하는 순환을 지킨다.
 

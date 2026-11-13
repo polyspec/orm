@@ -97,3 +97,9 @@ go.work.sum
 /.links
 # The cache of ruff, which make lint-python writes at the root of the checkout
 /.ruff_cache/
+
+# The bindings that binding writes from packages/rust/interface.json (binding design L-1); make bindings writes them again. The
+# Go files zz_generated_*.go of packages/go are tracked (binding GN-3).
+/packages/*/generated/
+/packages/ts/wasm/generated/
+/packages/go/internal/ffi/generated/

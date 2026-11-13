@@ -6,7 +6,7 @@
 # plan), finalize (finalize that plan), or lock-wait (hold a database lock while an apply statement waits). stdout holds one result line:
 # "ok", "stopped" or "error <code>". Any other error goes to stderr and the process ends with 1.
 #
-# Usage: python -m packages.python.tests.dbspec_apply_runner <apply-first|apply|stop|recover|rollback>
+# Usage: python -m legacy.packages.python.tests.dbspec_apply_runner <apply-first|apply|stop|recover|rollback>
 #        <mysql|postgres|sqlite> <uri> <plan-cases.json>
 import sqlite3
 import sys
@@ -252,7 +252,7 @@ def run_lock_wait(
 def main() -> None:
     if len(sys.argv) != 5:
         sys.stderr.write(
-            "usage: python -m packages.python.tests.dbspec_apply_runner "
+            "usage: python -m legacy.packages.python.tests.dbspec_apply_runner "
             "<apply-first|apply|stop|recover|rollback|apply-representative|finalize|lock-wait> "
             "<mysql|postgres|sqlite> <uri> <plan-cases.json>\n"
         )

@@ -51,8 +51,8 @@ async function typescriptPackage(): Promise<string[]> {
 }
 async function rustPackage(): Promise<string[]> {
   mkdirSync(join(rust, 'src'), { recursive: true });
-  writeFileSync(join(rust, 'Cargo.toml'), `[package]\nname = "orm-external-check"\nversion = "0.0.0"\nedition = "2021"\npublish = false\n\n[dependencies]\npolyspec-orm = { path = "${root}/packages/rust/orm" }\n\n[workspace]\n`);
-  copyFileSync(join(root, 'packages/rust/Cargo.lock'), join(rust, 'Cargo.lock'));
+  writeFileSync(join(rust, 'Cargo.toml'), `[package]\nname = "orm-external-check"\nversion = "0.0.0"\nedition = "2021"\npublish = false\n\n[dependencies]\npolyspec-orm = { path = "${root}/packages/rust" }\n\n[workspace]\n`);
+  copyFileSync(join(root, 'Cargo.lock'), join(rust, 'Cargo.lock'));
   writeFileSync(join(rust, 'src/lib.rs'), 'pub fn config_code() -> &\'static str {\n    polyspec_orm::codes::CONFIG\n}\n');
   const failed = await keepAll([CARGO]);
   if (failed.length === 0) console.log('rust package: polyspec-orm builds as an external path dependency');

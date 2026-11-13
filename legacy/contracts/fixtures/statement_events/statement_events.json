@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "$schema": "../../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "INT-55",
     "INT-77",

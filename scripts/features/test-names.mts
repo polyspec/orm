@@ -281,7 +281,7 @@ const checkPythonName = (tree: Tree, dotted: string, report: Report) => {
     file = tree.files.find(item => item === `${path}.py` || item === `${path}/__init__.py` || item === `${path}/__main__.py`);
     if (file !== undefined) break;
   }
-  if (file === undefined || length < 3) {
+  if (file === undefined || length < 4) {
     report('python module', dotted);
     return;
   }
@@ -320,7 +320,7 @@ const checkPythonDiscover = (tree: Tree, words: string[], report: Report) => {
 };
 
 const checkPython = (tree: Tree, words: string[], report: Report) => {
-  const moduleAt = words.findIndex((word, index) => (word === '-m' || word === '--module') && /^(unittest$|packages\.python\.)/.test(words[index + 1] ?? ''));
+  const moduleAt = words.findIndex((word, index) => (word === '-m' || word === '--module') && /^(unittest$|legacy\.packages\.python\.)/.test(words[index + 1] ?? ''));
   if (moduleAt >= 0) {
     const module = must(words[moduleAt + 1]);
     if (module !== 'unittest') checkPythonName(tree, module, report);
@@ -331,7 +331,7 @@ const checkPython = (tree: Tree, words: string[], report: Report) => {
     const file = module === 'unittest' ? undefined : tree.files.find(path => path === `${module.replaceAll('.', '/')}.py`);
     for (const word of words.slice(moduleAt + 2)) {
       if (unresolved(word) || word.startsWith('-') || word === 'discover') continue;
-      if (word.startsWith('packages.python.')) checkPythonName(tree, word, report);
+      if (word.startsWith('legacy.packages.python.')) checkPythonName(tree, word, report);
       else if (file !== undefined && /^[A-Za-z_]\w*(\.\w+)?$/.test(word)) {
         const [className = '', method] = word.split('.');
         checkPythonMember(tree, file, className, method, `${module} ${word}`, report);
@@ -389,7 +389,7 @@ const checkRust = (tree: Tree, words: string[], cwd: string, report: Report) => 
   // copy of the set, since rustIncluded adds the files that it finds to that set.
   for (const path of new Set(files)) {
     for (const match of tree.read(path).matchAll(/\bpolyspec_orm(?:_(\w+?))?_cases::(\w+)::trials\b/g)) {
-      rustIncluded(tree, `packages/rust/${match[1] ?? 'orm'}/tests/cases/${must(match[2])}.rs`, files);
+      rustIncluded(tree, `packages/rust/${match[1] === undefined ? '' : `${match[1]}/`}tests/cases/${must(match[2])}.rs`, files);
     }
   }
   const filters: string[] = [];

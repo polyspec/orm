@@ -525,15 +525,15 @@ function cargoMetadataOf(text: string): CargoMetadata {
 }
 
 /** The crate of the one Rust test program, and its root file, which runs as a group each test module of a test case crate. */
-export const RUST_TEST_PROGRAM_CRATE = 'packages/rust/tests';
+export const RUST_TEST_PROGRAM_CRATE = 'packages/rust/programs';
 const RUST_TEST_PROGRAM_ROOT = `${RUST_TEST_PROGRAM_CRATE}/tests/all/main.rs`;
 
-/** The test modules of test case crates that a root file of a test program runs, by the file of each: `polyspec_orm_<package>_cases`, or `polyspec_orm_cases` of the package orm, holds them in `<package>/tests/cases`. */
+/** The test modules of test case crates that a root file of a test program runs, by the file of each: `polyspec_orm_<package>_cases` holds them in `<package>/tests/cases`, and `polyspec_orm_cases` of the core crate, which is packages/rust itself, in `tests/cases`. */
 export function programCaseModules(rootFile: string, text: string): Map<string, string> {
   const packages = resolve(dirname(rootFile), '../../..');
   const modules = new Map<string, string>();
   for (const match of text.matchAll(/\bpolyspec_orm(?:_(\w+?))?_cases::(\w+)::trials\b/g)) {
-    if (match[2]) modules.set(resolve(packages, match[1] ?? 'orm', 'tests/cases', `${match[2]}.rs`), match[2]);
+    if (match[2]) modules.set(resolve(packages, match[1] ?? '', 'tests/cases', `${match[2]}.rs`), match[2]);
   }
   return modules;
 }

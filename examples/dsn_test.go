@@ -1,6 +1,6 @@
 // Package examples_test checks that the Go and PHP example programs, without ORM_BENCH_MYSQL_DSN,
 // do not connect, and fail while printing that variable name. The Rust example
-// is checked by packages/rust/tests/tests/all/example_dsn.rs.
+// is checked by packages/rust/programs/tests/all/example_dsn.rs.
 package examples_test
 
 import (
@@ -18,7 +18,7 @@ import (
 // withoutBenchDSN is the environment without ORM_BENCH_MYSQL_DSN. If empty, it is set to an empty value.
 // pythonThinSlice is the module of the Python client example of the thin slice, which runs with -m from the root of the
 // checkout (pythonRoot, relative to this directory), as every Python test of orm does.
-const pythonThinSlice = "packages.python.examples.thin_slice.main"
+const pythonThinSlice = "legacy.packages.python.examples.thin_slice.main"
 const pythonRoot = ".."
 
 func withoutBenchDSN(empty bool) []string {

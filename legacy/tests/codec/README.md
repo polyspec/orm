@@ -12,8 +12,8 @@ meets; no client's output is the reference of another.
 | PHP | `CodecRecipeTest::testNone` in `packages/php/tests/CodecRecipeTest.php` |
 | PHP extension | `CodecRecipeTestExtensionTest::testNone` in `packages/php-ext/tests/CodecRecipeTestExtensionTest.php` |
 | TypeScript | `packages/ts/tests/codec-none.test.mjs` |
-| Python | `packages/python/tests/test_codec_none.py` |
-| Rust | the test `codec_none` of `packages/rust/tests` |
+| Python | `legacy/packages/python/tests/test_codec_none.py` |
+| Rust | the test `codec_none` of `packages/rust/programs` |
 
 Beside it, a recipe of the runtimes whose values hold its input holds the cases that a value of one runtime cannot hold
 (`docs/spec/codec.md` COD-70): `codec-bytes-value.json` (bytes, every runtime but Rust), `codec-integer-beyond-i64.json`
@@ -30,9 +30,9 @@ green in their runtimes, Go `TestOrderedJSONRefusesATextThatIsNotUnicode` (`pack
 `CodecOrderedJsonTextTest` (`packages/php/tests/CodecOrderedJsonTextTest.php`) and its PHP extension twin
 `CodecOrderedJsonTextExtensionTest` (`packages/php-ext/tests/CodecOrderedJsonTextExtensionTest.php`), TypeScript
 `codec/ordered-json-text-is-unicode` (`packages/ts/tests/codec-errors.test.mjs`) and Python
-`test_ordered_json_refuses_a_text_that_is_not_unicode` (`packages/python/tests/test_codec_ordered_json_text.py`). The
+`test_ordered_json_refuses_a_text_that_is_not_unicode` (`legacy/packages/python/tests/test_codec_ordered_json_text.py`). The
 Python native tests of the checks of its own that `StyledValue.payload()` made, `test_rejects_unsupported_payloads`,
-`test_rejects_a_cycle` and `test_deep_nesting_is_bounded` (`packages/python/tests/test_values.py`), went with those checks
+`test_rejects_a_cycle` and `test_deep_nesting_is_bounded` (`legacy/packages/python/tests/test_values.py`), went with those checks
 (`docs/spec/codec.md` COD-73): `codec-non-finite-value.json`, `codec-bytes-value.json` and `codec-json-depth.json` hold
 their cases under the stages, and `test_a_cycle_is_no_codec_value` keeps the cycle, which no recipe value holds.
 

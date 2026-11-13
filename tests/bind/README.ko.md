@@ -1,5 +1,5 @@
 <!-- doc-id: tests-bind-readme -->
-<!-- source-sha256: 5787380b98492edf2452f5d5244fb299ef30b0400b9da60abbfcf519761ad909 -->
+<!-- source-sha256: 1693f4e15f6291322d9bb9598d0556928775f836140972ebd248bb9c3e510cea -->
 # Bind vector
 
 bind 경로의 case는 recipe다: `messages.json`은 모든 runtime에서, `messages-dynamic.json`은 compile 시점 type이 없는 runtime에서,
@@ -17,5 +17,5 @@ bind 경로의 case는 recipe다: `messages.json`은 모든 runtime에서, `mess
 | Go | `go test ./legacy/packages/go/orm -run '^TestBindVectors$'` |
 | TypeScript | `node legacy/packages/ts/tests/markdown.mjs` (case `bind/vectors`) |
 | PHP | `vendor-php/bin/phpunit --configuration legacy/packages/php/phpunit.xml.dist --filter 'testBindVectors' legacy/packages/php/tests/MarkdownTest.php` |
-| Python | `python -m unittest packages.python.tests.test_markdown.BindVectors` |
+| Python | `python -m unittest legacy.packages.python.tests.test_markdown.BindVectors` |
 | Rust | `cargo test -p polyspec-orm --lib bind_` (`packages/rust`에서) |

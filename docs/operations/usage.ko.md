@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 552b1c4922654b60ec2f6c5433c88ad8599e0aa66a1a745daca3d4b8c27acabd -->
+<!-- source-sha256: 0eb2516aeee6e41535433048a5022754e75ba53da028c5c510824fd498b7f185 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -566,7 +566,7 @@ make orm-test-servers                                        # MySQL, PostgreSQL
 . .runtime/servers/env                                   # the DSN variables of the tests
 go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
-(cd packages/rust && cargo test --workspace)              # Rust client
+make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
 ```
 

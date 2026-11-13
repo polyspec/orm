@@ -1,7 +1,7 @@
 # Generated models type their fields with the value types of docs/spec/dbspec.md "Runtime model", as the Go, PHP, TypeScript
 # and Rust models do: each getter returns the type of its column, None for a null column, and each setter takes it; a
 # getter whose value has another type raises TypeError, as a typed PHP getter and a TypeScript getter do. The cases
-# read the generated bench models (packages/python/tests/models/models.py) through typing.get_type_hints.
+# read the generated bench models (legacy/packages/python/tests/models/models.py) through typing.get_type_hints.
 import typing
 import unittest
 

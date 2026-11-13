@@ -56,13 +56,13 @@ caseTest('cargo-test splits options, name filters and test binary arguments', CO
 
 caseTest('cargo-test reads the test binaries and their package directories from cargo messages', COMPUTE, () => {
   const lines = [
-    JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: '/t/debug/deps/zone-1', manifest_path: '/r/packages/rust/orm/Cargo.toml', target: { name: 'zone' } }),
+    JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: '/t/debug/deps/zone-1', manifest_path: '/r/packages/rust/Cargo.toml', target: { name: 'zone' } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/integration', manifest_path: '/r/x/Cargo.toml', target: { name: 'integration' } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: null, manifest_path: '/r/y/Cargo.toml', target: { name: 'lib' } }),
     JSON.stringify({ reason: 'build-finished', success: true }),
     'not json',
   ];
-  assert.deepEqual(executables(lines.join('\n')), [{ executable: '/t/debug/deps/zone-1', manifestDir: '/r/packages/rust/orm', target: 'zone' }]);
+  assert.deepEqual(executables(lines.join('\n')), [{ executable: '/t/debug/deps/zone-1', manifestDir: '/r/packages/rust', target: 'zone' }]);
 });
 
 caseTest('cargo-test reads the package programs and names their variables', COMPUTE, () => {

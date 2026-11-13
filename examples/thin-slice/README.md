@@ -8,7 +8,7 @@ go run ./examples/thin-slice/go
 php examples/thin-slice/php/main.php
 (cd packages/rust && cargo build -p polyspec-orm-tests) && packages/rust/target/debug/demo
 node examples/thin-slice/ts/main.mts
-legacy/packages/python/.venv/bin/python -m packages.python.examples.thin_slice.main
+legacy/packages/python/.venv/bin/python -m legacy.packages.python.examples.thin_slice.main
 ```
 
 Each prints one timing line on stderr: p50 of the generated client against the

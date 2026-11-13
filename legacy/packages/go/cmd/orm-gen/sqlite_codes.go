@@ -4,9 +4,9 @@
 //	orm-gen sqlite-codes --lang go --out packages/go/orm/sqlite/result_codes.go
 //	orm-gen sqlite-codes --lang php --out packages/php/src/SqliteCodes.php
 //	orm-gen sqlite-codes --lang php-extension --out packages/php-ext/src/sqlite_codes.h
-//	orm-gen sqlite-codes --lang rust --out packages/rust/orm/src/sqlite_codes.rs
+//	orm-gen sqlite-codes --lang rust --out packages/rust/src/sqlite_codes.rs
 //	orm-gen sqlite-codes --lang typescript --out packages/ts/src/sqlite-codes.ts
-//	orm-gen sqlite-codes --lang python --out packages/python/src/polyspec/orm/_sqlite_codes.py
+//	orm-gen sqlite-codes --lang python --out legacy/packages/python/src/polyspec/orm/_sqlite_codes.py
 package main
 
 import (

@@ -17,5 +17,5 @@ and, where the type has them, its `precision`, `scale` and `length`, a client `v
 | Go | `go test ./packages/go/orm -run '^TestBindVectors$'` |
 | TypeScript | `node packages/ts/tests/markdown.mjs` (case `bind/vectors`) |
 | PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testBindVectors' packages/php/tests/MarkdownTest.php` |
-| Python | `python -m unittest packages.python.tests.test_markdown.BindVectors` |
+| Python | `python -m unittest legacy.packages.python.tests.test_markdown.BindVectors` |
 | Rust | `cargo test -p polyspec-orm --lib bind_` (in `packages/rust`) |

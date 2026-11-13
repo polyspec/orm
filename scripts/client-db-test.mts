@@ -82,9 +82,9 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
   cwd: root,
   env: { ORM_PHP_MODE: 'extension' },
 }));
-// The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
+// The Python database tests run as modules of legacy.packages.python.tests with the Python of the venv (ORM_PYTHON).
 const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'connection_pool'];
-const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
+const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `legacy.packages.python.tests.${test}`], cwd: root }));
 // The recipes with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
 // behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes find them here, among the recipe
 // tests of scripts/features/recipe-runners.mts that run a recipe of contracts/fixtures on a server: a TypeScript
@@ -136,7 +136,7 @@ const poolerTests = (lane: PoolerLane): string[] => {
 const poolerRecipes = (lane: PoolerLane): Command[] => process.env['ORM_CLIENT_DB_POOLER'] === '1' ? poolerRecipeCommands(lane, poolerTests(lane)) : [];
 /** The value of TARGET_POOL_SIZE, the connection pool of each Rust integration test, read from its declaration (T343-1). */
 export function rustTargetPoolSize(repository: string): number {
-  const source = readFileSync(resolve(repository, 'packages/rust/tests/tests/all/integration_program/mod.rs'), 'utf8');
+  const source = readFileSync(resolve(repository, 'packages/rust/programs/tests/all/integration_program/mod.rs'), 'utf8');
   const match = /const TARGET_POOL_SIZE: u32 = (\d+);/.exec(source);
   if (match === null) throw new Error('client-db-test: TARGET_POOL_SIZE is not declared in the integration program');
   return Number(match[1]);
@@ -159,12 +159,20 @@ export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
   return [...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort(), ...measurements].flatMap(symbol => ['--skip', symbol]);
 }
 
+// The binding crates of the targets of packages/rust/interface.json, which the whole workspace leaves out: their sources are
+// the generated folders of make bindings, and make test-bindings tests them (ORM_RUST_EXCLUDE_BINDINGS of the Makefile).
+const BINDING_SUFFIX: Record<string, string> = { php: 'php-ext', python: 'python', node: 'node', go: 'go', wasm: 'wasm' };
+export function bindingExcludeArguments(repository: string): string[] {
+  const contract = JSON.parse(readFileSync(resolve(repository, 'packages/rust/interface.json'), 'utf8')) as { core: { crate: string }; targets: string[] };
+  return contract.targets.flatMap(target => ['--exclude', `${contract.core.crate}-${BINDING_SUFFIX[target] ?? target}`]);
+}
+
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no
 // deadline, copies them into the directory of one run and runs the copies.
 const RUST_TESTS: Command = {
   program: 'node',
   args: [
-    '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
+    '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', ...bindingExcludeArguments(root), '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
     ...rustOwnedElsewhereSkipArguments(root), '--exact',
     // The pooler lane keeps PROXYSQL_BACKEND_CONNECTIONS server connections, so its Rust tests run no more pools at once than that (T343-1).
     ...(process.env['ORM_CLIENT_DB_POOLER'] === '1' ? rustPoolerThreadArguments(PROXYSQL_BACKEND_CONNECTIONS, rustTargetPoolSize(root)) : []),

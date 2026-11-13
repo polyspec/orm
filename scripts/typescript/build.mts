@@ -27,7 +27,7 @@ import { readPackage } from '../json/formats.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
 import { generatedModels, generatorArgs } from './models.mts';
 
-const client = fileURLToPath(new URL('../../packages/ts/', import.meta.url));
+const client = fileURLToPath(new URL('../../legacy/packages/ts/', import.meta.url));
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const dist = join(client, 'dist');
 const next = join(client, `dist.next-${process.pid}`);

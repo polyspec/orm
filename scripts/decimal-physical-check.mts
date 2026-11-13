@@ -35,7 +35,7 @@ export function command(language: string, database: string, environment: NodeJS.
     // ORM_PYTHON is the Python of the venv that make orm-install-python builds.
     const python = environment['ORM_PYTHON'];
     if (!python) throw new Error('ORM_PYTHON is required; run the check through make decimal-physical-check');
-    return [python, ['-m', 'packages.python.tests.decimal_model_db', '--dialect', database]];
+    return [python, ['-m', 'legacy.packages.python.tests.decimal_model_db', '--dialect', database]];
   }
   if (language === 'typescript') return ['node', ['legacy/packages/ts/tests/decimal_model_db.mjs', '--dialect', database]];
   throw new Error(`unknown decimal physical runtime: ${language}`);

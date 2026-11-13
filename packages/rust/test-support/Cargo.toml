@@ -9,7 +9,7 @@ description = "Test helpers that the Rust crates of polyspec-orm share: examples
 # A crate depends on this one and imports a helper with `use`. No crate names another crate's source file by #[path], which
 # scripts/repo/check.test.mts checks.
 [dependencies]
-polyspec-orm = { path = "../orm" }
+polyspec-orm = { path = ".." }
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }

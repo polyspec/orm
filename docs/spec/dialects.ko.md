@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 60741fc79ba805fb36b58cad7109f23295d589d24b958f2324ab4205fb47b743 -->
+<!-- source-sha256: ca51707ea68b8b174ed5817c3cd7e2a5426660bcfa976161ec90e95bd41d2f5a -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -288,7 +288,7 @@ import (
 | SQLite, PHP client | PHP 8.4.26의 `pdo_sqlite`, `select sqlite_version()` 결과 3.53.4 |
 | SQLite, TypeScript client | Node 26.11.1의 `node:sqlite`, `select sqlite_version()` 결과 3.53.4. `package.json`은 Node 26.12.0 이상을 허용하며 그 뒤 release의 bundled version은 측정하지 않았다 |
 | SQLite 파일 이름 | DSN query가 남아 있는 파일 이름은 PHP PDO, `node:sqlite`, `sqlite3` shell이 그대로 열어 `bench.sqlite?_pragma=…`를 만든다. `modernc.org/sqlite`는 query를 해석한다(`TestSQLiteFileNameWithQuery`의 `sqlite.filename.*` case). 클라이언트는 파일 이름을 정하기 전에 query를 제거한다 |
-| SQLite, Rust client | sqlx 0.9 `sqlite` feature가 `sqlite-bundled`를 켠다. `libsqlite3-sys` 0.37.0(`packages/rust/Cargo.lock`)은 3.51.3을 포함하며, 같은 crate와 feature로 build한 프로그램의 `sqlite3_libversion()`으로 확인했다. Probe는 3.51.3에서 실행하지 않았다 |
+| SQLite, Rust client | sqlx 0.9 `sqlite` feature가 `sqlite-bundled`를 켠다. `libsqlite3-sys` 0.37.0(`Cargo.lock`)은 3.51.3을 포함하며, 같은 crate와 feature로 build한 프로그램의 `sqlite3_libversion()`으로 확인했다. Probe는 3.51.3에서 실행하지 않았다 |
 
 ### Types
 

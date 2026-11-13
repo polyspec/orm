@@ -9,10 +9,12 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
-from packages.python.tests import testcase
+from legacy.packages.python.tests import testcase
 
-ROOT = Path(__file__).resolve().parents[3]
-EXTRACTOR = ROOT / "packages" / "python" / "testing" / "interfaces" / "python.py"
+ROOT = Path(__file__).resolve().parents[4]
+EXTRACTOR = (
+    ROOT / "legacy" / "packages" / "python" / "testing" / "interfaces" / "python.py"
+)
 
 
 def compact(text: str) -> str:
@@ -35,7 +37,7 @@ def python_table(validate: str, name: str) -> dict:
 def signatures():
     """The signature of each symbol of the Python client, as the extractor of the interface check reads it."""
     result = subprocess.run(
-        [sys.executable, str(EXTRACTOR), str(ROOT), "packages/python/src"],
+        [sys.executable, str(EXTRACTOR), str(ROOT), "legacy/packages/python/src"],
         capture_output=True,
         text=True,
         check=False,
@@ -196,10 +198,10 @@ class DbspecRuleNativesTest(InterfaceSnapshotTest):
 
 class RecordNativesTest(unittest.TestCase):
     """The python native of each record of contracts/interfaces.json is a TypedDict of
-    packages/python/src/polyspec/orm/ir.py, and its #wire symbol of the snapshot carries the fields of the
+    legacy/packages/python/src/polyspec/orm/ir.py, and its #wire symbol of the snapshot carries the fields of the
     record, with the fields of its base expanded (the @flatten of the extractor)."""
 
-    PREFIX = "packages/python/src/polyspec/orm/ir.py::"
+    PREFIX = "legacy/packages/python/src/polyspec/orm/ir.py::"
 
     def setUp(self):
         self.manifest = json.loads(

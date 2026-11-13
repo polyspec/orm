@@ -46,6 +46,18 @@ from kit and holds as its own; this file states only the rules of orm.
   `github.com/polyspec/orm/examples` (`examples/go.mod`), and the root `go.work` joins the three,
   so they resolve `legacy/packages/go` from the checkout with no replace directive.
   Enforced by: `make layout-check`
+- Own: The core crate `polyspec-orm` is `packages/rust`, beside its contract `packages/rust/interface.json`, and the
+  binding packages that `binding scaffold` writes sit beside it: `packages/ts` (Node), `packages/ts/wasm` (WASM),
+  `packages/python`, `packages/php-ext` and `packages/go` (binding design L-1). The root `Cargo.toml` is the one
+  workspace of the core, its test crates under `packages/rust` and the binding crates, and the root `Cargo.lock` pins
+  them all, the commit of `polyspec-binding-core` included (GN-4, CK-20), because a scaffolded binding crate takes the
+  core at `../rust` and the generator checks that the root workspace holds every binding crate. A binding crate builds
+  only after `make bindings` writes its generated folder, so a cargo command over the whole workspace leaves the
+  binding crates out (`ORM_RUST_EXCLUDE_BINDINGS` of the Makefile), and `make lint-bindings` and `make test-bindings`
+  build them. The binding Go module `packages/go` has the module path of `legacy/packages/go`, so its commands run
+  with `GOWORK=off`. The npm workspaces of the root are the four dbspec editor packages by name, because
+  `packages/ts` is the package `@polyspec/orm`, a name that `legacy/packages/ts` also holds.
+  Enforced by: `make bindings-check`, which compares the binding packages with what binding scaffold writes (CK-19)
 - Own: The editor packages of dbspec are `packages/dbspec-language` (the language service and the `dbspec-fmt`
   command), `packages/dbspec-lsp` (the language server), `packages/dbspec-codemirror` (the CodeMirror
   extension) and `packages/dbspec-vscode` (the VS Code extension). The first three are released as the

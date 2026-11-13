@@ -1,15 +1,15 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: 6dd961c1d19f7598864247eaa133dede599b8678daff7a3346a25c63b6e0a3b2 -->
+<!-- source-sha256: a0002923dd9989c26a1ea2e34502267e99b7090489b69dc3947c0a9bc3213e72 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
 
 | 크레이트 | 내용 |
 |---|---|
-| `polyspec-orm` (`packages/rust/orm`) | 런타임: 모델 빌더, 요청 검증, MySQL·PostgreSQL·SQLite SQL 계획기, 계획 캐시, sqlx 실행기, codec, DSN 파서, 트랜잭션, 유틸리티, 오류 코드 |
+| `polyspec-orm` (`packages/rust`) | 런타임: 모델 빌더, 요청 검증, MySQL·PostgreSQL·SQLite SQL 계획기, 계획 캐시, sqlx 실행기, codec, DSN 파서, 트랜잭션, 유틸리티, 오류 코드 |
 | `polyspec-orm-schema` (`packages/rust/schema`) | 스키마 정의: 런타임과 `polyspec-orm-build`가 함께 쓰는 dbspec parser, emitter, manifest, renderer, plan, Mermaid export와 import, runtime model, 그리고 SQL 문장 분리 |
 | `polyspec-orm-build` (`packages/rust/build`) | 빌드 시 생성기: dbspec document set을 읽고 크레이트 소스를 검사해 호출된 모델과 manifest text를 `OUT_DIR`에 쓴다. `live-db` 기능은 catalog과 tool database 연결을 제공한다. |
-| `polyspec-orm-tests` (`packages/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, `demo` |
+| `polyspec-orm-tests` (`packages/rust/programs`) | `integration`, `conformance`, `client_bench`, `complex`, `demo` |
 
 클라이언트에는 이 크레이트만 필요하다. 문장은 프로세스 안에서 계획하며 별도 서비스를 실행하지 않는다.
 
@@ -19,7 +19,7 @@
 
 ```toml
 [dependencies]
-polyspec-orm = { path = "…/packages/rust/orm" }
+polyspec-orm = { path = "…/packages/rust" }
 
 [build-dependencies]
 polyspec-orm-build = { path = "…/packages/rust/build" }
@@ -98,7 +98,7 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 ## 오류
 
-`polyspec_orm::codes`는 `docs/spec/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out packages/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 모든 드라이버 오류는 `Error::Driver { code, msg, source }`가 된다. deadlock, 중복 키, foreign key, CHECK 위반처럼 `docs/spec/errors.yaml`에 있는 조건은 공통 코드를, trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류는 `DRIVER`를 가지며, `source`는 드라이버 오류다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다. callback이 실패하고 트랜잭션이나 savepoint의 rollback도 실패하면 `Error::Rollback { callback, rollback }`(`ROLLBACK`)을 반환한다. 메시지는 `transaction failed (<callback error>) and rollback failed (<rollback error>)`이고 두 오류를 모두 담으며 재시도하지 않는다. 실패했고 `busy_timeout`도 되돌리지 못한 SQLite NOWAIT 요청은 `Error::Cleanup { primary, cleanup }`을 반환한다. `code()`는 primary lock 오류의 코드를 전달하고, 두 오류 모두 확인할 수 있다. 되돌리기만 실패한 경우 그 오류를 그대로 반환한다.
+`polyspec_orm::codes`는 `docs/spec/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out packages/rust/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 모든 드라이버 오류는 `Error::Driver { code, msg, source }`가 된다. deadlock, 중복 키, foreign key, CHECK 위반처럼 `docs/spec/errors.yaml`에 있는 조건은 공통 코드를, trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류는 `DRIVER`를 가지며, `source`는 드라이버 오류다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다. callback이 실패하고 트랜잭션이나 savepoint의 rollback도 실패하면 `Error::Rollback { callback, rollback }`(`ROLLBACK`)을 반환한다. 메시지는 `transaction failed (<callback error>) and rollback failed (<rollback error>)`이고 두 오류를 모두 담으며 재시도하지 않는다. 실패했고 `busy_timeout`도 되돌리지 못한 SQLite NOWAIT 요청은 `Error::Cleanup { primary, cleanup }`을 반환한다. `code()`는 primary lock 오류의 코드를 전달하고, 두 오류 모두 확인할 수 있다. 되돌리기만 실패한 경우 그 오류를 그대로 반환한다.
 
 ## Statement event
 
@@ -125,16 +125,20 @@ Rust 도구/카탈로그 조회는 스트리밍 중 검증된 예산으로 행�
 지원 셀은 NULL·signed 정수·텍스트·boolean이며 미지원 타입은 변환하지 않고
 실패한다. 읽기 전용 SQL 샌드박스가 아니다.
 
+root의 Cargo.toml은 이 crate와 그 시험 crate와 바인딩 crate의 workspace다. 바인딩 crate는 `make bindings`가 생성
+folder를 쓴 뒤에만 build되므로 workspace 전체에 대한 명령은 그것을 뺀다(`BINDINGS`).
+
 ```sh
 cd packages/rust
-cargo clippy --workspace --all-targets -- -D warnings
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
+BINDINGS="--exclude polyspec-orm-node --exclude polyspec-orm-wasm --exclude polyspec-orm-python --exclude polyspec-orm-php-ext --exclude polyspec-orm-go"
+cargo clippy --workspace $BINDINGS --all-targets -- -D warnings
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace $BINDINGS
 cargo build -p polyspec-orm-tests
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_REPLICA_DSN=… ORM_TEST_POSTGRES_REPLICA_DSN=… cargo test -p polyspec-orm-tests --test all -- integration_program::
 ./target/debug/conformance --dsn "mysql://…" ../../contracts/fixtures/bench/bench.dbs
 ```
 
-`integration_program` 테스트의 각 section과 `zone` 테스트는 SQLite·MySQL·PostgreSQL에서 실행된다. 각 section은 자기 case database에서 실행되므로 `cargo test --workspace`가 section을 병렬로 실행하며, `primary_and_replica`는 `ORM_TEST_MYSQL_REPLICA_DSN`과 `ORM_TEST_POSTGRES_REPLICA_DSN`의 replica도 읽는다. `ORM_TEST_MYSQL_DSN`과 `ORM_TEST_POSTGRES_DSN`은 시험 DB를 가리켜야 하고 하나라도 없으면 테스트가 실패한다. schema를 설치하거나 빈 DB를 확인하는 case는 그 DSN으로 자기 DB를 만들고 끝날 때 지운다. rollback 테스트는 pooler 없는 서버를 가리키는 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 서버 session을 종료하고, dbspec 테스트(`dbspec_*`)는 그 DSN으로 자기 DB를 만들고 바꾼다. `dbspec_apply`는 transaction pooler case를 위해 `ORM_TEST_PGBOUNCER_DSN`도 요구한다. make target은 둘을 `.runtime/servers/env`에서 정한다. `conformance`, `complex`, `demo`는 데이터가 준비된 bench DB를 읽는다.
+`integration_program` 테스트의 각 section과 `zone` 테스트는 SQLite·MySQL·PostgreSQL에서 실행된다. 각 section은 자기 case database에서 실행되므로 `cargo test --workspace $BINDINGS`가 section을 병렬로 실행하며, `primary_and_replica`는 `ORM_TEST_MYSQL_REPLICA_DSN`과 `ORM_TEST_POSTGRES_REPLICA_DSN`의 replica도 읽는다. `ORM_TEST_MYSQL_DSN`과 `ORM_TEST_POSTGRES_DSN`은 시험 DB를 가리켜야 하고 하나라도 없으면 테스트가 실패한다. schema를 설치하거나 빈 DB를 확인하는 case는 그 DSN으로 자기 DB를 만들고 끝날 때 지운다. rollback 테스트는 pooler 없는 서버를 가리키는 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 서버 session을 종료하고, dbspec 테스트(`dbspec_*`)는 그 DSN으로 자기 DB를 만들고 바꾼다. `dbspec_apply`는 transaction pooler case를 위해 `ORM_TEST_PGBOUNCER_DSN`도 요구한다. make target은 둘을 `.runtime/servers/env`에서 정한다. `conformance`, `complex`, `demo`는 데이터가 준비된 bench DB를 읽는다.
 Rust conformance 출력은 bind를 손실 없이 표현할 수 없거나 요청한 선택 필드·관계가 없으면 실패한다. 이런 오류를 null, 0, 대체 텍스트로 바꾸지 않는다.
 
 Rust 소스 검사기는 styled setter 바로 다음 `expect`와 `unwrap`을 Result 처리로 구분한다.

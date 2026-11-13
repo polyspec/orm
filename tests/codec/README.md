@@ -13,7 +13,7 @@ meets; no client's output is the reference of another.
 | PHP extension | `CodecRecipeTestExtensionTest::testNone` in `legacy/packages/php-ext/tests/CodecRecipeTestExtensionTest.php` |
 | TypeScript | `legacy/packages/ts/tests/codec-none.test.mjs` |
 | Python | `legacy/packages/python/tests/test_codec_none.py` |
-| Rust | the test `codec_none` of `packages/rust/tests` |
+| Rust | the test `codec_none` of `packages/rust/programs` |
 
 Beside it, a recipe of the runtimes whose values hold its input holds the cases that a value of one runtime cannot hold
 (`docs/spec/codec.md` COD-70): `codec-bytes-value.json` (bytes, every runtime but Rust), `codec-integer-beyond-i64.json`

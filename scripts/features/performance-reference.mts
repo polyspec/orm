@@ -224,7 +224,7 @@ export function performanceTest(runtime: PerformanceRuntime, database: Performan
     case 'php-extension': return { test: `legacy/packages/php-ext/tests/CoveragePerformanceGateExtension${suffix.php}Test.php`, symbol: 'testHotPathGate' };
     case 'typescript': return { test: `legacy/packages/ts/tests/coverage_performance_gate_${database}.mjs`, symbol: 'hot_path_gate' };
     case 'python': return { test: `legacy/packages/python/tests/coverage_performance_gate_${database}.py`, symbol: 'test_hot_path_gate' };
-    case 'rust': return { test: 'packages/rust/tests/tests/all/coverage_performance_gate.rs', symbol: `coverage_performance_gate::coverage_hot_path_gate_${database}` };
+    case 'rust': return { test: 'packages/rust/programs/tests/all/coverage_performance_gate.rs', symbol: `coverage_performance_gate::coverage_hot_path_gate_${database}` };
   }
 }
 
@@ -262,7 +262,7 @@ export function performanceCommands(env: NodeJS.ProcessEnv): PerformanceCommand[
         }
         case 'rust':
           // libtest holds what a passing test writes unless --nocapture lets it through.
-          commands.push({ ...entry, program: env.MAKE ?? 'make', args: ['-s', 'feature-rust-unit', 'FEATURE_CRATE=packages/rust/tests', 'FEATURE_CARGO_TARGET=--test all', `FEATURE_TEST=${symbol} --nocapture`] });
+          commands.push({ ...entry, program: env.MAKE ?? 'make', args: ['-s', 'feature-rust-unit', 'FEATURE_CRATE=packages/rust/programs', 'FEATURE_CARGO_TARGET=--test all', `FEATURE_TEST=${symbol} --nocapture`] });
           break;
       }
     }

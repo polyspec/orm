@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 46bdc1339e9e78ea5985de941ae760da112609f3db3c495210e3d3d7b60b7d07 -->
+<!-- source-sha256: 9d953491a5d99bd3fc9501c8c9422110702b935f1ba89b8f9ae8e0801ec95e90 -->
 # orm
 
 **Go, PHP, PHP-extension, Python, Rust, TypeScript**가 공유하는 스키마 기반 모델 query grammar다. 목표 문법은 [docs/spec/dsl.ko.md](docs/spec/dsl.ko.md), 작업 순서는 [docs/spec/plan.ko.md](docs/spec/plan.ko.md)에 명시되어 있다.
@@ -73,11 +73,11 @@ make orm-test-servers                                                   # server
 (cd legacy/packages/go/model && go generate)                                # Go models
 vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 (cd legacy/packages/ts && npm run build)                            # TypeScript models and library
-(cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
+(cd packages/rust && cargo build --release -p polyspec-orm-tests)                # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models
 go test ./legacy/packages/go/... ./tests/... ./examples/...
 npm run typescript:test
-(cd packages/rust && cargo test --workspace)
+make test-rust
 make conformance-check                                                # the native bodies and the state contracts of the conformance recipe
 ```
 

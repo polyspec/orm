@@ -281,7 +281,7 @@ export const RUNNER_SOURCES: Record<string, string[]> = {
   php: ['legacy/packages/php/testing/conformance/runner.php'],
   typescript: ['legacy/packages/ts/testing/conformance/runner_typescript.mts'],
   python: ['legacy/packages/python/testing/conformance/runner_python.py'],
-  rust: ['packages/rust/tests/src/conformance.rs'],
+  rust: ['packages/rust/programs/src/conformance.rs'],
 };
 
 /** The names of the bodies that a runner source declares, in each language the call that takes the name first. */

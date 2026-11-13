@@ -14,7 +14,7 @@
 | PHP 확장 | `legacy/packages/php-ext/tests/CodecRecipeTestExtensionTest.php`의 `CodecRecipeTestExtensionTest::testNone` |
 | TypeScript | `legacy/packages/ts/tests/codec-none.test.mjs` |
 | Python | `legacy/packages/python/tests/test_codec_none.py` |
-| Rust | `packages/rust/tests`의 test `codec_none` |
+| Rust | `packages/rust/programs`의 test `codec_none` |
 
 그 곁에서, 한 runtime의 값이 담지 못하는 case는 그 입력을 값으로 담는 runtime의 recipe가 담는다(`docs/spec/codec.md`
 COD-70): `codec-bytes-value.json`(bytes, Rust를 뺀 모든 runtime), `codec-integer-beyond-i64.json`(i64를 넘는 정수, PHP와

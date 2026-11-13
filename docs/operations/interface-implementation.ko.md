@@ -1,5 +1,5 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: 7ba4a2999f3abea7219497406f7b9412a6d6ee2940c1bb1cfcdbff41aa6507c1 -->
+<!-- source-sha256: afce12863239fc91b2e9f238e06731160ea3ecbad464f243eff28ddf63cd5b5a -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](../spec/interfaces.ko.md), [기계 명세](../../contracts/interfaces.json), [생성 모델](../spec/interfaces-model.ko.md). 재현 명령과 검사 범위는 [검증 안내](../../tests/interfaces/README.ko.md)에 있다.
@@ -44,7 +44,7 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 |---|---|---|---|
 | Go | `legacy/packages/go/engine/*`을 `legacy/packages/go/orm`이 직접 호출하며 생성 모델은 `legacy/packages/go/model`에 있다 | `legacy/packages/go/orm/*_test.go`, `legacy/packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
 | PHP | `legacy/packages/php/src`가 PDO를 통해 계획·실행하며 생성 모델은 `legacy/packages/php/gen`에 있다 | `legacy/packages/php/tests/*.php` | `legacy/packages/php/testing/conformance/runner.php`, `legacy/packages/php/testing/interfaces/php.php` |
-| Rust | `packages/rust/orm`이 sqlx를 통해 계획·실행하며 `polyspec-orm-build`가 모델을 생성한다 | `packages/rust/tests/src`, `packages/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `packages/rust/testing/interfaces` |
+| Rust | `packages/rust`이 sqlx를 통해 계획·실행하며 `polyspec-orm-build`가 모델을 생성한다 | `packages/rust/programs/src`, `packages/rust/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `packages/rust/testing/interfaces` |
 | TypeScript | `legacy/packages/ts/src`가 네이티브 driver를 통해 계획·실행하며 생성 모델은 `legacy/packages/ts/src/models`에 있다 | `legacy/packages/ts/tests` | `legacy/packages/ts/testing/conformance/runner_typescript.mts`, `legacy/packages/ts/testing/interfaces/typescript.mts` |
 
 각 owner 테스트는 해당 client 디렉터리에 둔다. 구현 내부 테스트는 그 구현 고유의 구조를 검사하며, 공통 인터페이스에는 대응하는 항목이 없다. Conformance는 선언된 여섯 구현(Go, PHP, PHP extension, Rust, TypeScript, Python)의 출력을 비교하며 owner 테스트를 대체하지 않고, `tests/interfaces/check`가 공통 선언과 생성물을 검사한다.

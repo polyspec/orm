@@ -1,6 +1,6 @@
 import json
 import unittest
-from packages.python.tests import testcase
+from legacy.packages.python.tests import testcase
 
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.dialect import dialect_of
@@ -8,20 +8,20 @@ from polyspec.orm.engine.params import param_uses
 from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
-from .coverage_case import REPOSITORY_ROOT
+from .coverage_case import CASE_ROOT
 
 
 class ColumnFunctionMetadataTest(unittest.TestCase):
     def setUp(self):
         recipe = json.loads(
-            (REPOSITORY_ROOT / "tests/planner/compile.json").read_text(encoding="utf-8")
+            (CASE_ROOT / "tests/planner/compile.json").read_text(encoding="utf-8")
         )
         self.step = next(
             case["steps"][0]
             for case in recipe["cases"]
             if case["id"] == "planner_column_function_date"
         )
-        schema = (REPOSITORY_ROOT / "tests/planner" / self.step["schema"]).resolve()
+        schema = (CASE_ROOT / "tests/planner" / self.step["schema"]).resolve()
         self.model = model_of_documents(
             parse_document_set([schema.read_text(encoding="utf-8")])
         )

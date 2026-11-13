@@ -24,7 +24,7 @@ Run the structure checks without a database:
 ```sh
 go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
@@ -39,7 +39,7 @@ Regenerate the contract outputs after an interface change:
 make go-models
 make php-models
 npm run typescript:build
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
 ```
 
 CI does not use `--generate`; it fails when generated files, diagrams, or execution contracts differ.

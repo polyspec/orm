@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: abd44463443f6e1903531b2474b0bf939b11fb614569bd20fd417c84bdb858eb -->
+<!-- source-sha256: 1e1e42bf19d17307ac7d1c4964b4b67b6e7423a3738cef4dd2446da723c8e40a -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../../docs/spec/interfaces.ko.md)와 함께 변경한다.
@@ -25,7 +25,7 @@ Python extractor는 출시 package 경계를 따르기 위해 고정된 Python t
 ```sh
 go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
@@ -40,7 +40,7 @@ sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utilit
 make go-models
 make php-models
 npm run typescript:build
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
+ORM_PYTHON=legacy/packages/python/.venv/bin/python node tests/interfaces/check/main.mts --generate --self-test
 ```
 
 CI는 `--generate`를 사용하지 않으며 생성 파일, 도표, 실행 계약이 다르면 실패한다.

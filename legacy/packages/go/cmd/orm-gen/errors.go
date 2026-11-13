@@ -4,9 +4,9 @@
 //	orm-gen errors --lang go --out packages/go/orm/codes.go
 //	orm-gen errors --lang php --out packages/php/src/Code.php
 //	orm-gen errors --lang php-extension --out packages/php-ext/src/polyspec_orm.stub.php
-//	orm-gen errors --lang rust --out packages/rust/orm/src/codes.rs
+//	orm-gen errors --lang rust --out packages/rust/src/codes.rs
 //	orm-gen errors --lang typescript --out packages/ts/src/codes.ts
-//	orm-gen errors --lang python --out packages/python/src/polyspec/orm/codes.py
+//	orm-gen errors --lang python --out legacy/packages/python/src/polyspec/orm/codes.py
 package main
 
 import (

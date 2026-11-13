@@ -872,7 +872,7 @@ caseTest('a run without servers runs the targets that need no database and repor
     const code = await runChecks({ root, servers: null, targets: ['docs-a', 'db-b'], run, needs: { 'docs-a': [], 'db-b': ['databases'] },
       id: '77-1-docs', snapshot: () => ({ text: 'stub\n', places: { '/': 1 } }), ciSetup: '',
       // A missing crate is not needed by this run's targets, so it does not fail the downloads step.
-      downloads: () => [{ need: 'rust', message: 'the crates of packages/rust/Cargo.lock are not downloaded; run make install, which downloads it' }] });
+      downloads: () => [{ need: 'rust', message: 'the crates of Cargo.lock are not downloaded; run make install, which downloads it' }] });
     assert.equal(code, 1);
     assert.deepEqual(ran, ['docs-a']);
     const report = join(root, '.runtime/check/ci_77_1_docs/report');

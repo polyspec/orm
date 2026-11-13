@@ -8,7 +8,9 @@ import unittest
 from pathlib import Path
 
 # The repository root, resolved from this file.
-REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+# legacy/, which holds the fixed copies of the shared cases that the legacy clients read (legacy/tests, legacy/contracts).
+CASE_ROOT = Path(__file__).resolve().parents[3]
 
 
 def coverage_main(test_class: type) -> None:

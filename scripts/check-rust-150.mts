@@ -33,7 +33,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-polyspec-orm = { path = "${root}/packages/rust/orm" }
+polyspec-orm = { path = "${root}/packages/rust" }
 
 [build-dependencies]
 polyspec-orm-build = { path = "${root}/packages/rust/build" }
@@ -43,7 +43,7 @@ polyspec-orm-build = { path = "${root}/packages/rust/build" }
   writeFileSync(join(work, 'crate/build.rs'), 'fn main() {\n    polyspec_orm_build::Builder::set("../dbspec-set.json").scan("src").generate();\n}\n');
   const calls = names.map(n => `    let m = model::Entity${n}::new().set_name("x").revision(1).and_gt_seq(0);\n    let _ = m.get_name();`);
   writeFileSync(join(work, 'crate/src/lib.rs'), `polyspec_orm::models!();\npub fn touch() {\n${calls.join('\n')}\n}\n`);
-  copyFileSync(join(root, 'packages/rust/Cargo.lock'), join(work, 'crate/Cargo.lock'));
+  copyFileSync(join(root, 'Cargo.lock'), join(work, 'crate/Cargo.lock'));
   // The generated crate shares the target directory of the workspace, so orm and its dependencies are not compiled
   // again; it builds into the shared Rust target directory and so under its lease.
   const checked = spawnSync(lease, ['run', leases, 'exclusive', '--wait', '--', 'cargo', 'check', '--manifest-path', join(work, 'crate/Cargo.toml')], {

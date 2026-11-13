@@ -1,4 +1,4 @@
-# The Python symbol extractor (packages/python/testing/interfaces/python.py) reports the public declarations of a
+# The Python symbol extractor (legacy/packages/python/testing/interfaces/python.py) reports the public declarations of a
 # package in the form of packages/ts/testing/interfaces/typescript.mts: a class, a function, a method, a field.
 import json
 import subprocess
@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from packages.python.tests import testcase
+from legacy.packages.python.tests import testcase
 
 EXTRACTOR = (
     Path(__file__).resolve().parents[3]
