@@ -119,7 +119,10 @@ hold for every member that this document names.
   `Use`, `Unique`, `PrimaryKey` and `Default` by their fields. The field `Null` of a column is `nullable`, a default is
   `{"kind": "now"}` or `{"kind": "literal", "text": <text>}`, and the constants `ActionCascade` and `ActionSetNull` are
   the texts `cascade` and `set_null` of `on_delete`. The core has no serde form of a document: a name of it holds the
-  position of its token (`Name`), so the form is a view of the document without positions. Not implemented.
+  position of its token (`Name`), so the form is a view of the document without positions. A function that writes the form refuses a
+  document that the form cannot hold: a table with more than one primary key, a setting of one line that a block holds
+  twice, an audit setting with two lists and a check literal without its canonical text. `dbspec::parse` returns no such
+  document. Not implemented.
 - **FMS-11** A column type is an object with `kind`, the name of the type (`Type::name`), and exactly the parameters
   of that kind: `length` for `varchar`, `precision` and `scale` for `decimal`, `precision` for `time` and `datetime`,
   and none for another kind (`#/$defs/type`). It carries `Type`, `TypeKind`, the four fields of `Type` and the 13
@@ -226,7 +229,7 @@ hold for every member that this document names.
   the requests that it makes, and `column`, `p` and `null` of an assignment; it only reads the other members. The
   schema states the text that the core writes. A member that takes a request reads an absent member of the form as its
   default, except a member of a limit, and refuses with `ir_invalid` a text that is no JSON object, a member that the
-  form does not have and text after the object. The legacy module writes a literal limit without a member that is 0
+  form does not have, a member that is `null`, a member of another type and text after the object. The legacy module writes a literal limit without a member that is 0
   and reads `null` as an absent member; neither is a request of the form. Not implemented: the reader of
   `ir::Request` takes a member that the form does not have, and no function of the core reads a request from a text.
 - **FMS-32** `runtime_model.validate(request)` validates the request against the model, as
@@ -389,8 +392,9 @@ pub fn canonical_literal(ty: Type, text: &str) -> Option<String>;
 // packages/rust/schema/src/dbspec/json.rs, the module dbspec::json
 pub fn type_to_json(ty: Type) -> serde_json::Value;
 pub fn type_from_json(value: &serde_json::Value) -> Result<Type, String>;
-pub fn document_to_json(document: &Document) -> serde_json::Value;
+pub fn document_to_json(document: &Document) -> Result<serde_json::Value, String>;
 pub fn document_from_json(value: &serde_json::Value) -> Result<Document, String>;
+// The object with `entities`; `manifest_hash` of the form is a member that polyspec_orm::Manifest reads and writes.
 pub fn runtime_model_to_json(model: &RuntimeModel) -> serde_json::Value;
 pub fn runtime_model_from_json(value: &serde_json::Value) -> Result<RuntimeModel, String>;
 pub fn diagnostic_to_json(diagnostic: &Diagnostic) -> serde_json::Value;
@@ -399,7 +403,7 @@ pub fn position_to_json(position: &Position) -> serde_json::Value;
 // packages/rust/src/dbspec_json.rs, the module polyspec_orm::dbspec_json: the functions of the unit dbspec
 pub fn read_set(path: &std::path::Path) -> crate::Result<String>;
 pub fn read_bytes(name: &str, bytes: &[u8]) -> String;
-pub fn parse_set(owned: &[String], external: &[String]) -> String;
+pub fn parse_set(owned: &[String], external: &[String]) -> crate::Result<String>;
 pub fn manifest(documents: &str) -> crate::Result<String>;
 pub fn emit(document: &str) -> crate::Result<String>;
 pub fn render_statements(documents: &str, dialect: &str) -> crate::Result<String>;
@@ -423,7 +427,8 @@ impl Step {
 
 // packages/rust/src/engine/json.rs: the functions of the class runtime_model
 impl crate::Manifest {
-    pub fn from_json(model: &str) -> crate::Result<Manifest>;
+        pub fn from_json(model: &str) -> crate::Result<Manifest>;
+    pub fn to_json(&self) -> serde_json::Value;
     pub fn validate(&self, request: &str) -> crate::Result<()>;
     pub fn param_uses(&self, request: &str) -> crate::Result<String>;
     pub fn restore_key(&self, request: &str) -> crate::Result<String>;
@@ -447,27 +452,27 @@ impl Db {
 ```
 
 - **FMS-81** Each function of FMS-80 has a test that fails before the function exists. Not implemented.
-  1. A document: for every document of `contracts/fixtures/bench/`, `document_to_json` is a value of
+  1. A document: for every document of `contracts/fixtures/bench/` and every canonical text of
+     `tests/dbspec/canonical.json`, `document_to_json` is a value of
      `dbspec.schema.json`, and `document_from_json` of it gives a document with the same text of `dbspec::emit`, the
-     same hashes of `dbspec::manifest` and the same statements of `dbspec::render_statements` in the three dialects.
+     same hashes of `dbspec::manifest` and, for the bench set, the same statements of `dbspec::render_statements` in the three dialects.
   2. A refused document: a member that the schema does not name, a `varchar` type without `length` and a predicate
      without `kind` are each an error that names the member.
-  3. A runtime model: `runtime_model_from_json(runtime_model_to_json(model))` equals `model`, and the value is a value
-     of `#/$defs/runtime_model` with a manifest hash.
+  3. A runtime model: `runtime_model_from_json(runtime_model_to_json(model))` equals `model`, and the value with a manifest
+     hash is a value of `#/$defs/runtime_model` that `Manifest::from_json` reads.
   4. A literal: `canonical_literal` gives the result of each case of `TestCanonicalLiteral` of
      `legacy/packages/go/engine/dbspec/literal_test.go`.
   5. A set: `dbspec_json::parse_set` gives, for the texts of each case of `tests/dbspec/set-parse.json`, the names,
      the diagnostics and the documents of `dbspec::parse_set`, as a value of `#/$defs/parse_set_result`; `read_bytes`
      gives the `signature` and the `encoding` diagnostic; `read_set` gives the files and the errors of
      `dbspec::read_set` for a set in a temporary directory.
-  6. A request: `Request::from_json` refuses a member that the form does not have and text after the object with
-     `ir_invalid`, and the serde text of each request of `tests/planner/compile.json` and of `tests/ir/validate.json`
-     is a value of `ir.schema.json` that `Request::from_json` reads back to the same serde text.
-  7. A model handle: for the serde text of each request of the `planner.compile` and `ir.param_uses` cases of
-     `tests/planner/compile.json`, `Manifest::compile` gives the plan of `engine::compile` as `Plan::to_json` writes
-     it, a value of `plan.schema.json`, and `Manifest::param_uses` the value of `testing::param_uses`;
-     `Manifest::restore_key` gives the key, the where and the set of `restore_key` for the restore cases; and for
-     each request of `tests/ir/validate.json`, `Manifest::validate` gives the result of `engine::validate`.
+  6. A request: `Request::from_json` refuses a member that the form does not have, a member that is `null` and text
+     after the object with `ir_invalid`, and the serde text of each request of `tests/planner/compile.json` is a value
+     of `ir.schema.json` that `Request::from_json` reads back to the same serde text.
+  7. A model handle: for the serde text of each request of `tests/planner/compile.json`, `Manifest::compile` gives the plan of `engine::compile` as `Plan::to_json` writes
+     it, a value of `plan.schema.json`, and, for the `ir.param_uses` cases, `Manifest::param_uses` the value of `testing::param_uses`;
+     `Manifest::restore_key` gives the key, the where and the set of `restore_key` for the restore cases; and for the JSON text of each request of `tests/ir/validate.json`, `Manifest::validate` gives the result that the
+     case states, and `ir_invalid` for the request that holds `null`.
   8. A step: `Step::from_json(step.to_json())` gives a step with the fields of `step` but `plan_id`, which is 0.
   9. A cell: `host_decode(host_encode(value))` gives `value` for a text and for bytes through `hex`, `ip` and `aes`,
      `blind_index` gives the index of `codec::blind_index`, and a list is `codec_encode`.

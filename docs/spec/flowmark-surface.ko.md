@@ -1,5 +1,5 @@
 <!-- doc-id: spec-flowmark-surface -->
-<!-- source-sha256: f060e8689881ce7e9ed9644a1ecbbb86208c66ed0d1b2b6488cf5a192455ba8b -->
+<!-- source-sha256: b75f8961150ea35185fc8efca1b770502d03132191bdca2d854a4012542b48c2 -->
 # flowmark가 쓰는 orm의 표면
 
 [English](flowmark-surface.md)
@@ -116,7 +116,10 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `ForeignKey`, `Check`를 그 field와 함께 전달하고, `Use`, `Unique`, `PrimaryKey`, `Default`는 그 field로 전달한다.
   열의 field `Null`은 `nullable`이고, default는 `{"kind": "now"}`나 `{"kind": "literal", "text": <text>}`이며, 상수
   `ActionCascade`와 `ActionSetNull`은 `on_delete`의 텍스트 `cascade`와 `set_null`이다. 코어에는 문서의 serde 형식이
-  없다: 문서의 이름이 자기 token의 위치를 가지므로(`Name`), 이 형식은 위치를 뺀 문서의 view다. 구현되지 않았다.
+  없다: 문서의 이름이 자기 token의 위치를 가지므로(`Name`), 이 형식은 위치를 뺀 문서의 view다. 이 형식을 쓰는
+  함수는 형식이 담을 수 없는 문서를 거부한다: primary key가 둘 이상인 table, block이 두 번 가진 한 줄짜리 setting,
+  list가 둘인 audit setting, canonical 텍스트가 없는 check literal이다. `dbspec::parse`는 그런 문서를 돌려주지 않는다.
+  구현되지 않았다.
 - **FMS-11** 열 타입은 타입의 이름인 `kind`(`Type::name`)와 그 kind의 매개변수만 가진 object다: `varchar`는
   `length`, `decimal`은 `precision`과 `scale`, `time`과 `datetime`은 `precision`을 가지고, 다른 kind는 매개변수가
   없다(`#/$defs/type`). 이 형식은 `Type`, `TypeKind`, `Type`의 field 네 개, 상수 `TypeI16`부터 `TypeDatetime`까지
@@ -218,8 +221,8 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `force_index`, `NParams`는 `n_params`이고, 요청의 `Query`는 member가 아니다. flowmark는 자기가 만드는 요청의
   `ir_version`, `manifest_hash`, `kind`, `entity`, `where`, `order`, `load`, `set`, `n_params`와 배정의 `column`, `p`,
   `null`을 쓰고, 다른 member는 읽기만 한다. schema는 코어가 쓰는 텍스트를 적는다. 요청을 받는 member는 형식의
-  member가 없으면 그 default로 읽되 limit의 member는 예외이고, JSON object가 아닌 텍스트, 형식에 없는 member, object
-  뒤의 텍스트를 `ir_invalid`로 거부한다. legacy 모듈은 0인 member를 뺀 literal limit을 쓰고 `null`을 없는 member로
+  member가 없으면 그 default로 읽되 limit의 member는 예외이고, JSON object가 아닌 텍스트, 형식에 없는 member, `null`인 member,
+  타입이 다른 member, object 뒤의 텍스트를 `ir_invalid`로 거부한다. legacy 모듈은 0인 member를 뺀 literal limit을 쓰고 `null`을 없는 member로
   읽는데, 둘 다 이 형식의 요청이 아니다. 구현되지 않았다: `ir::Request`를 읽는 코드는 형식에 없는 member를 받고,
   코어의 어느 함수도 텍스트에서 요청을 읽지 않는다.
 - **FMS-32** `runtime_model.validate(request)`는 `polyspec_orm::engine::validate`처럼 요청을 model에 대해 검증하고
@@ -377,8 +380,9 @@ pub fn canonical_literal(ty: Type, text: &str) -> Option<String>;
 // packages/rust/schema/src/dbspec/json.rs, the module dbspec::json
 pub fn type_to_json(ty: Type) -> serde_json::Value;
 pub fn type_from_json(value: &serde_json::Value) -> Result<Type, String>;
-pub fn document_to_json(document: &Document) -> serde_json::Value;
+pub fn document_to_json(document: &Document) -> Result<serde_json::Value, String>;
 pub fn document_from_json(value: &serde_json::Value) -> Result<Document, String>;
+// The object with `entities`; `manifest_hash` of the form is a member that polyspec_orm::Manifest reads and writes.
 pub fn runtime_model_to_json(model: &RuntimeModel) -> serde_json::Value;
 pub fn runtime_model_from_json(value: &serde_json::Value) -> Result<RuntimeModel, String>;
 pub fn diagnostic_to_json(diagnostic: &Diagnostic) -> serde_json::Value;
@@ -387,7 +391,7 @@ pub fn position_to_json(position: &Position) -> serde_json::Value;
 // packages/rust/src/dbspec_json.rs, the module polyspec_orm::dbspec_json: the functions of the unit dbspec
 pub fn read_set(path: &std::path::Path) -> crate::Result<String>;
 pub fn read_bytes(name: &str, bytes: &[u8]) -> String;
-pub fn parse_set(owned: &[String], external: &[String]) -> String;
+pub fn parse_set(owned: &[String], external: &[String]) -> crate::Result<String>;
 pub fn manifest(documents: &str) -> crate::Result<String>;
 pub fn emit(document: &str) -> crate::Result<String>;
 pub fn render_statements(documents: &str, dialect: &str) -> crate::Result<String>;
@@ -411,7 +415,8 @@ impl Step {
 
 // packages/rust/src/engine/json.rs: the functions of the class runtime_model
 impl crate::Manifest {
-    pub fn from_json(model: &str) -> crate::Result<Manifest>;
+        pub fn from_json(model: &str) -> crate::Result<Manifest>;
+    pub fn to_json(&self) -> serde_json::Value;
     pub fn validate(&self, request: &str) -> crate::Result<()>;
     pub fn param_uses(&self, request: &str) -> crate::Result<String>;
     pub fn restore_key(&self, request: &str) -> crate::Result<String>;
@@ -435,27 +440,27 @@ impl Db {
 ```
 
 - **FMS-81** FMS-80의 함수는 각각 그 함수가 있기 전에는 실패하는 시험을 가진다. 구현되지 않았다.
-  1. 문서: `contracts/fixtures/bench/`의 모든 문서에 대해 `document_to_json`은 `dbspec.schema.json`의 값이고, 그
-     값의 `document_from_json`은 `dbspec::emit`의 텍스트, `dbspec::manifest`의 hash, 세 dialect의
-     `dbspec::render_statements`의 statement가 같은 문서를 준다.
+  1. 문서: `contracts/fixtures/bench/`의 모든 문서와 `tests/dbspec/canonical.json`의 모든 canonical 텍스트에 대해 `document_to_json`은 `dbspec.schema.json`의 값이고, 그
+     값의 `document_from_json`은 `dbspec::emit`의 텍스트, `dbspec::manifest`의 hash, bench 집합에서는 세
+     dialect의 `dbspec::render_statements`의 statement도 같은 문서를 준다.
   2. 거부되는 문서: schema가 이름하지 않는 member, `length`가 없는 `varchar` 타입, `kind`가 없는 predicate는 각각 그
      member를 이름하는 오류다.
-  3. runtime model: `runtime_model_from_json(runtime_model_to_json(model))`은 `model`과 같고, 그 값은 manifest
-     hash와 함께 `#/$defs/runtime_model`의 값이다.
+  3. runtime model: `runtime_model_from_json(runtime_model_to_json(model))`은 `model`과 같고, manifest hash를 더한 그 값은
+     `Manifest::from_json`이 읽는 `#/$defs/runtime_model`의 값이다.
   4. literal: `canonical_literal`은 `legacy/packages/go/engine/dbspec/literal_test.go`의 `TestCanonicalLiteral`의
      case마다 그 결과를 준다.
   5. 집합: `dbspec_json::parse_set`은 `tests/dbspec/set-parse.json`의 case마다 그 텍스트에 대해
      `dbspec::parse_set`의 이름, diagnostic, 문서를 `#/$defs/parse_set_result`의 값으로 준다. `read_bytes`는
      `signature`와 `encoding` diagnostic을 준다. `read_set`은 임시 디렉터리의 집합에 대해 `dbspec::read_set`의
      파일과 오류를 준다.
-  6. 요청: `Request::from_json`은 형식에 없는 member와 object 뒤의 텍스트를 `ir_invalid`로 거부하고,
-     `tests/planner/compile.json`과 `tests/ir/validate.json`의 각 요청의 serde 텍스트는 `ir.schema.json`의 값이며
-     `Request::from_json`이 그것을 다시 읽으면 같은 serde 텍스트가 된다.
-  7. model handle: `tests/planner/compile.json`의 `planner.compile`과 `ir.param_uses` case의 각 요청의 serde
-     텍스트에 대해 `Manifest::compile`은 `engine::compile`의 plan을 `Plan::to_json`이 쓰는 대로, 곧
-     `plan.schema.json`의 값으로 주고, `Manifest::param_uses`는 `testing::param_uses`의 값을 준다.
+  6. 요청: `Request::from_json`은 형식에 없는 member, `null`인 member, object 뒤의 텍스트를 `ir_invalid`로 거부하고,
+     `tests/planner/compile.json`의 각 요청의 serde 텍스트는 `ir.schema.json`의 값이며 `Request::from_json`이 그것을
+     다시 읽으면 같은 serde 텍스트가 된다.
+  7. model handle: `tests/planner/compile.json`의 각 요청의 serde 텍스트에 대해 `Manifest::compile`은 `engine::compile`의 plan을 `Plan::to_json`이 쓰는 대로, 곧
+     `plan.schema.json`의 값으로 주고, `ir.param_uses` case에서는 `Manifest::param_uses`가 `testing::param_uses`의 값을 준다.
      `Manifest::restore_key`는 restore case에 대해 `restore_key`의 key, where, set을 주고, `tests/ir/validate.json`의
-     각 요청에 대해 `Manifest::validate`는 `engine::validate`의 결과를 준다.
+     각 요청의 JSON 텍스트에 대해 `Manifest::validate`는 그 case가 적은 결과를 주고, `null`을 가진 요청에는
+     `ir_invalid`를 준다.
   8. step: `Step::from_json(step.to_json())`은 `plan_id`를 뺀 `step`의 field를 가진 step을 주고, `plan_id`는 0이다.
   9. cell: `host_decode(host_encode(value))`는 `hex`, `ip`, `aes`를 거친 텍스트와 바이트에 대해 `value`를 주고,
      `blind_index`는 `codec::blind_index`의 index를 주며, list는 `codec_encode`다.

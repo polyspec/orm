@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dddf0a1d61ca79e37c300d9f0b5d76170133ed254b08ab8666d6c2ad36568518 -->
+<!-- source-sha256: 5b8b14cf07107b13bf252083fa557c6f815f922a8c423f4f7c32f33fbfbfa0d1 -->
 # 변경 이력
 
 ## Unreleased
+
+- docs/spec/flowmark-surface.md는 처음의 글이 정하지 않은 곳에서 JSON surface의 함수가 무엇을 거부하고 돌려주는지 적는다(OM-1.5-1, FMS-10, FMS-31, FMS-80, FMS-81). `document_to_json`은 result를 돌려주고 형식이 담을 수 없는 문서를 거부한다(primary key가 둘 이상인 table, 두 번 나온 한 줄짜리 setting, list가 둘인 audit setting, canonical 텍스트가 없는 check literal). `runtime_model_to_json`은 `entities`를 가진 object를 쓰고, `manifest_hash`는 `Manifest::to_json`과 `Manifest::from_json`이 가진다. `dbspec_json::parse_set`은 result를 돌려준다. 요청에서 `null`이거나 타입이 다른 member는 `ir_invalid`다. FMS-81의 case는 tests/dbspec/canonical.json의 canonical 텍스트, tests/planner/compile.json의 serde 텍스트, tests/ir/validate.json의 JSON 텍스트를 읽는다. 그 함수는 구현되지 않았다.
 
 - Rust 코어의 `Query::restore()`와 `Query::restore_or_create()`는 assignment가 가진 key의 soft delete된 행을 복원하고, `Db` step은 terminal `restore`와 `restore_or_create`를 받으며 그 결과는 `{"row": <row>}`이다(OM-3.1-13, CORE-94). `model::restore`와 `model::restore_or_create`는 생성된 model type이 없는 행을 받고, 두 member는 행을 돌려줄 때 assignment를 비우며, packages/rust/interface.json은 `query.restore`와 `query.restore_or_create`를 적고, contracts/interface/core.json은 connection 없는 case를 가진다. 세 case의 compile은 member가 있기 전에 실패했고, member와 그 case는 아직 실행하지 않았다.
 
