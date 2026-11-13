@@ -1911,7 +1911,7 @@ fn datetime_precision(c: &Core, name: &str) -> Result<Option<u8>> {
 }
 
 /// The text of a datetime(p) value: YYYY-MM-DD HH:MM:SS with exactly p fraction digits, and no dot when p is 0 (PRT-69).
-fn datetime_text(t: &chrono::NaiveDateTime, precision: u8) -> String {
+pub(crate) fn datetime_text(t: &chrono::NaiveDateTime, precision: u8) -> String {
     let head = t.format("%Y-%m-%d %H:%M:%S");
     if precision == 0 {
         return head.to_string();

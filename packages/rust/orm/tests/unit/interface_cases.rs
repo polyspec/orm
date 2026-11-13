@@ -1,14 +1,16 @@
 // The core runs the cases of its interface contract (CORE-70 to CORE-72): every group that `cases` of
 // packages/rust/interface.json names in contracts/interface/core.json, in the case form of binding G-5. A member is
 // called through `call`, the one table of this file from a member id to the core function that the contract names for
-// it, so a member whose cases the contract names and that the table lacks fails the test.
+// it, so a member whose cases the contract names and that the table lacks fails the test. A value of orm_value is
+// given as {kind, value} (binding GN-13) and enters through from_host, as it enters from a language.
 
 use std::collections::BTreeMap;
 
+use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Raised};
 use serde_json::{Map, Value};
 
 use crate::or_panic::OrPanic as _;
-use crate::{AesKeyring, Config, Db, Error, Query, Schema};
+use crate::{AesKeyring, Config, Db, Error, OrmValue, Query, Schema};
 
 const CONTRACT: &str = include_str!("../../../interface.json");
 const CASES: &str = include_str!("../../../../../contracts/interface/core.json");
@@ -89,6 +91,116 @@ fn config(value: &Value, member: &str) -> Config {
     cfg
 }
 
+/// The language of a case: it holds the lists and the maps of a case value by their handles.
+#[derive(Default)]
+struct CaseHost {
+    lists: Vec<Vec<HostValue>>,
+    maps: Vec<Vec<(HostValue, HostValue)>>,
+}
+
+fn handle(position: usize) -> Handle {
+    Handle::new(u64::try_from(position).or_panic(|error| format!("a handle of a case value does not fit u64: {error}")))
+}
+
+fn position(handle: Handle, index: u64) -> (usize, usize) {
+    let fits = |n: u64| usize::try_from(n).or_panic(|error| format!("a handle or an index of a case value does not fit usize: {error}"));
+    (fits(handle.raw()), fits(index))
+}
+
+impl HostValues for CaseHost {
+    fn item(&mut self, list: Handle, index: u64) -> Result<HostValue, Raised> {
+        let (list, index) = position(list, index);
+        Ok(self.lists[list][index].clone())
+    }
+
+    fn entry(&mut self, map: Handle, index: u64) -> Result<(HostValue, HostValue), Raised> {
+        let (map, index) = position(map, index);
+        Ok(self.maps[map][index].clone())
+    }
+
+    fn read(&mut self, _value: Handle) -> Result<HostValue, Raised> {
+        panic!("a case value holds no object")
+    }
+}
+
+fn host_text(text: &str) -> HostValue {
+    HostValue::Text(HostText::CodePoints(text.chars().map(u32::from).collect()))
+}
+
+/// The language value of a case value `{kind, value}` (binding GN-13): each kind as the value that its built-in form
+/// makes, an integer outside `i64` as its decimal text.
+fn host_value(host: &mut CaseHost, case: &Value, what: &str) -> HostValue {
+    let kind = case.get("kind").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a value of orm_value states its kind"));
+    let value = case.get("value");
+    let given = || value.unwrap_or_else(|| panic!("{what}: a value of the kind {kind} states its value"));
+    match kind {
+        "null" => HostValue::Null,
+        "bool" => HostValue::Bool(given().as_bool().unwrap_or_else(|| panic!("{what}: the value of a bool is no boolean"))),
+        "int" => match (given().as_i64(), given().as_str()) {
+            (Some(n), _) => HostValue::Int(n),
+            (None, Some(digits)) => digits.parse().map_or_else(|_outside| HostValue::Number(digits.to_owned()), HostValue::Int),
+            _ => panic!("{what}: the value of an int is no integer and no decimal text"),
+        },
+        "float" => HostValue::Float(given().as_f64().unwrap_or_else(|| panic!("{what}: the value of a float is no number"))),
+        "text" => host_text(given().as_str().unwrap_or_else(|| panic!("{what}: the value of a text is no text"))),
+        "bytes" => {
+            let hex = given().get("hex").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: the value of bytes is {{hex}}"));
+            assert!(hex.len() % 2 == 0 && hex.is_ascii(), "{what}: hex is pairs of digits");
+            let byte = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{what}: hex holds no byte at {at}: {error}"));
+            HostValue::Bytes((0..hex.len()).step_by(2).map(byte).collect())
+        }
+        "list" => {
+            let items = given().as_array().unwrap_or_else(|| panic!("{what}: the value of a list is no list"));
+            let items: Vec<HostValue> = items.iter().map(|item| host_value(host, item, what)).collect();
+            let len = u64::try_from(items.len()).or_panic(|error| format!("{what}: the length of a list does not fit u64: {error}"));
+            host.lists.push(items);
+            HostValue::List { handle: handle(host.lists.len() - 1), len }
+        }
+        "map" => {
+            let members = given().as_object().unwrap_or_else(|| panic!("{what}: the value of a map is no object"));
+            let entries: Vec<(HostValue, HostValue)> = members.iter().map(|(key, member)| (host_text(key), host_value(host, member, what))).collect();
+            let len = u64::try_from(entries.len()).or_panic(|error| format!("{what}: the length of a map does not fit u64: {error}"));
+            host.maps.push(entries);
+            HostValue::Map { handle: handle(host.maps.len() - 1), len }
+        }
+        other => panic!("{what}: the case runner makes no value of the kind {other}"),
+    }
+}
+
+/// The `orm_value` of a case value, as `from_host` reads it.
+fn orm_value(case: &Value, what: &str) -> Result<OrmValue, Error> {
+    let mut host = CaseHost::default();
+    let value = host_value(&mut host, case, what);
+    match crate::orm_value::from_host(&mut host, value) {
+        Ok(value) => Ok(value),
+        Err(Failure::Kind(error)) => Err(error),
+        Err(other) => panic!("{what}: from_host failed with no kind: {other}"),
+    }
+}
+
+/// A list of `orm_value`.
+fn orm_values(args: &Map<String, Value>, name: &str, member: &str) -> Result<Vec<OrmValue>, Error> {
+    let values = field(args, name, member).as_array().unwrap_or_else(|| panic!("{member}: {name} is no list"));
+    values.iter().map(|value| orm_value(value, member)).collect()
+}
+
+/// The case form `{kind, value}` of a value that a member returned.
+fn case_value(value: &OrmValue, what: &str) -> Value {
+    let of = |kind: &str, value: Value| serde_json::json!({"kind": kind, "value": value});
+    match value {
+        OrmValue::Null => serde_json::json!({"kind": "null"}),
+        OrmValue::Bool(flag) => of("bool", Value::from(*flag)),
+        OrmValue::Int(n) => of("int", Value::from(*n)),
+        OrmValue::Int64(n) => of("int64", Value::from(*n)),
+        OrmValue::Float(x) => of("float", Value::from(*x)),
+        OrmValue::Text(text) => of("text", Value::from(text.as_str())),
+        OrmValue::Bytes(bytes) => of("bytes", serde_json::json!({"hex": bytes.iter().map(|byte| format!("{byte:02x}")).collect::<String>()})),
+        OrmValue::List(items) => of("list", items.iter().map(|item| case_value(item, what)).collect()),
+        OrmValue::Map(entries) => of("map", entries.iter().map(|(key, entry)| (key.clone(), case_value(entry, what))).collect::<Map<String, Value>>().into()),
+        OrmValue::Json(_) => panic!("{what}: the case form has no value of json_value"),
+    }
+}
+
 /// Calls the core function that the contract names for `member`.
 async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
     Ok(match (member, receiver) {
@@ -110,6 +222,18 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Returned::Value(Value::Null)
         }
         ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
+        ("query.where", Some(Instance::Query(query))) => {
+            query.where_chain(&text(args, "chain", member), orm_values(args, "values", member)?);
+            Returned::Value(Value::Null)
+        }
+        ("query.value", Some(Instance::Query(query))) => Returned::Value(case_value(&query.value(&text(args, "column", member))?, member)),
+        ("query.get_by", Some(Instance::Query(query))) => match query.get_by(&text(args, "chain", member), orm_values(args, "values", member)?).await? {
+            Some(row) => Returned::Instance(Instance::Query(Box::new(row))),
+            None => Returned::Value(Value::Null),
+        },
+        ("query.get_count_by", Some(Instance::Query(query))) => {
+            Returned::Value(Value::from(query.get_count_by(&text(args, "chain", member), orm_values(args, "values", member)?).await?))
+        }
         ("db.connect", None) => Returned::Instance(Instance::Db(
             Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
         )),
@@ -204,7 +328,28 @@ async fn run_case(member: &str, case: &Value) {
     }
 }
 
-// Requirements: CORE-70, CORE-71, CORE-72.
+/// A case of the alias `orm_value` (binding CK-22, U-7): `{id, value, raises}`, a value that `from_host` refuses.
+fn run_alias_case(case: &Value) {
+    let fields = case.as_object().unwrap_or_else(|| panic!("orm_value: a case is an object"));
+    let id = fields.get("id").and_then(Value::as_str).unwrap_or_else(|| panic!("orm_value: a case has an id"));
+    let what = format!("orm_value {id}");
+    assert!(fields.get("rule").and_then(Value::as_str).is_some_and(|rule| !rule.is_empty()), "{what}: the case names its rule");
+    for key in fields.keys() {
+        assert!(["id", "note", "rule", "value", "raises"].contains(&key.as_str()), "{what}: a case of an alias has no key {key}");
+    }
+    let value = fields.get("value").unwrap_or_else(|| panic!("{what}: the case gives its value"));
+    let raises = fields.get("raises").unwrap_or_else(|| panic!("{what}: the case raises a kind"));
+    match orm_value(value, &what) {
+        Ok(value) => panic!("{what}: from_host took the value as {value:?}"),
+        Err(error) => {
+            assert_eq!(raises.get("kind").and_then(Value::as_str), Some(error.kind().as_str()), "{what}: kind of {error}");
+            assert_eq!(raises.get("category").and_then(Value::as_str), Some(error.category().as_str()), "{what}: category of {error}");
+            assert_eq!(raises.get("message").and_then(Value::as_str), Some(error.to_string().as_str()), "{what}: message");
+        }
+    }
+}
+
+// Requirements: CORE-62, CORE-63, CORE-70, CORE-71, CORE-72.
 #[tokio::test]
 async fn the_core_passes_the_cases_of_its_contract() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -213,16 +358,28 @@ async fn the_core_passes_the_cases_of_its_contract() {
     let rows = contract["cases"].as_array().expect("the contract has cases");
     assert!(!rows.is_empty(), "the contract names no cases");
     let mut ran = 0usize;
+    let mut members = 0usize;
     for row in rows {
-        let member = row["member"].as_str().expect("a row of cases names its member");
-        assert_eq!(row["file"].as_str(), Some("contracts/interface/core.json"), "{member}: the case file that this test reads");
-        let group = row["group"].as_str().expect("a row of cases names its group");
-        let group = cases[group].as_array().unwrap_or_else(|| panic!("{member}: contracts/interface/core.json has no group {group}"));
-        assert!(!group.is_empty(), "{member}: its group holds no case");
-        for case in group {
-            run_case(member, case).await;
-            ran += 1;
+        assert_eq!(row["file"].as_str(), Some("contracts/interface/core.json"), "{row}: the case file that this test reads");
+        let name = row["group"].as_str().expect("a row of cases names its group");
+        let group = cases[name].as_array().unwrap_or_else(|| panic!("contracts/interface/core.json has no group {name}"));
+        assert!(!group.is_empty(), "the group {name} holds no case");
+        match (row["member"].as_str(), row["alias"].as_str()) {
+            (Some(member), None) => {
+                members += 1;
+                for case in group {
+                    run_case(member, case).await;
+                    ran += 1;
+                }
+            }
+            (None, Some("orm_value")) => {
+                for case in group {
+                    run_alias_case(case);
+                    ran += 1;
+                }
+            }
+            _ => panic!("{row}: a row of cases names a member, or the alias orm_value"),
         }
     }
-    polyspec_orm_testcase::step(format_args!("ran {ran} cases of {} members", rows.len()));
+    polyspec_orm_testcase::step(format_args!("ran {ran} cases of {members} members and the alias orm_value"));
 }

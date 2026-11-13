@@ -9,11 +9,11 @@ use indexmap::IndexMap;
 use polyspec_orm_schema::chain::{parse_chain, parse_order};
 
 use crate::collection::{AnyCollection, Collection, Key};
-use crate::core::{Arg, Core};
+use crate::core::Core;
 use crate::db::Statement;
 use crate::model::{AnyModel, Boxed, Entity};
 use crate::value::Val;
-use crate::{Connection, Error, Kind, Result, Schema};
+use crate::{Connection, Error, Kind, OrmValue, Result, Schema};
 
 /// The query and the row state of one entity (CORE-81).
 #[derive(Clone)]
@@ -67,7 +67,7 @@ impl Query {
     /// Adds the conditions of the chain name `chain`, one value of `values` per key (CORE-82). A name that starts with
     /// `And` or `Or` joins its first condition to the conditions before it with that connector. A refused name or
     /// number of values is `config` at the next terminal.
-    pub fn where_chain(&mut self, chain: &str, values: Vec<Arg>) {
+    pub fn where_chain(&mut self, chain: &str, values: Vec<OrmValue>) {
         let (connector, name) = match (chain.strip_prefix("And"), chain.strip_prefix("Or")) {
             (Some(rest), _) if starts_a_word(rest) => ("and", rest),
             (_, Some(rest)) if starts_a_word(rest) => ("or", rest),
@@ -76,7 +76,7 @@ impl Query {
         self.chain(connector, name, values);
     }
 
-    fn chain(&mut self, connector: &'static str, name: &str, values: Vec<Arg>) {
+    fn chain(&mut self, connector: &'static str, name: &str, values: Vec<OrmValue>) {
         let manifest = match self.core.entity().schema.manifest() {
             Ok(manifest) => manifest,
             Err(error) => return self.core.fail_err(error),
@@ -85,9 +85,18 @@ impl Query {
             Ok(entity) => entity,
             Err(error) => return self.core.fail_err(error),
         };
-        match parse_chain(&manifest.model, entity, name) {
-            Ok(keys) => self.core.chain_parsed(connector, &keys, values),
-            Err(message) => self.core.fail(message),
+        let keys = match parse_chain(&manifest.model, entity, name) {
+            Ok(keys) => keys,
+            Err(message) => return self.core.fail(message),
+        };
+        if keys.len() != values.len() {
+            return self.core.fail(format!("the condition expects {} values", keys.len()));
+        }
+        // CORE-82: the operator of a key decides what its value is.
+        let args = keys.iter().zip(values).map(|(key, value)| value.into_arg(key.op)).collect::<Result<Vec<_>>>();
+        match args {
+            Ok(args) => self.core.chain_parsed(connector, &keys, args),
+            Err(error) => self.core.fail_err(error),
         }
     }
 
@@ -113,7 +122,7 @@ impl Query {
     }
 
     /// A copy of the query with the conditions of `chain` joined by `and` (CORE-83).
-    fn by(&self, chain: &str, values: Vec<Arg>) -> Query {
+    fn by(&self, chain: &str, values: Vec<OrmValue>) -> Query {
         let mut out = self.clone();
         let connector = if out.core.where_.items.is_empty() { "" } else { "and" };
         out.chain(connector, chain, values);
@@ -143,28 +152,31 @@ impl Query {
     }
 
     /// `get` with the conditions of `chain` joined by `and`; the query does not change (CORE-83).
-    pub async fn get_by(&self, chain: &str, values: Vec<Arg>) -> Result<Option<Query>> {
+    pub async fn get_by(&self, chain: &str, values: Vec<OrmValue>) -> Result<Option<Query>> {
         self.by(chain, values).get().await
     }
 
     /// `gets` with the conditions of `chain` joined by `and`; the query does not change (CORE-83).
-    pub async fn gets_by(&self, chain: &str, values: Vec<Arg>) -> Result<Collection<Query>> {
+    pub async fn gets_by(&self, chain: &str, values: Vec<OrmValue>) -> Result<Collection<Query>> {
         self.by(chain, values).gets().await
     }
 
     /// `get_count` with the conditions of `chain` joined by `and`; the query does not change (CORE-83).
-    pub async fn get_count_by(&self, chain: &str, values: Vec<Arg>) -> Result<i64> {
+    pub async fn get_count_by(&self, chain: &str, values: Vec<OrmValue>) -> Result<i64> {
         self.by(chain, values).get_count().await
     }
 
-    /// The value of the column `column` of a row (CORE-83): a name that is no column of the entity is `column_unknown`,
+    /// The value of the column `column` of a row as `orm_value` (CORE-62, CORE-83): a name that is no column of the entity is `column_unknown`,
     /// and a column that the row did not read is `column_unselected`.
-    pub fn value(&self, column: &str) -> Result<Val> {
-        if !self.is_column(column)? {
+    pub fn value(&self, column: &str) -> Result<OrmValue> {
+        let manifest = self.core.entity().schema.manifest()?;
+        let Some(field) = manifest.entity(self.core.entity().name)?.field(column) else {
             return Err(Error::new(Kind::ColumnUnknown, format!("{}.{column}", self.entity())));
-        }
+        };
         self.core.require_field(column)?;
-        self.values.get(column).cloned().ok_or_else(|| Error::internal(format!("the row read {}.{column} and holds no value of it", self.entity())))
+        let cell =
+            self.values.get(column).cloned().ok_or_else(|| Error::internal(format!("the row read {}.{column} and holds no value of it", self.entity())))?;
+        OrmValue::of_column(field, cell)
     }
 
     fn is_column(&self, name: &str) -> Result<bool> {

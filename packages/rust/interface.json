@@ -37,7 +37,12 @@
   "naming": {
     "exceptions": []
   },
-  "types": {},
+  "types": {
+    "json_value": {
+      "library": "json",
+      "unit": "value"
+    }
+  },
   "errors": {
     "classes": {
       "value": {
@@ -1836,6 +1841,433 @@
       ]
     },
     {
+      "id": "orm_value",
+      "name": [
+        "value"
+      ],
+      "module": "",
+      "kind": "alias",
+      "visibility": "public",
+      "origin": "value",
+      "core_type": "polyspec_orm::OrmValue",
+      "core": {
+        "in": "polyspec_orm::orm_value::from_host",
+        "out": "polyspec_orm::orm_value::to_host"
+      },
+      "in_raises": [
+        "polyspec_orm::Kind::CodecEncode"
+      ],
+      "out": [
+        {
+          "kind": "null",
+          "make": {
+            "php": "null",
+            "python": "null",
+            "node": "null",
+            "go": "null"
+          }
+        },
+        {
+          "kind": "bool",
+          "make": {
+            "php": "bool",
+            "python": "bool",
+            "node": "bool",
+            "go": "bool"
+          }
+        },
+        {
+          "kind": "int",
+          "make": {
+            "php": "int",
+            "python": "int",
+            "node": "int",
+            "go": "int"
+          }
+        },
+        {
+          "kind": "int64",
+          "make": {
+            "php": "int",
+            "python": "int",
+            "node": "bigint",
+            "go": "int"
+          }
+        },
+        {
+          "kind": "float",
+          "make": {
+            "php": "float",
+            "python": "float",
+            "node": "float",
+            "go": "float"
+          }
+        },
+        {
+          "kind": "text",
+          "make": {
+            "php": "text",
+            "python": "text",
+            "node": "text",
+            "go": "text"
+          }
+        },
+        {
+          "kind": "bytes",
+          "make": {
+            "php": "bytes",
+            "python": "bytes",
+            "node": "bytes",
+            "go": "bytes"
+          }
+        },
+        {
+          "kind": "list",
+          "make": {
+            "php": "list",
+            "python": "list",
+            "node": "list",
+            "go": "list"
+          }
+        },
+        {
+          "kind": "map",
+          "make": {
+            "php": "map",
+            "python": "map",
+            "node": "map",
+            "go": "map"
+          }
+        },
+        {
+          "kind": "nested:json_value",
+          "make": {
+            "php": {
+              "value": "json_value"
+            },
+            "python": {
+              "value": "json_value"
+            },
+            "node": {
+              "value": "json_value"
+            },
+            "go": {
+              "value": "json_value"
+            }
+          }
+        }
+      ],
+      "in": [
+        {
+          "php": "null",
+          "cases": [
+            {
+              "kind": "null"
+            }
+          ]
+        },
+        {
+          "php": "bool",
+          "cases": [
+            {
+              "kind": "bool",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "php": "int",
+          "cases": [
+            {
+              "kind": "int64",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "php": "float",
+          "cases": [
+            {
+              "kind": "float",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "php": "string",
+          "cases": [
+            {
+              "when": {
+                "predicate": "utf8",
+                "is": true
+              },
+              "kind": "text",
+              "read": "builtin"
+            },
+            {
+              "when": {
+                "predicate": "utf8",
+                "is": false
+              },
+              "kind": "bytes",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "php": "array",
+          "cases": [
+            {
+              "when": {
+                "predicate": "sequence_keys",
+                "is": true
+              },
+              "kind": "list",
+              "read": "builtin"
+            },
+            {
+              "when": {
+                "predicate": "sequence_keys",
+                "is": false
+              },
+              "kind": "map",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "python": "None",
+          "cases": [
+            {
+              "kind": "null"
+            }
+          ]
+        },
+        {
+          "python": "bool",
+          "cases": [
+            {
+              "kind": "bool",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "python": "int",
+          "cases": [
+            {
+              "kind": "int64",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "python": "float",
+          "cases": [
+            {
+              "kind": "float",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "python": "str",
+          "cases": [
+            {
+              "kind": "text",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "python": "bytes",
+          "cases": [
+            {
+              "kind": "bytes",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "python": "list",
+          "cases": [
+            {
+              "kind": "list",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "python": "dict",
+          "cases": [
+            {
+              "kind": "map",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "node": "null",
+          "cases": [
+            {
+              "kind": "null"
+            }
+          ]
+        },
+        {
+          "node": "boolean",
+          "cases": [
+            {
+              "kind": "bool",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "node": "number",
+          "cases": [
+            {
+              "when": {
+                "predicate": "integral_float",
+                "is": false
+              },
+              "kind": "float",
+              "read": "builtin"
+            },
+            {
+              "when": {
+                "predicate": "safe_integer",
+                "is": true
+              },
+              "kind": "int",
+              "read": "builtin"
+            },
+            {
+              "when": "else",
+              "kind": "float",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "node": "bigint",
+          "cases": [
+            {
+              "kind": "int64",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "node": "string",
+          "cases": [
+            {
+              "kind": "text",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "node": "Uint8Array",
+          "cases": [
+            {
+              "kind": "bytes",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "node": "Array",
+          "cases": [
+            {
+              "kind": "list",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "node": "Map",
+          "cases": [
+            {
+              "kind": "map",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "go": "nil",
+          "cases": [
+            {
+              "kind": "null"
+            }
+          ]
+        },
+        {
+          "go": "bool",
+          "cases": [
+            {
+              "kind": "bool",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "go": "int64",
+          "cases": [
+            {
+              "kind": "int64",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "go": "float64",
+          "cases": [
+            {
+              "kind": "float",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "go": "string",
+          "cases": [
+            {
+              "kind": "text",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "go": "[]byte",
+          "cases": [
+            {
+              "kind": "bytes",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "go": "[]any",
+          "cases": [
+            {
+              "kind": "list",
+              "read": "builtin"
+            }
+          ]
+        },
+        {
+          "go": "map[string]any",
+          "cases": [
+            {
+              "kind": "map",
+              "read": "builtin"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "query",
       "name": [
         "query"
@@ -1929,6 +2361,41 @@
           }
         },
         {
+          "id": "query.where",
+          "name": [
+            "where"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "chain"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "values"
+              ],
+              "type": {
+                "list": {
+                  "unit": "orm_value"
+                }
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::where_chain",
+            "receiver": "&mut self"
+          }
+        },
+        {
           "id": "query.order_by",
           "name": [
             "order",
@@ -1966,6 +2433,8 @@
           "raises": [
             "polyspec_orm::Kind::Config",
             "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
             "polyspec_orm::Kind::Busy",
             "polyspec_orm::Kind::TransactionEnded",
             "polyspec_orm::Kind::Internal",
@@ -1984,6 +2453,156 @@
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Query::get_count",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.value",
+          "name": [
+            "value"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "orm_value"
+          },
+          "raises": [
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::ColumnUnselected",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::SchemaInvalid",
+            "polyspec_orm::Kind::SchemaHashMismatch",
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::value",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.get_by",
+          "name": [
+            "get",
+            "by"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "chain"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "values"
+              ],
+              "type": {
+                "list": {
+                  "unit": "orm_value"
+                }
+              },
+              "required": true
+            }
+          ],
+          "returns": {
+            "optional": {
+              "unit": "query"
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::get_by",
+            "receiver": "&self"
+          },
+          "optional_reason": "CORE-83"
+        },
+        {
+          "id": "query.get_count_by",
+          "name": [
+            "get",
+            "count",
+            "by"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "chain"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "values"
+              ],
+              "type": {
+                "list": {
+                  "unit": "orm_value"
+                }
+              },
+              "required": true
+            }
+          ],
+          "returns": "int64",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::get_count_by",
             "receiver": "&self"
           }
         }
@@ -2036,6 +2655,36 @@
       "member": "query.get_count",
       "file": "contracts/interface/core.json",
       "group": "query.get_count"
+    },
+    {
+      "member": "query.where",
+      "file": "contracts/interface/core.json",
+      "group": "query.where"
+    },
+    {
+      "member": "query.order_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.order_by"
+    },
+    {
+      "member": "query.value",
+      "file": "contracts/interface/core.json",
+      "group": "query.value"
+    },
+    {
+      "member": "query.get_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_by"
+    },
+    {
+      "member": "query.get_count_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_count_by"
+    },
+    {
+      "alias": "orm_value",
+      "file": "contracts/interface/core.json",
+      "group": "orm_value"
     }
   ]
 }

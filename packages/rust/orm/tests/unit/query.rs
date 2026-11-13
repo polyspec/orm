@@ -2,11 +2,9 @@
 // chosen by its name, its chain conditions, its order, its terminals and the values of its rows. The cases that send
 // statements run on a SQLite file of their own.
 
-use crate::args::Value;
-use crate::core::Arg;
 use crate::db::Pool;
 use crate::test_support::Scratch;
-use crate::{Config, Connection, Db, Kind, Param, Query, Schema, Val};
+use crate::{Config, Connection, Db, Kind, OrmValue, Query, Schema};
 
 const CLOCK: &str = include_str!("../../../../../contracts/fixtures/clock.dbs");
 const CLOCK_HASH: &str = "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb";
@@ -15,8 +13,12 @@ fn clock() -> Schema {
     Schema::load(CLOCK, "", CLOCK_HASH).expect("clock.dbs loads")
 }
 
-fn one(value: impl Into<Param>) -> Arg {
-    Arg::Value(Value::One(value.into()))
+fn int(value: i64) -> OrmValue {
+    OrmValue::Int64(value)
+}
+
+fn text(value: &str) -> OrmValue {
+    OrmValue::Text(value.into())
 }
 
 /// A SQLite database with the table of clock.dbs and the rows (1, first), (2, second), (3, third).
@@ -76,10 +78,10 @@ async fn a_chain_that_the_entity_does_not_have_is_config_at_the_terminal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let schema = clock();
     for (chain, args, message) in [
-        ("Missing", vec![one(1_i64)], "config: Missing is not a column of clock_event"),
+        ("Missing", vec![int(1)], "config: Missing is not a column of clock_event"),
         ("", vec![], "config: empty condition name"),
-        ("SeqAndLabel", vec![one(1_i64)], "config: the condition expects 2 values"),
-        ("LkSeq", vec![one(1_i64)], "config: LkSeq: clock_event.seq does not accept the lk operator"),
+        ("SeqAndLabel", vec![int(1)], "config: the condition expects 2 values"),
+        ("LkSeq", vec![int(1)], "config: LkSeq: clock_event.seq does not accept the lk operator"),
     ] {
         let mut query = Query::new(&schema, "clock_event").expect("query");
         query.where_chain(chain, args);
@@ -103,17 +105,17 @@ async fn where_and_order_by_select_and_order_the_rows() {
     let mut query = Query::new(&schema, "clock_event").expect("query");
     query.connect(Connection::from(&db));
     assert_eq!(query.get_count().await.expect("count of every row"), 3);
-    query.where_chain("GtSeq", vec![one(1_i64)]);
+    query.where_chain("GtSeq", vec![int(1)]);
     query.order_by("SeqDesc");
     assert_eq!(query.get_count().await.expect("count"), 2, "seq > 1");
     let rows = query.gets().await.expect("gets");
-    let labels: Vec<Val> = rows.models().map(|row| row.value("label").expect("label")).collect();
-    assert_eq!(labels, [Val::Str("third".into()), Val::Str("second".into())], "seq > 1 in descending order");
+    let labels: Vec<OrmValue> = rows.models().map(|row| row.value("label").expect("label")).collect();
+    assert_eq!(labels, [text("third"), text("second")], "seq > 1 in descending order");
     let first = query.get().await.expect("get").expect("a row");
     assert_eq!(first.entity(), "clock_event");
-    assert_eq!(first.value("seq").expect("seq"), Val::I64(3));
+    assert_eq!(first.value("seq").expect("seq"), int(3), "the integer of an i64 column is int64");
     // A connector at the start of the name joins the chain to the conditions before it.
-    query.where_chain("OrLabel", vec![one("first")]);
+    query.where_chain("OrLabel", vec![text("first")]);
     assert_eq!(query.get_count().await.expect("count"), 3, "seq > 1 or label = first");
     let statement = query.get_query().await.expect("statement");
     assert!(statement.sql.contains(" OR "), "the statement joins the two conditions with OR: {}", statement.sql);
@@ -129,12 +131,12 @@ async fn a_terminal_with_a_chain_leaves_the_query_unchanged() {
     let db = clock_db(&scratch, &schema).await;
     let mut query = Query::new(&schema, "clock_event").expect("query");
     query.connect(Connection::from(&db));
-    query.where_chain("GtSeq", vec![one(1_i64)]);
-    assert_eq!(query.get_count_by("Label", vec![one("third")]).await.expect("count by"), 1, "seq > 1 and label = third");
-    assert_eq!(query.gets_by("LtSeq", vec![one(3_i64)]).await.expect("gets by").len(), 1, "seq > 1 and seq < 3");
-    let row = query.get_by("Label", vec![one("second")]).await.expect("get by").expect("a row");
-    assert_eq!(row.value("seq").expect("seq"), Val::I64(2));
-    assert!(query.get_by("Label", vec![one("first")]).await.expect("get by").is_none(), "seq > 1 and label = first matches no row");
+    query.where_chain("GtSeq", vec![int(1)]);
+    assert_eq!(query.get_count_by("Label", vec![text("third")]).await.expect("count by"), 1, "seq > 1 and label = third");
+    assert_eq!(query.gets_by("LtSeq", vec![int(3)]).await.expect("gets by").len(), 1, "seq > 1 and seq < 3");
+    let row = query.get_by("Label", vec![text("second")]).await.expect("get by").expect("a row");
+    assert_eq!(row.value("seq").expect("seq"), int(2));
+    assert!(query.get_by("Label", vec![text("first")]).await.expect("get by").is_none(), "seq > 1 and label = first matches no row");
     assert_eq!(query.get_count().await.expect("count"), 2, "the query keeps only its own condition");
     db.close().await;
 }
@@ -151,8 +153,8 @@ async fn value_names_a_column_that_the_row_read() {
     let error = query.value("label").expect_err("a query that read no row");
     assert_eq!(error.to_string(), "column_unselected: clock_event.label was not loaded or assigned");
     query.connect(Connection::from(&db));
-    let row = query.get_by("Seq", vec![one(1_i64)]).await.expect("get by").expect("a row");
-    assert_eq!(row.value("label").expect("label"), Val::Str("first".into()));
+    let row = query.get_by("Seq", vec![int(1)]).await.expect("get by").expect("a row");
+    assert_eq!(row.value("label").expect("label"), text("first"));
     let error = row.value("missing").expect_err("no column of the entity");
     assert_eq!(error.to_string(), "column_unknown: clock_event.missing");
     db.close().await;
