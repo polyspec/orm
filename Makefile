@@ -1707,34 +1707,39 @@ orm-test-mysql-privilege-start:
 # make orm-test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make orm-test-servers does it at the
 # start.
-# make orm-test-container KIND=<mysql|postgres|mariadb> starts one test database server in an Apple container from the image
-# that config/containers.json pins by its digest, and writes .runtime/containers/<kind>.env (scripts/test-servers-container.mts).
-# A check reads it as TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and,
-# for MySQL and MariaDB, its published Unix socket; the variables of the replicas and the poolers are absent. Each kind runs at
-# most once in a checkout, and kinds may run together. The container belongs to this checkout: its name holds the identifier
-# of the checkout, so two checkouts run their servers at once (T444). make orm-test-container-stop removes the containers of
-# this checkout and their data, and no other container. make orm-test-container-run KIND=<kind> RUN='<command>' starts the
-# server for that run alone, runs the shell command RUN with the variables of the server, and removes the container when RUN
-# ends or fails, or when the run gets SIGINT or SIGTERM. make orm-install-container-images pulls the pinned images.
-# CONTAINER_PROGRAM names the container program, which each of these targets passes to the script.
+# make orm-test-container KIND=<mysql|postgres|mariadb> starts the test database servers of one kind as a Compose project that
+# bay runs, from the images that config/containers.json pins by their digests, and writes .runtime/containers/<kind>.env
+# (scripts/test-servers-container.mts; CONTRIBUTING.md "Test database servers in containers", BAY1). A check reads it as
+# TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and, for MySQL and
+# PostgreSQL, its replica; the variables of the poolers and of a Unix socket are absent. A kind is started at most once in a
+# checkout, and kinds may run together. Each start is a project of its own below .runtime/containers of this checkout, so two
+# checkouts run their servers at once (T444). make orm-test-container-stop removes the projects of this checkout and their
+# data, and no other project. make orm-test-container-run KIND=<kind> RUN='<command>' starts the servers for that run alone,
+# runs the shell command RUN with the variables of the servers, and removes the project when RUN ends or fails, or when the
+# run gets SIGINT or SIGTERM. BAY_PROGRAM names bay, which starts and removes the servers. CONTAINER_PROGRAM names the
+# container engine, which the script runs only for the images, because bay pulls no image on a command of its own (BAY3): a
+# start asks it whether an image is on the machine, and make orm-install-container-images, the only target that downloads,
+# pulls the pinned images with it. Both name the programs of macOS (BAY5, BAY6).
+BAY_PROGRAM = /opt/homebrew/bin/bay
 CONTAINER_PROGRAM = /opt/homebrew/bin/container
+CONTAINER_PROGRAMS = BAY_PROGRAM=$(BAY_PROGRAM) CONTAINER_PROGRAM=$(CONTAINER_PROGRAM)
 .PHONY: orm-test-container orm-test-container-run orm-test-container-stop orm-install-container-images
 orm-test-container:
-	CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts start $(KIND)
+	$(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts start $(KIND)
 
 orm-test-container-run: export ORM_CONTAINER_RUN = $(value RUN)
 orm-test-container-run:
-	CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts run $(KIND) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts run $(KIND) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts stop
+	LEASE=$(LEASE) $(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts stop
 
 orm-install-container-images:
-	$(ONLINE) CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts pull
+	$(ONLINE) $(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts pull
 
-# orm-test-container-check runs the tests of scripts/test-servers-container.mts against a stand-in container program that
-# each test writes, so it needs no container runtime (T444).
+# orm-test-container-check runs the tests of scripts/test-servers-container.mts against a stand-in bay and a stand-in
+# container engine that each test writes, so it needs no container and no image (BAY1, T444).
 .PHONY: orm-test-container-check
 orm-test-container-check:
 	$(RUN_TESTS) node -- --test-concurrency=1 scripts/test-servers-container.test.mts

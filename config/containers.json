@@ -1,5 +1,5 @@
 {
-  "comment": "The images of the test database containers of make orm-test-container (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds. make orm-install-container-images pulls them.",
+  "comment": "The images of the test database servers that make orm-test-container starts as a Compose project of bay (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds. make orm-install-container-images pulls them with the container engine, and no start pulls one.",
   "images": {
     "mysql": { "version": "8.4.11", "reference": "docker.io/library/mysql@sha256:0744ee5ef89ce6ccfa13de3e579fe6b9e27f93dd70da9c06d2c908b1b193fb8d" },
     "postgres": { "version": "17.11", "reference": "docker.io/library/postgres@sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232" },

@@ -284,6 +284,7 @@
         "scripts/test-servers.mts",
         "config/containers.json",
         "tests/testcase.mts",
+        "tests/errors.mts",
         "tests/environment.mts"
       ]
     },

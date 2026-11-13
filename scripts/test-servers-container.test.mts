@@ -5,13 +5,14 @@
 // a service address with a suffix of the stand-in alone, and status --json prints each recorded project with the
 // address of each service in that form, so a script that holds a suffix of its own fails. Each call of both stand-ins is a
 // line of calls.log. Neither stand-in starts a process that stays, so nothing outlives a test (HR-87). Each test names
-// two checkouts by two directories of its own.
+// two checkouts by two directories of its own. A test runs the stand-ins and openssl, which issues the keys of each start, as
+// child processes, so each has the deadline of the class PROCESS.
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { X509Certificate } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
-import { caseTest, COMPUTE, withTemporaryDirectory } from '../tests/testcase.mts';
+import { caseTest, PROCESS, withTemporaryDirectory } from '../tests/testcase.mts';
 import { remove, run, start, type Context } from './test-servers-container.mts';
 import { ORM_ACCOUNTS_SQL } from './test-servers.mts';
 
@@ -59,7 +60,7 @@ else if (command === 'status' && rest.join(' ') === '--json') {
     const directory = readFileSync(join(${JSON.stringify(stand.state)}, name), 'utf8');
     if (directory === '') return { name, stackPath: '', services: null };
     const text = readFileSync(join(directory, 'compose.yaml'), 'utf8');
-    const services = [...text.matchAll(/^ {2}([a-z-]+):\n(?: {4}.*\n)*? {4}expose: \["(\d+)"\]$/gm)].map(([, service, port]) =>
+    const services = [...text.matchAll(/^ {2}([a-z-]+):\\n(?: {4}.*\\n)*? {4}expose: \\["(\\d+)"\\]$/gm)].map(([, service, port]) =>
       ({ name: service, container: name + '-' + service, state: 'running', ipv4: '${ADDRESS}', address: name + '-' + service + '.' + suffix + ':' + port, accepting: true }));
     return { name, stackPath: join(directory, 'compose.yaml'), services };
   });
@@ -129,7 +130,7 @@ function only(root: string): string {
 
 const compose = (root: string, project: string) => readFileSync(join(containers(root), project, 'compose.yaml'), 'utf8');
 
-caseTest('two checkouts start a server of the same kind at once, each as a project of its own (BAY1, T444)', COMPUTE, () =>
+caseTest('two checkouts start a server of the same kind at once, each as a project of its own (BAY1, T444)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [first, second] = checkouts(dir, stand);
@@ -140,7 +141,7 @@ caseTest('two checkouts start a server of the same kind at once, each as a proje
       const [one, two] = [only(first.root), only(second.root)];
       assert.notEqual(one.slice(0, 16), two.slice(0, 16), 'two checkouts have the same identifier in their project names');
       assert.deepEqual(readdirSync(stand.state).sort(), ['another-project', one, two].sort());
-      assert.equal(readFileSync(join(stand.state, one), 'utf8'), join(containers(first.root), one), 'bay up did not run in the directory of the project');
+      assert.equal(readFileSync(join(stand.state, one), 'utf8'), realpathSync(join(containers(first.root), one)), 'bay up did not run in the directory of the project');
       for (const { root } of [first, second]) assert.ok(existsSync(join(containers(root), 'mysql.env')), `${root} has no environment file`);
       remove(first);
       assert.deepEqual(readdirSync(stand.state).sort(), ['another-project', two].sort());
@@ -152,7 +153,7 @@ caseTest('two checkouts start a server of the same kind at once, each as a proje
     });
   }));
 
-caseTest('the Compose file of MySQL has a service for each server, pinned images, a healthcheck over TCP and no published port (BAY1)', COMPUTE, () =>
+caseTest('the Compose file of MySQL has a service for each server, pinned images, a healthcheck over TCP and no published port (BAY1)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -193,7 +194,7 @@ caseTest('the Compose file of MySQL has a service for each server, pinned images
     });
   }));
 
-caseTest('the Compose files of PostgreSQL and MariaDB run the readiness program of their server and escape each dollar sign (BAY1)', COMPUTE, () =>
+caseTest('the Compose files of PostgreSQL and MariaDB run the readiness program of their server and escape each dollar sign (BAY1)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [postgres, mariadb] = checkouts(dir, stand);
@@ -224,7 +225,7 @@ caseTest('the Compose files of PostgreSQL and MariaDB run the readiness program 
     });
   }));
 
-caseTest('a run removes its project when its command ends, fails or gets SIGINT or SIGTERM (BAY1, T444)', COMPUTE, () =>
+caseTest('a run removes its project when its command ends, fails or gets SIGINT or SIGTERM (BAY1, T444)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -252,7 +253,7 @@ caseTest('a run removes its project when its command ends, fails or gets SIGINT 
     });
   }));
 
-caseTest('two runs of one kind in one checkout have a project each, and a second start of a kind is refused (BAY1)', COMPUTE, () =>
+caseTest('two runs of one kind in one checkout have a project each, and a second start of a kind is refused (BAY1)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -271,7 +272,7 @@ caseTest('two runs of one kind in one checkout have a project each, and a second
     });
   }));
 
-caseTest('a start whose bay up fails prints the last lines of each service and removes its project (BAY1, T444)', COMPUTE, () =>
+caseTest('a start whose bay up fails prints the last lines of each service and removes its project (BAY1, T444)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -285,7 +286,7 @@ caseTest('a start whose bay up fails prints the last lines of each service and r
     });
   }));
 
-caseTest('a start pulls no image: an absent image fails naming the install target, before bay runs (BAY1)', COMPUTE, () =>
+caseTest('a start pulls no image: an absent image fails naming the install target, before bay runs (BAY1)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -297,7 +298,7 @@ caseTest('a start pulls no image: an absent image fails naming the install targe
     });
   }));
 
-caseTest('a start with a missing program fails naming the program and what provides it, and creates nothing (BAY1)', COMPUTE, () =>
+caseTest('a start with a missing program fails naming the program and what provides it, and creates nothing (BAY1)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -310,7 +311,7 @@ caseTest('a start with a missing program fails naming the program and what provi
     });
   }));
 
-caseTest('a start reads each address from bay: a service that bay reports at another address fails the start and removes its project (BAY1)', COMPUTE, () =>
+caseTest('a start reads each address from bay: a service that bay reports at another address fails the start and removes its project (BAY1)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
