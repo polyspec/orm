@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 86762c7f2c8ca2490506172abcfca77221f8b5bd259c591c4360ababbe694a3e -->
+<!-- source-sha256: ece1a82e7737ae7d88b703af1eeb0b7019d94240145048ac69b9c6ffb07207f0 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -78,6 +78,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 | `tls/other-ca.pem` | TLS case의 두 번째 CA. 아무것도 서명하지 않는다 |
 | `<service>-init/` | service의 초기화 file |
 | `runner-setup.sh`, `build.sh`, `check.sh`, `repo.bundle` | runner 형태: 설치, build command, run의 command, run의 commit |
+| `socket-build.sh`, `socket-check.sh`, `programs/` | Unix socket을 통한 check: runner 안의 build, primary의 container 안의 command, program |
 | `compose.build.yaml`, `compose.run.yaml` | runner 형태: runner만 있는 Compose file과 server가 있는 Compose file. `compose.yaml`은 둘 중 하나의 복사본이다 |
 | `report/` | run이 기록하는 것: `bay-version`, `steps.log`, runner 형태에서는 command의 출력과 status, runner의 memory |
 
@@ -140,7 +141,7 @@ runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fus
 
 **다른 machine에서의 run.** `bay`는 자신이 실행되는 machine에서만 project를 시작하고 제거하므로, server를 다른 machine에 두는 것은 run 전체가 그곳에서 실행되는 것이다. `make orm-test-container-remote KIND=<kind> RUN='<command>' HOST=<ssh host> REMOTE=<directory>`는 그 machine의 `bay`의 plan을 `ssh`로 읽어 runner 형태의 run을 쓰고, run의 directory를 tar archive로 `ssh`를 통해 `<directory>/<project>`에 보내고, `ssh <host> sh <directory>/<project>/run.sh`를 실행하고, `report/`를 `.runtime/containers/reports/<project>`로 가져오고, `KEEP=1`이 아니면 그곳의 directory를 제거한다. 그 exit status는 `run.sh`의 것이다. `run.sh`는 machine을 적지 않는다. 이 target만 host와 directory를 적는다.
 
-**Unix socket을 통한 check.** `bay`는 Unix socket을 host에 publish하지 않고, container의 socket은 다른 container에서 닿지 않는다. Apple `container`의 container는 각자 kernel을 가지기 때문이다. 그래서 `servers.env`에는 `ORM_TEST_MYSQL_SOCKET`과 `ORM_TEST_MARIADB_SOCKET`이 없고, server의 socket으로 연결하는 check는 그 server의 container 안에서 실행된다. BAY8이 runner 형태에서 구현하는 설계는 다음과 같다. runner가 socket 변수를 읽는 각 program을 Linux용 static executable로 build한다. MySQL과 MariaDB의 image는 runner와 다른 library를 가지기 때문이다. build는 server의 service가 read-only로 mount하는 run의 directory에 둔다. `run.sh`는 image의 socket path와 project의 DSN을 주어 `bay exec -e <변수>=<값> <server service> <program>`을 실행하고, 그 command의 exit status가 check의 결과다. BAY8이 끝날 때까지 socket 변수를 읽는 check는 변수 이름을 적어 실패한다.
+**Unix socket을 통한 check.** `bay`는 Unix socket을 host에 publish하지 않고, container의 socket은 다른 container에서 닿지 않는다. Apple `container`의 container는 각자 kernel을 가지기 때문이다. 그래서 `servers.env`에는 `ORM_TEST_MYSQL_SOCKET`과 `ORM_TEST_MARIADB_SOCKET`이 없고, 거기서 그 변수를 읽는 check는 변수 이름을 적어 실패한다. server의 socket으로 연결하는 check는 `SOCKET_BUILD`와 `SOCKET_RUN`을 받은 runner의 run에서 그 server의 container 안에서 실행된다. server가 시작하기 전에 runner가 clone 안에서 `SOCKET_BUILD`를 실행한다(`socket-build.sh`). 이 command는 check의 program을 run의 directory인 `ORM_RUN_PROGRAMS` 아래에 Linux용 static executable로 남긴다. MySQL과 MariaDB의 image는 runner와 다른 library를 가지기 때문이다. 이를 위해 runner의 setup은 `musl-tools`와 Rust target `<processor>-unknown-linux-musl`도 설치한다. check가 socket을 쓰는 primary는 run의 directory를 read-only로 mount하므로, program과 그것이 읽는 clone이 그 container 안에 있다. run의 command 뒤에 `run.sh`는 `bay exec -e <socket 변수>=<image의 socket path> <primary> sh /orm-run/socket-check.sh`를 실행하고, 이 file은 `servers.env`의 변수로 `SOCKET_RUN`을 실행한다. 그 출력은 `report/socket.log`, exit status는 `report/socket-status`다. 이 check는 run의 command가 실패했을 때도 실행되고, 그 실패는 command가 통과한 run을 실패시킨다. PostgreSQL에는 socket 변수가 없고 host 형태에는 runner가 없다. 둘 다 이 두 값을 거부한다.
 
 **kind당 start 하나.** `make orm-test-container`는 checkout에서 이미 시작했고 `make orm-test-container-stop`이 아직 제거하지 않은 kind를 거부한다. `.runtime/containers/<kind>.env`가 project 하나를 가리키기 때문이다. `make orm-test-container-run`의 run은 세지 않는다. 각 run은 자기 project를 가지고 공유 file을 쓰지 않는다.
 
