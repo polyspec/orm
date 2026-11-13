@@ -28,7 +28,7 @@ import (
 
 // conformanceDir is the directory of the shared suite: cases.json, flowmark.version, corpus/.
 // The working directory of go test is this package directory.
-const conformanceDir = "../../../tests/markdown"
+var conformanceDir = testcase.LegacyPath("tests/markdown")
 
 // flowmarkModule is the module path that must be the main module of the build FLOWMARK points to.
 const flowmarkModule = "github.com/polyspec/flowmark/packages/go"
