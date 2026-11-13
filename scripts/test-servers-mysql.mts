@@ -26,8 +26,8 @@ import { pathToFileURL } from 'node:url';
 import { runLong, stepLines, type Step } from '../tests/testcase.mts';
 import { readJsonFile } from './json/schema.mts';
 
-/** The context of a migration step: its step line writer and, when it has one, its abort signal. */
-type Context = { step?: Step; signal?: AbortSignal };
+/** The context of a migration step: its step line writer. A step is a long operation with no deadline, so it takes no abort. */
+type Context = { step?: Step };
 /** The options of run: the step context, the standard input, and a writer of the standard output. */
 type RunOptions = Context & { input?: Buffer | string; output?: (chunk: Buffer) => void };
 
@@ -67,23 +67,19 @@ export function countDifferences(before: Record<string, number>, after: Record<s
   return out;
 }
 
-// run executes the program and returns its stdout. stderr lines are emitted as steps. On a signal, it ends the process.
-function run(program: string, args: string[], { signal, step, input, output }: RunOptions = {}): Promise<string> {
+// run executes the program and returns its stdout when the program has ended. stderr lines are emitted as steps.
+function run(program: string, args: string[], { step, input, output }: RunOptions = {}): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(program, args, { stdio: [input ? 'pipe' : 'ignore', output ? 'pipe' : 'pipe', 'pipe'] });
     const lines = step ? stepLines(step) : null;
     const chunks: Buffer[] = [];
     child.stdout?.on('data', (chunk: Buffer) => { if (output) output(chunk); else chunks.push(chunk); });
     child.stderr?.on('data', (chunk: Buffer) => lines?.write(String(chunk)));
-    const stop = () => child.kill('SIGKILL');
-    signal?.addEventListener('abort', stop, { once: true });
     if (input) { child.stdin?.end(input); }
     child.on('error', reject);
     child.on('close', code => {
-      signal?.removeEventListener('abort', stop);
       lines?.flush();
-      if (signal?.aborted) reject(signal.reason);
-      else if (code === 0) resolve(Buffer.concat(chunks).toString());
+      if (code === 0) resolve(Buffer.concat(chunks).toString());
       else reject(new Error(`${program} ${args.filter(arg => !arg.startsWith('-p')).join(' ')} exited with ${code}`));
     });
   });

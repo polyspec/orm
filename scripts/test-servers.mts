@@ -505,14 +505,16 @@ function mysqlTimezones(p: Paths, port: number): void {
 // startLogged runs a server in a new session (spawn's detached, setsid on POSIX: the server outlives the command that
 // started it and several runs share it, so ending the process group of the starting command does not reach it), with
 // its output appended to <dir>/<name>.log and its process id in <dir>/<name>.pid. Starting a server is a long operation:
-// it has no deadline, and its result is an observed event. The log is read on each change event of the file; each line
-// before the ready line is shown on stderr as "test-servers: <name>: <line>". It resolves when the server logs a line
-// that contains <line>, and fails when the server exits first, naming the server and the last lines of its log.
-/** STARTUP_TIMEOUT_MS is how long a server may take to log its ready line; a start that takes longer is a failure, never a wait. */
-export const STARTUP_TIMEOUT_MS = 600_000;
-
-/** startLogged waits for the ready line of a server, at most timeoutMs: a start that never logs it fails with its step and log path. */
-export function startLogged(dir: string, name: string, line: string, command: string, args: string[], env?: NodeJS.ProcessEnv, timeoutMs = STARTUP_TIMEOUT_MS): Promise<void> {
+// it has no deadline, and its result is an observed event (docs/spec/feature-coverage.md FCV-18). The log is read on each
+// change event of the file, and once when the server has started, after the watcher is attached, so a line that is already
+// written is seen; each line before the ready line is shown on stderr as "test-servers: <name>: <line>". It resolves when
+// the server logs a line that contains <line>, and fails when the server exits first, naming the server and the last lines
+// of its log. It names what it waits for when it starts.
+//
+// A start is cancelled by `cancel`, or by SIGINT or SIGTERM of this process while it waits: the server is asked to end
+// (SIGTERM to its group), the start waits for its exit with no time limit, and it fails with the cancellation and its log.
+// No SIGKILL is sent. A request that cannot be sent is kept beside the cancellation.
+export function startLogged(dir: string, name: string, line: string, command: string, args: string[], env?: NodeJS.ProcessEnv, cancel?: AbortSignal): Promise<void> {
   const log = join(dir, `${name}.log`);
   const fd = openSync(log, 'a');
   // The server's lines start at the size of the log before the server starts: read after the spawn, the size could
@@ -520,57 +522,71 @@ export function startLogged(dir: string, name: string, line: string, command: st
   let offset = statSync(log).size, pending = '', done = false;
   const child = spawn(command, args, { detached: true, stdio: ['ignore', fd, fd], env });
   closeSync(fd);
+  process.stderr.write(`test-servers: ${name}: waits for the line '${line}' with no time limit; its log is ${log}\n`);
   return new Promise((resolveStart, rejectStart) => {
     const reader = openSync(log, 'r');
-    let timingOut = false;
+    let cancelling = false;
+    const interrupted = (signal: NodeJS.Signals) => { void cancelStart(`this process got ${signal}`); };
+    const aborted = () => { void cancelStart(cancel?.reason instanceof Error ? cancel.reason.message : String(cancel?.reason)); };
     const finish = (error?: TestServerError) => {
       if (done) return;
       done = true;
       watcher.close();
-      clearInterval(backstop);
-      clearTimeout(deadline);
+      cancel?.removeEventListener('abort', aborted);
+      process.removeListener('SIGINT', interrupted);
+      process.removeListener('SIGTERM', interrupted);
       closeSync(reader);
       child.unref();
       if (error) rejectStart(error); else resolveStart();
     };
     const read = () => {
-      if (done || timingOut) return;
+      if (done || cancelling) return;
       const chunk = Buffer.alloc(65536);
       for (let n; (n = readSync(reader, chunk, 0, chunk.length, offset)) > 0; offset += n) pending += chunk.subarray(0, n).toString('utf8');
       const lines = pending.split('\n');
       pending = lines.pop() ?? '';
       for (const text of lines) {
-        if (done || timingOut) return;
+        if (done || cancelling) return;
         process.stderr.write(`test-servers: ${name}: ${text}\n`);
         if (text.includes(line)) finish();
       }
     };
     const watcher = watch(log, read);
-    // The watcher can miss an event, so the log is also read on a timer: a ready line already written is then never waited for.
-    const backstop = setInterval(read, 500);
-    // A start that does not log its ready line in time fails here, with the step and the log, and its server is stopped.
-    const timeout = async () => {
-      if (done || timingOut) return;
-      timingOut = true;
-      const primary = new TestServerError(`test-servers: ${name} did not log '${line}' within ${timeoutMs / 1000}s; its log is ${log}`);
-      let cleanup: unknown;
-      if (child.pid !== undefined) {
-        const exited = child.exitCode !== null || child.signalCode !== null ? undefined : new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
-        try { process.kill(-child.pid, 'SIGKILL'); }
-        catch (error) { if (errorCode(error) !== 'ESRCH') cleanup = error; }
-        if (cleanup === undefined && exited) await exited;
+    // A cancelled start asks its server to end and fails when the server has exited, with the cancellation and the log.
+    const cancelStart = async (reason: string) => {
+      if (done || cancelling) return;
+      cancelling = true;
+      const primary = new TestServerError(`test-servers: the start of ${name} was cancelled before it logged '${line}': ${reason}; its log is ${log}`);
+      let refused: unknown;
+      if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
+        const exited = new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
+        let sent = false;
+        try {
+          process.kill(-child.pid, 'SIGTERM');
+          sent = true;
+        } catch (error) {
+          // ESRCH: the group ended before the request.
+          if (errorCode(error) !== 'ESRCH') refused = error;
+        }
+        if (sent) {
+          process.stderr.write(`test-servers: ${name}: sent SIGTERM to process group ${child.pid} and waits for its exit with no time limit\n`);
+          await exited;
+        }
       }
-      if (cleanup === undefined) finish(primary);
+      if (refused === undefined) finish(primary);
       else {
-        const message = `${primary.message}; cleanup of process group ${child.pid} failed: ${errorMessage(cleanup)}`;
-        finish(new TestServerError(message, 1, { cause: new AggregateError([primary, cleanup], message) }));
+        const message = `${primary.message}; SIGTERM could not be sent to process group ${child.pid}: ${errorMessage(refused)}`;
+        finish(new TestServerError(message, 1, { cause: new AggregateError([primary, refused], message) }));
       }
     };
-    const deadline = setTimeout(() => { void timeout(); }, timeoutMs);
-    child.on('error', error => { if (!timingOut) finish(new TestServerError(`test-servers: ${name}: ${error.message}`)); });
+    if (cancel?.aborted) aborted();
+    else cancel?.addEventListener('abort', aborted, { once: true });
+    process.once('SIGINT', interrupted);
+    process.once('SIGTERM', interrupted);
+    child.on('error', error => { if (!cancelling) finish(new TestServerError(`test-servers: ${name}: ${error.message}`)); });
     child.on('spawn', () => { writeFileSync(join(dir, `${name}.pid`), `${child.pid}\n`); read(); });
     child.on('exit', () => {
-      if (done || timingOut) return;
+      if (done || cancelling) return;
       read();
       if (pending !== '') { const last = pending; pending = ''; process.stderr.write(`test-servers: ${name}: ${last}\n`); if (last.includes(line)) finish(); }
       const tail = readFileSync(log, 'utf8').split('\n').filter((text, index, all) => index < all.length - 1 || text !== '').slice(-20).join('\n');

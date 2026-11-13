@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 09b1c0c8d50d4dc4d03bd646d2bda4d4e7a06dd44547d7d6db850a9c191af98f -->
+<!-- source-sha256: e101924bac8a67650b680c98330e7c0a68b23b390476065c5d259ac7b0e5dcd7 -->
 # 변경 이력
 
 ## Unreleased
+
+- program을 소유한 runner는 그것을 요청으로 멈추고 program이 끝난 뒤 자기 실행을 보고한다(T390, FCV-18). scripts/features/coverage.mts의 `run`은 deadline과 출력 한도에서(한도를 넘는 출력은 가지지 않는다), scripts/physical.mts의 `run`은 deadline에서, tests/interfaces/check/extract.mts의 `run`은 abort에서 SIGKILL 대신 `stopGroup`으로 SIGTERM을 전달하고, interface checker의 reaper는 SIGTERM을 전달하고 요청한 것을 적는다. scripts/test-servers.mts의 `startLogged`는 ready 줄을 log의 change event와 server의 exit로 기다리고, `test-servers: <name>: waits for the line '<line>' with no time limit; its log is <log>`를 출력하며, 취소, SIGINT, SIGTERM에는 server에 SIGTERM을 전달하고 server가 exit한 뒤 `the start of <name> was cancelled before it logged '<line>'`으로 실패한다. 전에는 500 ms마다 log를 읽고 600초 뒤 SIGKILL을 전달했다. scripts/test-servers-mysql.mts의 `run`은 어느 caller도 주지 않던 abort signal을 받지 않는다. startLogged case 셋 가운데 둘은 실행하지 않았다: 그 cleanup은 `make orm-test-servers-check`가 build하는 program이 필요하다.
 
 - check runner는 단계의 process group을 요청으로 멈추고 그 끝을 event로 기다린다(T462, FCV-18). scripts/check/step.mts의 `stopGroup`은 SIGTERM을 전달하고, `check: sent SIGTERM to process group <group> and waits for its end with no time limit: <pid> <command>, ...`를 출력하고, 단계 출력의 close를 기다리고, 아직 살아 있는 process를 돌려주며 단계가 그것을 적는다. 전에는 timer로 3초를 기다린 뒤 SIGKILL을 전달했다. 중단된 runner는 단계를 받지 않고(`check: the runner was interrupted and admits no step; run the check again`), 자기 단계의 group에 SIGTERM을 전달하고, 그 단계가 끝나고 검사된 뒤 그 signal의 status로 끝난다. 전에는 SIGKILL을 전달하고 바로 끝났다.
 
