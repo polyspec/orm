@@ -211,11 +211,80 @@ the core that differ from the rules that the language implementations of `legacy
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
-- **CORE-84** Not implemented: the writes of a `Query` (`set`, `create`, `creates`, `update`, `save`, `delete`,
-  `restore`, `restoreOrCreate`, `expectRevision`), `join`, `leftJoin`, `match`, `alias`, `addColumn`, the groups
-  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `whereIn`, `compare`, `getsCount`,
-  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg` and `toArray`. A condition on a function of a column or of a
-  value (DSL-54), which `where` cannot take as `orm_value`, is not implemented either.
+- **CORE-84** Not implemented: `creates`, `save`, `restore` and `restoreOrCreate` of a `Query`, `join`, `leftJoin`, the
+  groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
+  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`, and an added column of a function or of a subquery
+  (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
+  `orm_value`, is not implemented either.
+- **CORE-85** `limit(offset, count)` reads at most `count` rows after the first `offset` rows of the order (DSL-99).
+  Both are `uint`, so a negative value has no form; a `count` of 0 is `config` at the next terminal with the message
+  `limit requires a non-negative offset and a positive count`. A `Query` given to `relation` or `relations` with a limit
+  is `limit_in_relation` (DSL-79).
+- **CORE-86** The row locks of a `Query` are `for_update`, `for_share`, `for_update_no_wait` and `for_share_no_wait`,
+  the members `forUpdate`, `forShare`, `forUpdateNoWait` and `forShareNoWait` of the language implementations
+  (DSL-123). Each sets the lock `update`, `share`, `update_nowait` or `share_nowait` of the request, and the last one
+  called holds. A lock applies to `get` and `gets`, of the root `Query` or of a `Query` given to `relation` or
+  `relations`, whose own statement then takes it (PRT-8); `get_count` with a lock is `ir_invalid`. SQLite has no lock
+  clause and takes its lock in the transaction (INT-49), so a lock outside a transaction on SQLite is `config` with the
+  message `SQLite row locks require an ORM transaction`.
+- **CORE-87** The columns that a row of a `Query` reads (PRT-9): `add_all_columns` reads every column,
+  `remove_all_columns` keeps the columns of the primary key and of the foreign keys, `add_column(column)` adds one
+  column and `remove_column(column)` removes one (DSL-72, DSL-75 to DSL-77). A column is named by its name in the
+  dbspec document, as `value` names it. A name that is no column of the entity is `config` at the next terminal with
+  the message `<column> is not a column of <entity>`. `value` of a column that the row did not read is
+  `column_unselected` (CORE-83).
+- **CORE-88** `match_pair(pair)` adds a component of the relation key, a name `<Left>With<Right>` whose `Left` is a
+  column of any entity of the schema, the parent, and whose `Right` is a column of the entity of the `Query`, read by
+  `split_pair` of `polyspec-orm-schema` (DSL-82). `alias(name)` names the result (DSL-83); without it the result is
+  `<entity>_model` or `<entity>_models`, and the name of an alias is its snake case. `relation(child)` attaches the
+  row of a separate query of `child` to each row and `relations(child)` its rows (DSL-79 to DSL-81); a `child` without
+  `match_pair` is `config` with the message `relation child <entity> requires match_<l>_with_<r>()`. A `child` may hold
+  its own lock (CORE-86). `related(name)` returns the row of a `relation` result of a row and `related_rows(name)` the
+  rows of a `relations` result; a row without the result `name` returns `None`, and a result of the other form is
+  `internal`.
+- **CORE-89** `key_name(column)` keys the `Collection` of `gets`, and the rows of a `relations` result of the `Query`,
+  by the column `column` in place of the primary key (DSL-70). A name that is no column of the entity is `config` at the
+  next terminal with the message `<column> is not a column of <entity>`.
+- **CORE-90** `where_in(chain, query)` adds the condition that the column of the chain name `chain`, one key with no
+  operator or with `Ne`, is in, or with `Ne` is not in, the rows of the subquery `query`, which reads one column
+  (DSL-53). A chain of another key count or operator is `config` at the next terminal with the message `where_in
+  takes a chain of one key with no operator or with Ne`. The subquery takes no limit, relation, lock or columns other
+  than its one column; another is `ir_invalid` with the message `subquery may not use limit, relations, lock or columns`.
+- **CORE-91** The writes of a `Query`, as the writes of a generated model (DSL-100, DSL-103, DSL-106, DSL-108, DSL-110): `set(column, value)`
+  assigns an `orm_value` to a column for the next write, `create` inserts the row of the assignments and returns the
+  created row, `update` writes the assignments to the row, `delete` deletes the row, and `expect_revision(column,
+  revision)` makes the next `update` or `delete` write only while the integer column holds `revision`. The row of
+  `update` and `delete` is the row that the `Query` read, or, in a `Query` that read no row, the row of the primary key
+  that `set` assigned; with neither the write is `config` with the message `<entity> requires a loaded row or a set
+  primary key <column>`. A name that is no column of the entity is `config` with the message `<column> is not a column
+  of <entity>`, and a value that the column cannot take is `codec_encode` (CORE-62). A write fails with the kind of its
+  cause, such as `duplicate_key` (CORE-10).
+- **CORE-92** The `Db` step is a query of the core of another library, held as data, that a host runs with orm without a
+  judgement of its own: `StepRunner::new(schema, connection)` runs its steps on `connection` and `run(step)` takes one
+  step as JSON text and returns its outcome as JSON text. A query step is `{"kind": "query", "query": <query>,
+  "terminal": <terminal>}`: `<query>` is `{"entity": <name>, "calls": [<call>, ...]}`, each call a member of `Query`
+  with its arguments in the order of the calls (`{"call": "where", "chain": .., "values": [..]}`, `where_in` with
+  `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
+  `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
+  with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, and `expect_revision` with
+  `column` and `revision`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
+  value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or `{"error": {"kind":
+  <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
+  a failure means. The result of `get` and `create` is `{"row": <row>}` with `null` for no row, of `gets` `{"rows":
+  [{"key": <key>, "row": <row>}, ...]}` in the order of the collection with its key (CORE-89), of `get_count`
+  `{"count": <n>}`, and of `update`, `delete` and the steps of CORE-93 `{}`. A row is `{"values": {<column>:
+  <value>}, "related": {<name>: <row> | null | [<row>, ...]}}` with the columns that it read. A text that is no step
+  is `config`.
+- **CORE-93** A transaction step `{"kind": "transaction", "options": {..}}` opens a transaction (CORE-20) whose callback
+  runs the steps that follow, and a savepoint step `{"kind": "savepoint"}` opens a savepoint of the innermost one
+  (CORE-21) whose callback runs the steps that follow; the step `{"kind": "end", "rollback": <bool>}` ends the callback
+  of the innermost one, which commits or releases it when `rollback` is false and rolls it back when it is true, and
+  its outcome is the outcome of that end, such as `deadlock` of a commit. The options are `isolation`, `read_only`,
+  `timeout_ms` and `audit`, the map of the audit values of CORE-20; a transaction of a step runs with `retry` 0, since
+  the core that asked runs it again on `deadlock`. A savepoint or an end with no open transaction is `config`, and
+  `StepRunner::close` rolls back every open one, innermost first, and returns when they ended; a runner dropped with an
+  open transaction rolls it back when its callback sees that no step can come.
 
 ## Interface contract
 

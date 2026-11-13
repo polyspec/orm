@@ -180,11 +180,74 @@
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
-- **CORE-84** 구현되지 않았다: `Query`의 쓰기(`set`, `create`, `creates`, `update`, `save`, `delete`, `restore`,
-  `restoreOrCreate`, `expectRevision`), `join`, `leftJoin`, `match`, `alias`, `addColumn`, 묶음(`andGroup`, `orGroup`,
-  `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `whereIn`, `compare`, `getsCount`, `getsPage`,
-  `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`. 열이나 값의 함수에 대한 조건(DSL-54)도 구현되지 않았다. `where`가
-  그것을 `orm_value`로 받을 수 없기 때문이다.
+- **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `restore`, `restoreOrCreate`, `join`, `leftJoin`, 묶음
+  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`, `getsPage`,
+  `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
+  조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
+- **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
+  `uint`여서 음수 값은 형식이 없다. `count`가 0이면 다음 terminal에서 `config`이고 메시지는 `limit requires a
+  non-negative offset and a positive count`다. limit을 가진 `Query`를 `relation`이나 `relations`에 주면
+  `limit_in_relation`이다(DSL-79).
+- **CORE-86** `Query`의 행 lock은 `for_update`, `for_share`, `for_update_no_wait`, `for_share_no_wait`이며, 언어 구현의
+  member `forUpdate`, `forShare`, `forUpdateNoWait`, `forShareNoWait`이다(DSL-123). 각각 요청의 lock `update`, `share`,
+  `update_nowait`, `share_nowait`을 정하고, 마지막에 부른 것이 남는다. lock은 root `Query`나 `relation`·`relations`에
+  준 `Query`의 `get`과 `gets`에 걸리며, 그 경우 그 `Query`의 statement가 lock을 잡는다(PRT-8). lock을 가진
+  `get_count`는 `ir_invalid`다. SQLite에는 lock 절이 없고 transaction 안에서 lock을 잡으므로(INT-49), SQLite에서
+  transaction 밖의 lock은 `config`이고 메시지는 `SQLite row locks require an ORM transaction`이다.
+- **CORE-87** `Query`의 행이 읽는 열(PRT-9): `add_all_columns`는 모든 열을 읽고, `remove_all_columns`는 primary key와
+  foreign key의 열만 남기며, `add_column(column)`은 열 하나를 더하고 `remove_column(column)`은 열 하나를 뺀다(DSL-72,
+  DSL-75~DSL-77). 열은 `value`처럼 dbspec 문서의 이름으로 부른다. 엔티티의 열이 아닌 이름은 다음 terminal에서
+  `config`이고 메시지는 `<column> is not a column of <entity>`다. 행이 읽지 않은 열의 `value`는
+  `column_unselected`다(CORE-83).
+- **CORE-88** `match_pair(pair)`는 relation key의 구성 요소 하나를 더한다. 이름은 `<Left>With<Right>`이고, `Left`는
+  schema의 어느 엔티티(부모)의 열이며 `Right`는 `Query` 엔티티의 열이고, `polyspec-orm-schema`의 `split_pair`가
+  읽는다(DSL-82). `alias(name)`은 결과의 이름을 정한다(DSL-83). 그것이 없으면 결과는 `<entity>_model`이나
+  `<entity>_models`이고, alias의 이름은 그 snake case다. `relation(child)`는 `child`의 별도 질의가 읽은 행 하나를 각
+  행에 붙이고 `relations(child)`는 그 행들을 붙인다(DSL-79~DSL-81). `match_pair`가 없는 `child`는 `config`이고 메시지는
+  `relation child <entity> requires match_<l>_with_<r>()`이다. `child`는 자기 lock을 가질 수 있다(CORE-86).
+  `related(name)`은 행의 `relation` 결과의 행을, `related_rows(name)`은 `relations` 결과의 행들을 돌려준다. 결과
+  `name`이 없는 행은 `None`을 돌려주고, 다른 형식의 결과는 `internal`이다.
+- **CORE-89** `key_name(column)`은 `gets`의 `Collection`과 그 `Query`의 `relations` 결과의 행을 primary key 대신 열
+  `column`으로 key한다(DSL-70). 엔티티의 열이 아닌 이름은 다음 terminal에서 `config`이고 메시지는 `<column> is not a
+  column of <entity>`다.
+- **CORE-90** `where_in(chain, query)`는 chain 이름 `chain`의 열(연산자가 없거나 `Ne`인 key 하나)이 열 하나를 읽는
+  subquery `query`의 행 안에 있다는, `Ne`이면 없다는 조건을 더한다(DSL-53). key 수나 연산자가 다른 chain은 다음
+  terminal에서 `config`이고 메시지는 `where_in takes a chain of one key with no operator or with Ne`다. subquery는 limit,
+  relation, lock, 그 열 하나 밖의 열을 받지 않으며, 그 밖의 것은 `ir_invalid`이고 메시지는 `subquery may not use limit,
+  relations, lock or columns`다.
+- **CORE-91** `Query`의 쓰기는 생성된 모델의 쓰기와 같다(DSL-100, DSL-103, DSL-106, DSL-108, DSL-110):
+  `set(column, value)`는 다음 쓰기를 위해 열에 `orm_value`를 배정하고, `create`는 배정한 행을 넣고 만든 행을 돌려주며,
+  `update`는 배정한 값을 행에 쓰고, `delete`는 행을 지우며, `expect_revision(column, revision)`은 다음 `update`나
+  `delete`가 정수 열이 `revision`을 가지고 있는 동안에만 쓰게 한다. `update`와 `delete`의 행은 `Query`가 읽은 행이고,
+  행을 읽지 않은 `Query`에서는 `set`이 배정한 primary key의 행이다. 둘 다 없으면 쓰기는 `config`이고 메시지는 `<entity>
+  requires a loaded row or a set primary key <column>`이다. 엔티티의 열이 아닌 이름은 `config`이고 메시지는 `<column> is
+  not a column of <entity>`이며, 열이 받을 수 없는 값은 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그
+  원인의 kind로 실패한다(CORE-10).
+- **CORE-92** `Db` step은 다른 library의 코어가 데이터로 가진 질의이고, host는 자기 판단 없이 그것을 orm으로 실행한다:
+  `StepRunner::new(schema, connection)`는 그 step을 `connection`에서 실행하고, `run(step)`은 step 하나를 JSON 텍스트로
+  받아 그 결과를 JSON 텍스트로 돌려준다. 질의 step은 `{"kind": "query", "query": <query>, "terminal": <terminal>}`이다.
+  `<query>`는 `{"entity": <name>, "calls": [<call>, ...]}`이고, call은 각각 `Query`의 member와 그 인자이며 call의
+  순서대로 실행된다(`{"call": "where", "chain": .., "values": [..]}`, `chain`과 `query`를 가진 `where_in`, `spec`을 가진
+  `order_by`, `offset`과 `count`를 가진 `limit`, lock 넷, `add_all_columns`, `remove_all_columns`, `column`을 가진
+  `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
+  `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`).
+  `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
+  형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은 `{"kind": "json_value",
+  "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진 `{"error":
+  {"kind": <kind>, "message": <message>}}`이므로, 부탁한 코어가 실패의 뜻을 정한다. `get`과 `create`의 result는
+  `{"row": <row>}`이고 행이 없으면 `null`이며, `gets`의 result는 collection의 순서와 그 key(CORE-89)를 가진 `{"rows":
+  [{"key": <key>, "row": <row>}, ...]}`, `get_count`의 result는 `{"count": <n>}`, `update`, `delete`, CORE-93의 step의
+  result는 `{}`다. 행은 그 행이 읽은 열을 가진 `{"values": {<column>: <value>}, "related": {<name>: <row> | null |
+  [<row>, ...]}}`이다. step이 아닌 텍스트는 `config`다.
+- **CORE-93** transaction step `{"kind": "transaction", "options": {..}}`는 뒤따르는 step을 callback이 실행하는
+  transaction을 열고(CORE-20), savepoint step `{"kind": "savepoint"}`는 가장 안쪽 것의 savepoint를 열며 그 callback이
+  뒤따르는 step을 실행한다(CORE-21). step `{"kind": "end", "rollback": <bool>}`은 가장 안쪽 것의 callback을 끝내며,
+  `rollback`이 false이면 commit하거나 release하고 true이면 rollback한다. 그 결과는 그 끝의 결과다(예: commit의
+  `deadlock`). option은 `isolation`, `read_only`, `timeout_ms`, 그리고 CORE-20의 audit 값의 map인 `audit`이다. step의
+  transaction은 `retry` 0으로 실행된다. 부탁한 코어가 `deadlock`에서 그것을 다시 실행하기 때문이다. 열린
+  transaction이 없을 때의 savepoint나 end는 `config`이고, `StepRunner::close`는 열린 것을 가장 안쪽부터 모두
+  rollback하고 그것들이 끝난 뒤 돌아온다. 열린 transaction을 가진 채 놓인 runner는, 그 callback이 더는 step이 올 수
+  없음을 알 때 그것을 rollback한다.
 
 ## 인터페이스 계약
 
