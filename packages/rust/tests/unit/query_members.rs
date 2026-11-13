@@ -169,3 +169,50 @@ async fn a_lock_needs_a_transaction() {
     assert_eq!(locked, Some(OrmValue::Text("b@x".into())));
     db.close().await;
 }
+
+/// The message of the value of `column` of `row`: `Ok` with the value, or the error text.
+fn read(row: &Query, column: &str) -> std::result::Result<OrmValue, String> {
+    row.value(column).map_err(|error| error.to_string())
+}
+
+// Requirements: CORE-87. The default select set leaves out a column of select explicit; add_all_columns reads it,
+// remove_all_columns keeps the keys, add_column adds one column and remove_column removes one.
+#[tokio::test]
+async fn the_columns_of_a_row_follow_the_column_members() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-columns");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let unselected = |column: &str| Err(format!("column_unselected: account.{column} was not loaded or assigned"));
+    let mut first = query(&schema, "account", &db);
+    first.where_chain("Seq", vec![int(1)]);
+    let row = first.get().await.expect("get").expect("a row");
+    assert_eq!(read(&row, "name"), unselected("name"), "select explicit leaves name out");
+    assert_eq!(read(&row, "email"), Ok(OrmValue::Text("a@x".into())));
+    let mut all = first.clone();
+    all.add_all_columns();
+    assert_eq!(read(&all.get().await.expect("get").expect("a row"), "name"), Ok(OrmValue::Text("Ann".into())));
+    let mut keys = first.clone();
+    keys.remove_all_columns();
+    let row = keys.get().await.expect("get").expect("a row");
+    assert_eq!(read(&row, "seq"), Ok(int(1)), "the primary key stays");
+    assert_eq!(read(&row, "email"), unselected("email"));
+    let mut added = first.clone();
+    added.remove_all_columns();
+    added.add_column("name");
+    let row = added.get().await.expect("get").expect("a row");
+    assert_eq!(read(&row, "name"), Ok(OrmValue::Text("Ann".into())));
+    assert_eq!(read(&row, "revision"), unselected("revision"));
+    let mut removed = first.clone();
+    removed.remove_column("email");
+    let row = removed.get().await.expect("get").expect("a row");
+    assert_eq!(read(&row, "email"), unselected("email"));
+    assert_eq!(read(&row, "revision"), Ok(int(0)));
+    for (member, call) in [("add_column", Query::add_column as fn(&mut Query, &str)), ("remove_column", Query::remove_column)] {
+        let mut unknown = first.clone();
+        call(&mut unknown, "missing");
+        let error = failure(unknown.get().await, member);
+        assert_eq!(error.to_string(), "config: missing is not a column of account", "{member}");
+    }
+    db.close().await;
+}
