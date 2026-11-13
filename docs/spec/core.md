@@ -437,7 +437,10 @@ their receiver, and the contract names no `machine`. They wait for a release of 
   `gets`, `gets_by`) are not declared either.
 - **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
   names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
-  instance value, and a failure states its kind, its category and its whole message (CORE-12). The core runs every such
+  instance value, and a failure states its kind, its category and its whole message (CORE-12). The calls of `after`
+  observe the receiver of a method after its call, each as `{call, args, result}`; a member without a receiver names no
+  `after`, and the instance that it returns is observed by the cases of its methods, whose receiver it makes (binding
+  G-5). The core runs every such
   group by the functions that the contract names, and a group that names a member that the test cannot call fails.
 - **CORE-72** A case that needs a database is not implemented: a SQLite DSN holds an absolute path (CFG-11) and a
   server DSN is given by the run, and the case form has no value for either. `contracts/interface/core.json` holds only

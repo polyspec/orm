@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 7a5c77b268ef6f2c594866ca38dd0bea10cbde0e9072eb49f23589cafc75c037 -->
+<!-- source-sha256: 15211c60bb4339c2397aba09fd025a9c82091e5643b640307a325e15509c1cfe -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -366,7 +366,9 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
   타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다.
 - **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
   형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
-  전체(CORE-12)를 적는다. 코어는 그 모든 group을 계약이 이름하는 함수로 실행하고, 시험이 부를 수 없는 member를
+  전체(CORE-12)를 적는다. `after`의 호출은 method를 부른 뒤의 receiver를 관찰하고, 각각 `{call, args, result}`다.
+  receiver가 없는 member는 `after`를 적지 않는다. 그 member가 돌려준 인스턴스는 그것을 receiver로 만드는 method의
+  case가 관찰한다(binding G-5). 코어는 그 모든 group을 계약이 이름하는 함수로 실행하고, 시험이 부를 수 없는 member를
   이름하는 group은 실패한다.
 - **CORE-72** 데이터베이스가 필요한 case는 구현되지 않았다: SQLite DSN은 절대 경로를 담고(CFG-11) 서버 DSN은 실행이
   주는데, case 형식에는 그 어느 쪽의 값도 없다. `contracts/interface/core.json`은 문장을 보내지 않는 case만 담고,

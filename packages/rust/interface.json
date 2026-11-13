@@ -4501,6 +4501,16 @@
       "group": "query.delete"
     },
     {
+      "member": "query.restore",
+      "file": "contracts/interface/core.json",
+      "group": "query.restore"
+    },
+    {
+      "member": "query.restore_or_create",
+      "file": "contracts/interface/core.json",
+      "group": "query.restore_or_create"
+    },
+    {
       "alias": "orm_value",
       "file": "contracts/interface/core.json",
       "group": "orm_value"

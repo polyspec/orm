@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9e0a43a4d7cc59f4d1393830b53d2de7c53934e6649e56b8206aec287ec31f44 -->
+<!-- source-sha256: 7463d7fe0087d9709ba482f510df8a6e2c9b26366ce67648d902b19f60b52f15 -->
 # 변경 이력
 
 ## Unreleased
 
+- binding의 계약 검사가 `packages/rust/interface.json`에서 보고하는 CK-22 finding이 118개다. 전에는 152개였다(OM-1.2-5). case 19개의 `after` 호출에서 key `on`을 뺐고, `aes_keyring.constructor`, `schema.load`, `query.new`, `runtime_model.load`의 case는 `after`를 적지 않는다. binding은 method의 receiver만 관찰하고(G-5), 코어의 case runner는 이제 그 형식을 읽는다(CORE-71). `query.get_by`, `query.get_count_by`, `query.create`, `query.update`, `query.delete`, `query.restore`는 `empty_in`과 `codec_encode`의 case를 가진다. 연결이 없는 query가 이 두 kind를 일으킨다. 계약은 `query.restore`와 `query.restore_or_create`의 case group을 적는다. 전에는 `cases`의 어느 행도 그 group을 적지 않아서 코어가 실행하지 않았다.
 - `node --test scripts/features/owners.test.mts`의 case 53개가 통과한다(T465). 전에는 8개가 실패했다. `contracts/check-inputs.json`에서 `rust-lock-check`는 없는 파일 `packages/rust/Cargo.lock` 대신 root의 `Cargo.toml`과 `Cargo.lock`을 적는다. `recipe-runners-check`는 다섯 runtime의 runner가 있는 `legacy/packages/**`를 적는다. `legacy/` 아래 input을 가진 target 122개는 자기가 적은 fixture와 vector pattern마다 `legacy/` 아래의 사본을 함께 적는다(pattern 277개). target 세 개는 `legacy/tests/dbspec/files/**`를 적는다. 그래서 `legacy/contracts/fixtures`와 `legacy/tests`의 모든 파일이 check를 고른다. 시험 이름 검사(`scripts/features/test-names.mts`, FCV-7)는 전에 읽지 않던 command 안의 `legacy/` 아래 path를 읽고, Makefile의 `$(foreach ...)`를 단어마다 한 번씩 펼친다. 그래서 `--exclude <crate>`를 값을 가진 flag로 읽는다.
 - Breaking (0.x): `make rust-send-savepoint-check`를 `SEND_SQLITE_DSN`, 그리고 실행의 환경 파일에 쓰던 `ORM_SEND_SQLITE_DSN`과 함께 없앴다(T465). 그 시험 filter `tx::send_tests::`는 코어에 더 없는 module을 가리켜서, target은 시험을 하나도 실행하지 않았다.
 - `node scripts/features/check.mts`가 통과한다(T464). 전에는 오류 15개를 보고했다. feature `transactions`는 `packages/rust/src/tx_send_tests.rs`를 더 적지 않는다. transaction의 send 형식을 없앤 뒤로 그 파일은 tree에 없다. `contracts/implementations.json`은 Go 시험 `paths_from_root_test.go`와 `root_test.go` 열 개, 그리고 `packages/rust/src/error.rs`의 시험을 이유와 함께 선언한다. Go 시험 열 개는 시험이 checkout을 찾는 위치를 시험한다. 시험이 없는 `legacy/packages/php/tests/repository_root.php`와 `packages/rust/programs/src/recipe_error.rs`는 support 파일로 적는다.

@@ -104,24 +104,7 @@
           "k1"
         ]
       ],
-      "current": 2,
-      "after": [
-        {
-          "on": "result",
-          "call": "aes_keyring.current",
-          "args": {},
-          "result": 2
-        },
-        {
-          "on": "result",
-          "call": "aes_keyring.versions",
-          "args": {},
-          "result": [
-            1,
-            2
-          ]
-        }
-      ]
+      "current": 2
     },
     {
       "id": "current_not_declared",
@@ -241,15 +224,7 @@
       "rule": "CORE-80",
       "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
       "external_text": "",
-      "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb",
-      "after": [
-        {
-          "on": "result",
-          "call": "schema.hash",
-          "args": {},
-          "result": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
-        }
-      ]
+      "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
     },
     {
       "id": "no_manifest",
@@ -303,15 +278,7 @@
           "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
         }
       },
-      "entity": "clock_event",
-      "after": [
-        {
-          "on": "result",
-          "call": "query.entity",
-          "args": {},
-          "result": "clock_event"
-        }
-      ]
+      "entity": "clock_event"
     },
     {
       "id": "entity_unknown",
@@ -664,7 +631,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -694,7 +660,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -812,6 +777,66 @@
         "category": "value",
         "message": "config: Missing is not a column of clock_event"
       }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "chain": "Seq",
+      "values": [
+        {
+          "kind": "list",
+          "value": []
+        }
+      ],
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: seq received an empty list"
+      }
+    },
+    {
+      "id": "a_map_is_no_condition_value",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "chain": "Seq",
+      "values": [
+        {
+          "kind": "map",
+          "value": {}
+        }
+      ],
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a condition is a map"
+      }
     }
   ],
   "query.get_count_by": [
@@ -879,6 +904,36 @@
         "category": "value",
         "message": "codec_encode: the value of a condition is a list inside a list"
       }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "chain": "Seq",
+      "values": [
+        {
+          "kind": "list",
+          "value": []
+        }
+      ],
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: seq received an empty list"
+      }
     }
   ],
   "orm_value": [
@@ -919,7 +974,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -948,7 +1002,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -977,7 +1030,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1006,7 +1058,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1035,7 +1086,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1064,7 +1114,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1093,7 +1142,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1123,7 +1171,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1153,7 +1200,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1183,7 +1229,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1213,7 +1258,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1264,7 +1308,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1315,7 +1358,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1389,7 +1431,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1441,7 +1482,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1475,7 +1515,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1506,7 +1545,6 @@
       "result": null,
       "after": [
         {
-          "on": "receiver",
           "call": "query.entity",
           "args": {},
           "result": "clock_event"
@@ -1549,6 +1587,100 @@
         "category": "value",
         "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
       }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "list",
+                  "value": []
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: seq received an empty list"
+      }
+    },
+    {
+      "id": "a_map_is_no_condition_value",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "map",
+                  "value": {}
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a condition is a map"
+      }
     }
   ],
   "query.update": [
@@ -1585,6 +1717,100 @@
         "kind": "config",
         "category": "value",
         "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
+      }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "list",
+                  "value": []
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: seq received an empty list"
+      }
+    },
+    {
+      "id": "a_map_is_no_condition_value",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "map",
+                  "value": {}
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a condition is a map"
       }
     }
   ],
@@ -1623,6 +1849,100 @@
         "category": "value",
         "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
       }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "list",
+                  "value": []
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: seq received an empty list"
+      }
+    },
+    {
+      "id": "a_map_is_no_condition_value",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "map",
+                  "value": {}
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a condition is a map"
+      }
     }
   ],
   "query.restore": [
@@ -1659,6 +1979,100 @@
         "kind": "config",
         "category": "value",
         "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
+      }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "list",
+                  "value": []
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "empty_in",
+        "category": "value",
+        "message": "empty_in: seq received an empty list"
+      }
+    },
+    {
+      "id": "a_map_is_no_condition_value",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "map",
+                  "value": {}
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a condition is a map"
       }
     }
   ],
@@ -1847,19 +2261,7 @@
     {
       "id": "a_model",
       "rule": "FMS-30",
-      "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}",
-      "after": [
-        {
-          "on": "result",
-          "call": "runtime_model.operator_allowed",
-          "args": {
-            "entity": "note",
-            "column": "label",
-            "operator": "contains"
-          },
-          "result": true
-        }
-      ]
+      "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
     },
     {
       "id": "no_object",

@@ -481,23 +481,22 @@ async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
             }
         }
         (Ok(Returned::Instance(instance)), None) => {
-            assert!(fields.get("result").is_none(), "{what}: a class result is observed by after, not by result");
+            assert!(fields.get("result").is_none(), "{what}: a class result is observed by the cases of its methods, not by result");
             result = Some(instance);
         }
     }
+    // The calls of after observe the receiver of a method after its call (binding G-5, GN-6ae): a member without a
+    // receiver names none, and the instance that it returns is observed by the cases of its methods, whose receiver it makes.
     let after = fields.get("after").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
-    assert!(result.is_none() || !after.is_empty(), "{what}: the case observes nothing of the instance it made");
+    assert!(after.is_empty() || receiver.is_some(), "{what}: the member has no receiver, so the case names no after");
     let empty = Map::new();
     for step in after {
-        let on = step.get("on").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an after step names on"));
         let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an after step names call"));
+        for key in step.as_object().unwrap_or_else(|| panic!("{what}: an after step is an object")).keys() {
+            assert!(["call", "args", "result"].contains(&key.as_str()), "{what}: an after step has no key {key}");
+        }
         let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {name} is no object")));
-        let target = match on {
-            "receiver" => receiver.as_mut(),
-            "result" => result.as_mut(),
-            other => panic!("{what}: the case runner observes no {other}"),
-        };
-        let target = target.unwrap_or_else(|| panic!("{what}: the case has no {on} to observe"));
+        let target = receiver.as_mut().unwrap_or_else(|| panic!("{what}: the case has no receiver to observe"));
         match call(name, Some(target), args).await {
             Ok(Returned::Value(value)) => assert_eq!(Some(&value), step.get("result"), "{what}: after {name}"),
             Ok(Returned::Instance(_)) => panic!("{what}: after {name} returns an instance"),
