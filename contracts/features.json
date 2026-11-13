@@ -2186,7 +2186,6 @@
         "legacy/packages/python/tests/statement_fault.py",
         "legacy/packages/python/tests/test_statement_fault_entry.py",
         "packages/rust/src/tx.rs",
-        "packages/rust/src/tx_send_tests.rs",
         "legacy/packages/python/tests/test_rollback_fault.py",
         "legacy/packages/python/tests/test_sqlite.py",
         "legacy/packages/python/tests/test_utils_statements.py",
@@ -2436,8 +2435,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts transaction-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --lib tx::",
           "shard": "rust",
           "inputs": [
-            "packages/rust/src/tx.rs",
-            "packages/rust/src/tx_send_tests.rs"
+            "packages/rust/src/tx.rs"
           ]
         },
         {

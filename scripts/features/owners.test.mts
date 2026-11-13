@@ -62,11 +62,11 @@ caseTest('a changed path selects the lint target of its language', 5000, async (
 });
 
 // The transaction-end case (G5.45-1) checks that for a file containing a test, the file selects the command that runs that test. Rust's tx.rs has its own
-// tests module and tx_send_tests.rs, and Go's transaction_end_test.go, context_reset_test.go,
+// tests module, and Go's transaction_end_test.go, context_reset_test.go,
 // cancelled_session_test.go tests cleanup at transaction end. failing_driver_test.go, which that test uses, is a helper, so it selects only its own
 // check (go-test-helpers).
 caseTest('a changed file selects the transaction end tests that it holds or that test it', 5000, async () => {
-  for (const path of ['packages/rust/src/tx.rs', 'packages/rust/src/tx_send_tests.rs'])
+  for (const path of ['packages/rust/src/tx.rs'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust'], path);
   for (const path of ['legacy/packages/go/orm/transaction_end_test.go', 'legacy/packages/go/orm/context_reset_test.go', 'legacy/packages/go/orm/cancelled_session_test.go'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-end-go'], path);
@@ -105,8 +105,6 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
   const [first] = owners;
   assert.ok(first);
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by tests/dbspec/schema-definition.json)']);
-  // The Rust send tests are a declared input of transaction-end-rust; they are not inputs to interface extraction.
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust']);
 });
 
 caseTest('a missing named fixture is optional and a directory named as a fixture keeps its read error', 5000, async () => {

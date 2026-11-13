@@ -286,6 +286,46 @@
         {
           "glob": "legacy/packages/go/orm/catalog_temporal_test.go",
           "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
+        },
+        {
+          "glob": "legacy/packages/go/bindmessages/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/engine/dbspec/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/engine/ir/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/engine/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/generator/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/markdownmodel/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/orm/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/orm/sqlite/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/internal/recipe/root_test.go",
+          "reason": "harness: the interface check of a recipe step of the Go runner starts at the repository root, whatever the working directory is (T448); it tests the recipe runner, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/testcase/root_test.go",
+          "reason": "harness: RepositoryRoot and LegacyRoot of the Go test harness find the checkout by go.work (T447); it tests the harness, not a behaviour of the contract"
         }
       ]
     },
@@ -401,7 +441,8 @@
         "legacy/packages/php/tests/CatalogPdoCases.php",
         "legacy/packages/php/tests/RecipeKeys.php",
         "legacy/packages/php/tests/dbspec_cases.php",
-        "legacy/packages/php/tests/RecipeGenerator.php"
+        "legacy/packages/php/tests/RecipeGenerator.php",
+        "legacy/packages/php/tests/repository_root.php"
       ],
       "internal": [
         {
@@ -1071,7 +1112,8 @@
         "packages/rust/testcase/tests/cases/lib.rs",
         "packages/rust/build/tests/cases/common/table_column.rs",
         "packages/rust/tests/cases/common/result_code.rs",
-        "packages/rust/schema/tests/cases/common/or_panic.rs"
+        "packages/rust/schema/tests/cases/common/or_panic.rs",
+        "packages/rust/programs/src/recipe_error.rs"
       ],
       "internal": [
         {
@@ -1281,6 +1323,10 @@
         {
           "glob": "packages/rust/tests/unit/cancel.rs",
           "reason": "test: the cancellation that a handle of the core carries (docs/spec/core.md CORE-45, CORE-46), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/src/error.rs",
+          "reason": "test: the message of an error of the core and the two errors that a failed rollback keeps (docs/spec/core.md CORE-12, CORE-25), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
         }
       ]
     }
