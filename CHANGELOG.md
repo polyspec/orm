@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The test harnesses prepare every database in one form where one exists (T426-8): the Go apply pairs read `dbspec$plans` unquoted, the TypeScript and Python case databases are created unquoted as in Go, PHP and Rust, a SQLite test DSN no longer states the busy_timeout of CFG-12, so the default is tested, and the TypeScript cancellation handle cases run on a case database on every database. The checklist lists every database branch of the harnesses and recipe runners with its kind; the SQLite cancellation in flight (T426-9) and the SQLite commit of a catalog row change (T426-10) are open.
+
 - Breaking (0.x): MySQL and MariaDB render a paged read as `LIMIT n OFFSET off`, as PostgreSQL and SQLite do (T426-7, DIA-3), in the planner of every runtime. The count binds before the offset on every database, so the bind slots of a plan, the binds of `getQuery` and the statement events have one order; before, MySQL rendered `LIMIT off, n` and bound the offset first. The rows read are unchanged.
 
 ## 0.0.33

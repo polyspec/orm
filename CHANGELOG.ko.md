@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7e3d4f120ffd9bdc661f7c762bb97d4c2ffc02df140d86da37b812cfa911d071 -->
+<!-- source-sha256: 9818527b6995ceed7536218b33116a00e785f4f8d179a01b9a4b9c7d4f84aba0 -->
 # 변경 이력
 
 ## Unreleased
+
+- test harness는 한 형식이 있는 곳에서 모든 database를 그 형식으로 준비한다(T426-8). Go apply pair는 `dbspec$plans`를 인용 없이 읽는다. TypeScript와 Python의 case database는 Go, PHP, Rust처럼 인용 없이 만든다. SQLite 시험 DSN은 CFG-12의 busy_timeout을 더는 적지 않으므로 기본값이 시험된다. TypeScript cancellation handle case는 모든 database에서 case database로 돈다. checklist는 harness와 recipe runner의 database 분기를 모두 종류와 함께 적는다. SQLite의 실행 중 취소(T426-9)와 catalog 행 변경의 SQLite commit(T426-10)은 열려 있다.
 
 - 호환 깨짐(0.x): MySQL과 MariaDB는 PostgreSQL과 SQLite처럼 paged read를 `LIMIT n OFFSET off`로 그린다(T426-7, DIA-3). 모든 runtime의 planner가 그렇다. count는 모든 database에서 offset보다 먼저 bind되므로, plan의 bind slot과 `getQuery`의 bind, statement event가 한 순서를 갖는다. 전에는 MySQL이 `LIMIT off, n`을 그리고 offset을 먼저 bind했다. 읽는 행은 바뀌지 않는다.
 
