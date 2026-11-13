@@ -214,6 +214,7 @@ fn main() {
         polyspec_orm_testcase::Group::new("tool_limits", polyspec_orm_build_cases::tool_limits::trials),
         polyspec_orm_testcase::Group::new("tool_statement", polyspec_orm_build_cases::tool_statement::trials),
         polyspec_orm_testcase::Group::new("tool_values", polyspec_orm_build_cases::tool_values::trials),
+        polyspec_orm_testcase::Group::new("transaction_end", polyspec_orm_cases::transaction_end::trials),
         polyspec_orm_testcase::Group::new("transaction_flow", polyspec_orm_cases::transaction_flow::trials),
         polyspec_orm_testcase::Group::new("typed_binds", polyspec_orm_build_cases::typed_binds::trials),
         polyspec_orm_testcase::Group::new("value_types", polyspec_orm_cases::value_types::trials),

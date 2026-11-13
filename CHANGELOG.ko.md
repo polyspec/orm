@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d307df7f5c099f9b0cd1c70a6489980796d3b5269dcae8d5ebe9cfaf50be1b29 -->
+<!-- source-sha256: c968654cfbffff3e8602fc3505c7473414e31506f63576298d404e061581c6cc -->
 # 변경 이력
 
 ## Unreleased
 
+- 라이브러리 `polyspec-orm`의 단위 시험은 데이터베이스 서버가 필요 없다(OM-1.4-1): MySQL이나 PostgreSQL이 필요한 transaction 종료 시험 다섯(`failed_cleanup_discards_the_connection`, `every_failed_cleanup_step_is_reported`, `panicking_callback_ends_its_transaction`, `dropped_transaction_closes_its_connection`, `failed_local_reset_is_reported`)은 같은 기대값으로 Rust 시험 프로그램의 group `transaction_end`가 되었으므로, binding e2e 실행이 서버 없이 돌리는 `cargo test -p polyspec-orm`이 통과한다. 시험 진입점 `polyspec_orm::testing`에는 서버가 connection을 끊은 transaction의 종료 단계인 `killed_transaction_cleanup`과 `killed_transaction_rollback`이 있다.
 - `Cargo.lock`은 `polyspec-binding-core`를 binding 49a4e97에 고정하고, binding 패키지는 그 binding scaffold가 쓰는 것이다(OM-1.4): 각 binding crate는 자기 lint를 선언하던 대신 루트 workspace의 lint를 받으므로(`lints.workspace = true`) make layout-check가 그 `Cargo.toml`에서 더는 실패하지 않고, `src/lib.rs`의 attribute는 cargo fmt의 줄 너비에 맞는다. Go와 WASM crate는 `polyspec-json`을 이름한다. 코어에는 `binding_core::fault`의 fault 지점이 없으므로 feature `fault-test`를 선언하지 않는다.
 - Rust 코어의 schema parser는 codec stage `ordered_json`을 같은 encoding의 stage `json`으로 읽는다(OM-3.5-3, CORE-61, DBS-69): `codec <column> ordered_json`은 `codec stage "ordered_json" is unknown`으로 거부되었으므로, 언어 구현이 읽는 문서가 그런 stage마다 진단을 받았다. 그런 문서의 canonical form은 `json`을 쓴다.
 - Go, PHP, PHP 확장, Python, TypeScript 언어 구현은 `legacy/packages/`로 옮겨 모든 릴리스에서 빠진다(CORE-1). 그 시험은 `legacy/contracts/fixtures/`와 `legacy/tests/`에 둔 공유 case·fixture·vector의 고정 사본을 읽고, `packages/rust/interface.json`에서 생성하는 바인딩이 그 자리를 대신한다.
