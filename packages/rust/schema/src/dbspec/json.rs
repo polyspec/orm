@@ -303,7 +303,10 @@ fn column_to_json(column: &Column) -> Value {
 /// The canonical text of a check literal, which validation sets.
 fn literal_text(literal: &Literal, table: &str, check: &str) -> Result<Value, String> {
     if literal.text.is_empty() {
-        return Err(format!("check {check} of table {table} holds the literal {} without its canonical text; the document is not validated", literal.value.describe()));
+        return Err(format!(
+            "check {check} of table {table} holds the literal {} without its canonical text; the document is not validated",
+            literal.value.describe()
+        ));
     }
     Ok(Value::from(literal.text.as_str()))
 }
@@ -480,8 +483,7 @@ pub fn document_from_json(value: &Value) -> Result<Document, String> {
 }
 
 fn table_from_json(value: &Value, at: &str) -> Result<Table, String> {
-    let members =
-        object(value, at, &["comments", "name", "columns", "primary_key", "uniques", "indexes", "foreign_keys", "checks", "settings", "closing"])?;
+    let members = object(value, at, &["comments", "name", "columns", "primary_key", "uniques", "indexes", "foreign_keys", "checks", "settings", "closing"])?;
     let primary = match members.get("primary_key") {
         Some(value) => {
             let at = &format!("{at}.primary_key");
@@ -732,7 +734,11 @@ fn store_from_json(members: &Map<String, Value>, at: &str) -> Result<Setting, St
         Some(value) => {
             let at = &format!("{at}.shard");
             let members = object(value, at, &["column", "period"])?;
-            Some(StoreShard { keyword: word("shard"), column: name(members, at, "column")?, period: word(one_of(members, at, "period", &["year", "month", "day"])?) })
+            Some(StoreShard {
+                keyword: word("shard"),
+                column: name(members, at, "column")?,
+                period: word(one_of(members, at, "period", &["year", "month", "day"])?),
+            })
         }
         None => None,
     };
@@ -938,11 +944,8 @@ fn entity_from_json(value: &Value, at: &str) -> Result<Entity, String> {
 }
 
 fn field_from_json(value: &Value, at: &str) -> Result<Field, String> {
-    let members = object(
-        value,
-        at,
-        &["name", "type", "nullable", "identity", "primary_key", "foreign_key", "default", "select_explicit", "codec", "blind_index"],
-    )?;
+    let members =
+        object(value, at, &["name", "type", "nullable", "identity", "primary_key", "foreign_key", "default", "select_explicit", "codec", "blind_index"])?;
     let default = match members.get("default") {
         Some(value) => Some(default_from_json(value, &format!("{at}.default"))?),
         None => None,

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 68153ab3a46b96808cc1aa3562920bc162b54b608050b0d79f43bc6bd5efb847 -->
+<!-- source-sha256: 0e11483987d7470ebe5b402c7d78ea3e95cbf520153e0b2ed82369fc2bccfd42 -->
 # 변경 이력
 
 ## Unreleased
+
+- benchmarks/rust/Cargo.lock은 `polyspec-binding-core`를 root Cargo.lock이 고정한 release로 고정한다(OM-1.5-1). benchmark workspace는 `binding_core::OutValues`가 없는 이전 것을 가지고 있어서, benchmarks/rust의 `cargo clippy`가 packages/rust/src/orm_value.rs를 E0432로 compile하지 못했다. `dbspec::canonical_literal`은 default 규칙의 답을 `ok`로 돌려주고, JSON surface의 source는 `cargo fmt`의 형식을 가진다.
 
 - contracts/implementations.json은 Rust 코어만 가진 surface의 unit test 파일 여덟 개를 각각 이유와 함께 선언한다(OM-1.5-1, FCV-2). flowmark_surface.rs 두 파일과 packages/rust/tests/unit의 query.rs, query_members.rs, query_step.rs, orm_value.rs, interface_cases.rs, cancel.rs다. `node scripts/features/check.mts`는 오류 23개를 보고했고 이제 15개를 보고하며, 그것은 row T464다. scripts/repo/check.test.mts의 `startLogged` case는 start가 이제 처음에 쓰는 줄을 기대한다.
 

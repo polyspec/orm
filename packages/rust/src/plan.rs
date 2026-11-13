@@ -487,8 +487,7 @@ mod read {
     }
 
     fn out_col(value: &Value, at: &str) -> Result<OutCol, String> {
-        let members =
-            object(value, at, &["index", "name", "column", "type", "styles", "hidden", "sum_of", "precision", "scale", "sum_parts", "non_integer"])?;
+        let members = object(value, at, &["index", "name", "column", "type", "styles", "hidden", "sum_of", "precision", "scale", "sum_parts", "non_integer"])?;
         Ok(OutCol {
             index: index(members, at, "index")?,
             name: text(members, at, "name")?,

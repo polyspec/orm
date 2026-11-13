@@ -45,13 +45,15 @@ pub(crate) fn literal_value(text: &str) -> Option<Value> {
 }
 
 /// The canonical text of `text`, a literal written as the default of a column of the type `ty`, or `None` when
-/// `text` is no literal of the type (FMS-26). A `text` or `bytes` column has no literal.
+/// `text` is no literal of the type (FMS-26). A `text` or `bytes` column has no literal. The refusal of the rule of
+/// a default says why a literal does not fit; this function answers only whether the text is one, so that reason is
+/// not returned.
+#[allow(
+    clippy::disallowed_methods,
+    reason = "the function answers whether the text is a literal of the type, and None is that answer, so the reason of the refusal is left out on purpose"
+)]
 pub fn canonical_literal(ty: Type, text: &str) -> Option<String> {
-    match default_literal(ty, &literal_value(text)?) {
-        Ok(canonical) => Some(canonical),
-        // The refusal says why the literal does not fit; this function answers only whether it is one.
-        Err(_unfit) => None,
-    }
+    default_literal(ty, &literal_value(text)?).ok()
 }
 
 /// Validates a default value against its column type and returns its canonical text.

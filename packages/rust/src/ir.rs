@@ -392,9 +392,7 @@ mod form {
             Form::Order => &[("column", Member::Plain), ("desc", Member::Plain), ("random", Member::Plain), ("fn", Member::One(Form::Func))],
             Form::Limit => &[("offset", Member::Plain), ("count", Member::Plain), ("offset_p", Member::Plain), ("count_p", Member::Plain)],
             Form::IfParent => &[("column", Member::Plain), ("p", Member::Plain)],
-            Form::Assign => {
-                &[("column", Member::Plain), ("p", Member::Plain), ("null", Member::Plain), ("plus_p", Member::Plain), ("minus_p", Member::Plain)]
-            }
+            Form::Assign => &[("column", Member::Plain), ("p", Member::Plain), ("null", Member::Plain), ("plus_p", Member::Plain), ("minus_p", Member::Plain)],
             Form::Optimist => &[("column", Member::Plain), ("p", Member::Plain)],
         }
     }

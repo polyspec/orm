@@ -90,7 +90,8 @@ impl Manifest {
     pub fn restore_key(&self, request: &str) -> Result<String> {
         let request = Request::from_json(request)?;
         let parts = validate::restore_key(self.entity(&request.query.entity)?, &request)?;
-        let member = |name: &str, value: serde_json::Result<Value>| value.map_err(|error| Error::internal(format!("the {name} of a restore has no JSON form: {error}")));
+        let member =
+            |name: &str, value: serde_json::Result<Value>| value.map_err(|error| Error::internal(format!("the {name} of a restore has no JSON form: {error}")));
         Ok(json!({
             "key": parts.key,
             "where": member("where", serde_json::to_value(&parts.where_))?,

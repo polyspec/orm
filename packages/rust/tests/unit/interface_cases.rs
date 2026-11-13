@@ -58,7 +58,10 @@ fn texts(args: &Map<String, Value>, name: &str, member: &str) -> Vec<String> {
 fn bytes(args: &Map<String, Value>, name: &str, member: &str) -> Vec<u8> {
     let hex = field(args, name, member).get("hex").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: {name} is no {{hex}}"));
     assert!(hex.len() % 2 == 0 && hex.is_ascii(), "{member}: {name} is pairs of digits");
-    (0..hex.len()).step_by(2).map(|at| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{member}: {name} holds no byte at {at}: {error}"))).collect()
+    (0..hex.len())
+        .step_by(2)
+        .map(|at| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{member}: {name} holds no byte at {at}: {error}")))
+        .collect()
 }
 
 /// A text that a member may not return: `null` for none.

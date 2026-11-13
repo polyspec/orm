@@ -219,10 +219,7 @@ fn a_diagnostic_and_a_position_have_the_members_of_their_forms() {
     let diagnostics = refused.err().expect("the text holds a word that no column takes");
     let form = diagnostic_to_json(&diagnostics[0]);
     assert_eq!(refusals("diagnostic", &form), no_refusal());
-    assert_eq!(
-        form,
-        json!({"rule": diagnostics[0].rule, "line": diagnostics[0].line, "column": diagnostics[0].column, "message": diagnostics[0].message})
-    );
+    assert_eq!(form, json!({"rule": diagnostics[0].rule, "line": diagnostics[0].line, "column": diagnostics[0].column, "message": diagnostics[0].message}));
     assert_eq!(form["line"], 4, "{form}");
 
     let parsed = dbspec::parse("dbspec 1 shop\n\ntable item {\n  seq i64\n  primary key (seq)\n}\n", &BTreeMap::new()).expect("the text parses");
