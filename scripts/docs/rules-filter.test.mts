@@ -37,6 +37,14 @@ caseTest('implementation counts ignore planner IDs and count the numeric client 
   assert.deepEqual(countMismatches('여섯 클라이언트가 선언된다.', true, 6), []);
 });
 
+caseTest('the number of a rule identifier is no implementation count', COMPUTE, () => {
+  assert.deepEqual(countMismatches('CORE-41 to CORE-43 and CORE-106 to CORE-109 have no implementation.', false, 6), []);
+  assert.deepEqual(countMismatches('K812 clients read it, and INT-5 runners run it.', false, 6), []);
+  assert.deepEqual(countMismatches('CORE-109 구현은 없다.', true, 6), []);
+  assert.deepEqual(countMismatches('The rule CORE-109 names 5 implementations.', false, 6), ['5 implementations']);
+  assert.deepEqual(countMismatches('규칙 CORE-109는 5 구현을 적는다.', true, 6), ['5 구현']);
+});
+
 caseTest('client set parsing recognizes PHP library and extension aliases', COMPUTE, () => {
   const display = { go: 'Go', php: 'PHP', 'php-extension': 'PHP extension', typescript: 'TypeScript', python: 'Python', rust: 'Rust' };
   const aliases = declaredClientAliases(Object.keys(display), display);

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5e496ac1c9d99392e46af92ab4e8eeb033fad31db2c3538660b57431716cbc35 -->
+<!-- source-sha256: 041c19742e1d634dba48109285c065fc947df0225b6d83569a95b8a0b980f49c -->
 # 변경 이력
 
 ## Unreleased
+
+- `make docs-implementation-count-check`는 수가 단어를 시작할 때만 그것을 구현의 개수로 읽는다(T458). scripts/docs/implementation-count.mts의 `countMismatches`가 `CORE-109 have no implementation`의 109를 개수로 읽어, `implementation`, `client`, `runner` 앞에 규칙을 적은 문장이 실패했다. 글자, 숫자, hyphen 뒤에 오는 identifier의 수는 영어와 한국어에서 아무것도 세지 않는다. docs/spec/core.md의 CORE-110은 CORE-41~CORE-43과 CORE-106~CORE-109에 구현이 없다고 다시 적는다.
 
 - `make interface-check`는 시험 전에 TypeScript client를 build한다. hung-extractor case는 extractor를 시작하기 전에 끝난 checker의 출력과 함께 곧바로 실패하고, 5분 deadline까지 기다리지 않는다(T443).
 

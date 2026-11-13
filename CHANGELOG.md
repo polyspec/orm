@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- `make docs-implementation-count-check` reads a number as a count of implementations only when the number starts a word (T458): `countMismatches` of scripts/docs/implementation-count.mts read the 109 of `CORE-109 have no implementation` as a count, so a sentence that names a rule before `implementation`, `client` or `runner` failed. The number of an identifier, after a letter, a digit or a hyphen, counts nothing in English and in Korean. CORE-110 of docs/spec/core.md says again that CORE-41 to CORE-43 and CORE-106 to CORE-109 have no implementation.
+
 - `make interface-check` builds the TypeScript client before its tests, and the hung-extractor cases fail at once with the output of a checker that ended before it started the extractor, instead of at their deadline of 5 minutes (T443).
 
 - The cancellation cases of Go and Rust cancel a SQLite statement that waits for the lock of another connection, as on the servers (T426-9, CFG-9): the Go case no longer cancels before the statement on SQLite, and the Rust cases no longer skip SQLite or drop at a timer. A cancellation during a SQLite lock wait ends the statement only at the busy timeout in Python (T426-11, open).

@@ -168,8 +168,8 @@ the core that differ from the rules that the language implementations of `legacy
   flags byte and the slot byte without a lock; the native class of `legacy/packages/php-ext/src/native_classes.c`, a
   second implementation of the same class; `legacy/packages/php-ext/src/db.c`, which calls `statePath` and
   `registerCancelQuery` and holds the slot; and `legacy/packages/php-ext/tests/QueryCancellationNativeTest.php`, which
-  compares the bytes of the file. Not implemented: no code follows the rules from CORE-41 to CORE-43 and from CORE-106
-  to CORE-109, and the legacy clients write their own format.
+  compares the bytes of the file. Not implemented: CORE-41 to CORE-43 and CORE-106 to CORE-109 have no implementation,
+  and the legacy clients write their own format.
 
 - **CORE-45** `Db::with_cancel(cancel)` returns a handle of the same pool that carries the cancellation `cancel`; it
   changes nothing of the handle it is called on. A model that is connected to the handle, a transaction that the handle

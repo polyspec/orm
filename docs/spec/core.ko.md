@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: a122ae8563bd659cab35f968be7f0488e0019af37a048e011b0112f0c754fb41 -->
+<!-- source-sha256: 14d6aa040949e7cc64c4ac81eced1afeaf401791101a1e9ed70a4f0435146dd4 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -131,7 +131,7 @@
   slot 바이트를 잠금 없이 읽는 `legacy/packages/php/src/native/sqlite_cancel.c`; 같은 class의 두 번째 구현인
   `legacy/packages/php-ext/src/native_classes.c`의 native class; `statePath`와 `registerCancelQuery`를 호출하고 slot을 가진
   `legacy/packages/php-ext/src/db.c`; 파일의 바이트를 비교하는 `legacy/packages/php-ext/tests/QueryCancellationNativeTest.php`.
-  구현되지 않았다: CORE-41~CORE-43과 CORE-106~CORE-109의 규칙을 따르는 코드는 없고, legacy client는 자기 형식을 쓴다.
+  구현되지 않았다: CORE-41~CORE-43과 CORE-106~CORE-109는 구현이 없고, legacy client는 자기 형식을 쓴다.
 
 - **CORE-45** `Db::with_cancel(cancel)`은 취소 `cancel`을 가진 같은 pool의 handle을 돌려준다. 호출된 handle의 어떤
   것도 바꾸지 않는다. 그 handle에 연결된 모델, 그 handle이 시작한 트랜잭션, 그 트랜잭션의 `Tx`는 같은 취소를 가진다.
