@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: 890900ae7f8d9270cf0845d3c6947889b1d8a3ffedf90293e444f439cc6d23a1 -->
+<!-- source-sha256: bf729ecb4d27f9331f693670b178538eaf04fcebc86d6ab9c2caa09eb088576f -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -78,10 +78,7 @@ Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버
 `transaction_send`의 중첩 호출은 savepoint에서 타입을 지운 callback을 직접 빌린다.
 callback의 Box 할당 객체를 빌릴 필요는 없다. 소유 테스트가 세 DB 엔진에서
 Send future와 중첩 commit/rollback을 보존해야 한다.
-`make rust-send-savepoint-check`는 선언한 테스트 환경에서 소유 lint와 동작을
-검사하며 사용자의 데이터베이스를 사용하지 않는다. make target은 자기 실행
-directory의 SQLite file(SEND_SQLITE_DSN)을 ORM_SEND_SQLITE_DSN으로 준다. 직접 Cargo를 실행할 때는
-MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테이블은 연결
+테스트 테이블은 연결
 전용 임시 테이블이며 연결 종료 시 제거된다.
 
 `transaction_once`는 한 번만 실행할 수 있는 callback을 받고 재시도하지 않는다. 중첩 호출은 savepoint를 쓴다. DB 준비·commit 오류는 `TransactionOnceError::Orm`이다. callback 실패는 rollback 뒤 원래 오류를 반환한다. rollback도 실패하면 두 오류를 모두 담는다. 이 호출에는 `timeout_ms` 옵션이 없다.

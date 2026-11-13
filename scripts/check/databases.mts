@@ -9,7 +9,7 @@
 //
 // create makes, on the servers of <servers env> (the file that make orm-test-servers writes), the MySQL and PostgreSQL databases
 // <name>_bench and <name>_decimal and the SQLite files of <directory>. It installs and seeds them from their canonical fixtures, and writes <directory>/env
-// (<servers env> with the BENCH_*, ORM_BENCH_MYSQL_DSN and the send-savepoint SQLite file ORM_SEND_SQLITE_DSN of this run) and
+// (<servers env> with the BENCH_* and ORM_BENCH_MYSQL_DSN of this run) and
 // <directory>/decimal-env. create first drops the databases
 // that ended runs left (drop-dead). drop drops them and purges the binary logs of the two MySQL servers up to what the
 // replica applied (purgeBinlogs); drop is the last step of a run and runs even when an earlier step failed, so the binary
@@ -249,9 +249,7 @@ if (import.meta.main) {
       const lines = [readFileSync(serversPath, 'utf8').replace(/\n?$/, '\n'),
         `export ORM_BENCH_MYSQL_DSN='${ormBench}'\n`, `export BENCH_MYSQL_DSN='${mysqlBench}'\n`, `export BENCH_POSTGRES_DSN='${postgresBench}'\n`,
         `export BENCH_SQLITE_DSN='${sqliteBench}'\n`,
-        ...(env['ORM_TEST_MYSQL_PRIVILEGE_DSN'] ? [`export ORM_TEST_MYSQL_PRIVILEGE_DSN='${env['ORM_TEST_MYSQL_PRIVILEGE_DSN']}'\n`] : []),
-        // The SQLite file of rust-send-savepoint and of the Rust test of client-db-check (tx::send_tests) is of this run too.
-        `export ORM_SEND_SQLITE_DSN='sqlite://${dir}/send-savepoint.sqlite'\n`];
+        ...(env['ORM_TEST_MYSQL_PRIVILEGE_DSN'] ? [`export ORM_TEST_MYSQL_PRIVILEGE_DSN='${env['ORM_TEST_MYSQL_PRIVILEGE_DSN']}'\n`] : [])];
       writeFileSync(join(dir, 'env.tmp'), lines.join(''));
       renameSync(join(dir, 'env.tmp'), join(dir, 'env'));
       console.log(`databases: ${name}_bench and ${name}_decimal created and seeded`);

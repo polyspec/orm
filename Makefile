@@ -637,8 +637,6 @@ HOLD_TYPESCRIPT = $(LEASE) hold $(TYPESCRIPT_LEASES) exclusive --wait --pid $$PP
 # also wait for each other by the same rule.
 READ_TYPESCRIPT = $(LEASE) hold $(TYPESCRIPT_LEASES) shared --wait --pid $$PPID
 export TYPESCRIPT_LEASES
-# SEND_SQLITE_DSN is the SQLite file of rust-send-savepoint-check. It is placed in the RUN_DIR of one run.
-SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 
 # The lease program is a file target of its sources, so a job builds it once: the publish of the build runs only while the file
 # is missing or older than a source; the recipes that need it reach the same condition through LEASE_READY, which builds nothing once it holds.
@@ -1236,19 +1234,6 @@ dbspec-rust-check/show-create/unit:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib show_create_tests -- --test-threads=1
 dbspec-rust-check/show-create/vectors:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test all -- dbspec_show_create_introspect_none:: --nocapture
-
-.PHONY: rust-send-savepoint-check
-# The run directory of a part is that of the top target (if $@ contains a /, the directory gets one more level).
-rust-send-savepoint-check/%: RUN_DIR = $(abspath .runtime/run)/rust-send-savepoint-check-$$PPID
-rust-send-savepoint-check: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
-.PHONY: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
-rust-send-savepoint-check/clippy:
-	$(RUN_LONG) rust-clippy/orm-lib --cwd packages/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p polyspec-orm --lib -- -D warnings
-rust-send-savepoint-check/test:
-	mkdir -p $(RUN_DIR)
-	$(WITH_TEST_ENV) cd packages/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
-	$(WITH_TEST_ENV) cd packages/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
-	rm -rf $(RUN_DIR)
 
 .PHONY: dbspec-php-check
 # dbspec-php-check runs twice each: the shared dbspec vectors, the PHP rules, the statement vectors of tests/dbspec/ddl.json,

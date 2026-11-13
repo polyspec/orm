@@ -82,6 +82,7 @@
         "tests/errors.mts",
         "legacy/packages/ts/**",
         "contracts/fixtures/**",
+        "legacy/contracts/fixtures/**",
         "examples/thin-slice/ts/**",
         "Makefile"
       ]
@@ -353,7 +354,8 @@
         "packages/dbspec-lsp/**",
         "packages/dbspec-language/**",
         "legacy/packages/ts/src/dbspec/**",
-        "tests/editor/**"
+        "tests/editor/**",
+        "legacy/tests/editor/**"
       ]
     },
     "dbspec-codemirror-check": {
@@ -365,7 +367,8 @@
         "packages/dbspec-codemirror/**",
         "packages/dbspec-language/**",
         "legacy/packages/ts/src/dbspec/**",
-        "tests/editor/**"
+        "tests/editor/**",
+        "legacy/tests/editor/**"
       ]
     },
     "dbspec-vscode-check": {
@@ -504,6 +507,7 @@
         "legacy/packages/php/tests/RelationKeysTest.php",
         "legacy/packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
+        "legacy/tests/ir/validate.json",
         "legacy/packages/php/tests/RuntimeModelTest.php",
         "legacy/packages/php/tests/OrmGenTest.php",
         "legacy/packages/php/tests/OrmGenTestSupport.php",
@@ -532,10 +536,15 @@
         "legacy/packages/php/composer.json",
         "legacy/packages/php/tests/OrmGenTestSupport.php",
         "tests/generator/php-scan-vectors.json",
+        "legacy/tests/generator/php-scan-vectors.json",
         "contracts/fixtures/bench/dbspec-set.json",
+        "legacy/contracts/fixtures/bench/dbspec-set.json",
         "contracts/fixtures/bench/bench.dbs",
+        "legacy/contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/bench/bench_reader.dbs",
-        "contracts/fixtures/bench/bench_shared.dbs"
+        "legacy/contracts/fixtures/bench/bench_reader.dbs",
+        "contracts/fixtures/bench/bench_shared.dbs",
+        "legacy/contracts/fixtures/bench/bench_shared.dbs"
       ]
     },
     "php-go-text-check": {
@@ -563,6 +572,7 @@
       "inputs": [
         "Makefile",
         "contracts/fixtures/bench/dbspec-set.json",
+        "legacy/contracts/fixtures/bench/dbspec-set.json",
         "legacy/packages/go/generator/gen_go.go",
         "legacy/packages/go/generator/gen_go_test.go",
         "legacy/packages/go/generator/gen_go_scan_test.go",
@@ -658,6 +668,7 @@
       "inputs": [
         "scripts/typescript/models.mts",
         "contracts/fixtures/complex_query/**",
+        "legacy/contracts/fixtures/complex_query/**",
         "legacy/packages/ts/src/names.ts",
         "legacy/packages/ts/src/generate/names.ts",
         "legacy/packages/ts/src/generate/typescript.ts",
@@ -683,6 +694,7 @@
       "inputs": [
         "Makefile",
         "contracts/fixtures/complex_query/**",
+        "legacy/contracts/fixtures/complex_query/**",
         "scripts/typescript/models.mts",
         "legacy/packages/ts/src/core.ts",
         "legacy/packages/ts/src/model.ts",
@@ -777,6 +789,7 @@
       "inputs": [
         "Makefile",
         "tests/collection/keys.json",
+        "legacy/tests/collection/keys.json",
         "legacy/packages/go/orm/collection.go",
         "legacy/packages/go/orm/collection_identity_test.go",
         "legacy/packages/go/orm/collection_key_test.go",
@@ -811,6 +824,7 @@
         "legacy/packages/ts/tests/public_interface-none.test.mjs",
         "legacy/packages/ts/tests/recipe.mjs",
         "contracts/fixtures/public_interface/public_interface.json",
+        "legacy/contracts/fixtures/public_interface/public_interface.json",
         "contracts/interfaces.json",
         "tests/interfaces/check/*.mts",
         "legacy/packages/ts/testing/interfaces/typescript.mts"
@@ -867,6 +881,7 @@
         "legacy/packages/php/bin/orm-gen",
         "legacy/packages/php/src/OrmGen.php",
         "contracts/fixtures/bench/dbspec-set.json",
+        "legacy/contracts/fixtures/bench/dbspec-set.json",
         "legacy/packages/python/examples/thin_slice/main.py",
         "ruff.toml",
         "phpcs.xml.dist",
@@ -918,10 +933,11 @@
         "rust"
       ],
       "inputs": [
+        "Cargo.toml",
         "benchmarks/rust/Cargo.toml",
         "benchmarks/rust/Cargo.lock",
         "packages/rust/**/Cargo.toml",
-        "packages/rust/Cargo.lock",
+        "Cargo.lock",
         "packages/rust/testing/interfaces/Cargo.lock"
       ]
     },
@@ -1077,7 +1093,9 @@
         "legacy/packages/python/tests/test_column_function_internal.py",
         "legacy/packages/python/tests/test_planner_compile_none.py",
         "tests/planner/compile.json",
-        "tests/planner/shared_blind_index.dbs"
+        "legacy/tests/planner/compile.json",
+        "tests/planner/shared_blind_index.dbs",
+        "legacy/tests/planner/shared_blind_index.dbs"
       ]
     },
     "rust-time-precision-check": {
@@ -1179,6 +1197,7 @@
         "Makefile",
         "contracts/check-inputs.json",
         "contracts/fixtures/identity_load.dbs",
+        "legacy/contracts/fixtures/identity_load.dbs",
         "legacy/packages/php/src/Db.php",
         "legacy/packages/php/src/DbState.php",
         "legacy/packages/php/src/Engine.php",
@@ -1234,7 +1253,8 @@
         "legacy/packages/ts/src/engine/*.ts",
         "legacy/packages/ts/src/ir.ts",
         "legacy/packages/ts/tests/plan-cache-in.mjs",
-        "tests/ir/validate.json"
+        "tests/ir/validate.json",
+        "legacy/tests/ir/validate.json"
       ]
     },
     "php-catalog-bounds-check": {
@@ -1346,6 +1366,7 @@
       ],
       "inputs": [
         "tests/codec/**",
+        "legacy/tests/codec/**",
         "legacy/packages/go/orm/recipe_codec_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/php/tests/CodecRecipeTest.php",
@@ -1397,8 +1418,11 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "legacy/contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
+        "legacy/contracts/fixtures/add_tables_and_columns/**",
         "legacy/packages/go/orm/recipe_schema_install_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -1414,8 +1438,11 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "legacy/contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
+        "legacy/contracts/fixtures/add_tables_and_columns/**",
         "legacy/packages/ts/tests/schema_install-mysql.test.mjs",
         "legacy/packages/ts/tests/schema_install-postgres.test.mjs",
         "legacy/packages/ts/tests/schema_install-sqlite.test.mjs",
@@ -1433,8 +1460,11 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "legacy/contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
+        "legacy/contracts/fixtures/add_tables_and_columns/**",
         "legacy/packages/python/tests/test_schema_install_mysql.py",
         "legacy/packages/python/tests/test_schema_install_postgres.py",
         "legacy/packages/python/tests/test_schema_install_sqlite.py",
@@ -1453,8 +1483,11 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "legacy/contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
+        "legacy/contracts/fixtures/add_tables_and_columns/**",
         "legacy/packages/php/tests/SchemaInstallRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
         "legacy/packages/php/tests/RecipeCases.php",
@@ -1474,8 +1507,11 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "legacy/contracts/fixtures/schema_install/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "contracts/fixtures/add_tables_and_columns/**",
+        "legacy/contracts/fixtures/add_tables_and_columns/**",
         "legacy/packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
         "legacy/packages/php/tests/SchemaInstallRecipeTest.php",
@@ -1512,6 +1548,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "legacy/contracts/fixtures/catalog_connection/**",
         "legacy/packages/go/orm/recipe_catalog_connection_test.go",
         "legacy/packages/go/orm/recipe_catalog_connection_sqlite_only_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
@@ -1570,6 +1607,7 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
+        "legacy/contracts/fixtures/statement_events/**",
         "legacy/packages/go/orm/recipe_statement_events_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -1585,6 +1623,7 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
+        "legacy/contracts/fixtures/statement_events/**",
         "legacy/packages/ts/tests/statement_events-mysql.test.mjs",
         "legacy/packages/ts/tests/statement_events-postgres.test.mjs",
         "legacy/packages/ts/tests/statement_events-sqlite.test.mjs",
@@ -1601,6 +1640,7 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
+        "legacy/contracts/fixtures/statement_events/**",
         "legacy/packages/python/tests/test_statement_events_mysql.py",
         "legacy/packages/python/tests/test_statement_events_postgres.py",
         "legacy/packages/python/tests/test_statement_events_sqlite.py",
@@ -1618,6 +1658,7 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
+        "legacy/contracts/fixtures/statement_events/**",
         "legacy/packages/php/tests/StatementEventsRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
         "legacy/packages/php/tests/RecipeCases.php",
@@ -1635,6 +1676,7 @@
       ],
       "inputs": [
         "contracts/fixtures/statement_events/**",
+        "legacy/contracts/fixtures/statement_events/**",
         "legacy/packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
         "legacy/packages/php/tests/StatementEventsRecipeTest.php",
@@ -1651,6 +1693,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "legacy/contracts/fixtures/catalog_connection/**",
         "legacy/packages/ts/tests/catalog_connection-sqlite-only.test.mjs",
         "legacy/packages/ts/tests/catalog_connection-sqlite-only-markdown.test.mjs",
         "legacy/packages/ts/tests/catalog_connection-mysql.test.mjs",
@@ -1670,6 +1713,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "legacy/contracts/fixtures/catalog_connection/**",
         "legacy/packages/python/tests/test_catalog_connection_sqlite_only.py",
         "legacy/packages/python/tests/test_catalog_connection_sqlite_only_markdown.py",
         "legacy/packages/python/tests/test_catalog_connection_mysql.py",
@@ -1690,6 +1734,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "legacy/contracts/fixtures/catalog_connection/**",
         "legacy/packages/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php",
         "legacy/packages/php/tests/CatalogConnectionRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
@@ -1709,6 +1754,7 @@
       ],
       "inputs": [
         "contracts/fixtures/catalog_connection/**",
+        "legacy/contracts/fixtures/catalog_connection/**",
         "legacy/packages/php-ext/tests/CatalogConnectionSqliteOnlyRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
@@ -1727,6 +1773,7 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
+        "legacy/contracts/fixtures/dsn_connection/**",
         "legacy/packages/go/orm/recipe_dsn_connection_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -1759,6 +1806,7 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
+        "legacy/contracts/fixtures/dsn_connection/**",
         "legacy/packages/ts/tests/dsn_connection-mysql.test.mjs",
         "legacy/packages/ts/tests/dsn_connection-postgres.test.mjs",
         "legacy/packages/ts/tests/dsn_connection-sqlite.test.mjs",
@@ -1775,6 +1823,7 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
+        "legacy/contracts/fixtures/dsn_connection/**",
         "legacy/packages/python/tests/test_dsn_connection_mysql.py",
         "legacy/packages/python/tests/test_dsn_connection_postgres.py",
         "legacy/packages/python/tests/test_dsn_connection_sqlite.py",
@@ -1792,6 +1841,7 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
+        "legacy/contracts/fixtures/dsn_connection/**",
         "legacy/packages/php/tests/DsnConnectionRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
         "legacy/packages/php/tests/RecipeCases.php",
@@ -1810,6 +1860,7 @@
       ],
       "inputs": [
         "contracts/fixtures/dsn_connection/**",
+        "legacy/contracts/fixtures/dsn_connection/**",
         "legacy/packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
         "legacy/packages/php/tests/DsnConnectionRecipeTest.php",
@@ -1824,8 +1875,11 @@
       ],
       "inputs": [
         "tests/markdown/session.json",
+        "legacy/tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
+        "legacy/tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
+        "legacy/tests/bind/slots.dbs",
         "legacy/packages/go/bindmessages/markdown_session_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/orm/markdown.go",
@@ -1854,8 +1908,11 @@
       ],
       "inputs": [
         "tests/markdown/session.json",
+        "legacy/tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
+        "legacy/tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
+        "legacy/tests/bind/slots.dbs",
         "legacy/packages/ts/tests/markdown_session.mjs",
         "legacy/packages/ts/tests/recipe.mjs",
         "legacy/packages/ts/src/markdown.ts"
@@ -1868,8 +1925,11 @@
       ],
       "inputs": [
         "tests/markdown/session.json",
+        "legacy/tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
+        "legacy/tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
+        "legacy/tests/bind/slots.dbs",
         "legacy/packages/python/tests/test_markdown_session_none.py",
         "legacy/packages/python/tests/recipe.py",
         "legacy/packages/python/src/polyspec/orm/markdown.py"
@@ -1883,8 +1943,11 @@
       ],
       "inputs": [
         "tests/markdown/session.json",
+        "legacy/tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
+        "legacy/tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
+        "legacy/tests/bind/slots.dbs",
         "legacy/packages/php/tests/MarkdownSessionRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
         "legacy/packages/php/tests/RecipeCases.php",
@@ -1902,8 +1965,11 @@
       ],
       "inputs": [
         "tests/markdown/session.json",
+        "legacy/tests/markdown/session.json",
         "tests/bind/dbspec-set.json",
+        "legacy/tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
+        "legacy/tests/bind/slots.dbs",
         "legacy/packages/php-ext/tests/MarkdownSessionRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
         "legacy/packages/php/tests/MarkdownSessionRecipeTest.php",
@@ -1921,6 +1987,7 @@
       ],
       "inputs": [
         "contracts/fixtures/connection_pool/**",
+        "legacy/contracts/fixtures/connection_pool/**",
         "legacy/packages/go/orm/recipe_connection_pool_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -1953,6 +2020,7 @@
       ],
       "inputs": [
         "contracts/fixtures/connection_pool/**",
+        "legacy/contracts/fixtures/connection_pool/**",
         "legacy/packages/ts/tests/connection_pool-mysql.test.mjs",
         "legacy/packages/ts/tests/connection_pool-postgres.test.mjs",
         "legacy/packages/ts/tests/connection_pool-sqlite.test.mjs",
@@ -1969,6 +2037,7 @@
       ],
       "inputs": [
         "contracts/fixtures/connection_pool/**",
+        "legacy/contracts/fixtures/connection_pool/**",
         "legacy/packages/python/tests/test_connection_pool_mysql.py",
         "legacy/packages/python/tests/test_connection_pool_postgres.py",
         "legacy/packages/python/tests/test_connection_pool_sqlite.py",
@@ -2050,6 +2119,7 @@
       ],
       "inputs": [
         "tests/bind/**",
+        "legacy/tests/bind/**",
         "legacy/packages/php/tests/MarkdownTest.php",
         "legacy/packages/ts/tests/markdown.mjs",
         "legacy/packages/python/tests/test_markdown.py",
@@ -2069,6 +2139,7 @@
       ],
       "inputs": [
         "tests/collection/collection.json",
+        "legacy/tests/collection/collection.json",
         "scripts/features/schema/recipe.schema.json",
         "legacy/packages/go/markdownmodel/recipe_collection_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
@@ -2235,8 +2306,11 @@
         "legacy/packages/go/engine/dbspec/introspect.go",
         "legacy/packages/go/engine/dbspec/introspect_sqlite.go",
         "contracts/fixtures/dbspec_introspect/**",
+        "legacy/contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
-        "tests/dbspec/ddl.json"
+        "legacy/tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json",
+        "legacy/tests/dbspec/ddl.json"
       ]
     },
     "dbspec-introspect-ts-check": {
@@ -2256,8 +2330,11 @@
         "legacy/packages/ts/src/dbspec/introspect.ts",
         "legacy/packages/ts/src/dbspec/introspect_sqlite.ts",
         "contracts/fixtures/dbspec_introspect/**",
+        "legacy/contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
-        "tests/dbspec/ddl.json"
+        "legacy/tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json",
+        "legacy/tests/dbspec/ddl.json"
       ]
     },
     "dbspec-introspect-php-check": {
@@ -2278,8 +2355,11 @@
         "legacy/packages/php/tests/DbspecCatalogChecksTest.php",
         "legacy/packages/php/src/Dbspec/CatalogRows.php",
         "contracts/fixtures/dbspec_introspect/**",
+        "legacy/contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
-        "tests/dbspec/ddl.json"
+        "legacy/tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json",
+        "legacy/tests/dbspec/ddl.json"
       ]
     },
     "dbspec-introspect-php-extension-check": {
@@ -2301,8 +2381,11 @@
         "legacy/packages/php-ext/tests/DbspecIntrospectNativeTest.php",
         "legacy/packages/php-ext/src/introspect.c",
         "contracts/fixtures/dbspec_introspect/**",
+        "legacy/contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
-        "tests/dbspec/ddl.json"
+        "legacy/tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json",
+        "legacy/tests/dbspec/ddl.json"
       ]
     },
     "dbspec-sqlite-literal-rows-helper-check": {
@@ -2357,8 +2440,11 @@
         "legacy/packages/python/src/polyspec/orm/dbspec/introspect.py",
         "legacy/packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
         "contracts/fixtures/dbspec_introspect/**",
+        "legacy/contracts/fixtures/dbspec_introspect/**",
         "tests/dbspec/introspect.json",
-        "tests/dbspec/ddl.json"
+        "legacy/tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json",
+        "legacy/tests/dbspec/ddl.json"
       ]
     },
     "dbspec-php-interface-program-helper-check": {
@@ -2669,13 +2755,21 @@
         "legacy/packages/ts/tsconfig.build.json",
         "scripts/typescript/models.mts",
         "contracts/fixtures/bench/dbspec-set.json",
+        "legacy/contracts/fixtures/bench/dbspec-set.json",
         "contracts/fixtures/bench/bench.dbs",
+        "legacy/contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/bench/bench_reader.dbs",
+        "legacy/contracts/fixtures/bench/bench_reader.dbs",
         "contracts/fixtures/bench/bench_shared.dbs",
+        "legacy/contracts/fixtures/bench/bench_shared.dbs",
         "contracts/fixtures/complex_query/dbspec-set.json",
+        "legacy/contracts/fixtures/complex_query/dbspec-set.json",
         "contracts/fixtures/dbspec-set.json",
+        "legacy/contracts/fixtures/dbspec-set.json",
         "tests/markdown/corpus/dbspec/dbspec-set.json",
-        "tests/bind/dbspec-set.json"
+        "legacy/tests/markdown/corpus/dbspec/dbspec-set.json",
+        "tests/bind/dbspec-set.json",
+        "legacy/tests/bind/dbspec-set.json"
       ]
     },
     "dbspec-language-check": {
@@ -2688,14 +2782,24 @@
         "legacy/packages/ts/src/dbspec/**",
         "legacy/packages/ts/tsconfig.build.json",
         "tests/dbspec/hashes.json",
+        "legacy/tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
+        "legacy/tests/dbspec/sets.json",
         "tests/dbspec/canonical.json",
+        "legacy/tests/dbspec/canonical.json",
         "tests/dbspec/normalize.json",
+        "legacy/tests/dbspec/normalize.json",
         "tests/dbspec/invalid.json",
+        "legacy/tests/dbspec/invalid.json",
         "tests/dbspec/positions.json",
+        "legacy/tests/dbspec/positions.json",
         "tests/dbspec/files.json",
+        "legacy/tests/dbspec/files.json",
+        "legacy/tests/dbspec/files/**",
         "tests/dbspec/schema/**",
+        "legacy/tests/dbspec/schema/**",
         "tests/editor/**",
+        "legacy/tests/editor/**",
         "scripts/typescript/build.mts"
       ]
     },
@@ -2737,7 +2841,8 @@
       "inputs": [
         "legacy/packages/php/tests/DbspecRenderStatementsRecipeTest.php",
         "legacy/packages/php/tests/DbspecTimedCases.php",
-        "tests/dbspec/ddl.json"
+        "tests/dbspec/ddl.json",
+        "legacy/tests/dbspec/ddl.json"
       ]
     },
     "dbspec-php-extension-check": {
@@ -2757,13 +2862,22 @@
         "legacy/packages/php-ext/tests/bootstrap.php",
         "legacy/packages/php-ext/src/**",
         "tests/dbspec/hashes.json",
+        "legacy/tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
+        "legacy/tests/dbspec/sets.json",
         "tests/dbspec/canonical.json",
+        "legacy/tests/dbspec/canonical.json",
         "tests/dbspec/normalize.json",
+        "legacy/tests/dbspec/normalize.json",
         "tests/dbspec/invalid.json",
+        "legacy/tests/dbspec/invalid.json",
         "tests/dbspec/positions.json",
+        "legacy/tests/dbspec/positions.json",
         "tests/dbspec/files.json",
+        "legacy/tests/dbspec/files.json",
+        "legacy/tests/dbspec/files/**",
         "tests/dbspec/schema-definition.json",
+        "legacy/tests/dbspec/schema-definition.json",
         "legacy/packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
@@ -2772,17 +2886,29 @@
         "legacy/packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
+        "legacy/tests/dbspec/limits.json",
         "tests/dbspec/rules.json",
+        "legacy/tests/dbspec/rules.json",
         "tests/dbspec/dialect-refusal.json",
+        "legacy/tests/dbspec/dialect-refusal.json",
         "tests/dbspec/load-set.json",
+        "legacy/tests/dbspec/load-set.json",
         "tests/planner/default-select-set.json",
+        "legacy/tests/planner/default-select-set.json",
         "tests/planner/default-select-set.dbs",
+        "legacy/tests/planner/default-select-set.dbs",
         "tests/planner/runtime-model.json",
+        "legacy/tests/planner/runtime-model.json",
         "tests/planner/runtime-model.dbs",
+        "legacy/tests/planner/runtime-model.dbs",
         "tests/dbspec/runtime-model.json",
+        "legacy/tests/dbspec/runtime-model.json",
         "tests/dbspec/runtime-model-shop.dbs",
+        "legacy/tests/dbspec/runtime-model-shop.dbs",
         "tests/dbspec/runtime-model-accounts.dbs",
-        "tests/dbspec/runtime-model-members.dbs"
+        "legacy/tests/dbspec/runtime-model-accounts.dbs",
+        "tests/dbspec/runtime-model-members.dbs",
+        "legacy/tests/dbspec/runtime-model-members.dbs"
       ]
     },
     "model-types-php-extension-check": {
@@ -2820,6 +2946,7 @@
         "legacy/packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "legacy/packages/php/testing/conformance/runner.php",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "legacy/packages/php/tests/bench.php",
         "legacy/packages/php/src/Model.php",
         "legacy/packages/php-ext/src/model_read.c",
@@ -3053,7 +3180,8 @@
         "legacy/packages/php/bin/orm-gen",
         "legacy/packages/php/tests/case_database.php",
         "legacy/packages/php/tests/bench.php",
-        "contracts/fixtures/bench/**"
+        "contracts/fixtures/bench/**",
+        "legacy/contracts/fixtures/bench/**"
       ]
     },
     "dbspec-verify-errors-check": {
@@ -3088,6 +3216,7 @@
         "legacy/packages/ts/src/dbspec/apply.ts",
         "legacy/packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "tests/dbspec/apply-verification-errors.json",
+        "legacy/tests/dbspec/apply-verification-errors.json",
         "legacy/packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
         "legacy/packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
         "packages/rust/programs/tests/all/dbspec_apply_verification_errors_none.rs",
@@ -3128,12 +3257,19 @@
         "scripts/features/**",
         "docs/plans/kit-standard/checklist.md",
         "contracts/fixtures/**/*.json",
+        "legacy/contracts/fixtures/**/*.json",
         "tests/codec/*.json",
+        "legacy/tests/codec/*.json",
         "tests/conformance/*.json",
+        "legacy/tests/conformance/*.json",
         "tests/dbspec/*.json",
+        "legacy/tests/dbspec/*.json",
         "tests/ir/*.json",
+        "legacy/tests/ir/*.json",
         "tests/markdown/*.json",
+        "legacy/tests/markdown/*.json",
         "tests/conformance/schema/**",
+        "legacy/tests/conformance/schema/**",
         "scripts/json/**",
         "scripts/check/inputs.mts",
         "scripts/check/schema/**",
@@ -3281,16 +3417,28 @@
         "legacy/packages/python/testing/interfaces/python.py",
         "legacy/packages/python/testing/conformance/runner_python.py",
         "tests/dbspec/show-create.json",
+        "legacy/tests/dbspec/show-create.json",
         "tests/dbspec/hashes.json",
+        "legacy/tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
+        "legacy/tests/dbspec/sets.json",
         "tests/dbspec/canonical.json",
+        "legacy/tests/dbspec/canonical.json",
         "tests/dbspec/normalize.json",
+        "legacy/tests/dbspec/normalize.json",
         "tests/dbspec/invalid.json",
+        "legacy/tests/dbspec/invalid.json",
         "tests/dbspec/positions.json",
+        "legacy/tests/dbspec/positions.json",
         "tests/dbspec/files.json",
+        "legacy/tests/dbspec/files.json",
+        "legacy/tests/dbspec/files/**",
         "tests/planner/compile.json",
+        "legacy/tests/planner/compile.json",
         "tests/planner/shared_blind_index.dbs",
+        "legacy/tests/planner/shared_blind_index.dbs",
         "tests/ir/validate.json",
+        "legacy/tests/ir/validate.json",
         "tests/dbspec/stress.mts"
       ]
     },
@@ -3306,7 +3454,8 @@
         "legacy/packages/python/src/polyspec/orm/engine/planner.py",
         "legacy/packages/python/src/polyspec/orm/database.py",
         "legacy/packages/python/tests/test_complex_query.py",
-        "contracts/fixtures/complex_query/complex_query.dbs"
+        "contracts/fixtures/complex_query/complex_query.dbs",
+        "legacy/contracts/fixtures/complex_query/complex_query.dbs"
       ]
     },
     "mermaid-error-ts-check": {
@@ -3637,9 +3786,13 @@
         "legacy/packages/php/tests/case_database.php",
         "legacy/packages/php/tests/coverage_cases.php",
         "contracts/fixtures/request_hook/request_hook.dbs",
+        "legacy/contracts/fixtures/request_hook/request_hook.dbs",
         "contracts/fixtures/audit.dbs",
+        "legacy/contracts/fixtures/audit.dbs",
         "contracts/fixtures/audit_columns.dbs",
-        "contracts/fixtures/restore.dbs"
+        "legacy/contracts/fixtures/audit_columns.dbs",
+        "contracts/fixtures/restore.dbs",
+        "legacy/contracts/fixtures/restore.dbs"
       ]
     },
     "interface-api-binding-unit-check": {
@@ -3706,6 +3859,7 @@
       ],
       "inputs": [
         "tests/ir/validate.json",
+        "legacy/tests/ir/validate.json",
         "scripts/features/schema/recipe.schema.json",
         "legacy/packages/go/engine/ir/recipe_validate_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
@@ -3749,7 +3903,9 @@
         "scripts/features/recipe-keys.mts",
         "scripts/features/schema/recipe-keys.json",
         "contracts/fixtures/**",
+        "legacy/contracts/fixtures/**",
         "packages/**",
+        "legacy/packages/**",
         "contracts/implementations.json",
         "scripts/features/languages.mts",
         "scripts/features/recipe-files.mts",
@@ -3768,8 +3924,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/go/internal/conformance/**"
       ]
@@ -3784,8 +3943,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/ts/testing/conformance/runner_typescript.mts",
         "legacy/packages/ts/tests/recipe.mjs"
@@ -3802,8 +3964,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/python/testing/conformance/runner_python.py"
       ]
@@ -3820,8 +3985,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/php/testing/conformance/runner.php"
       ]
@@ -3839,8 +4007,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/php/testing/conformance/runner.php"
       ]
@@ -3875,8 +4046,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/go/internal/conformance/**"
       ]
@@ -3891,8 +4065,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/ts/testing/conformance/runner_typescript.mts",
         "legacy/packages/ts/tests/recipe.mjs"
@@ -3909,8 +4086,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/python/testing/conformance/runner_python.py"
       ]
@@ -3927,8 +4107,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/php/testing/conformance/runner.php"
       ]
@@ -3946,8 +4129,11 @@
         "tests/conformance/check/recipe_vectors.mts",
         "tests/conformance/check/recipe_vectors.test.mts",
         "tests/conformance/check/fixed_clock.json",
+        "legacy/tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
+        "legacy/tests/conformance/vectors.json",
         "Makefile",
         "legacy/packages/php/testing/conformance/runner.php"
       ]
@@ -4104,9 +4290,13 @@
       ],
       "inputs": [
         "tests/markdown/cases.json",
+        "legacy/tests/markdown/cases.json",
         "tests/markdown/corpus/**",
+        "legacy/tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
+        "legacy/tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
+        "legacy/tests/markdown/flowmark.version",
         "legacy/packages/go/markdownmodel/conformance_test.go"
       ]
     },
@@ -4120,9 +4310,13 @@
       ],
       "inputs": [
         "tests/markdown/cases.json",
+        "legacy/tests/markdown/cases.json",
         "tests/markdown/corpus/**",
+        "legacy/tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
+        "legacy/tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
+        "legacy/tests/markdown/flowmark.version",
         "legacy/packages/php/tests/MarkdownConformanceTest.php",
         "legacy/packages/php/tests/OrmGenTestSupport.php"
       ]
@@ -4138,9 +4332,13 @@
       ],
       "inputs": [
         "tests/markdown/cases.json",
+        "legacy/tests/markdown/cases.json",
         "tests/markdown/corpus/**",
+        "legacy/tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
+        "legacy/tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
+        "legacy/tests/markdown/flowmark.version",
         "legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php"
       ]
     },
@@ -4153,9 +4351,13 @@
       ],
       "inputs": [
         "tests/markdown/cases.json",
+        "legacy/tests/markdown/cases.json",
         "tests/markdown/corpus/**",
+        "legacy/tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
+        "legacy/tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
+        "legacy/tests/markdown/flowmark.version",
         "legacy/packages/python/tests/markdown_conformance.py",
         "legacy/packages/python/tests/testcase.py",
         "legacy/packages/python/tests/vector_case.py"
@@ -4184,9 +4386,13 @@
       ],
       "inputs": [
         "tests/markdown/cases.json",
+        "legacy/tests/markdown/cases.json",
         "tests/markdown/corpus/**",
+        "legacy/tests/markdown/corpus/**",
         "tests/markdown/catalogs/**",
+        "legacy/tests/markdown/catalogs/**",
         "tests/markdown/flowmark.version",
+        "legacy/tests/markdown/flowmark.version",
         "legacy/packages/ts/tests/markdown_conformance.mjs",
         "legacy/packages/ts/tests/markdown_cases.mjs"
       ]
@@ -4202,7 +4408,9 @@
       ],
       "inputs": [
         "tests/bind/dbspec-set.json",
+        "legacy/tests/bind/dbspec-set.json",
         "tests/bind/slots.dbs",
+        "legacy/tests/bind/slots.dbs",
         "scripts/typescript/models.mts",
         "legacy/packages/go/models.txt",
         "legacy/packages/php/models.txt",
@@ -4218,8 +4426,11 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "legacy/contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
+        "legacy/contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
+        "legacy/contracts/fixtures/model_chain/**",
         "legacy/packages/go/orm/recipe_model_queries_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -4258,8 +4469,11 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "legacy/contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
+        "legacy/contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
+        "legacy/contracts/fixtures/model_chain/**",
         "legacy/packages/ts/tests/model_queries-mysql.test.mjs",
         "legacy/packages/ts/tests/model_queries-postgres.test.mjs",
         "legacy/packages/ts/tests/model_queries-sqlite.test.mjs",
@@ -4280,8 +4494,11 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "legacy/contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
+        "legacy/contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
+        "legacy/contracts/fixtures/model_chain/**",
         "legacy/packages/python/tests/test_model_queries_mysql.py",
         "legacy/packages/python/tests/test_model_queries_postgres.py",
         "legacy/packages/python/tests/test_model_queries_sqlite.py",
@@ -4303,8 +4520,11 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "legacy/contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
+        "legacy/contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
+        "legacy/contracts/fixtures/model_chain/**",
         "legacy/packages/php/tests/ModelQueriesRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
         "legacy/packages/php/tests/RecipeCases.php",
@@ -4323,8 +4543,11 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "legacy/contracts/fixtures/model_queries/**",
         "contracts/fixtures/model_queries_chain/**",
+        "legacy/contracts/fixtures/model_queries_chain/**",
         "contracts/fixtures/model_chain/**",
+        "legacy/contracts/fixtures/model_chain/**",
         "legacy/packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
         "legacy/packages/php/tests/ModelQueriesRecipeTest.php",
@@ -4343,7 +4566,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "legacy/contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
+        "legacy/contracts/fixtures/immutable_write/**",
         "legacy/packages/go/orm/recipe_constraints_and_relations_test.go",
         "legacy/packages/go/orm/recipe_immutable_write_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
@@ -4381,7 +4606,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "legacy/contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
+        "legacy/contracts/fixtures/immutable_write/**",
         "legacy/packages/ts/tests/constraints_and_relations-mysql.test.mjs",
         "legacy/packages/ts/tests/constraints_and_relations-postgres.test.mjs",
         "legacy/packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
@@ -4402,7 +4629,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "legacy/contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
+        "legacy/contracts/fixtures/immutable_write/**",
         "legacy/packages/python/tests/test_constraints_and_relations_mysql.py",
         "legacy/packages/python/tests/test_constraints_and_relations_postgres.py",
         "legacy/packages/python/tests/test_constraints_and_relations_sqlite.py",
@@ -4424,7 +4653,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "legacy/contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
+        "legacy/contracts/fixtures/immutable_write/**",
         "legacy/packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
         "legacy/packages/php/tests/ImmutableWriteRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
@@ -4443,7 +4674,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "legacy/contracts/fixtures/constraints_and_relations/**",
         "contracts/fixtures/immutable_write/**",
+        "legacy/contracts/fixtures/immutable_write/**",
         "legacy/packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
@@ -4558,6 +4791,7 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
+        "legacy/contracts/fixtures/request_hook/**",
         "legacy/packages/ts/tests/request_hook-mysql.test.mjs",
         "legacy/packages/ts/tests/request_hook-postgres.test.mjs",
         "legacy/packages/ts/tests/request_hook-sqlite.test.mjs",
@@ -4575,8 +4809,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "legacy/contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
+        "legacy/contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "legacy/packages/ts/tests/external_audit-mysql.test.mjs",
         "legacy/packages/ts/tests/external_audit-postgres.test.mjs",
         "legacy/packages/ts/tests/external_audit-sqlite.test.mjs",
@@ -4599,6 +4836,7 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
+        "legacy/contracts/fixtures/parameter_chunking/**",
         "legacy/packages/ts/tests/parameter_chunking-mysql.test.mjs",
         "legacy/packages/ts/tests/parameter_chunking-postgres.test.mjs",
         "legacy/packages/ts/tests/parameter_chunking-sqlite.test.mjs",
@@ -4617,6 +4855,7 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
+        "legacy/contracts/fixtures/aes_rotation/**",
         "legacy/packages/ts/tests/aes_rotation-mysql.test.mjs",
         "legacy/packages/ts/tests/aes_rotation-postgres.test.mjs",
         "legacy/packages/ts/tests/aes_rotation-sqlite.test.mjs",
@@ -4637,6 +4876,7 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
+        "legacy/contracts/fixtures/request_hook/**",
         "legacy/packages/python/tests/test_request_hook_mysql.py",
         "legacy/packages/python/tests/test_request_hook_postgres.py",
         "legacy/packages/python/tests/test_request_hook_sqlite.py",
@@ -4654,8 +4894,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "legacy/contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
+        "legacy/contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "legacy/packages/python/tests/test_external_audit_mysql.py",
         "legacy/packages/python/tests/test_external_audit_postgres.py",
         "legacy/packages/python/tests/test_external_audit_sqlite.py",
@@ -4678,6 +4921,7 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
+        "legacy/contracts/fixtures/parameter_chunking/**",
         "legacy/packages/python/tests/test_parameter_chunking_mysql.py",
         "legacy/packages/python/tests/test_parameter_chunking_postgres.py",
         "legacy/packages/python/tests/test_parameter_chunking_sqlite.py",
@@ -4696,6 +4940,7 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
+        "legacy/contracts/fixtures/aes_rotation/**",
         "legacy/packages/python/tests/test_aes_rotation_mysql.py",
         "legacy/packages/python/tests/test_aes_rotation_postgres.py",
         "legacy/packages/python/tests/test_aes_rotation_sqlite.py",
@@ -4715,6 +4960,7 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
+        "legacy/contracts/fixtures/request_hook/**",
         "legacy/packages/php/tests/RequestHookMysqlRecipeTest.php",
         "legacy/packages/php/tests/RequestHookPostgresRecipeTest.php",
         "legacy/packages/php/tests/RequestHookSqliteRecipeTest.php",
@@ -4736,8 +4982,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "legacy/contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
+        "legacy/contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "legacy/packages/php/tests/ExternalAuditRecipeTest.php",
         "legacy/packages/php/tests/AuditTriggersRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
@@ -4758,6 +5007,7 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
+        "legacy/contracts/fixtures/parameter_chunking/**",
         "legacy/packages/php/tests/ParameterChunkingMysqlTest.php",
         "legacy/packages/php/tests/ParameterChunkingPostgresTest.php",
         "legacy/packages/php/tests/ParameterChunkingSqliteTest.php",
@@ -4780,6 +5030,7 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
+        "legacy/contracts/fixtures/aes_rotation/**",
         "legacy/packages/php/tests/AesRotationMysqlTest.php",
         "legacy/packages/php/tests/AesRotationPostgresTest.php",
         "legacy/packages/php/tests/AesRotationSqliteTest.php",
@@ -4803,6 +5054,7 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
+        "legacy/contracts/fixtures/request_hook/**",
         "legacy/packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
@@ -4828,8 +5080,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "legacy/contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
+        "legacy/contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "legacy/packages/php-ext/tests/ExternalAuditRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/bootstrap.php",
@@ -4852,6 +5107,7 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
+        "legacy/contracts/fixtures/parameter_chunking/**",
         "legacy/packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php",
         "legacy/packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php",
         "legacy/packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php",
@@ -4878,6 +5134,7 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
+        "legacy/contracts/fixtures/aes_rotation/**",
         "legacy/packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
         "legacy/packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
         "legacy/packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
@@ -4902,6 +5159,7 @@
       ],
       "inputs": [
         "contracts/fixtures/request_hook/**",
+        "legacy/contracts/fixtures/request_hook/**",
         "legacy/packages/go/orm/recipe_request_hook_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -4917,6 +5175,7 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "legacy/packages/go/orm/recipe_conformance_verification_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -4948,6 +5207,7 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "legacy/packages/ts/tests/conformance_verification-mysql.test.mjs",
         "legacy/packages/ts/tests/conformance_verification-postgres.test.mjs",
         "legacy/packages/ts/tests/conformance_verification-sqlite.test.mjs",
@@ -4965,6 +5225,7 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "legacy/packages/python/tests/test_conformance_verification_mysql.py",
         "legacy/packages/python/tests/test_conformance_verification_postgres.py",
         "legacy/packages/python/tests/test_conformance_verification_sqlite.py",
@@ -4983,6 +5244,7 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "legacy/packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
         "legacy/packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
         "legacy/packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
@@ -5002,6 +5264,7 @@
       ],
       "inputs": [
         "contracts/fixtures/conformance_verification/**",
+        "legacy/contracts/fixtures/conformance_verification/**",
         "legacy/packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
@@ -5019,8 +5282,11 @@
       ],
       "inputs": [
         "contracts/fixtures/raw_text/**",
+        "legacy/contracts/fixtures/raw_text/**",
         "contracts/fixtures/conformance_verification/*.dbs",
+        "legacy/contracts/fixtures/conformance_verification/*.dbs",
         "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "legacy/contracts/fixtures/conformance_verification/dbspec-set.json",
         "legacy/packages/go/orm/recipe_raw_text_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -5037,8 +5303,11 @@
       ],
       "inputs": [
         "contracts/fixtures/raw_text/**",
+        "legacy/contracts/fixtures/raw_text/**",
         "contracts/fixtures/conformance_verification/*.dbs",
+        "legacy/contracts/fixtures/conformance_verification/*.dbs",
         "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "legacy/contracts/fixtures/conformance_verification/dbspec-set.json",
         "legacy/packages/php/tests/RawTextRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
         "legacy/packages/php/src/ParamCheck.php"
@@ -5055,8 +5324,11 @@
       ],
       "inputs": [
         "contracts/fixtures/raw_text/**",
+        "legacy/contracts/fixtures/raw_text/**",
         "contracts/fixtures/conformance_verification/*.dbs",
+        "legacy/contracts/fixtures/conformance_verification/*.dbs",
         "contracts/fixtures/conformance_verification/dbspec-set.json",
+        "legacy/contracts/fixtures/conformance_verification/dbspec-set.json",
         "legacy/packages/php-ext/tests/RawTextRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/RawTextRecipeTest.php",
         "legacy/packages/php/tests/Recipe.php",
@@ -5072,8 +5344,11 @@
       ],
       "inputs": [
         "contracts/fixtures/audit_triggers/**",
+        "legacy/contracts/fixtures/audit_triggers/**",
         "contracts/fixtures/external_audit/**",
+        "legacy/contracts/fixtures/external_audit/**",
         "contracts/fixtures/external/**",
+        "legacy/contracts/fixtures/external/**",
         "legacy/packages/go/orm/recipe_external_audit_test.go",
         "legacy/packages/go/orm/recipe_audit_triggers_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
@@ -5090,6 +5365,7 @@
       ],
       "inputs": [
         "contracts/fixtures/parameter_chunking/**",
+        "legacy/contracts/fixtures/parameter_chunking/**",
         "legacy/packages/go/orm/recipe_parameter_chunking_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -5105,6 +5381,7 @@
       ],
       "inputs": [
         "contracts/fixtures/aes_rotation/**",
+        "legacy/contracts/fixtures/aes_rotation/**",
         "legacy/packages/go/orm/recipe_aes_rotation_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -5121,6 +5398,7 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
+        "legacy/contracts/fixtures/complex_query/**",
         "legacy/packages/go/orm/recipe_complex_query_test.go",
         "legacy/packages/go/internal/recipe/recipe.go",
         "legacy/packages/go/internal/recipe/database.go",
@@ -5136,6 +5414,7 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
+        "legacy/contracts/fixtures/complex_query/**",
         "legacy/packages/ts/tests/complex_query-mysql.test.mjs",
         "legacy/packages/ts/tests/complex_query-postgres.test.mjs",
         "legacy/packages/ts/tests/complex_query-sqlite.test.mjs",
@@ -5153,6 +5432,7 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
+        "legacy/contracts/fixtures/complex_query/**",
         "legacy/packages/python/tests/test_complex_query_mysql.py",
         "legacy/packages/python/tests/test_complex_query_postgres.py",
         "legacy/packages/python/tests/test_complex_query_sqlite.py",
@@ -5171,6 +5451,7 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
+        "legacy/contracts/fixtures/complex_query/**",
         "legacy/packages/php/tests/ComplexQueryMysqlRecipeTest.php",
         "legacy/packages/php/tests/ComplexQueryPostgresRecipeTest.php",
         "legacy/packages/php/tests/ComplexQuerySqliteRecipeTest.php",
@@ -5190,6 +5471,7 @@
       ],
       "inputs": [
         "contracts/fixtures/complex_query/**",
+        "legacy/contracts/fixtures/complex_query/**",
         "legacy/packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",

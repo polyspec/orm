@@ -438,6 +438,8 @@ caseTest('a Makefile recipe is read after make expands it', 5000, () => {
   const makefile = readMakefile("F ?=\nGO = node tests/go-test.mts\none:\n\t$(GO) ./legacy/packages/go/orm $(if $(F),-run '$(F)',-run '^TestKept$$')\n");
   assert.deepEqual(makefileCommands(makefile).map(({ command }) => command), ["node tests/go-test.mts ./legacy/packages/go/orm -run '^TestKept$'"]);
   assert.equal(expand("'^Test($(subst a,A,$(subst b,B,$(LIST))))$$'", new Map([['LIST', 'a|b']])), "'^Test(A|B)$'");
+  // A foreach gives its text once for each word of its list, so a flag of each crate is read as a flag with its value.
+  assert.equal(expand('cargo test $(foreach crate,$(CRATES),--exclude $(crate)) --lib', new Map([['CRATES', 'one two']])), 'cargo test --exclude one --exclude two --lib');
   assert.deepEqual(featureCommands(makefile, 'place', 'make one F=TestGone').map(({ command }) => checkCommand(nameTree, command)),
     [[], ['go test: -run TestGone in legacy/packages/go/orm']]);
 });

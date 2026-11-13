@@ -569,7 +569,7 @@ caseTest('database owner files are scoped by command and every declared owner fi
   assert.deepEqual(checkSampleCoverage(manifest, reports), []);
 
   delete owner.commands.sqlite;
-  assert.match(checkSampleCoverage(manifest, reports).join('\n'), /test has no database command: packages\/go\/bench\/sqlite\.go/);
+  assert.match(checkSampleCoverage(manifest, reports).join('\n'), /test has no database command: legacy\/packages\/go\/bench\/sqlite\.go/);
 });
 
 caseTest('selected independent cases retain only the files bound to the selected case', COMPUTE, () => {
