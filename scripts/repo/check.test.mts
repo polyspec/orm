@@ -1506,6 +1506,8 @@ catch (error) { if (!(error instanceof TestServerError)) throw error; console.er
       const status = spawnSync(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
+    // The first line of a start names what it waits for (FCV-18).
+    const waits = `test-servers: fake: waits for the line 'accepting connections' with no time limit; its log is ${dir}/fake.log\n`;
     const pid = () => Number(readFileSync(join(dir, 'fake.pid'), 'utf8').trim());
     const alive = () => {
       try { process.kill(pid(), 0); return true; }
@@ -1517,7 +1519,7 @@ catch (error) { if (!(error instanceof TestServerError)) throw error; console.er
     const ready = run('echo starting; echo now accepting connections; echo serving; exec sleep 30');
     assert.equal(ready.status, 0, ready.stderr);
     assert.equal(ready.stdout, 'returned\n');
-    assert.equal(ready.stderr, 'test-servers: fake: starting\ntest-servers: fake: now accepting connections\n');
+    assert.equal(ready.stderr, `${waits}test-servers: fake: starting\ntest-servers: fake: now accepting connections\n`);
     assert.ok(alive(), 'startLogged returned only after the server ended');
     const groupOf = (id: number) => spawnSync('ps', ['-o', 'pgid=', '-p', String(id)], { encoding: 'utf8' }).stdout.trim();
     assert.notEqual(groupOf(pid()), groupOf(process.pid), 'the server runs in the process group of the command that started it');
@@ -1528,14 +1530,14 @@ catch (error) { if (!(error instanceof TestServerError)) throw error; console.er
     const slow = run(`echo starting; sleep 1.5; echo still starting; sleep 1; touch ${dir}/ready-marker; echo now accepting connections; exec sleep 30`);
     assert.equal(slow.status, 0, slow.stderr);
     assert.equal(slow.stdout, 'returned\n');
-    assert.equal(slow.stderr, 'test-servers: fake: starting\ntest-servers: fake: still starting\ntest-servers: fake: now accepting connections\n');
+    assert.equal(slow.stderr, `${waits}test-servers: fake: starting\ntest-servers: fake: still starting\ntest-servers: fake: now accepting connections\n`);
     assert.ok(existsSync(join(dir, 'ready-marker')), 'startLogged returned before the slow server logged its ready line');
     assert.ok(alive(), 'startLogged returned only after the slow server ended');
     process.kill(pid());
     rmSync(join(dir, 'fake.log'));
     const exited = run('echo starting; exit 3');
     assert.equal(exited.status, 1);
-    assert.equal(exited.stderr, `test-servers: fake: starting\ntest-servers: fake exited before it logged 'accepting connections'; last lines of ${dir}/fake.log:\nstarting\n`);
+    assert.equal(exited.stderr, `${waits}test-servers: fake: starting\ntest-servers: fake exited before it logged 'accepting connections'; last lines of ${dir}/fake.log:\nstarting\n`);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

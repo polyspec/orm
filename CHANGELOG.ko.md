@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e101924bac8a67650b680c98330e7c0a68b23b390476065c5d259ac7b0e5dcd7 -->
+<!-- source-sha256: 68153ab3a46b96808cc1aa3562920bc162b54b608050b0d79f43bc6bd5efb847 -->
 # 변경 이력
 
 ## Unreleased
+
+- contracts/implementations.json은 Rust 코어만 가진 surface의 unit test 파일 여덟 개를 각각 이유와 함께 선언한다(OM-1.5-1, FCV-2). flowmark_surface.rs 두 파일과 packages/rust/tests/unit의 query.rs, query_members.rs, query_step.rs, orm_value.rs, interface_cases.rs, cancel.rs다. `node scripts/features/check.mts`는 오류 23개를 보고했고 이제 15개를 보고하며, 그것은 row T464다. scripts/repo/check.test.mts의 `startLogged` case는 start가 이제 처음에 쓰는 줄을 기대한다.
 
 - program을 소유한 runner는 그것을 요청으로 멈추고 program이 끝난 뒤 자기 실행을 보고한다(T390, FCV-18). scripts/features/coverage.mts의 `run`은 deadline과 출력 한도에서(한도를 넘는 출력은 가지지 않는다), scripts/physical.mts의 `run`은 deadline에서, tests/interfaces/check/extract.mts의 `run`은 abort에서 SIGKILL 대신 `stopGroup`으로 SIGTERM을 전달하고, interface checker의 reaper는 SIGTERM을 전달하고 요청한 것을 적는다. scripts/test-servers.mts의 `startLogged`는 ready 줄을 log의 change event와 server의 exit로 기다리고, `test-servers: <name>: waits for the line '<line>' with no time limit; its log is <log>`를 출력하며, 취소, SIGINT, SIGTERM에는 server에 SIGTERM을 전달하고 server가 exit한 뒤 `the start of <name> was cancelled before it logged '<line>'`으로 실패한다. 전에는 500 ms마다 log를 읽고 600초 뒤 SIGKILL을 전달했다. scripts/test-servers-mysql.mts의 `run`은 어느 caller도 주지 않던 abort signal을 받지 않는다. startLogged case 셋 가운데 둘은 실행하지 않았다: 그 cleanup은 `make orm-test-servers-check`가 build하는 program이 필요하다.
 

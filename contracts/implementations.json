@@ -1249,6 +1249,38 @@
         {
           "glob": "packages/rust/testcase/src/groups.rs",
           "reason": "harness: checks how the runner of the Rust test program reads its command line; it tests the Rust test harness"
+        },
+        {
+          "glob": "packages/rust/schema/tests/unit/flowmark_surface.rs",
+          "reason": "test: the JSON forms of the dbspec values and the literal of a text (docs/spec/flowmark-surface.md FMS-10 to FMS-16, FMS-26, FMS-81), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/flowmark_surface.rs",
+          "reason": "test: the JSON surface of the core over requests, plans, models, documents and cells (docs/spec/flowmark-surface.md FMS-20 to FMS-50, FMS-81), which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/query.rs",
+          "reason": "test: Query and a schema loaded at run time (docs/spec/core.md CORE-80 to CORE-83), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/query_members.rs",
+          "reason": "test: the members of Query that read, relate and write a row by the name of its entity (docs/spec/core.md CORE-85 to CORE-91, CORE-94, CORE-120), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/query_step.rs",
+          "reason": "test: the Db step and its transaction steps, a query held as JSON (docs/spec/core.md CORE-92 to CORE-94), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/orm_value.rs",
+          "reason": "test: orm_value, the value of a column as the contract passes it (docs/spec/core.md CORE-60, CORE-62 to CORE-64), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/interface_cases.rs",
+          "reason": "test: the cases of the interface contract of the core (docs/spec/core.md CORE-70 to CORE-72), which the core runs by the functions that the contract names; a contract that no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/cancel.rs",
+          "reason": "test: the cancellation that a handle of the core carries (docs/spec/core.md CORE-45, CORE-46), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
         }
       ]
     }
