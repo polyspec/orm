@@ -205,3 +205,16 @@ export function dropDiscardsItsSession(dialect) {
     step('the next admin session has foreign_key_checks 1');
   });
 }
+
+// The SQLite pool of db opens a connection when a statement or a session first needs one (CFG-5a): install runs on the state
+// of each connection that is idle now and of each that the pool opens later, so a fault of the test driver reaches every one.
+export function onSqliteConnections(db, install) {
+  const pool = db.pool.pool;
+  for (const connection of pool.idle) install(connection.state);
+  const dial = pool.dial;
+  pool.dial = async signal => {
+    const connection = await dial(signal);
+    install(connection.state);
+    return connection;
+  };
+}

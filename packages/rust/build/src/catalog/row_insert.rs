@@ -2,9 +2,7 @@
 use super::CatalogError;
 use super::{
     metadata,
-    mutation::{
-        assigned_slot, cancelled, cell, lookup, mysql_safety, qualified, write_transaction_statement, CommitPermit, Publisher,
-    },
+    mutation::{assigned_slot, cancelled, cell, lookup, mysql_safety, qualified, write_transaction_statement, CommitPermit, Publisher},
     mutation_finish,
     page::quote,
     row_snapshot, CatalogConnection, MutationPhase, TableMetadata,

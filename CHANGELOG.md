@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The branch check follows the vector cases that a recipe step names (T426-6, FCV-16): a dbspec vector for one dialect, or an entry for some dialects only, is a branch of the recipe case and needs its reason. The introspection vectors that differed only by dialect run once on every database, two that repeated the ddl.json round trips are gone, the MySQL ALTER regressions run on every database, and the add-only steps of `addTablesAndColumns` are stated for MySQL and PostgreSQL besides SQLite (SCH-8, INT-56).
+
 - A recipe with a fixture runs one test on every database (T426-1, FCV-16). A case that runs a step on some databases only, or states a different statement or outcome per database, keeps that branch only where a server lacks the feature or gives its own answer, and says why in `databases_differ`, naming the spec item; `make recipe-branches-check` fails on a branch without a reason, a reason without a branch, and a reason that names no defined item. The branches where the orm answered differently are fixed (T426-2 to T426-5), the statements that one form valid on every server replaces are merged, and the 421 branches that remain each name their item, among them the new DIA-222 to DIA-225.
 
 - Breaking (0.x): a MySQL catalog row change runs on a table with triggers, as on PostgreSQL and SQLite (T426-2, INT-106, INT-110). It was refused unless the TRIGGER privileges of the table were visible to the account and `partial_revokes` was off, a rule with no server reason: the verification of the written row sees what a trigger changed. Only a table whose engine is not InnoDB is refused, since only InnoDB rolls a failed verification back. INT-119, DIA-207 and DIA-214 are gone.
