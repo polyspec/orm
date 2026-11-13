@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 041c19742e1d634dba48109285c065fc947df0225b6d83569a95b8a0b980f49c -->
+<!-- source-sha256: ddc211f117e49bb1fd0cbb8df77b87ec26a5a695ea144a3dad7a09ca551efe51 -->
 # 변경 이력
 
 ## Unreleased
+
+- docs/spec/flowmark-surface.md가 flowmark가 생성된 Go binding으로 orm을 쓰는 방법을 정한다(OM-1.5, FMS-1~FMS-82, 구현되지 않음). flowmark v0.0.15가 쓰는 legacy Go module의 exported 이름 317개는 읽기만 하는 자료 이름 205개, 동작 29개, 만들어 넘기는 값 83개이고, 자료는 `contracts/interface/flowmark/dbspec.schema.json`, `ir.schema.json`, `plan.schema.json`의 형태의 JSON text로 contract의 member 21개와 상수 하나를 통해 넘어간다. 살아 있는 `Db`, load한 runtime model, dialect는 handle이나 그 이름을 넘긴다. 코어에 그 이름의 항목이 없는 57개 가운데 52개는 다른 이름의 public 항목이고, 5개는 public이 아니거나 형태가 다르며, 없는 것은 없다.
 
 - `make docs-implementation-count-check`는 수가 단어를 시작할 때만 그것을 구현의 개수로 읽는다(T458). scripts/docs/implementation-count.mts의 `countMismatches`가 `CORE-109 have no implementation`의 109를 개수로 읽어, `implementation`, `client`, `runner` 앞에 규칙을 적은 문장이 실패했다. 글자, 숫자, hyphen 뒤에 오는 identifier의 수는 영어와 한국어에서 아무것도 세지 않는다. docs/spec/core.md의 CORE-110은 CORE-41~CORE-43과 CORE-106~CORE-109에 구현이 없다고 다시 적는다.
 

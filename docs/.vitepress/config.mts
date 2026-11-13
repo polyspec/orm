@@ -91,6 +91,7 @@ export default defineConfig({
         { text: 'Mermaid diagrams', link: '/spec/mermaid' },
         { text: 'Rust core and generated bindings', link: '/spec/core' },
         { text: 'Error kinds of the core', link: '/spec/errors' },
+        { text: 'The surface that flowmark uses', link: '/spec/flowmark-surface' },
       ] },
       { text: 'Development and verification', items: [
         { text: 'Implementation matrix', link: '/operations/interface-implementation' },
