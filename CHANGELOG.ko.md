@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 20bdf99acbd363ee7d1e24b2d8b91416a60270554d166f090413851aac1d9c70 -->
+<!-- source-sha256: 174c12afd95a6250cdd9f3184013ed669ee25d82f2cb52448f19ae05e1eedecf -->
 # 변경 이력
 
 ## Unreleased
@@ -34,6 +34,7 @@
 - Rust 코어는 `Db` step을 가진다(OM-3.1-11, CORE-92): `StepRunner::new(schema, connection)`와 `run(step)`은 JSON 텍스트로 가진 질의 tree를, `Query`의 member를 그 call의 순서대로, 그 terminal `get`, `gets`, `get_count`, `create`, `update`, `delete`와 함께 실행하고, 행과 그 열, 그 relation 결과, 그 key를 가진 `{"ok": <result>}`이나, `duplicate_key` 같은 실패의 kind를 가진 `{"error": {"kind", "message"}}`를 돌려준다. 그래서 다른 library의 코어가 host에게 질의를 부탁하고 실패의 뜻을 정한다. 모듈 `step`의 타입 `Step`, `QueryTree`, `Call`, `Terminal`, `StepValue`는 그 JSON의 serde 형식이다. 계약은 연결이 필요하므로 case 없이 class `StepRunner`를 선언한다.
 - Rust 코어의 `Db` step은 transaction과 savepoint를 실행한다(OM-3.1-12, CORE-93): option `isolation`, `read_only`, `timeout_ms`, `audit`을 가진 `transaction` step은 `retry` 0인 callback transaction을 열고, `savepoint` step은 가장 안쪽 것의 savepoint를 열며, 뒤따르는 step은 step `end`까지 그 handle에서 실행된다. `end`는 그것을 commit하거나 release하고, `rollback`이면 rollback하며, 그 끝의 결과를 돌려준다. `StepRunner::close`는 열린 것을 rollback하고 그 결과를 돌려주며, 놓인 runner는 자기 transaction을 rollback한다.
 - `make test-rust`는 cargo 시험이 실행되는 동안 `typescript-current`로 TypeScript client를 build하고 `$(READ_TYPESCRIPT)`로 hold한다(T339-5-1): Rust recipe의 case `public_interface_none::interface_symbols`는 `legacy/packages/ts/dist`를 읽는 `tests/interfaces/check/main.mts`를 실행하며, 그 build가 없는 checkout에서 `has no build of the TypeScript client`로 실패했다.
+- `make orm-test-container`의 시험 데이터베이스 컨테이너는 그것을 띄운 checkout에 속한다(T444): 이름은 checkout root의 sha256 앞 16진 12자리를 넣은 `polyspec-orm-test-<checkout>-<kind>`이므로, 두 번째 checkout이 `container polyspec-orm-test-mysql exists`로 실패하던 곳에서 두 checkout이 동시에 서버를 띄운다. `make orm-test-container-stop`은 자기 checkout의 컨테이너만 지우고, 실패한 시작은 자기가 띄운 컨테이너를 지우며, `make orm-test-container-run KIND=<kind> RUN='<command>'`는 서버의 변수로 명령을 실행하고 명령이 끝나거나 실패하거나 run이 SIGINT나 SIGTERM을 받으면 컨테이너를 지운다.
 
 ## 0.0.31
 
