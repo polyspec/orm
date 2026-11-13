@@ -192,3 +192,122 @@ async fn a_step_that_the_runner_cannot_read_returns_its_kind() {
     runner.close().await;
     db.close().await;
 }
+
+/// The step that creates the account of `email`.
+fn create_account(email: &str) -> Value {
+    query_step(
+        json!({"entity": "account", "calls": [
+            {"call": "set", "column": "email", "value": text(email)},
+            {"call": "set", "column": "revision", "value": int64(0)},
+        ]}),
+        "create",
+    )
+}
+
+/// The step that counts the accounts of `email`.
+fn count_account(email: &str) -> Value {
+    query_step(json!({"entity": "account", "calls": [{"call": "where", "chain": "Email", "values": [text(email)]}]}), "get_count")
+}
+
+fn end(rollback: bool) -> Value {
+    json!({"kind": "end", "rollback": rollback})
+}
+
+// Requirements: CORE-93. The steps between a transaction step and its end run in one transaction, which the end commits
+// or rolls back.
+#[tokio::test]
+async fn a_transaction_step_runs_the_steps_until_its_end() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-step-transaction");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut runner = StepRunner::new(&schema, Connection::from(&db));
+    let ok = json!({"ok": {}});
+    assert_eq!(run(&mut runner, &json!({"kind": "transaction", "options": {}})).await, ok);
+    assert!(run(&mut runner, &create_account("d@x")).await["ok"]["row"].is_object());
+    let locked = query_step(json!({"entity": "account", "calls": [{"call": "where", "chain": "Email", "values": [text("d@x")]}, {"call": "for_update"}]}), "get");
+    assert!(run(&mut runner, &locked).await["ok"]["row"].is_object(), "a locked read in the transaction sees its own row");
+    assert_eq!(run(&mut runner, &end(false)).await, ok, "the end commits");
+    assert_eq!(run(&mut runner, &count_account("d@x")).await, json!({"ok": {"count": 1}}));
+    assert_eq!(run(&mut runner, &json!({"kind": "transaction"})).await, ok, "the options are optional");
+    assert!(run(&mut runner, &create_account("e@x")).await["ok"]["row"].is_object());
+    assert_eq!(run(&mut runner, &end(true)).await, ok, "the end rolls back");
+    assert_eq!(run(&mut runner, &count_account("e@x")).await, json!({"ok": {"count": 0}}));
+    runner.close().await;
+    db.close().await;
+}
+
+// Requirements: CORE-93. A savepoint step opens a savepoint of the innermost transaction, so a write that fails with
+// duplicate_key is rolled back to it and the transaction goes on.
+#[tokio::test]
+async fn a_savepoint_step_rolls_back_to_its_start() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-step-savepoint");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut runner = StepRunner::new(&schema, Connection::from(&db));
+    let ok = json!({"ok": {}});
+    assert_eq!(run(&mut runner, &json!({"kind": "transaction", "options": {"isolation": "serializable"}})).await, ok);
+    assert!(run(&mut runner, &create_account("d@x")).await["ok"]["row"].is_object());
+    assert_eq!(run(&mut runner, &json!({"kind": "savepoint"})).await, ok);
+    assert!(run(&mut runner, &create_account("e@x")).await["ok"]["row"].is_object());
+    let duplicate = run(&mut runner, &create_account("a@x")).await;
+    assert_eq!(error_kind(&duplicate), "duplicate_key", "{duplicate}");
+    assert_eq!(run(&mut runner, &end(true)).await, ok, "the end rolls back to the savepoint");
+    assert_eq!(run(&mut runner, &json!({"kind": "savepoint"})).await, ok);
+    assert!(run(&mut runner, &create_account("f@x")).await["ok"]["row"].is_object());
+    assert_eq!(run(&mut runner, &end(false)).await, ok, "the end releases the savepoint");
+    assert_eq!(run(&mut runner, &end(false)).await, ok, "the end commits the transaction");
+    for (email, count) in [("d@x", 1), ("e@x", 0), ("f@x", 1)] {
+        assert_eq!(run(&mut runner, &count_account(email)).await, json!({"ok": {"count": count}}), "{email}");
+    }
+    runner.close().await;
+    db.close().await;
+}
+
+// Requirements: CORE-93. A savepoint or an end with no open transaction and an option that no step has are config, and
+// close rolls back what is open and leaves the runner on its connection.
+#[tokio::test]
+async fn close_rolls_back_what_is_open() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-step-close");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut runner = StepRunner::new(&schema, Connection::from(&db));
+    for (what, step) in [
+        ("a savepoint without a transaction", json!({"kind": "savepoint"})),
+        ("an end without a transaction", end(false)),
+        ("an option that no step has", json!({"kind": "transaction", "options": {"retry": 3}})),
+    ] {
+        let outcome = run(&mut runner, &step).await;
+        assert_eq!(error_kind(&outcome), "config", "{what}: {outcome}");
+    }
+    let ok = json!({"ok": {}});
+    assert_eq!(run(&mut runner, &json!({"kind": "transaction"})).await, ok);
+    assert_eq!(run(&mut runner, &json!({"kind": "savepoint"})).await, ok);
+    assert!(run(&mut runner, &create_account("d@x")).await["ok"]["row"].is_object());
+    runner.close().await;
+    assert_eq!(run(&mut runner, &count_account("d@x")).await, json!({"ok": {"count": 0}}), "close rolled back both");
+    let outcome = run(&mut runner, &end(false)).await;
+    assert_eq!(error_kind(&outcome), "config", "close ended every open one: {outcome}");
+    runner.close().await;
+    db.close().await;
+}
+
+// Requirements: CORE-93. A runner dropped with an open transaction rolls it back, and the connection of the pool of one
+// returns to the pool, where the next statement takes it.
+#[tokio::test]
+async fn a_dropped_runner_rolls_back_its_transaction() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-step-drop");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut runner = StepRunner::new(&schema, Connection::from(&db));
+    assert_eq!(run(&mut runner, &json!({"kind": "transaction"})).await, json!({"ok": {}}));
+    assert!(run(&mut runner, &create_account("d@x")).await["ok"]["row"].is_object());
+    drop(runner);
+    let mut next = StepRunner::new(&schema, Connection::from(&db));
+    assert_eq!(run(&mut next, &count_account("d@x")).await, json!({"ok": {"count": 0}}));
+    next.close().await;
+    db.close().await;
+}
