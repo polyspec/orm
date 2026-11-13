@@ -97,3 +97,75 @@ async fn limit_reads_a_range_of_the_order() {
     assert_eq!(error.to_string(), "config: limit requires a non-negative offset and a positive count");
     db.close().await;
 }
+
+/// The statement of the first step of the request `kind` of `query` for `dialect`, as a connection of that dialect plans
+/// it.
+fn statement(query: &Query, kind: &str, dialect: crate::Dialect) -> Result<String> {
+    let req = crate::request::build(&query.core, kind);
+    if let Some(error) = req.error() {
+        return Err(error);
+    }
+    let manifest = query.core.entity().schema().manifest()?;
+    let plan = crate::engine::compile(&manifest, dialect, &req.ir)?;
+    Ok(plan.steps[0].sql.clone())
+}
+
+// Requirements: CORE-86. Each of the four locks sets the lock of the request, the last one called holds, and MySQL and
+// PostgreSQL render it after the statement.
+#[test]
+fn the_four_locks_set_the_lock_of_the_request() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let schema = account_schema();
+    let cases: [(fn(&mut Query), &str, &str, &str); 4] = [
+        (Query::for_update, "update", " FOR UPDATE", " FOR UPDATE"),
+        (Query::for_share, "share", " LOCK IN SHARE MODE", " FOR SHARE"),
+        (Query::for_update_no_wait, "update_nowait", " FOR UPDATE NOWAIT", " FOR UPDATE NOWAIT"),
+        (Query::for_share_no_wait, "share_nowait", " FOR SHARE NOWAIT", " FOR SHARE NOWAIT"),
+    ];
+    for (lock, mode, mysql, postgres) in cases {
+        let mut query = Query::new(&schema, "account").expect("query");
+        query.for_update();
+        lock(&mut query);
+        let req = crate::request::build(&query.core, "one");
+        assert_eq!(req.ir.query.lock, mode, "the last lock holds");
+        let sql = statement(&query, "one", crate::Dialect::MySql).expect("MySQL statement");
+        assert!(sql.ends_with(mysql), "{mode} on MySQL: {sql}");
+        let sql = statement(&query, "one", crate::Dialect::Postgres).expect("PostgreSQL statement");
+        assert!(sql.ends_with(postgres), "{mode} on PostgreSQL: {sql}");
+    }
+    let mut counted = Query::new(&schema, "account").expect("query");
+    counted.for_update();
+    let error = statement(&counted, "count", crate::Dialect::Postgres).expect_err("a count with a lock");
+    assert_eq!(error.kind(), crate::Kind::IrInvalid, "{error}");
+}
+
+// Requirements: CORE-86. SQLite takes the lock of a read in a transaction, and refuses a lock outside one.
+#[tokio::test]
+async fn a_lock_on_sqlite_needs_a_transaction() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-lock");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut outside = query(&schema, "account", &db);
+    outside.for_update();
+    let error = failure(outside.get().await, "a lock outside a transaction");
+    assert_eq!(error.to_string(), "config: SQLite row locks require an ORM transaction");
+    let locked = db
+        .transaction(
+            |tx| {
+                let schema = &schema;
+                async move {
+                    let mut query = Query::new(schema, "account")?;
+                    query.connect(Connection::from(&tx));
+                    query.where_chain("Seq", vec![int(2)]);
+                    query.for_update();
+                    query.get().await?.map(|row| row.value("email")).transpose()
+                }
+            },
+            crate::TransactionOptions::default(),
+        )
+        .await
+        .expect("a locked read in a transaction");
+    assert_eq!(locked, Some(OrmValue::Text("b@x".into())));
+    db.close().await;
+}
