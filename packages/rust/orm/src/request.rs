@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::core::{config, Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec};
 use crate::ir;
-use crate::schema::Schema;
+use crate::schema::SchemaRef;
 use crate::value::Param;
 use crate::{Error, Result};
 
@@ -15,7 +15,7 @@ pub struct Req {
     pub params: Vec<Param>,
     pub err: Option<(crate::Kind, String)>,
     /// The schema the statement is planned with.
-    pub schema: &'static Schema,
+    pub schema: SchemaRef,
     /// Relations whose child has its own connection, by parent model identity.
     pub(crate) external: HashMap<u64, Vec<RelSpec>>,
     /// The parameters are numbered in walk order (canonical.rs), so a second walk is not run.
@@ -23,7 +23,8 @@ pub struct Req {
 }
 
 impl Req {
-    pub fn new(schema: &'static Schema, kind: &str, entity: &str) -> Req {
+    pub fn new(schema: impl Into<SchemaRef>, kind: &str, entity: &str) -> Req {
+        let schema = schema.into();
         Req {
             ir: ir::Request {
                 ir_version: 1,
@@ -105,7 +106,7 @@ pub(crate) fn result_name(c: &Core, many: bool) -> String {
     if !c.alias.is_empty() {
         return polyspec_orm_schema::names::snake_case(&c.alias);
     }
-    format!("{}_{}", c.ent.name, if many { "models" } else { "model" })
+    format!("{}_{}", c.ent.name(), if many { "models" } else { "model" })
 }
 
 /// One statement being built: its models and their join paths.
@@ -154,7 +155,7 @@ fn last_segment(path: &str) -> String {
 
 /// Renders the model as a request of kind.
 pub(crate) fn build(c: &Core, kind: &str) -> Req {
-    let mut r = Req::new(c.ent.schema, kind, c.ent.name);
+    let mut r = Req::new(c.ent.schema(), kind, c.ent.name());
     if let Some(e) = c.err() {
         r.fail(e);
         return r;
@@ -229,7 +230,7 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, 
         r.fail(config(format!("connector {} without a following condition", c.where_.pending)));
         return None;
     }
-    let mut q = ir::Query { entity: c.ent.name.to_owned(), force_index: c.index.clone(), lock: c.lock.to_owned(), ..Default::default() };
+    let mut q = ir::Query { entity: c.ent.name().to_owned(), force_index: c.index.clone(), lock: c.lock.to_owned(), ..Default::default() };
     q.columns = columns(r, c)?;
     if let Some(on) = &c.on {
         q.on = Some(group(r, on, c, f)?);
@@ -258,7 +259,7 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, 
         }
         if rel.child.conn.is_some() {
             if rel.child.limit.is_some() {
-                r.fail(Error::new(crate::Kind::LimitInRelation, format!("{} relation uses limit; use group_limit", rel.child.ent.name)));
+                r.fail(Error::new(crate::Kind::LimitInRelation, format!("{} relation uses limit; use group_limit", rel.child.ent.name())));
                 return None;
             }
             r.external.entry(c.id).or_default().push(rel.clone());
@@ -294,7 +295,7 @@ fn relation(r: &mut Req, rel: &RelSpec) -> Option<ir::Relation> {
     let mut joins = HashSet::new();
     let mut q = query(r, ch, &mut f, &mut joins, false)?;
     if ch.limit.is_some() {
-        r.fail(Error::new(crate::Kind::LimitInRelation, format!("{} relation uses limit; use group_limit", ch.ent.name)));
+        r.fail(Error::new(crate::Kind::LimitInRelation, format!("{} relation uses limit; use group_limit", ch.ent.name())));
         return None;
     }
     q.flatten = ch.parent_node;
@@ -391,8 +392,8 @@ fn validate_host_input(owner: &Core, p: &PredSpec) -> Result<()> {
         PredValue::Tuples(cols, rows) => rows.iter().flat_map(|row| cols.iter().map(String::as_str).zip(row)).collect(),
         _ => return Ok(()),
     };
-    let manifest = owner.ent.schema.manifest()?;
-    let ent = manifest.entity(owner.ent.name)?;
+    let manifest = owner.ent.schema().manifest()?;
+    let ent = manifest.entity(owner.ent.name())?;
     for (column, value) in values {
         if matches!(value, Param::Null) {
             continue;
@@ -535,6 +536,7 @@ mod plan_cache_tests {
     use crate::args::Value;
     use crate::core::{Arg, ChainKey};
     use crate::model::{AnyModel, Entity};
+    use crate::schema::Schema;
     use crate::value::Param;
     use std::collections::HashSet;
     use std::sync::Arc;

@@ -3,7 +3,7 @@
 //! a `Query` holds them by name and names its entity in a value.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use indexmap::IndexMap;
 use polyspec_orm_schema::chain::{parse_chain, parse_order};
@@ -11,7 +11,7 @@ use polyspec_orm_schema::chain::{parse_chain, parse_order};
 use crate::collection::{AnyCollection, Collection, Key};
 use crate::core::Core;
 use crate::db::Statement;
-use crate::model::{AnyModel, Boxed, Entity};
+use crate::model::{AnyModel, Boxed, LoadedEntity};
 use crate::value::Val;
 use crate::{Connection, Error, Kind, OrmValue, Result, Schema};
 
@@ -31,31 +31,18 @@ fn collect_queries(items: Boxed, fetched: HashMap<Key, serde_json::Value>) -> Ar
     Arc::new(Collection::<Query>::from_boxes(items, fetched))
 }
 
-/// The descriptor of `name` in `schema`. The process keeps one per entity of a schema that a `Query` named (CORE-81),
-/// because a core refers to its descriptor for the life of the process.
-fn descriptor(schema: &'static Schema, name: &str) -> Result<&'static Entity> {
-    static KEPT: Mutex<Vec<&'static Entity>> = Mutex::new(Vec::new());
-    let mut kept = KEPT.lock().map_err(|_poisoned| Error::internal("the lock of the entity descriptors was poisoned by a panic"))?;
-    if let Some(found) = kept.iter().find(|found| std::ptr::eq(found.schema, schema) && found.name == name) {
-        return Ok(found);
-    }
-    let name: &'static str = Box::leak(name.to_owned().into_boxed_str());
-    let entity: &'static Entity = Box::leak(Box::new(Entity { name, schema, new: new_query, collect: collect_queries }));
-    kept.push(entity);
-    Ok(entity)
-}
-
 impl Query {
     /// A query of the entity `entity` of `schema`; a name that the schema does not have is `entity_unknown` (CORE-81).
     pub fn new(schema: &Schema, entity: &str) -> Result<Query> {
         schema.manifest()?.entity(entity)?;
-        let schema = schema.interned();
-        Ok(Query { core: Core::new(descriptor(schema, entity)?), values: IndexMap::new() })
+        // CORE-80, CORE-81: the query, its copies and its rows share the descriptor, and the descriptor the schema.
+        let descriptor = LoadedEntity { name: entity.to_owned(), schema: schema.shared(), new: new_query, collect: collect_queries };
+        Ok(Query { core: Core::of(descriptor.into()), values: IndexMap::new() })
     }
 
     /// The name of the entity.
     pub fn entity(&self) -> &str {
-        self.core.entity().name
+        self.core.entity().name()
     }
 
     /// Sets the connection of the query: a `Db`, or the `Tx` of a transaction, in which its terminals then run
@@ -77,11 +64,11 @@ impl Query {
     }
 
     fn chain(&mut self, connector: &'static str, name: &str, values: Vec<OrmValue>) {
-        let manifest = match self.core.entity().schema.manifest() {
+        let manifest = match self.core.entity().schema().manifest() {
             Ok(manifest) => manifest,
             Err(error) => return self.core.fail_err(error),
         };
-        let entity = match manifest.entity(self.core.entity().name) {
+        let entity = match manifest.entity(self.core.entity().name()) {
             Ok(entity) => entity,
             Err(error) => return self.core.fail_err(error),
         };
@@ -103,11 +90,11 @@ impl Query {
     /// Adds the order of the name `spec`, such as `SeqDescAndLabelAsc` (CORE-82). A refused name is `config` at the next
     /// terminal.
     pub fn order_by(&mut self, spec: &str) {
-        let manifest = match self.core.entity().schema.manifest() {
+        let manifest = match self.core.entity().schema().manifest() {
             Ok(manifest) => manifest,
             Err(error) => return self.core.fail_err(error),
         };
-        let entity = match manifest.entity(self.core.entity().name) {
+        let entity = match manifest.entity(self.core.entity().name()) {
             Ok(entity) => entity,
             Err(error) => return self.core.fail_err(error),
         };
@@ -169,8 +156,8 @@ impl Query {
     /// The value of the column `column` of a row as `orm_value` (CORE-62, CORE-83): a name that is no column of the entity is `column_unknown`,
     /// and a column that the row did not read is `column_unselected`.
     pub fn value(&self, column: &str) -> Result<OrmValue> {
-        let manifest = self.core.entity().schema.manifest()?;
-        let Some(field) = manifest.entity(self.core.entity().name)?.field(column) else {
+        let manifest = self.core.entity().schema().manifest()?;
+        let Some(field) = manifest.entity(self.core.entity().name())?.field(column) else {
             return Err(Error::new(Kind::ColumnUnknown, format!("{}.{column}", self.entity())));
         };
         self.core.require_field(column)?;
@@ -180,8 +167,8 @@ impl Query {
     }
 
     fn is_column(&self, name: &str) -> Result<bool> {
-        let manifest = self.core.entity().schema.manifest()?;
-        Ok(manifest.entity(self.core.entity().name)?.field(name).is_some())
+        let manifest = self.core.entity().schema().manifest()?;
+        Ok(manifest.entity(self.core.entity().name())?.field(name).is_some())
     }
 }
 

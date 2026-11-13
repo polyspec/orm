@@ -16,7 +16,7 @@ use crate::driver::{child_keys, first_cell, parent_values, positional, relation_
 use crate::ir;
 use crate::plan::{Assemble, Plan};
 use crate::request::{build, result_name, Req};
-use crate::schema::Schema;
+use crate::schema::{Schema, SchemaRef};
 use crate::tx::{resolve, Connection};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
@@ -86,6 +86,74 @@ impl Entity {
     }
 }
 
+/// The descriptor of an entity of a schema that was loaded at run time (CORE-81): it owns its name and shares its
+/// schema, and the cores that name it share it.
+pub struct LoadedEntity {
+    pub name: String,
+    pub schema: SchemaRef,
+    pub new: fn(Core) -> Box<dyn AnyModel>,
+    pub collect: fn(Boxed, HashMap<Key, serde_json::Value>) -> Arc<dyn AnyCollection>,
+}
+
+/// The descriptor that a core names: the static of a generated model, or the shared descriptor of a loaded schema,
+/// which is dropped with the last core that names it (CORE-80, CORE-81).
+#[derive(Clone)]
+pub enum EntityRef {
+    Static(&'static Entity),
+    Loaded(Arc<LoadedEntity>),
+}
+
+impl From<&'static Entity> for EntityRef {
+    fn from(entity: &'static Entity) -> EntityRef {
+        EntityRef::Static(entity)
+    }
+}
+
+impl From<LoadedEntity> for EntityRef {
+    fn from(entity: LoadedEntity) -> EntityRef {
+        EntityRef::Loaded(Arc::new(entity))
+    }
+}
+
+impl EntityRef {
+    /// The name of the entity.
+    pub fn name(&self) -> &str {
+        match self {
+            EntityRef::Static(entity) => entity.name,
+            EntityRef::Loaded(entity) => &entity.name,
+        }
+    }
+
+    /// The schema of the entity.
+    pub fn schema(&self) -> SchemaRef {
+        match self {
+            EntityRef::Static(entity) => SchemaRef::Static(entity.schema),
+            EntityRef::Loaded(entity) => entity.schema.clone(),
+        }
+    }
+
+    /// A new model of the entity with the core `core`.
+    pub(crate) fn new_model(&self, core: Core) -> Box<dyn AnyModel> {
+        match self {
+            EntityRef::Static(entity) => (entity.new)(core),
+            EntityRef::Loaded(entity) => (entity.new)(core),
+        }
+    }
+
+    /// The collection of the rows `items` of the entity.
+    pub(crate) fn collect(&self, items: Boxed, fetched: HashMap<Key, serde_json::Value>) -> Arc<dyn AnyCollection> {
+        match self {
+            EntityRef::Static(entity) => (entity.collect)(items, fetched),
+            EntityRef::Loaded(entity) => (entity.collect)(items, fetched),
+        }
+    }
+
+    /// An entity of the runtime model.
+    pub fn entity_schema(&self) -> Result<dbspec::Entity> {
+        Ok(self.schema().manifest()?.entity(self.name())?.clone())
+    }
+}
+
 /// The descriptor functions of a model type.
 pub fn new_boxed<M: Model>(core: Core) -> Box<dyn AnyModel> {
     Box::new(M::from_core(core))
@@ -137,7 +205,7 @@ impl Core {
             RelatedValue::One(None) => Ok(None),
             // Reports another model type rather than discarding it as None.
             RelatedValue::One(Some(m)) => {
-                m.as_any().downcast_ref::<M>().map(Some).ok_or_else(|| related_mismatch::<M>(name, &format!("a row of {}", m.core_dyn().ent.name)))
+                m.as_any().downcast_ref::<M>().map(Some).ok_or_else(|| related_mismatch::<M>(name, &format!("a row of {}", m.core_dyn().ent.name())))
             }
             RelatedValue::Many(_) => Err(related_mismatch::<M>(name, "a collection")),
         }
@@ -510,7 +578,7 @@ struct Built {
 
 impl<'a> Assembler<'a> {
     fn model(&mut self, b: &Core, asm: &Assemble, row: &[Val]) -> Result<Built> {
-        let mut m = (b.ent.new)(Core::new(b.ent));
+        let mut m = b.ent.new_model(Core::of(b.ent.clone()));
         {
             let core = m.core_dyn_mut();
             core.conn = self.conn.clone();
@@ -528,18 +596,18 @@ impl<'a> Assembler<'a> {
                 // reads; a styled column was decoded through its stages.
                 if asm.aes_version == Some(at) {
                     if !v.is_null() {
-                        v = Val::I64(i64::from(crate::row::stored_version(&v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?));
+                        v = Val::I64(i64::from(crate::row::stored_version(&v).map_err(|error| column_decode_error(b.ent.name(), &col.name, error))?));
                     }
                 } else if col.styles.is_empty() {
                     if let Some(field) = ent.field(&col.column) {
-                        v = crate::cell::declared_cell(&field.ty, v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
+                        v = crate::cell::declared_cell(&field.ty, v).map_err(|error| column_decode_error(b.ent.name(), &col.name, error))?;
                     }
                 }
-                if m.assign_dyn(&col.name, v.clone()).map_err(|error| column_decode_error(b.ent.name, &col.name, error))? {
+                if m.assign_dyn(&col.name, v.clone()).map_err(|error| column_decode_error(b.ent.name(), &col.name, error))? {
                     continue;
                 }
             }
-            let added = crate::cell::added_column(col, v, row).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
+            let added = crate::cell::added_column(col, v, row).map_err(|error| column_decode_error(b.ent.name(), &col.name, error))?;
             st.extra.insert(col.name.clone(), added);
         }
         for key in &asm.key {
@@ -593,7 +661,7 @@ impl<'a> Assembler<'a> {
                     let key = collection_key(child, built.model.as_ref(), &casm, cr)?;
                     items.push((key, built.model));
                 }
-                let coll = (child.ent.collect)(items, HashMap::new());
+                let coll = child.ent.collect(items, HashMap::new());
                 st.related.insert(ch.rel.clone(), Related { value: RelatedValue::Many(coll), cascade: ch.cascade, flat: false });
             } else {
                 let value = match rows.first() {
@@ -809,7 +877,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         }
         let value = if rel.many {
             let items: Vec<(Key, Box<dyn AnyModel>)> = matched.iter().map(|(k, m)| Ok((k.clone(), clone_model(ch, m.as_ref())?))).collect::<Result<_>>()?;
-            RelatedValue::Many((ch.ent.collect)(items, HashMap::new()))
+            RelatedValue::Many(ch.ent.collect(items, HashMap::new()))
         } else {
             RelatedValue::One(matched.first().map(|(_, m)| m.clone()))
         };
@@ -821,7 +889,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
 /// A copy of a loaded model with its field values.
 fn clone_model(template: &Core, m: &dyn AnyModel) -> Result<Box<dyn AnyModel>> {
     let core = m.core_dyn().clone();
-    let mut out = (template.ent.new)(core.clone());
+    let mut out = template.ent.new_model(core.clone());
     if let Some(row) = &core.row {
         for name in &row.names {
             if let Some(v) = m.value_dyn(name) {
@@ -1029,7 +1097,7 @@ pub async fn get_sum(c: &Core) -> Result<f64> {
 /// The field of the column of a sum or an average, which the planner has checked.
 fn aggregate_field(c: &Core) -> Result<polyspec_orm_schema::dbspec::Field> {
     let entity = c.ent.entity_schema()?;
-    entity.field(&c.agg).cloned().ok_or_else(|| Error::internal(format!("{}.{} is missing from a planned aggregate", c.ent.name, c.agg)))
+    entity.field(&c.agg).cloned().ok_or_else(|| Error::internal(format!("{}.{} is missing from a planned aggregate", c.ent.name(), c.agg)))
 }
 
 /// The average of the column selected with avg_<col>(); None when SQL gives
@@ -1101,7 +1169,7 @@ where
 }
 
 fn write_req(c: &Core, kind: &str) -> Req {
-    Req::new(c.ent.schema, kind, c.ent.name)
+    Req::new(c.ent.schema(), kind, c.ent.name())
 }
 
 /// The field `column` of an entity, or COLUMN_UNKNOWN naming `entity.column`.
@@ -1278,7 +1346,7 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
     crate::request::insert_condition(&mut req, c)?;
     req.ir.n_params = req.params.len();
     let (key, _) = write(&ex, &c.conn, &mut req).await?;
-    let mut out = M::from_core(Core::new(c.ent));
+    let mut out = M::from_core(Core::of(c.ent.clone()));
     let mut st = RowState::default();
     for s in &c.sets {
         st.add_name(&s.column);
@@ -1555,7 +1623,7 @@ pub async fn save<M: Model>(m: &mut M) -> Result<M> {
 /// it is an insert request; if the primary key is an identity, it is the generated key; otherwise it is the record's value.
 pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> Result<crate::tx::AuditKey> {
     let ent = &a.entity;
-    let mut req = Req::new(a.schema, "insert", &ent.name);
+    let mut req = Req::new(a.schema.clone(), "insert", &ent.name);
     for (column, value) in &a.values {
         let spec = SetSpec { column: column.clone(), value: if matches!(value, Param::Null) { SetValue::Null } else { SetValue::Value(value.clone()) } };
         let assigned = assign(&mut req, ent, &spec)?;
@@ -1622,7 +1690,7 @@ async fn restore_step<M: Model>(m: &M) -> Result<(u64, Core)> {
     let c = m.core();
     let ex = terminal(c)?;
     let ent = c.ent.entity_schema()?;
-    let mut req = build(&Core::new(c.ent), "restore");
+    let mut req = build(&Core::of(c.ent.clone()), "restore");
     // own maps the parameter of each value the model sets to that set value; the hook adds parameters after them.
     let mut own: HashMap<usize, &SetSpec> = HashMap::new();
     for s in &c.sets {
@@ -1643,7 +1711,7 @@ async fn restore_step<M: Model>(m: &M) -> Result<(u64, Core)> {
         Ok(())
     })
     .await?;
-    let mut q = Core::new(c.ent);
+    let mut q = Core::of(c.ent.clone());
     q.conn = c.conn.clone();
     for (i, (column, value)) in key_values.into_iter().enumerate() {
         q.add_eq(if i == 0 { "" } else { "and" }, &column, value);
@@ -1849,7 +1917,7 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         let document = match (datetime_precision(c, &name)?, &v) {
             (_, Val::Ordered(o)) => o.to_string(),
             (Some(precision), Val::DateTime(t)) => serde_json::json!(datetime_text(t, precision)).to_string(),
-            (_, other) => other.to_json().map_err(|error| column_output_error(c.ent.name, &name, other, error))?.to_string(),
+            (_, other) => other.to_json().map_err(|error| column_output_error(c.ent.name(), &name, other, error))?.to_string(),
         };
         let text = if styled_column(c, &name)? {
             if matches!(v, Val::Null) {
@@ -1925,7 +1993,7 @@ fn styled_column(c: &Core, name: &str) -> Result<bool> {
 
 fn missing_output_column(c: &Core, name: &str) -> Error {
     if c.row.is_none() {
-        Error::new(crate::Kind::ColumnUnselected, format!("{}.{} has no decoded value", c.ent.name, name))
+        Error::new(crate::Kind::ColumnUnselected, format!("{}.{} has no decoded value", c.ent.name(), name))
     } else {
         Error::internal(format!("model output column {name} is missing"))
     }

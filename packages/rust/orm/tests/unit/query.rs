@@ -43,12 +43,42 @@ fn schema_load_refuses_a_text_that_is_no_manifest_of_its_hash() {
     assert_eq!(error.kind(), Kind::SchemaHashMismatch, "{error}");
 }
 
-// Requirements: CORE-80. Loading one text twice keeps one copy of it.
-#[test]
-fn schema_load_keeps_one_copy_of_a_text() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let (first, second) = (clock(), clock());
-    assert!(std::ptr::eq(first.text(), second.text()), "two loads of one manifest text share its copy");
+// Requirements: CORE-80, CORE-81. A loaded schema is shared by its copies, its queries, their rows and the connection that
+// it is registered on, and its memory is returned when the last of them is dropped; the process keeps none.
+#[tokio::test]
+async fn the_memory_of_a_loaded_schema_returns_with_its_last_owner() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-schema-memory");
+    let schema = clock();
+    let text = schema.text_owners().expect("a loaded schema owns its text");
+    let db = clock_db(&scratch, &schema).await;
+    let mut query = Query::new(&schema, "clock_event").expect("query");
+    query.connect(Connection::from(&db));
+    query.where_chain("GtSeq", vec![int(1)]);
+    let rows = query.gets().await.expect("gets");
+    let row = query.get().await.expect("get").expect("a row");
+    assert_eq!(rows.len(), 2);
+    drop(schema);
+    assert!(text.upgrade().is_some(), "the query, its rows and the connection share the schema");
+    drop(query);
+    assert_eq!(row.value("seq").expect("seq"), int(2), "a row keeps the schema that it reads its columns by");
+    drop(rows);
+    drop(row);
+    assert!(text.upgrade().is_some(), "the connection that the schema is registered on shares it");
+    db.close().await;
+    drop(db);
+    assert!(text.upgrade().is_none(), "the last owner is dropped, so the text of the schema is returned");
+
+    // A schema that no connection registered is returned with its last query.
+    let schema = clock();
+    let text = schema.text_owners().expect("a loaded schema owns its text");
+    let query = Query::new(&schema, "clock_event").expect("query");
+    let copy = query.clone();
+    drop(schema);
+    drop(query);
+    assert!(text.upgrade().is_some(), "a copy of the query shares the schema");
+    drop(copy);
+    assert!(text.upgrade().is_none());
 }
 
 // Requirements: CORE-81. The entity is chosen by its name, and a name that the schema does not have is entity_unknown.

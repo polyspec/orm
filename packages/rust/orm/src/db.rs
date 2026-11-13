@@ -607,7 +607,7 @@ pub(crate) struct DbInner {
     /// The manifest hash of the set registered on this connection.
     pub(crate) sets: std::sync::RwLock<std::collections::HashSet<String>>,
     /// The schema of the registered set. Audit records are inserted with the set that has that table.
-    pub(crate) schemas: std::sync::RwLock<Vec<&'static Schema>>,
+    pub(crate) schemas: std::sync::RwLock<Vec<crate::schema::SchemaRef>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
     /// The connection's statement event subscribers and transaction number. All clones of the connection share them.
@@ -835,7 +835,7 @@ impl Db {
     pub(crate) fn register(&self, schema: &Schema) -> Result<()> {
         schema.registered()?;
         if self.inner.sets.write().unwrap().insert(schema.hash().to_owned()) {
-            self.inner.schemas.write().unwrap().push(schema.interned());
+            self.inner.schemas.write().unwrap().push(schema.shared());
         }
         Ok(())
     }

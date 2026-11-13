@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cde688e75d60fc45ce9107b1838f5618a047c794c973c8512996adb462507a7d -->
+<!-- source-sha256: 704d31df4e850813f303621f7ddaacafba00d8434aaf3cc5c02f0c36755c9fd0 -->
 # 변경 이력
 
 ## Unreleased
@@ -13,6 +13,7 @@
 - Rust 코어의 `Db::with_cancel(cancel)`은 `polyspec-binding-core`의 취소 `cancel`을 가진 같은 pool의 handle을 돌려주고, 호출된 handle의 request hook을 유지한다(OM-5.2, CORE-45, CORE-46). 취소가 발화한 뒤 그 handle의 문장, 그 handle에 연결된 모델의 문장, 그 handle이 시작한 트랜잭션의 `Tx`의 문장은 `canceled: the cancellation of the handle has fired`로 실패하고 보내지 않는다. 트랜잭션의 `BEGIN`과 savepoint의 `SAVEPOINT`도 그러하며 그 callback은 실행되지 않는다. 이들에는 statement event를 내지 않는다. `COMMIT`, `ROLLBACK`, `ROLLBACK TO SAVEPOINT`, `RELEASE SAVEPOINT`는 취소와 관계없이 보낸다. 취소가 발화할 때 진행 중인 문장은 끝까지 실행된다(CORE-47, 구현되지 않음). 계약은 `Db::with_cancel`을 case 없이 선언한다.
 
 - Breaking (0.x): Rust 코어의 `Query`의 값은 `orm_value`다(OM-3.5, CORE-60, CORE-62~CORE-64). `polyspec_orm::OrmValue`의 kind는 null, boolean, `int`, `int64`, float, 텍스트, bytes, JSON 값, list, map이고, 열 값의 kind는 열의 타입이 정한다: `i64` 열의 정수는 크기와 관계없이 `int64`이고, 날짜·시각·날짜시각은 정규 텍스트, decimal은 정확한 텍스트다. `Query::where_chain`, `get_by`, `gets_by`, `get_count_by`는 `Vec<Arg>` 대신 `Vec<OrmValue>`를 받고, `Query::value`는 `Val` 대신 `OrmValue`를 돌려준다. list는 key의 값 목록, `Between` key의 쌍, tuple key의 값 묶음 목록이고, 조건 값으로 준 map이나 JSON 값은 `codec_encode`다. `orm_value::from_host`는 언어의 값을 읽고 열의 값이 아닌 것을 `codec_encode`로 거부하며, `orm_value::to_host`는 값을 한 단계씩 기술한다. 계약은 값 alias `orm_value`와 `Query`의 member `where`, `value`, `get_by`, `get_count_by`를 선언하고, `contracts/interface/core.json`은 case 36개를 담으며 35개는 member 14개의 것이고 하나는 alias의 것이다. `Cargo.lock`은 `polyspec-binding-core`를 그 브랜치에서 `OutValues`를 가진 commit에 고정한다.
+- Breaking (0.x): Rust 코어의 `Schema::load`가 불러온 schema는 그것을 가리키는 값들이 소유하고, 그 가운데 마지막이 놓이면 메모리가 돌아온다(OM-3.1-2, CORE-80, CORE-81). 프로세스는 불러온 모든 schema의 세 텍스트, `Query`가 이름한 엔티티마다의 descriptor 하나, 등록된 모든 schema의 사본 하나를 끝날 때까지 가지고 있었다. `Schema`는 `Clone`이고 그 사본은 텍스트와 이미 만들어진 runtime model을 공유한다. `Schema::text`, `external`, `hash`는 `&'static str`이 아니라 schema만큼 사는 텍스트를 돌려준다. core는 descriptor를 `EntityRef`로 이름하며 그것은 생성된 모델의 static이거나 `Query`의 공유된 `LoadedEntity`다. 그래서 `Core::entity`는 `&EntityRef`를 돌려주고, 그 `name()`, `schema()`, `entity_schema()`가 `Entity`의 field를 대신한다. `Core::of(EntityRef)`는 어느 쪽의 core든 만들고, `Core::new(&'static Entity)`와 생성된 코드는 바뀌지 않는다. `Req::schema`는 `SchemaRef`이고 `Req::new`는 `impl Into<SchemaRef>`를 받는다.
 ## 0.0.31
 
 - Breaking (0.x): insert는 model의 조건이 성립할 때만 쓴다(T436, PRT-85에서 PRT-89까지, DSL-162). `create()`, `creates()`, 그리고 `duplication()`과 `create()`는 model에 둔 조건을 insert의 `where`로 받으며, column에 대한 조건은 insert가 쓰는 값을 비교한다. 문은 모든 row를 쓰거나 하나도 쓰지 않는 `INSERT ... SELECT` 하나이고, subquery는 쓰는 table을 포함한 모든 table을 문 이전 상태로 읽으며, 성립하지 않는 조건은 새 code `CONDITION_NOT_MET`으로 실패하고 아무것도 쓰지 않으며, 그런 insert가 열었을 감사 기록도 함께 취소된다(DBS-87). 이전에는 insert가 model의 조건을 버렸다. limepie의 요청이다.

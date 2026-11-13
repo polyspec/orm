@@ -7,7 +7,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 
 use crate::args::{Func, Value};
-use crate::model::{AnyModel, Entity, RowState};
+use crate::model::{AnyModel, Entity, EntityRef, RowState};
 use crate::value::Param;
 use crate::Error;
 
@@ -146,7 +146,7 @@ pub(crate) struct SetSpec {
 #[derive(Clone)]
 pub struct Core {
     pub(crate) id: u64,
-    pub(crate) ent: &'static Entity,
+    pub(crate) ent: EntityRef,
     pub(crate) conn: Option<crate::Connection>,
     pub(crate) err: Option<(crate::Kind, String)>,
     pub(crate) group: bool,
@@ -194,6 +194,12 @@ pub(crate) fn config(msg: impl Into<String>) -> Error {
 impl Core {
     /// Creates the core of a new model. Generated constructors call it.
     pub fn new(ent: &'static Entity) -> Core {
+        Core::of(EntityRef::Static(ent))
+    }
+
+    /// Creates the core of a new model of the descriptor `ent`: the static of a generated model, or the shared
+    /// descriptor of an entity of a loaded schema (CORE-81).
+    pub fn of(ent: EntityRef) -> Core {
         Core {
             id: next_id(),
             ent,
@@ -233,8 +239,8 @@ impl Core {
     }
 
     /// The model descriptor.
-    pub fn entity(&self) -> &'static Entity {
-        self.ent
+    pub fn entity(&self) -> &EntityRef {
+        &self.ent
     }
 
     /// Checks the text that the setter of a `date`, `time(p)` or `datetime(p)` column takes, a nonzero fraction digit past
@@ -252,7 +258,7 @@ impl Core {
         if held {
             return Ok(());
         }
-        Err(Error::new(crate::Kind::CodecEncode, format!("{}.{column}: {column_type} value is not a {column_type}", self.ent.name)))
+        Err(Error::new(crate::Kind::CodecEncode, format!("{}.{column}: {column_type} value is not a {column_type}", self.ent.name())))
     }
 
     /// Marks a generated field assigned from a checked value.
@@ -271,7 +277,7 @@ impl Core {
         if self.field_ready(name) {
             Ok(())
         } else {
-            Err(Error::new(crate::Kind::ColumnUnselected, format!("{}.{name} was not loaded or assigned", self.ent.name)))
+            Err(Error::new(crate::Kind::ColumnUnselected, format!("{}.{name} was not loaded or assigned", self.ent.name())))
         }
     }
 
@@ -315,7 +321,7 @@ impl Core {
 
     /// Creates the core passed to an and/or group or an on callback.
     pub fn group(&self) -> Core {
-        let mut g = Core::new(self.ent);
+        let mut g = Core::of(self.ent.clone());
         g.group = true;
         g.subject = Some(self.subject_id());
         g
@@ -478,7 +484,7 @@ impl Core {
             return;
         }
         if child.matches.is_empty() {
-            self.fail(format!("relation child {} requires match_<l>_with_<r>()", child.ent.name));
+            self.fail(format!("relation child {} requires match_<l>_with_<r>()", child.ent.name()));
             return;
         }
         self.relations.push(RelSpec { many, child: Box::new(child) });

@@ -6347,8 +6347,11 @@ mod tables {
         Ok(entity)
     }
 
-    /// The runtime model of an entity, read once.
-    fn fields_of(entity: &Entity) -> polyspec_orm::Result<Arc<polyspec_orm::dbspec::Entity>> {
+    /// The runtime model of an entity, read once for the descriptor of a table, which lives as long as the process; the
+    /// shared descriptor of a loaded schema is read each time, because its address names it only while it lives.
+    fn fields_of(entity: &polyspec_orm::EntityRef) -> polyspec_orm::Result<Arc<polyspec_orm::dbspec::Entity>> {
+        let polyspec_orm::EntityRef::Static(entity) = entity else { return Ok(Arc::new(entity.entity_schema()?)) };
+        let entity: &Entity = entity;
         let mut fields = FIELDS.get_or_init(Mutex::default).lock().expect("the fields");
         let key = std::ptr::from_ref(entity) as usize;
         if let Some(found) = fields.get(&key) {

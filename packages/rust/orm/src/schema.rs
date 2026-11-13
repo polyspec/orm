@@ -65,14 +65,58 @@ impl Manifest {
     }
 }
 
+/// A text of a schema: a static of generated code, or the copy that a loaded schema owns and its copies share (CORE-80).
+#[derive(Clone)]
+enum Text {
+    Static(&'static str),
+    Shared(Arc<str>),
+}
+
+impl std::ops::Deref for Text {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        match self {
+            Text::Static(text) => text,
+            Text::Shared(text) => text,
+        }
+    }
+}
+
+/// A reference to a schema: the static of generated code, or a schema that its references share, whose memory is
+/// returned when the last of them is dropped (CORE-80).
+#[derive(Clone)]
+pub enum SchemaRef {
+    Static(&'static Schema),
+    Shared(Arc<Schema>),
+}
+
+impl std::ops::Deref for SchemaRef {
+    type Target = Schema;
+
+    fn deref(&self) -> &Schema {
+        match self {
+            SchemaRef::Static(schema) => schema,
+            SchemaRef::Shared(schema) => schema,
+        }
+    }
+}
+
+impl From<&'static Schema> for SchemaRef {
+    fn from(schema: &'static Schema) -> SchemaRef {
+        SchemaRef::Static(schema)
+    }
+}
+
 /// The schema contained in a generated model: manifest text and its hash.
-/// The runtime model is built once, on first use.
+/// The runtime model is built once, on first use. A copy shares the texts and a runtime model that is already built.
+#[derive(Clone)]
 pub struct Schema {
-    text: &'static str,
+    text: Text,
     /// The text of the tables the set uses from external documents (`dbspec::Manifest::external_text`). A set that uses no external documents
     /// is empty.
-    external: &'static str,
-    hash: &'static str,
+    external: Text,
+    hash: Text,
     /// The runtime model built the first time, or the code and message of the error raised then.
     manifest: OnceLock<std::result::Result<Arc<Manifest>, (crate::Kind, String)>>,
 }
@@ -84,44 +128,45 @@ impl Schema {
 
     /// The schema of a set that uses external documents: manifest text, the text of tables used from external documents, and the hash of the two texts.
     pub const fn with_external(manifest_text: &'static str, external_text: &'static str, manifest_hash: &'static str) -> Schema {
-        Schema { text: manifest_text, external: external_text, hash: manifest_hash, manifest: OnceLock::new() }
+        Schema { text: Text::Static(manifest_text), external: Text::Static(external_text), hash: Text::Static(manifest_hash), manifest: OnceLock::new() }
     }
 
     /// The schema of a manifest that is given at run time (CORE-80). A text that is no manifest is `schema_invalid` and
-    /// a text that does not hash to `manifest_hash` is `schema_hash_mismatch`. The process keeps the three texts of a
-    /// loaded schema until it ends, one copy per text, because a request and a cached plan refer to their schema for
-    /// the life of the process; a refused text is not kept.
+    /// a text that does not hash to `manifest_hash` is `schema_hash_mismatch`. The schema owns its texts and its
+    /// runtime model; its copies, the queries of it, their requests and the connections that it is registered on share
+    /// them, and the memory is returned when the last of them is dropped.
     pub fn load(manifest_text: &str, external_text: &str, manifest_hash: &str) -> Result<Schema> {
         let manifest = Manifest::load_set(manifest_text, external_text, manifest_hash).map_err(|error| {
             let (kind, text) = manifest_refusal(error);
             Error::new(kind, text)
         })?;
-        let schema = Schema::with_external(kept(manifest_text)?, kept(external_text)?, kept(manifest_hash)?);
         // The model that the check built is the model of the value, so the first use does not build it again.
-        if schema.manifest.set(Ok(Arc::new(manifest))).is_err() {
-            return Err(Error::internal("a new schema value already held a runtime model"));
-        }
-        Ok(schema)
+        Ok(Schema {
+            text: Text::Shared(manifest_text.into()),
+            external: Text::Shared(external_text.into()),
+            hash: Text::Shared(manifest_hash.into()),
+            manifest: OnceLock::from(Ok(Arc::new(manifest))),
+        })
     }
 
     /// The text of the tables the set uses from external documents. Empty if no external documents are used.
-    pub fn external(&self) -> &'static str {
-        self.external
+    pub fn external(&self) -> &str {
+        &self.external
     }
 
     /// The `manifestHash` that generated the model.
-    pub fn hash(&self) -> &'static str {
-        self.hash
+    pub fn hash(&self) -> &str {
+        &self.hash
     }
 
     /// manifest text.
-    pub fn text(&self) -> &'static str {
-        self.text
+    pub fn text(&self) -> &str {
+        &self.text
     }
 
     /// The document of manifest text from which statements are rendered.
     pub fn documents(&self) -> Result<Vec<Document>> {
-        documents(self.text, self.external, self.hash)
+        documents(&self.text, &self.external, &self.hash)
     }
 
     /// The runtime model of the schema to register. If the text does not hash to the declared hash, then
@@ -133,23 +178,25 @@ impl Schema {
         })
     }
 
-    /// One schema with the same manifest text and hash. So that requests use the schema of the set the connection registered, the process
-    /// builds one per hash and keeps it.
-    pub(crate) fn interned(&self) -> &'static Schema {
-        static INTERNED: std::sync::Mutex<Vec<&'static Schema>> = std::sync::Mutex::new(Vec::new());
-        let mut interned = INTERNED.lock().unwrap();
-        if let Some(found) = interned.iter().find(|s| s.hash == self.hash && s.text == self.text && s.external == self.external) {
-            return found;
+    /// A reference that shares this schema: its texts and its runtime model, when it is built (CORE-80).
+    pub(crate) fn shared(&self) -> SchemaRef {
+        SchemaRef::Shared(Arc::new(self.clone()))
+    }
+
+    /// The number of the values that share the manifest text of a loaded schema, or `None` for a schema of generated
+    /// code; the tests of CORE-80 count them.
+    #[cfg(test)]
+    pub(crate) fn text_owners(&self) -> Option<std::sync::Weak<str>> {
+        match &self.text {
+            Text::Static(_) => None,
+            Text::Shared(text) => Some(Arc::downgrade(text)),
         }
-        let schema: &'static Schema = Box::leak(Box::new(Schema::with_external(self.text, self.external, self.hash)));
-        interned.push(schema);
-        schema
     }
 
     /// runtime model.
     pub fn manifest(&self) -> Result<Arc<Manifest>> {
         self.manifest
-            .get_or_init(|| Manifest::load_set(self.text, self.external, self.hash).map(Arc::new).map_err(manifest_refusal))
+            .get_or_init(|| Manifest::load_set(&self.text, &self.external, &self.hash).map(Arc::new).map_err(manifest_refusal))
             .clone()
             .map_err(|(kind, msg)| Error::new(kind, msg))
     }
@@ -163,18 +210,6 @@ fn manifest_refusal(error: Error) -> (crate::Kind, String) {
     } else {
         (error.kind(), error.text().to_owned())
     }
-}
-
-/// The copy of `text` that the process keeps until it ends (CORE-80): one per text.
-fn kept(text: &str) -> Result<&'static str> {
-    static KEPT: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
-    let mut kept = KEPT.lock().map_err(|_poisoned| Error::internal("the lock of the kept schema texts was poisoned by a panic"))?;
-    if let Some(found) = kept.iter().find(|found| **found == text) {
-        return Ok(found);
-    }
-    let copy: &'static str = Box::leak(text.to_owned().into_boxed_str());
-    kept.push(copy);
-    Ok(copy)
 }
 
 #[cfg(test)]

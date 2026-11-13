@@ -593,7 +593,7 @@ pub struct AesUtils<'a> {
 impl AesUtils<'_> {
     fn spec<M: Model>(&self, m: &M) -> Result<AesSpec> {
         let entity = m.core().entity();
-        let name = entity.name;
+        let name = entity.name();
         let ent = entity.entity_schema()?;
         let columns: Vec<(String, Vec<String>)> =
             ent.fields.iter().filter(|c| c.aes()).map(|c| (c.name.clone(), c.codec.iter().filter(|s| *s == "aes" || *s == "hex").cloned().collect())).collect();

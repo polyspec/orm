@@ -12,7 +12,7 @@ use futures_util::FutureExt as _;
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
-use crate::schema::Schema;
+use crate::schema::SchemaRef;
 use crate::utils::Utils;
 use crate::value::{Param, Val};
 use crate::{Error, Kind, Result};
@@ -53,7 +53,7 @@ type AuditValues = Vec<(String, Param)>;
 /// The audit record the transaction inserts: the schema of the registered set that has the record table as an entity, that entity, and the column
 /// name-ordered values.
 pub(crate) struct AuditInsert {
-    pub(crate) schema: &'static Schema,
+    pub(crate) schema: SchemaRef,
     pub(crate) entity: polyspec_orm_schema::dbspec::Entity,
     pub(crate) values: AuditValues,
 }
@@ -67,10 +67,11 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     let Some(source) = &db.inner.cfg.audit_source else {
         return Err(Error::config("the transaction has audit values but the connection has no audit source: set Config::audit_source"));
     };
-    let schemas: Vec<&'static Schema> = db.inner.schemas.read().unwrap().clone();
+    let schemas: Vec<SchemaRef> = db.inner.schemas.read().unwrap().clone();
     let mut models = Vec::new();
     for schema in schemas {
-        models.push((schema, schema.manifest()?));
+        let manifest = schema.manifest()?;
+        models.push((schema, manifest));
     }
     let mut tables: Vec<String> = Vec::new();
     for (_, manifest) in &models {
@@ -83,9 +84,9 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     tables.sort();
     let target = match tables.as_slice() {
         [] => return Err(Error::config("the transaction has audit values but no set of the connection has an audited table")),
-        [table] => {
-            models.iter().find_map(|(schema, manifest)| manifest.model.entities.iter().find(|e| &e.table == table && !e.external).map(|e| (*schema, e.clone())))
-        }
+        [table] => models
+            .iter()
+            .find_map(|(schema, manifest)| manifest.model.entities.iter().find(|e| &e.table == table && !e.external).map(|e| (schema.clone(), e.clone()))),
         _ => {
             return Err(Error::config(format!(
                 "the audited tables of the connection record their audits in {}; one audit record table is required",
