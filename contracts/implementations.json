@@ -1014,6 +1014,7 @@
       "tests": [
         "**/tests/**/*.rs",
         "packages/**/tests/**/*.rs",
+        "packages/rust/programs/**/*.rs",
         "tests/**/*.rs",
         "benchmarks/rust/src/native.rs",
         "packages/rust/**/tests/**/coverage_*.rs"

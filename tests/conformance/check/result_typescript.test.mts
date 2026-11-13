@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { caseTest } from '../../testcase.mts';
 import { parse } from '@polyspec/ordered-json';
-import { StyledValue } from '../../../packages/ts/dist/index.js';
-import { executeVector, resultValue } from '../../../packages/ts/testing/conformance/result_typescript.mts';
+import { StyledValue } from '../../../legacy/packages/ts/dist/index.js';
+import { executeVector, resultValue } from '../../../legacy/packages/ts/testing/conformance/result_typescript.mts';
 
 // Deadline of each case 1 s: the case writes a few result values in memory and compares them.
 // COD-16 and COD-20: an ordered-json number keeps its exact text, and SQL NULL is its own styled state.

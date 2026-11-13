@@ -40,8 +40,8 @@ function run(program: string, args: string[], { input, text, env }: { input?: st
 }
 
 // The client of the checkout, built by make typescript-build: the bench model and the host codecs.
-const { connect, SCHEMA } = await import('../packages/ts/dist/models/models.js');
-const { Db, blindIndex, dbspecManifest, hostEncode, parseDbspec } = await import('../packages/ts/dist/index.js');
+const { connect, SCHEMA } = await import('../legacy/packages/ts/dist/models/models.js');
+const { Db, blindIndex, dbspecManifest, hostEncode, parseDbspec } = await import('../legacy/packages/ts/dist/index.js');
 
 // SHARED is the schema value of contracts/fixtures/bench/bench_shared.dbs, the external document of the bench set, as
 // the set that owns it would generate it: the bench set requires its used table to exist before it installs

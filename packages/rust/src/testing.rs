@@ -158,3 +158,14 @@ pub fn fix_clock(db: &Db, clock: &str) {
 pub fn last_affected(db: &Db) -> Option<u64> {
     *db.inner.last_affected.lock().unwrap()
 }
+
+/// The end steps of a MySQL transaction whose connection the server killed: the release of `lock` when it is given, then
+/// the reset of its local value (INT-72). `db` connects to the server at ORM_TEST_MYSQL_SERVER_DSN, not through a pooler.
+pub async fn killed_transaction_cleanup(db: &Db, lock: Option<String>) -> crate::Result<()> {
+    crate::tx::killed::cleanup(db, lock).await
+}
+
+/// The rollback of a MySQL transaction whose connection the server killed, whose end steps then fail (INT-72).
+pub async fn killed_transaction_rollback(db: &Db) -> crate::Result<()> {
+    crate::tx::killed::end_by_rollback(db).await
+}
