@@ -10232,7 +10232,8 @@
       ],
       "tests": [
         "legacy/packages/python/tests/test_testcase.py",
-        "legacy/packages/python/tests/test_no_path_change.py"
+        "legacy/packages/python/tests/test_no_path_change.py",
+        "legacy/packages/python/tests/test_recipe_send_listener.py"
       ],
       "command": "make --no-print-directory python-unit-check"
     },

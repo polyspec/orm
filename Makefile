@@ -336,7 +336,10 @@ test-go: orm-codes ## Run the unit tests of the Go modules with CASES=<pattern>,
 	$(MAKE) --no-print-directory test-go-bindings
 test-php: ## Run the unit tests of the PHP package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots legacy/packages/php
-test-python: ## Run the unit tests of the Python package with CASES=<pattern>; offline
+# The bind recipes of the Python tests import the slot models that ORM_PYTHON_BIND_MODELS names, as python-unit-check gives
+# them: without them each of their cases fails with `ORM_PYTHON_BIND_MODELS names no model directory` (T451).
+test-python: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
+test-python: python-venv-check bind-python-models ## Run the unit tests of the Python package with CASES=<pattern>; offline
 	PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner python --roots legacy/packages/python --venv .venv
 # The Rust recipe public_interface runs tests/interfaces/check/main.mts, which reads legacy/packages/ts/dist, so test-rust builds
 # the TypeScript client (typescript-current) and holds it while its tests run (T339-5-1).

@@ -980,6 +980,10 @@
           "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
         },
         {
+          "glob": "legacy/packages/python/tests/test_recipe_send_listener.py",
+          "reason": "harness: tests that the listener of the markdown.send and markdown.builder steps of the Python recipe runner ends by an event and that a run without the slot models states it before a listener starts; it does not exercise ORM client behavior"
+        },
+        {
           "glob": "legacy/packages/python/tests/test_python_natives.py",
           "reason": "harness: compares Python interface declarations with snapshots and shared native tables; it is a declaration extractor check, not runtime client behavior"
         },

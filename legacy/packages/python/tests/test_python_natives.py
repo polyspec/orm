@@ -9,7 +9,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
-from legacy.packages.python.tests import testcase
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[4]
 EXTRACTOR = (

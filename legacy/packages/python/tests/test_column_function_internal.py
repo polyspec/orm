@@ -1,6 +1,6 @@
 import json
 import unittest
-from legacy.packages.python.tests import testcase
+from . import testcase
 
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.dialect import dialect_of

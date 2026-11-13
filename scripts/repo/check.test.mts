@@ -195,6 +195,23 @@ caseTest('the Go unit tests take the build tags of the Go runner and the generat
   }
 });
 
+// The bind recipes of the Python tests (tests/bind/messages.json and its variants, the markdown.send and markdown.builder
+// steps) import the slot models that ORM_PYTHON_BIND_MODELS names, which bind-python-models writes, as python-unit-check
+// gives them; without them every such case fails with `ORM_PYTHON_BIND_MODELS names no model directory` (T451).
+caseTest('the Python unit tests take the slot models of the bind recipes (T451)', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const result = spawnSync('make', ['-n', '--no-print-directory', 'test-python'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  const lines = result.stdout.split('\n');
+  const tests = lines.findIndex(line => /runtime-targets\.(?:mjs|mts) test --runner python /.test(line));
+  assert.ok(tests >= 0, `test-python runs no python tests: ${result.stdout}`);
+  const models = join(root, '.runtime/run/bind-python-models');
+  const written = lines.findIndex(line => line.includes('orm-gen gen --set legacy/tests/bind/dbspec-set.json') && line.includes(`${models}.tmp`));
+  assert.ok(written >= 0 && written < tests, `test-python runs the python tests without writing the slot models first (bind-python-models): ${result.stdout}`);
+  const variable = /^test-python: export ORM_PYTHON_BIND_MODELS = \$\(BIND_PY_MODELS\)$/m;
+  assert.match(text('Makefile'), variable, 'test-python does not export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)');
+});
+
 caseTest('the Makefile includes no recipe file of @polyspec/kit', COMPUTE, () => {
   // kit 0.0.98 ships no recipes (kit docs/spec/utilities-and-recipes.md): the Makefile states its own targets, which run the
   // utilities of the installed package, and exports its own CARGO_TARGET_DIR, which no include unexports.

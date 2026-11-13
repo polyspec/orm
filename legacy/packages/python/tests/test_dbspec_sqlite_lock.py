@@ -1,6 +1,6 @@
 import unittest
 
-from legacy.packages.python.tests.testcase import COMPUTE
+from .testcase import COMPUTE
 from polyspec.orm.dbspec.apply import DbspecApplyError, _Applier
 
 
@@ -131,6 +131,6 @@ class SqliteLockResultTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    from legacy.packages.python.tests.testcase import main
+    from .testcase import main
 
     main()

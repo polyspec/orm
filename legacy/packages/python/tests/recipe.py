@@ -1070,6 +1070,19 @@ def _start_send_listener(received: list):
     return listener, thread
 
 
+def _end_send_listener(listener, thread, connected: bool) -> None:
+    """Ends the listener of a step and its thread. A step that opened no connection left the thread in accept, which the
+    close of the listener does not end, so the step opens a connection of its own and closes it: the thread takes it, reads
+    its end and returns. The thread of a step that connected returns when the client closes its connection. The listener
+    closes after the thread returned, since a listener that closes first drops the connection that the thread has not taken."""
+    if not connected:
+        # A listener that takes no connection has a thread that already left accept.
+        with contextlib.suppress(OSError):
+            socket.create_connection(listener.getsockname()).close()
+    thread.join()
+    listener.close()
+
+
 def _setup_statement(text: str) -> bool:
     """Whether a message is a setup statement of orm's SQLite dialect, the CREATE TABLE IF NOT EXISTS of a table of orm."""
     message = json.loads(text)
@@ -1105,12 +1118,13 @@ def _send(step: dict, call=None) -> None:
     call raises before it sends a message; the text is optional. A call, when given, runs the public call of the
     step in place of its filter or transaction."""
     received: list = []
+    # The models come first: a run without ORM_PYTHON_BIND_MODELS states it before a listener starts.
+    models = _bind_models()
     listener, thread = _start_send_listener(received)
     code = ""
     text = ""
     db = None
     try:
-        models = _bind_models()
         db = models.connect(
             f"markdown://127.0.0.1:{listener.getsockname()[1]}/conformance?token={SEND_TOKEN}"
         )
@@ -1129,8 +1143,7 @@ def _send(step: dict, call=None) -> None:
     finally:
         if db is not None:
             db.close()
-        listener.close()
-        thread.join(5)
+        _end_send_listener(listener, thread, db is not None)
     expect = step["expect"]
     if "error" in expect:
         got = "" if received else code
@@ -1524,11 +1537,12 @@ def _markdown_builder(step: dict, database: str) -> None:
     """Runs the markdown.builder op (FCV-4): the builder calls on the slots model, then get_count, on the markdown.send listener.
     The terminal returns the first recorded error before it sends a message (INT-88, INT-89)."""
     received: list = []
+    # The models come first: a run without ORM_PYTHON_BIND_MODELS states it before a listener starts.
+    models = _bind_models()
     listener, thread = _start_send_listener(received)
     caught = None
     db = None
     try:
-        models = _bind_models()
         db = models.connect(
             f"markdown://127.0.0.1:{listener.getsockname()[1]}/conformance?token={SEND_TOKEN}"
         )
@@ -1553,8 +1567,7 @@ def _markdown_builder(step: dict, database: str) -> None:
     finally:
         if db is not None:
             db.close()
-        listener.close()
-        thread.join(5)
+        _end_send_listener(listener, thread, db is not None)
     if received:
         raise AssertionError(f"the terminal sent {received[0]} before its error")
     expect = step["expect"][database]
