@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 10803287ec6099b7ca5c2146e6ce42b18bcb1fb9bf7a96310992846f7d2a631b -->
+<!-- source-sha256: 1f17db8a396469f61dc520d0c52539b5b1a292ae8d7ae86714fb1853654c231d -->
 # 변경 이력
 
 ## Unreleased
 
+- `make orm-test-container KIND=mysql`의 MySQL replica는 `partial_revokes`를 켜고, MySQL과 MariaDB primary는 `ORM_ACCOUNTS_SQL`의 계정 `orm`@`127.0.0.1`과 `orm`@`localhost`를 만든다(T444). `make orm-test-servers`의 native 서버가 그렇게 한다. `catalog_connection`의 case `row_change_with_partial_revokes_enabled`(INT-119)는 replica의 `partial_revokes`를 읽고, socket이나 pooler로 `orm`으로 연결하는 case는 그 계정이 필요하다. `make orm-test-container-check`는 대역 container program으로 두 문장을 시험한다.
 - `make orm-test-container-check`의 시험은 실패할 때도 checkout의 컨테이너를 지운다(T444). `remove` 전에 단언이 실패한 시험은 대역 컨테이너 process를 실행 뒤에도 남겼고, 이 check의 실패한 실행들이 남긴 process 13개가 그것을 보였다. 이제 각 시험은 본문을 `removing` 안에서 돌리고, `removing`은 `finally`에서 checkout의 컨테이너를 지운다. 대역 `exec` 호출의 기록은 검사한 문자열 목록으로 읽는다.
 - `make orm-test-container KIND=mysql`과 `KIND=postgres`는 primary의 replica를 두 번째 컨테이너 `polyspec-orm-test-<checkout>-<kind>-replica`에 띄우고, `make orm-test-servers`가 native primary에 하듯 `ORM_TEST_MYSQL_REPLICA_DSN`과 `ORM_TEST_POSTGRES_REPLICA_DSN`을 쓴다(T444). 그것이 없어서 replica DSN을 읽는 Python 시험 9개가 실패했다. MySQL replica는 이미지가 primary를 초기화한 뒤 primary가 초기화하는 binary log를 첫 파일부터 읽고 `super_read_only`이다. PostgreSQL replica는 slot `orm_replica`를 쓰는 primary의 `pg_basebackup`이고, primary는 native primary의 설정대로 그것을 `synchronous_standby_names`에 `synchronous_commit=local`로 적고 `wal_keep_size=0`을 둔다. 두 replica는 primary가 `orm_test`와 `orm_tools`를 만들기 전에 primary를 따른다. native MariaDB 서버에 replica가 없으므로 MariaDB에는 replica가 없다. `make orm-test-container-check`는 대역 container program으로 이 단계의 순서를 시험하고, 실제 MySQL 시작에서 primary의 쓰기가 replica에 적용된다.
 - `make repo-check`가 다시 통과한다(T444). `contracts/check-inputs.json`은 `orm-test-container-check`의 입력을 선언한다. 그 항목이 없어서 `make repo-check`가 `orm-test-container-check declares no needs`로 실패했다.
