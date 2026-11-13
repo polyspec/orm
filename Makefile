@@ -2808,6 +2808,7 @@ docs-verify-idempotent: orm-codes-typescript
 	$(NPM) run docs:verify-idempotent
 
 docs-rules-check:
+	$(NODE) --test scripts/docs/style-words.test.mts
 	$(NPM) run docs:rules-check
 
 docs-implementation-count-check:

@@ -97,7 +97,7 @@
   주인이 없기 때문이다. 잠금이 `EWOULDBLOCK`으로 실패한 파일은 주인이 있으므로 둔다. 그 밖의 실패는 오류다.
 - **CORE-43** 상태 파일은 표시 바이트(`0` 취소 안 됨, `1` 취소됨)와 그 뒤 진행 중인 문장마다 레코드 하나를 담는다:
   데이터베이스와 서버에서 그 문장을 끝내는 정보(MySQL connection id, PostgreSQL backend pid와 secret key). 문장은 시작할
-  때 레코드를 쓰고 끝날 때 지운다. `cancel()`은 표시를 쓰고 기록된 모든 문장을 자기 프로세스의 제어 연결로 종료한다.
+  때 레코드를 쓰고 끝날 때 지운다. `cancel()`은 표시를 쓰고 기록된 모든 문장을 자기 프로세스의 제어 연결로 끝낸다.
 - **CORE-44** 한 PHP 프로세스 안에서는 진행 중인 문장을 취소할 수 없다: 문장이 실행되는 동안 언어 코드는 실행되지
   않는다(CORE-27). 같은 프로세스의 `cancel()`은 그 handle의 다음 문장을 `canceled`로 실패시킨다.
 
@@ -111,7 +111,7 @@
 - **CORE-47** 취소가 발화할 때 진행 중인 문장은 그 서버에서 끝나고 `canceled`로 실패한다: MySQL과 MariaDB는 같은 DSN의
   제어 연결에서 `KILL QUERY <connection id>`로 끝내고 그 뒤 문장의 연결은 pool로 돌려주지 않고 닫는다. PostgreSQL은
   protocol의 CancelRequest로, SQLite는 문장을 interrupt하는 progress handler로, markdown 연결은 연결을 닫아서
-  종료한다(PRT-71). 구현되지 않았다: 그런 문장은 끝까지 실행되어 자기 결과를 돌려준다.
+  끝낸다(PRT-71). 구현되지 않았다: 그런 문장은 끝까지 실행되어 자기 결과를 돌려준다.
 
 ## 코드 생성
 
@@ -309,7 +309,7 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
   `Failure::Raised`는 코어에게 kind가 없으므로, 언어 코드가 잡지 않은 콜백 문장의 예외는 kind가 `deadlock`이었어도 바인딩을
   통해서는 재시도되지 않는다: 계약은 `callback`의 함수 타입에 `errors.recognize`를 적지 않는데, 생성기가 `machine`과 함께
   이를 거부하기 때문이다. 이것이 적힐 때까지 CORE-24는 바인딩을 통해서는 commit의 `deadlock`에만 성립한다.
-  `db.transaction`의 매개변수 `options`가 required로 남는 까닭도 같다: 생성기는 `machine`이 있는 멤버의 default 있는
+  `db.transaction`의 매개변수 `options`가 required로 남는 이유도 같다: 생성기는 `machine`이 있는 멤버의 default 있는
   매개변수를 거부하므로, 옵션을 정하지 않는 호출자는 빈 record를 넘긴다.
 - **CORE-105** `Db::close`의 상태 기계는 `Io` 단계 하나, 곧 CORE-31의 pool 닫기를 내고 `Done(Ok(()))`로 끝난다. 언어 코드를
   호출하지 않으므로 `Call`도 `Await`도 내지 않고, 그 `settle`은 호출되지 않는다.

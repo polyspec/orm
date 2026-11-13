@@ -1,5 +1,5 @@
 <!-- doc-id: document-rules -->
-<!-- source-sha256: 6d5356d9c710cd0cf58cdae0a4d77a869b54b0aa3048ad49cbb8d7ba03094fbb -->
+<!-- source-sha256: 0c61cb82bd615edf8c24fb2f0d642d9f59182285d8418ec99366c3b5bf4d4f2d -->
 # 문서 및 변경 규칙
 
 영어 페이지와 한국어 페이지를 한 쌍으로 제공한다. 한국어 페이지는 같은 경로에서 `.md` 앞에 `.ko`를 추가한다.
@@ -21,4 +21,4 @@
 
 기계 판정 규칙은 `contracts/rules.json`에 저장한다.
 
-`docs.writing-style`의 목록(`forbidden_en`, `forbidden_ko`)에는 직접적인 단어로 바꿀 수 있는 비유, 의인화, 모호한 쓰임의 단어만 넣는다. `contract`와 `계약`은 목록에 없다: `interface contract`는 binding 설계가 `packages/rust/interface.json`을 부르는 용어이고 AGENTS.md와 docs/spec/core.md가 그 용어를 쓰며, 용어를 대신할 직접적인 단어는 없다. 검사는 영어 항목을 온전한 단어로, 한국어 항목을 단어의 일부로 읽으므로, 목록의 항목이 더 긴 단어 안에 들어 있는 한국어 문장은 다른 단어로 쓴다.
+`docs.writing-style`의 목록(`forbidden_en`, `forbidden_ko`)에는 직접적인 단어로 바꿀 수 있는 비유, 의인화, 모호한 쓰임의 단어만 넣는다. `contract`와 `계약`은 목록에 없다: `interface contract`는 binding 설계가 `packages/rust/interface.json`을 부르는 용어이고 AGENTS.md와 docs/spec/core.md가 그 용어를 쓰며, 용어를 대신할 직접적인 단어는 없다. 검사는 항목을 단어로 읽는다(scripts/docs/style-words.mts의 `styleEntryPattern`). 영어 항목은 대소문자와 무관하게 온전한 단어다. 한국어 문장은 어절, 곧 공백 사이의 글자 열로 읽고, 한국어 항목은 어절의 시작이다: 항목 앞의 글자는 한글 음절이 아니며, 어절은 항목 뒤에 조사나 어미로 이어질 수 있다. 그래서 항목 `유도`는 `유도한다`에서 발견되고 `이유도`에서는 발견되지 않으며, 항목 `낸다`는 `낸다`에서 발견되고 `끝낸다`에서는 발견되지 않고, 항목 `답한다`는 `응답한다`에서 발견되지 않는다. 검사는 어간을 구하지 않으므로, 목록은 거부할 활용형을 각각 별도의 항목으로 가진다. 여러 단어로 된 항목의 단어 사이는 어떤 공백이어도 된다. 더 긴 단어 안에 든 항목은 지적이 아니므로, 그런 항목 때문에 문장을 고쳐 쓰지 않는다.

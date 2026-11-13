@@ -358,6 +358,10 @@
       "kind": "policy",
       "reason": "the --only selection of the documentation rules check of this repository, which runs the implementation count rule alone"
     },
+    "scripts/docs/style-words.mts": {
+      "kind": "policy",
+      "reason": "the word rule of the style lists of the documentation rules check of this repository: an English entry as a whole word and a Korean entry at the start of an eojeol; no ecosystem tool reads contracts/rules.json"
+    },
     "scripts/docs/implementation-count.mts": {
       "kind": "policy",
       "reason": "the documentation rule of this repository that checks client-count statements against the declared implementations; it rebuilds no tool"

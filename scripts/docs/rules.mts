@@ -9,6 +9,7 @@ import { readJsonFile } from '../json/schema.mts';
 import { readImplementations } from '../json/formats.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { filterRuleFailures, onlyRuleFromArgs } from './rules-filter.mts';
+import { holdsStyleEntry } from './style-words.mts';
 import { countMismatches, declaredClientAliases, incompleteClientSets } from './implementation-count.mts';
 
 // rules check is one case that reads the documentation files and checks pairs and style.
@@ -113,8 +114,7 @@ for (const file of allDocs) {
   const text = prose(await readFile(file, 'utf8'));
   const terms = (file.endsWith('.ko.md') ? forbidden.ko : forbidden.en) ?? [];
   for (const term of terms) {
-    const pattern = file.endsWith('.ko.md') ? term : `\\b${term}\\b`;
-    if (new RegExp(pattern, 'i').test(text)) fail('docs.writing-style', `${relative(file)} contains forbidden expression ${JSON.stringify(term)}`);
+    if (holdsStyleEntry(text, term, file.endsWith('.ko.md') ? 'ko' : 'en')) fail('docs.writing-style', `${relative(file)} contains forbidden expression ${JSON.stringify(term)}`);
   }
   if (file.endsWith('.ko.md') && /(?:요|어요|해요|합니다|됩니다|있어요|없어요)[.!?]?\s*$/.test(text.replace(/```[\s\S]*?```/g, '').trim())) fail('docs.writing-style', `${relative(file)} uses an informal ending`);
 }

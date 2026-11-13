@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 16f67435d439f349c431ec02667935128dd31fb8ce7670a75c0ef9204cf67bba -->
+<!-- source-sha256: 4946b302c97a76d6964a5e9a8324540788b721cade6943454f4cb74c4f4fe0b1 -->
 # 변경 이력
 
 ## Unreleased
 
+- `make docs-rules-check`는 style 목록의 한국어 항목을 어절의 시작에서만 찾는다(T456). 검사는 한국어 항목을 단어의 일부로 읽어 `낸다`를 `끝낸다`에서, `유도`를 `이유도`에서, `답한다`를 `응답한다`에서 찾았다. scripts/docs/style-words.mts의 `styleEntryPattern`이 두 언어의 규칙을 정하고, docs/operations/document-rules.md가 그 규칙을 설명하며, target은 그 단위 시험을 먼저 실행한다. docs/operations/remediation-plan.ko.md, docs/spec/core.ko.md, 체크리스트의 한국어 문장 다섯은 더 긴 단어 안의 항목 때문에만 바꾼 단어를 원래대로 가진다.
 - `make docs-rules-check`가 통과한다(T454). contracts/rules.json의 `docs.writing-style` 목록에서 `contract`와 그 한국어 단어를 뺐다: `interface contract`는 AGENTS.md와 docs/spec/core.md가 쓰는 binding 설계의 용어이고, 목록에 그 단어가 있는 이유를 적은 기록이 없었다. docs/operations/document-rules.md는 목록에 넣는 단어와 이 단어들이 목록에 없는 이유를 적는다. docs/operations/packaging.md는 `polyspec-binding-core`의 type을 `boundary` 없이 이름하고, 한국어 문서 6개의 한국어 문장 23개는 목록의 항목이 더 긴 단어의 일부였던 곳에 다른 단어를 쓴다.
 - `make test-php`는 시험 전에 SQLite cancellation helper와 PHP model을 만들고, `RequestHookTest`는 case마다 자기 process에서 실행한다(T453). `QueryCancellationTest`는 새 checkout에서 `SQLite cancellation helper for darwin-arm64 is not installed in the polyspec/orm package`로 실패했다. `RequestHookTest`는 request hook recipe 뒤에 `CONFIG: entity hook_item of manifest ... is generated as both`로 실패했다. registry는 manifest의 엔티티마다 class 하나만 가지기 때문이다.
 - `make test-python CASES=<pattern>`은 pattern이 이름하는 case만 package의 case harness로 실행한다(T452). vector 파일의 case는 `load_tests`에서 오는데, `load_tests`는 `-k`가 무엇을 이름하든 모든 case를 더했다. 그래서 `CASES=test_recipe_send_listener`가 시험 3640개를 실행했다. 이제 `vector_case.py`의 `selected_tests`는 pattern이 `<module>.<class>.<case id>`에 맞는 case만 남기고, 아무것도 고르지 못한 pattern은 `no test ran`으로 실패한다. target은 다른 Python 실행과 같이 `legacy.packages.python.tests.testcase`를 실행한다. 그래서 `step outside a case`로 실패하던 `test_split_plan`이 통과한다.
