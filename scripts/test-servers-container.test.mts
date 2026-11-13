@@ -10,32 +10,31 @@ import { caseTest, COMPUTE, withTemporaryDirectory } from '../tests/testcase.mts
 import { containerName, remove, run, start, type Context } from './test-servers-container.mts';
 
 // standIn writes the stand-in container program into dir and returns its path and the directory of its containers. Its
-// run is attached, as the script runs the container: it records the container, prints the log lines of a ready MySQL
-// server and runs until stop records the container in the folder stopped.
+// run is attached, as the script runs the container: it records the container with its process ID, prints the log lines
+// of a ready MySQL server and runs until stop ends that process.
 function standIn(dir: string): { program: string; state: string } {
   const state = join(dir, 'containers');
-  const stopped = join(dir, 'stopped');
-  for (const folder of [state, stopped]) mkdirSync(folder, { recursive: true });
+  mkdirSync(state, { recursive: true });
   const program = join(dir, 'container.mjs');
   writeFileSync(program, `#!${process.execPath}
-import { existsSync, readdirSync, rmSync, watch, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 const state = ${JSON.stringify(state)};
-const stopped = ${JSON.stringify(stopped)};
 const [command, ...rest] = process.argv.slice(2);
 const named = name => { if (!existsSync(join(state, name))) { console.error('container ' + name + ' does not exist'); process.exit(1); } };
 if (command === 'list') console.log(JSON.stringify(readdirSync(state).map(id => ({ configuration: { id } }))));
 else if (command === 'run') {
   const name = rest[rest.indexOf('--name') + 1];
   if (existsSync(join(state, name))) { console.error('container ' + name + ' exists'); process.exit(1); }
-  writeFileSync(join(state, name), JSON.stringify(rest));
-  const watcher = watch(stopped, () => { if (existsSync(join(stopped, name))) { watcher.close(); process.exit(0); } });
+  writeFileSync(join(state, name), String(process.pid));
+  process.on('SIGTERM', () => process.exit(0));
   console.log('MySQL init process done. Ready for start up.');
   console.log('[Server] /usr/sbin/mysqld: ready for connections. Version: 8.4.11  socket: /var/run/mysqld/mysqld.sock  port: 3306');
+  setInterval(() => {}, 2 ** 30);
 } else if (command === 'exec') named(rest[0]);
-else if (command === 'stop') { named(rest[0]); writeFileSync(join(stopped, rest[0]), ''); }
+else if (command === 'stop') { named(rest[0]); const pid = Number(readFileSync(join(state, rest[0]), 'utf8')); if (pid > 0) process.kill(pid, 'SIGTERM'); }
 else if (command === 'inspect') { named(rest[0]); console.log(JSON.stringify([{ status: { networks: [{ ipv4Address: '192.168.64.9/24' }] } }])); }
-else if (command === 'delete') { named(rest[0]); rmSync(join(state, rest[0])); rmSync(join(stopped, rest[0]), { force: true }); }
+else if (command === 'delete') { named(rest[0]); rmSync(join(state, rest[0])); }
 else { console.error('unknown command ' + command); process.exit(2); }
 `);
   chmodSync(program, 0o755);
@@ -53,7 +52,7 @@ caseTest('two checkouts start a server of the same kind at once, each in a conta
     const { program, state } = standIn(dir);
     const [first, second] = checkouts(dir, program);
     // A container of another name, such as one that an earlier form of the script started, is never touched.
-    writeFileSync(join(state, 'polyspec-orm-test-mysql'), '[]');
+    writeFileSync(join(state, 'polyspec-orm-test-mysql'), '0');
     assert.notEqual(containerName(first.root, 'mysql'), containerName(second.root, 'mysql'));
     await Promise.all([start('mysql', first), start('mysql', second)]);
     assert.deepEqual(readdirSync(state).sort(), [containerName(first.root, 'mysql'), containerName(second.root, 'mysql'), 'polyspec-orm-test-mysql'].sort());
@@ -100,7 +99,7 @@ import { join } from 'node:path';
 const state = ${JSON.stringify(state)};
 const [command, ...rest] = process.argv.slice(2);
 if (command === 'list') console.log(JSON.stringify(readdirSync(state).map(id => ({ configuration: { id } }))));
-else if (command === 'run') { writeFileSync(join(state, rest[rest.indexOf('--name') + 1]), '[]'); console.log('the server stopped'); process.exit(1); }
+else if (command === 'run') { writeFileSync(join(state, rest[rest.indexOf('--name') + 1]), '0'); console.log('the server stopped'); process.exit(1); }
 else if (command === 'stop') {}
 else if (command === 'delete') rmSync(join(state, rest[0]));
 else process.exit(2);
