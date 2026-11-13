@@ -34,8 +34,9 @@
 //
 // start writes .runtime/containers/<kind>.env and refuses a kind that is started in the checkout; run removes its
 // project when its command ends or fails, or when the run gets SIGINT, SIGTERM or SIGHUP. No pooler is started, and bay
-// publishes no Unix socket on the host; their variables are absent, and a check that reads one fails naming the
-// variable (BAY8).
+// publishes no Unix socket on the host; their variables are absent from servers.env, and a check that reads one fails
+// naming the variable. A check through a Unix socket runs in the container of its server, where bay exec gives it the
+// socket variable: the runner builds its program and the primary mounts the directory of the run (BAY8).
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -367,8 +368,9 @@ function nodeVersion(): string {
 // server, 4g without it, since mysqld is ended in the 1g that a container has by default, and limits.runner for the
 // runner, which has no limit of this repository, because the memory that a build needs depends on the count of its
 // jobs and on the machine. runnerAlone is the file of the first step of a run in the runner, which starts the runner
-// without the servers.
-function composeFile(kind: Kind, services: readonly Service[], form: Form, limits: Limits, runnerAlone = false): string {
+// without the servers. socket mounts the directory of the run read-only in the primary, whose socket a check uses: the
+// program of the check and the clone that it reads are below that directory.
+function composeFile(kind: Kind, services: readonly Service[], form: Form, limits: Limits, runnerAlone = false, socket = false): string {
   return yaml({
     services: {
       ...Object.fromEntries((runnerAlone ? [] : services).map(service => [service.name, {
@@ -377,7 +379,7 @@ function composeFile(kind: Kind, services: readonly Service[], form: Form, limit
         expose: [String(service.port)],
         environment: { TZ: SERVER_TIME_ZONE, ...service.environment },
         tmpfs: [service.data],
-        ...(service.init ? { volumes: [`./${service.name}-init:${INIT_MOUNT}:ro`] } : {}),
+        ...(service.init || (socket && service.name === kind) ? { volumes: [...(service.init ? [`./${service.name}-init:${INIT_MOUNT}:ro`] : []), ...(socket && service.name === kind ? [`.:${RUN_MOUNT}:ro`] : [])] } : {}),
         cpus: '4',
         mem_limit: limits.server ?? '4g',
         ...(service.after === undefined ? {} : { depends_on: { [service.after]: { condition: 'service_healthy' } } }),
@@ -399,15 +401,31 @@ function composeFile(kind: Kind, services: readonly Service[], form: Form, limit
 // Limits are the memory limits that the one who runs gives: of each server and of the runner, as sizes of Compose.
 export interface Limits { server?: string; runner?: string }
 
+// SocketCheck is a check through the Unix socket of a server (BAY8): build runs in the runner before the servers start
+// and leaves a static executable for Linux below ORM_RUN_PROGRAMS, and run is the command that runs in the container of
+// the server, where the socket is.
+export interface SocketCheck { build: readonly string[]; run: readonly string[] }
+
 // Extra is what a run in the runner is given besides its command: a build command, which runs before the servers
-// start, and the count of the jobs of cargo in the runner.
-interface Extra { build?: readonly string[]; jobs?: number }
+// start, the count of the jobs of cargo in the runner, and a check through a Unix socket.
+interface Extra { build?: readonly string[]; jobs?: number; socket?: SocketCheck }
+
+// SOCKETS are the kinds whose server has a Unix socket that a check reads: the variable that names it, and its path in
+// the container of the image. bay publishes no socket on the host, and a socket is not reached from another container,
+// so the variable exists only for a command that runs in the container of the server.
+const SOCKETS: Partial<Record<Kind, { variable: string; path: string }>> = {
+  mysql: { variable: 'ORM_TEST_MYSQL_SOCKET', path: '/var/run/mysqld/mysqld.sock' },
+  mariadb: { variable: 'ORM_TEST_MARIADB_SOCKET', path: '/run/mysqld/mysqld.sock' },
+};
 
 // checked fails for a limit that is no size and a count of jobs that is no whole number above 0.
-function checked(limits: Limits, extra: Extra, form: Form): void {
+function checked(limits: Limits, extra: Extra, form: Form, kind: Kind): void {
   for (const [what, size] of [['each server', limits.server], ['the runner', limits.runner]] as const)
     if (size !== undefined && !/^[1-9]\d*[kmg]$/.test(size)) throw new TestServerError(`test-servers-container: the memory limit ${size} of ${what} is no size such as 2600m or 3g`, 2);
   if (extra.jobs !== undefined && (!Number.isSafeInteger(extra.jobs) || extra.jobs < 1)) throw new TestServerError(`test-servers-container: the count of cargo jobs ${extra.jobs} is no whole number above 0`, 2);
+  if (extra.socket !== undefined && form === 'host') throw new TestServerError('test-servers-container: a check through a Unix socket is built in the runner; run with FORM=runner', 2);
+  if (extra.socket !== undefined && SOCKETS[kind] === undefined) throw new TestServerError(`test-servers-container: ${kind} has no check through a Unix socket: only mysql and mariadb have a socket variable`, 2);
+  if (extra.socket !== undefined && (extra.socket.build.length === 0 || extra.socket.run.length === 0)) throw new TestServerError('test-servers-container: a check through a Unix socket needs its build command and its command, SOCKET_BUILD and SOCKET_RUN', 2);
   if (form === 'host' && (extra.build !== undefined || extra.jobs !== undefined || limits.runner !== undefined)) throw new TestServerError('test-servers-container: a build command runs in the runner; run with FORM=runner, which also takes the jobs of cargo and the memory limit of the runner', 2);
 }
 
@@ -435,7 +453,7 @@ const words = (command: readonly string[]) => command.map(quote).join(' ');
 // runner, which the kernel keeps in memory.peak and memory.swap.peak of its cgroup, to report/ after the build and
 // before the project is removed. A kernel without these files leaves the failure of cat in steps.log, and the run goes on:
 // a measurement does not decide a run.
-function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], steps: readonly Step[], primary: string, variables: Record<string, string>, command: readonly string[] | undefined, build: boolean): string {
+function runFile(at: At, kind: Kind, form: Form, services: readonly Service[], steps: readonly Step[], primary: string, variables: Record<string, string>, command: readonly string[] | undefined, build: boolean, socket: boolean): string {
   const environment = Object.entries(variables).map(([name, value]) => {
     if (/['\n\r\\`]/.test(value) || /\$(?!\{(?:address|dir)\})/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a character that run.sh does not write: ${value}`);
     return `export ${name}='${value}'`;
@@ -529,8 +547,9 @@ ${logs(['runner'])}
   beside b exec runner sh ${RUN_MOUNT}/runner-setup.sh || failed "$?" "bay exec runner sh ${RUN_MOUNT}/runner-setup.sh"
 ${build ? `  at "the build command"
   beside b exec runner sh ${RUN_MOUNT}/build.sh || failed "$?" "bay exec runner sh ${RUN_MOUNT}/build.sh"
-  peaks .build
-` : ''}  cp "$dir/compose.run.yaml" "$dir/compose.yaml" || failed 1 "the copy of compose.run.yaml"
+` : ''}${socket ? `  at "the build of the check through the Unix socket"
+  beside b exec runner sh ${RUN_MOUNT}/socket-build.sh || failed "$?" "bay exec runner sh ${RUN_MOUNT}/socket-build.sh"
+` : ''}${build || socket ? '  peaks .build\n' : ''}  cp "$dir/compose.run.yaml" "$dir/compose.yaml" || failed 1 "the copy of compose.run.yaml"
 ` : ''}  at "bay up of the servers"
   b up -no-pull >&2 || {
     status=$?
@@ -567,7 +586,16 @@ case "\${1:-}" in
     trap 'interrupted 129' HUP
     up
     ${check.join('\n    ')}
-    peaks ''
+${socket ? `    # The check through the Unix socket runs in the container of the server, where the socket is. It runs after the
+    # command of the run also when that command failed, and its failure fails a run whose command passed.
+    at "the check through the Unix socket"
+    b exec -e ${quote(`${SOCKETS[kind]?.variable ?? ''}=${SOCKETS[kind]?.path ?? ''}`)} ${quote(kind)} sh ${RUN_MOUNT}/socket-check.sh > "$dir/report/socket.log" 2>&1
+    socket=$?
+    cat "$dir/report/socket.log" >&2
+    printf '%s\\n' "$socket" > "$dir/report/socket-status"
+    [ "$socket" -eq 0 ] || say "the check through the Unix socket of $project exited with $socket"
+    [ "$status" -ne 0 ] || status=$socket
+` : ''}    peaks ''
     down || exit 1
     exit "$status"
     ;;
@@ -584,8 +612,9 @@ esac
 // 3.7 GiB of memory took 30 minutes and 3.0 GiB of swap, and with lld 16 minutes and 0.86 GiB. The setting is the
 // config.toml of the CARGO_HOME of the runner, so no run of the host reads it. jobs, when the run is given it, is the
 // count of the jobs of cargo there: the highest memory of a build grows with it, so the one who runs sets it for the
-// machine, and this repository holds no value of it.
-function setupFile(jobs: number | undefined): string {
+// machine, and this repository holds no value of it. musl adds what a check through a Unix socket needs: the C library
+// and the Rust target of a static executable for Linux, which runs in the image of a server whatever libraries it has.
+function setupFile(jobs: number | undefined, musl: boolean): string {
   const { packages, node, rustup } = runner();
   const version = nodeVersion();
   // PLATFORMS are the names of nodejs.org for the processors that uname -m names.
@@ -601,7 +630,7 @@ set -eu
 run=${RUN_MOUNT}
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y --no-install-recommends ${packages.join(' ')}
+apt-get install -y --no-install-recommends ${packages.join(' ')}${musl ? ' musl-tools' : ''}
 
 processor=$(uname -m)
 case "$processor" in
@@ -656,7 +685,7 @@ make install-tools TOOLS=npm
 make install-packages
 make install-tools
 rustup toolchain install
-mkdir -p "$run/report" "$run/leases"
+${musl ? 'rustup target add "$processor-unknown-linux-musl"\n' : ''}mkdir -p "$run/report" "$run/leases"
 `;
 }
 
@@ -691,6 +720,35 @@ exit "$(cat "$run/report/build-status")"
 `;
 }
 
+// socketBuildFile is socket-build.sh, which builds the program of a check through a Unix socket in the runner, in the
+// clone, and leaves it below ORM_RUN_PROGRAMS, a directory of the run. Its output is also report/socket-build.log.
+function socketBuildFile(command: readonly string[]): string {
+  return `#!/bin/sh
+# socket-build.sh: the build of the check through a Unix socket in the service runner, written by
+# scripts/test-servers-container.mts.
+run=${RUN_MOUNT}
+. "$run/runner.env"
+export ORM_RUN_REPORT="$run/report"
+export ORM_RUN_PROGRAMS="$run/programs"
+mkdir -p "$ORM_RUN_PROGRAMS"
+cd "$run/repo" || exit 1
+{ ( ${words(command)} ); echo "$?" > "$run/report/socket-build-status"; } 2>&1 | tee "$run/report/socket-build.log"
+exit "$(cat "$run/report/socket-build-status")"
+`;
+}
+
+// socketCheckFile is socket-check.sh, which runs in the container of the server with the variables of the servers and
+// the socket variable that bay exec gives it. The directory of the run is read-only there, so run.sh keeps its output.
+function socketCheckFile(command: readonly string[]): string {
+  return `#!/bin/sh
+# socket-check.sh: the check through the Unix socket in the container of the server, written by
+# scripts/test-servers-container.mts.
+. ${RUN_MOUNT}/servers.env
+cd ${RUN_MOUNT}/repo || exit 1
+exec ${words(command)}
+`;
+}
+
 // Written is what the directory of a run was written with.
 interface Written extends At { kind: Kind; form: Form }
 
@@ -701,7 +759,7 @@ type Plan = (at: At) => string;
 // so the Compose file is written once for the plan, with no host name, and once with the host names of the plan, which
 // the standby of PostgreSQL names in its command. A write that fails removes the directory.
 function write(kind: Kind, context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; other: string; authority: (planned: Planned) => string }, limits: Limits = {}, extra: Extra = {}): Written {
-  checked(limits, extra, form);
+  checked(limits, extra, form, kind);
   const dirs = folders(context.root);
   mkdirSync(dirs.leases, { recursive: true });
   const name = `orm-${checkout(context.root)}-${randomBytes(4).toString('hex')}`;
@@ -721,16 +779,20 @@ function write(kind: Kind, context: Context, form: Form, command: readonly strin
       writeFileSync(join(init, service.init.file), service.init.text);
       chmodSync(join(init, service.init.file), 0o644);
     }
-    writeFileSync(file, composeFile(kind, services, form, limits));
+    writeFileSync(file, composeFile(kind, services, form, limits, false, extra.socket !== undefined));
     // The second CA signs nothing: the DSN that names it fails the chain of the certificate of the server.
     issueTls(join(at.dir, 'tls'), []);
     const variables = SERVERS[kind].variables({ host, ipv4: '${address}', authority: place.authority(stated), other: place.other, leases: place.leases });
-    writeFileSync(join(at.dir, 'run.sh'), runFile(at, kind, form, services, SERVERS[kind].steps(host), host(kind), variables, command, extra.build !== undefined));
+    writeFileSync(join(at.dir, 'run.sh'), runFile(at, kind, form, services, SERVERS[kind].steps(host), host(kind), variables, command, extra.build !== undefined, extra.socket !== undefined));
     if (form === 'runner') {
       if (command === undefined) throw new TestServerError('test-servers-container: a run in the runner needs a command');
-      writeFileSync(join(at.dir, 'compose.run.yaml'), composeFile(kind, services, form, limits));
+      writeFileSync(join(at.dir, 'compose.run.yaml'), composeFile(kind, services, form, limits, false, extra.socket !== undefined));
       writeFileSync(join(at.dir, 'compose.build.yaml'), composeFile(kind, services, form, limits, true));
-      writeFileSync(join(at.dir, 'runner-setup.sh'), setupFile(extra.jobs));
+      writeFileSync(join(at.dir, 'runner-setup.sh'), setupFile(extra.jobs, extra.socket !== undefined));
+      if (extra.socket !== undefined) {
+        writeFileSync(join(at.dir, 'socket-build.sh'), socketBuildFile(extra.socket.build));
+        writeFileSync(join(at.dir, 'socket-check.sh'), socketCheckFile(extra.socket.run));
+      }
       writeFileSync(join(at.dir, 'check.sh'), checkFile(command));
       if (extra.build !== undefined) writeFileSync(join(at.dir, 'build.sh'), buildFile(extra.build));
       bundle(context.root, join(at.dir, 'repo.bundle'));
@@ -860,10 +922,10 @@ export interface Ended { code: number | null; signal: NodeJS.Signals | null }
 // so that a later sh run.sh of that directory finds the installed tools and the build of the commit; with a build
 // command, which runs in the runner before the servers start; with a count of the jobs of cargo in the runner; and with
 // the memory limits of the runner and of each server.
-export interface RunForm { runner?: boolean; keep?: boolean; build?: readonly string[]; jobs?: number; runnerMemory?: string; serverMemory?: string }
+export interface RunForm { runner?: boolean; keep?: boolean; build?: readonly string[]; jobs?: number; runnerMemory?: string; serverMemory?: string; socket?: SocketCheck }
 
 const limitsOf = (form: RunForm): Limits => ({ ...(form.runnerMemory === undefined ? {} : { runner: form.runnerMemory }), ...(form.serverMemory === undefined ? {} : { server: form.serverMemory }) });
-const extraOf = (form: RunForm): Extra => ({ ...(form.build === undefined ? {} : { build: form.build }), ...(form.jobs === undefined ? {} : { jobs: form.jobs }) });
+const extraOf = (form: RunForm): Extra => ({ ...(form.build === undefined ? {} : { build: form.build }), ...(form.jobs === undefined ? {} : { jobs: form.jobs }), ...(form.socket === undefined ? {} : { socket: form.socket }) });
 
 // run writes the directory of a run of a kind and runs its run.sh, which starts the servers, runs the command with
 // their variables, and removes the project when the command ends or fails, or when the run gets SIGINT or SIGTERM,
@@ -1049,8 +1111,11 @@ if (import.meta.main) {
     const value = (name: string) => flags.find(flag => flag.startsWith(`${name}=`))?.slice(name.length + 1);
     // BUILD of make reaches this script as ORM_CONTAINER_BUILD, a shell command as RUN is.
     const built = process.env['ORM_CONTAINER_BUILD'];
+    // SOCKET_BUILD and SOCKET_RUN of make reach this script in the same way; one without the other is refused.
+    const [socketBuild, socketRun] = [process.env['ORM_CONTAINER_SOCKET_BUILD'], process.env['ORM_CONTAINER_SOCKET_RUN']];
     const form = (): RunForm => ({
       keep: flags.includes('--keep'),
+      ...(socketBuild || socketRun ? { socket: { build: socketBuild ? ['/bin/sh', '-c', socketBuild] : [], run: socketRun ? ['/bin/sh', '-c', socketRun] : [] } } : {}),
       ...(built ? { build: ['/bin/sh', '-c', built] } : {}),
       ...(value('--jobs') === undefined ? {} : { jobs: Number(value('--jobs')) }),
       ...(value('--runner-memory') === undefined ? {} : { runnerMemory: value('--runner-memory') ?? '' }),

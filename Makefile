@@ -1724,7 +1724,10 @@ orm-test-mysql-privilege-start:
 # runs the shell command BUILD when it is given, and only then starts the servers, so that the build and the servers do
 # not hold memory at the same time. CARGO_BUILD_JOBS is the count of the jobs of cargo in the runner, and RUNNER_MEMORY
 # and SERVER_MEMORY are the memory limits of the runner and of each server (sizes of Compose, such as 2600m); the one
-# who runs gives them for the machine, and this file holds no value of them. KEEP=1 keeps the directory of the run,
+# who runs gives them for the machine, and this file holds no value of them. SOCKET_BUILD and SOCKET_RUN are a check
+# through the Unix socket of the MySQL or MariaDB primary (BAY8): the runner runs the shell command SOCKET_BUILD before the
+# servers start, which leaves a static executable for Linux below $$ORM_RUN_PROGRAMS, and bay exec runs the shell command
+# SOCKET_RUN in the container of the primary with the socket variable, after RUN; its failure fails the run. KEEP=1 keeps the directory of the run,
 # with the tools and the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
 # RUN='<command>' HOST=<ssh host> REMOTE=<directory there> runs the form of the runner on another machine, whose host
 # has sh and bay alone: it sends the directory, runs run.sh there through ssh, brings the report back under
@@ -1758,6 +1761,8 @@ orm-test-container:
 
 orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_RUN = $(value RUN)
 orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_BUILD = $(value BUILD)
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_SOCKET_BUILD = $(value SOCKET_BUILD)
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_SOCKET_RUN = $(value SOCKET_RUN)
 orm-test-container-run:
 	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
