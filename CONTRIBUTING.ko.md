@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 29600db00a13dbe9c1200582fa398ad3b9493c121809e81cfa0f544a4ba83643 -->
+<!-- source-sha256: 86762c7f2c8ca2490506172abcfca77221f8b5bd259c591c4360ababbe694a3e -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -77,7 +77,9 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 | `servers.env` | 시작된 server의 변수. `run.sh`가 쓴다 |
 | `tls/other-ca.pem` | TLS case의 두 번째 CA. 아무것도 서명하지 않는다 |
 | `<service>-init/` | service의 초기화 file |
-| `runner-setup.sh`, `check.sh`, `repo.bundle`, `report/` | runner 형태: 설치, run의 command, run의 commit, command가 남기는 것 |
+| `runner-setup.sh`, `build.sh`, `check.sh`, `repo.bundle` | runner 형태: 설치, build command, run의 command, run의 commit |
+| `compose.build.yaml`, `compose.run.yaml` | runner 형태: runner만 있는 Compose file과 server가 있는 Compose file. `compose.yaml`은 둘 중 하나의 복사본이다 |
+| `report/` | run이 기록하는 것: `bay-version`, `steps.log`, runner 형태에서는 command의 출력과 status, runner의 memory |
 
 **run의 두 형태.** run은 두 형태 중 하나다. script가 directory를 쓸 때 형태를 `run.sh`에 기록하고, run이 실행되는 동안 형태는 바뀌지 않는다. host 형태에서 run의 command는 server의 변수를 가진 host의 process이며, Darwin 같은 host system의 결과를 준다. runner 형태(`FORM=runner`)에서 command는 `bay exec runner`로 service `runner` 안에서 실행되고, host에는 이 repository의 tool이 필요 없다. 두 형태는 server의 service와 server를 준비하는 단계가 같다.
 
@@ -126,9 +128,15 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 | nodejs.org의 node tarball, `mise.toml`이 고정한 release | machine의 node. 첫 `npm ci`와 `make install-tools TOOLS=npm`에 필요하다 |
 | `rustup-init`, `config/containers.json`이 고정한 release | `rust-toolchain.toml`의 toolchain을 설치한다 |
 
-runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fuse-ld=lld"]`). memory 3.7 GiB인 machine에서 한 commit의 test를 빈 target directory에서 build하는 데 기본 linker로는 30분과 swap 3.0 GiB, `lld`로는 16분 22초와 0.86 GiB가 들었다. 이 설정은 runner의 `CARGO_HOME`의 `config.toml`이므로 host의 어떤 run도 읽지 않는다. runner는 다른 service처럼 `bay`의 trust와 certificate를 그대로 받는다. `bay`는 자기 file을 `/etc/bay` 아래에 mount하고 image의 certificate store 위에 file을 두지 않으므로, setup은 `ca-certificates`를 다른 package처럼 설치한다. runner의 TLS DSN은 `bay`가 container에 authority를 mount하는 path를 적으며, 그 path는 `bay plan --json`이 준다(`certificate.containerCa`). service는 port가 없고 `restart: "no"`를 선언하므로 멈춰도 다시 시작되지 않는다. runner의 memory 한도는 test build를 위해 server의 두 배인 8 GiB다.
+runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fuse-ld=lld"]`). memory 3.7 GiB인 machine에서 한 commit의 test를 빈 target directory에서 build하는 데 기본 linker로는 30분과 swap 3.0 GiB, `lld`로는 16분 22초와 0.86 GiB가 들었다. 이 설정은 runner의 `CARGO_HOME`의 `config.toml`이므로 host의 어떤 run도 읽지 않는다. runner는 다른 service처럼 `bay`의 trust와 certificate를 그대로 받는다. `bay`는 자기 file을 `/etc/bay` 아래에 mount하고 image의 certificate store 위에 file을 두지 않으므로, setup은 `ca-certificates`를 다른 package처럼 설치한다. runner의 TLS DSN은 `bay`가 container에 authority를 mount하는 path를 적으며, 그 path는 `bay plan --json`이 준다(`certificate.containerCa`). service는 port가 없고 `restart: "no"`를 선언하므로 멈춰도 다시 시작되지 않는다. runner의 memory 한도와 job 수는 아래에 적은 대로 실행하는 쪽이 준다.
 
-`check.sh`는 clone 안에서 runner의 tool과 `servers.env`의 변수로 run의 command를 실행한다. 그 출력은 `report/check.log`에도 있고, exit status는 `report/status`에 있으며, `ORM_RUN_REPORT`가 command가 더하는 것을 위해 `report/`를 가리킨다.
+`check.sh`는 clone 안에서 runner의 tool과 `servers.env`의 변수로 run의 command를 실행한다. 그 출력은 `report/check.log`에도 있고, exit status는 `report/status`에 있으며, `ORM_RUN_REPORT`가 command가 더하는 것을 위해 `report/`를 가리킨다. `build.sh`는 같은 방식으로 server의 변수 없이 build command를 실행하고 `report/build.log`와 `report/build-status`를 남긴다.
+
+**run의 memory.** run의 container들은 한 machine의 memory를 나눠 쓰고, machine은 합계에서 이들을 끝낼 수 있다. `bay`의 container 전체가 합계 2.6 GB에서 느려지고 3.0 GB에서 종료되는 machine에서는, 최고 memory가 3146~3196 MiB로 측정된 Rust test의 build가 server 둘과 함께 들어가지 않는다. 그래서 runner의 run은 두 단계로 시작한다. 먼저 `bay up`이 `compose.build.yaml`로 runner만 시작한다. `run.sh`가 runner를 설치하고, run에 build command(`BUILD`)가 있으면 실행한다. 예를 들어 test를 실행하지 않고 build만 하는 target이다. 그다음 두 번째 `bay up`이 `compose.run.yaml`로 server를 더하고 runner는 유지한다. runner의 선언이 두 file에서 같기 때문이다. 이어서 server를 준비하는 단계와 run의 command(`RUN`)가 온다. 실패한 build는 그 status로 run을 끝내고 server는 시작하지 않는다. `BUILD`가 없는 run도 같은 두 단계를 가지며, 그 command는 server 옆에서 필요한 것을 build한다.
+
+세 값은 실행하는 쪽이 machine에 맞게 주며, 이 repository는 그 값을 가지고 있지 않다. build의 최고 memory는 job 수에 따라 커지고 machine마다 memory가 다르기 때문이다. `CARGO_BUILD_JOBS`는 cargo의 job 수이고 `runner-setup.sh`가 runner의 cargo 설정에 쓴다. `RUNNER_MEMORY`는 runner의 `mem_limit`이며, 주지 않으면 runner에는 한도가 없다. `SERVER_MEMORY`는 각 server의 `mem_limit`이며, 주지 않으면 4 GiB다. container의 기본값 1 GiB에서는 `mysqld`가 종료되기 때문이다.
+
+`run.sh`는 run이 쓴 것을 기록한다. 각 단계의 시각을 출력과 `report/steps.log`에 쓰고, kernel이 cgroup의 `memory.peak`과 `memory.swap.peak`에 두는 runner의 최고 memory와 swap을 project를 제거하기 전에 `report/runner-memory.peak`과 `report/runner-memory.swap.peak`에, build command 뒤에는 접미사 `.build`를 붙여 쓴다. 이 file이 없는 kernel에서는 실패가 `report/steps.log`에 남고 run은 계속된다. 측정은 run을 판정하지 않기 때문이다.
 
 **다른 machine에서의 run.** `bay`는 자신이 실행되는 machine에서만 project를 시작하고 제거하므로, server를 다른 machine에 두는 것은 run 전체가 그곳에서 실행되는 것이다. `make orm-test-container-remote KIND=<kind> RUN='<command>' HOST=<ssh host> REMOTE=<directory>`는 그 machine의 `bay`의 plan을 `ssh`로 읽어 runner 형태의 run을 쓰고, run의 directory를 tar archive로 `ssh`를 통해 `<directory>/<project>`에 보내고, `ssh <host> sh <directory>/<project>/run.sh`를 실행하고, `report/`를 `.runtime/containers/reports/<project>`로 가져오고, `KEEP=1`이 아니면 그곳의 directory를 제거한다. 그 exit status는 `run.sh`의 것이다. `run.sh`는 machine을 적지 않는다. 이 target만 host와 directory를 적는다.
 

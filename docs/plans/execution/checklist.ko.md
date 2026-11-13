@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 61da1b304df348430345060e3ba5a6de7951ac29d48f42ded0482e097b2504c6 -->
+<!-- source-sha256: 418a3b35062bb151907b8753d2d1697bbbfc830470e4d1c2e449a2be65cc7fcd -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1897,3 +1897,4 @@
 | BAY12.5 | runner의 run의 command는 `bay exec runner sh /orm-run/check.sh`로 clone 안에서 server의 변수와 함께 실행되고 출력과 exit status를 `report/`에 남긴다. Red: 모든 run의 command가 host의 process다 | `scripts/test-servers-container.mts`; `scripts/test-servers-container.test.mts`; `Makefile`; docs/operations/usage.md | `make orm-test-container-check` | [v] |
 | BAY12.6 | `make orm-test-container-remote`는 runner 형태를 다른 machine에서 실행한다: 그곳 `bay`의 plan을 `ssh`로 읽고, directory를 tar archive로 보내고, `ssh <host> sh <directory>/run.sh`를 실행하고, report를 가져오고, 그곳의 directory를 제거하고, `run.sh`의 exit status를 돌려준다. `PULL=1`은 그곳에서 image를 pull한다. Red: 다른 machine에서 실행하는 target이 없다 | `scripts/test-servers-container.mts`; `scripts/test-servers-container.test.mts`; `Makefile` (`orm-test-container-remote`); docs/operations/usage.md | `make orm-test-container-check` | [v] |
 | BAY12.7 | runner의 run이 Apple `container`에서, 그리고 `make orm-test-container-remote`를 통해 Linux machine에서 runner를 설치하고 각 kind의 Rust test를 실행한다(BAY12.6, BAY1.1 필요). 원인: `make orm-test-container-check`는 대역 `bay`를 실행하므로 `runner-setup.sh`가 Debian image에 tool을 설치하는지도, runner의 check가 server에 닿아 mount된 authority로 certificate를 검증하는지도 보이지 않는다 | `scripts/test-servers-container.mts` | `make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'`; `make orm-test-container-remote KIND=mysql HOST=<host> REMOTE=<directory> RUN='make test-rust'` | [ ] |
+| BAY12.8 | runner의 run이 machine의 memory 안에 들어간다: `bay up`이 runner만 시작하고, runner가 설치되어 build command `BUILD`를 실행하고, 두 번째 `bay up`이 server를 더한다. `CARGO_BUILD_JOBS`, `RUNNER_MEMORY`, `SERVER_MEMORY`는 실행하는 쪽이 주고, `run.sh`는 각 단계의 시각과 runner의 최고 memory와 swap을 `report/`에 기록한다. Red: `bay up` 한 번이 server와 runner를 함께 시작하고, 설치와 command의 build가 server 둘 옆에서 실행되고, runner에 8g 고정 한도가 있고, run이 시각도 memory도 기록하지 않는다 | `scripts/test-servers-container.mts`; `scripts/test-servers-container.test.mts`; `Makefile` (`BUILD`, `CARGO_BUILD_JOBS`, `RUNNER_MEMORY`, `SERVER_MEMORY`); CONTRIBUTING.md; docs/operations/usage.md | `make orm-test-container-check` | [v] |
