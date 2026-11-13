@@ -176,6 +176,25 @@ caseTest('the Rust unit tests build and hold the TypeScript client that the inte
   assert.ok(hold > build && hold < tests, `test-rust does not hold the TypeScript client while its tests read it ($(READ_TYPESCRIPT)): ${result.stdout}`);
 });
 
+// The Go tests of the repository build with GO_TEST_TAGS of tests/go-test.mts: without ormtest the recipe steps fault.next_rollback,
+// fault.next_statement and db.last_affected fail on SQLite. The interface_symbols case of the Go recipe runs
+// interfaces/error-catalogs, which reads the generated error file of every implementation (orm-codes) (T449).
+caseTest('the Go unit tests take the build tags of the Go runner and the generated error files (T449)', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const result = spawnSync('make', ['-n', '--no-print-directory', 'test-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  const lines = result.stdout.split('\n');
+  const tests = lines.findIndex(line => /runtime-targets\.(?:mjs|mts) test --runner go /.test(line));
+  assert.ok(tests >= 0, `test-go runs no go tests: ${result.stdout}`);
+  const tags = /export const GO_TEST_TAGS = \[([^\]]*)\]/.exec(readFileSync(join(root, 'tests/go-test.mts'), 'utf8'))?.[1]?.replaceAll(/['\s]/g, '');
+  assert.ok(tags, 'tests/go-test.mts declares no GO_TEST_TAGS');
+  assert.ok(lines[tests]?.split(' ').includes(`-tags=${tags}`), `test-go runs the go tests without -tags=${tags}, the tags of GO_TEST_TAGS: ${lines[tests]}`);
+  for (const file of ['legacy/packages/ts/src/orm-codes.key', 'legacy/packages/php/src/orm-codes.key', 'legacy/packages/python/src/polyspec/orm/orm-codes.key']) {
+    const codes = lines.findIndex(line => line.includes('scripts/generate/once.mts') && line.includes(file));
+    assert.ok(codes >= 0 && codes < tests, `test-go runs the go tests without writing the error file of ${file} first (orm-codes): ${result.stdout}`);
+  }
+});
+
 caseTest('the Makefile includes no recipe file of @polyspec/kit', COMPUTE, () => {
   // kit 0.0.98 ships no recipes (kit docs/spec/utilities-and-recipes.md): the Makefile states its own targets, which run the
   // utilities of the installed package, and exports its own CARGO_TARGET_DIR, which no include unexports.
