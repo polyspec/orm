@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 52e1042cce7bdb2c0e17b9d7b06a341ad179852d7c59177139e7ef1ccf1a7716 -->
+<!-- source-sha256: 5dde45e167128a52fb3366d7b91f8a2b3d0c6bdee9b2a5454a502212ad76b6ea -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -99,7 +99,9 @@
 - Own: test 단계는 아무것도 남기지 않는다. check runner와 `make feature-owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
   자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
   process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든
-  runner는 그 뒤 남은 것을 지우고 process를 끝낸다. code는 실패를 포함한 모든 경로에서 자기 임시 file을 지운다.
+  runner는 그 뒤 남은 entry를 지우고 process에 끝내기를 요청한다: group에 SIGTERM을 전달하고, 기다리는 group과 process를
+  출력하고, 단계 출력의 close를 시간 한도 없이 기다린다. SIGKILL은 전달하지 않고, 그 뒤에도 살아 있는 process를
+  적는다(docs/spec/feature-coverage.md FCV-18). code는 실패를 포함한 모든 경로에서 자기 임시 file을 지운다.
   Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make go-vet-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.

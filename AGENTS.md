@@ -115,7 +115,9 @@ from kit and holds as its own; this file states only the rules of orm.
   temporary directory of its own (`TMPDIR`) and in a process group of its own; a passed step that
   leaves an entry in that directory, a run directory under `.runtime/run`, or a process in its
   group fails and names what it left, and a failed step's leftovers go into the report. Either way
-  the runner then removes them and ends the processes. Code removes its own temporary files on
+  the runner then removes the entries and asks the processes to end: it sends SIGTERM to the group, prints the group and
+  the processes that it waits for, and waits with no time limit for the close of the output of the step; it sends no
+  SIGKILL, and it names a process that is still alive after that (docs/spec/feature-coverage.md FCV-18). Code removes its own temporary files on
   every path, failure included: a Go `main` ends with `os.Exit(run())` and calls no `os.Exit` after
   a `defer` (`make go-vet-check`), and a Rust test holds its temporary directory in a value that
   removes it on drop. A process that starts a session of its own leaves the group and is not seen,

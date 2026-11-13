@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a89eed1b0cc61b8015db3e2b69b5f10050d81c43118845b6d025e1128975a507 -->
+<!-- source-sha256: 09b1c0c8d50d4dc4d03bd646d2bda4d4e7a06dd44547d7d6db850a9c191af98f -->
 # 변경 이력
 
 ## Unreleased
+
+- check runner는 단계의 process group을 요청으로 멈추고 그 끝을 event로 기다린다(T462, FCV-18). scripts/check/step.mts의 `stopGroup`은 SIGTERM을 전달하고, `check: sent SIGTERM to process group <group> and waits for its end with no time limit: <pid> <command>, ...`를 출력하고, 단계 출력의 close를 기다리고, 아직 살아 있는 process를 돌려주며 단계가 그것을 적는다. 전에는 timer로 3초를 기다린 뒤 SIGKILL을 전달했다. 중단된 runner는 단계를 받지 않고(`check: the runner was interrupted and admits no step; run the check again`), 자기 단계의 group에 SIGTERM을 전달하고, 그 단계가 끝나고 검사된 뒤 그 signal의 status로 끝난다. 전에는 SIGKILL을 전달하고 바로 끝났다.
 
 - schema가 거부하는 recipe는 거부된 step의 op의 오류와 함께 보고된다(T461, FCV-17). scripts/features/schema/recipe.schema.json의 step 형식은 `op`를 discriminator로 이름하고, 형태가 여럿인 op 일곱 개는 맨 위에 자기 `op`의 const를 적으며, scripts/json/schema.mts의 reader는 ajv의 discriminator를 켠다. 거부된 step 하나는 1085개이던 오류가 9개로, 거부된 코드 346개를 가진 conformance_verification recipe는 687008개와 72 M 글자의 메시지이던 것이 9451개로 보고된다. 전에는 시험 실행이 보고 없이 8 GB를 가졌다.
 

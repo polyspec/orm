@@ -166,13 +166,16 @@ caseTest('a SIGTERM that cannot be sent fails the cleanup and no SIGKILL follows
 });
 
 // T462: stopGroup sends SIGTERM, says what it waits for, waits for the event that the owner of the group has for its end,
-// and sends nothing else. The member ends on SIGTERM after its own cleanup, which the wait leaves time for.
+// and sends nothing else. The member ends after its cleanup and after the case has seen the line, so the line always
+// names it: the case closes the input of the member when the line comes, and the member ends when it has both.
 caseTest('stopGroup asks a group to end, names what it waits for and waits for the event of its owner', PROCESS, async () => {
   const work = mkdtempSync(join(tmpdir(), 'orm-step-stop-'));
   const marker = join(work, 'cleaned');
   const script = `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
-    process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); console.log('ready');`;
-  const child = spawn(process.execPath, ['-e', script], { detached: true, stdio: ['ignore', 'pipe', 'ignore'], env: isolatedEnvironment() });
+    let asked = false; let released = false; const end = () => { if (asked && released) server.close(); };
+    process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); asked = true; end(); });
+    process.stdin.on('end', () => { released = true; end(); }); process.stdin.resume(); console.log('ready');`;
+  const child = spawn(process.execPath, ['-e', script], { detached: true, stdio: ['pipe', 'pipe', 'ignore'], env: isolatedEnvironment() });
   const originalKill = process.kill.bind(process);
   const sent: (NodeJS.Signals | number | undefined)[] = [];
   try {
@@ -184,7 +187,11 @@ caseTest('stopGroup asks a group to end, names what it waits for and waits for t
     };
     const reported: string[] = [];
     assert.ok(child.pid);
-    assert.deepEqual(await stopGroup(child.pid, closed, line => reported.push(line)), [], 'no member outlives the event');
+    const alive = await stopGroup(child.pid, closed, line => {
+      reported.push(line);
+      child.stdin.end();
+    });
+    assert.deepEqual(alive, [], 'no member outlives the event');
     assert.deepEqual(sent, ['SIGTERM']);
     assert.equal(reported.length, 1, reported.join(' | '));
     assert.match(reported[0] ?? '', new RegExp(`sent SIGTERM to process group ${child.pid} and waits for its end with no time limit: ${child.pid} `));
@@ -192,7 +199,7 @@ caseTest('stopGroup asks a group to end, names what it waits for and waits for t
     assert.equal(child.exitCode, 0);
   } finally {
     process.kill = originalKill;
-    if (child.pid && child.exitCode === null && child.signalCode === null) originalKill(-child.pid, 'SIGKILL');
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
     rmSync(work, { recursive: true, force: true });
   }
 });

@@ -10,8 +10,13 @@
 //
 // When a step ends, it records and ends the processes left in the group, and records the entries left in the temporary directory. A passing step
 // that leaves a process or entry fails. A passing run must not leave behind what it made.
-// Entries left by a failed step are copied into the report with keep. Either way the temporary directory is deleted. The runner
-// ends the group of the in-progress step even when it ends by signal.
+// Entries left by a failed step are copied into the report with keep. Either way the temporary directory is deleted.
+//
+// A process is stopped by a request and its end is an event (docs/spec/feature-coverage.md FCV-18): the runner sends
+// SIGTERM to the group, says what it waits for, and waits with no time limit for the close of the output of the step. It
+// sends no SIGKILL, because the end of a process is not judged by time: a process that is still writing its state is not
+// killed, and a process that ignores the request is named. An interrupted runner admits no step, sends SIGTERM to the
+// groups of its steps and exits when those steps have ended and have been checked.
 import { spawn, spawnSync, type ChildProcessByStdio } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,8 +25,12 @@ import type { Readable } from 'node:stream';
 import { stepLines, type Step } from '../../tests/testcase.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
 
-// active is the process group id of the in-progress step. It ends the remaining group when the runner finishes.
+// active is the process group id of the in-progress step. The runner asks the remaining group to end when it finishes.
 const active = new Set<number>();
+// pending is the steps that have not settled; an interrupted runner exits after them.
+const pending = new Set<Promise<void>>();
+// interrupted is the exit status of the signal that interrupted the runner; no step is admitted after it.
+let interrupted: number | undefined;
 let installed = false;
 function signalActiveGroups(signal: NodeJS.Signals): unknown[] {
   const errors: unknown[] = [];
@@ -37,13 +46,22 @@ function signalActiveGroups(signal: NodeJS.Signals): unknown[] {
 function install() {
   if (installed) return;
   installed = true;
+  // A runner that exits while a group is active can only ask that group to end: an exit handler waits for nothing.
   process.on('exit', () => {
-    if (signalActiveGroups('SIGKILL').length && (process.exitCode === undefined || process.exitCode === 0)) process.exitCode = 1;
+    if (signalActiveGroups('SIGTERM').length && (process.exitCode === undefined || process.exitCode === 0)) process.exitCode = 1;
   });
   for (const [signal, number] of [['SIGINT', 2], ['SIGTERM', 15], ['SIGHUP', 1]] as const)
     process.on(signal, () => {
-      signalActiveGroups('SIGKILL');
-      process.exit(process.exitCode === undefined || process.exitCode === 0 ? 128 + number : process.exitCode);
+      // A repeated signal finds the wait of the first one in progress and adds nothing to it.
+      if (interrupted !== undefined) return;
+      interrupted = 128 + number;
+      const steps = pending.size;
+      console.error(`check: ${signal}: no step is admitted; sent SIGTERM to the process ${steps === 1 ? 'group' : 'groups'} of ${steps} ${steps === 1 ? 'step' : 'steps'} and waits for them with no time limit`);
+      signalActiveGroups('SIGTERM');
+      // Each step settles when its process has exited and its group and its leftovers have been checked.
+      void Promise.allSettled([...pending]).then(() => {
+        process.exit(process.exitCode === undefined || process.exitCode === 0 ? interrupted : process.exitCode);
+      });
     });
 }
 
@@ -91,36 +109,48 @@ export function groupProcesses(group: number, options: { maxBuffer?: number } = 
   return found;
 }
 
-// stopGroup sends SIGTERM, observes the group once, and sends SIGKILL after the existing three-second grace period if members remain.
-async function stopGroup(group: number): Promise<void> {
-  const errors: unknown[] = [];
-  let termSent = false;
-  try { termSent = signalGroup(group, 'SIGTERM'); } catch (error) { errors.push(error); }
-  // ESRCH means the group was already absent; don't delay cleanup for it.
-  if (!termSent && errors.length === 0) return;
-  let remaining = true;
-  try { remaining = groupProcesses(group).length > 0; } catch (error) { errors.push(error); }
-  if (remaining && errors.length === 0) await new Promise(resolve => setTimeout(resolve, 3000));
-  if (remaining || errors.length) {
-    try { signalGroup(group, 'SIGKILL'); } catch (error) { errors.push(error); }
-  }
-  if (errors.length) throw new AggregateError(errors, `check: cleanup of process group ${group} failed: ${errors.map(errorMessage).join('; ')}`);
+// members are the live processes of the group as `<pid> <command>`.
+const members = (group: number): string[] => groupProcesses(group).map(({ pid, command }) => `${pid} ${command}`);
+
+/**
+ * stopGroup asks the processes of the group to end and waits for their end (FCV-18). It sends SIGTERM, gives `report` one
+ * line with the group and the members that it waits for, and waits with no time limit for `ended`, the event that the
+ * owner of the group has for its end: the close of the output of its child, which comes when every process that holds
+ * that output has ended. It returns the members that are alive when the event has come: a process that ignores SIGTERM
+ * and holds no output of the owner. They are named and not killed. A group that is already gone when the signal is sent
+ * returns at once; after a signal that was sent, the event is awaited also when the listing already shows no member,
+ * because the event, not the listing, is the end of the group.
+ */
+export async function stopGroup(group: number, ended: Promise<unknown>, report: (line: string) => void = line => { console.log(line); }): Promise<string[]> {
+  // false: the group is already absent, or it is no group of a step.
+  if (!signalGroup(group, 'SIGTERM')) return [];
+  const waited = members(group);
+  if (waited.length) report(`check: sent SIGTERM to process group ${group} and waits for its end with no time limit: ${waited.join(', ')}`);
+  await ended;
+  return members(group);
 }
 
 // endGroup records the processes left in the group after a process started in its own process group (detached spawn)
-// ends them. If nothing remains, the list is empty. Such a group leaves the step's group, so the step's check cannot see it. So the group
+// and asks them to end (stopGroup). If nothing remains, the list is empty. Such a group leaves the step's group, so the step's check cannot see it. So the group
 // is checked by the code that made it, and anything left behind is treated as a failure (`make repo-check` requires that).
-export async function endGroup(group: number | null | undefined): Promise<string[]> {
+// `ended` is the event that the caller has for the end of what the group holds, the close of the output of its child; a
+// caller that has none gives none, and the request is then all that endGroup does. A member that is alive after the event
+// is named in a line of `report`.
+export async function endGroup(group: number | null | undefined, ended: Promise<unknown> = Promise.resolve(), report: (line: string) => void = line => { console.log(line); }): Promise<string[]> {
   if (!group) return [];
-  let processes: { pid: number; command: string }[];
-  try { processes = groupProcesses(group); }
+  let left: string[];
+  try { left = members(group); }
   catch (error) {
-    try { await stopGroup(group); }
+    // The listing failed, so what is left is not known: the group is still asked to end.
+    try { await stopGroup(group, ended, report); }
     catch (cleanup) { throw new AggregateError([error, cleanup], `check: could not list or stop process group ${group}: ${errorMessage(error)}; ${errorMessage(cleanup)}`, { cause: cleanup }); }
     throw error;
   }
-  if (processes.length) await stopGroup(group);
-  return processes.map(({ pid, command }) => `${pid} ${command}`);
+  if (left.length) {
+    const alive = await stopGroup(group, ended, report);
+    if (alive.length) report(`check: process group ${group} still has members after SIGTERM and the end of its output, and they are not killed: ${alive.join(', ')}`);
+  }
+  return left;
 }
 
 // runStep runs a program and emits its output lines as steps. label is the name on failure lines, and spawned takes the id of the process that was started,
@@ -142,9 +172,19 @@ export type StepOptions = {
   guard?: boolean;
 };
 
-export function runStep(program: string, args: string[], { cwd, env, step, label = `${program} ${args.join(' ')}`, spawned = () => {}, keep, leftovers = () => [], guard = true }: StepOptions): Promise<void> {
-  if (!guard) return plainStep(program, args, { cwd, env, step, spawned });
+export function runStep(program: string, args: string[], options: StepOptions): Promise<void> {
+  if (interrupted !== undefined) return Promise.reject(new Error('check: the runner was interrupted and admits no step; run the check again'));
+  if (options.guard === false) return plainStep(program, args, { cwd: options.cwd, env: options.env, step: options.step, spawned: options.spawned ?? (() => {}) });
   install();
+  const result = guardedStep(program, args, options);
+  pending.add(result);
+  const settled = () => { pending.delete(result); };
+  result.then(settled, settled);
+  return result;
+}
+
+// guardedStep is a step in its own temporary directory and its own process group.
+function guardedStep(program: string, args: string[], { cwd, env, step, label = `${program} ${args.join(' ')}`, spawned = () => {}, keep, leftovers = () => [] }: StepOptions): Promise<void> {
   const temporary = mkdtempSync(join(tmpdir(), 'orm-step-'));
   // The run directory of the step, which the step owns: the recipes of the step write into it, and the
   // runner removes it when the step ends, pass or fail, before it looks for leftovers.
@@ -184,8 +224,9 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
       const exited = { code, signal };
       const problems: string[] = [];
       try {
-        // The remaining processes are recorded first and then ended. If such a process holds the output pipe, close does not arrive.
-        const processes = group ? await endGroup(group) : [];
+        // The remaining processes are recorded first and then asked to end; the wait for them is the close of the output
+        // of the step, which comes when every process that holds it has ended.
+        const processes = group ? await endGroup(group, closed, step) : [];
         if (group && processes.length) {
           problems.push(`check: ${label} left ${processes.length} processes: ${processes.join(', ')}`);
         }
