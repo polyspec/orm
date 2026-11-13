@@ -304,6 +304,8 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Returned::Value(Value::Null)
         }
         ("query.create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.create().await?))),
+        ("query.restore", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore().await?))),
+        ("query.restore_or_create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore_or_create().await?))),
         ("query.update", Some(Instance::Query(query))) => {
             query.update().await?;
             Returned::Value(Value::Null)

@@ -3310,6 +3310,90 @@
             "path": "polyspec_orm::Query::delete",
             "receiver": "&self"
           }
+        },
+        {
+          "id": "query.restore",
+          "name": [
+            "restore"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "query"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::NoRows",
+            "polyspec_orm::Kind::RowNotDeleted"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::restore",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.restore_or_create",
+          "name": [
+            "restore",
+            "or",
+            "create"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "query"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::NoRows",
+            "polyspec_orm::Kind::RowNotDeleted"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::restore_or_create",
+            "receiver": "&mut self"
+          }
         }
       ]
     },

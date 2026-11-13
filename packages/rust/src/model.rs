@@ -1662,9 +1662,15 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
 /// and then reads the row by the values of that key. A row that is not deleted
 /// is returned unchanged and nothing is written; a missing row returns NO_ROWS.
 /// Reads never return a soft-deleted row: restore names it explicitly.
-pub async fn restore<M: Model>(m: &M) -> Result<M> {
+pub async fn restore<M: AnyModel + Clone>(m: &M) -> Result<M> {
     let (_, q) = restore_step(m).await?;
-    get_core(&q).await?.ok_or(Error::no_rows())
+    first_row(&q).await
+}
+
+/// The first row of the query `q` as the row type of the model that asked, or NO_ROWS.
+async fn first_row<M: AnyModel>(q: &Core) -> Result<M> {
+    let rows = load(q, "one").await?;
+    rows.items.into_iter().next().map(|(_, row)| row_of::<M>(row)).ok_or(Error::no_rows())?
 }
 
 /// Restores the soft-deleted row of the key that restore picks, or creates it
@@ -1672,15 +1678,15 @@ pub async fn restore<M: Model>(m: &M) -> Result<M> {
 /// (docs/operations/usage.md "Restore or create a row"), and returns the row. A row that
 /// holds the key and is not deleted fails with ROW_NOT_DELETED, and nothing is
 /// written.
-pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {
-    let conn = m.core().conn.clone();
+pub async fn restore_or_create<M: AnyModel + Clone>(m: &M) -> Result<M> {
+    let conn = m.core_dyn().conn.clone();
     in_transaction(&conn, |unit: Connection| async move {
         let mut m = m.clone();
-        m.core_mut().conn = Some(unit);
+        m.core_dyn_mut().conn = Some(unit);
         let m = &m;
         let (restored, q) = restore_step(m).await?;
         if restored > 0 {
-            return get_core(&q).await?.ok_or(Error::no_rows());
+            return first_row(&q).await;
         }
         if get_count(&q).await? > 0 {
             return Err(Error::new(crate::Kind::RowNotDeleted, "restoreOrCreate: a row that is not deleted holds the key"));
@@ -1694,8 +1700,8 @@ pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {
 /// Sends the restore request of the set values and returns the number of rows
 /// it restored and the query of the row by the values of the key that the
 /// planner picked.
-async fn restore_step<M: Model>(m: &M) -> Result<(u64, Core)> {
-    let c = m.core();
+async fn restore_step<M: AnyModel>(m: &M) -> Result<(u64, Core)> {
+    let c = m.core_dyn();
     let ex = terminal(c)?;
     let ent = c.ent.entity_schema()?;
     let mut req = build(&Core::of(c.ent.clone()), "restore");

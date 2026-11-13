@@ -551,3 +551,110 @@ async fn delete_deletes_its_row() {
     assert_eq!(query(&schema, "account_key", &db).get_count().await.expect("count"), 0);
     db.close().await;
 }
+
+/// One table with a `soft_delete` setting and a unique email.
+pub(super) const MEMBER: &str = "dbspec 1 member
+
+table member {
+  seq i64 identity
+  email varchar(64)
+  name varchar(32) null
+  deleted_at datetime(6) null
+  primary key (seq)
+  unique uq_member_email (email)
+  settings {
+    soft_delete deleted_at
+  }
+}
+";
+pub(super) const MEMBER_HASH: &str = "sha256:a6fa9270b90b482529da0479be752f4efdf6c9db3ebaae877822af5329dd0660";
+
+/// A SQLite database with the member table, the member 1 (`a@x`), which is not deleted, and the member 2 (`b@x`),
+/// which is soft-deleted.
+async fn member_db(scratch: &Scratch, schema: &Schema) -> Db {
+    let db = Db::connect(&format!("sqlite://{}", scratch.join("member.sqlite").display()), 1, Config::default()).await.expect("connect");
+    db.utils().schema().install(schema).await.expect("install");
+    for (email, name) in [("a@x", "Ann"), ("b@x", "Bob")] {
+        let mut new = query(schema, "member", &db);
+        new.set("email", OrmValue::Text(email.into()));
+        new.set("name", OrmValue::Text(name.into()));
+        new.create().await.expect("create a member");
+    }
+    let mut bob = query(schema, "member", &db);
+    bob.set("seq", int(2));
+    bob.delete().await.expect("soft-delete the member 2");
+    db
+}
+
+fn by_email(schema: &Schema, db: &Db, email: &str) -> Query {
+    let mut member = query(schema, "member", db);
+    member.set("email", OrmValue::Text(email.into()));
+    member
+}
+
+async fn member_count(schema: &Schema, db: &Db) -> i64 {
+    query(schema, "member", db).get_count().await.expect("count")
+}
+
+// Requirements: CORE-94. restore restores the soft-deleted row of the key of the assignments, writes the other
+// assignments to it and returns it; a row of the key that is not deleted is returned and not written, no row of the key
+// is no_rows, and an entity without soft_delete is ir_invalid.
+#[tokio::test]
+async fn restore_restores_the_soft_deleted_row_of_its_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-restore");
+    let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
+    let db = member_db(&scratch, &schema).await;
+    assert_eq!(member_count(&schema, &db).await, 1, "a read does not return the soft-deleted member");
+    let mut deleted = by_email(&schema, &db, "b@x");
+    deleted.set("name", OrmValue::Text("Bea".into()));
+    let restored = deleted.restore().await.expect("restore");
+    assert_eq!(restored.value("seq").expect("seq"), int(2));
+    assert_eq!(restored.value("name").expect("name"), OrmValue::Text("Bea".into()), "the assignment that is no key is written");
+    assert_eq!(member_count(&schema, &db).await, 2);
+    let error = failure(deleted.restore().await, "a restore after the assignments were cleared");
+    assert_eq!(error.kind(), crate::Kind::IrInvalid, "restore clears the assignments, so the next request holds no key: {error}");
+    let mut live = by_email(&schema, &db, "a@x");
+    live.set("name", OrmValue::Text("Amy".into()));
+    let unchanged = live.restore().await.expect("restore of a row that is not deleted");
+    assert_eq!(unchanged.value("name").expect("name"), OrmValue::Text("Ann".into()), "a row that is not deleted is not written");
+    let error = failure(by_email(&schema, &db, "z@x").restore().await, "no row of the key");
+    assert_eq!(error.kind(), crate::Kind::NoRows, "{error}");
+    db.close().await;
+    let accounts = account_schema();
+    let account_db = account_db(&scratch, &accounts).await;
+    let mut account = query(&accounts, "account", &account_db);
+    account.set("email", OrmValue::Text("a@x".into()));
+    let error = failure(account.restore().await, "an entity without soft_delete");
+    assert_eq!(error.kind(), crate::Kind::IrInvalid, "{error}");
+    account_db.close().await;
+}
+
+// Requirements: CORE-94. restore_or_create restores the soft-deleted row of the key or inserts the row of the
+// assignments when no row holds the key, and a row of the key that is not deleted is row_not_deleted with nothing
+// written.
+#[tokio::test]
+async fn restore_or_create_restores_or_inserts_the_row() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-query-restore-or-create");
+    let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
+    let db = member_db(&scratch, &schema).await;
+    let restored = by_email(&schema, &db, "b@x").restore_or_create().await.expect("restore the member 2");
+    assert_eq!(restored.value("seq").expect("seq"), int(2));
+    let mut new = by_email(&schema, &db, "c@x");
+    new.set("name", OrmValue::Text("Cy".into()));
+    let created = new.restore_or_create().await.expect("create the member 3");
+    assert_eq!(created.value("seq").expect("seq"), int(3));
+    assert_eq!(created.value("name").expect("name"), OrmValue::Text("Cy".into()));
+    assert_eq!(member_count(&schema, &db).await, 3);
+    let error = failure(new.restore_or_create().await, "a second call after the assignments were cleared");
+    assert_eq!(error.kind(), crate::Kind::IrInvalid, "restore_or_create clears the assignments: {error}");
+    let mut live = by_email(&schema, &db, "a@x");
+    live.set("name", OrmValue::Text("Amy".into()));
+    let error = failure(live.restore_or_create().await, "a row of the key that is not deleted");
+    assert_eq!(error.kind(), crate::Kind::RowNotDeleted, "{error}");
+    let mut read = query(&schema, "member", &db);
+    read.where_chain("Email", vec![OrmValue::Text("a@x".into())]);
+    assert_eq!(read.get().await.expect("get").expect("member 1").value("name").expect("name"), OrmValue::Text("Ann".into()), "nothing is written");
+    db.close().await;
+}

@@ -3,6 +3,7 @@
 
 use serde_json::{json, Value};
 
+use super::query_members_tests::{MEMBER, MEMBER_HASH};
 use crate::db::Pool;
 use crate::test_support::Scratch;
 use crate::{Config, Connection, Db, Schema, StepRunner};
@@ -310,5 +311,30 @@ async fn a_dropped_runner_rolls_back_its_transaction() {
     let mut next = StepRunner::new(&schema, Connection::from(&db));
     assert_eq!(run(&mut next, &count_account("d@x")).await, json!({"ok": {"count": 0}}));
     next.close().await;
+    db.close().await;
+}
+
+// Requirements: CORE-94. The terminals restore and restore_or_create return the row, and their failures their kinds.
+#[tokio::test]
+async fn a_restore_step_returns_its_row_or_the_kind_of_its_failure() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let scratch = Scratch::new("orm-rust-step-restore");
+    let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
+    let db = Db::connect(&format!("sqlite://{}", scratch.join("member.sqlite").display()), 1, Config::default()).await.expect("connect");
+    db.utils().schema().install(&schema).await.expect("install");
+    let mut runner = StepRunner::new(&schema, Connection::from(&db));
+    let member = |email: &str| json!({"entity": "member", "calls": [{"call": "set", "column": "email", "value": text(email)}]});
+    let row = |seq: i64, email: &str| json!({"ok": {"row": {"values": {"seq": int64(seq), "email": text(email)}, "related": {}}}});
+    assert_eq!(run(&mut runner, &query_step(member("a@x"), "restore_or_create")).await, row(1, "a@x"), "no row holds the key");
+    let live = run(&mut runner, &query_step(member("a@x"), "restore_or_create")).await;
+    assert_eq!(error_kind(&live), "row_not_deleted", "{live}");
+    let missing = run(&mut runner, &query_step(member("z@x"), "restore")).await;
+    assert_eq!(error_kind(&missing), "no_rows", "{missing}");
+    let remove = json!({"entity": "member", "calls": [{"call": "set", "column": "seq", "value": int64(1)}]});
+    assert_eq!(run(&mut runner, &query_step(remove, "delete")).await, json!({"ok": {}}));
+    let restored = run(&mut runner, &query_step(member("a@x"), "restore")).await;
+    assert_eq!(restored["ok"]["row"]["values"]["seq"], int64(1), "{restored}");
+    assert_eq!(restored["ok"]["row"]["values"]["email"], text("a@x"), "{restored}");
+    runner.close().await;
     db.close().await;
 }

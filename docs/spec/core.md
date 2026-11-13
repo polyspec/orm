@@ -213,7 +213,7 @@ the core that differ from the rules that the language implementations of `legacy
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
-- **CORE-84** Not implemented: `creates`, `save`, `restore` and `restoreOrCreate` of a `Query`, `join`, `leftJoin`, the
+- **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
   groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
   `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
@@ -293,12 +293,12 @@ the core that differ from the rules that the language implementations of `legacy
   or the first failure of a rollback; a runner dropped with an open transaction rolls it back when its callback sees
   that no step can come. A transaction step needs a runner on a `Db` and no open transaction, since a savepoint step
   opens what a nested transaction would; another is `config`.
-- **CORE-94** Not implemented (OM-3.1-13): `restore` and `restore_or_create` of a `Query`, as those of a generated model
-  (INT-38, INT-39). On an entity with a `soft_delete` setting, `restore` sends the restore request of the assignments of
+- **CORE-94** `restore` and `restore_or_create` of a `Query` are those of a generated model (INT-38, INT-39). On an entity with a `soft_delete` setting, `restore` sends the restore request of the assignments of
   `set`, whose key the planner picks among the primary key and the unique keys that they hold, and returns the restored
-  row; with no soft-deleted row of that key it is `no_rows`. `restore_or_create` restores the soft-deleted row of that
+  row; a row of that key that is not deleted is returned and nothing is written, and with no row of that key it is
+  `no_rows`. `restore_or_create` restores the soft-deleted row of that
   key or, when no row holds the key, inserts the row of the assignments, in one transaction, and returns the row; a row
-  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both clear the assignments. The `Db` step
+  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both clear the assignments when they return a row. The `Db` step
   takes them as the terminals `restore` and `restore_or_create`, whose result is `{"row": <row>}` (CORE-92). An entity
   without `soft_delete` is `ir_invalid`.
 

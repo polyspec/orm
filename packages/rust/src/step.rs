@@ -127,6 +127,8 @@ pub enum Terminal {
     Create,
     Update,
     Delete,
+    Restore,
+    RestoreOrCreate,
 }
 
 /// An `orm_value` in the case form of CORE-71: `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON value
@@ -416,6 +418,8 @@ async fn run_terminal(mut query: Query, terminal: Terminal) -> Result<Value> {
             query.delete().await?;
             json!({})
         }
+        Terminal::Restore => json!({"row": row_json(&query.restore().await?)?}),
+        Terminal::RestoreOrCreate => json!({"row": row_json(&query.restore_or_create().await?)?}),
     })
 }
 

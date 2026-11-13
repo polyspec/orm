@@ -311,6 +311,24 @@ impl Query {
         crate::model::delete(self, false).await
     }
 
+    /// Restores the soft-deleted row of the key that the assignments hold, writes the other assignments to it and
+    /// returns the row; a row of the key that is not deleted is returned and not written, and no row of the key is
+    /// `no_rows` (CORE-94). The assignments are cleared.
+    pub async fn restore(&mut self) -> Result<Query> {
+        let row = crate::model::restore(self).await?;
+        self.core.sets.clear();
+        Ok(row)
+    }
+
+    /// Restores the soft-deleted row of the key that the assignments hold or, when no row holds the key, inserts the row
+    /// of the assignments, in one transaction, and returns the row; a row of the key that is not deleted is
+    /// `row_not_deleted` (CORE-94). The assignments are cleared.
+    pub async fn restore_or_create(&mut self) -> Result<Query> {
+        let row = crate::model::restore_or_create(self).await?;
+        self.core.sets.clear();
+        Ok(row)
+    }
+
     /// A copy of the query with the conditions of `chain` joined by `and` (CORE-83).
     fn by(&self, chain: &str, values: Vec<OrmValue>) -> Query {
         let mut out = self.clone();
