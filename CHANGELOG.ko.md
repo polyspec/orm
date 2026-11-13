@@ -21,6 +21,7 @@
 - Rust 코어의 `Query::limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽고, count 0은 다음 terminal에서 `config`다(OM-3.1-4, CORE-85). 계약은 case 하나와 함께 `Query::limit`을 선언한다.
 - Rust 코어의 `Query`는 행 lock `for_update`, `for_share`, `for_update_no_wait`, `for_share_no_wait`를 가진다. 언어 구현의 member `forUpdate`, `forShare`, `forUpdateNoWait`, `forShareNoWait`이다(OM-3.1-5, CORE-86). 마지막에 부른 것이 남고, `get`과 `gets`가 그것을 받으며, lock을 가진 count는 `ir_invalid`이고 transaction 밖의 lock은 `config`다. 계약은 네 member를 각각 case 하나와 함께 선언한다.
 - Rust 코어의 `Query`는 행이 읽는 열을 고른다(OM-3.1-6, CORE-87): `add_all_columns`는 모든 열을 읽고, `remove_all_columns`는 key를 남기며, `add_column(column)`과 `remove_column(column)`은 `value`처럼 이름한 열 하나를 더하고 뺀다. 열이 아닌 이름은 다음 terminal에서 `config`다. 계약은 네 member를 각각 case 하나와 함께 선언한다.
+- Rust 코어의 `Query`는 relation 결과를 붙인다(OM-3.1-7, CORE-88): `match_pair(pair)`는 `split_pair`가 읽는 relation key의 구성 요소를 더하고, `alias(name)`은 결과의 이름을 정하며, `relation(child)`와 `relations(child)`는 별도 질의의 행이나 행들을 붙이고, `related(name)`과 `related_rows(name)`은 그것을 읽는다. child는 자기 lock을 지킨다. `Core`의 relation key는 소유한 열 이름을 가지므로 `Core::add_match`는 `&str`을 받는다. 계약은 여섯 member를 각각 case 하나와 함께 선언한다.
 
 ## 0.0.31
 

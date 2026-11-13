@@ -310,7 +310,7 @@ fn relation(r: &mut Req, rel: &RelSpec) -> Option<ir::Relation> {
         rel: result_name(ch, rel.many),
         query: Box::new(q),
         kind: if rel.many { "many" } else { "one" }.into(),
-        keys: ch.matches.iter().map(|&(left, right)| ir::KeyPair { left: left.into(), right: right.into() }).collect(),
+        keys: ch.matches.iter().map(|(left, right)| ir::KeyPair { left: left.clone(), right: right.clone() }).collect(),
     })
 }
 

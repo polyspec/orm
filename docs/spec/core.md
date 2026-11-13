@@ -239,8 +239,9 @@ the core that differ from the rules that the language implementations of `legacy
   `split_pair` of `polyspec-orm-schema` (DSL-82). `alias(name)` names the result (DSL-83); without it the result is
   `<entity>_model` or `<entity>_models`, and the name of an alias is its snake case. `relation(child)` attaches the
   row of a separate query of `child` to each row and `relations(child)` its rows (DSL-79 to DSL-81); a `child` without
-  `match_pair` is `config` with the message `relation child <entity> requires match_<l>_with_<r>()`. A `child` may hold
-  its own lock (CORE-86). `related(name)` returns the row of a `relation` result of a row and `related_rows(name)` the
+  `match_pair` is `config` with the message `relation child <entity> requires match_<l>_with_<r>()`, a pair that names
+  no such columns is `config` with the message `<pair> is not <column>With<column>`, and a `child` that one of its members
+  failed fails the query with that error at the next terminal. A `child` may hold its own lock (CORE-86). `related(name)` returns the row of a `relation` result of a row and `related_rows(name)` the
   rows of a `relations` result; a row without the result `name` returns `None`, and a result of the other form is
   `internal`.
 - **CORE-89** `key_name(column)` keys the `Collection` of `gets`, and the rows of a `relations` result of the `Query`,

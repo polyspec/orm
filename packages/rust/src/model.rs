@@ -199,7 +199,7 @@ impl Core {
     /// The related row of a relation or join result. A row without the result
     /// or without a related row is `None`; a stored value of another model type
     /// or a collection is `INTERNAL`.
-    pub fn related_one<M: Model>(&self, name: &str) -> Result<Option<&M>> {
+    pub fn related_one<M: AnyModel>(&self, name: &str) -> Result<Option<&M>> {
         let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
         match &related.value {
             RelatedValue::One(None) => Ok(None),
@@ -214,7 +214,7 @@ impl Core {
     /// The related rows of a relation result. A row without the result is
     /// `None`; a stored collection of another model type or a single row is
     /// `INTERNAL`.
-    pub fn related_many<M: Model>(&self, name: &str) -> Result<Option<&Collection<M>>> {
+    pub fn related_many<M: AnyModel + Clone>(&self, name: &str) -> Result<Option<&Collection<M>>> {
         let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
         match &related.value {
             RelatedValue::Many(c) => {
@@ -788,7 +788,7 @@ fn value_key(v: &Option<Val>) -> Result<String> {
 fn match_values(m: &dyn AnyModel, ch: &Core, child: bool) -> Option<Vec<Val>> {
     ch.matches
         .iter()
-        .map(|&(left, right)| match m.value_dyn(if child { right } else { left }) {
+        .map(|(left, right)| match m.value_dyn(if child { right } else { left }) {
             None | Some(Val::Null) => None,
             Some(v) => Some(v),
         })
@@ -839,7 +839,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         q.alias.clear();
         // The parents above are the ones that possible_<col>() keeps, so the statement of the child has no possible.
         q.possible = None;
-        let rights: Vec<String> = ch.matches.iter().map(|&(_, right)| right.to_owned()).collect();
+        let rights: Vec<String> = ch.matches.iter().map(|(_, right)| right.clone()).collect();
         // A composite key filters on the whole child key column set as a tuple.
         let spec = if rights.len() == 1 {
             PredSpec { column: rights[0].clone(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }

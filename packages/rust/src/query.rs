@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
-use polyspec_orm_schema::chain::{parse_chain, parse_order};
+use polyspec_orm_schema::chain::{parse_chain, parse_order, split_pair};
 
 use crate::collection::{AnyCollection, Collection, Key};
 use crate::core::Core;
@@ -179,6 +179,60 @@ impl Query {
                 false
             }
         }
+    }
+
+    /// Adds a component of the relation key: `pair` is `<Left>With<Right>`, a column of the parent, of any entity of the
+    /// schema, and a column of this entity, read by `split_pair` (CORE-88). A name that names no such columns is
+    /// `config` at the next terminal.
+    pub fn match_pair(&mut self, pair: &str) {
+        let manifest = match self.core.entity().schema().manifest() {
+            Ok(manifest) => manifest,
+            Err(error) => return self.core.fail_err(error),
+        };
+        let entity = match manifest.entity(self.core.entity().name()) {
+            Ok(entity) => entity,
+            Err(error) => return self.core.fail_err(error),
+        };
+        match split_pair(&manifest.model, None, Some(entity), pair) {
+            Ok((left, right)) => self.core.add_match(&left, &right),
+            Err(message) => self.core.fail(message),
+        }
+    }
+
+    /// Names the result of the query as a relation child; the name is its snake case (CORE-88).
+    pub fn alias(&mut self, name: &str) {
+        self.core.set_alias(name);
+    }
+
+    /// Attaches to each row the row that a separate query of `child` reads by the key of its `match_pair` (CORE-88).
+    pub fn relation(&mut self, child: Query) {
+        self.attach(false, child);
+    }
+
+    /// Attaches to each row the rows that a separate query of `child` reads by the key of its `match_pair` (CORE-88).
+    pub fn relations(&mut self, child: Query) {
+        self.attach(true, child);
+    }
+
+    /// Attaches `child`; a child that a member failed fails the query with its error, which the next terminal returns
+    /// (CORE-88).
+    fn attach(&mut self, many: bool, child: Query) {
+        match child.core.err() {
+            Some(error) => self.core.fail_err(error),
+            None => self.core.relation(many, child.core),
+        }
+    }
+
+    /// The row of the `relation` result `name` of a row, `None` for a row without the result or without a related row;
+    /// a `relations` result is `internal` (CORE-88).
+    pub fn related(&self, name: &str) -> Result<Option<Query>> {
+        Ok(self.core.related_one::<Query>(name)?.cloned())
+    }
+
+    /// The rows of the `relations` result `name` of a row, `None` for a row without the result; a `relation` result is
+    /// `internal` (CORE-88).
+    pub fn related_rows(&self, name: &str) -> Result<Option<Vec<Query>>> {
+        Ok(self.core.related_many::<Query>(name)?.map(|rows| rows.models().cloned().collect()))
     }
 
     /// A copy of the query with the conditions of `chain` joined by `and` (CORE-83).

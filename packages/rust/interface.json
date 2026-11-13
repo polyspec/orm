@@ -2908,6 +2908,172 @@
             "path": "polyspec_orm::Query::remove_column",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.match_pair",
+          "name": [
+            "match",
+            "pair"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "pair"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::match_pair",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.alias",
+          "name": [
+            "alias"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::alias",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.relation",
+          "name": [
+            "relation"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "child"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::relation",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.relations",
+          "name": [
+            "relations"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "child"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::relations",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.related",
+          "name": [
+            "related"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "optional": {
+              "unit": "query"
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::related",
+            "receiver": "&self"
+          },
+          "optional_reason": "CORE-88"
+        },
+        {
+          "id": "query.related_rows",
+          "name": [
+            "related",
+            "rows"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "optional": {
+              "list": {
+                "unit": "query"
+              }
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::related_rows",
+            "receiver": "&self"
+          },
+          "optional_reason": "CORE-88"
         }
       ]
     }
@@ -3028,6 +3194,36 @@
       "member": "query.remove_column",
       "file": "contracts/interface/core.json",
       "group": "query.remove_column"
+    },
+    {
+      "member": "query.match_pair",
+      "file": "contracts/interface/core.json",
+      "group": "query.match_pair"
+    },
+    {
+      "member": "query.alias",
+      "file": "contracts/interface/core.json",
+      "group": "query.alias"
+    },
+    {
+      "member": "query.relation",
+      "file": "contracts/interface/core.json",
+      "group": "query.relation"
+    },
+    {
+      "member": "query.relations",
+      "file": "contracts/interface/core.json",
+      "group": "query.relations"
+    },
+    {
+      "member": "query.related",
+      "file": "contracts/interface/core.json",
+      "group": "query.related"
+    },
+    {
+      "member": "query.related_rows",
+      "file": "contracts/interface/core.json",
+      "group": "query.related_rows"
     },
     {
       "alias": "orm_value",

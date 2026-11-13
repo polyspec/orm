@@ -166,7 +166,7 @@ pub struct Core {
     pub(crate) agg_fn: &'static str,
 
     /// relation key component (parent column, child column): adds one pair per `add_match`, in call order.
-    pub(crate) matches: Vec<(&'static str, &'static str)>,
+    pub(crate) matches: Vec<(String, String)>,
     pub(crate) alias: String,
     pub(crate) parent_node: bool,
     pub(crate) possible: Option<(String, Param)>,
@@ -493,8 +493,8 @@ impl Core {
     /// Adds a component to the relation key: parent column `left` equals
     /// child column `right`. A composite key adds one per component, in key
     /// order.
-    pub fn add_match(&mut self, left: &'static str, right: &'static str) {
-        self.matches.push((left, right));
+    pub fn add_match(&mut self, left: &str, right: &str) {
+        self.matches.push((left.to_owned(), right.to_owned()));
     }
 
     pub fn set_alias(&mut self, name: &str) {

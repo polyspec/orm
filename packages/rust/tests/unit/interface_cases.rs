@@ -253,6 +253,36 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.remove_column(&text(args, "column", member));
             Returned::Value(Value::Null)
         }
+        ("query.match_pair", Some(Instance::Query(query))) => {
+            query.match_pair(&text(args, "pair", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.alias", Some(Instance::Query(query))) => {
+            query.alias(&text(args, "name", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.relation", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "child", member), member)).await {
+            Instance::Query(child) => {
+                query.relation(*child);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: child is no query"),
+        },
+        ("query.relations", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "child", member), member)).await {
+            Instance::Query(child) => {
+                query.relations(*child);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: child is no query"),
+        },
+        ("query.related", Some(Instance::Query(query))) => match query.related(&text(args, "name", member))? {
+            Some(row) => Returned::Instance(Instance::Query(Box::new(row))),
+            None => Returned::Value(Value::Null),
+        },
+        ("query.related_rows", Some(Instance::Query(query))) => match query.related_rows(&text(args, "name", member))? {
+            Some(rows) => panic!("{member}: the case runner observes no list of {} rows", rows.len()),
+            None => Returned::Value(Value::Null),
+        },
         ("query.limit", Some(Instance::Query(query))) => {
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)

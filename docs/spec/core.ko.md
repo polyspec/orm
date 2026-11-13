@@ -205,7 +205,9 @@
   읽는다(DSL-82). `alias(name)`은 결과의 이름을 정한다(DSL-83). 그것이 없으면 결과는 `<entity>_model`이나
   `<entity>_models`이고, alias의 이름은 그 snake case다. `relation(child)`는 `child`의 별도 질의가 읽은 행 하나를 각
   행에 붙이고 `relations(child)`는 그 행들을 붙인다(DSL-79~DSL-81). `match_pair`가 없는 `child`는 `config`이고 메시지는
-  `relation child <entity> requires match_<l>_with_<r>()`이다. `child`는 자기 lock을 가질 수 있다(CORE-86).
+  `relation child <entity> requires match_<l>_with_<r>()`이며, 그런 열을 이름하지 않는 pair는 `config`이고 메시지는
+  `<pair> is not <column>With<column>`이고, 자기 member 하나가 실패시킨 `child`는 다음 terminal에서 그 오류로 질의를
+  실패시킨다. `child`는 자기 lock을 가질 수 있다(CORE-86).
   `related(name)`은 행의 `relation` 결과의 행을, `related_rows(name)`은 `relations` 결과의 행들을 돌려준다. 결과
   `name`이 없는 행은 `None`을 돌려주고, 다른 형식의 결과는 `internal`이다.
 - **CORE-89** `key_name(column)`은 `gets`의 `Collection`과 그 `Query`의 `relations` 결과의 행을 primary key 대신 열

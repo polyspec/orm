@@ -244,7 +244,7 @@ async fn relations_attach_the_rows_of_a_separate_query() {
     assert_eq!(labels(rows[1], "keys"), Some(vec![k("k3")]));
     assert_eq!(labels(rows[2], "keys"), Some(vec![]), "an account without keys has an empty result");
     assert_eq!(labels(rows[0], "account_key_models"), None, "the alias names the result");
-    let error = rows[0].related("keys").expect_err("a relations result read as one row");
+    let error = failure(rows[0].related("keys"), "a relations result read as one row");
     assert_eq!(error.kind(), crate::Kind::Internal, "{error}");
 
     let mut owner = Query::new(&schema, "account").expect("query");
@@ -255,7 +255,7 @@ async fn relations_attach_the_rows_of_a_separate_query() {
     let row = key.get().await.expect("get").expect("a row");
     let account = row.related("account_model").expect("related").expect("an account");
     assert_eq!(account.value("email").expect("email"), OrmValue::Text("b@x".into()));
-    let error = row.related_rows("account_model").expect_err("a relation result read as rows");
+    let error = failure(row.related_rows("account_model"), "a relation result read as rows");
     assert_eq!(error.kind(), crate::Kind::Internal, "{error}");
     db.close().await;
 }
