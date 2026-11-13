@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 
 use base64::Engine as _;
+use binding_core::Io;
 use serde_json::{json, Value};
 
 use super::{canonical_literal, emit, manifest, parse_set, read_bytes, read_set, render_statements, runtime_model};
@@ -177,7 +178,7 @@ fn read_set_gives_the_files_or_the_errors_of_a_set() {
         std::fs::copy(&from, scratch.join(name)).or_panic(|error| format!("copy {}: {error}", from.display()));
     }
     let path = scratch.join("dbspec-set.json");
-    let got = parsed(&read_set(&path).expect("the paths of the set are Unicode texts"));
+    let got = parsed(&read_set(Io::for_generated_call(), &path).expect("the paths of the set are Unicode texts"));
     assert_eq!(refusals(DBSPEC_SCHEMA, Some("set_result"), &got), no_refusal());
     let want = dbspec::read_set(&path).or_panic(|errors| format!("the bench set is refused: {errors:?}"));
     for (list, files) in [("documents", &want.documents), ("external", &want.external)] {
@@ -193,7 +194,7 @@ fn read_set_gives_the_files_or_the_errors_of_a_set() {
 
     let other = scratch.join("other.json");
     std::fs::copy(&path, &other).expect("copy the set file");
-    let got = parsed(&read_set(&other).expect("the path of the set file is a Unicode text"));
+    let got = parsed(&read_set(Io::for_generated_call(), &other).expect("the path of the set file is a Unicode text"));
     assert_eq!(refusals(DBSPEC_SCHEMA, Some("set_result"), &got), no_refusal());
     let want = dbspec::read_set(&other).expect_err("a set file of another name is refused");
     let errors: Vec<Value> =

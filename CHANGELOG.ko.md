@@ -1,8 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 67e1b66d18333812d786371e9b3510ef24484cc55f476e24ecd17875350b24ce -->
+<!-- source-sha256: 84eba3913957c8fa05949a8967bc9e01a0470a93aaf40da2d1dc5235631dd5ec -->
 # 변경 이력
 
 ## Unreleased
+
+- contract의 class parameter는 코어가 받는 borrow를 적는다(OM-1.5, binding GN-6h). `query.new`와 `step_runner.new`의 `schema`는 `&`이고, `query.relation`과 `query.relations`의 `child`, `query.where_in`의 `query`는 `value`다. 생성기는 그것이 없는 class parameter를 거부한다(`a class parameter names the borrow that the core takes in core`).
+
+- packages/rust/interface.json은 docs/spec/flowmark-surface.md FMS-7의 unit과 member를 선언한다(OM-1.5). 자기 이름의 module에 있는 functions unit `dbspec`과 `codec`, `load`, `validate`, `param_uses`, `restore_key`, `compile`, `operator_allowed`를 가진 class `runtime_model`, `orm`의 상수 `ir_version`과 함수 `value_function_unit`, `db.connect_schema`와 `db.execute`다. contracts/interface/core.json은 그 가운데 18개의 case를 가지고, 코어의 case runner가 각각을 부른다. `dbspec_json::read_set`은 `wait: blocking_io`인 member의 core 함수처럼 token `binding_core::Io`를 첫 인자로 받고, `dbspec.canonical_literal`의 parameter는 `column_type`이다. Go가 `type`을 예약하기 때문이다. 선언과 case는 계약 검사가 아직 읽지 않았고 실행하지 않았다.
 
 - recipe vector 출력의 비교는 conformance 규칙이 오류라고 적은 형태를 거부한다(T457). tests/conformance/check/recipe_vectors.mts의 `compareOutputs`는 빈 선택을 `<language>/<database>: the selection names no vector`로, 선택이 적지 않은 출력과 출력이 없는 선택된 vector를 실패로 하고, `fixedClockExpectations`는 case가 없는 fixed-clock 파일, 비었거나 반복된 case id, expects가 정확히 mysql, postgres, sqlite의 것이 아닌 case를 실패로 한다. 이 행의 case 둘은 이름으로 통과한다. `make conformance-recipe-vectors-unit`은 통과하지 않는다: recipe의 schema가 다른 case 6개가 읽는 recipe를 거부하고(T460), 그 거부는 보고되기 전에 실행의 memory를 다 쓴다(T461).
 

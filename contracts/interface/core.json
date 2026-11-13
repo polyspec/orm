@@ -1698,5 +1698,624 @@
         "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
       }
     }
+  ],
+  "orm.value_function_unit": [
+    {
+      "id": "days",
+      "rule": "FMS-36",
+      "name": "days_ago",
+      "result": "day"
+    },
+    {
+      "id": "no_relative_function",
+      "rule": "FMS-36",
+      "name": "now",
+      "result": null
+    }
+  ],
+  "dbspec.read_bytes": [
+    {
+      "id": "a_document",
+      "rule": "FMS-21",
+      "name": "a.dbs",
+      "bytes": {
+        "hex": "646273706563203120610a"
+      },
+      "result": "{\"text\":\"dbspec 1 a\\n\"}"
+    },
+    {
+      "id": "no_signature",
+      "rule": "FMS-21",
+      "name": "a.dbs",
+      "bytes": {
+        "hex": "7461626c652061207b0a7d0a"
+      },
+      "result": "{\"diagnostics\":[{\"column\":1,\"line\":1,\"message\":\"a.dbs is not a dbspec document\",\"rule\":\"signature\"}]}"
+    }
+  ],
+  "dbspec.parse_set": [
+    {
+      "id": "no_text",
+      "rule": "FMS-22",
+      "owned": [],
+      "external": [],
+      "result": "[]"
+    }
+  ],
+  "dbspec.manifest": [
+    {
+      "id": "the_empty_set",
+      "rule": "FMS-23",
+      "documents": "[]",
+      "result": "{\"manifest\":{\"external_text\":\"\",\"manifest_hash\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"manifest_text\":\"\",\"schema_hash\":\"sha256:b121385218aa238c0e0b085986591017c46aab5e382968d98620c23adc679a37\",\"schema_text\":\"dbspec 1 schema\\n\"}}"
+    },
+    {
+      "id": "no_list",
+      "rule": "FMS-14",
+      "documents": "{}",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: documents is no list"
+      }
+    }
+  ],
+  "dbspec.emit": [
+    {
+      "id": "a_table",
+      "rule": "FMS-24",
+      "document": "{\"name\":\"note\",\"external\":false,\"uses\":[],\"tables\":[{\"name\":\"note\",\"columns\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false}],\"primary_key\":{\"columns\":[\"seq\"]},\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"checks\":[]}]}",
+      "result": "dbspec 1 note\n\ntable note {\n  seq i64\n  label varchar(32)\n  primary key (seq)\n}\n"
+    },
+    {
+      "id": "no_object",
+      "rule": "FMS-14",
+      "document": "[]",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: document is no object"
+      }
+    }
+  ],
+  "dbspec.render_statements": [
+    {
+      "id": "the_empty_set",
+      "rule": "FMS-25",
+      "documents": "[]",
+      "dialect": "sqlite",
+      "result": "{\"statements\":[]}"
+    },
+    {
+      "id": "no_dialect",
+      "rule": "FMS-25",
+      "documents": "[]",
+      "dialect": "oracle",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: the dialect oracle is none of mysql, postgres and sqlite"
+      }
+    }
+  ],
+  "dbspec.canonical_literal": [
+    {
+      "id": "a_decimal",
+      "rule": "FMS-26",
+      "column_type": "{\"kind\":\"decimal\",\"precision\":5,\"scale\":2}",
+      "literal": "-0.5",
+      "result": "-0.50"
+    },
+    {
+      "id": "no_literal_of_the_type",
+      "rule": "FMS-26",
+      "column_type": "{\"kind\":\"i16\"}",
+      "literal": "1.5",
+      "result": null
+    },
+    {
+      "id": "no_type",
+      "rule": "FMS-11",
+      "column_type": "{\"kind\":\"money\"}",
+      "literal": "1",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: type.kind money is no kind of a column type"
+      }
+    }
+  ],
+  "dbspec.runtime_model": [
+    {
+      "id": "the_empty_set",
+      "rule": "FMS-27",
+      "documents": "[]",
+      "result": "{\"model\":{\"entities\":[],\"manifest_hash\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}}"
+    },
+    {
+      "id": "no_list",
+      "rule": "FMS-14",
+      "documents": "{}",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: documents is no list"
+      }
+    }
+  ],
+  "runtime_model.load": [
+    {
+      "id": "a_model",
+      "rule": "FMS-30",
+      "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}",
+      "after": [
+        {
+          "on": "result",
+          "call": "runtime_model.operator_allowed",
+          "args": {
+            "entity": "note",
+            "column": "label",
+            "operator": "contains"
+          },
+          "result": true
+        }
+      ]
+    },
+    {
+      "id": "no_object",
+      "rule": "FMS-30",
+      "model": "[]",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: model is no object"
+      }
+    },
+    {
+      "id": "no_hash",
+      "rule": "FMS-30",
+      "model": "{\"entities\":[]}",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: model.manifest_hash is absent"
+      }
+    }
+  ],
+  "runtime_model.validate": [
+    {
+      "id": "a_read",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "result": null
+    },
+    {
+      "id": "no_object",
+      "rule": "FMS-31",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "[]",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: request is no object"
+      }
+    },
+    {
+      "id": "a_member_outside_the_form",
+      "rule": "FMS-31",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"shape\":1}",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: request.shape is no member of the form"
+      }
+    },
+    {
+      "id": "another_version",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "raises": {
+        "kind": "version_mismatch",
+        "category": "value",
+        "message": "version_mismatch: ir_version 2, engine 1"
+      }
+    },
+    {
+      "id": "another_manifest",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "raises": {
+        "kind": "schema_hash_mismatch",
+        "category": "value",
+        "message": "schema_hash_mismatch: client x, engine h"
+      }
+    },
+    {
+      "id": "no_entity",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
+      "raises": {
+        "kind": "entity_unknown",
+        "category": "value",
+        "message": "entity_unknown: nobody"
+      }
+    },
+    {
+      "id": "no_column",
+      "rule": "FMS-32",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
+      "raises": {
+        "kind": "column_unknown",
+        "category": "value",
+        "message": "column_unknown: note.nothing"
+      }
+    }
+  ],
+  "runtime_model.param_uses": [
+    {
+      "id": "a_condition",
+      "rule": "FMS-33",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "result": "[[{\"column\":\"seq\",\"length\":0,\"null\":false,\"precision\":0,\"scale\":0,\"type\":\"i64\"}]]"
+    },
+    {
+      "id": "no_object",
+      "rule": "FMS-31",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "[]",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: request is no object"
+      }
+    }
+  ],
+  "runtime_model.restore_key": [
+    {
+      "id": "no_soft_delete",
+      "rule": "FMS-34",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"note\",\"n_params\":0}",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: restore of note, which has no soft_delete setting"
+      }
+    },
+    {
+      "id": "no_entity",
+      "rule": "FMS-34",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"nobody\",\"n_params\":0}",
+      "raises": {
+        "kind": "entity_unknown",
+        "category": "value",
+        "message": "entity_unknown: nobody"
+      }
+    }
+  ],
+  "runtime_model.compile": [
+    {
+      "id": "no_dialect",
+      "rule": "FMS-41",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "dialect": "oracle",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: the dialect oracle is none of mysql, postgres and sqlite"
+      }
+    },
+    {
+      "id": "no_object",
+      "rule": "FMS-31",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "[]",
+      "dialect": "sqlite",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: request is no object"
+      }
+    }
+  ],
+  "runtime_model.operator_allowed": [
+    {
+      "id": "a_text_column_takes_contains",
+      "rule": "FMS-35",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "entity": "note",
+      "column": "label",
+      "operator": "contains",
+      "result": true
+    },
+    {
+      "id": "an_integer_column_takes_no_contains",
+      "rule": "FMS-35",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "entity": "note",
+      "column": "seq",
+      "operator": "contains",
+      "result": false
+    },
+    {
+      "id": "no_entity",
+      "rule": "FMS-35",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "entity": "nobody",
+      "column": "seq",
+      "operator": "eq",
+      "raises": {
+        "kind": "entity_unknown",
+        "category": "value",
+        "message": "entity_unknown: nobody"
+      }
+    },
+    {
+      "id": "no_column",
+      "rule": "FMS-35",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "entity": "note",
+      "column": "nothing",
+      "operator": "eq",
+      "raises": {
+        "kind": "column_unknown",
+        "category": "value",
+        "message": "column_unknown: note.nothing"
+      }
+    }
+  ],
+  "codec.decode": [
+    {
+      "id": "base64",
+      "rule": "FMS-50",
+      "stages": [
+        "base64"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "aGk="
+      },
+      "result": {
+        "kind": "text",
+        "value": "hi"
+      }
+    },
+    {
+      "id": "no_cell",
+      "rule": "FMS-50",
+      "stages": [
+        "base64"
+      ],
+      "cell": {
+        "kind": "int",
+        "value": 1
+      },
+      "raises": {
+        "kind": "codec_decode",
+        "category": "value",
+        "message": "codec_decode: the cell of a codec function is a text, bytes or null"
+      }
+    }
+  ],
+  "codec.host_encode": [
+    {
+      "id": "hex",
+      "rule": "FMS-50",
+      "value": {
+        "kind": "text",
+        "value": "hi"
+      },
+      "stages": [
+        "hex"
+      ],
+      "key": "",
+      "result": {
+        "kind": "text",
+        "value": "6869"
+      }
+    },
+    {
+      "id": "no_value",
+      "rule": "FMS-50",
+      "value": {
+        "kind": "bool",
+        "value": true
+      },
+      "stages": [
+        "hex"
+      ],
+      "key": "",
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a codec function is a text, bytes or null"
+      }
+    },
+    {
+      "id": "no_host_stage",
+      "rule": "FMS-50",
+      "value": {
+        "kind": "text",
+        "value": "hi"
+      },
+      "stages": [
+        "zip"
+      ],
+      "key": "",
+      "raises": {
+        "kind": "codec_unsupported",
+        "category": "value",
+        "message": "codec_unsupported: host style zip"
+      }
+    }
+  ],
+  "codec.host_decode": [
+    {
+      "id": "hex",
+      "rule": "FMS-50",
+      "cell": {
+        "kind": "text",
+        "value": "6869"
+      },
+      "stages": [
+        "hex"
+      ],
+      "key": "",
+      "result": {
+        "kind": "text",
+        "value": "hi"
+      }
+    },
+    {
+      "id": "no_cell",
+      "rule": "FMS-50",
+      "cell": {
+        "kind": "bool",
+        "value": true
+      },
+      "stages": [
+        "hex"
+      ],
+      "key": "",
+      "raises": {
+        "kind": "codec_decode",
+        "category": "value",
+        "message": "codec_decode: the cell of a codec function is a text, bytes or null"
+      }
+    }
+  ],
+  "codec.blind_index": [
+    {
+      "id": "a_text",
+      "rule": "FMS-50",
+      "value": {
+        "kind": "text",
+        "value": "a@x"
+      },
+      "key": "key",
+      "result": "399cb2e9a8363fa8d4616399afc23a21013b10f5a301f93b5477f3e42671c2df"
+    },
+    {
+      "id": "no_key",
+      "rule": "FMS-50",
+      "value": {
+        "kind": "text",
+        "value": "a@x"
+      },
+      "key": "",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: secret blind_index not configured"
+      }
+    },
+    {
+      "id": "no_value",
+      "rule": "FMS-50",
+      "value": {
+        "kind": "bool",
+        "value": true
+      },
+      "key": "key",
+      "raises": {
+        "kind": "codec_encode",
+        "category": "value",
+        "message": "codec_encode: the value of a codec function is a text, bytes or null"
+      }
+    }
   ]
 }

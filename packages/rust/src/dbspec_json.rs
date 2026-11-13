@@ -39,8 +39,9 @@ fn path_text(path: &Path, set: &Path) -> Result<String> {
 
 /// Reads the set file at `path` and every file that it lists, as `dbspec::read_set` does (FMS-20):
 /// `{"documents": [<file>, ..], "external": [<file>, ..]}` with each file as its joined path and its bytes in base64
-/// with padding, or `{"errors": [<error>, ..]}`.
-pub fn read_set(path: &Path) -> Result<String> {
+/// with padding, or `{"errors": [<error>, ..]}`. The function reads files, so it takes the token of a member that waits
+/// for blocking I/O (CORE-27), which the caller of the member gives.
+pub fn read_set(_io: binding_core::Io, path: &Path) -> Result<String> {
     let files = |files: &[SetFile]| -> Result<Vec<Value>> {
         files
             .iter()

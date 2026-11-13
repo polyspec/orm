@@ -65,8 +65,10 @@ hold for every member that this document names.
 | c | planner: model and dialect of a compile | 3 | FMS-41 |
 | c | connection arguments: schema and configuration | 4 | FMS-43 |
 
-- **FMS-5** Of what this document names, the contract declares the classes `db` and `schema`, the record `config` and
-  the members `db.close`, `schema.load` and `aes_keyring.constructor`. Every other unit and member of this document is not implemented, and its rule says so. The functions of FMS-80, which
+- **FMS-5** The contract declares every unit and member that this document names: the classes `db`, `schema` and
+  `runtime_model`, the record `config`, the functions units `dbspec` and `codec`, and the members of FMS-7 beside
+  `db.close`, `schema.load` and `aes_keyring.constructor`. No binding is generated from the declarations of FMS-7 yet, so
+  no language calls them: that is what a rule of this document means where it says that a member is not implemented. The functions of FMS-80, which
   write and read the forms, are written and not yet compiled or run.
 - **FMS-6** Eight names have no member of their own. Five are computed by flowmark from a JSON text that it read,
   because they read no state of orm: `Type.String`, the canonical text of a type, from the members of the type
@@ -78,10 +80,15 @@ hold for every member that this document names.
   `ir.Decode` through `runtime_model.validate` (FMS-32).
 - **FMS-7** The members that carry the names are the rows of the table. In it `list<T>` is the contract type
   `{"list": T}` and `optional<T>` is `{"optional": T}`, `orm_value` is `{"unit": "orm_value"}`, and a class is named by
-  its unit. `dbspec` and `codec` are units of the kind `functions`, as `orm` is, and `runtime_model` is a class whose
-  core type is `polyspec_orm::Manifest`. `dbspec.read_set` reads files (`wait: blocking_io`) and is not offered to
-  WASM, because it takes a `path`; the two members of `db` wait for the database (`wait: async_driver`), as
-  `db.connect` does; every other member computes (`wait: none`). Not implemented.
+  its unit. `dbspec` and `codec` are units of the kind `functions`, as `orm` is, in the modules `dbspec` and
+  `codec`, so that the function `dbspec.runtime_model` and the class `runtime_model` have different names in every
+  language; `runtime_model` is a class of the root module whose core type is `polyspec_orm::Manifest`.
+  `dbspec.read_set` reads files (`wait: blocking_io`), so its core function takes the token `binding_core::Io` first
+  (CORE-27), and it is not offered to WASM (`only`), because it takes a `path`; the two members of `db` wait for the
+  database (`wait: async_driver`), as `db.connect` does; every other member computes (`wait: none`). The parameter of
+  `db.connect_schema` that takes the class `schema` names the borrow `&`. `orm.ir_version` is the constant `ir_version`
+  of the unit `orm`. The declarations are in `packages/rust/interface.json`; they are not yet read by the contract
+  check or by the generator.
 
 | Member | Parameters | Returns |
 | --- | --- | --- |
@@ -91,7 +98,7 @@ hold for every member that this document names.
 | `dbspec.manifest` | `documents: text` | `text` |
 | `dbspec.emit` | `document: text` | `text` |
 | `dbspec.render_statements` | `documents: text`, `dialect: text` | `text` |
-| `dbspec.canonical_literal` | `type: text`, `literal: text` | `optional<text>` |
+| `dbspec.canonical_literal` | `column_type: text`, `literal: text` | `optional<text>` |
 | `dbspec.runtime_model` | `documents: text` | `text` |
 | `runtime_model.load` | `model: text` | `runtime_model` |
 | `runtime_model.validate` | `request: text` | `none` |
@@ -202,8 +209,9 @@ hold for every member that this document names.
   `RenderStatements`, `RenderedStatement` and the type `Dialect` of `engine/dbspec`. `Render` has no member: its result
   is `sql` of each statement. The member is not implemented; `dbspec_json::render_statements` reads the name of the
   dialect.
-- **FMS-26** `dbspec.canonical_literal(type, literal)` returns the canonical text of `literal` as the default of a
-  column of the type, or nothing when `literal` is no literal of the type. `type` is the JSON text of a type (FMS-11).
+- **FMS-26** `dbspec.canonical_literal(column_type, literal)` returns the canonical text of `literal` as the default
+  of a column of the type, or nothing when `literal` is no literal of the type. `column_type` is the JSON text of a type
+  (FMS-11); the parameter is not named `type`, a word that Go reserves.
   A literal is one token with no space around it: a number whose minus sign is attached, a word or a quoted string. A
   `text` or `bytes` column has no literal. The member carries `CanonicalLiteral`. The member is not implemented; `dbspec::canonical_literal` of
   `packages/rust/schema/src/dbspec/literal.rs` reads the literal from the text and applies `default_literal`, the rule
@@ -405,7 +413,7 @@ pub fn diagnostic_to_json(diagnostic: &Diagnostic) -> serde_json::Value;
 pub fn position_to_json(position: &Position) -> serde_json::Value;
 
 // packages/rust/src/dbspec_json.rs, the module polyspec_orm::dbspec_json: the functions of the unit dbspec
-pub fn read_set(path: &std::path::Path) -> crate::Result<String>;
+pub fn read_set(io: binding_core::Io, path: &std::path::Path) -> crate::Result<String>;
 pub fn read_bytes(name: &str, bytes: &[u8]) -> String;
 pub fn parse_set(owned: &[String], external: &[String]) -> crate::Result<String>;
 pub fn manifest(documents: &str) -> crate::Result<String>;
@@ -485,5 +493,7 @@ impl Db {
   10. A statement: `Db::execute_text` inserts a row on a SQLite database with a step that `Manifest::compile` wrote.
 - **FMS-82** The declarations of the units and members of FMS-7 in `packages/rust/interface.json`, their cases in
   `contracts/interface/core.json` (CORE-71), the generated bindings and the Go code of flowmark follow the functions of
-  FMS-80. The schema tests of FMS-81 read the schemas with `jsonschema`, a test dependency of `polyspec-orm` as of
-  `polyspec-orm-schema`. The declarations are not implemented.
+  FMS-80. The declarations are written, with the cases of 18 members that the case runner of the core calls.
+  `dbspec.read_set`, `db.connect_schema` and `db.execute` have no case, because the case form has no value for a path of
+  a file or for a database (CORE-72), and 65 kinds of the `raises` of the declared members have no case (OM-1.5-2). The schema tests of FMS-81 read the schemas with `jsonschema`, a test dependency of `polyspec-orm` as of
+  `polyspec-orm-schema`. The generated bindings and the Go code of flowmark are not implemented.

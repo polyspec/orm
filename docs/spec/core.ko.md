@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 825e860d290b499f618bec4058183755cf149937ad36e5bed365ee7cacc9e1e1 -->
+<!-- source-sha256: 1a0126506ea5a7d842fb4a5954f23b8855c0b153cf0f6aa7ff800f9702b7e38b -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -355,7 +355,7 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
 - **CORE-70** 코어의 인터페이스 계약은 `packages/rust/interface.json`이다. 계약은 코어가 가지고 있고 시그니처의 모든
   타입이 계약의 타입인 unit과 member만 선언한다. 값 alias `orm_value`(CORE-62)와 그것을 받거나 돌려주는 `Query`의
   member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. CORE-85~CORE-91의 `Query` member와 CORE-92, CORE-93의
-  class `StepRunner`를 선언한다. `StepRunner`는 연결이 필요하므로 그 member는 case가 없다(CORE-72). 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
+  class `StepRunner`를 선언한다. `StepRunner`는 연결이 필요하므로 그 member는 case가 없다(CORE-72). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다), `Tx::execute`(plan step),
   `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Config`의 field
   `audit_source`(함수), `TransactionOptions`의 field `audit`, `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값

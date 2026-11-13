@@ -1,5 +1,5 @@
 <!-- doc-id: spec-flowmark-surface -->
-<!-- source-sha256: 98bfd483540e5dd5bbb6af7a70e4b89c309d53a48bfb6bd7608eeb5698ef2534 -->
+<!-- source-sha256: e32c0c6f647852e4bfa18ca1305aac39d2fcf1e69515d2167d588275a4c8b049 -->
 # flowmark가 쓰는 orm의 표면
 
 [English](flowmark-surface.md)
@@ -62,8 +62,10 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 | c | planner: compile의 model과 dialect | 3 | FMS-41 |
 | c | 연결 인자: schema와 설정 | 4 | FMS-43 |
 
-- **FMS-5** 이 문서가 이름하는 것 가운데 계약은 class `db`와 `schema`, record `config`, member `db.close`,
-  `schema.load`, `aes_keyring.constructor`를 선언한다. 이 문서의 그 밖의 unit과 member는 모두 구현되지 않았고, 각 규칙이 그렇게 적는다.
+- **FMS-5** 계약은 이 문서가 이름하는 unit과 member를 모두 선언한다: class `db`, `schema`, `runtime_model`, record
+  `config`, functions unit `dbspec`과 `codec`, 그리고 `db.close`, `schema.load`, `aes_keyring.constructor`와 FMS-7의
+  member다. FMS-7의 선언에서는 아직 바인딩이 생성되지 않으므로 어느 언어도 그것을 부르지 않는다. 이 문서의 규칙이
+  member가 구현되지 않았다고 적은 곳은 그 뜻이다.
   형식을 쓰고 읽는 FMS-80의 함수는 작성되었고 아직 compile하거나 실행하지 않았다.
 - **FMS-6** 이름 여덟 개는 자기 member가 없다. 다섯 개는 orm의 상태를 읽지 않으므로 flowmark가 자기가 읽은 JSON
   텍스트에서 계산한다: 타입의 canonical 텍스트 `Type.String`은 타입의 member에서(FMS-11), audit이 열을 복사하는지
@@ -75,10 +77,13 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `runtime_model.validate`(FMS-32)를 거친다.
 - **FMS-7** 이름을 전달하는 member는 표의 행이다. 표에서 `list<T>`는 계약 타입 `{"list": T}`이고 `optional<T>`는
   `{"optional": T}`이며, `orm_value`는 `{"unit": "orm_value"}`이고, class는 그 unit으로 적는다. `dbspec`과 `codec`은
-  `orm`처럼 kind `functions`의 unit이고, `runtime_model`은 core 타입이 `polyspec_orm::Manifest`인 class다.
-  `dbspec.read_set`은 파일을 읽고(`wait: blocking_io`) `path`를 받으므로 WASM에는 제공되지 않는다. `db`의 두 member는
+  `orm`처럼 kind `functions`의 unit이고 module `dbspec`과 `codec`에 있다. 그래서 함수 `dbspec.runtime_model`과 class
+  `runtime_model`은 모든 언어에서 이름이 다르다. `runtime_model`은 root module의 class이고 core 타입은
+  `polyspec_orm::Manifest`다. `dbspec.read_set`은 파일을 읽으므로(`wait: blocking_io`) 그 core 함수는 token
+  `binding_core::Io`를 첫 인자로 받고(CORE-27), `path`를 받으므로 WASM에는 제공되지 않는다(`only`). `db`의 두 member는
   `db.connect`처럼 데이터베이스를 기다리고(`wait: async_driver`), 그 밖의 member는 모두 계산만 한다(`wait: none`).
-  구현되지 않았다.
+  `db.connect_schema`에서 class `schema`를 받는 parameter는 borrow `&`를 적는다. `orm.ir_version`은 unit `orm`의 상수
+  `ir_version`이다. 선언은 `packages/rust/interface.json`에 있고, 계약 검사나 생성기가 아직 읽지 않았다.
 
 | Member | 매개변수 | 반환 |
 | --- | --- | --- |
@@ -88,7 +93,7 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
 | `dbspec.manifest` | `documents: text` | `text` |
 | `dbspec.emit` | `document: text` | `text` |
 | `dbspec.render_statements` | `documents: text`, `dialect: text` | `text` |
-| `dbspec.canonical_literal` | `type: text`, `literal: text` | `optional<text>` |
+| `dbspec.canonical_literal` | `column_type: text`, `literal: text` | `optional<text>` |
 | `dbspec.runtime_model` | `documents: text` | `text` |
 | `runtime_model.load` | `model: text` | `runtime_model` |
 | `runtime_model.validate` | `request: text` | `none` |
@@ -194,8 +199,9 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `DialectSQLite`의 텍스트인 `mysql`, `postgres`, `sqlite` 가운데 하나이고, 다른 텍스트는 `config`다. 이 member는
   `RenderStatements`, `RenderedStatement`, `engine/dbspec`의 타입 `Dialect`를 전달한다. `Render`는 member가 없다: 그
   결과는 각 statement의 `sql`이다. 이 member는 구현되지 않았다. dialect의 이름은 `dbspec_json::render_statements`가 읽는다.
-- **FMS-26** `dbspec.canonical_literal(type, literal)`은 그 타입의 열의 default로서 `literal`의 canonical 텍스트를
-  돌려주고, `literal`이 그 타입의 literal이 아니면 아무것도 돌려주지 않는다. `type`은 타입의 JSON 텍스트다(FMS-11).
+- **FMS-26** `dbspec.canonical_literal(column_type, literal)`은 그 타입의 열의 default로서 `literal`의 canonical
+  텍스트를 돌려주고, `literal`이 그 타입의 literal이 아니면 아무것도 돌려주지 않는다. `column_type`은 타입의 JSON
+  텍스트다(FMS-11). Go가 예약한 단어인 `type`은 parameter 이름으로 쓰지 않는다.
   literal은 앞뒤에 공백이 없는 token 하나다: 빼기 부호가 붙어 있는 수, 단어, 따옴표로 감싼 문자열이다. `text`나
   `bytes` 열에는 literal이 없다. 이 member는 `CanonicalLiteral`을 전달한다. 이 member는 구현되지 않았다.
   `packages/rust/schema/src/dbspec/literal.rs`의 `dbspec::canonical_literal`이 텍스트에서 literal을 읽고, parser가 읽은
@@ -391,7 +397,7 @@ pub fn diagnostic_to_json(diagnostic: &Diagnostic) -> serde_json::Value;
 pub fn position_to_json(position: &Position) -> serde_json::Value;
 
 // packages/rust/src/dbspec_json.rs, the module polyspec_orm::dbspec_json: the functions of the unit dbspec
-pub fn read_set(path: &std::path::Path) -> crate::Result<String>;
+pub fn read_set(io: binding_core::Io, path: &std::path::Path) -> crate::Result<String>;
 pub fn read_bytes(name: &str, bytes: &[u8]) -> String;
 pub fn parse_set(owned: &[String], external: &[String]) -> crate::Result<String>;
 pub fn manifest(documents: &str) -> crate::Result<String>;
@@ -470,5 +476,7 @@ impl Db {
      `blind_index`는 `codec::blind_index`의 index를 주며, list는 `codec_encode`다.
   10. statement: `Db::execute_text`는 `Manifest::compile`이 쓴 step으로 SQLite 데이터베이스에 행 하나를 넣는다.
 - **FMS-82** `packages/rust/interface.json`에 FMS-7의 unit과 member를 선언하는 일, `contracts/interface/core.json`의
-  그 case(CORE-71), 생성된 바인딩, flowmark의 Go 코드는 FMS-80의 함수 다음이다. FMS-81의 schema 시험은 `polyspec-orm-schema`처럼
-  `polyspec-orm`의 시험 dependency인 `jsonschema`로 schema를 읽는다. 그 선언은 구현되지 않았다.
+  그 case(CORE-71), 생성된 바인딩, flowmark의 Go 코드는 FMS-80의 함수 다음이다. 선언은 작성되었고, 코어의 case runner가
+  부르는 member 18개의 case가 있다. `dbspec.read_set`, `db.connect_schema`, `db.execute`는 case가 없다: case 형식에는
+  파일의 path나 데이터베이스의 값이 없다(CORE-72). 선언한 member의 `raises` 가운데 kind 65개는 case가 없다(OM-1.5-2). FMS-81의 schema 시험은 `polyspec-orm-schema`처럼
+  `polyspec-orm`의 시험 dependency인 `jsonschema`로 schema를 읽는다. 생성된 바인딩과 flowmark의 Go 코드는 구현되지 않았다.

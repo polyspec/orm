@@ -477,6 +477,44 @@
           "type": "uint",
           "value": 30000,
           "core": "polyspec_orm::DEFAULT_POOL_ACQUIRE_TIMEOUT_MS"
+        },
+        {
+          "id": "ir_version",
+          "name": [
+            "ir",
+            "version"
+          ],
+          "kind": "constant",
+          "visibility": "public",
+          "type": "uint",
+          "value": 1,
+          "core": "polyspec_orm::IR_VERSION"
+        },
+        {
+          "id": "orm.value_function_unit",
+          "name": [
+            "value",
+            "function",
+            "unit"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "optional": "text"
+          },
+          "optional_reason": "FMS-36",
+          "raises": [],
+          "wait": "none",
+          "core": "polyspec_orm::engine::value_function_unit"
         }
       ]
     },
@@ -1616,6 +1654,120 @@
             "path": "polyspec_orm::Db::with_cancel",
             "receiver": "&self"
           }
+        },
+        {
+          "id": "db.connect_schema",
+          "name": [
+            "connect",
+            "schema"
+          ],
+          "kind": "static",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "dsn"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "schema"
+              ],
+              "type": {
+                "unit": "schema"
+              },
+              "required": true,
+              "core": "&"
+            },
+            {
+              "name": [
+                "pool",
+                "size"
+              ],
+              "type": "uint",
+              "required": true
+            },
+            {
+              "name": [
+                "cfg"
+              ],
+              "type": {
+                "unit": "config"
+              },
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "db"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CapabilityUnsupported",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::SchemaInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Db::connect_schema"
+          }
+        },
+        {
+          "id": "db.execute",
+          "name": [
+            "execute"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "step"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "params"
+              ],
+              "type": {
+                "list": {
+                  "unit": "orm_value"
+                }
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Db::execute_text",
+            "receiver": "&self"
+          }
         }
       ]
     },
@@ -2409,7 +2561,8 @@
               "type": {
                 "unit": "schema"
               },
-              "required": true
+              "required": true,
+              "core": "&"
             },
             {
               "name": [
@@ -2973,7 +3126,8 @@
               "type": {
                 "unit": "query"
               },
-              "required": true
+              "required": true,
+              "core": "value"
             }
           ],
           "returns": "none",
@@ -2999,7 +3153,8 @@
               "type": {
                 "unit": "query"
               },
-              "required": true
+              "required": true,
+              "core": "value"
             }
           ],
           "returns": "none",
@@ -3123,7 +3278,8 @@
               "type": {
                 "unit": "query"
               },
-              "required": true
+              "required": true,
+              "core": "value"
             }
           ],
           "returns": "none",
@@ -3426,7 +3582,8 @@
               "type": {
                 "unit": "schema"
               },
-              "required": true
+              "required": true,
+              "core": "&"
             },
             {
               "name": [
@@ -3486,6 +3643,674 @@
             "path": "polyspec_orm::StepRunner::close",
             "receiver": "&mut self"
           }
+        }
+      ]
+    },
+    {
+      "id": "dbspec",
+      "name": [
+        "dbspec"
+      ],
+      "module": "dbspec",
+      "kind": "functions",
+      "visibility": "public",
+      "origin": "generated",
+      "members": [
+        {
+          "id": "dbspec.read_set",
+          "name": [
+            "read",
+            "set"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "path"
+              ],
+              "type": "path",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "blocking_io",
+          "core": "polyspec_orm::dbspec_json::read_set",
+          "only": {
+            "targets": [
+              "php",
+              "python",
+              "node",
+              "go"
+            ],
+            "reason": "FMS-7"
+          }
+        },
+        {
+          "id": "dbspec.read_bytes",
+          "name": [
+            "read",
+            "bytes"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "bytes"
+              ],
+              "type": "bytes",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [],
+          "wait": "none",
+          "core": "polyspec_orm::dbspec_json::read_bytes"
+        },
+        {
+          "id": "dbspec.parse_set",
+          "name": [
+            "parse",
+            "set"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "owned"
+              ],
+              "type": {
+                "list": "text"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "external"
+              ],
+              "type": {
+                "list": "text"
+              },
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::dbspec_json::parse_set"
+        },
+        {
+          "id": "dbspec.manifest",
+          "name": [
+            "manifest"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "documents"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::dbspec_json::manifest"
+        },
+        {
+          "id": "dbspec.emit",
+          "name": [
+            "emit"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "document"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::dbspec_json::emit"
+        },
+        {
+          "id": "dbspec.render_statements",
+          "name": [
+            "render",
+            "statements"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "documents"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "dialect"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::dbspec_json::render_statements"
+        },
+        {
+          "id": "dbspec.canonical_literal",
+          "name": [
+            "canonical",
+            "literal"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column",
+                "type"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "literal"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "optional": "text"
+          },
+          "optional_reason": "FMS-26",
+          "raises": [
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::dbspec_json::canonical_literal"
+        },
+        {
+          "id": "dbspec.runtime_model",
+          "name": [
+            "runtime",
+            "model"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "documents"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::dbspec_json::runtime_model"
+        }
+      ]
+    },
+    {
+      "id": "runtime_model",
+      "name": [
+        "runtime",
+        "model"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "core_type": "polyspec_orm::Manifest",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "runtime_model.load",
+          "name": [
+            "load"
+          ],
+          "kind": "static",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "model"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "runtime_model"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Manifest::from_json"
+          }
+        },
+        {
+          "id": "runtime_model.validate",
+          "name": [
+            "validate"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "request"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::VersionMismatch",
+            "polyspec_orm::Kind::SchemaHashMismatch",
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::IndexUnknown",
+            "polyspec_orm::Kind::ColumnAliasConflict",
+            "polyspec_orm::Kind::FunctionUnknown",
+            "polyspec_orm::Kind::OperatorNotAllowed",
+            "polyspec_orm::Kind::OrAtGroupStart",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::EntityNotJoined",
+            "polyspec_orm::Kind::LimitInRelation",
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Manifest::validate",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "runtime_model.param_uses",
+          "name": [
+            "param",
+            "uses"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "request"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::VersionMismatch",
+            "polyspec_orm::Kind::SchemaHashMismatch",
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::IndexUnknown",
+            "polyspec_orm::Kind::ColumnAliasConflict",
+            "polyspec_orm::Kind::FunctionUnknown",
+            "polyspec_orm::Kind::OperatorNotAllowed",
+            "polyspec_orm::Kind::OrAtGroupStart",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::EntityNotJoined",
+            "polyspec_orm::Kind::LimitInRelation",
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Manifest::param_uses",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "runtime_model.restore_key",
+          "name": [
+            "restore",
+            "key"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "request"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Manifest::restore_key",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "runtime_model.compile",
+          "name": [
+            "compile"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "request"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "dialect"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::VersionMismatch",
+            "polyspec_orm::Kind::SchemaHashMismatch",
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::IndexUnknown",
+            "polyspec_orm::Kind::ColumnAliasConflict",
+            "polyspec_orm::Kind::FunctionUnknown",
+            "polyspec_orm::Kind::OperatorNotAllowed",
+            "polyspec_orm::Kind::OrAtGroupStart",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::EntityNotJoined",
+            "polyspec_orm::Kind::LimitInRelation",
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::OperatorUnknown",
+            "polyspec_orm::Kind::CapabilityUnsupported",
+            "polyspec_orm::Kind::SchemaInvalid",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Manifest::compile",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "runtime_model.operator_allowed",
+          "name": [
+            "operator",
+            "allowed"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "entity"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "operator"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "bool",
+          "raises": [
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::ColumnUnknown"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Manifest::operator_allowed",
+            "receiver": "&self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "codec",
+      "name": [
+        "codec"
+      ],
+      "module": "codec",
+      "kind": "functions",
+      "visibility": "public",
+      "origin": "generated",
+      "members": [
+        {
+          "id": "codec.decode",
+          "name": [
+            "decode"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "stages"
+              ],
+              "type": {
+                "list": "text"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "cell"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "orm_value"
+          },
+          "raises": [
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecUnsupported",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::orm_value::decode"
+        },
+        {
+          "id": "codec.host_encode",
+          "name": [
+            "host",
+            "encode"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "value"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "stages"
+              ],
+              "type": {
+                "list": "text"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "key"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "orm_value"
+          },
+          "raises": [
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::CodecUnsupported",
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::orm_value::host_encode"
+        },
+        {
+          "id": "codec.host_decode",
+          "name": [
+            "host",
+            "decode"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "cell"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "stages"
+              ],
+              "type": {
+                "list": "text"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "key"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "orm_value"
+          },
+          "raises": [
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecUnsupported",
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::orm_value::host_decode"
+        },
+        {
+          "id": "codec.blind_index",
+          "name": [
+            "blind",
+            "index"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "value"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "key"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Config"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::orm_value::blind_index"
         }
       ]
     }
@@ -3676,6 +4501,96 @@
       "alias": "orm_value",
       "file": "contracts/interface/core.json",
       "group": "orm_value"
+    },
+    {
+      "member": "orm.value_function_unit",
+      "file": "contracts/interface/core.json",
+      "group": "orm.value_function_unit"
+    },
+    {
+      "member": "dbspec.read_bytes",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.read_bytes"
+    },
+    {
+      "member": "dbspec.parse_set",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.parse_set"
+    },
+    {
+      "member": "dbspec.manifest",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.manifest"
+    },
+    {
+      "member": "dbspec.emit",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.emit"
+    },
+    {
+      "member": "dbspec.render_statements",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.render_statements"
+    },
+    {
+      "member": "dbspec.canonical_literal",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.canonical_literal"
+    },
+    {
+      "member": "dbspec.runtime_model",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.runtime_model"
+    },
+    {
+      "member": "runtime_model.load",
+      "file": "contracts/interface/core.json",
+      "group": "runtime_model.load"
+    },
+    {
+      "member": "runtime_model.validate",
+      "file": "contracts/interface/core.json",
+      "group": "runtime_model.validate"
+    },
+    {
+      "member": "runtime_model.param_uses",
+      "file": "contracts/interface/core.json",
+      "group": "runtime_model.param_uses"
+    },
+    {
+      "member": "runtime_model.restore_key",
+      "file": "contracts/interface/core.json",
+      "group": "runtime_model.restore_key"
+    },
+    {
+      "member": "runtime_model.compile",
+      "file": "contracts/interface/core.json",
+      "group": "runtime_model.compile"
+    },
+    {
+      "member": "runtime_model.operator_allowed",
+      "file": "contracts/interface/core.json",
+      "group": "runtime_model.operator_allowed"
+    },
+    {
+      "member": "codec.decode",
+      "file": "contracts/interface/core.json",
+      "group": "codec.decode"
+    },
+    {
+      "member": "codec.host_encode",
+      "file": "contracts/interface/core.json",
+      "group": "codec.host_encode"
+    },
+    {
+      "member": "codec.host_decode",
+      "file": "contracts/interface/core.json",
+      "group": "codec.host_decode"
+    },
+    {
+      "member": "codec.blind_index",
+      "file": "contracts/interface/core.json",
+      "group": "codec.blind_index"
     }
   ]
 }

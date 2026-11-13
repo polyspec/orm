@@ -10,7 +10,7 @@ use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Raised};
 use serde_json::{Map, Value};
 
 use crate::or_panic::OrPanic as _;
-use crate::{AesKeyring, Config, Db, Error, OrmValue, Query, Schema};
+use crate::{AesKeyring, Config, Db, Error, Manifest, OrmValue, Query, Schema};
 
 const CONTRACT: &str = include_str!("../../interface.json");
 const CASES: &str = include_str!("../../../../contracts/interface/core.json");
@@ -21,6 +21,7 @@ enum Instance {
     Keyring(AesKeyring),
     Schema(Schema),
     Query(Box<Query>),
+    Model(Box<Manifest>),
 }
 
 /// What a member returned: a value in its case form, or an instance.
@@ -45,6 +46,24 @@ fn uint(args: &Map<String, Value>, name: &str, member: &str) -> u32 {
 fn int(value: &Value, what: &str) -> i32 {
     let n = value.as_i64().unwrap_or_else(|| panic!("{what} is no integer"));
     i32::try_from(n).or_panic(|error| format!("{what} {n} does not fit i32: {error}"))
+}
+
+/// A list of texts.
+fn texts(args: &Map<String, Value>, name: &str, member: &str) -> Vec<String> {
+    let items = field(args, name, member).as_array().unwrap_or_else(|| panic!("{member}: {name} is no list"));
+    items.iter().map(|item| item.as_str().unwrap_or_else(|| panic!("{member}: {name} holds an item that is no text")).to_owned()).collect()
+}
+
+/// Bytes, given as `{hex}`.
+fn bytes(args: &Map<String, Value>, name: &str, member: &str) -> Vec<u8> {
+    let hex = field(args, name, member).get("hex").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: {name} is no {{hex}}"));
+    assert!(hex.len() % 2 == 0 && hex.is_ascii(), "{member}: {name} is pairs of digits");
+    (0..hex.len()).step_by(2).map(|at| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{member}: {name} holds no byte at {at}: {error}"))).collect()
+}
+
+/// A text that a member may not return: `null` for none.
+fn optional_text(text: Option<impl Into<String>>) -> Value {
+    text.map_or(Value::Null, |text| Value::from(text.into()))
 }
 
 /// A keyed map with the key kind `int` and text values: a list of `[{"int": n}, text]`.
@@ -340,6 +359,50 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         )?)),
         ("aes_keyring.current", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.current())),
         ("aes_keyring.versions", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.versions())),
+        ("orm.value_function_unit", None) => Returned::Value(optional_text(crate::engine::value_function_unit(&text(args, "name", member)))),
+        ("dbspec.read_bytes", None) => Returned::Value(Value::from(crate::dbspec_json::read_bytes(&text(args, "name", member), &bytes(args, "bytes", member)))),
+        ("dbspec.parse_set", None) => {
+            Returned::Value(Value::from(crate::dbspec_json::parse_set(&texts(args, "owned", member), &texts(args, "external", member))?))
+        }
+        ("dbspec.manifest", None) => Returned::Value(Value::from(crate::dbspec_json::manifest(&text(args, "documents", member))?)),
+        ("dbspec.emit", None) => Returned::Value(Value::from(crate::dbspec_json::emit(&text(args, "document", member))?)),
+        ("dbspec.render_statements", None) => {
+            Returned::Value(Value::from(crate::dbspec_json::render_statements(&text(args, "documents", member), &text(args, "dialect", member))?))
+        }
+        ("dbspec.canonical_literal", None) => {
+            Returned::Value(optional_text(crate::dbspec_json::canonical_literal(&text(args, "column_type", member), &text(args, "literal", member))?))
+        }
+        ("dbspec.runtime_model", None) => Returned::Value(Value::from(crate::dbspec_json::runtime_model(&text(args, "documents", member))?)),
+        ("runtime_model.load", None) => Returned::Instance(Instance::Model(Box::new(Manifest::from_json(&text(args, "model", member))?))),
+        ("runtime_model.validate", Some(Instance::Model(model))) => {
+            model.validate(&text(args, "request", member))?;
+            Returned::Value(Value::Null)
+        }
+        ("runtime_model.param_uses", Some(Instance::Model(model))) => Returned::Value(Value::from(model.param_uses(&text(args, "request", member))?)),
+        ("runtime_model.restore_key", Some(Instance::Model(model))) => Returned::Value(Value::from(model.restore_key(&text(args, "request", member))?)),
+        ("runtime_model.compile", Some(Instance::Model(model))) => {
+            Returned::Value(Value::from(model.compile(&text(args, "request", member), &text(args, "dialect", member))?))
+        }
+        ("runtime_model.operator_allowed", Some(Instance::Model(model))) => Returned::Value(Value::from(model.operator_allowed(
+            &text(args, "entity", member),
+            &text(args, "column", member),
+            &text(args, "operator", member),
+        )?)),
+        ("codec.decode", None) => {
+            let cell = orm_value(field(args, "cell", member), member)?;
+            Returned::Value(case_value(&crate::orm_value::decode(&texts(args, "stages", member), cell)?, member))
+        }
+        ("codec.host_encode", None) => {
+            let value = orm_value(field(args, "value", member), member)?;
+            Returned::Value(case_value(&crate::orm_value::host_encode(value, &texts(args, "stages", member), &text(args, "key", member))?, member))
+        }
+        ("codec.host_decode", None) => {
+            let cell = orm_value(field(args, "cell", member), member)?;
+            Returned::Value(case_value(&crate::orm_value::host_decode(cell, &texts(args, "stages", member), &text(args, "key", member))?, member))
+        }
+        ("codec.blind_index", None) => {
+            Returned::Value(Value::from(crate::orm_value::blind_index(orm_value(field(args, "value", member), member)?, &text(args, "key", member))?))
+        }
         (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
         (other, None) => panic!("the case runner calls no member {other} without a receiver"),
     })
