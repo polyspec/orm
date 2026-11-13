@@ -221,3 +221,15 @@ func TestNoBuildTagLeavesATestOut(t *testing.T) {
 		t.Fatalf("%d files carry a build tag that leaves a test out of the normal go test:\n%s", len(found), strings.Join(found, "\n"))
 	}
 }
+
+// TestRepositoryRootFromAnyDirectory checks that the root that this package reads go.work and tests/go-test.mts from
+// does not depend on the depth of the working directory: run from the legacy directory, it is still the repository
+// root (T447).
+func TestRepositoryRootFromAnyDirectory(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	want := testcase.RepositoryRoot()
+	t.Chdir(testcase.LegacyRoot())
+	if got := repositoryRoot(t); got != want {
+		t.Fatalf("the repository root from the legacy directory is %q, want %q", got, want)
+	}
+}
