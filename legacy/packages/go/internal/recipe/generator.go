@@ -18,6 +18,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/legacy/packages/go/generator"
+	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 // generatorOptions is the options object of a generator.generate step (FCV-4): the other document sets it uses, another set generated first, and the scanned
@@ -141,10 +142,7 @@ func generateScanned(t *testing.T, dir, schema string, o generatorOptions) (map[
 	root := t.TempDir()
 	t.Setenv("GOWORK", "off")
 	t.Setenv("GOFLAGS", "-mod=mod")
-	pkgGo, err := moduleRoot()
-	if err != nil {
-		return nil, "", err
-	}
+	pkgGo := moduleRoot()
 	gomod, err := os.ReadFile(filepath.Join(pkgGo, "go.mod"))
 	if err != nil {
 		return nil, "", err
@@ -343,10 +341,7 @@ func camel(table string) string {
 
 // checkGeneratedFiles runs one generator.check step (FCV-4, DBS-175) through orm-gen gen --check of this module.
 func checkGeneratedFiles(dir string, s step) (err error) {
-	module, err := moduleRoot()
-	if err != nil {
-		return err
-	}
+	module := moduleRoot()
 	set, err := filepath.Abs(filepath.Join(dir, s.k("document_set").GenSet))
 	if err != nil {
 		return err
@@ -436,30 +431,14 @@ func checkGeneratedFiles(dir string, s step) (err error) {
 	return fmt.Errorf("generator.check: %s holds no generated file", out)
 }
 
-// moduleRoot is the Go module of this client: a test runs in its package directory, inside the module.
-func moduleRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", errors.New("the working directory is outside the Go module")
-		}
-		dir = parent
-	}
+// moduleRoot is the Go module of this client, legacy/packages/go (testcase.LegacyPath), whatever the working directory is.
+func moduleRoot() string {
+	return testcase.LegacyPath("packages/go")
 }
 
 // checkRefusedGeneration runs one generator.refused step (FCV-4, DBS-27) through orm-gen gen of this client.
 func checkRefusedGeneration(dir string, s step) (err error) {
-	module, err := moduleRoot()
-	if err != nil {
-		return err
-	}
+	module := moduleRoot()
 	work, err := os.MkdirTemp("", "orm-recipe-generator-refused-")
 	if err != nil {
 		return err
