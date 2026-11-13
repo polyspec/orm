@@ -2,7 +2,7 @@
 // and compares the database state before and after with the state reader tests/conformance/check/state.mts.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { endGroup } from './check/step.mts';
+import { endGroup, stopGroup } from './check/step.mts';
 import { runCase, type CaseBody } from '../tests/testcase.mts';
 import { errorMessage } from '../tests/errors.mts';
 
@@ -17,17 +17,27 @@ export async function step(name: string, deadline: number, body: CaseBody): Prom
   if (!(await runCase(name, deadline, body))) process.exit(1);
 }
 
-/** run starts program as the leader of its own process group and returns its standard output. */
-export function run(program: string, args: string[], env: NodeJS.ProcessEnv = process.env): Promise<string> {
+/**
+ * run starts program as the leader of its own process group and returns its standard output. A program past
+ * `deadlineMs` is asked to end (stopGroup, FCV-18) and the run fails when it has ended, so the program runs its own
+ * cleanup first.
+ */
+export function run(program: string, args: string[], env: NodeJS.ProcessEnv = process.env, deadlineMs = TIMEOUT_MS): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(program, args, { env, detached: true });
     let stdout = '';
     let stderr = '';
     let settled = false;
+    const closed = new Promise<void>(done => child.on('close', () => done()));
+    // What the stop at the deadline gave: the processes that are still alive, or why the stop failed.
+    let stopped: Promise<string> | undefined;
     const timer = setTimeout(() => {
-      if (child.pid) process.kill(-child.pid, 'SIGKILL');
-      finish(new Error(`${program} timed out after ${TIMEOUT_MS} ms`));
-    }, TIMEOUT_MS);
+      if (child.pid === undefined) return;
+      stopped = stopGroup(child.pid, closed).then(
+        alive => (alive.length ? `; still alive after SIGTERM: ${alive.join(', ')}` : ''),
+        (error: unknown) => `; its group could not be stopped: ${errorMessage(error)}`,
+      );
+    }, deadlineMs);
     function finish(error: Error | null): void {
       if (settled) return;
       settled = true;
@@ -40,8 +50,12 @@ export function run(program: string, args: string[], env: NodeJS.ProcessEnv = pr
     child.on('error', finish);
     // child is the leader of its own group. A process left in that group after it ends is treated as a failure (endGroup).
     const ended = new Promise<string[]>(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, (error: unknown) => resolve([`its group could not be checked: ${errorMessage(error)}`]))));
-    child.on('close', code => ended.then(left => finish(left.length ? new Error(`${program} left ${left.length} processes: ${left.join(', ')}`)
-      : code === 0 ? null : new Error(`${program} exit ${code}: ${stderr || stdout}`))));
+    child.on('close', async code => {
+      const left = await ended;
+      if (stopped !== undefined) return finish(new Error(`${program} timed out after ${deadlineMs} ms${await stopped}`));
+      finish(left.length ? new Error(`${program} left ${left.length} processes: ${left.join(', ')}`)
+        : code === 0 ? null : new Error(`${program} exit ${code}: ${stderr || stdout}`));
+    });
   });
 }
 

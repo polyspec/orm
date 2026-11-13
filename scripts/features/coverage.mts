@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { endGroup } from '../check/step.mts';
+import { endGroup, stopGroup } from '../check/step.mts';
 import { testDirectoryOf } from './packages.mts';
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -247,10 +247,18 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
     let stdout = '';
     let stderr = '';
     let settled = false;
-    const stop = () => {
-      if (!child.pid) return;
-      try { process.kill(-child.pid, 'SIGKILL'); }
-      catch (error) { if (errorCode(error) !== 'ESRCH') throw error; }
+    const closed = new Promise<void>(done => child.on('close', () => done()));
+    // Why the run was stopped, and what the stop gave: the processes that are still alive, or why the stop failed.
+    let stopped: string | undefined;
+    let stopping: Promise<string> | undefined;
+    // stop asks the group of the program to end (stopGroup, FCV-18); the run is reported when the program has ended.
+    const stop = (reason: string) => {
+      if (stopped !== undefined || child.pid === undefined) return;
+      stopped = reason;
+      stopping = stopGroup(child.pid, closed, line => { if (step) step(line); else console.log(line); }).then(
+        alive => (alive.length ? `; still alive after SIGTERM: ${alive.join(', ')}` : ''),
+        (error: unknown) => `; its group could not be stopped: ${error instanceof Error ? error.message : String(error)}`,
+      );
     };
     const done = (error: string | null, value?: string) => {
       if (settled) return;
@@ -258,18 +266,28 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
       clearTimeout(timer);
       finish({ error, value, stdout, pid: child.pid });
     };
-    const append = (chunk: Buffer) => {
-      output += String(chunk);
-      if (output.length > limit) stop();
+    // The output that is kept ends at the limit: a program that was asked to end may write on while it ends.
+    const append = (chunk: Buffer, stream: 'stdout' | 'stderr') => {
+      if (stopped !== undefined) return;
+      const text = String(chunk);
+      const kept = text.slice(0, Math.max(0, limit - output.length));
+      output += kept;
+      if (stream === 'stdout') stdout += kept;
+      else {
+        stderr += kept;
+        progress?.write(kept);
+      }
+      if (kept.length !== text.length) stop(`test output exceeds ${limit} characters`);
     };
-    child.stdout.on('data', (chunk: Buffer) => { stdout += String(chunk); append(chunk); });
-    child.stderr.on('data', (chunk: Buffer) => { stderr += String(chunk); append(chunk); progress?.write(String(chunk)); });
+    child.stdout.on('data', (chunk: Buffer) => { append(chunk, 'stdout'); });
+    child.stderr.on('data', (chunk: Buffer) => { append(chunk, 'stderr'); });
     child.on('error', error => done(error.message));
     // The child is the leader of its own group. A process left in that group after it ends is treated as a failure (endGroup).
     const ended = new Promise<string[]>(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, (error: unknown) => resolve([`its group could not be checked: ${error instanceof Error ? error.message : String(error)}`]))));
     child.on('close', async (code, signal) => {
       progress?.flush();
       const left = await ended;
+      if (stopped !== undefined) return done(`${stopped}${await stopping}`);
       if (left.length) {
         const diagnostics = [
           stdout.trim() ? `stdout:\n${stdout.trim()}` : '',
@@ -277,21 +295,15 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
         ].filter(Boolean).join('\n');
         return done(`${program} left ${left.length} processes: ${left.join(', ')}${diagnostics ? `\n${diagnostics}` : ''}`);
       }
-      if (output.length > limit) return done(`test output exceeds ${limit} characters`);
       if (code !== 0) return done(code === null
         ? `signal ${signal ?? 'unknown'}: ${output.trim()}`
         : `exit ${code}: ${output.trim()}`);
       done(null, output);
     });
     // When timeoutMs is null, it is a long-running build, so no timer is set.
-    const timer: NodeJS.Timeout | undefined = timeoutMs === null ? undefined : setTimeout(() => {
-      stop();
-      // The run reports a process that has ended: a killed child is gone once its exit event fires. A child that did not start
-      // or has already exited sends no further exit event.
-      const timedOut = () => done(`timeout after ${timeoutMs} ms`);
-      if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) timedOut();
-      else child.once('exit', timedOut);
-    }, timeoutMs);
+    // The run reports a process that has ended: at the deadline the program is asked to end, and the close of its output
+    // settles the run. A child that did not start has no group and settles by its error event.
+    const timer: NodeJS.Timeout | undefined = timeoutMs === null ? undefined : setTimeout(() => { stop(`timeout after ${timeoutMs} ms`); }, timeoutMs);
   });
 }
 

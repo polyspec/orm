@@ -74,6 +74,7 @@ caseTest('coverage diagnostics preserve child output when a process remains', PR
 });
 
 // T390: a run past its deadline or its output limit is asked to end and is reported when it has ended, after its cleanup.
+// The deadline of the first case is long against the start of the program, which sets its handler in its first statement.
 const CLEANS_UP = (marker: string, before = ''): string => `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
   process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); ${before}`;
 
@@ -81,8 +82,8 @@ caseTest('run asks a process past its deadline to end and reports it after its c
   const work = await mkdtemp(join(tmpdir(), 'orm-coverage-stop-'));
   try {
     const marker = join(work, 'cleaned');
-    const result = await run(process.execPath, ['-e', CLEANS_UP(marker)], undefined, 300);
-    assert.match(result.error ?? '', /^timeout after 300 ms/);
+    const result = await run(process.execPath, ['-e', CLEANS_UP(marker)], undefined, 2000);
+    assert.match(result.error ?? '', /^timeout after 2000 ms/);
     assert.equal(readFileSync(marker, 'utf8'), 'cleaned');
   } finally {
     await rm(work, { recursive: true, force: true });

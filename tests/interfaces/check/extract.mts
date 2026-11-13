@@ -7,7 +7,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { Socket } from 'node:net';
 import { extname, join, resolve } from 'node:path';
 import { parseJson } from '../../../scripts/json/schema.mts';
-import { errorCode } from '../../errors.mts';
+import { stopGroup } from '../../../scripts/check/step.mts';
 import { stepLines, type Step } from '../../testcase.mts';
 import { byteOrder } from './json.mts';
 import type { Symbols } from './manifest.mts';
@@ -54,14 +54,16 @@ export function run(program: string, args: string[], options: { cwd?: string; en
     const child = spawn(program, args, { cwd: options.cwd, env: options.env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     const group = child.pid;
     if (group !== undefined) reaper().write(`+${group}\n`);
+    const closed = new Promise<void>(done => child.on('close', () => done()));
+    // What the stop at the abort gave: nothing, or why the group could not be stopped.
+    let stopped: Promise<unknown> | undefined;
+    // An abort is a request: the group gets SIGTERM and the run rejects when the program has ended (stopGroup, FCV-18).
     const end = () => {
-      if (group === undefined) return;
-      try {
-        process.kill(-group, 'SIGKILL');
-      } catch (error) {
-        // The group ended before the abort.
-        if (errorCode(error) !== 'ESRCH') reject(error);
-      }
+      if (group === undefined || stopped !== undefined) return;
+      stopped = stopGroup(group, closed, line => { console.error(line); }).then(
+        alive => (alive.length ? new Error(`interface check: still alive after SIGTERM: ${alive.join(', ')}`) : undefined),
+        (error: unknown) => error,
+      );
     };
     signal?.addEventListener('abort', end, { once: true });
     const stdout: Buffer[] = [], stderr: Buffer[] = [];
@@ -71,10 +73,12 @@ export function run(program: string, args: string[], options: { cwd?: string; en
       signal?.removeEventListener('abort', end);
       reject(error);
     });
-    child.on('close', (code, exitSignal) => {
+    child.on('close', async (code, exitSignal) => {
       signal?.removeEventListener('abort', end);
+      const failure = await stopped;
       if (group !== undefined) reaper().write(`-${group}\n`);
-      if (signal?.aborted) reject(signal.reason);
+      if (failure !== undefined) reject(new AggregateError([signal?.reason, failure], 'interface check: the program of an aborted run could not be stopped', { cause: failure }));
+      else if (signal?.aborted) reject(signal.reason);
       else resolvePromise({ code, signal: exitSignal, stdout: Buffer.concat(stdout).toString('utf8'), stderr: Buffer.concat(stderr).toString('utf8') });
     });
   });
