@@ -3,7 +3,8 @@
 // prints the log lines of a ready MySQL server, so the tests need no container runtime and no image. Each test names
 // two checkouts by two directories of its own.
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, withTemporaryDirectory } from '../tests/testcase.mts';
@@ -106,4 +107,39 @@ else process.exit(2);
 `);
     await assert.rejects(start('mysql', context), /stopped with 1 before it was ready/);
     assert.deepEqual(readdirSync(state), [], 'a failed start leaves its container');
+  }));
+
+caseTest('a start reads the lines that the container writes before the watch of its log takes effect (T445)', COMPUTE, () =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const { state } = standIn(dir);
+    const [context] = checkouts(dir, join(dir, 'container.sh'));
+    const written = join(dir, 'written');
+    const quiet = join(dir, 'quiet');
+    for (const fifo of [written, quiet]) execFileSync('mkfifo', [fifo]);
+    // The run of this stand-in writes both lines, tells the test through the FIFO written, and then stays quiet, as a
+    // server does after its ready line, by opening the FIFO quiet, which no process writes, until stop ends its process.
+    writeFileSync(join(dir, 'container.sh'), `#!/bin/sh
+state=${JSON.stringify(state)}
+command=$1; shift
+case $command in
+  run)
+    name=; previous=
+    for argument in "$@"; do [ "$previous" = --name ] && name=$argument; previous=$argument; done
+    printf '%s' $$ > "$state/$name"
+    printf 'MySQL init process done. Ready for start up.\\n[Server] /usr/sbin/mysqld: ready for connections. Version: 8.4.11  port: 3306\\n'
+    printf 'written' > ${JSON.stringify(written)}
+    exec cat ${JSON.stringify(quiet)} ;;
+  *) exec ${JSON.stringify(join(dir, 'container.mjs'))} "$command" "$@" ;;
+esac
+`);
+    chmodSync(join(dir, 'container.sh'), 0o755);
+    const started = start('mysql', context);
+    // The spawn of the container queued its spawn event before this tick, so the start has read the empty log when this
+    // tick runs, and the poll phase that registers the watch of the log comes after it: the tick holds the loop until the
+    // stand-in has written its lines, so they come before the watch takes effect.
+    process.nextTick(() => readFileSync(written, 'utf8'));
+    await started;
+    assert.deepEqual(readdirSync(state), [containerName(context.root, 'mysql')]);
+    remove(context);
+    assert.deepEqual(readdirSync(state), []);
   }));
