@@ -1716,30 +1716,27 @@ orm-test-mysql-privilege-start:
 # checkouts run their servers at once (T444). make orm-test-container-stop removes the projects of this checkout and their
 # data, and no other project. make orm-test-container-run KIND=<kind> RUN='<command>' starts the servers for that run alone,
 # runs the shell command RUN with the variables of the servers, and removes the project when RUN ends or fails, or when the
-# run gets SIGINT or SIGTERM. BAY_PROGRAM names bay, which starts and removes the servers. CONTAINER_PROGRAM names the
-# container engine, which the script runs only for the images, because bay pulls no image on a command of its own (BAY3): a
-# start asks it whether an image is on the machine, and make orm-install-container-images, the only target that downloads,
-# pulls the pinned images with it. Both name the programs of macOS (BAY5, BAY6).
+# run gets SIGINT or SIGTERM. BAY_PROGRAM names bay, the only program that these targets run for the servers and their
+# images; it names the program of macOS (BAY5, BAY6). No start pulls an image: make orm-install-container-images, the only
+# target that downloads, pulls the pinned images with bay pull.
 BAY_PROGRAM = /opt/homebrew/bin/bay
-CONTAINER_PROGRAM = /opt/homebrew/bin/container
-CONTAINER_PROGRAMS = BAY_PROGRAM=$(BAY_PROGRAM) CONTAINER_PROGRAM=$(CONTAINER_PROGRAM)
 .PHONY: orm-test-container orm-test-container-run orm-test-container-stop orm-install-container-images
 orm-test-container:
-	$(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts start $(KIND)
+	BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts start $(KIND)
 
 orm-test-container-run: export ORM_CONTAINER_RUN = $(value RUN)
 orm-test-container-run:
-	$(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts run $(KIND) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts run $(KIND) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) $(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts stop
+	LEASE=$(LEASE) BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts stop
 
 orm-install-container-images:
-	$(ONLINE) $(CONTAINER_PROGRAMS) $(NODE) scripts/test-servers-container.mts pull
+	$(ONLINE) BAY_PROGRAM=$(BAY_PROGRAM) $(NODE) scripts/test-servers-container.mts pull
 
-# orm-test-container-check runs the tests of scripts/test-servers-container.mts against a stand-in bay and a stand-in
-# container engine that each test writes, so it needs no container and no image (BAY1, T444).
+# orm-test-container-check runs the tests of scripts/test-servers-container.mts against a stand-in bay that each test
+# writes, so it needs no container and no image (BAY1, T444).
 .PHONY: orm-test-container-check
 orm-test-container-check:
 	$(RUN_TESTS) node -- --test-concurrency=1 scripts/test-servers-container.test.mts
