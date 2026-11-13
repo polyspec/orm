@@ -1707,8 +1707,8 @@ orm-test-mysql-privilege-start:
 # make orm-test-container KIND=<mysql|postgres|mariadb> starts one test database server in an Apple container from the image
 # that config/containers.json pins by its digest, and writes .runtime/containers/<kind>.env (scripts/test-servers-container.mts).
 # A check reads it as TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and,
-# for MySQL and MariaDB, its published Unix socket; the variables of the replicas and the poolers are absent. One kind runs at a
-# time; make orm-test-container-stop
+# for MySQL and MariaDB, its published Unix socket; the variables of the replicas and the poolers are absent. Each kind runs at
+# most once, and kinds may run together; make orm-test-container-stop
 # removes the container and its data. make orm-install-container-images pulls the pinned images.
 .PHONY: orm-test-container orm-test-container-stop orm-install-container-images
 orm-test-container:
