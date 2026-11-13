@@ -432,3 +432,7 @@ mod query_tests;
 #[cfg(test)]
 #[path = "../tests/unit/query_members.rs"]
 mod query_members_tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/query_step.rs"]
+mod query_step_tests;
