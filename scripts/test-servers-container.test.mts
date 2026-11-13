@@ -31,13 +31,14 @@ const VERSION = 'v0.0.0-stand-in+dirty';
 // and up -no-pull fails before it records anything; while execFails exists, a step of a server exits with 7; while
 // schema exists, version reports its text as the schema version, and while release exists, its text as the version of
 // bay; while checkFails exists, the command of a run in the runner exits with 5, and while buildFails exists, its
-// build command exits with 6. ups.log has the services of each up.
-interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string; buildFails: string; ups: string }
+// build command exits with 6, and while socketFails exists, a command that bay exec gives a variable with -e, which is
+// the check through a Unix socket in the container of a server, exits with 4. ups.log has the services of each up.
+interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string; buildFails: string; socketFails: string; ups: string }
 
 function standIn(dir: string): StandIn {
   const stand: StandIn = {
     bay: join(dir, 'bin/bay'), state: join(dir, 'projects'), calls: join(dir, 'calls.log'),
-    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), ups: join(dir, 'ups.log'),
+    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), socketFails: join(dir, 'socket-fails'), ups: join(dir, 'ups.log'),
   };
   mkdirSync(stand.state, { recursive: true });
   mkdirSync(dirname(stand.bay), { recursive: true });
@@ -83,7 +84,8 @@ else if (command === 'logs') console.log('the last lines of ' + rest.at(-1));
 else if (command === 'exec') {
   if (!existsSync(project)) fail('the project is not up');
   // getent ahostsv4 prints IPv4 addresses alone; getent hosts prints the IPv6 address of a service first.
-  if (rest[1] === 'getent') console.log(rest[2] === 'ahostsv4' ? ${JSON.stringify(ADDRESS)} + '  STREAM ' + rest.at(-1) + '\\n' + ${JSON.stringify(ADDRESS)} + '  DGRAM' : 'fd36:4b09::62d7 ' + rest.at(-1));
+  if (rest[0] === '-e') { console.log('the output of the socket check'); process.exit(existsSync(${JSON.stringify(stand.socketFails)}) ? 4 : 0); }
+  else if (rest[1] === 'getent') console.log(rest[2] === 'ahostsv4' ? ${JSON.stringify(ADDRESS)} + '  STREAM ' + rest.at(-1) + '\\n' + ${JSON.stringify(ADDRESS)} + '  DGRAM' : 'fd36:4b09::62d7 ' + rest.at(-1));
   else if (rest[0] === 'runner' && rest[1] === 'cat') console.log(rest[2].endsWith('swap.peak') ? '4096' : '3298534883');
   else if (rest[0] === 'runner' && rest.at(-1) === '/orm-run/build.sh') {
     const status = existsSync(${JSON.stringify(stand.buildFails)}) ? 6 : 0;
@@ -610,5 +612,47 @@ caseTest('a run in the runner with a build command builds before the servers sta
       await assert.rejects(run('mysql', ['true'], context, { runner: true, jobs: 0 }), /the count of cargo jobs 0 is no whole number above 0/);
       await assert.rejects(run('mysql', ['true'], context, { runner: true, runnerMemory: 'much' }), /the memory limit much of the runner is no size such as 2600m or 3g/);
       await assert.rejects(run('mysql', ['true'], context, { build: ['true'] }), /a build command runs in the runner; run with FORM=runner/);
+    });
+  }));
+
+caseTest('a check through a Unix socket is built in the runner and runs in the container of its server with bay exec (BAY8)', PROCESS, () =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      committed(context);
+      const socket = { build: ['make', 'socket-check-build'], run: ['/orm-run/programs/recipe', 'case-socket'] };
+      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true, socket }), { code: 0, signal: null });
+      const project = only(context.root);
+      // The runner builds the program while no server is up, into the directory of the run; the server whose socket
+      // the check uses mounts that directory read-only, and no other server does.
+      const text = file(context.root, project, 'compose.run.yaml');
+      assert.deepEqual([...text.matchAll(/^ {4}volumes: (.*)$/gm)].map(match => match[1]), ['[".:/orm-run:ro"]', '[".:/orm-run"]'], 'the directory of the run is not mounted read-only in the primary alone');
+      const setup = file(context.root, project, 'runner-setup.sh');
+      assert.ok(setup.includes(' musl-tools') && setup.includes('rustup target add "$processor-unknown-linux-musl"'), 'the runner cannot build a static executable');
+      assert.ok(file(context.root, project, 'socket-build.sh').includes(`( 'make' 'socket-check-build' )`) && file(context.root, project, 'socket-build.sh').includes('export ORM_RUN_PROGRAMS="$run/programs"'));
+      const check = file(context.root, project, 'socket-check.sh');
+      assert.ok(check.includes('. /orm-run/servers.env') && check.includes(`exec '/orm-run/programs/recipe' 'case-socket'`), check);
+      const ran = commands(stand).filter(command => !command.startsWith('exec mysql'));
+      assert.deepEqual(ran.slice(2), ['up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'exec runner sh /orm-run/socket-build.sh', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak',
+        'up -no-pull', 'exec runner sh /orm-run/check.sh', 'exec -e ORM_TEST_MYSQL_SOCKET=/var/run/mysqld/mysqld.sock mysql sh /orm-run/socket-check.sh',
+        'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'down']);
+      assert.equal(file(context.root, project, 'report/socket.log'), 'the output of the socket check\n');
+      assert.equal(file(context.root, project, 'report/socket-status'), '0\n');
+      for (const name of ['run.sh', 'socket-build.sh', 'socket-check.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);
+
+      // A socket check that fails fails the run whose command passed, and the status of a failed command stays.
+      remove(context);
+      writeFileSync(stand.socketFails, '');
+      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, socket }), { code: 4, signal: null });
+      writeFileSync(stand.checkFails, '');
+      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, socket }), { code: 5, signal: null });
+      assert.equal(commands(stand).filter(command => command.startsWith('exec -e')).length, 3, 'the socket check does not run after a failed command');
+      // MariaDB has its own variable and socket path; PostgreSQL has no socket variable, and the host has no runner.
+      writeFileSync(stand.calls, '');
+      await run('mariadb', ['true'], context, { runner: true, socket });
+      assert.ok(commands(stand).includes('exec -e ORM_TEST_MARIADB_SOCKET=/run/mysqld/mysqld.sock mariadb sh /orm-run/socket-check.sh'));
+      await assert.rejects(run('postgres', ['true'], context, { runner: true, socket }), /postgres has no check through a Unix socket: only mysql and mariadb have a socket variable/);
+      await assert.rejects(run('mysql', ['true'], context, { socket }), /a check through a Unix socket is built in the runner; run with FORM=runner/);
     });
   }));
