@@ -11,5 +11,5 @@ import (
 // Requirements: DBS-174.
 func TestRecipeDbspecDialectRefusalNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/dialect-refusal.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/dialect-refusal.json"), recipe.None)
 }

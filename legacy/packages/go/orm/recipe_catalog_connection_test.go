@@ -8,7 +8,7 @@ import (
 )
 
 // catalogConnectionRecipe is the recipe of the live catalog connection, relative to this package directory.
-const catalogConnectionRecipe = "../../../contracts/fixtures/catalog_connection/catalog_connection.json"
+var catalogConnectionRecipe = testcase.LegacyPath("contracts/fixtures/catalog_connection/catalog_connection.json")
 
 // TestRecipeCatalogConnectionMysql runs the catalog_connection recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: INT-107, INT-101, INT-103, INT-104, INT-109, INT-111, INT-113, INT-114, INT-115, INT-117, INT-123,

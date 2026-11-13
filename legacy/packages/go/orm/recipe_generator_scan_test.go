@@ -11,5 +11,5 @@ import (
 // Requirements: DSL-44, DSL-151, DSL-152.
 func TestRecipeGeneratorScanNone(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	recipe.Run(t, "../../../contracts/fixtures/generator_scan/generator_scan.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("contracts/fixtures/generator_scan/generator_scan.json"), recipe.None)
 }

@@ -14,5 +14,5 @@ import (
 // PRT-67, PRT-78, DSL-95.
 func TestRecipePlannerCompileNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/planner/compile.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/planner/compile.json"), recipe.None)
 }

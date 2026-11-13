@@ -9,7 +9,7 @@ import (
 )
 
 // connectionPoolRecipe is the recipe of the pool options, relative to this package directory.
-const connectionPoolRecipe = "../../../contracts/fixtures/connection_pool/connection_pool.json"
+var connectionPoolRecipe = testcase.LegacyPath("contracts/fixtures/connection_pool/connection_pool.json")
 
 // TestRecipeConnectionPoolMysql runs the connection_pool recipe on mysql, each case on a case database (FCV-3).
 // Requirements: CFG-4, CFG-5, PRT-77.

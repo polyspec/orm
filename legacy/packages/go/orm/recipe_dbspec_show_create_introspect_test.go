@@ -11,5 +11,5 @@ import (
 // Requirements: DIA-84.
 func TestRecipeDbspecShowCreateIntrospectNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/show-create-introspect.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/show-create-introspect.json"), recipe.None)
 }

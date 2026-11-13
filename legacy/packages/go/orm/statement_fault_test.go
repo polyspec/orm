@@ -30,7 +30,7 @@ var statementFaultCases = map[string]func(t *testing.T, db *orm.DB, model func()
 // loadStatementFault reads contracts/fixtures/statement_fault.json.
 func loadStatementFault(t *testing.T) statementFaultFixture {
 	t.Helper()
-	data, err := os.ReadFile("../../../contracts/fixtures/statement_fault.json")
+	data, err := os.ReadFile(testcase.LegacyPath("contracts/fixtures/statement_fault.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

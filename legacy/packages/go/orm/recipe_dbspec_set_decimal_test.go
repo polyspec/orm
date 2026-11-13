@@ -9,7 +9,7 @@ import (
 )
 
 // dbspecSetDecimalRecipe is the recipe of the decimal document set, relative to this package directory.
-const dbspecSetDecimalRecipe = "../../../tests/dbspec/set-decimal.json"
+var dbspecSetDecimalRecipe = testcase.LegacyPath("tests/dbspec/set-decimal.json")
 
 // TestRecipeDbspecSetDecimalMysql installs the decimal document set and round-trips its amounts on mysql.
 // Requirements: DBS-108, SCH-7.

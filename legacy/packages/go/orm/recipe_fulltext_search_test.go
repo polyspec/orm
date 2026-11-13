@@ -10,7 +10,7 @@ import (
 )
 
 // fulltextSearchRecipe is the recipe of the full-text search, relative to this package directory.
-const fulltextSearchRecipe = "../../../contracts/fixtures/fulltext_search/fulltext_search.json"
+var fulltextSearchRecipe = testcase.LegacyPath("contracts/fixtures/fulltext_search/fulltext_search.json")
 
 // TestRecipeFulltextSearchMysql runs the fulltext_search recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: DSL-32, DSL-33, DIA-6, DIA-187, PRT-75.

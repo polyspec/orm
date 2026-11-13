@@ -9,7 +9,7 @@ import (
 )
 
 // rawTextRecipe is the recipe of a text that is not UTF-8, relative to this package directory.
-const rawTextRecipe = "../../../contracts/fixtures/raw_text/raw_text.json"
+var rawTextRecipe = testcase.LegacyPath("contracts/fixtures/raw_text/raw_text.json")
 
 // TestRecipeRawTextMysql runs the raw_text recipe on MySQL, each case on a case database (FCV-3).
 func TestRecipeRawTextMysql(t *testing.T) {

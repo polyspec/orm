@@ -10,7 +10,7 @@ import (
 )
 
 // modelQueriesChainRecipe is the recipe of the model query chains on the builder, relative to this package directory.
-const modelQueriesChainRecipe = "../../../contracts/fixtures/model_queries_chain/model_queries_chain.json"
+var modelQueriesChainRecipe = testcase.LegacyPath("contracts/fixtures/model_queries_chain/model_queries_chain.json")
 
 // TestRecipeModelQueriesChainMysql runs the model_queries_chain recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-74, DSL-76, DSL-80, DSL-82, DSL-90, DSL-99, INT-16, INT-29, INT-30, INT-31, INT-32, INT-33, INT-36, INT-87, PLN-11, PLN-25, PRT-35.

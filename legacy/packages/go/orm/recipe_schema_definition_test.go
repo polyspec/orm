@@ -11,5 +11,5 @@ import (
 // Requirements: DBS-1, DBS-99, DBS-103, DBS-123, DBS-134, DBS-135, DBS-141, DBS-142, ORES-14.
 func TestRecipeSchemaDefinitionNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/schema-definition.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/schema-definition.json"), recipe.None)
 }

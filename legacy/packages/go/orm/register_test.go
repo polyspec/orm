@@ -26,7 +26,7 @@ func registerTexts(t *testing.T, names ...string) []string {
 	t.Helper()
 	texts := make([]string, len(names))
 	for i, name := range names {
-		b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs"))
+		b, err := os.ReadFile(filepath.Join(testcase.LegacyRoot(), "contracts", "fixtures", name+".dbs"))
 		if err != nil {
 			t.Fatal(err)
 		}

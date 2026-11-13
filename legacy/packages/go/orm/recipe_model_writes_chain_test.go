@@ -10,7 +10,7 @@ import (
 )
 
 // modelWritesChainRecipe is the recipe of the model write chains on the builder, relative to this package directory.
-const modelWritesChainRecipe = "../../../contracts/fixtures/model_writes_chain/model_writes_chain.json"
+var modelWritesChainRecipe = testcase.LegacyPath("contracts/fixtures/model_writes_chain/model_writes_chain.json")
 
 // TestRecipeModelWritesChainMysql runs the model_writes_chain recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: COD-11, COD-12, COD-15, COD-16, COD-26, COD-38, DIA-26, DSL-104, DSL-107, INT-35, PRT-41.

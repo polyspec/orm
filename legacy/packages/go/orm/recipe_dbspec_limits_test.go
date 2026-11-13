@@ -11,5 +11,5 @@ import (
 // Requirements: DBS-123, DBS-144, DBS-151, DBS-170.
 func TestRecipeDbspecLimitsNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/limits.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/limits.json"), recipe.None)
 }

@@ -11,5 +11,5 @@ import (
 // Requirements: DBS-4, DBS-155, DBS-171.
 func TestRecipeFilesNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/files.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/files.json"), recipe.None)
 }

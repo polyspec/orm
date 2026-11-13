@@ -8,7 +8,7 @@ import (
 )
 
 // catalogConnectionSqliteOnlyRecipe is the recipe of the cases that run on SQLite only, relative to this package directory.
-const catalogConnectionSqliteOnlyRecipe = "../../../contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json"
+var catalogConnectionSqliteOnlyRecipe = testcase.LegacyPath("contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json")
 
 // TestRecipeCatalogConnectionSqliteOnly runs the SQLite-only cases of the catalog_connection recipe on SQLite (FCV-3).
 func TestRecipeCatalogConnectionSqliteOnly(t *testing.T) {

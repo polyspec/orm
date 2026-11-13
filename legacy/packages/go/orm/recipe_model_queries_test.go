@@ -10,7 +10,7 @@ import (
 )
 
 // modelQueriesRecipe is the recipe of the generated-model queries, relative to this package directory.
-const modelQueriesRecipe = "../../../contracts/fixtures/model_queries/model_queries.json"
+var modelQueriesRecipe = testcase.LegacyPath("contracts/fixtures/model_queries/model_queries.json")
 
 // TestRecipeModelQueriesMysql runs the model_queries recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-74, DSL-76, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30,

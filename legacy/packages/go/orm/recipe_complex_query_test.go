@@ -10,7 +10,7 @@ import (
 )
 
 // complexQueryRecipe is the recipe of the product search, relative to this package directory.
-const complexQueryRecipe = "../../../contracts/fixtures/complex_query/complex_query.json"
+var complexQueryRecipe = testcase.LegacyPath("contracts/fixtures/complex_query/complex_query.json")
 
 // TestRecipeComplexQueryMysql runs the complex_query recipe on MySQL, each case on a case database (FCV-3).
 func TestRecipeComplexQueryMysql(t *testing.T) {

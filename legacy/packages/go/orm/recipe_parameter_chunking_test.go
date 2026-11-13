@@ -10,7 +10,7 @@ import (
 )
 
 // parameterChunkingRecipe is the recipe of parameter chunking, relative to this package directory.
-const parameterChunkingRecipe = "../../../contracts/fixtures/parameter_chunking/parameter_chunking.json"
+var parameterChunkingRecipe = testcase.LegacyPath("contracts/fixtures/parameter_chunking/parameter_chunking.json")
 
 // TestRecipeParameterChunkingMysql runs the parameter_chunking recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: PLN-44, PRT-35, PRT-76.

@@ -7,7 +7,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-const immutableWriteRecipe = "../../../contracts/fixtures/immutable_write/immutable_write.json"
+var immutableWriteRecipe = testcase.LegacyPath("contracts/fixtures/immutable_write/immutable_write.json")
 
 // TestRecipeImmutableWriteMysql runs the immutable_write recipe on Mysql, each case on a case database (FCV-3).
 // Requirements: DBS-84.

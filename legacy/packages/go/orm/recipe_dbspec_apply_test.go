@@ -9,7 +9,7 @@ import (
 )
 
 // dbspecApplyRecipe is the recipe of the public apply API, relative to this package directory.
-const dbspecApplyRecipe = "../../../contracts/fixtures/dbspec_apply/dbspec_apply.json"
+var dbspecApplyRecipe = testcase.LegacyPath("contracts/fixtures/dbspec_apply/dbspec_apply.json")
 
 // TestRecipeDbspecApplyMysql runs the dbspec_apply recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.

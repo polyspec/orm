@@ -11,5 +11,5 @@ import (
 // Requirements: DBS-112, PRT-32, PRT-81, PRT-82, DIA-24, PRT-33, DBS-67.
 func TestRecipeRuntimeModelPlansNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/planner/runtime-model.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/planner/runtime-model.json"), recipe.None)
 }

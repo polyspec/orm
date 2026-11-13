@@ -11,5 +11,5 @@ import (
 // Requirements: DBS-65, DBS-85, DBS-111, DBS-112, DBS-100, DBS-103.
 func TestRecipeRuntimeModelEntitiesNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/runtime-model.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/runtime-model.json"), recipe.None)
 }

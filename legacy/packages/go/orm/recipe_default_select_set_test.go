@@ -11,5 +11,5 @@ import (
 // Requirements: PRT-9, DBS-68.
 func TestRecipeDefaultSelectSetNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/planner/default-select-set.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/planner/default-select-set.json"), recipe.None)
 }

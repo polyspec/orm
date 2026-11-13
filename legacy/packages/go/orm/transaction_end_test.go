@@ -18,7 +18,7 @@ import (
 // fails the test. The caller closes the returned handle.
 func openBench(t *testing.T, dsn string) *DB {
 	t.Helper()
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
+	m, err := runtimemodel.LoadFiles(filepath.Join(testcase.LegacyRoot(), "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers")
 	}
 	useFailingDriver(t, "mysql")
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
+	m, err := runtimemodel.LoadFiles(filepath.Join(testcase.LegacyRoot(), "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

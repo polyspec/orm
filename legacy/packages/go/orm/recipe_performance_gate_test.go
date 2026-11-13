@@ -8,7 +8,7 @@ import (
 )
 
 // performanceGateRecipe is the correctness recipe of the hot-path performance gate, relative to this package directory.
-const performanceGateRecipe = "../../../contracts/fixtures/performance_gate/performance_gate.json"
+var performanceGateRecipe = testcase.LegacyPath("contracts/fixtures/performance_gate/performance_gate.json")
 
 // TestRecipePerformanceGateMysql runs the performance_gate recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: PERF-1.

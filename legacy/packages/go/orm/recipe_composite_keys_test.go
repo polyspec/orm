@@ -8,7 +8,7 @@ import (
 )
 
 // compositeKeysRecipe is the recipe of the composite key rows, relative to this package directory.
-const compositeKeysRecipe = "../../../contracts/fixtures/composite_keys/composite_keys.json"
+var compositeKeysRecipe = testcase.LegacyPath("contracts/fixtures/composite_keys/composite_keys.json")
 
 // TestRecipeCompositeKeysMysql runs the composite_keys recipe on mysql, each case on a case database (FCV-3).
 // Requirements: DSL-82, INT-87, PRT-12, PRT-40.

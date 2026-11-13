@@ -9,7 +9,7 @@ import (
 )
 
 // statementEventsRecipe is the recipe of the statement events, relative to this package directory.
-const statementEventsRecipe = "../../../contracts/fixtures/statement_events/statement_events.json"
+var statementEventsRecipe = testcase.LegacyPath("contracts/fixtures/statement_events/statement_events.json")
 
 // TestRecipeStatementEventsMysql runs the statement_events recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: DBS-108, DBS-119, DBS-120, INT-55, INT-77, INT-91, SCH-7, SCH-11.

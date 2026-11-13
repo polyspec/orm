@@ -10,7 +10,7 @@ import (
 )
 
 // constraintsAndRelationsRecipe is the recipe of the constraints and relations, relative to this package directory.
-const constraintsAndRelationsRecipe = "../../../contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+var constraintsAndRelationsRecipe = testcase.LegacyPath("contracts/fixtures/constraints_and_relations/constraints_and_relations.json")
 
 // TestRecipeConstraintsAndRelationsMysql runs the constraints_and_relations recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: CFG-33, INT-87.

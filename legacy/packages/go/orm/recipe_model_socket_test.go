@@ -10,7 +10,7 @@ import (
 )
 
 // modelSocketRecipe is the recipe of the MySQL socket case, relative to this package directory.
-const modelSocketRecipe = "../../../contracts/fixtures/model_socket/model_socket.json"
+var modelSocketRecipe = testcase.LegacyPath("contracts/fixtures/model_socket/model_socket.json")
 
 // TestRecipeModelSocketMysql runs the model_socket recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: CFG-10, CFG-19.

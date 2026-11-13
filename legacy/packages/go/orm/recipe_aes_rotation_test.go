@@ -10,7 +10,7 @@ import (
 )
 
 // aesRotationRecipe is the recipe of the AES rotation, relative to this package directory.
-const aesRotationRecipe = "../../../contracts/fixtures/aes_rotation/aes_rotation.json"
+var aesRotationRecipe = testcase.LegacyPath("contracts/fixtures/aes_rotation/aes_rotation.json")
 
 // TestRecipeAesRotationMysql runs the aes_rotation recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: COD-7, COD-8, PLN-44, INT-60, INT-75, INT-131, COD-44, COD-47, COD-49 to COD-54, COD-57 to COD-60.

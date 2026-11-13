@@ -11,5 +11,5 @@ import (
 // Requirements: ORES-72.
 func TestRecipePositionsNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/positions.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/positions.json"), recipe.None)
 }

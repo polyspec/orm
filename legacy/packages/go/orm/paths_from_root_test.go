@@ -13,6 +13,7 @@ var pathTests = []string{
 	"TestCanonicalizePadsInListAndRejectsOutOfRangeParam",
 	"TestCodeCatalog",
 	"TestCompositeCollectionKeyTypedComponentsFromFixture",
+	"TestExternalModuleCanImportClient",
 	"TestNullableCompositeRowHasNoCollectionKey",
 	"TestPadInRepeatsTheLastCompositeTuple",
 	"TestPlanCacheBoundedByInListShape",

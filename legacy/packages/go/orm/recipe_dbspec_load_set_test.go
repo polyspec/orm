@@ -11,5 +11,5 @@ import (
 // Requirements: SCH-12, DBS-156, DBS-100, DBS-103, DBS-99.
 func TestRecipeDbspecLoadSetNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/load-set.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/load-set.json"), recipe.None)
 }

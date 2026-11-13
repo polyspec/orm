@@ -10,7 +10,7 @@ import (
 )
 
 // modelWritesRecipe is the recipe of the generated-model writes, relative to this package directory.
-const modelWritesRecipe = "../../../contracts/fixtures/model_writes/model_writes.json"
+var modelWritesRecipe = testcase.LegacyPath("contracts/fixtures/model_writes/model_writes.json")
 
 // TestRecipeModelWritesMysql runs the model_writes recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-109, DSL-110, PLN-26.

@@ -15,7 +15,7 @@ import (
 )
 
 // TestExternalModuleCanImportClient checks the Go module package as a consumer receives it. A module of its own requires the
-// module made of the tracked files of packages/go alone, since a generated file is ignored by git and so is not in the
+// module made of the tracked files of legacy/packages/go alone, since a generated file is ignored by git and so is not in the
 // published module; it imports each Go root of contracts/interfaces.json that has a tracked source and passes go mod tidy and
 // go build. go mod tidy also loads the tests of the packages that the consumer imports, so a test of a published package that
 // imports a generated package fails here, as it fails in every consumer of the release.
@@ -26,8 +26,8 @@ func TestExternalModuleCanImportClient(t *testing.T) {
 		t.Fatal("nil error reported as a deadlock")
 	}
 	const modulePath = "github.com/polyspec/orm/legacy/packages/go"
-	root := filepath.Join("..", "..", "..")
-	tracked := entryCommand(t, root, nil, "git", "ls-files", "-z", "--", "packages/go")
+	root := testcase.RepositoryRoot()
+	tracked := entryCommand(t, root, nil, "git", "ls-files", "-z", "--", "legacy/packages/go")
 	module := filepath.Join(t.TempDir(), "module")
 	sources := map[string]bool{}
 	for _, file := range strings.Split(strings.TrimSuffix(tracked, "\x00"), "\x00") {
@@ -62,17 +62,17 @@ func TestExternalModuleCanImportClient(t *testing.T) {
 	}
 	var imports bytes.Buffer
 	for _, path := range contract.Languages.Go.Roots {
-		if !strings.HasPrefix(path, "packages/go/") {
-			t.Fatalf("the Go root %s of contracts/interfaces.json is outside packages/go", path)
+		if !strings.HasPrefix(path, "legacy/packages/go/") {
+			t.Fatalf("the Go root %s of contracts/interfaces.json is outside legacy/packages/go", path)
 		}
 		if sources[path] {
-			fmt.Fprintf(&imports, "\t_ %q\n", modulePath+strings.TrimPrefix(path, "packages/go"))
+			fmt.Fprintf(&imports, "\t_ %q\n", modulePath+strings.TrimPrefix(path, "legacy/packages/go"))
 		}
 	}
 	if imports.Len() == 0 {
 		t.Fatalf("no Go root of contracts/interfaces.json has a tracked source: %v", contract.Languages.Go.Roots)
 	}
-	manifest, err := os.ReadFile(filepath.Join(module, "packages", "go", "go.mod"))
+	manifest, err := os.ReadFile(filepath.Join(module, "legacy", "packages", "go", "go.mod"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,12 +83,12 @@ func TestExternalModuleCanImportClient(t *testing.T) {
 		}
 	}
 	if goVersion == "" {
-		t.Fatal("packages/go/go.mod states no go version")
+		t.Fatal("legacy/packages/go/go.mod states no go version")
 	}
 	consumer := filepath.Join(t.TempDir(), "consumer")
 	files := map[string]string{
 		"go.mod": fmt.Sprintf("module example.com/consumer\n\ngo %s\n\nrequire %s v0.0.0\n\nreplace %s => %s\n",
-			goVersion, modulePath, modulePath, filepath.ToSlash(filepath.Join(module, "packages", "go"))),
+			goVersion, modulePath, modulePath, filepath.ToSlash(filepath.Join(module, "legacy", "packages", "go"))),
 		"main.go": "package main\n\nimport (\n" + imports.String() + ")\n\nfunc main() {}\n",
 	}
 	if err := os.MkdirAll(consumer, 0o755); err != nil {

@@ -16,7 +16,7 @@ type catalogCode struct{ code, note string }
 // readCatalog reads docs/spec/errors.yaml, a flat list of "- code: X  # comment" lines each followed by "origin: Y".
 func readCatalog(t *testing.T) []catalogCode {
 	t.Helper()
-	src, err := os.ReadFile("../../../../docs/spec/errors.yaml")
+	src, err := os.ReadFile(testcase.RepositoryPath("docs/spec/errors.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func readCatalog(t *testing.T) []catalogCode {
 // Requirements: INT-65.
 func TestCodeCatalog(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	src, err := os.ReadFile("codes.go")
+	src, err := os.ReadFile(testcase.LegacyPath("packages/go/orm/codes.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

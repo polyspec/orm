@@ -9,7 +9,7 @@ import (
 )
 
 // statementRunnerRecipe is the recipe of the statement runner, relative to this package directory.
-const statementRunnerRecipe = "../../../contracts/fixtures/statement_runner/statement_runner.json"
+var statementRunnerRecipe = testcase.LegacyPath("contracts/fixtures/statement_runner/statement_runner.json")
 
 // TestRecipeStatementRunnerMysql runs the statement_runner recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: INT-150, INT-77.

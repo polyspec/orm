@@ -11,7 +11,7 @@ import (
 )
 
 // conformanceVerificationRecipe is the recipe of the conformance chains, relative to this package directory.
-const conformanceVerificationRecipe = "../../../contracts/fixtures/conformance_verification/conformance_verification.json"
+var conformanceVerificationRecipe = testcase.LegacyPath("contracts/fixtures/conformance_verification/conformance_verification.json")
 
 // TestRecipeConformanceVerificationMysql runs the conformance_verification recipe on MySQL, each case on a case database (FCV-3).
 func TestRecipeConformanceVerificationMysql(t *testing.T) {

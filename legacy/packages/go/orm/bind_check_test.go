@@ -126,7 +126,7 @@ func TestBindVectors(t *testing.T) {
 // readBindVectors reads the bind vectors of tests/bind/vectors.json; a failure fails the test.
 func readBindVectors(t *testing.T) bindVectors {
 	t.Helper()
-	raw, err := os.ReadFile("../../../tests/bind/vectors.json")
+	raw, err := os.ReadFile(testcase.LegacyPath("tests/bind/vectors.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

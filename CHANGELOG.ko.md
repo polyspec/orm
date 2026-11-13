@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5d25587fd085c9a3a92d70643e28c83f34bd158f21086497f4113af2088a8be4 -->
+<!-- source-sha256: 6c3fe268ebc0f44d5160719c6facda999a87f5f25573fa16873ab5f9b1b1b76b -->
 # 변경 이력
 
 ## Unreleased
@@ -41,6 +41,7 @@
 - legacy 모듈의 Go 테스트가 `go.work`로 저장소 root를 찾습니다(`testcase.RepositoryRoot`). `internal/dialects`는 init에서 `legacy` 아래의 `contracts/implementations.json`을 열다 panic해 테스트가 하나도 실행되지 않았고, `TestStressDocument`는 없는 `legacy/tests/dbspec/stress.mts`를 실행했습니다. 클라이언트 간 테스트의 runner는 이제 `legacy/` 경로로 저장소 root에서 실행됩니다(T447).
 - legacy Go 모듈의 `internal/buildconstraints`와 `engine/dbspec` 테스트, 그리고 `TestCaseHarnessReportsOnlyFailure`의 fixture가 디렉터리 수를 세지 않고 `testcase.RepositoryRoot`와 `testcase.LegacyRoot`로 root를 찾습니다. `TestGoTestTagsAreReadFromTheRunner`와 `TestNoBuildTagLeavesATestOut`은 `legacy/go.work`와 `legacy/tests/go-test.mts`를 열다 실패했습니다(T447).
 - Go recipe runner의 `interface.symbols` 단계가 interface check를 저장소 root(`testcase.RepositoryRoot`)에서 시작합니다. 이전에는 recipe에서 세 단계 위인 `legacy`에서 시작해 node가 `tests/interfaces/check/main.mts`를 찾지 못했습니다(T448).
+- legacy 모듈과 `tests` 모듈의 Go 테스트가 패키지 디렉터리에서 `../`를 세지 않고 `testcase.RepositoryPath`와 `testcase.LegacyPath`로 checkout의 파일을 읽으며, 그런 파일을 읽는 각 패키지는 그 테스트를 저장소 root에서도 실행합니다(`TestPathsFromAnyDirectory`). `TestExternalModuleCanImportClient`는 `legacy/packages/go`를 복사하고 `contracts/interfaces.json`을 저장소 root에서 읽으며, `TestCTableAgreesWithGo`와 `TestPythonTableAgreesWithGo`는 `legacy` 아래의 생성된 표를 읽습니다. 이 세 테스트는 이전에 실패했습니다(T448).
 
 ## 0.0.31
 

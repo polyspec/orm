@@ -12,5 +12,5 @@ import (
 // Requirements: ORES-13.
 func TestRecipeHashesNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/hashes.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/hashes.json"), recipe.None)
 }

@@ -14,7 +14,7 @@ import (
 
 func planCacheIdentityLoadFixture(t *testing.T) (*runtimemodel.Model, *Schema) {
 	t.Helper()
-	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
+	m, err := runtimemodel.LoadFiles(testcase.LegacyPath("contracts/fixtures/identity_load.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestPadInRepeatsTheLastCompositeTuple(t *testing.T) {
 // Requirements: CPX-4.
 func TestPlanCacheBoundedByInListShape(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
+	m, err := runtimemodel.LoadFiles(testcase.LegacyPath("contracts/fixtures/identity_load.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

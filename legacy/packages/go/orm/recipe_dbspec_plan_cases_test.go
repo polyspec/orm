@@ -14,5 +14,5 @@ import (
 // PLN-88, DBS-109.
 func TestRecipeDbspecPlanCases(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/plan-cases.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-cases.json"), recipe.None)
 }

@@ -24,7 +24,7 @@ type collectionKeysFixture struct {
 
 func loadCollectionKeys(t *testing.T) collectionKeysFixture {
 	t.Helper()
-	src, err := os.ReadFile("../../../tests/collection/keys.json")
+	src, err := os.ReadFile(testcase.LegacyPath("tests/collection/keys.json"))
 	if err != nil {
 		t.Fatalf("read tests/collection/keys.json: %v; run make orm-check from the checkout root", err)
 	}

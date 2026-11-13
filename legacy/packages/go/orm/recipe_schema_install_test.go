@@ -11,7 +11,7 @@ import (
 )
 
 // schemaInstallRecipe is the recipe of schema installation, relative to this package directory.
-const schemaInstallRecipe = "../../../contracts/fixtures/schema_install/schema_install.json"
+var schemaInstallRecipe = testcase.LegacyPath("contracts/fixtures/schema_install/schema_install.json")
 
 // TestRecipeSchemaInstallMysql runs the schema_install recipe on MySQL, each case on an empty case database (FCV-3).
 // Requirements: DBS-104, DBS-107, DBS-108, DBS-119, DBS-120, INT-54, INT-55, INT-132, INT-133, PLN-44, SCH-7, SCH-10, SCH-11., INT-56, INT-57, INT-58, SCH-8, SCH-9

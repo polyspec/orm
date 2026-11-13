@@ -9,7 +9,7 @@ import (
 )
 
 // utilsRecipe is the recipe of the connection utilities, relative to this package directory.
-const utilsRecipe = "../../../contracts/fixtures/utils/utils.json"
+var utilsRecipe = testcase.LegacyPath("contracts/fixtures/utils/utils.json")
 
 // TestRecipeUtilsMysql runs the utils recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: INT-51, INT-52, INT-53, INT-61, INT-73, INT-134.

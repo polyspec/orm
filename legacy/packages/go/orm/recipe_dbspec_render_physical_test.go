@@ -9,7 +9,7 @@ import (
 )
 
 // dbspecRenderPhysicalRecipe is the recipe of the rendered statements, relative to this package directory.
-const dbspecRenderPhysicalRecipe = "../../../tests/dbspec/render-physical.json"
+var dbspecRenderPhysicalRecipe = testcase.LegacyPath("tests/dbspec/render-physical.json")
 
 // TestRecipeDbspecRenderPhysicalMysql runs the rendered statements of tests/dbspec/ddl.json and their behavior steps on mysql.
 // Requirements: DIA-113.

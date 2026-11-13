@@ -13,7 +13,7 @@ import (
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88.
 func TestRecipeDbspecPlanInvalid(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/plan-invalid.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-invalid.json"), recipe.None)
 }
 
 // TestRecipeDbspecPlanChains runs the dbspec plan chains recipe, tests/dbspec/plan-chains.json, without a database (FCV-3).
@@ -22,7 +22,7 @@ func TestRecipeDbspecPlanInvalid(t *testing.T) {
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88.
 func TestRecipeDbspecPlanChains(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/plan-chains.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-chains.json"), recipe.None)
 }
 
 // TestRecipeDbspecPlanParse runs the dbspec plan parse recipe, tests/dbspec/plan-parse.json, without a database (FCV-3).
@@ -31,7 +31,7 @@ func TestRecipeDbspecPlanChains(t *testing.T) {
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88, DBS-109.
 func TestRecipeDbspecPlanParse(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/plan-parse.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-parse.json"), recipe.None)
 }
 
 // TestRecipeDbspecPlanComparisons runs the dbspec plan comparisons recipe, tests/dbspec/plan-comparisons.json, without a database (FCV-3).
@@ -40,12 +40,12 @@ func TestRecipeDbspecPlanParse(t *testing.T) {
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88.
 func TestRecipeDbspecPlanComparisons(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/plan-comparisons.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-comparisons.json"), recipe.None)
 }
 
 // TestRecipeDbspecAddTablesSteps runs the add tables steps recipe, tests/dbspec/add-tables-steps.json, without a database (FCV-3).
 // Requirements: INT-56, SCH-8.
 func TestRecipeDbspecAddTablesSteps(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/add-tables-steps.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/add-tables-steps.json"), recipe.None)
 }

@@ -14,7 +14,7 @@ import (
 )
 
 // dbspecIntrospectRecipe is the recipe of the introspection round trip, relative to this package directory.
-const dbspecIntrospectRecipe = "../../../contracts/fixtures/dbspec_introspect/dbspec_introspect.json"
+var dbspecIntrospectRecipe = testcase.LegacyPath("contracts/fixtures/dbspec_introspect/dbspec_introspect.json")
 
 // TestRecipeDbspecIntrospectMysql runs the dbspec_introspect recipe on MySQL, each case on an empty case database (FCV-3).
 // Requirements: DBS-42, DBS-84, DBS-94, DIA-110, DIA-111, DIA-112, DIA-133, DIA-134, DIA-135, DIA-136, DIA-137

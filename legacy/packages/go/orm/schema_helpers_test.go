@@ -32,7 +32,7 @@ func fixtureTexts(t *testing.T, names []string) []string {
 	t.Helper()
 	documents := make([]string, len(names))
 	for i, name := range names {
-		text, diagnostics, err := dbspec.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs"))
+		text, diagnostics, err := dbspec.ReadFile(filepath.Join(testcase.LegacyRoot(), "contracts", "fixtures", name+".dbs"))
 		if err != nil {
 			t.Fatal(err)
 		}

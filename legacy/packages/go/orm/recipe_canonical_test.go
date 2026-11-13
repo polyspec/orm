@@ -12,5 +12,5 @@ import (
 // Requirements: DBS-133, ORES-1, ORES-3, ORES-13.
 func TestRecipeCanonicalNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	recipe.Run(t, "../../../tests/dbspec/canonical.json", recipe.None)
+	recipe.Run(t, testcase.LegacyPath("tests/dbspec/canonical.json"), recipe.None)
 }
