@@ -1679,6 +1679,8 @@ async fn first_row<M: AnyModel>(q: &Core) -> Result<M> {
 /// holds the key and is not deleted fails with ROW_NOT_DELETED, and nothing is
 /// written.
 pub async fn restore_or_create<M: AnyModel + Clone>(m: &M) -> Result<M> {
+    // The refusals of the query come before the connection, as they do for restore (CORE-94).
+    terminal_checks(m.core_dyn())?;
     let conn = m.core_dyn().conn.clone();
     in_transaction(&conn, |unit: Connection| async move {
         let mut m = m.clone();

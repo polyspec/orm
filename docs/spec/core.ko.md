@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 15211c60bb4339c2397aba09fd025a9c82091e5643b640307a325e15509c1cfe -->
+<!-- source-sha256: 0551d5bc129db10ff706c96bd9219bfaf5992a601c53ab613ac635920e1a30f5 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -295,7 +295,7 @@
   돌려준다. 그 key는 planner가 배정한 값이 가진 primary key와 unique key 가운데에서 고른다. 그 key의 행이 지워지지
   않았으면 그 행을 돌려주고 아무것도 쓰지 않으며, 그 key의 행이 없으면 `no_rows`다. `restore_or_create`는 한 transaction 안에서 그 key의 soft-delete된 행을 복원하거나, 그 key를 가진
   행이 없으면 배정한 행을 넣고, 그 행을 돌려준다. 그 key의 행이 지워지지 않았으면 `row_not_deleted`이고 아무것도 쓰지
-  않는다. 둘 다 행을 돌려줄 때 배정을 비운다. `Db` step은 이 둘을 terminal `restore`와 `restore_or_create`로 받고 결과는
+  않는다. 둘 다 연결을 요구하기 전에 빈 list의 `empty_in` 같은 query의 조건을 거부한다. 둘 다 행을 돌려줄 때 배정을 비운다. `Db` step은 이 둘을 terminal `restore`와 `restore_or_create`로 받고 결과는
   `{"row": <row>}`다(CORE-92). `soft_delete`가 없는 엔티티는 `ir_invalid`다.
 - **CORE-120** `Query`의 행의 `to_array()`는 map을 돌려준다. key는 행이 읽은 엔티티 열의 이름이고 순서는 schema의 순서이며,
   값은 `value(column)`이 돌려주는 `orm_value`다(CORE-62). 행이 읽지 않은 열은 key가 없다. 그래서 읽지 않은 열과 값이 null인

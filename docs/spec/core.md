@@ -356,7 +356,8 @@ the core that differ from the rules that the language implementations of `legacy
   row; a row of that key that is not deleted is returned and nothing is written, and with no row of that key it is
   `no_rows`. `restore_or_create` restores the soft-deleted row of that
   key or, when no row holds the key, inserts the row of the assignments, in one transaction, and returns the row; a row
-  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both clear the assignments when they return a row. The `Db` step
+  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both refuse a condition of the query, such
+  as `empty_in` of an empty list, before they ask for a connection. Both clear the assignments when they return a row. The `Db` step
   takes them as the terminals `restore` and `restore_or_create`, whose result is `{"row": <row>}` (CORE-92). An entity
   without `soft_delete` is `ir_invalid`.
 - **CORE-120** `to_array()` of a row of a `Query` returns a map whose keys are the names of the columns of the entity that
