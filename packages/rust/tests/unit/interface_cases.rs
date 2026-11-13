@@ -57,7 +57,7 @@ fn texts(args: &Map<String, Value>, name: &str, member: &str) -> Vec<String> {
 /// Bytes, given as `{hex}`.
 fn bytes(args: &Map<String, Value>, name: &str, member: &str) -> Vec<u8> {
     let hex = field(args, name, member).get("hex").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: {name} is no {{hex}}"));
-    assert!(hex.len() % 2 == 0 && hex.is_ascii(), "{member}: {name} is pairs of digits");
+    assert!(hex.len().is_multiple_of(2) && hex.is_ascii(), "{member}: {name} is pairs of digits");
     (0..hex.len())
         .step_by(2)
         .map(|at| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{member}: {name} holds no byte at {at}: {error}")))
@@ -167,7 +167,7 @@ fn host_value(host: &mut CaseHost, case: &Value, what: &str) -> HostValue {
         "text" => host_text(given().as_str().unwrap_or_else(|| panic!("{what}: the value of a text is no text"))),
         "bytes" => {
             let hex = given().get("hex").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: the value of bytes is {{hex}}"));
-            assert!(hex.len() % 2 == 0 && hex.is_ascii(), "{what}: hex is pairs of digits");
+            assert!(hex.len().is_multiple_of(2) && hex.is_ascii(), "{what}: hex is pairs of digits");
             let byte = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{what}: hex holds no byte at {at}: {error}"));
             HostValue::Bytes((0..hex.len()).step_by(2).map(byte).collect())
         }

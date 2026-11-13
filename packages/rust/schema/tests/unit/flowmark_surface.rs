@@ -216,7 +216,7 @@ fn the_entities_of_a_runtime_model_are_read_back_from_their_form() {
 fn a_diagnostic_and_a_position_have_the_members_of_their_forms() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let refused = dbspec::parse("dbspec 1 shop\n\ntable item {\n  seq i64 bad\n  primary key (seq)\n}\n", &BTreeMap::new());
-    let diagnostics = refused.err().expect("the text holds a word that no column takes");
+    let diagnostics = refused.expect_err("the text holds a word that no column takes");
     let form = diagnostic_to_json(&diagnostics[0]);
     assert_eq!(refusals("diagnostic", &form), no_refusal());
     assert_eq!(form, json!({"rule": diagnostics[0].rule, "line": diagnostics[0].line, "column": diagnostics[0].column, "message": diagnostics[0].message}));

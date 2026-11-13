@@ -26,7 +26,14 @@ pub fn dsn_for(dialect: &str, sqlite_path: &Path) -> String {
 /// The DSN that the environment variable `variable` holds for a MySQL or PostgreSQL fixture; a test without it fails with
 /// the message of `fixture_dsn`.
 pub fn server_dsn(variable: &str) -> String {
-    match fixture_dsn(variable, std::env::var(variable).ok()) {
+    // A variable that is absent is the case that fixture_dsn names; a variable whose value is no Unicode text is another
+    // failure, which names the value that was found.
+    let value = match std::env::var(variable) {
+        Ok(value) => Some(value),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(std::env::VarError::NotUnicode(found)) => panic!("{variable} holds a value that is no Unicode text: {found:?}"),
+    };
+    match fixture_dsn(variable, value) {
         Ok(dsn) => dsn,
         Err(message) => panic!("{message}"),
     }

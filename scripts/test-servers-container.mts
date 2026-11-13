@@ -39,7 +39,7 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, watch, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_WAL, REPLICA_PARTIAL_REVOKES_SQL, TestServerError } from './test-servers.mts';
+import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_WAL, TestServerError } from './test-servers.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
 const PREFIX = 'polyspec-orm-test-';
@@ -131,14 +131,13 @@ const SERVERS: Record<Kind, Server> = {
     arguments: mysqlArguments(1),
     initialized: 'MySQL init process done', ready: mysqlReady,
     // The replica reads the binary log of the primary from its first file, which the reset leaves empty, so it applies
-    // every change after the initialization of the image and none of the image, which initialized the replica as well. As
-    // the native replica, it enables partial_revokes, so it refuses a catalog row change (INT-119).
+    // every change after the initialization of the image and none of the image, which initialized the replica as well.
     replica: {
       initialized: 'MySQL init process done', ready: mysqlReady,
       prepare: ['mysql', '-uroot', '-e', 'RESET BINARY LOGS AND GTIDS'],
       arguments: () => [...mysqlArguments(2), '--skip-replica-start'],
       follow: primary => ['mysql', '-uroot', '-e',
-        `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${primary}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1; START REPLICA; SET GLOBAL super_read_only = ON; ${REPLICA_PARTIAL_REVOKES_SQL}`],
+        `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${primary}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1; START REPLICA; SET GLOBAL super_read_only = ON`],
     },
     databases: ['mysql', '-uroot', '-e', `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL}`],
     socket: '/var/run/mysqld/mysqld.sock',

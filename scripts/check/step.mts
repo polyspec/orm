@@ -59,7 +59,7 @@ function install() {
       console.error(`check: ${signal}: no step is admitted; sent SIGTERM to the process ${steps === 1 ? 'group' : 'groups'} of ${steps} ${steps === 1 ? 'step' : 'steps'} and waits for them with no time limit`);
       signalActiveGroups('SIGTERM');
       // Each step settles when its process has exited and its group and its leftovers have been checked.
-      void Promise.allSettled([...pending]).then(() => {
+      void Promise.allSettled(pending).then(() => {
         process.exit(process.exitCode === undefined || process.exitCode === 0 ? interrupted : process.exitCode);
       });
     });

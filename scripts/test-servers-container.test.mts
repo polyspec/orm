@@ -10,7 +10,7 @@ import { createServer, type Socket } from 'node:net';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, withTemporaryDirectory } from '../tests/testcase.mts';
 import { containerName, remove, run, start, type Context } from './test-servers-container.mts';
-import { ORM_ACCOUNTS_SQL, REPLICA_PARTIAL_REVOKES_SQL } from './test-servers.mts';
+import { ORM_ACCOUNTS_SQL } from './test-servers.mts';
 
 // standIn writes the stand-in container program into dir and returns its path and the directory of its containers. Its
 // run is attached, as the script runs the container: it records the container with its process ID, prints the log lines
@@ -166,10 +166,10 @@ caseTest('a start of MySQL starts its replica, which follows the primary from th
         [replica, "CHANGE REPLICATION SOURCE TO SOURCE_HOST='192.168.64.9', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1"],
         [primary, 'CREATE DATABASE orm_test'],
       ], 'the replica does not follow the primary before the databases are created');
-      // As the native servers have them: the replica refuses a catalog row change through partial_revokes (INT-119), and the
-      // primary has the accounts of the user orm.
+      // As the native servers have them: the primary has the accounts of the user orm, and the replica sets nothing that the
+      // native replica does not set (a catalog row change no longer reads partial_revokes, T426-2).
       const [, replicaSql, databasesSql] = execs.map(([, , , , sql]) => sql ?? '');
-      assert.ok(replicaSql?.includes(REPLICA_PARTIAL_REVOKES_SQL), `the replica does not enable partial_revokes: ${replicaSql}`);
+      assert.ok(replicaSql?.endsWith('SET GLOBAL super_read_only = ON'), `the replica sets more than the native replica does: ${replicaSql}`);
       assert.ok(databasesSql?.includes(ORM_ACCOUNTS_SQL), `the primary has no accounts of the user orm: ${databasesSql}`);
       remove(context);
     });
