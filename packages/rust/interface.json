@@ -1731,6 +1731,236 @@
           }
         }
       ]
+    },
+    {
+      "id": "schema",
+      "name": [
+        "schema"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "core_type": "polyspec_orm::Schema",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "schema.load",
+          "name": [
+            "load"
+          ],
+          "kind": "static",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "manifest",
+                "text"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "external",
+                "text"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "manifest",
+                "hash"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "schema"
+          },
+          "raises": [
+            "polyspec_orm::Kind::SchemaInvalid",
+            "polyspec_orm::Kind::SchemaHashMismatch"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Schema::load"
+          }
+        },
+        {
+          "id": "schema.hash",
+          "name": [
+            "hash"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "text",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Schema::hash",
+            "receiver": "&self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "query",
+      "name": [
+        "query"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "core_type": "polyspec_orm::Query",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "query.new",
+          "name": [
+            "new"
+          ],
+          "kind": "static",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "schema"
+              ],
+              "type": {
+                "unit": "schema"
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "entity"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "query"
+          },
+          "raises": [
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::SchemaInvalid",
+            "polyspec_orm::Kind::SchemaHashMismatch"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::new"
+          }
+        },
+        {
+          "id": "query.entity",
+          "name": [
+            "entity"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "text",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::entity",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.connect",
+          "name": [
+            "connect"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "connection"
+              ],
+              "type": {
+                "unit": "connection"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::connect",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.order_by",
+          "name": [
+            "order",
+            "by"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "spec"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::order_by",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.get_count",
+          "name": [
+            "get",
+            "count"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "int64",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::ColumnUnknown",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::get_count",
+            "receiver": "&self"
+          }
+        }
+      ]
     }
   ],
   "changes": [],
@@ -1754,6 +1984,31 @@
       "member": "aes_keyring.versions",
       "file": "contracts/interface/core.json",
       "group": "aes_keyring.versions"
+    },
+    {
+      "member": "schema.load",
+      "file": "contracts/interface/core.json",
+      "group": "schema.load"
+    },
+    {
+      "member": "schema.hash",
+      "file": "contracts/interface/core.json",
+      "group": "schema.hash"
+    },
+    {
+      "member": "query.new",
+      "file": "contracts/interface/core.json",
+      "group": "query.new"
+    },
+    {
+      "member": "query.entity",
+      "file": "contracts/interface/core.json",
+      "group": "query.entity"
+    },
+    {
+      "member": "query.get_count",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_count"
     }
   ]
 }

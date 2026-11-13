@@ -172,7 +172,7 @@ impl<M> Default for Collection<M> {
     }
 }
 
-impl<M: Model> Collection<M> {
+impl<M: AnyModel + Clone> Collection<M> {
     pub(crate) fn put(&mut self, k: Key, v: M) {
         if !self.items.contains_key(&k) {
             self.keys.push(k.clone());
@@ -239,23 +239,9 @@ impl<M: Model> Collection<M> {
     pub fn connect(mut self, connection: impl Into<crate::Connection>) -> Self {
         let connection = connection.into();
         for m in self.items.values_mut() {
-            m.core_mut().connect(connection.clone());
+            m.core_dyn_mut().connect(connection.clone());
         }
         self
-    }
-
-    /// Deletes every model in one transaction; `delete(true)` first deletes
-    /// loaded related rows.
-    pub async fn delete(&self, recursive: bool) -> Result<()> {
-        let Some(first) = self.first() else { return Ok(()) };
-        let conn = first.core().conn.clone();
-        crate::model::in_transaction(&conn, |unit: crate::Connection| async move {
-            for m in self.models() {
-                crate::model::delete_row(m, recursive, Some(&unit)).await?;
-            }
-            Ok(())
-        })
-        .await
     }
 
     /// The JSON text of the models: an array of the models' JSON output.
@@ -269,6 +255,22 @@ impl<M: Model> Collection<M> {
     }
 }
 
+impl<M: Model> Collection<M> {
+    /// Deletes every model in one transaction; `delete(true)` first deletes
+    /// loaded related rows.
+    pub async fn delete(&self, recursive: bool) -> Result<()> {
+        let Some(first) = self.first() else { return Ok(()) };
+        let conn = first.core().conn.clone();
+        crate::model::in_transaction(&conn, |unit: crate::Connection| async move {
+            for m in self.models() {
+                crate::model::delete_row(m, recursive, Some(&unit)).await?;
+            }
+            Ok(())
+        })
+        .await
+    }
+}
+
 /// A collection seen without its model type.
 pub trait AnyCollection: Any + Send + Sync {
     fn models_dyn(&self) -> Vec<&dyn AnyModel>;
@@ -277,7 +279,7 @@ pub trait AnyCollection: Any + Send + Sync {
     fn to_json_dyn(&self) -> crate::Result<String>;
 }
 
-impl<M: Model> AnyCollection for Collection<M> {
+impl<M: AnyModel + Clone> AnyCollection for Collection<M> {
     fn models_dyn(&self) -> Vec<&dyn AnyModel> {
         self.models().map(|m| m as &dyn AnyModel).collect()
     }
@@ -295,7 +297,7 @@ impl<M: Model> AnyCollection for Collection<M> {
     }
 }
 
-impl<M: Model> serde::Serialize for Collection<M> {
+impl<M: AnyModel + Clone> serde::Serialize for Collection<M> {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
         crate::model::raw_json(self.to_json()).map_err(serde::ser::Error::custom)?.serialize(s)
     }

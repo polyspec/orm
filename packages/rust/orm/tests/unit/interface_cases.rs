@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 
-use crate::{AesKeyring, Config, Db, Error};
+use crate::or_panic::OrPanic as _;
+use crate::{AesKeyring, Config, Db, Error, Query, Schema};
 
 const CONTRACT: &str = include_str!("../../../interface.json");
 const CASES: &str = include_str!("../../../../../contracts/interface/core.json");
@@ -16,6 +17,8 @@ const CASES: &str = include_str!("../../../../../contracts/interface/core.json")
 enum Instance {
     Db(Db),
     Keyring(AesKeyring),
+    Schema(Schema),
+    Query(Box<Query>),
 }
 
 /// What a member returned: a value in its case form, or an instance.
@@ -34,12 +37,12 @@ fn text(args: &Map<String, Value>, name: &str, member: &str) -> String {
 
 fn uint(args: &Map<String, Value>, name: &str, member: &str) -> u32 {
     let n = field(args, name, member).as_u64().unwrap_or_else(|| panic!("{member}: {name} is no unsigned integer"));
-    u32::try_from(n).unwrap_or_else(|_| panic!("{member}: {name} {n} does not fit u32"))
+    u32::try_from(n).or_panic(|error| format!("{member}: {name} {n} does not fit u32: {error}"))
 }
 
 fn int(value: &Value, what: &str) -> i32 {
     let n = value.as_i64().unwrap_or_else(|| panic!("{what} is no integer"));
-    i32::try_from(n).unwrap_or_else(|_| panic!("{what} {n} does not fit i32"))
+    i32::try_from(n).or_panic(|error| format!("{what} {n} does not fit i32: {error}"))
 }
 
 /// A keyed map with the key kind `int` and text values: a list of `[{"int": n}, text]`.
@@ -62,10 +65,13 @@ fn config(value: &Value, member: &str) -> Config {
     for (name, value) in fields {
         let what = format!("{member}: cfg.{name}");
         let size = || {
-            usize::try_from(value.as_u64().unwrap_or_else(|| panic!("{what} is no unsigned integer"))).unwrap_or_else(|_| panic!("{what} does not fit usize"))
+            usize::try_from(value.as_u64().unwrap_or_else(|| panic!("{what} is no unsigned integer")))
+                .or_panic(|error| format!("{what} does not fit usize: {error}"))
         };
-        let ms =
-            || u32::try_from(value.as_u64().unwrap_or_else(|| panic!("{what} is no unsigned integer"))).unwrap_or_else(|_| panic!("{what} does not fit u32"));
+        let ms = || {
+            u32::try_from(value.as_u64().unwrap_or_else(|| panic!("{what} is no unsigned integer")))
+                .or_panic(|error| format!("{what} does not fit u32: {error}"))
+        };
         match name.as_str() {
             "aes_key" => cfg.aes_key = value.as_str().unwrap_or_else(|| panic!("{what} is no text")).to_owned(),
             "blind_index_key" => cfg.blind_index_key = value.as_str().unwrap_or_else(|| panic!("{what} is no text")).to_owned(),
@@ -86,6 +92,24 @@ fn config(value: &Value, member: &str) -> Config {
 /// Calls the core function that the contract names for `member`.
 async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
     Ok(match (member, receiver) {
+        ("schema.load", None) => Returned::Instance(Instance::Schema(Schema::load(
+            &text(args, "manifest_text", member),
+            &text(args, "external_text", member),
+            &text(args, "manifest_hash", member),
+        )?)),
+        ("schema.hash", Some(Instance::Schema(schema))) => Returned::Value(Value::from(schema.hash())),
+        ("query.new", None) => {
+            let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
+                panic!("{member}: schema is no instance of schema")
+            };
+            Returned::Instance(Instance::Query(Box::new(Query::new(&schema, &text(args, "entity", member))?)))
+        }
+        ("query.entity", Some(Instance::Query(query))) => Returned::Value(Value::from(query.entity())),
+        ("query.order_by", Some(Instance::Query(query))) => {
+            query.order_by(&text(args, "spec", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
         ("db.connect", None) => Returned::Instance(Instance::Db(
             Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
         )),

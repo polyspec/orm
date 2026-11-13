@@ -71,23 +71,10 @@ pub fn load_set(files: &dbspec::Set) -> Result<DocumentSet, String> {
     Ok(DocumentSet { manifest_text: manifest.manifest_text, external_text: manifest.external_text, manifest_hash: manifest.manifest_hash, model })
 }
 
-/// Stages the executor codec applies (`aes`, `hex`; `ip` is left out).
-pub fn executor_stages(c: &Field) -> impl Iterator<Item = &str> {
-    c.codec.iter().map(String::as_str).filter(|s| !matches!(*s, "aes" | "hex" | "ip"))
-}
-
-/// Columns that have an executor codec stage.
-pub fn styled(c: &Field) -> bool {
-    executor_stages(c).next().is_some()
-}
+pub use polyspec_orm_schema::chain::{function_column, styled};
 
 pub fn numeric(c: &Field) -> bool {
     !styled(c) && matches!(c.ty.name(), "i16" | "i32" | "i64" | "f64" | "decimal")
-}
-
-/// Columns that take a column function.
-pub fn function_column(c: &Field) -> bool {
-    !styled(c) && matches!(c.ty.name(), "date" | "datetime")
 }
 
 const RESERVED_SEGMENTS: &[&str] = &["and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext", "tuple"];

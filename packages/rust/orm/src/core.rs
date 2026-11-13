@@ -77,9 +77,9 @@ pub(crate) enum PredValue {
     One(Param),
     List(Vec<Param>),
     Pair(Param, Param),
-    Tuples(Vec<&'static str>, Vec<Vec<Param>>),
+    Tuples(Vec<String>, Vec<Vec<Param>>),
     Fulltext(Vec<String>, Param),
-    Ref(u64, &'static str),
+    Ref(u64, String),
     Sub(Box<Core>),
     ColumnFn(Func, Param),
     ValueFn(Func),
@@ -419,7 +419,27 @@ impl Core {
         }
         for (i, (key, arg)) in keys.iter().zip(args).enumerate() {
             let c = if i == 0 { conn } else { key.conn };
-            match predicate(key, arg, keys.len() == 1) {
+            let parsed = Key { op: key.op, column: key.column, columns: key.columns.iter().map(|c| (*c).to_owned()).collect(), compare: key.compare };
+            match predicate(parsed, arg, keys.len() == 1) {
+                Ok(p) => self.add(c, CondKind::Pred(p)),
+                Err(e) => {
+                    self.fail_err(e);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Appends the conditions of a chain name that `parse_chain` read (CORE-82). Each key receives one argument.
+    pub(crate) fn chain_parsed(&mut self, conn: &'static str, keys: &[polyspec_orm_schema::chain::ChainKey], args: Vec<Arg>) {
+        if keys.len() != args.len() {
+            self.fail(format!("the condition expects {} values", keys.len()));
+            return;
+        }
+        for (i, (key, arg)) in keys.iter().zip(args).enumerate() {
+            let c = if i == 0 { conn } else { key.conn };
+            let parsed = Key { op: key.op, column: &key.column, columns: key.columns.clone(), compare: &key.compare };
+            match predicate(parsed, arg, keys.len() == 1) {
                 Ok(p) => self.add(c, CondKind::Pred(p)),
                 Err(e) => {
                     self.fail_err(e);
@@ -674,7 +694,15 @@ impl Core {
     }
 }
 
-fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> {
+/// One key of a chain, of a generated chain method or of a chain name read at run time.
+struct Key<'a> {
+    op: &'static str,
+    column: &'a str,
+    columns: Vec<String>,
+    compare: &'a str,
+}
+
+fn predicate(key: Key<'_>, arg: Arg, single: bool) -> crate::Result<PredSpec> {
     let op_of = |op: &str| polyspec_orm_schema::dbspec::comparison_operator(op).unwrap_or("eq");
     let pred = |op: &'static str, value: PredValue| PredSpec { column: key.column.to_owned(), op, value };
     match key.op {
@@ -682,11 +710,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
             let Arg::Value(Value::One(Param::Str(text))) = arg else {
                 return Err(config("fulltext search text must be a string"));
             };
-            return Ok(PredSpec {
-                column: String::new(),
-                op: key.op,
-                value: PredValue::Fulltext(key.columns.iter().map(|c| (*c).to_owned()).collect(), Param::Str(text)),
-            });
+            return Ok(PredSpec { column: String::new(), op: key.op, value: PredValue::Fulltext(key.columns, Param::Str(text)) });
         }
         "tuple" | "ne_tuple" => {
             let Arg::Tuples(rows) = arg else {
@@ -696,7 +720,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
                 return Err(Error::new(crate::Kind::EmptyIn, "tuple condition received an empty list"));
             }
             let op = if key.op == "tuple" { "tuple_in" } else { "tuple_not_in" };
-            return Ok(PredSpec { column: String::new(), op, value: PredValue::Tuples(key.columns.to_vec(), rows) });
+            return Ok(PredSpec { column: String::new(), op, value: PredValue::Tuples(key.columns, rows) });
         }
         _ => {}
     }
@@ -712,7 +736,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
             "ge" => "gte_col",
             _ => "lte_col",
         };
-        return Ok(pred(op, PredValue::Ref(id, key.compare)));
+        return Ok(pred(op, PredValue::Ref(id, key.compare.to_owned())));
     }
     let eq = key.op.is_empty() || key.op == "ne";
     match arg {

@@ -158,25 +158,23 @@ the core that differ from the rules that the language implementations of `legacy
   time. Text that is no manifest is `schema_invalid` and text that does not hash to `manifest_hash` is
   `schema_hash_mismatch`, both before any connection. The process keeps the text of a loaded schema until it ends, one
   copy per manifest text, external text and hash, because a request and a cached plan refer to their schema for the
-  life of the process; a refused text is not kept. Not implemented.
+  life of the process; a refused text is not kept.
 - **CORE-81** `Query` is the query and the row state of one entity that is chosen by its name:
   `Query::new(schema, entity)`. An entity that the schema does not have is `entity_unknown`. A `Query` runs after
   `connect(connection)`, where the connection is a `Db` or a `Tx` (CORE-20); a terminal of a `Query` with no connection
-  is `config`. The process keeps one descriptor per entity of a schema that a `Query` named. Not implemented.
+  is `config`. The process keeps one descriptor per entity of a schema that a `Query` named.
 - **CORE-82** `where(chain, values)` adds the conditions of a chain name of DSL-36 and DSL-37, such as
-  `ServiceSeqGtAndIsClose`, with one value per key. A name that starts with `And` or `Or` joins its first condition to
+  `GtServiceSeqAndIsClose`, with one value per key. A name that starts with `And` or `Or` joins its first condition to
   the conditions before it with that connector. The name is read by `parse_chain` of the crate `polyspec-orm-schema`,
   the one function that reads the chain names of the generated models too. A name that is no chain of the entity, an
   operator that its column does not allow and a number of values other than the number of keys are `config`, which
   the next terminal returns, as it returns a builder error of a generated model. `order_by(spec)` adds the order of a
   name such as `SeqDescAndLabelAsc`, each key a column and `Asc` or `Desc`, read by `parse_order` of the same crate.
-  Not implemented.
 - **CORE-83** The terminals `get`, `gets`, `get_count` and `get_query` run the query as the terminals of a generated
   model do, and `get_by(chain, values)`, `gets_by(chain, values)` and `get_count_by(chain, values)` run it with the
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row; a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
-  Not implemented.
 - **CORE-84** Not implemented: the writes of a `Query` (`set`, `create`, `creates`, `update`, `save`, `delete`,
   `restore`, `restoreOrCreate`, `expectRevision`), `join`, `leftJoin`, `match`, `alias`, `addColumn`, the groups
   (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `whereIn`, `compare`, `getsCount`,

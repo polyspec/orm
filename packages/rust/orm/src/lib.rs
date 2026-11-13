@@ -24,6 +24,7 @@ pub mod listen;
 pub mod markdown;
 pub mod model;
 pub mod plan;
+pub mod query;
 mod request;
 pub mod row;
 pub mod schema;
@@ -53,6 +54,7 @@ pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscript
 pub use kind::Kind;
 pub use model::{AnyModel, Entity, Model};
 pub use polyspec_json;
+pub use query::Query;
 pub use schema::{Manifest, Schema};
 pub use serde;
 pub use serde_json;

@@ -87,6 +87,23 @@ impl Schema {
         Schema { text: manifest_text, external: external_text, hash: manifest_hash, manifest: OnceLock::new() }
     }
 
+    /// The schema of a manifest that is given at run time (CORE-80). A text that is no manifest is `schema_invalid` and
+    /// a text that does not hash to `manifest_hash` is `schema_hash_mismatch`. The process keeps the three texts of a
+    /// loaded schema until it ends, one copy per text, because a request and a cached plan refer to their schema for
+    /// the life of the process; a refused text is not kept.
+    pub fn load(manifest_text: &str, external_text: &str, manifest_hash: &str) -> Result<Schema> {
+        let manifest = Manifest::load_set(manifest_text, external_text, manifest_hash).map_err(|error| {
+            let (kind, text) = manifest_refusal(error);
+            Error::new(kind, text)
+        })?;
+        let schema = Schema::with_external(kept(manifest_text)?, kept(external_text)?, kept(manifest_hash)?);
+        // The model that the check built is the model of the value, so the first use does not build it again.
+        if schema.manifest.set(Ok(Arc::new(manifest))).is_err() {
+            return Err(Error::internal("a new schema value already held a runtime model"));
+        }
+        Ok(schema)
+    }
+
     /// The text of the tables the set uses from external documents. Empty if no external documents are used.
     pub fn external(&self) -> &'static str {
         self.external
@@ -132,16 +149,32 @@ impl Schema {
     /// runtime model.
     pub fn manifest(&self) -> Result<Arc<Manifest>> {
         self.manifest
-            .get_or_init(|| {
-                Manifest::load_set(self.text, self.external, self.hash).map(Arc::new).map_err(|e| match e {
-                    // A failure that is no refusal of the manifest itself, such as a configuration error, is SCHEMA_INVALID.
-                    error if error.kind() == crate::Kind::Config => (crate::Kind::SchemaInvalid, error.to_string()),
-                    error => (error.kind(), error.text().to_owned()),
-                })
-            })
+            .get_or_init(|| Manifest::load_set(self.text, self.external, self.hash).map(Arc::new).map_err(manifest_refusal))
             .clone()
             .map_err(|(kind, msg)| Error::new(kind, msg))
     }
+}
+
+/// The kind and the text of a manifest that did not load.
+fn manifest_refusal(error: Error) -> (crate::Kind, String) {
+    // A failure that is no refusal of the manifest itself, such as a configuration error, is SCHEMA_INVALID.
+    if error.kind() == crate::Kind::Config {
+        (crate::Kind::SchemaInvalid, error.to_string())
+    } else {
+        (error.kind(), error.text().to_owned())
+    }
+}
+
+/// The copy of `text` that the process keeps until it ends (CORE-80): one per text.
+fn kept(text: &str) -> Result<&'static str> {
+    static KEPT: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+    let mut kept = KEPT.lock().map_err(|_poisoned| Error::internal("the lock of the kept schema texts was poisoned by a panic"))?;
+    if let Some(found) = kept.iter().find(|found| **found == text) {
+        return Ok(found);
+    }
+    let copy: &'static str = Box::leak(text.to_owned().into_boxed_str());
+    kept.push(copy);
+    Ok(copy)
 }
 
 #[cfg(test)]

@@ -1,23 +1,412 @@
 {
-  "comment": "The cases of the members of packages/rust/interface.json that need no database (docs/spec/core.md CORE-70 to CORE-72), one group per member in the case form of binding G-5: the keys of a case are the parameters of its member, a receiver is an instance value {new, args, then}, a keyed map is a list of [key, value] with the key {int}, and a class result is observed by after. A failure is raises: its kind, its category and its whole message (CORE-12).",
+  "comment": "The cases of the members of packages/rust/interface.json that need no database (docs/spec/core.md CORE-70 to CORE-72, CORE-80 to CORE-83), one group per member in the case form of binding G-5: the keys of a case are the parameters of its member, a receiver is an instance value {new, args, then}, a keyed map is a list of [key, value] with the key {int}, and a class result is observed by after. A failure is raises: its kind, its category and its whole message (CORE-12).",
   "db.connect": [
-    {"id": "no_uri", "rule": "CFG-20", "dsn": "not a uri", "pool_size": 1, "cfg": {}, "raises": {"kind": "config", "category": "value", "message": "config: dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://"}},
-    {"id": "unsupported_scheme", "rule": "CFG-1", "dsn": "oracle://localhost/app", "pool_size": 1, "cfg": {}, "raises": {"kind": "config", "category": "value", "message": "config: unsupported DSN scheme \"oracle\"; want mysql, postgres, sqlite, or markdown"}},
-    {"id": "fragment", "rule": "CFG-20", "dsn": "sqlite:///var/app.sqlite#part", "pool_size": 1, "cfg": {}, "raises": {"kind": "config", "category": "value", "message": "config: sqlite DSN has a fragment, which no connection reads"}},
-    {"id": "sqlite_relative_path", "rule": "CFG-11", "dsn": "sqlite://app.sqlite", "pool_size": 1, "cfg": {}, "raises": {"kind": "config", "category": "value", "message": "config: sqlite DSN must include an absolute database path"}},
-    {"id": "idle_size_above_pool_size", "rule": "CFG-5", "dsn": "sqlite:///var/app.sqlite", "pool_size": 2, "cfg": {"pool_idle_size": 3}, "raises": {"kind": "config", "category": "value", "message": "config: pool idle size must be between 0 and the pool size 2"}},
-    {"id": "aes_version_not_declared", "rule": "COD-8", "dsn": "sqlite:///var/app.sqlite", "pool_size": 1, "cfg": {"aes_version": 2, "aes_keys": [[{"int": 1}, "k1"]]}, "raises": {"kind": "config", "category": "value", "message": "config: aes current version is not declared"}}
+    {
+      "id": "no_uri",
+      "rule": "CFG-20",
+      "dsn": "not a uri",
+      "pool_size": 1,
+      "cfg": {},
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://"
+      }
+    },
+    {
+      "id": "unsupported_scheme",
+      "rule": "CFG-1",
+      "dsn": "oracle://localhost/app",
+      "pool_size": 1,
+      "cfg": {},
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: unsupported DSN scheme \"oracle\"; want mysql, postgres, sqlite, or markdown"
+      }
+    },
+    {
+      "id": "fragment",
+      "rule": "CFG-20",
+      "dsn": "sqlite:///var/app.sqlite#part",
+      "pool_size": 1,
+      "cfg": {},
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: sqlite DSN has a fragment, which no connection reads"
+      }
+    },
+    {
+      "id": "sqlite_relative_path",
+      "rule": "CFG-11",
+      "dsn": "sqlite://app.sqlite",
+      "pool_size": 1,
+      "cfg": {},
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: sqlite DSN must include an absolute database path"
+      }
+    },
+    {
+      "id": "idle_size_above_pool_size",
+      "rule": "CFG-5",
+      "dsn": "sqlite:///var/app.sqlite",
+      "pool_size": 2,
+      "cfg": {
+        "pool_idle_size": 3
+      },
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: pool idle size must be between 0 and the pool size 2"
+      }
+    },
+    {
+      "id": "aes_version_not_declared",
+      "rule": "COD-8",
+      "dsn": "sqlite:///var/app.sqlite",
+      "pool_size": 1,
+      "cfg": {
+        "aes_version": 2,
+        "aes_keys": [
+          [
+            {
+              "int": 1
+            },
+            "k1"
+          ]
+        ]
+      },
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: aes current version is not declared"
+      }
+    }
   ],
   "aes_keyring.constructor": [
-    {"id": "two_versions", "rule": "INT-130", "keys": [[{"int": 2}, "k2"], [{"int": 1}, "k1"]], "current": 2, "after": [{"on": "result", "call": "aes_keyring.current", "args": {}, "result": 2}, {"on": "result", "call": "aes_keyring.versions", "args": {}, "result": [1, 2]}]},
-    {"id": "current_not_declared", "rule": "INT-130", "keys": [[{"int": 1}, "k1"]], "current": 2, "raises": {"kind": "config", "category": "value", "message": "config: aes current version is not declared"}},
-    {"id": "version_zero", "rule": "INT-130", "keys": [[{"int": 0}, "k0"]], "current": 0, "raises": {"kind": "config", "category": "value", "message": "config: aes key list holds an invalid version or an empty key"}},
-    {"id": "empty_key", "rule": "INT-130", "keys": [[{"int": 1}, ""]], "current": 1, "raises": {"kind": "config", "category": "value", "message": "config: aes key list holds an invalid version or an empty key"}}
+    {
+      "id": "two_versions",
+      "rule": "INT-130",
+      "keys": [
+        [
+          {
+            "int": 2
+          },
+          "k2"
+        ],
+        [
+          {
+            "int": 1
+          },
+          "k1"
+        ]
+      ],
+      "current": 2,
+      "after": [
+        {
+          "on": "result",
+          "call": "aes_keyring.current",
+          "args": {},
+          "result": 2
+        },
+        {
+          "on": "result",
+          "call": "aes_keyring.versions",
+          "args": {},
+          "result": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "current_not_declared",
+      "rule": "INT-130",
+      "keys": [
+        [
+          {
+            "int": 1
+          },
+          "k1"
+        ]
+      ],
+      "current": 2,
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: aes current version is not declared"
+      }
+    },
+    {
+      "id": "version_zero",
+      "rule": "INT-130",
+      "keys": [
+        [
+          {
+            "int": 0
+          },
+          "k0"
+        ]
+      ],
+      "current": 0,
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: aes key list holds an invalid version or an empty key"
+      }
+    },
+    {
+      "id": "empty_key",
+      "rule": "INT-130",
+      "keys": [
+        [
+          {
+            "int": 1
+          },
+          ""
+        ]
+      ],
+      "current": 1,
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: aes key list holds an invalid version or an empty key"
+      }
+    }
   ],
   "aes_keyring.current": [
-    {"id": "current", "rule": "INT-130", "receiver": {"new": "aes_keyring.constructor", "args": {"keys": [[{"int": 1}, "k1"], [{"int": 3}, "k3"]], "current": 3}}, "result": 3}
+    {
+      "id": "current",
+      "rule": "INT-130",
+      "receiver": {
+        "new": "aes_keyring.constructor",
+        "args": {
+          "keys": [
+            [
+              {
+                "int": 1
+              },
+              "k1"
+            ],
+            [
+              {
+                "int": 3
+              },
+              "k3"
+            ]
+          ],
+          "current": 3
+        }
+      },
+      "result": 3
+    }
   ],
   "aes_keyring.versions": [
-    {"id": "ascending", "rule": "INT-74", "receiver": {"new": "aes_keyring.constructor", "args": {"keys": [[{"int": 3}, "k3"], [{"int": 1}, "k1"]], "current": 1}}, "result": [1, 3]}
+    {
+      "id": "ascending",
+      "rule": "INT-74",
+      "receiver": {
+        "new": "aes_keyring.constructor",
+        "args": {
+          "keys": [
+            [
+              {
+                "int": 3
+              },
+              "k3"
+            ],
+            [
+              {
+                "int": 1
+              },
+              "k1"
+            ]
+          ],
+          "current": 1
+        }
+      },
+      "result": [
+        1,
+        3
+      ]
+    }
+  ],
+  "schema.load": [
+    {
+      "id": "clock",
+      "rule": "CORE-80",
+      "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+      "external_text": "",
+      "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb",
+      "after": [
+        {
+          "on": "result",
+          "call": "schema.hash",
+          "args": {},
+          "result": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      ]
+    },
+    {
+      "id": "no_manifest",
+      "rule": "CORE-80",
+      "manifest_text": "not a manifest",
+      "external_text": "",
+      "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb",
+      "raises": {
+        "kind": "schema_invalid",
+        "category": "value",
+        "message": "schema_invalid: 1:1 header: a manifest text starts with a document header"
+      }
+    },
+    {
+      "id": "edited_text",
+      "rule": "CORE-80",
+      "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(64)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+      "external_text": "",
+      "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb",
+      "raises": {
+        "kind": "schema_hash_mismatch",
+        "category": "value",
+        "message": "schema_hash_mismatch: models were generated from manifest sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb but the embedded manifest is sha256:33581ba3e25c1e0fc4856d2ac0534535c96b0c0e30e2e39af937d68d15c37e5b"
+      }
+    }
+  ],
+  "schema.hash": [
+    {
+      "id": "hash",
+      "rule": "INT-133",
+      "receiver": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "result": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+    }
+  ],
+  "query.new": [
+    {
+      "id": "entity_of_the_schema",
+      "rule": "CORE-81",
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "entity": "clock_event",
+      "after": [
+        {
+          "on": "result",
+          "call": "query.entity",
+          "args": {},
+          "result": "clock_event"
+        }
+      ]
+    },
+    {
+      "id": "entity_unknown",
+      "rule": "CORE-81",
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "entity": "clock_tick",
+      "raises": {
+        "kind": "entity_unknown",
+        "category": "value",
+        "message": "entity_unknown: clock_tick"
+      }
+    }
+  ],
+  "query.entity": [
+    {
+      "id": "name",
+      "rule": "CORE-81",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "result": "clock_event"
+    }
+  ],
+  "query.get_count": [
+    {
+      "id": "no_connection",
+      "rule": "CORE-81",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
+      }
+    },
+    {
+      "id": "refused_order",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.order_by",
+            "args": {
+              "spec": "SeqUp"
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: orderBySeqUp: each key ends with Asc or Desc"
+      }
+    }
   ]
 }

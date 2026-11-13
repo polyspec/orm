@@ -388,7 +388,7 @@ fn validate_host_input(owner: &Core, p: &PredSpec) -> Result<()> {
         PredValue::One(v) | PredValue::ColumnFn(_, v) => vec![(p.column.as_str(), v)],
         PredValue::List(list) => list.iter().map(|v| (p.column.as_str(), v)).collect(),
         PredValue::Pair(a, b) => vec![(p.column.as_str(), a), (p.column.as_str(), b)],
-        PredValue::Tuples(cols, rows) => rows.iter().flat_map(|row| cols.iter().copied().zip(row)).collect(),
+        PredValue::Tuples(cols, rows) => rows.iter().flat_map(|row| cols.iter().map(String::as_str).zip(row)).collect(),
         _ => return Ok(()),
     };
     let manifest = owner.ent.schema.manifest()?;
@@ -423,7 +423,7 @@ fn pred(r: &mut Req, p: &PredSpec, owner: &Core, f: &mut Frame<'_>) -> Option<ir
             out.ps.push(r.p(b.clone()));
         }
         PredValue::Tuples(cols, rows) => {
-            out.cols = cols.iter().map(|c| c.to_string()).collect();
+            out.cols = cols.clone();
             for row in rows {
                 if row.len() != cols.len() {
                     r.fail(config("every tuple needs one value per column"));
@@ -439,7 +439,7 @@ fn pred(r: &mut Req, p: &PredSpec, owner: &Core, f: &mut Frame<'_>) -> Option<ir
             out.p = Some(r.p(value.clone()));
         }
         PredValue::Ref(id, column) => match f.path_of(*id) {
-            Ok(path) => out.r#ref = Some(ir::ColRef { path, column: column.to_string() }),
+            Ok(path) => out.r#ref = Some(ir::ColRef { path, column: column.clone() }),
             Err(e) => {
                 r.fail(e);
                 return None;

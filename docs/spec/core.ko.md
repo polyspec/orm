@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: de76f2f6a0a41fcda9aaeb09b32f690375accbaac7db3d9d2d981ebfe8a9d462 -->
+<!-- source-sha256: 022e35e3ecbf70d760aaf80cbda11b1f716f3430e2da2b019d3623ac54597636 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이고, PHP·Python·Node·Go 바인딩은 그 인터페이스 계약
@@ -138,22 +138,22 @@
   manifest가 아닌 텍스트는 `schema_invalid`이고 `manifest_hash`로 hash되지 않는 텍스트는 `schema_hash_mismatch`이며,
   둘 다 어떤 연결보다 앞선다. 프로세스는 불러온 schema의 텍스트를 끝날 때까지 가지며 manifest 텍스트, external 텍스트,
   hash마다 사본 하나를 둔다. 요청과 cache된 plan이 프로세스의 수명 동안 자기 schema를 가리키기 때문이다. 거부된
-  텍스트는 두지 않는다. 구현되지 않았다.
+  텍스트는 두지 않는다.
 - **CORE-81** `Query`는 이름으로 고른 엔티티 하나의 질의이자 행 상태다: `Query::new(schema, entity)`. schema에 없는
   엔티티는 `entity_unknown`이다. `Query`는 `connect(connection)` 뒤에 실행되고 그 연결은 `Db`나 `Tx`다(CORE-20).
   연결이 없는 `Query`의 terminal은 `config`다. 프로세스는 `Query`가 이름한 schema의 엔티티마다 descriptor 하나를
-  가진다. 구현되지 않았다.
-- **CORE-82** `where(chain, values)`는 DSL-36과 DSL-37의 chain 이름(예: `ServiceSeqGtAndIsClose`)의 조건을 key마다 값
+  가진다.
+- **CORE-82** `where(chain, values)`는 DSL-36과 DSL-37의 chain 이름(예: `GtServiceSeqAndIsClose`)의 조건을 key마다 값
   하나로 더한다. `And`나 `Or`로 시작하는 이름은 첫 조건을 그 연결어로 앞선 조건에 잇는다. 이름은 crate
   `polyspec-orm-schema`의 `parse_chain`이 읽으며, 생성된 모델의 chain 이름도 읽는 하나뿐인 함수다. 엔티티의 chain이
   아닌 이름, 열이 허용하지 않는 연산자, key 수와 다른 값의 수는 `config`이고, 생성된 모델의 builder 오류처럼 다음
   terminal이 돌려준다. `order_by(spec)`는 `SeqDescAndLabelAsc` 같은 이름의 순서를 더하며 key마다 열과 `Asc`나
-  `Desc`이고, 같은 crate의 `parse_order`가 읽는다. 구현되지 않았다.
+  `Desc`이고, 같은 crate의 `parse_order`가 읽는다.
 - **CORE-83** terminal `get`, `gets`, `get_count`, `get_query`는 생성된 모델의 terminal처럼 질의를 실행하고,
   `get_by(chain, values)`, `gets_by(chain, values)`, `get_count_by(chain, values)`는 그 chain의 조건을 `and`로 이어
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 돌려준다. 엔티티의 열이 아닌 이름은 `column_unknown`이고
-  행이 읽지 않은 열은 `column_unselected`다. 구현되지 않았다.
+  행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 쓰기(`set`, `create`, `creates`, `update`, `save`, `delete`, `restore`,
   `restoreOrCreate`, `expectRevision`), `join`, `leftJoin`, `match`, `alias`, `addColumn`, 묶음(`andGroup`, `orGroup`,
   `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `whereIn`, `compare`, `getsCount`, `getsPage`,

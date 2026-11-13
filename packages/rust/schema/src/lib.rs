@@ -4,6 +4,7 @@
 //! runtime model, dialect statements, and plan and Mermaid export/import.
 //! `sql` splits SQL text into statements.
 
+pub mod chain;
 pub mod dbspec;
 pub mod message;
 pub mod names;

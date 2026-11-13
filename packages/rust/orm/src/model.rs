@@ -653,9 +653,9 @@ fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Re
     Key::of_values(&values)
 }
 
-struct Loaded {
-    items: Vec<(Key, Box<dyn AnyModel>)>,
-    fetched: HashMap<Key, serde_json::Value>,
+pub(crate) struct Loaded {
+    pub(crate) items: Vec<(Key, Box<dyn AnyModel>)>,
+    pub(crate) fetched: HashMap<Key, serde_json::Value>,
 }
 
 fn terminal(c: &Core) -> Result<Executor> {
@@ -674,7 +674,7 @@ fn terminal_checks(c: &Core) -> Result<()> {
     Ok(())
 }
 
-async fn load(c: &Core, kind: &str) -> Result<Loaded> {
+pub(crate) async fn load(c: &Core, kind: &str) -> Result<Loaded> {
     let ex = terminal(c)?;
     let mut req = build(c, kind);
     let res = select(&ex, &c.conn, &mut req).await?;
@@ -771,10 +771,10 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         q.alias.clear();
         // The parents above are the ones that possible_<col>() keeps, so the statement of the child has no possible.
         q.possible = None;
-        let rights: Vec<&'static str> = ch.matches.iter().map(|&(_, right)| right).collect();
+        let rights: Vec<String> = ch.matches.iter().map(|&(_, right)| right.to_owned()).collect();
         // A composite key filters on the whole child key column set as a tuple.
         let spec = if rights.len() == 1 {
-            PredSpec { column: rights[0].into(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }
+            PredSpec { column: rights[0].clone(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }
         } else {
             PredSpec { column: String::new(), op: "tuple_in", value: PredValue::Tuples(rights, crate::request::pad_in(&values)) }
         };
