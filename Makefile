@@ -334,13 +334,19 @@ GO_TEST_TAGS = $(shell sed -n "s/^export const GO_TEST_TAGS = \[\(.*\)\];$$/\1/p
 test-go: orm-codes ## Run the unit tests of the Go modules with CASES=<pattern>, then those of the Go binding packages/go; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples legacy/packages/go tests -- -count=1 -timeout=0 -tags=$(GO_TEST_TAGS)
 	$(MAKE) --no-print-directory test-go-bindings
-test-php: ## Run the unit tests of the PHP package with CASES=<pattern>; offline
+# The PHP tests read the models of php-models, and QueryCancellationTest loads the SQLite cancellation helper of
+# php-cancel-helper-build, as php-query-cancellation-check gives it: without it the test fails with `SQLite cancellation helper
+# for <platform> is not installed in the polyspec/orm package` (T453).
+test-php: php-vendor-check php-models php-cancel-helper-build ## Run the unit tests of the PHP package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots legacy/packages/php
 # The bind recipes of the Python tests import the slot models that ORM_PYTHON_BIND_MODELS names, as python-unit-check gives
 # them: without them each of their cases fails with `ORM_PYTHON_BIND_MODELS names no model directory` (T451).
 test-python: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
+# The tests run through the case harness of the package (legacy.packages.python.tests.testcase), as every other Python run of the
+# repository does: it gives each case its deadline and the step lines that testcase.step writes, which fails with
+# `step outside a case` under another runner (T452).
 test-python: python-venv-check bind-python-models ## Run the unit tests of the Python package with CASES=<pattern>; offline
-	PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner python --roots legacy/packages/python --venv .venv
+	$(PYTHON_TESTS) -- discover -s legacy/packages/python/tests -t . -p 'test_*.py' $(if $(CASES),-k '$(CASES)')
 # The Rust recipe public_interface runs tests/interfaces/check/main.mts, which reads legacy/packages/ts/dist, so test-rust builds
 # the TypeScript client (typescript-current) and holds it while its tests run (T339-5-1).
 test-rust: typescript-current ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline

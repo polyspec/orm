@@ -14,9 +14,17 @@ namespace Polyspec\Orm\Tests;
 use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 
+// The cases generate the models of request_hook.dbs in the namespace RequestHookCase, and the registry holds one class
+// for each entity of a manifest, so a process that already ran the request hook recipe, which generates the same
+// manifest in its own namespace, refuses them with CONFIG. Each case runs in a process of its own, which does not
+// include the files that the parent process included, the generated models of the recipe among them.
 #[Medium]
+#[RunTestsInSeparateProcesses]
+#[PreserveGlobalState(false)]
 class RequestHookTest extends TestCase
 {
     /** @return iterable<string, array{string}> */

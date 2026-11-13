@@ -1,5 +1,5 @@
 <!-- doc-id: errors -->
-<!-- source-sha256: 78807338154e4115e9136b0c96f9aa2dcd4fb74f08ff4e6b0eda7bac13a85e94 -->
+<!-- source-sha256: ec5bca886526d67293ed3e34436f5045b6126d960182698a3fc7ee128068d024 -->
 # 코어의 오류 kind
 
 - **ERR-1** Rust 코어 `polyspec-orm`의 오류는 닫힌 enum `polyspec_orm::Kind`의 kind 하나를 가지며, 아래 표의 행이 그 변형이다(CORE-10). enum에는 와일드카드 변형이 없으므로 kind를 category로 옮기는 바인딩은 행이 빠지거나 늘면 컴파일되지 않는다.
@@ -19,7 +19,7 @@
 | `column_unknown` | value | engine | 모르는 열 |
 | `relation_unknown` | value | engine | 모르는 relation |
 | `index_unknown` | value | engine | 선언되지 않은 force_index 이름 |
-| `column_alias_conflict` | value | engine | select<Col>As 이름이 열과 겹침 |
+| `column_alias_conflict` | value | engine | `select<Col>As` 이름이 열과 겹침 |
 | `operator_unknown` | value | engine | 모르는 연산자 |
 | `function_unknown` | value | engine | 열·값 함수 목록 밖의 ORM 함수 이름 |
 | `operator_not_allowed` | value | engine | 열의 타입·style에 맞지 않는 연산자 |

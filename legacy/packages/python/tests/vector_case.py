@@ -3,7 +3,9 @@
 # (unittest.main, `python -m unittest` and discover) builds one instance for each case of the file, and the runner
 # reports each one by its id. The subclass belongs to the test module, so unittest runs that module's setUpModule and
 # tearDownModule around its cases.
+import sys
 import unittest
+from fnmatch import fnmatchcase
 from typing import Any, Callable, Iterable
 
 
@@ -52,8 +54,35 @@ def vector_load_tests(
 ):
     """The load_tests protocol of a test module that runs one fixture: one test for each case, named by the case id."""
 
-    def load_tests(_loader, tests, _pattern):
-        tests.addTests(vector_tests(kind, cases, check))
+    def load_tests(loader, tests, _pattern):
+        module = next(
+            (
+                name
+                for name, loaded in list(sys.modules.items())
+                if getattr(loaded, "load_tests", None) is load_tests
+            ),
+            "",
+        )
+        tests.addTests(selected_tests(loader, module, vector_tests(kind, cases, check)))
         return tests
 
     return load_tests
+
+
+def selected_tests(
+    loader: unittest.TestLoader, module: str, suite: unittest.TestSuite
+) -> unittest.TestSuite:
+    """The cases of suite that the name patterns of the run select (-k), as the loader selects the methods of a test
+    class: a case is selected when a pattern matches `<module>.<class>.<case id>`, and a run without a pattern selects
+    every case. Without this the cases of a vector file run whatever the run names, since load_tests adds them."""
+    patterns = loader.testNamePatterns
+    if not patterns:
+        return suite
+    return unittest.TestSuite(
+        test
+        for test in suite
+        if any(
+            fnmatchcase(f"{module}.{type(test).__qualname__}.{test.id()}", pattern)
+            for pattern in patterns
+        )
+    )

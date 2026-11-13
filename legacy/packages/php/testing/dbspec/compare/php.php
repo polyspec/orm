@@ -13,6 +13,7 @@ require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
 require __DIR__ . '/../../../../../tests/dbspec/vectors.php';
 require __DIR__ . '/../../../tests/dbspec_plan_cases.php';
+require_once __DIR__ . '/../../../tests/repository_root.php';
 require __DIR__ . '/php-interface.php';
 
 if ($argc !== 6) {

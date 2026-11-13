@@ -13,6 +13,7 @@ function dbspec_php_interface_program(array $statements): string
         'require ' . var_export("$repository/vendor-php/autoload.php", true) . ';',
         'require ' . var_export("$repository/tests/dbspec/input.php", true) . ';',
         'require ' . var_export("$repository/tests/dbspec/vectors.php", true) . ';',
+        'require_once ' . var_export("$root/packages/php/tests/repository_root.php", true) . ';',
         'require ' . var_export("$root/packages/php/tests/dbspec_plan_cases.php", true) . ';',
         'require ' . var_export("$root/packages/php/testing/dbspec/compare/php-interface.php", true) . ';',
         ...$statements,

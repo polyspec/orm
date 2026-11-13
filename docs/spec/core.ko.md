@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 5bb883963dda0952aa53b518b330e01b766674bd3be1971d561e760080af6e82 -->
+<!-- source-sha256: d30ef9d19855a7283f63b4c4b64f64d2019251249965c9355592acc8cae77d49 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -212,22 +212,22 @@
   `related(name)`은 행의 `relation` 결과의 행을, `related_rows(name)`은 `relations` 결과의 행들을 돌려준다. 결과
   `name`이 없는 행은 `None`을 돌려주고, 다른 형식의 결과는 `internal`이다.
 - **CORE-89** `key_name(column)`은 `gets`의 `Collection`과 그 `Query`의 `relations` 결과의 행을 primary key 대신 열
-  `column`으로 key한다(DSL-70). 엔티티의 열이 아닌 이름은 다음 terminal에서 `config`이고 메시지는 `<column> is not a
-  column of <entity>`다.
+  `column`으로 key한다(DSL-70). 엔티티의 열이 아닌 이름은 다음 terminal에서 `config`이고 메시지는
+  `<column> is not a column of <entity>`다.
 - **CORE-90** `where_in(chain, query)`는 chain 이름 `chain`의 열(연산자가 없거나 `Ne`인 key 하나)이 subquery `query`의
   행 안에 있다는, `Ne`이면 없다는 조건을 더한다. subquery는 그 `add_column`이 더한 열 하나를 읽는다(DSL-53). `And`나
-  `Or`로 시작하는 이름은 그것을 앞선 조건에 잇는다. 다른 연산자의 chain은 `config`이고 메시지는 `a subquery is not
-  accepted by the <op> operator`이며, key가 더 많은 chain은 `config`이고 메시지는 `the condition expects <n> values`다.
-  그 열 하나가 없는 subquery는 `config`이고 메시지는 `a subquery model must add exactly one column with
-  add_column_<col>()`이며, 자기 relation이나 연결을 가진 subquery는 `config`이고, limit이나 lock을 가진 subquery는
+  `Or`로 시작하는 이름은 그것을 앞선 조건에 잇는다. 다른 연산자의 chain은 `config`이고 메시지는
+  `a subquery is not accepted by the <op> operator`이며, key가 더 많은 chain은 `config`이고 메시지는 `the condition expects <n> values`다.
+  그 열 하나가 없는 subquery는 `config`이고 메시지는
+  `a subquery model must add exactly one column with add_column_<col>()`이며, 자기 relation이나 연결을 가진 subquery는 `config`이고, limit이나 lock을 가진 subquery는
   `ir_invalid`이고 메시지는 `subquery may not use limit, relations, lock or columns`다. 각각 다음 terminal이 돌려준다.
 - **CORE-91** `Query`의 쓰기는 생성된 모델의 쓰기와 같다(DSL-100, DSL-103, DSL-106, DSL-108, DSL-110):
   `set(column, value)`는 다음 쓰기를 위해 열에 `orm_value`를 배정하고, `create`는 배정한 행을 넣고 만든 행을 돌려주며,
   `update`는 배정한 값을 행에 쓰고, `delete`는 행을 지우며, `expect_revision(column, revision)`은 다음 `update`나
   `delete`가 정수 열이 `revision`을 가지고 있는 동안에만 쓰게 한다. `update`와 `delete`의 행은 `Query`가 읽은 행이고,
-  행을 읽지 않은 `Query`에서는 `set`이 배정한 primary key의 행이다. 둘 다 없으면 쓰기는 `config`이고 메시지는 `<entity>
-  requires a loaded row or a set primary key <column>`이다. 엔티티의 열이 아닌 이름은 `config`이고 메시지는 `<column> is
-  not a column of <entity>`이며, list나 map은 `codec_encode`이고 메시지는 `the value of a column is a list`나 `a map`이고,
+  행을 읽지 않은 `Query`에서는 `set`이 배정한 primary key의 행이다. 둘 다 없으면 쓰기는 `config`이고 메시지는
+  `<entity> requires a loaded row or a set primary key <column>`이다. 엔티티의 열이 아닌 이름은 `config`이고 메시지는
+  `<column> is not a column of <entity>`이며, list나 map은 `codec_encode`이고 메시지는 `the value of a column is a list`나 `a map`이고,
   열이 받을 수 없는 값은 쓰기에서 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그
   원인의 kind로 실패한다(CORE-10).
 - **CORE-92** `Db` step은 다른 library의 코어가 데이터로 가진 질의이고, host는 자기 판단 없이 그것을 orm으로 실행한다:
@@ -239,13 +239,13 @@
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
   `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
-  형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은 `{"kind": "json_value",
-  "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진 `{"error":
-  {"kind": <kind>, "message": <message>}}`이므로, 부탁한 코어가 실패의 뜻을 정한다. `get`과 `create`의 result는
-  `{"row": <row>}`이고 행이 없으면 `null`이며, `gets`의 result는 collection의 순서와 그 key(CORE-89)를 가진 `{"rows":
-  [{"key": <key>, "row": <row>}, ...]}`, `get_count`의 result는 `{"count": <n>}`, `update`, `delete`, CORE-93의 step의
-  result는 `{}`다. 행은 그 행이 읽은 열을 가진 `{"values": {<column>: <value>}, "related": {<name>: <row> | null |
-  [<row>, ...]}}`이다. step이 아닌 텍스트는 `config`다.
+  형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
+  `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
+  `{"error": {"kind": <kind>, "message": <message>}}`이므로, 부탁한 코어가 실패의 뜻을 정한다. `get`과 `create`의 result는
+  `{"row": <row>}`이고 행이 없으면 `null`이며, `gets`의 result는 collection의 순서와 그 key(CORE-89)를 가진
+  `{"rows": [{"key": <key>, "row": <row>}, ...]}`, `get_count`의 result는 `{"count": <n>}`, `update`, `delete`, CORE-93의 step의
+  result는 `{}`다. 행은 그 행이 읽은 열을 가진
+  `{"values": {<column>: <value>}, "related": {<name>: <row> | null | [<row>, ...]}}`이다. step이 아닌 텍스트는 `config`다.
 - **CORE-93** transaction step `{"kind": "transaction", "options": {..}}`는 뒤따르는 step을 callback이 실행하는
   transaction을 열고(CORE-20), savepoint step `{"kind": "savepoint"}`는 가장 안쪽 것의 savepoint를 열며 그 callback이
   뒤따르는 step을 실행한다(CORE-21). step `{"kind": "end", "rollback": <bool>}`은 가장 안쪽 것의 callback을 끝내며,

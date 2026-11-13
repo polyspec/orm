@@ -201,8 +201,8 @@ the core that differ from the rules that the language implementations of `legacy
   condition, a `list` is the list of values of a key with no operator or with `Ne`, the pair of a `Between` key when
   it holds two values, and the list of value groups of a tuple key, and any other kind but `map` and
   `nested:json_value` is one value. A `map`, a `nested:json_value`, a list inside a list of values and a `Between`
-  list of another length are `codec_encode` at the next terminal, with the message `the value of a condition is
-  <what>`. A name that starts with `And` or `Or` joins its first condition to
+  list of another length are `codec_encode` at the next terminal, with the message
+  `the value of a condition is <what>`. A name that starts with `And` or `Or` joins its first condition to
   the conditions before it with that connector. The name is read by `parse_chain` of the crate `polyspec-orm-schema`,
   the one function that reads the chain names of the generated models too. A name that is no chain of the entity, an
   operator that its column does not allow and a number of values other than the number of keys are `config`, which
@@ -261,27 +261,26 @@ the core that differ from the rules that the language implementations of `legacy
   created row, `update` writes the assignments to the row, `delete` deletes the row, and `expect_revision(column,
   revision)` makes the next `update` or `delete` write only while the integer column holds `revision`. The row of
   `update` and `delete` is the row that the `Query` read, or, in a `Query` that read no row, the row of the primary key
-  that `set` assigned; with neither the write is `config` with the message `<entity> requires a loaded row or a set
-  primary key <column>`. A name that is no column of the entity is `config` with the message `<column> is not a column
-  of <entity>`, a list or a map is `codec_encode` with the message `the value of a column is a list` or `a map`, and a
+  that `set` assigned; with neither the write is `config` with the message
+  `<entity> requires a loaded row or a set primary key <column>`. A name that is no column of the entity is `config` with the message
+  `<column> is not a column of <entity>`, a list or a map is `codec_encode` with the message `the value of a column is a list` or `a map`, and a
   value that the column cannot take is `codec_encode` at the write (CORE-62). A write fails with the kind of its
   cause, such as `duplicate_key` (CORE-10).
 - **CORE-92** The `Db` step is a query of the core of another library, held as data, that a host runs with orm without a
   judgement of its own: `StepRunner::new(schema, connection)` runs its steps on `connection` and `run(step)` takes one
-  step as JSON text and returns its outcome as JSON text. A query step is `{"kind": "query", "query": <query>,
-  "terminal": <terminal>}`: `<query>` is `{"entity": <name>, "calls": [<call>, ...]}`, each call a member of `Query`
+  step as JSON text and returns its outcome as JSON text. A query step is
+  `{"kind": "query", "query": <query>, "terminal": <terminal>}`: `<query>` is `{"entity": <name>, "calls": [<call>, ...]}`, each call a member of `Query`
   with its arguments in the order of the calls (`{"call": "where", "chain": .., "values": [..]}`, `where_in` with
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
   with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, and `expect_revision` with
   `column` and `revision`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
-  value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or `{"error": {"kind":
-  <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
-  a failure means. The result of `get` and `create` is `{"row": <row>}` with `null` for no row, of `gets` `{"rows":
-  [{"key": <key>, "row": <row>}, ...]}` in the order of the collection with its key (CORE-89), of `get_count`
-  `{"count": <n>}`, and of `update`, `delete` and the steps of CORE-93 `{}`. A row is `{"values": {<column>:
-  <value>}, "related": {<name>: <row> | null | [<row>, ...]}}` with the columns that it read. A text that is no step
+  value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
+  `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
+  a failure means. The result of `get` and `create` is `{"row": <row>}` with `null` for no row, of `gets` `{"rows": [{"key": <key>, "row": <row>}, ...]}` in the order of the collection with its key (CORE-89), of `get_count`
+  `{"count": <n>}`, and of `update`, `delete` and the steps of CORE-93 `{}`. A row is
+  `{"values": {<column>: <value>}, "related": {<name>: <row> | null | [<row>, ...]}}` with the columns that it read. A text that is no step
   is `config`.
 - **CORE-93** A transaction step `{"kind": "transaction", "options": {..}}` opens a transaction (CORE-20) whose callback
   runs the steps that follow, and a savepoint step `{"kind": "savepoint"}` opens a savepoint of the innermost one

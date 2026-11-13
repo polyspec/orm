@@ -26,7 +26,7 @@
 | `column_unknown` | value | engine | see the rule that names it |
 | `relation_unknown` | value | engine | see the rule that names it |
 | `index_unknown` | value | engine | force_index name not declared |
-| `column_alias_conflict` | value | engine | select<Col>As name collides with a column |
+| `column_alias_conflict` | value | engine | `select<Col>As` name collides with a column |
 | `operator_unknown` | value | engine | see the rule that names it |
 | `function_unknown` | value | engine | ORM function name outside the column or value function catalog |
 | `operator_not_allowed` | value | engine | op not valid for the column's type/style (ir.OpAllowed) |

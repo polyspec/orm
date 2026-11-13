@@ -11,7 +11,7 @@ import threading
 import unittest
 from pathlib import Path
 from .test_sqlite import generate
-from .vector_case import VectorCase, vector_tests
+from .vector_case import selected_tests, vector_tests, VectorCase
 from polyspec.orm import Collection, Model, OrmError, StyledValue
 from polyspec.orm.values import orm
 from . import testcase
@@ -1141,7 +1141,9 @@ def load_tests(
     loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
 ) -> unittest.TestSuite:
     """One test for each case of cases.json, named by the case id, in the order of the file."""
-    tests.addTests(vector_tests(Case, load_cases(), check_case))
+    tests.addTests(
+        selected_tests(loader, __name__, vector_tests(Case, load_cases(), check_case))
+    )
     return tests
 
 

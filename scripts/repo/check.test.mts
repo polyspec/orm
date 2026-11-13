@@ -203,13 +203,33 @@ caseTest('the Python unit tests take the slot models of the bind recipes (T451)'
   const result = spawnSync('make', ['-n', '--no-print-directory', 'test-python'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
   const lines = result.stdout.split('\n');
-  const tests = lines.findIndex(line => /runtime-targets\.(?:mjs|mts) test --runner python /.test(line));
-  assert.ok(tests >= 0, `test-python runs no python tests: ${result.stdout}`);
+  // The tests run through the case harness of the package, which gives testcase.step its case (T452).
+  const tests = lines.findIndex(line => /run-tests\.(?:mjs|mts) python .*--module legacy\.packages\.python\.tests\.testcase -- discover /.test(line));
+  assert.ok(tests >= 0, `test-python runs no python tests through the case harness: ${result.stdout}`);
   const models = join(root, '.runtime/run/bind-python-models');
   const written = lines.findIndex(line => line.includes('orm-gen gen --set legacy/tests/bind/dbspec-set.json') && line.includes(`${models}.tmp`));
   assert.ok(written >= 0 && written < tests, `test-python runs the python tests without writing the slot models first (bind-python-models): ${result.stdout}`);
+  const selected = spawnSync('make', ['-n', '--no-print-directory', 'test-python', 'CASES=test_split_plan'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(selected.status, 0, selected.stderr);
+  assert.match(selected.stdout, /-- discover .* -k '?test_split_plan'?$/m, `test-python does not give CASES to the run as -k: ${selected.stdout}`);
   const variable = /^test-python: export ORM_PYTHON_BIND_MODELS = \$\(BIND_PY_MODELS\)$/m;
   assert.match(text('Makefile'), variable, 'test-python does not export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)');
+});
+
+// QueryCancellationTest loads the SQLite cancellation helper that php-cancel-helper-build writes, and the tests read the
+// models of php-models; without them a run of make test-php in a fresh checkout fails with
+// `SQLite cancellation helper for <platform> is not installed in the polyspec/orm package` (T453).
+caseTest('the PHP unit tests take the generated models and the SQLite cancellation helper (T453)', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const result = spawnSync('make', ['-n', '--no-print-directory', 'test-php'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  const lines = result.stdout.split('\n');
+  const tests = lines.findIndex(line => /runtime-targets\.(?:mjs|mts) test --runner php /.test(line));
+  assert.ok(tests >= 0, `test-php runs no php tests: ${result.stdout}`);
+  const helper = lines.findIndex(line => line.includes('legacy/packages/php/bin/orm-sqlite-cancel-build.php'));
+  assert.ok(helper >= 0 && helper < tests, `test-php runs the php tests without building the SQLite cancellation helper first (php-cancel-helper-build): ${result.stdout}`);
+  const models = lines.findIndex(line => line.includes('scripts/generate/once.mts') && line.includes('legacy/packages/php/gen/php-models.key'));
+  assert.ok(models >= 0 && models < tests, `test-php runs the php tests without writing the PHP models first (php-models): ${result.stdout}`);
 });
 
 caseTest('the Makefile includes no recipe file of @polyspec/kit', COMPUTE, () => {

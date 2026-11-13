@@ -5,7 +5,7 @@ import json
 import unittest
 from pathlib import Path
 from polyspec.orm.dbspec.introspect_mysql import _create_checks
-from .vector_case import VectorCase, vector_tests
+from .vector_case import selected_tests, vector_tests, VectorCase
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -36,7 +36,9 @@ def load_tests(
     """Every case reads to its expected body: one test for each case, named by the case."""
     if not DATA["cases"]:
         raise AssertionError("tests/dbspec/show-create.json has no cases")
-    tests.addTests(vector_tests(Case, DATA["cases"], check_case))
+    tests.addTests(
+        selected_tests(loader, __name__, vector_tests(Case, DATA["cases"], check_case))
+    )
     return tests
 
 

@@ -6,10 +6,12 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import types
 import unittest
 from pathlib import Path
 
 from . import testcase
+from .vector_case import VectorCase, vector_load_tests
 
 TESTS = Path(__file__).resolve().parent
 REPOSITORY_ROOT = TESTS.parents[3]
@@ -245,6 +247,34 @@ class StreamTest(unittest.TestCase):
         self.assertIn("test_pass (__main__.Sample.test_pass) ... ok", result.stdout)
         self.assertRegex(result.stdout, r"(?m)^Ran 1 test in ")
         self.assertNotIn("Ran 1 test", result.stderr)
+
+
+class VectorSelectionTest(unittest.TestCase):
+    """The cases of a vector file follow the name patterns of the run (-k), as the methods of a test class do (T452)."""
+
+    def _loaded(self, patterns) -> list[str]:
+        module = types.ModuleType("sample_vectors")
+        module.load_tests = vector_load_tests(
+            VectorCase, [{"id": "one"}, {"id": "two"}], lambda _test, _case: None
+        )
+        sys.modules[module.__name__] = module
+        self.addCleanup(sys.modules.pop, module.__name__)
+        loader = unittest.TestLoader()
+        loader.testNamePatterns = patterns
+        suite = module.load_tests(loader, unittest.TestSuite(), None)
+        return [test.id() for test in suite]
+
+    def test_a_run_without_a_pattern_loads_every_case(self) -> None:
+        self.assertEqual(self._loaded(None), ["one", "two"])
+
+    def test_a_pattern_of_a_case_loads_that_case(self) -> None:
+        self.assertEqual(self._loaded(["*two*"]), ["two"])
+
+    def test_a_pattern_of_the_module_loads_its_cases(self) -> None:
+        self.assertEqual(self._loaded(["*sample_vectors*"]), ["one", "two"])
+
+    def test_a_pattern_of_another_test_loads_no_case(self) -> None:
+        self.assertEqual(self._loaded(["*test_recipe_send_listener*"]), [])
 
 
 if __name__ == "__main__":
