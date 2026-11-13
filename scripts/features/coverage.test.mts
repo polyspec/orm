@@ -73,6 +73,35 @@ caseTest('coverage diagnostics preserve child output when a process remains', PR
   assert.match(result.error ?? '', /stderr:\ncaptured child stderr/);
 });
 
+// T390: a run past its deadline or its output limit is asked to end and is reported when it has ended, after its cleanup.
+const CLEANS_UP = (marker: string, before = ''): string => `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
+  process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); ${before}`;
+
+caseTest('run asks a process past its deadline to end and reports it after its cleanup', PROCESS, async () => {
+  const work = await mkdtemp(join(tmpdir(), 'orm-coverage-stop-'));
+  try {
+    const marker = join(work, 'cleaned');
+    const result = await run(process.execPath, ['-e', CLEANS_UP(marker)], undefined, 300);
+    assert.match(result.error ?? '', /^timeout after 300 ms/);
+    assert.equal(readFileSync(marker, 'utf8'), 'cleaned');
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+});
+
+caseTest('run asks a process past its output limit to end and keeps no output past the limit', PROCESS, async () => {
+  const work = await mkdtemp(join(tmpdir(), 'orm-coverage-limit-'));
+  try {
+    const marker = join(work, 'cleaned');
+    const result = await run(process.execPath, ['-e', CLEANS_UP(marker, "process.stdout.write('x'.repeat(64));")], undefined, null, process.env, undefined, 16);
+    assert.match(result.error ?? '', /^test output exceeds 16 characters/);
+    assert.equal(result.stdout.length, 16, 'the output that is kept ends at the limit');
+    assert.equal(readFileSync(marker, 'utf8'), 'cleaned');
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+});
+
 caseTest('coverage diagnostics name a child process termination signal', PROCESS, async () => {
   const result = await run(process.execPath, ['-e', "process.kill(process.pid, 'SIGTERM')"], undefined, 10_000);
   assert.match(result.error ?? '', /signal SIGTERM/);

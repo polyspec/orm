@@ -3,7 +3,7 @@
 // so the test reads the end of a process from the end of its connection.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -141,4 +141,44 @@ caseTest('the abort of a run ends the program and the child of the program', PRO
     await assert.rejects(finished);
     await ended;
   });
+});
+
+// T390: an abort and the end of the checker are requests: the program gets SIGTERM and runs its cleanup.
+const CLEANS_UP = (marker: string): string => `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
+  process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); console.log('ready');`;
+
+caseTest('the abort of a run asks the program to end and the run waits for its cleanup', PROCESS, async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orm-interface-abort-'));
+  try {
+    const marker = join(directory, 'cleaned');
+    const controller = new AbortController();
+    const ready = Promise.withResolvers<void>();
+    const finished = run(process.execPath, ['-e', CLEANS_UP(marker)], { signal: controller.signal, onOutput: () => { ready.resolve(); } });
+    await ready.promise;
+    controller.abort(new Error('the case aborts the run'));
+    await assert.rejects(finished, /the case aborts the run/);
+    assert.equal(readFileSync(marker, 'utf8'), 'cleaned', 'the program ran its cleanup before the run rejected');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+caseTest('the reaper asks the groups of an ended checker to end', PROCESS, async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orm-interface-reaper-'));
+  try {
+    const marker = join(directory, 'cleaned');
+    const program = spawn(process.execPath, ['-e', CLEANS_UP(marker)], { detached: true, stdio: ['ignore', 'pipe', 'ignore'], env: isolatedEnvironment() });
+    await new Promise<void>(ready => program.stdout.once('data', () => ready()));
+    const ended = new Promise<number | null>(done => program.once('close', code => done(code)));
+    const reaper = spawn(process.execPath, [join(root, 'tests/interfaces/check/reaper.mts')], { stdio: ['pipe', 'ignore', 'pipe'], env: isolatedEnvironment() });
+    let errors = '';
+    reaper.stderr.on('data', chunk => { errors += String(chunk); });
+    const reaped = new Promise<number | null>(done => reaper.once('close', code => done(code)));
+    reaper.stdin.end(`+${program.pid}\n`);
+    assert.equal(await ended, 0, 'the program ended by its own cleanup');
+    assert.equal(readFileSync(marker, 'utf8'), 'cleaned');
+    assert.equal(await reaped, 0, errors);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
