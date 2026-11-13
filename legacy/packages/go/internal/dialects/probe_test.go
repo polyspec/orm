@@ -122,10 +122,10 @@ func TestRestrictRowOrder(t *testing.T) {
 	}
 }
 
-// readDBSpecFile reads the file name of tests/dbspec in the repository; a failure fails the test.
+// readDBSpecFile reads the file name of legacy/tests/dbspec; a failure fails the test.
 func readDBSpecFile(t *testing.T, name string) []byte {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", name))
+	raw, err := os.ReadFile(filepath.Join(legacyRoot, "tests", "dbspec", name))
 	if err != nil {
 		t.Fatal(err)
 	}

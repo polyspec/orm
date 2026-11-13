@@ -79,16 +79,15 @@ type applyClientRunner struct {
 func applyClientRunners(goRunner, rustRunner, extension, python string) map[string]applyClientRunner {
 	return map[string]applyClientRunner{
 		"go":            {args: []string{goRunner}},
-		"php":           {args: []string{"php", "packages/php/testing/dbspec/apply/php.php"}},
-		"typescript":    {args: []string{"node", "packages/ts/testing/dbspec/apply/typescript.mts"}},
+		"php":           {args: []string{"php", "legacy/packages/php/testing/dbspec/apply/php.php"}},
+		"typescript":    {args: []string{"node", "legacy/packages/ts/testing/dbspec/apply/typescript.mts"}},
 		"rust":          {args: []string{rustRunner}},
-		"php-extension": {args: []string{"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/apply/php-extension.php"}, env: map[string]string{"ORM_PHP_MODE": "extension"}},
+		"php-extension": {args: []string{"php", "-d", "extension=" + extension, "legacy/packages/php-ext/testing/dbspec/apply/php-extension.php"}, env: map[string]string{"ORM_PHP_MODE": "extension"}},
 		"python":        {args: []string{python, "-m", "legacy.packages.python.tests.dbspec_apply_runner"}},
 	}
 }
 
-// dbspecLanguages reads the implementations of contracts/implementations.json. This test runs from the package directory,
-// so the paths are relative to packages/go/internal/dialects.
+// dbspecLanguages reads the implementations of contracts/implementations.json at the root of the checkout.
 func dbspecLanguages() []string {
 	return testcase.Implementations(repoRoot)
 }
@@ -111,20 +110,17 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	if !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) || !filepath.IsAbs(python) {
 		t.Fatalf("DBSPEC_APPLY_RUST %q, POLYSPEC_ORM_EXTENSION %q and ORM_PYTHON %q must be absolute paths", rustRunner, extension, python)
 	}
-	root, err := filepath.Abs(repoRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := repoRoot
 	plans := applyChain(t)
 	target, diagnostics := dbspec.ManifestOf([]*dbspec.Document{plans[1].Schema})
 	if len(diagnostics) > 0 {
 		t.Fatal(diagnostics)
 	}
-	vectors := filepath.Join(root, "tests", "dbspec", "plan-cases.json")
+	vectors := filepath.Join(legacyRoot, "tests", "dbspec", "plan-cases.json")
 	goRunner := filepath.Join(t.TempDir(), "apply-go")
 	// The Go runner build has the testcase.Process deadline (it takes minutes when the build cache is empty).
 	building, cancelBuild := context.WithTimeout(context.Background(), testcase.Process)
-	build := exec.CommandContext(building, "go", "build", "-o", goRunner, "./packages/go/internal/dbspec/apply")
+	build := exec.CommandContext(building, "go", "build", "-o", goRunner, "./legacy/packages/go/internal/dbspec/apply")
 	build.Dir = root
 	out, err := build.CombinedOutput()
 	cancelBuild()
