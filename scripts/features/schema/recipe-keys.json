@@ -12,7 +12,6 @@
   ],
   "case": [
     "databases_differ",
-    "deadline",
     "id",
     "install",
     "not_through_pooler",

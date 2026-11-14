@@ -162,7 +162,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   foreign keys, so a drop that succeeds is the same, and a drop that fails with 1010 still fails its case. That session
   ends with the drop and returns to no pool, so no later statement of the harness runs without the checks: in every
   runtime a test of its harness drops a case database and reads `foreign_key_checks` 1 on the next admin session, on both
-  servers. The drop sets no wait limit of its own; a drop that does not end is ended by the deadline of its case.
+  servers. The drop sets no wait limit of its own; a drop that does not end is stopped with its run (SIGINT or SIGTERM), since no clock ends a case.
   The file comes from MariaDB itself: a `CREATE TRIGGER` on a table that already has a trigger copies `<table>.TRG` to
   `<table>.TRG-` as its crash backup and records the removal of the copy in the DDL log, bound to the execute entry of
   the statement (`Table_triggers_list::create_trigger`, sql/sql_trigger.cc). After the statement succeeds,
@@ -208,7 +208,8 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   wait by GTID has no common form either: the MySQL test servers run with `gtid_mode = OFF`, so `WAIT_FOR_EXECUTED_GTID_SET`
   fails (3062), and `MASTER_GTID_WAIT` is MariaDB's alone. The harness of each runtime therefore runs `SHOW BINARY LOG
   STATUS` and `SOURCE_POS_WAIT` on MySQL and `SHOW BINLOG STATUS` and `MASTER_POS_WAIT` on MariaDB, chosen by the database of
-  the case; the wait and its deadline are the same on both.
+  the case; the wait is the same on both and has no timeout: it ends when the replica has applied the position, or with NULL
+  when its SQL thread stops.
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

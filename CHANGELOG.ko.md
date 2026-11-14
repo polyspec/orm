@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1df3461f3905fc4843d4a13227e04a9ebfcab4086583aa9e19fdaf37885eabf7 -->
+<!-- source-sha256: 6dec22c909dac79db7317090708b25defec18cdbcda48872f90b008c50defdd0 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe case는 `deadline`을 갖지 않는다(T474, FCV-10). `scripts/features/schema/recipe.schema.json`, `scripts/features/schema/recipe-keys.json`, `scripts/json/schema/recipe-cases.schema.json`, 두 dbspec_apply fixture의 case `stress_plan_commits_each_step`, Go recipe runner의 case struct에서 `deadline.steps` key를 없앴다. FCV-10, feature coverage 명세의 `interface.symbols` step, dialect 명세의 case database 삭제와 replica 기다림은 어떤 시계도 case를 끝내지 않는다고 적는다. TypeScript database case의 fixture loader는 `deadline`을 돌려주지 않고, TypeScript 시험의 주석은 기한을 적지 않는다.
 - 어떤 시계도 PHP 시험 case를 끝내지 않는다(T474, AGENTS.md). `legacy/packages/php/tests/coverage_cases.php`의 `coverageProcess`는 기한을 받지 않고 자식의 출력 pipe가 닫힐 때까지 기다리며, `interface.symbols`의 interface check는 기한을 넘기지 않는다. PHP recipe runner의 replica 대기는 `SOURCE_POS_WAIT`와 `MASTER_POS_WAIT`를 timeout 없이 부르고, 그 대기가 NULL을 돌려줄 때만 실패한다.
 - 어떤 시계도 Rust 시험 case를 끝내지 않는다(T474, AGENTS.md). `packages/rust/testcase`에는 case class, grace, watchdog, step budget, step guard, `wall_for_cpu`가 없고, `case!()`, `start(name)`, `trial(name, body)`, `async_trial(name, body)`는 기한을 받지 않는다. Rust recipe runner에는 step guard가 없고, 그 interface check는 기한 없이 check의 pipe를 끝까지 읽으며, 그 replica 기다림은 `SOURCE_POS_WAIT`와 `MASTER_POS_WAIT`를 timeout 없이 부르고, `packages/rust/build`의 시험, case database runner, statement fault, rollback, was-inserted case는 `tokio::time::timeout`을 두지 않는다. case `no_clock_ends_a_case`는 runtime의 멈춘 시계를 case보다 한 주 앞으로 옮긴다. 저장소 case `no test harness holds a deadline, a step budget or a step guard`가 step budget parity case를 대신한다.
 - 어떤 시계도 Python 시험 case를 끝내지 않는다(T474, AGENTS.md). `legacy/packages/python/tests/testcase.py`에는 case class, grace, watchdog, step budget, step guard, `ending` cleanup이 없고, 시험 class는 `deadline`을 두지 않는다. Python recipe runner에는 step guard가 없고, 그 replica 기다림은 `SOURCE_POS_WAIT`와 `MASTER_POS_WAIT`를 timeout 없이 부르며, interface check, generator 실행, listener thread, transaction gate는 시간 제한 없이 기다리고, markdown conformance case는 timer를 두지 않는다. case `NoClockTest`는 case 하나를 `CaseRunner`로 실행하고 timer가 하나도 걸리지 않기를 기대한다.

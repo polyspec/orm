@@ -59,8 +59,6 @@ async function code(promise) {
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers');
 
-// Deadline of each case: a few connections or statements take 30 s, and writes that go through schema install and the audit trigger
-// run DDL, so they take 60 s.
 // For each dialect, the first case creates the case database and the last case drops it. Even if an earlier case fails, node:test
 // still runs the last case. If the process ends before that, after drops the leftover database and
 // fails if a database is still there.

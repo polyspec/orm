@@ -13,7 +13,6 @@ caseTest('loads a schema and model with independent database-case state', async 
     report: message => reports.push(message),
   });
   assert.equal(fixture.model, Model);
-  assert.equal(fixture.deadline, 30_000);
   assert.deepEqual(fixture.state, { failures: 0, current: '' });
   fixture.state.current = 'trigger_refused/sqlite';
   fixture.check(false, 'row was changed');

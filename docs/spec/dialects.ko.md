@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: dfa81cd362c7b8b214c903af8cc3f53333268e34d8441c0876382312b073ce08 -->
+<!-- source-sha256: 70b68636625ae096a4aeb6a43906e50848f867fe96ee8214e86cc7f35a34d0c4 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -149,8 +149,8 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   foreign key와 상관없이 database의 표를 지우므로 성공하는 삭제는 같고, 1010으로 실패하는 삭제는 여전히 그 case를
   실패시킨다. 그 session은 삭제와 함께 끝나고 어느 pool로도 돌아가지 않으므로, harness의 뒤따르는 statement는 모두
   검사를 켠 채 실행된다. 모든 runtime에서 harness의 시험이 case database를 지운 뒤 다음 admin session에서
-  `foreign_key_checks` 1을 읽으며, 두 server 모두에서 그렇다. 삭제는 자기 대기 한도를 두지 않고, 끝나지 않는 삭제는 그
-  case의 deadline이 끝낸다. 그 파일은 MariaDB 자신이 남긴다. trigger가 이미 있는 표에 `CREATE TRIGGER`를 하면
+  `foreign_key_checks` 1을 읽으며, 두 server 모두에서 그렇다. 삭제는 자기 대기 한도를 두지 않고, 끝나지 않는 삭제는 어떤
+  시계도 case를 끝내지 않으므로 그 실행과 함께(SIGINT나 SIGTERM) 멈춘다. 그 파일은 MariaDB 자신이 남긴다. trigger가 이미 있는 표에 `CREATE TRIGGER`를 하면
   `<table>.TRG`를 crash 대비 사본 `<table>.TRG-`로 복사하고, 그 사본의 삭제를 statement의 execute entry에 묶어 DDL
   log에 적는다(`Table_triggers_list::create_trigger`, sql/sql_trigger.cc). statement가 성공하면
   `mysql_create_or_drop_trigger`는 그 entry를 먼저 놓고(`ddl_log_complete`) 그다음 삭제를 실행하는데, 삭제는 놓은
@@ -192,7 +192,8 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   함께 내므로, harness는 이를 공통 형식으로 쓰지 않는다. GTID로 기다리는 공통 형식도 없다: MySQL 시험 server는
   `gtid_mode = OFF`로 돌아 `WAIT_FOR_EXECUTED_GTID_SET`이 실패하고(3062), `MASTER_GTID_WAIT`는 MariaDB에만 있다. 그래서 모든
   runtime의 harness는 case의 database에 따라 MySQL에서 `SHOW BINARY LOG STATUS`와 `SOURCE_POS_WAIT`를, MariaDB에서
-  `SHOW BINLOG STATUS`와 `MASTER_POS_WAIT`를 실행하며, 기다림과 그 기한은 두 server에서 같다.
+  `SHOW BINLOG STATUS`와 `MASTER_POS_WAIT`를 실행하며, 기다림은 두 server에서 같고 timeout이 없다. 기다림은 replica가 그
+  위치를 적용했을 때 끝나거나, SQL thread가 멈추면 NULL로 끝난다.
 
 - **DIA-1** identifiers — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.index.primary_name_reserved`): `` `x` ``; PostgreSQL 12+: `"x"`; SQLite 3.46+: `"x"`
 - **DIA-2** placeholders — MySQL 8.0.2+ / MariaDB 11.8 (`mariadb.like.ascii_fold_replace`): `?`; PostgreSQL 12+: `$n` (the executor renumbers when it expands a `parent` slot to N values); SQLite 3.46+: `?`

@@ -1581,9 +1581,6 @@
       "requirements": [
         "PLN-104"
       ],
-      "deadline": {
-        "steps": 1100
-      },
       "steps": [
         {
           "op": "dbspec.plan",

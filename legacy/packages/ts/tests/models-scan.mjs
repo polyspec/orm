@@ -49,7 +49,7 @@ function callsModels(path) {
   });
 }
 
-// Deadline 10 s: only reads the test source with oxc-parser.
+// Reads only the test source with oxc-parser.
 caseTest('the models script scans exactly the sources that call models', () => {
   assert(modelClasses.size > 0, 'src/models/models.ts declares model classes');
   const args = modelsArgs();
@@ -59,7 +59,7 @@ caseTest('the models script scans exactly the sources that call models', () => {
   assert.deepEqual(names(scanned), names(calling));
 });
 
-// Deadline 30 s: one orm-gen process per generated entry creates its models and compares them.
+// One orm-gen process per generated entry creates its models and compares them.
 caseTest('every generated model set equals the generator output', () => {
   for (const model of generatedModels) {
     const result = spawnSync(process.execPath, ['dist/bin/orm-gen.js', ...generatorArgs(model), '--check'], { cwd: client, encoding: 'utf8' });
@@ -80,7 +80,7 @@ function referencedNames(node, names = new Set()) {
   return names;
 }
 
-// Deadline 10 s: only reads the committed generated file with oxc-parser.
+// Reads only the committed generated file with oxc-parser.
 caseTest('a generated model file imports only what it uses and declares each type once', () => {
   for (const file of ['src/models/models.ts', 'src/models/decimal_fixture/models.ts', 'src/models/markdown_fixture/models.ts']) {
     const { program, errors } = parseSync(file, readFileSync(join(client, file), 'utf8'));

@@ -61,14 +61,6 @@ type databaseCase struct {
 	NotThroughPooler string            `json:"not_through_pooler"`
 	Seed             *seed             `json:"seed"`
 	Steps            []json.RawMessage `json:"steps"`
-	// Deadline is the step deadline of a case that applies more steps than a database case runs statements (FCV-4).
-	Deadline *caseDeadline `json:"deadline"`
-}
-
-// caseDeadline states the steps that a case applies one after another. The case's deadline is testcase.StepBudget of them
-// instead of testcase.Database, and a stall guard fails the case when no apply event comes within testcase.Database.
-type caseDeadline struct {
-	Steps int `json:"steps"`
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
