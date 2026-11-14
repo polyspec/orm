@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e12000ffa9a6020c9abc1dbb39e7ab8905b3a4306243a70550ef1881c3919eb8 -->
+<!-- source-sha256: e4bbb506a1467efd18bc952dbe0835c2fcc8030b4b16d3f77152e93144c543b1 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go PostgreSQL pool은 idle 연결을 다시 쓰기 전에 매번 ping한다(T476, INT-92). `legacy/packages/go/orm/pg`의 connector는 언제나 ping을 요청하는 `stdlib.OptionShouldPing`을 넘긴다. pgx stdlib driver는 1초보다 오래 idle이었던 연결만 ping했으므로, server가 idle 연결을 끝낸 뒤 1초 안에 실행된 문장은 그 연결에 닿아 실패했고, Go `TestPoolDiscardsEndedIdleConnection`은 그 전에 1.1 s 잠들었다. 이제 시험은 `pg_terminate_backend(pid, 5000)`가 답한 바로 뒤에 문장을 실행한다. Rust와 Python pool은 이미 idle 연결을 다시 쓰기 전에 확인한다.
 - 기다리는 문장이나 transaction을 drop하는 Rust case(`dropping_a_query_cancels_it`, `dropping_a_transaction_frees_a_single_connection`과 그 MariaDB case)는 database가 기다림을 알린 뒤에 drop한다(T475). PostgreSQL에서는 pool 연결의 backend가 받는 LOG 메시지 `still waiting for`, MySQL과 MariaDB에서는 1 s 한도를 둔 probe의 1205, SQLite에서는 `busy_timeout(1000)`을 둔 probe의 SQLITE_BUSY다(`packages/rust/tests/cases/common/lock_wait.rs`. `was_inserted.rs`도 이것을 쓰며, 메시지의 backend id로 동시에 도는 case의 기다림을 가른다). 전에는 문장 시작 300 ms 뒤에 drop했고 다음 문장을 5 s와 2 s 한도로 기다렸다. 이제 drop 바로 뒤에 pool 통계를 읽어 drop이 연결을 곧바로 닫았음을 확인한다(INT-67).
 - MySQL과 MariaDB의 INT-92 case는 kill된 idle session의 끝을 server의 답으로 기다린다(T475). pool 연결은 idle이 되기 전에 run마다 다른 이름으로 `DO GET_LOCK(<name>, 0)`을 실행하고, 그 thread는 끝날 때 그 lock을 놓는다. 시험 session은 `IS_USED_LOCK`을 한 번 읽어 그것이 그 연결의 id가 아니면 pool이 session을 reset했다고 밝히며 실패하고, `KILL`을 실행한 뒤 `GET_LOCK(<name>, 30)`을 실행한다. server는 kill된 thread가 끝났을 때 1로 답하고, 0이나 NULL이면 시험은 실패한다(`idle-connection-end.mjs`, Go `timezone_test.go`, Python `connection_pool.py`, Rust `zone.rs`). 전에는 session이 없어질 때까지 `information_schema.PROCESSLIST`를 간격을 두고 읽었다. pgx stdlib driver의 `ResetSession`은 1초보다 오래 idle인 연결만 ping하므로, Go `timezone_test.go`는 PostgreSQL에서 아직 1.1 s 잠든다.
 - TypeScript, Go, Python, PHP, Rust recipe runner의 `session.end`와 `session.end_listener` step, 그리고 PHP `RollbackTest.php`는 `pg_terminate_backend(pid)`를 5000 ms 한도 없이 부른다(T475). 끝난 session의 다음 문장이 그 끝의 오류, 곧 57P01이나 끊긴 연결을 읽고, server의 그 답이 사건이다. 다음 문장 전에 client pool이 idle 연결의 끝을 보았어야 하는 INT-92 case는 T475가 적은 대로 PostgreSQL에서 `pg_terminate_backend(pid, 5000)`를 두고, MySQL과 MariaDB에서 `KILL` 뒤에 `GET_LOCK`을 기다린다.

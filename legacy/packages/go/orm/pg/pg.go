@@ -61,7 +61,11 @@ func (configuredDriver) OpenConnector(name string) (driver.Connector, error) {
 			DeadlineDelay: 5 * time.Second,
 		}
 	}
-	return stdlib.GetConnector(*config), nil
+	// The ping before each reuse of an idle connection: without the option the driver pings only a connection that has been
+	// idle for more than one second, so a statement within that second reached a connection that the server had ended. The
+	// ended connection answers the ping with an error, the driver reports driver.ErrBadConn, and database/sql discards it
+	// and runs the statement on a new connection (INT-92).
+	return stdlib.GetConnector(*config, stdlib.OptionShouldPing(func(context.Context, stdlib.ShouldPingParams) bool { return true })), nil
 }
 
 // mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
