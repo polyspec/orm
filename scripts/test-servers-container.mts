@@ -625,6 +625,8 @@ file() {
 queued() {
   compose=$(file "$1") || exit 2
   b -f "$compose" images >&2 || { say "an image of $project is not on this machine; run make orm-install-container-images, which pulls the images of config/containers.json, or sh $dir/run.sh pull"; exit 1; }
+  rm -f "$dir/removed"
+  : > "$dir/started"
   printed=$(b -f "$compose" job add -json -key "$project-$1" "$1") || { status=$?; say "bay job add of $1 of $project exited with $status"; exit "$status"; }
   id=
   while IFS= read -r line; do
@@ -674,8 +676,6 @@ case "\${1:-}" in
     trap 'interrupted 143' TERM
     trap 'interrupted 129' HUP
     contract
-    rm -f "$dir/removed"
-    : > "$dir/started"
     queued build
     waited build
     status=$?

@@ -554,6 +554,13 @@ caseTest('a run in the runner whose job check fails ends with the result of the 
       assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).exitCode, 5);
       assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ the job check of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
       assert.deepEqual(readdirSync(stand.state), []);
+      // An image that is absent fails the run before a job is queued, naming the install target, and leaves nothing.
+      remove(context);
+      writeFileSync(stand.absent, '');
+      writeFileSync(stand.ups, '');
+      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true }), { code: 1, signal: null });
+      assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job ran without its image');
+      assert.deepEqual(projects(context.root), [], 'a run without its image leaves its directory');
     });
   }));
 
