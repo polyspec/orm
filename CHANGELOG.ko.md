@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 707a359dccd42cad7991279163977c4bf2f7ab40fd97840fdfaffe270ed90ab1 -->
+<!-- source-sha256: 6f7907cdfea77b639e2669dfc773d1e4519cd7261b9b34e81f68985199f5bf73 -->
 # 변경 이력
 
 ## Unreleased
 
+- `benchmarks/rust/Cargo.lock`은 시험 지원 crate가 T487부터 받는 `jsonschema`를 담는다(T491). 입력: `benchmarks/rust`에서 `cargo check --locked --offline`. 이전 동작: lock에 그 package가 없어서 benchmark의 locked build가 실패했다. 기대 동작: `cargo update -p polyspec-orm-test-support --offline`이 그것을 썼고, locked 검사가 통과한다.
 - `polyspec-orm-schema`의 Rust source는 rustfmt의 형식이다(T490). 입력: `make rust-fmt-check`. 이전 동작: 검사가 `packages/rust/schema/src/dbspec/mod.rs`의 세 곳과 `runtime.rs`의 한 곳을 보고하고 실패했다. 기대 동작: 두 파일이 형식을 갖추고 검사가 통과한다.
 - `@polyspec/dbspec-language`의 시험은 legacy TypeScript runtime과 그 vector를 읽는다(T489). 입력: `make dbspec-language-check`의 시험. 이전 동작: `module-graph.test.mjs`가 `legacy/packages/ts`로 옮겨진 parser entry `packages/ts/dist/dbspec/entry.js`를 적어서 case 둘이 실패했고, vector 시험은 Rust core의 vector인 `tests/dbspec`을 읽었다. 그 case `rule-diagnostics-codec-storage-and-order`는 service가 parse에 쓰는 TypeScript runtime이 `ordered_json is the first codec stage`를 보고하는 곳에서 `json is the first codec stage`를 기대한다. 기대 동작: 시험은 `legacy/packages/ts/dist/dbspec/entry.js`를 적고 `legacy/tests/dbspec`을 읽으며, 시험 950개가 통과한다.
 - 릴리스는 각 platform에서 binding의 PHP 확장을 `config/toolchain.json`의 `phpExtension.minors`에 있는 minor인 PHP 8.4와 PHP 8.5용으로 build한다(T488, binding GN-19d). 입력: `make repo-check/run`. 이전 동작: `.github/workflows/assets.yml`의 job `platform`이 `.php-version`의 PHP인 8.4용으로만 확장을 build해서, 요구 `php >=8.4`가 허용하는 PHP 8.5에는 load할 확장이 없었다. 확장은 자기를 build한 header의 PHP minor에만 load되기 때문이다. 기대 동작: job은 목록의 minor마다 setup-php로 그것을 준비하고 그 뒤에 `make release-php-ext PHP=php`를 실행하며, `scripts/repo/toolchains.mts`의 `extensionMinorErrors`는 다른 목록을 준비하거나 build하는 job을 보고한다. `scripts/repo/check.test.mts`의 시험(162개 통과)으로 확인했다. asset 자체는 CI의 job이 build한다.
