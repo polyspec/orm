@@ -577,6 +577,7 @@ make orm-test-container-stop                                 # remove the projec
 make orm-test-container-run KIND=mysql RUN='make test-rust'  # start the servers for this run alone, run RUN with their variables on this host, and remove them when RUN ends, fails or gets SIGINT or SIGTERM
 make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'  # the same as two jobs of bay in the runner, from a clone of the commit; the machine runs one job at a time; KEEP=1 keeps the directory with its tools and its build
 make orm-test-container-run KIND=mysql FORM=runner BUILD='<build command>' RUN='make test-rust' CARGO_BUILD_JOBS=<count> RUNNER_MEMORY=<size> SERVER_MEMORY=<size>  # build in the job build, before the servers start; the jobs of cargo and the memory limits are given for the machine
+make orm-test-container-remote KIND=mysql,postgres,sqlite RUN='make client-db-check' HOST=<ssh host> REMOTE=<directory>  # several kinds in one run: the servers of each kind and the variables of each in one servers.env
 make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory>  # the run in the runner on another machine, whose host has sh and bay alone: its jobs run there and are waited for there through ssh; a job that has not ended keeps the directory there and ends with 3; started again, it queues nothing twice and waits again; PULL=1 pulls the images there
 ```
 
