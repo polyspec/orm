@@ -523,7 +523,7 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       writeFileSync(join(copy, 'runner-setup.sh'), installation.replace(/^run=\/orm-run$/m, `run='${copy}'`));
       const tools = join(dir, 'runner-tools');
       mkdirSync(tools);
-      for (const [name, body] of [['apt-get', ':'], ['uname', 'echo aarch64'], ['make', 'echo "$*" > "$HOME/made"']]) writeFileSync(join(tools, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+      for (const [name, body] of [['apt-get', ':'], ['uname', 'echo aarch64'], ['make', 'echo "$*" > "$HOME/made"']] as const) writeFileSync(join(tools, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
       for (const tool of ['node/bin/node', 'cargo/bin/rustup']) {
         mkdirSync(dirname(join(copy, tool)), { recursive: true });
         writeFileSync(join(copy, tool), '#!/bin/sh\n', { mode: 0o755 });
