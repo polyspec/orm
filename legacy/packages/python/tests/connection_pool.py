@@ -9,8 +9,8 @@ import os
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
+import uuid
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 
@@ -231,6 +231,22 @@ class ConnectionPoolTest(unittest.TestCase):
                 db = models.connect(dsn, poolSize=1, poolIdleSize=1)
                 try:
                     self.assertFalse(db.utils().schema().exists("orm"))
+                    # On MySQL and MariaDB the idle connection holds a named lock, which its thread releases when it
+                    # ends: KILL returns before the killed thread has ended, and GET_LOCK of that lock, with a wait that
+                    # the server limits, answers when it has (T475). execute runs DO GET_LOCK on the connection of the
+                    # pool, which then returns to it.
+                    lock = f"orm_int92_{uuid.uuid4().hex}"
+                    if dialect == "mysql":
+                        db.execute(
+                            {
+                                "id": 0,
+                                "role": "write",
+                                "sql": f"DO GET_LOCK('{lock}', 0)",
+                                "tables": [],
+                                "bind_slots": [],
+                            },
+                            [],
+                        )
                     self.assertEqual(
                         db.stats().idle, 1, "the pool holds one idle connection"
                     )
@@ -264,21 +280,27 @@ class ConnectionPoolTest(unittest.TestCase):
                                     len(rows), 1, "one idle client session is present"
                                 )
                                 session_id = int(rows[0][0])
+                                # One read: the idle connection holds the lock unless the pool reset its session
+                                # when it took it back.
+                                cursor.execute("SELECT IS_USED_LOCK(%s)", (lock,))
+                                holder = cursor.fetchone()[0]
+                                self.assertEqual(
+                                    holder,
+                                    session_id,
+                                    f"the idle session {session_id} does not hold the named lock {lock}: "
+                                    f"IS_USED_LOCK is {holder}, so the pool reset its session when it took it back",
+                                )
                                 cursor.execute(f"KILL {session_id}")
-                                deadline = time.monotonic() + 10
-                                while True:
-                                    cursor.execute(
-                                        "SELECT COUNT(*) FROM information_schema.PROCESSLIST "
-                                        "WHERE ID = %s",
-                                        (session_id,),
-                                    )
-                                    if cursor.fetchone()[0] == 0:
-                                        break
-                                    if time.monotonic() >= deadline:
-                                        self.fail(
-                                            f"server still lists idle session {session_id} after KILL"
-                                        )
-                                    time.sleep(0.02)
+                                cursor.execute("SELECT GET_LOCK(%s, 30)", (lock,))
+                                taken = cursor.fetchone()[0]
+                                self.assertEqual(
+                                    taken,
+                                    1,
+                                    f"GET_LOCK({lock}, 30) returned {taken}: the killed session {session_id} "
+                                    "did not end within the limit of the server",
+                                )
+                                cursor.execute("SELECT RELEASE_LOCK(%s)", (lock,))
+                                cursor.fetchall()
 
                     self.assertFalse(
                         db.utils().schema().exists("orm"),

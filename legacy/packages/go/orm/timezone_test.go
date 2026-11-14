@@ -1,9 +1,12 @@
 package orm_test
 
 import (
+	"crypto/rand"
+	"database/sql"
 	"testing"
 	"time"
 
+	"github.com/polyspec/orm/legacy/packages/go/engine/plan"
 	"github.com/polyspec/orm/legacy/packages/go/orm"
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
@@ -32,6 +35,15 @@ func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
 			defer testcase.Close(t, db)
 			if _, err := db.Utils().Schema().Exists("orm"); err != nil {
 				t.Fatalf("warm pool connection: %v", err)
+			}
+			// On MySQL and MariaDB the idle connection holds a named lock, which its thread releases when it ends: KILL
+			// returns before the killed thread has ended, and GET_LOCK of that lock, with a wait that the server limits,
+			// answers when it has (T475). Execute runs DO GET_LOCK on the connection of the pool, which then returns to it.
+			lock := "orm_int92_" + rand.Text()
+			if driver == "mysql" {
+				if err := db.Execute(&plan.Step{SQL: "DO GET_LOCK('" + lock + "', 0)"}, nil); err != nil {
+					t.Fatalf("hold the named lock on the pool connection: %v", err)
+				}
 			}
 			if stats := db.Stats(); stats.Idle != 1 {
 				t.Fatalf("pool before server end: %+v, want one idle connection", stats)
@@ -93,23 +105,7 @@ func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
 				if len(ids) != 1 {
 					t.Fatalf("case database has %d other server sessions, want the one idle pool connection", len(ids))
 				}
-				if _, err := admin.Exec("KILL ?", ids[0]); err != nil {
-					t.Fatalf("end idle MySQL session: %v", err)
-				}
-				deadline := time.Now().Add(10 * time.Second)
-				for {
-					var remaining int
-					if err := admin.QueryRow(`SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE ID = ?`, ids[0]).Scan(&remaining); err != nil {
-						t.Fatal(err)
-					}
-					if remaining == 0 {
-						break
-					}
-					if time.Now().After(deadline) {
-						t.Fatalf("server still lists idle session %d after KILL", ids[0])
-					}
-					time.Sleep(20 * time.Millisecond)
-				}
+				endKilledSession(t, admin, ids[0], lock)
 				killed = 1
 			}
 			if killed != 1 {
@@ -148,5 +144,38 @@ func TestNativeTimeIsRefusedByDatetime(t *testing.T) {
 	c.Set("start_dt", time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC))
 	if _, err := c.Create(); orm.ErrorCode(err) != "CODEC_ENCODE" {
 		t.Fatalf("native time.Time: want CODEC_ENCODE, got %v", err)
+	}
+}
+
+// endKilledSession kills the idle session id, which holds the named lock lock, and returns when the server answers that its
+// thread has ended. One read of IS_USED_LOCK checks that the session holds the lock: a pool that reset the session when it
+// took the connection back would have released it. KILL returns before the killed thread has ended; GET_LOCK, whose wait
+// of 30 s the server limits, returns 1 once the thread has ended and released the lock (T475).
+func endKilledSession(t *testing.T, admin *sql.DB, id int64, lock string) {
+	t.Helper()
+	conn, err := admin.Conn(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testcase.Close(t, conn)
+	var holder sql.NullInt64
+	if err := conn.QueryRowContext(t.Context(), `SELECT IS_USED_LOCK(?)`, lock).Scan(&holder); err != nil {
+		t.Fatal(err)
+	}
+	if !holder.Valid || holder.Int64 != id {
+		t.Fatalf("the idle session %d does not hold the named lock %s: IS_USED_LOCK is %v, so the pool reset its session when it took it back", id, lock, holder)
+	}
+	if _, err := conn.ExecContext(t.Context(), "KILL ?", id); err != nil {
+		t.Fatalf("end idle MySQL session: %v", err)
+	}
+	var taken sql.NullInt64
+	if err := conn.QueryRowContext(t.Context(), `SELECT GET_LOCK(?, 30)`, lock).Scan(&taken); err != nil {
+		t.Fatal(err)
+	}
+	if !taken.Valid || taken.Int64 != 1 {
+		t.Fatalf("GET_LOCK(%s, 30) returned %v: the killed session %d did not end within the limit of the server", lock, taken, id)
+	}
+	if _, err := conn.ExecContext(t.Context(), `SELECT RELEASE_LOCK(?)`, lock); err != nil {
+		t.Fatal(err)
 	}
 }

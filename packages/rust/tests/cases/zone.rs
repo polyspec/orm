@@ -9,7 +9,6 @@ use chrono::{NaiveDate, NaiveDateTime};
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
-use std::time::Duration;
 
 use crate::or_panic;
 use or_panic::OrPanic;
@@ -80,6 +79,18 @@ async fn pool_discards_ended_idle_connection() {
             .or_panic(|e| format!("{driver}: connect pool: {e}"));
         assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: warm pool: {e}")));
         complete_idle_release(&db, driver).await;
+        // On MySQL and MariaDB the idle connection holds a named lock, which its thread releases when it ends: KILL returns
+        // before the killed thread has ended, and GET_LOCK of that lock, with a wait that the server limits, answers when it
+        // has (T475). DO GET_LOCK runs on the connection of the pool, which then returns to it.
+        // The name carries the thread id of the connection, which no other session of the server holds while it lives.
+        let mut lock = String::new();
+        if let Pool::MySql(pool) = db.pool() {
+            let mut conn = pool.acquire().await.or_panic(|e| format!("{driver}: acquire the pool connection: {e}"));
+            let id: u64 = sqlx::query_scalar("SELECT CONNECTION_ID()").fetch_one(&mut *conn).await.or_panic(|e| format!("{driver}: CONNECTION_ID: {e}"));
+            lock = format!("orm_int92_{id}");
+            sqlx::query("DO GET_LOCK(?, 0)").bind(&lock).execute(&mut *conn).await.or_panic(|e| format!("{driver}: hold the named lock: {e}"));
+            conn.return_to_pool().await;
+        }
         assert_eq!(db.stats().idle, 1, "{driver}: the pool holds one idle connection");
 
         let admin = Db::connect(&server_dsn, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect direct server session: {e}"));
@@ -103,23 +114,24 @@ async fn pool_discards_ended_idle_connection() {
                     .await
                     .or_panic(|e| format!("{driver}: list case database sessions: {e}"));
                 assert_eq!(ids.len(), 1, "{driver}: one idle client session is present");
+                let mut conn = pool.acquire().await.or_panic(|e| format!("{driver}: acquire the admin session: {e}"));
+                // One read: the idle connection holds the lock unless the pool reset its session when it took it back.
+                let holder: Option<u64> =
+                    sqlx::query_scalar("SELECT IS_USED_LOCK(?)").bind(&lock).fetch_one(&mut *conn).await.or_panic(|e| format!("{driver}: IS_USED_LOCK: {e}"));
+                assert_eq!(
+                    holder,
+                    Some(ids[0]),
+                    "{driver}: the idle session {} does not hold the named lock {lock}, so the pool reset its session when it took it back",
+                    ids[0]
+                );
                 sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL CONNECTION {}", ids[0])))
-                    .execute(pool)
+                    .execute(&mut *conn)
                     .await
                     .or_panic(|e| format!("{driver}: end idle pool session: {e}"));
-                let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
-                loop {
-                    let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE ID = ?")
-                        .bind(ids[0])
-                        .fetch_one(pool)
-                        .await
-                        .or_panic(|e| format!("{driver}: check ended session: {e}"));
-                    if remaining == 0 {
-                        break;
-                    }
-                    assert!(tokio::time::Instant::now() < deadline, "{driver}: server still lists idle session {} after KILL", ids[0]);
-                    tokio::time::sleep(Duration::from_millis(20)).await;
-                }
+                let taken: Option<i64> =
+                    sqlx::query_scalar("SELECT GET_LOCK(?, 30)").bind(&lock).fetch_one(&mut *conn).await.or_panic(|e| format!("{driver}: GET_LOCK: {e}"));
+                assert_eq!(taken, Some(1), "{driver}: GET_LOCK({lock}, 30): the killed session {} did not end within the limit of the server", ids[0]);
+                sqlx::query("SELECT RELEASE_LOCK(?)").bind(&lock).execute(&mut *conn).await.or_panic(|e| format!("{driver}: RELEASE_LOCK: {e}"));
             }
             Pool::Sqlite(_) | Pool::Markdown(_) => unreachable!("server session DSNs select MySQL or PostgreSQL"),
         }

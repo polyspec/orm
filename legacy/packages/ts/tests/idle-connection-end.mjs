@@ -12,17 +12,19 @@
 //
 // Usage: node packages/ts/tests/idle-connection-end.mjs [child <dialect> <dsn>]
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { connect } from '../dist/index.js';
 import { caseTest } from '../../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
 /**
- * Ends every session of database name on the server, except the one that ends
- * them, and returns when the server has closed them. pg_terminate_backend waits
- * for the backend to exit; KILL returns before the thread closes its socket, so
- * the MySQL branch waits until PROCESSLIST no longer lists the ended sessions.
+ * Ends every session of database name on the server, except the one that ends them, and returns when the server has
+ * closed them; the limit of each wait is the server's and the event is its answer (T475). pg_terminate_backend(pid, 5000)
+ * answers when the backend has exited, within a bound that the server applies. KILL returns before the killed thread has
+ * ended, so on MySQL and MariaDB the idle connection holds the named lock `lock` (holdLock): GET_LOCK of that lock with a
+ * wait of 30 s, a limit of the server, returns 1 when the killed thread has ended and released it.
  */
-async function endSessions(dialect, adminDsn, name) {
+async function endSessions(dialect, adminDsn, name, lock) {
   if (dialect === 'postgres') {
     const client = postgresClient(adminDsn);
     await client.connect();
@@ -34,17 +36,25 @@ async function endSessions(dialect, adminDsn, name) {
   const connection = await mysqlConnection(adminDsn, null);
   try {
     const [rows] = await connection.query('SELECT ID AS id FROM information_schema.PROCESSLIST WHERE DB = ? AND ID <> CONNECTION_ID()', [name]);
-    for (const { id } of rows) await connection.query(`KILL ${Number(id)}`);
-    const ids = rows.map(({ id }) => Number(id));
-    const deadline = Date.now() + 10_000;
-    for (;;) {
-      const [left] = await connection.query('SELECT ID AS id FROM information_schema.PROCESSLIST WHERE ID IN (?)', [ids.length ? ids : [0]]);
-      if (left.length === 0) break;
-      if (Date.now() > deadline) throw new Error(`the server still lists sessions ${left.map(({ id }) => id).join(', ')} 10 s after KILL`);
-      await new Promise(resolve => setTimeout(resolve, 20));
-    }
-    return rows.length;
+    if (rows.length !== 1) return rows.length;
+    const id = Number(rows[0].id);
+    // One read: the idle connection holds the lock unless the pool reset its session when it took it back.
+    const [[{ holder }]] = await connection.query('SELECT IS_USED_LOCK(?) AS holder', [lock]);
+    if (Number(holder) !== id) throw new Error(`the idle connection ${id} does not hold the named lock ${lock}: IS_USED_LOCK is ${holder}, so the pool reset its session when it took it back`);
+    await connection.query(`KILL ${id}`);
+    const [[{ taken }]] = await connection.query('SELECT GET_LOCK(?, 30) AS taken', [lock]);
+    if (Number(taken) !== 1) throw new Error(`GET_LOCK(${lock}, 30) returned ${taken}: the killed thread ${id} did not end within the limit of the server`);
+    await connection.query('SELECT RELEASE_LOCK(?)', [lock]);
+    return 1;
   } finally { await connection.end(); }
+}
+
+/**
+ * Makes the idle connection of the pool of db hold the named lock `lock` on MySQL and MariaDB: execute runs `DO GET_LOCK`
+ * on a connection of the pool, which then returns to the pool idle (INT-76).
+ */
+async function holdLock(db, lock) {
+  await db.execute({ id: 0, role: 'write', sql: `DO GET_LOCK('${lock}', 0)`, tables: [], bind_slots: [] }, []);
 }
 
 if (process.argv[2] === 'child') {
@@ -53,7 +63,9 @@ if (process.argv[2] === 'child') {
   const name = new URL(dsn).pathname.slice(1);
   const db = await connect(dsn);
   await db.utils().schema().empty();
-  const ended = await endSessions(dialect, admin, name);
+  const lock = `orm_int92_${randomUUID()}`;
+  if (dialect !== 'postgres') await holdLock(db, lock);
+  const ended = await endSessions(dialect, admin, name, lock);
   if (ended !== 1) throw new Error(`ended ${ended} sessions of ${name}, want the one idle pooled connection`);
   // The server has closed the socket; one turn of the event loop delivers that
   // end to the pool before the next statement asks it for a connection.
