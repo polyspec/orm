@@ -10,8 +10,6 @@ import { runGeneratorCommand, runGeneratorScan } from './generator_scan.mjs';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
-// CASE_DEADLINE_MS is the deadline of one case. A case creates and reads the models with one orm-gen process.
-const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
 function check(cond, message) {
@@ -286,7 +284,7 @@ const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(c
 for (const name of selected) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
-  caseTest(`generate-scan/${name}`, CASE_DEADLINE_MS, async () => {
+  caseTest(`generate-scan/${name}`, async () => {
     const before = failures;
     current = name;
     await run();

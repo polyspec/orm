@@ -3,7 +3,7 @@
 // Usage: node packages/ts/tests/engine_features.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { Db, EXTERNAL_TEXT, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, parseDbspec, parseDbspecSet, registerModel } from '../dist/index.js';
-import { cases, COMPUTE } from '../../../../tests/testcase.mts';
+import { cases } from '../../../../tests/testcase.mts';
 
 const text = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
 const bench = name => readFile(new URL(`../../../contracts/fixtures/bench/${name}`, import.meta.url), 'utf8');
@@ -23,7 +23,7 @@ async function codeOf(promise) {
 // The engine check runs model registration, request validation, and the plan in memory as one case.
 const run = cases();
 // Requirements: DBS-104, DIA-33, PRT-1, COD-4.
-await run.run('engine', COMPUTE, async () => {
+await run.run('engine', async () => {
   // The generated models embed the manifest and the external text of the bench set (contracts/fixtures/bench/dbspec-set.json).
   const { manifest } = dbspecManifest(setDocuments);
   check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash && EXTERNAL_TEXT === manifest.externalText, 'the generated models embed the manifest of the bench set');

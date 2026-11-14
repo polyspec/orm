@@ -10,8 +10,6 @@ import * as packageEntry from '../dist/index.js';
 import * as testing from '@polyspec/orm/testing';
 import { checkConditionalEntry } from './conditional-entry.mjs';
 
-// The case's deadline: the check spawns one node process.
-const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
 
@@ -79,21 +77,21 @@ async function checkRuntimePackageEntries() {
   check(fileURLToPath(import.meta.url).startsWith(fileURLToPath(new URL('./tests/', manifestUrl))), 'entry test did not run from this checkout');
 }
 
-caseTest('package-entry/runtime-exports', CASE_DEADLINE_MS, async () => {
+caseTest('package-entry/runtime-exports', async () => {
   const before = failures;
   current = 'runtime-exports';
   await checkRuntimePackageEntries();
   if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
 });
 
-caseTest('statement-fault-entry/other_entry_points', CASE_DEADLINE_MS, async () => {
+caseTest('statement-fault-entry/other_entry_points', async () => {
   const before = failures;
   current = 'other_entry_points';
   checkOtherEntryPoints();
   if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
 });
 
-caseTest('statement-fault-entry/entry_point', CASE_DEADLINE_MS, async ({ step }) => {
+caseTest('statement-fault-entry/entry_point', async ({ step }) => {
   const before = failures;
   current = 'entry_point';
   step('spawn the entry point checks');

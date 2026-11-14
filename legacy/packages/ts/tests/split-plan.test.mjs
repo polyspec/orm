@@ -6,7 +6,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Service, connect } from '../dist/index.js';
-import { DATABASE, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 
 // The resident set may grow by at most this much during the count. The values, their canonical form and the part plans
@@ -14,7 +14,7 @@ import { installBench } from './bench-set.mjs';
 // it by far more.
 const SPLIT_COUNT_RSS_LIMIT = 96 * 1024 * 1024;
 
-caseTest('split root IN count plans no statement over the bind limit', DATABASE, async ({ step }) => {
+caseTest('split root IN count plans no statement over the bind limit', async ({ step }) => {
   const directory = await mkdtemp(path.join(tmpdir(), 'orm-split-plan-'));
   try {
     const db = await connect(`sqlite://${directory}/split.sqlite`, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });

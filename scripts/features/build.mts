@@ -1,14 +1,14 @@
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { COMPUTE, sections } from '../../tests/testcase.mts';
+import { sections } from '../../tests/testcase.mts';
 import { readFeatures } from './manifest.mts';
 import { featureLanguages } from './languages.mts';
 import { errorCode } from '../../tests/errors.mts';
 
 // The feature doc build is one case that reads the manifest and makes or compares two docs.
 const log = sections();
-log.begin(process.argv.includes('--check') ? 'feature-docs-check' : 'feature-docs', COMPUTE);
+log.begin(process.argv.includes('--check') ? 'feature-docs-check' : 'feature-docs');
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifest = readFeatures(root);

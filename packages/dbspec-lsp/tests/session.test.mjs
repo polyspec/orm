@@ -13,13 +13,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { caseTest } from '../../../tests/testcase.mts';
 
-const TIMEOUT = 20000;
 const bin = fileURLToPath(new URL('../bin/dbspec-lsp.mjs', import.meta.url));
 const fixtures = new URL('../../../tests/editor/', import.meta.url);
 const CLASSES = ['keyword', 'type', 'name', 'setting', 'number', 'string', 'operator', 'punctuation', 'comment', 'word'];
 
 // Requirements: ORE-16, ORES-48.
-caseTest('the server uses vscode-languageserver and textdocument', TIMEOUT, () => {
+caseTest('the server uses vscode-languageserver and textdocument', () => {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   const source = readFileSync(new URL('../src/server.ts', import.meta.url), 'utf8');
   assert.ok(manifest.dependencies['vscode-languageserver']);
@@ -114,7 +113,7 @@ async function withTree(files, body) {
 }
 
 // Requirements: ORE-16.
-caseTest('the server declares utf-16, full sync and the class legend', TIMEOUT, async () => {
+caseTest('the server declares utf-16, full sync and the class legend', async () => {
   const server = await start();
   try {
     const { capabilities } = server.init;
@@ -128,7 +127,7 @@ caseTest('the server declares utf-16, full sync and the class legend', TIMEOUT, 
 const DECLARED_EDITOR_FIXTURES = ['canonical-block', 'header-end-of-line', 'non-bmp-comment-and-string', 'normalize-spacing', 'syntax-after-non-bmp'];
 const editorFixtureNames = readdirSync(fixtures).filter(n => n.endsWith('.dbs')).map(n => n.slice(0, -4)).sort();
 
-caseTest('the editor fixture list matches declared cases', TIMEOUT, () => {
+caseTest('the editor fixture list matches declared cases', () => {
   assert.deepEqual(editorFixtureNames, DECLARED_EDITOR_FIXTURES);
 });
 
@@ -152,29 +151,29 @@ async function assertEditorFixture(name) {
   } finally { await server.stop(); }
 }
 
-caseTest('fixture canonical-block through the language server', TIMEOUT, () => assertEditorFixture('canonical-block'));
-caseTest('fixture header-end-of-line through the language server', TIMEOUT, () => assertEditorFixture('header-end-of-line'));
-caseTest('fixture non-bmp-comment-and-string through the language server', TIMEOUT, () => assertEditorFixture('non-bmp-comment-and-string'));
-caseTest('fixture normalize-spacing through the language server', TIMEOUT, () => assertEditorFixture('normalize-spacing'));
-caseTest('fixture syntax-after-non-bmp through the language server', TIMEOUT, () => assertEditorFixture('syntax-after-non-bmp'));
+caseTest('fixture canonical-block through the language server', () => assertEditorFixture('canonical-block'));
+caseTest('fixture header-end-of-line through the language server', () => assertEditorFixture('header-end-of-line'));
+caseTest('fixture non-bmp-comment-and-string through the language server', () => assertEditorFixture('non-bmp-comment-and-string'));
+caseTest('fixture normalize-spacing through the language server', () => assertEditorFixture('normalize-spacing'));
+caseTest('fixture syntax-after-non-bmp through the language server', () => assertEditorFixture('syntax-after-non-bmp'));
 
 const SET = '{"schema": 1, "documents": ["shop.dbs", "core.dbs"]}\n';
 
-caseTest('a document takes its set from the nearest set file', TIMEOUT, () =>
+caseTest('a document takes its set from the nearest set file', () =>
   withTree({ 'dbspec-set.json': SET, 'core.dbs': CORE, 'shop.dbs': SHOP }, async (server, uri) => {
     await server.open(uri('shop.dbs'), SHOP);
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')), []);
   }));
 
 // Requirements: ORE-10, ORES-25.
-caseTest('a document no set file lists is alone and its use line reports it', TIMEOUT, () =>
+caseTest('a document no set file lists is alone and its use line reports it', () =>
   withTree({ 'shop.dbs': SHOP }, async (server, uri) => {
     await server.open(uri('shop.dbs'), SHOP);
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')).map(d => d.code), ['use']);
   }));
 
 // Requirements: ORE-9, ORES-38.
-caseTest('a set error is shown and the document is analyzed alone', TIMEOUT, () =>
+caseTest('a set error is shown and the document is analyzed alone', () =>
   withTree({ 'dbspec-set.json': '{"schema": 1, "documents": ["shop.dbs", "gone.dbs"]}\n', 'shop.dbs': SHOP }, async (server, uri) => {
     await server.open(uri('shop.dbs'), SHOP);
     assert.ok(server.messages.some(m => m.startsWith('set.file: ')), server.messages.join('\n'));
@@ -182,7 +181,7 @@ caseTest('a set error is shown and the document is analyzed alone', TIMEOUT, () 
   }));
 
 // Requirements: ORES-37, ORES-39.
-caseTest('a listed file with invalid UTF-8 is published on its own URI', TIMEOUT, () =>
+caseTest('a listed file with invalid UTF-8 is published on its own URI', () =>
   withTree({
     'dbspec-set.json': '{"schema":1,"documents":["shop.dbs","bad.dbs"]}\n',
     'shop.dbs': PLAIN_SHOP,
@@ -196,7 +195,7 @@ caseTest('a listed file with invalid UTF-8 is published on its own URI', TIMEOUT
   }));
 
 // Requirements: ORES-41.
-caseTest('an open buffer of a listed file wins over the disk', TIMEOUT, () =>
+caseTest('an open buffer of a listed file wins over the disk', () =>
   withTree({ 'dbspec-set.json': SET, 'core.dbs': CORE, 'shop.dbs': SHOP }, async (server, uri) => {
     await server.open(uri('shop.dbs'), SHOP);
     await server.open(uri('core.dbs'), CORE);
@@ -206,7 +205,7 @@ caseTest('an open buffer of a listed file wins over the disk', TIMEOUT, () =>
   }));
 
 // Requirements: ORES-40.
-caseTest('a watched file change analyzes the open documents again', TIMEOUT, () =>
+caseTest('a watched file change analyzes the open documents again', () =>
   withTree({ 'dbspec-set.json': SET, 'core.dbs': CORE, 'shop.dbs': SHOP }, async (server, uri, root) => {
     await server.open(uri('shop.dbs'), SHOP);
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')), []);
@@ -215,7 +214,7 @@ caseTest('a watched file change analyzes the open documents again', TIMEOUT, () 
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')).map(d => d.code), ['use']);
   }));
 
-caseTest('a diagnostic of another file of the set is published on its URI', TIMEOUT, () =>
+caseTest('a diagnostic of another file of the set is published on its URI', () =>
   withTree({
     'dbspec-set.json': '{"schema": 1, "documents": ["shop.dbs", "sub/bad.dbs"]}\n',
     'shop.dbs': 'dbspec 1 shop\n\ntable t {\n  id i64 identity\n  primary key (id)\n}\n',

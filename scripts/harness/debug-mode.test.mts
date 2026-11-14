@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -14,10 +14,10 @@ function printed(value: string): string {
   return execFileSync('make', ['-s', 'print-CARGO_PROFILE_DEV_DEBUG', `KIT_WORKTREE=${value}`], { env: isolatedEnvironment({ KIT_WORKTREE: value }), cwd: root, encoding: 'utf8' }).trim();
 }
 
-caseTest('a set KIT_WORKTREE gives debug = 0 for the Rust test build', COMPUTE, () => {
+caseTest('a set KIT_WORKTREE gives debug = 0 for the Rust test build', () => {
   assert.equal(printed('1'), '0');
 });
 
-caseTest('an empty KIT_WORKTREE gives line-tables-only for the Rust test build', COMPUTE, () => {
+caseTest('an empty KIT_WORKTREE gives line-tables-only for the Rust test build', () => {
   assert.equal(printed(''), 'line-tables-only');
 });

@@ -90,7 +90,7 @@ const signatureCases: { name: string; runner: Runner; inputs: string[] }[] = run
 });
 signatureCases.push({ name: `${stressHarness.name} rejects a document without the signature`, runner: stressHarness, inputs: [unsigned] });
 for (const c of signatureCases) {
-  caseTest(c.name, TIMEOUT, async () => {
+  caseTest(c.name, async () => {
     const result = await runRunner(c.runner, c.inputs, TIMEOUT);
     assert.equal(result.signal, null, `ended by ${result.signal}`);
     assert.notEqual(result.code, 0, `exited 0; stderr: ${result.stderr}`);
@@ -99,7 +99,7 @@ for (const c of signatureCases) {
 }
 
 for (const c of cases) {
-  caseTest(c.name, TIMEOUT, async () => {
+  caseTest(c.name, async () => {
     const result = await runRunner(c.runner, c.inputs, TIMEOUT);
     assert.equal(result.signal, null, `ended by ${result.signal}`);
     assert.notEqual(result.code, 0, `exited 0; stderr: ${result.stderr}`);

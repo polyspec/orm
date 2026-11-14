@@ -19,7 +19,7 @@ import { checkInputErrors } from '../features/owners.mts';
 import { nativeTestErrors } from './native-tests.mts';
 import { caseRunnerTests, readTree as readRecipeTree } from '../features/recipe-runners.mts';
 import { implementationFiles, implementationTestInventory } from '../features/languages.mts';
-import { COMPUTE, sections } from '../../tests/testcase.mts';
+import { sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
@@ -27,7 +27,7 @@ import { readComposer, readPackage } from '../json/formats.mts';
 // The repository check covers one case: whether the CI workflow gives the database check's servers and variables through make orm-test-servers,
 // and whether the check and the workflow run on the one Node version declared in mise.toml.
 const log = sections();
-log.begin('repo', COMPUTE);
+log.begin('repo');
 
 const root = new URL('../../', import.meta.url).pathname;
 // The files that orm keeps in the form of kit (scripts/repo/kit-copies.mts) follow kit's form, so the rules of this

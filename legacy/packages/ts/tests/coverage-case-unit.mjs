@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 // runCases reads the case IDs from the command line, so during each call it changes process.argv and collects the output.
 async function withArguments(ids, body) {
@@ -24,23 +24,23 @@ async function withArguments(ids, body) {
   return lines;
 }
 
-caseTest('coverage_case/runs-requested-cases-in-order', COMPUTE, async () => {
+caseTest('coverage_case/runs-requested-cases-in-order', async () => {
   const ran = [];
-  const lines = await withArguments(['b', 'a'], () => runCases('x.mjs', { a: async () => ran.push('a'), b: async () => ran.push('b') }, 1000));
+  const lines = await withArguments(['b', 'a'], () => runCases('x.mjs', { a: async () => ran.push('a'), b: async () => ran.push('b') }));
   assert.deepEqual(ran, ['b', 'a']);
   assert.deepEqual(lines, ['CASE b PASS', 'CASE a PASS']);
 });
-caseTest('coverage_case/refuses-repeated-and-unknown-ids', COMPUTE, async () => {
+caseTest('coverage_case/refuses-repeated-and-unknown-ids', async () => {
   for (const ids of [['a', 'a'], ['z']])
-    await assert.rejects(withArguments(ids, () => runCases('x.mjs', { a: async () => {} }, 1000)), /^Error: usage: x\.mjs a\.\.\.; got /);
+    await assert.rejects(withArguments(ids, () => runCases('x.mjs', { a: async () => {} })), /^Error: usage: x\.mjs a\.\.\.; got /);
 });
 // Without a case ID, runCases registers each case of the suite as a top-level node:test test named by its ID.
-caseTest('coverage_case/registers-the-suite-without-ids', COMPUTE, () => {
+caseTest('coverage_case/registers-the-suite-without-ids', () => {
   const directory = mkdtempSync(join(tmpdir(), 'coverage-case-'));
   try {
     const file = join(directory, 'suite.mjs');
     writeFileSync(file, `import { runCases } from ${JSON.stringify(new URL('./coverage_case.mjs', import.meta.url).href)};\n` +
-      "await runCases('suite.mjs', { only: async () => {} }, 1000, { b: async () => {}, a: async () => { throw new Error('a fails'); } });\n");
+      "await runCases('suite.mjs', { only: async () => {} }, { b: async () => {}, a: async () => { throw new Error('a fails'); } });\n");
     // A separate process without --test: a nested node:test run inside this test is refused by node:test. NODE_TEST_CONTEXT
     // is removed so the child registers and runs its own root tests instead of reporting to this run.
     const env = { ...process.env };
@@ -51,15 +51,7 @@ caseTest('coverage_case/registers-the-suite-without-ids', COMPUTE, () => {
     assert.deepEqual([...summary.matchAll(/^([✔✖]) (\S+) \(/gmu)].map(m => [m[1] === '✔' ? 'ok' : 'not ok', m[2]]), [['ok', 'b'], ['not ok', 'a']]);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
-caseTest('coverage_case/stops-a-case-at-its-deadline', COMPUTE, async () => {
-  let timer;
-  await assert.rejects(withArguments(['slow'], async () => {
-    try {
-      await runCases('x.mjs', { slow: () => new Promise(resolve => { timer = setTimeout(resolve, 5000); }) }, 20);
-    } finally { clearTimeout(timer); }
-  }), /case slow exceeded 20 ms/);
-});
-caseTest('coverage_case/reports-error-codes-and-cleanup-failures', COMPUTE, async () => {
+caseTest('coverage_case/reports-error-codes-and-cleanup-failures', async () => {
   assert.equal(await errorCode(Promise.reject(Object.assign(new Error('bad'), { code: 'CONFIG' }))), 'CONFIG');
   assert.equal(await errorCode(Promise.resolve()), null);
   await assert.rejects(errorCode(Promise.reject(new Error('no code'))), /no code/);

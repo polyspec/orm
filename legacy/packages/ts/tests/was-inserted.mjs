@@ -13,7 +13,6 @@ import { withCaseDatabase } from './case-database.mjs';
 import { schemaOf } from './schema_of.mjs';
 
 const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
-const CASE_DEADLINE_MS = 30_000;
 
 const { clock_event: ClockEvent } = models(clockText);
 
@@ -44,7 +43,7 @@ async function insertEvent(db, label) {
  * commits and lets the child finish.
  */
 // Requirements: INT-53.
-caseTest('backend-waiting-for-lock/postgres-waiter', CASE_DEADLINE_MS, async () => {
+caseTest('backend-waiting-for-lock/postgres-waiter', async () => {
   await onCase('postgres', async (db, dsn) => {
     let seq = 0;
     await db.transaction(async () => { seq = await insertEvent(db, 'held'); }, { retry: 0 });

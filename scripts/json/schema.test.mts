@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { JsonError, parseJson, readJsonFile, SchemaError, validator } from './schema.mts';
 
 type Pair = { name: string; size: number };
@@ -23,7 +23,7 @@ function withSchema(schema: object, body: (path: string, dir: string) => void): 
 const PAIR = { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'object', additionalProperties: false, required: ['name', 'size'],
   properties: { name: { type: 'string' }, size: { type: 'integer' } } };
 
-caseTest('a value its schema accepts is returned typed', COMPUTE, () => {
+caseTest('a value its schema accepts is returned typed', () => {
   withSchema(PAIR, (schema, dir) => {
     const pair = parseJson<Pair>('{"name":"a","size":2}', schema, 'inline');
     assert.deepEqual([pair.name, pair.size], ['a', 2]);
@@ -32,7 +32,7 @@ caseTest('a value its schema accepts is returned typed', COMPUTE, () => {
   });
 });
 
-caseTest('a value its schema refuses throws every error with the source and the path', COMPUTE, () => {
+caseTest('a value its schema refuses throws every error with the source and the path', () => {
   withSchema(PAIR, schema => {
     assert.throws(() => parseJson<Pair>('{"name":1,"extra":true}', schema, 'v.json'), (error: unknown) => {
       assert.ok(error instanceof SchemaError);
@@ -42,19 +42,19 @@ caseTest('a value its schema refuses throws every error with the source and the 
   });
 });
 
-caseTest('invalid JSON throws a JsonError naming the source', COMPUTE, () => {
+caseTest('invalid JSON throws a JsonError naming the source', () => {
   withSchema(PAIR, schema => {
     assert.throws(() => parseJson<Pair>('{', schema, 'broken.json'), (error: unknown) => error instanceof JsonError && error.message.startsWith('broken.json: '));
   });
 });
 
-caseTest('a schema that strict mode refuses throws', COMPUTE, () => {
+caseTest('a schema that strict mode refuses throws', () => {
   withSchema({ type: 'object', unknownKeyword: true }, schema => {
     assert.throws(() => parseJson<Pair>('{}', schema, 'x.json'), /unknown keyword/);
   });
 });
 
-caseTest('a schema file is compiled once, and again when its text changes', COMPUTE, () => {
+caseTest('a schema file is compiled once, and again when its text changes', () => {
   withSchema({ type: 'object' }, path => {
     const first = validator(path);
     assert.equal(validator(path), first);
@@ -72,7 +72,7 @@ const SHAPES = { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 
   { type: 'object', additionalProperties: false, required: ['kind', 'base', 'height'], properties: { kind: { enum: ['triangle', 'wedge'] }, base: { type: 'number' }, height: { type: 'number' } } },
 ] } };
 
-caseTest('a refused value of a oneOf is reported by the alternative that it names', COMPUTE, () => {
+caseTest('a refused value of a oneOf is reported by the alternative that it names', () => {
   withSchema(SHAPES, schema => {
     const refused = (text: string): string[] => {
       let lines: string[] | undefined;
@@ -95,7 +95,7 @@ caseTest('a refused value of a oneOf is reported by the alternative that it name
 
 // T461: the report of one refused step of a recipe names the step and is short. The step form of the recipe schema is a
 // oneOf of 147 ops, and the report held 1085 lines for this step.
-caseTest('one refused step of a recipe is reported in a few lines', COMPUTE, () => {
+caseTest('one refused step of a recipe is reported in a few lines', () => {
   const root = join(import.meta.dirname, '../..');
   const schema = join(root, 'scripts/features/schema/recipe.schema.json');
   const recipe = { $schema: 'recipe.schema.json', requirements: ['FCV-2'], cases: [{ id: 'one', requirements: ['FCV-2'], steps: [{ op: 'dsn.connect', dsn: 'case', expect: { error: 'Not A Code' } }] }] };

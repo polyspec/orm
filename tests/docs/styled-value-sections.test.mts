@@ -7,18 +7,17 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { caseTest } from '../testcase.mts';
 
-const TIMEOUT = 15000;
 const root = new URL('../..', import.meta.url).pathname;
 const read = (file: string) => readFileSync(join(root, file), 'utf8');
 
-caseTest('docs/spec/codec.md states the StyledValue of the TypeScript and Python codecs', TIMEOUT, () => {
+caseTest('docs/spec/codec.md states the StyledValue of the TypeScript and Python codecs', () => {
   const codec = read('docs/spec/codec.md');
   assert.match(codec, /^The Go JSON codec returns `orm\.StyledValue`/m, 'the Go section is the reference of the other sections');
   assert.match(codec, /^The TypeScript codec returns `StyledValue<T>`/m, 'docs/spec/codec.md lacks the TypeScript StyledValue section');
   assert.match(codec, /^The Python codec returns `polyspec\.orm\.StyledValue`/m, 'docs/spec/codec.md lacks the Python StyledValue section');
 });
 
-caseTest('docs/spec/dbspec.md states the styled column value of TypeScript and Python', TIMEOUT, () => {
+caseTest('docs/spec/dbspec.md states the styled column value of TypeScript and Python', () => {
   const fields = read('docs/spec/dbspec.md').split('\n').find(line => line.startsWith('- **Fields.**'));
   assert.ok(fields !== undefined, 'docs/spec/dbspec.md has no Fields bullet');
   assert.match(fields, /styled values stay unwrapped/, 'the Fields bullet names the styled value of Go');

@@ -9,7 +9,6 @@ import path from 'node:path';
 import { caseTest } from '../testcase.mts';
 import { tableUnder, tablesIn } from '../../scripts/docs/tables.mts';
 
-const TIMEOUT = 30_000;
 const require = createRequire(import.meta.url);
 
 function method(value: unknown, name: string): Function {
@@ -21,22 +20,22 @@ function method(value: unknown, name: string): Function {
   return candidate;
 }
 
-caseTest('an escaped pipe and a code span keep their source text in the cell', TIMEOUT, () => {
+caseTest('an escaped pipe and a code span keep their source text in the cell', () => {
   const [table] = tablesIn('| a | b |\n|---|---|\n| `x` \\| `y` | z \\| w |\n');
   assert.deepEqual(table?.rows, [['`x` \\| `y`', 'z \\| w']]);
 });
 
-caseTest('a table in a code block is not a table', TIMEOUT, () => {
+caseTest('a table in a code block is not a table', () => {
   assert.deepEqual(tablesIn('```\n| a | b |\n|---|---|\n| 1 | 2 |\n```\n'), []);
 });
 
-caseTest('a table without leading pipes is read with its header and rows', TIMEOUT, () => {
+caseTest('a table without leading pipes is read with its header and rows', () => {
   const [table] = tablesIn('Go | PHP\n--|--\n1 | 2\n');
   assert.deepEqual(table?.header, ['Go', 'PHP']);
   assert.deepEqual(table?.rows, [['1', '2']]);
 });
 
-caseTest('tableUnder reads the table of its heading and not one below a later heading', TIMEOUT, () => {
+caseTest('tableUnder reads the table of its heading and not one below a later heading', () => {
   const under = tableUnder('## Target\n\ntext\n\n| a |\n|---|\n| 1 |\n\n## Other\n\n| b |\n|---|\n| 2 |\n', heading => heading.depth === 2 && heading.children[0]?.type === 'text' && heading.children[0].value === 'Target');
   assert.deepEqual(under?.header, ['a']);
   const after = tableUnder('## Target\n\ntext\n\n## Other\n\n| b |\n|---|\n| 2 |\n', heading => heading.depth === 2 && heading.children[0]?.type === 'text' && heading.children[0].value === 'Target');
@@ -44,7 +43,7 @@ caseTest('tableUnder reads the table of its heading and not one below a later he
 });
 
 
-caseTest('angle-bracket examples in plan checklists render as text', TIMEOUT, async () => {
+caseTest('angle-bracket examples in plan checklists render as text', async () => {
   const docs = path.resolve('docs');
   const vitepress: unknown = require('vitepress');
   const createMarkdownRenderer = method(vitepress, 'createMarkdownRenderer');

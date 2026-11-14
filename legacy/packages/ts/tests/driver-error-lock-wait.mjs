@@ -7,10 +7,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { driverError, openDriver, parseDsn } from '../dist/driver.js';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 // Requirements: PLN-24.
-caseTest('driver-error/sqlite-locked/sqlite', COMPUTE, () => {
+caseTest('driver-error/sqlite-locked/sqlite', () => {
   const source = Object.assign(new Error('database table is locked'), { code: 'SQLITE_LOCKED', errcode: 6 });
   const mapped = driverError('sqlite', source);
   assert.equal(mapped.code, 'DRIVER');
@@ -38,7 +38,7 @@ async function withReservedSqliteSession(file, exercise) {
 }
 
 // Requirements: CFG-9. A pre-aborted SQLite statement does not wait behind a reserved connection.
-caseTest('driver-cancel/sqlite/pre-aborted-while-queued', COMPUTE, async () => {
+caseTest('driver-cancel/sqlite/pre-aborted-while-queued', async () => {
   await withReservedSqliteSession('pre-aborted.sqlite', async pool => {
     const controller = new AbortController();
     controller.abort();
@@ -48,7 +48,7 @@ caseTest('driver-cancel/sqlite/pre-aborted-while-queued', COMPUTE, async () => {
 });
 
 // Requirements: CFG-9. Aborting a queued SQLite statement removes its waiter without interrupting the holder.
-caseTest('driver-cancel/sqlite/aborted-while-queued', COMPUTE, async () => {
+caseTest('driver-cancel/sqlite/aborted-while-queued', async () => {
   await withReservedSqliteSession('queued.sqlite', async (pool, release) => {
     const controller = new AbortController();
     const pending = pool.execute('SELECT 1', [], controller.signal, () => {});

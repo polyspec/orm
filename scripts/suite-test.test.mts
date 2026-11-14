@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { caseTest, COMPUTE } from '../tests/testcase.mts';
+import { caseTest } from '../tests/testcase.mts';
 import { implementationFiles, implementationTestInventory } from './features/languages.mts';
 import { readTree } from './features/recipe-runners.mts';
 import { MARIADB_ENTRY, OWNED_ELSEWHERE, SUITE_LANES, recipeEntries, suiteBatches, suiteCommand, suiteTests } from './suite-test.mts';
@@ -11,7 +11,7 @@ import { MARIADB_ENTRY, OWNED_ELSEWHERE, SUITE_LANES, recipeEntries, suiteBatche
 const root = resolve(import.meta.dirname, '..');
 const { tests } = implementationTestInventory(implementationFiles(root));
 
-caseTest('the suite of a runtime is its test files less the files another check runs', COMPUTE, () => {
+caseTest('the suite of a runtime is its test files less the files another check runs', () => {
   for (const lane of SUITE_LANES) {
     const suite = suiteTests(lane, tests);
     const owned = (tests[lane] ?? []).filter(file => Object.hasOwn(OWNED_ELSEWHERE, file) || MARIADB_ENTRY.test(file));
@@ -23,7 +23,7 @@ caseTest('the suite of a runtime is its test files less the files another check 
   assert.throws(() => suiteTests('php', sample), /declares no implementation php/);
 });
 
-caseTest('each file another check runs is a test file of its runtime, and that check names it', COMPUTE, () => {
+caseTest('each file another check runs is a test file of its runtime, and that check names it', () => {
   const all = new Set(Object.values(tests).flat());
   for (const [file, owner] of Object.entries(OWNED_ELSEWHERE)) {
     assert.ok(all.has(file), `${file} is no test file of contracts/implementations.json`);
@@ -35,7 +35,7 @@ caseTest('each file another check runs is a test file of its runtime, and that c
 });
 
 // The recipe entries of mariadb need the MariaDB servers, which the runner of a suite cannot hold (DIA-200, FCV-3).
-caseTest('the suites leave the recipe entries of mariadb to make mariadb-recipes-check', COMPUTE, () => {
+caseTest('the suites leave the recipe entries of mariadb to make mariadb-recipes-check', () => {
   const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
   for (const lane of SUITE_LANES) {
     const entries = (tests[lane] ?? []).filter(file => MARIADB_ENTRY.test(file));
@@ -48,7 +48,7 @@ caseTest('the suites leave the recipe entries of mariadb to make mariadb-recipes
 });
 
 // The recipe runs of every database run one case at a time (docs/spec/dialects.md DIA-212).
-caseTest('a suite runs its recipe entries one at a time, after the other files', COMPUTE, () => {
+caseTest('a suite runs its recipe entries one at a time, after the other files', () => {
   const { bindings } = readTree();
   const entries = { php: 'legacy/packages/php/tests/AuditTriggersRecipeTest.php', typescript: 'legacy/packages/ts/tests/aes_rotation-mysql.test.mjs', python: 'legacy/packages/python/tests/test_aes_rotation_sqlite.py' };
   const others = { php: 'legacy/packages/php/tests/RuntimeDbTest.php', typescript: 'legacy/packages/ts/tests/aggregate_numeric.mjs', python: 'legacy/packages/python/tests/mysql_session.py' };
@@ -67,7 +67,7 @@ caseTest('a suite runs its recipe entries one at a time, after the other files',
   });
 });
 
-caseTest('a file of the suite runs as the runner of its runtime runs one file', COMPUTE, () => {
+caseTest('a file of the suite runs as the runner of its runtime runs one file', () => {
   assert.deepEqual(suiteCommand('typescript', 'legacy/packages/ts/tests/a.test.mjs').args, ['--conditions=orm-test', '--test', 'legacy/packages/ts/tests/a.test.mjs']);
   assert.deepEqual(suiteCommand('python', 'legacy/packages/python/tests/test_a.py').args, ['-m', 'unittest', '-v', 'legacy.packages.python.tests.test_a']);
   const php = suiteCommand('php', 'legacy/packages/php/tests/ATest.php');

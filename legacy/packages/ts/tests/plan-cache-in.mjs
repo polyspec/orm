@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { canonicalize } from '../dist/engine/canonical.js';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 const schemaText = await readFile(new URL('../../../contracts/fixtures/identity_load.dbs', import.meta.url), 'utf8');
 const parsed = parseDbspec(schemaText, {});
@@ -20,7 +20,7 @@ function inRequest(n) {
 }
 
 // Requirements: CPX-4.
-caseTest('IN lists of lengths 1 to 300 share at most ten plan cache keys', COMPUTE, () => {
+caseTest('IN lists of lengths 1 to 300 share at most ten plan cache keys', () => {
   const keys = new Set();
   for (let n = 1; n <= 300; n++) {
     const { request, params } = inRequest(n);
@@ -29,13 +29,13 @@ caseTest('IN lists of lengths 1 to 300 share at most ten plan cache keys', COMPU
   }
 });
 
-caseTest('a parameter index past the parameters is IR_INVALID', COMPUTE, () => {
+caseTest('a parameter index past the parameters is IR_INVALID', () => {
   const request = { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'in', ps: [7] } }] }, n_params: 1 };
   assert.throws(() => canonicalize(request, ['a']), (error) => error.code === 'IR_INVALID');
 });
 
 // Requirements: PRT-78; T236.
-caseTest('root pages share one plan shape and bind offset then count', COMPUTE, () => {
+caseTest('root pages share one plan shape and bind offset then count', () => {
   const keys = new Set();
   for (let page = 0; page < 300; page++) {
     const request = { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] }, limit: { offset: page * 20, count: 20 }, n_params: 1 };
@@ -48,7 +48,7 @@ caseTest('root pages share one plan shape and bind offset then count', COMPUTE, 
 });
 
 // Requirements: T236.
-caseTest('root page placeholders retain dialect SQL and bind order', COMPUTE, () => {
+caseTest('root page placeholders retain dialect SQL and bind order', () => {
   const request = {
     ir_version: 1, manifest_hash: manifest.manifestHash, kind: 'all', entity: 'load_probe', n_params: 3,
     where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] },
@@ -65,7 +65,7 @@ caseTest('root page placeholders retain dialect SQL and bind order', COMPUTE, ()
 });
 
 // Requirements: T236.
-caseTest('composite request parameters follow the specified recursive walk', COMPUTE, () => {
+caseTest('composite request parameters follow the specified recursive walk', () => {
   const pred = p => ({ items: [{ pred: { column: 'seq', op: 'eq', p } }] });
   const request = {
     ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'root', n_params: 18,
@@ -101,7 +101,7 @@ caseTest('composite request parameters follow the specified recursive walk', COM
 });
 
 // Requirements: T236.
-caseTest('page parameter values and limit shape are validated before planning', COMPUTE, () => {
+caseTest('page parameter values and limit shape are validated before planning', () => {
   const canonical = (limit, params) => canonicalize({ ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', limit, n_params: params.length }, params);
   for (const value of [null, false, '1', 1.5, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => canonical({ offset_p: 0, count_p: 1 }, [value, 2]), error => error.code === 'CODEC_ENCODE', `invalid offset ${String(value)}`);

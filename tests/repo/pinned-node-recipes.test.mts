@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSyn
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, COMPUTE } from '../testcase.mts';
+import { caseTest } from '../testcase.mts';
 import { isolatedEnvironment } from '../environment.mts';
 
 function checkSuccessAndFailure(
@@ -21,12 +21,12 @@ function checkSuccessAndFailure(
   }
 }
 
-caseTest('the TypeScript package entry recipe uses the pinned Node wrapper', COMPUTE, () => {
+caseTest('the TypeScript package entry recipe uses the pinned Node wrapper', () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
   assert.match(makefile, /^\t\$\(NODE\) --conditions=orm-test --test --test-name-pattern='package-entry\/runtime-exports' packages\/ts\/tests\/statement_fault_entry\.mjs$/m);
 });
 
-caseTest('the collection PHPStan recipe removes its private cache after success and failure', COMPUTE, () => {
+caseTest('the collection PHPStan recipe removes its private cache after success and failure', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const directory = mkdtempSync(join(tmpdir(), 'orm-collection-phpstan-recipe-'));
   const temporary = join(directory, 'step-tmp');
@@ -60,7 +60,7 @@ caseTest('the collection PHPStan recipe removes its private cache after success 
   }
 });
 
-caseTest('the catalog PHP extension surface recipe removes its build directory on every exit', COMPUTE, () => {
+caseTest('the catalog PHP extension surface recipe removes its build directory on every exit', () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
   const recipe = makefile.split('catalog-php-extension-surface-check: php-vendor-check php-models\n')[1]?.split(/\n[A-Za-z0-9_./%-]+:/, 1)[0];
   assert.ok(recipe, 'catalog-php-extension-surface-check recipe is missing');
@@ -68,7 +68,7 @@ caseTest('the catalog PHP extension surface recipe removes its build directory o
   assert.match(recipe, /trap 'rm -rf "\$\$run_dir"' EXIT/);
 });
 
-caseTest('the MySQL TLS PHP extension target builds in its own run directory', COMPUTE, () => {
+caseTest('the MySQL TLS PHP extension target builds in its own run directory', () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
   const target = makefile.split('mysql-tls-php-extension-check: RUN_DIR = ')[1]?.split('\n# Runs the native PHP extension MySQL session')[0];
   assert.ok(target, 'MySQL TLS PHP extension target is missing');
@@ -128,7 +128,7 @@ caseTest('the MySQL TLS PHP extension target builds in its own run directory', C
   }
 });
 
-caseTest('the dbspec PHP extension aggregate owns the shared module until every case finishes', COMPUTE, () => {
+caseTest('the dbspec PHP extension aggregate owns the shared module until every case finishes', () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
   const aggregate = makefile.split('dbspec-php-extension-check:\n')[1]?.split('\ndbspec-php-extension-check/arginfo:')[0];
   assert.ok(aggregate, 'dbspec-php-extension-check aggregate recipe is missing');

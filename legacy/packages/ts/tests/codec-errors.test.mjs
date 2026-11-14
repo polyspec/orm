@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { ParseError as JsonParseError, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { CodecError, StyledValue, decode, encode } from '../dist/index.js';
 
@@ -12,7 +12,7 @@ function thrown(operation) {
   assert.fail('expected decode to throw');
 }
 
-caseTest('CodecError accepts ErrorOptions without changing its formatted message', COMPUTE, () => {
+caseTest('CodecError accepts ErrorOptions without changing its formatted message', () => {
   const cause = new Error('parser failure');
   const error = new CodecError('CODEC_DECODE', 'json: parser failure', { cause });
   assert.equal(error.message, 'CODEC_DECODE: json: parser failure');
@@ -21,7 +21,7 @@ caseTest('CodecError accepts ErrorOptions without changing its formatted message
 });
 
 // Requirements: COD-33, COD-35 (docs/spec).
-caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
+caseTest('codec/malformed-json-and-yaml', () => {
   for (const [style, source, prefix] of [
     ['ordered_json', '{', 'json'],
     ['yaml', 'value: [\n', 'yaml'],
@@ -35,7 +35,7 @@ caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
 });
 
 // The cause is the failure of the reader of the bytes: the ordered-json parser of the cell, the UTF-8 decoder of a stream.
-caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
+caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', () => {
   for (const [style, message, cause] of [
     ['ordered_json', 'json: the cell is not JSON', error => error instanceof JsonParseError && error.kind === 'invalid_utf8'],
     ['yaml', 'yaml: the stream is not UTF-8', error => error instanceof TypeError],
@@ -49,7 +49,7 @@ caseTest('invalid UTF-8 in JSON and YAML returns CODEC_DECODE', COMPUTE, () => {
 });
 
 // The refused YAML forms are the recipe cases decode_errors; this holds the JavaScript class of the value.
-caseTest('a decoded ordered_json value holds a JsonValue', COMPUTE, () => {
+caseTest('a decoded ordered_json value holds a JsonValue', () => {
   const json = decode(['ordered_json'], '{"value": 2}');
   assert(json.payload() instanceof JsonValue);
   assert.equal(stringifyJson(json.payload()), '{"value":2}');
@@ -58,7 +58,7 @@ caseTest('a decoded ordered_json value holds a JsonValue', COMPUTE, () => {
 
 // The JavaScript inputs of the ordered_json and serialize stages, which no recipe value names (COD-16, COD-21); the codec
 // cases that every client shares are the codec recipe, tests/codec/codec.json (codec-none.test.mjs).
-caseTest('codec/javascript-inputs', COMPUTE, () => {
+caseTest('codec/javascript-inputs', () => {
   const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
   assert.equal(encode(['ordered_json'], StyledValue.value({ b: 1, a: [], c: {}, n: parseJson('1.50') })), orderedText);
   for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
@@ -74,7 +74,7 @@ caseTest('codec/javascript-inputs', COMPUTE, () => {
 // a form that is again an object of a class, the object itself included, has no JSON form, and the encode refuses it
 // rather than reading toJSON again.
 // Requirements: COD-21, COD-70, COD-71.
-caseTest('codec/to-json-forms', COMPUTE, () => {
+caseTest('codec/to-json-forms', () => {
   class Self { toJSON() { return this; } }
   class Other { toJSON() { return new Self(); } }
   for (const value of [new Self(), [new Other()], { a: new Self() }]) {
@@ -116,7 +116,7 @@ function framesNeeded(call) {
 // needs no more of the caller's stack than a scalar, and a list at level 257 is the nesting rule, so no depth of the
 // caller decides where it fails (COD-70). A reader that recursed once a level would need 256 frames more.
 // Requirements: COD-70, COD-80.
-caseTest('codec/yaml-reader-needs-no-stack-per-level', COMPUTE, () => {
+caseTest('codec/yaml-reader-needs-no-stack-per-level', () => {
   const deepest = value => {
     let level = 0;
     for (let node = value; Array.isArray(node) || (node !== null && typeof node === 'object'); level++) node = Array.isArray(node) ? node[0] : Object.values(node)[0];

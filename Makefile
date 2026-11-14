@@ -2385,11 +2385,11 @@ decimal-bench-sqlite: typescript-current
 	$(READ_TYPESCRIPT)
 	$(NODE) scripts/decimal-bench-sqlite.mts
 
-# The cases of decimal-physical-check have a deadline per owner process (TIMEOUT_MS of scripts/physical.mts). The build that the process
+# The cases of decimal-physical-check end when their owner processes end; no clock ends them (scripts/physical.mts). The build that the process
 # uses (the Rust test binary decimal_physical and the Go decimalmodel test) is a long-running
 # task, so it runs first under RUN_LONG with no deadline before the case (the Go build publishes into .runtime/bin and fills the build cache), and the case
 # Run what was built.
-# The case runs the copy of the Rust test binary (tests/cargo-test.mts --copy): a cargo test in its deadline would wait for and rebuild
+# The case runs the copy of the Rust test binary (tests/cargo-test.mts --copy): a cargo test in the case would wait for and rebuild
 # what the other helpers of this run build in the shared target directory.
 decimal-physical-check: DECIMAL_RUST_RUN = $(abspath .runtime/run)/decimal-physical-$PPID
 decimal-physical-check: php-vendor-check lease-tool python-venv-check orm-install-php-extension-tools

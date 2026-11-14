@@ -4,14 +4,14 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { readImplementations, type Implementation } from '../json/formats.mts';
 import { featureLanguages, implementationFiles, implementationLanguages, implementationOf, implementationTestInventory, koreanDocumentPath, unlistedFeatureTestErrors } from './languages.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const implementations = readImplementations(resolve(root, 'contracts/implementations.json'));
 
-caseTest('the implementations of contracts/implementations.json are the feature language set', COMPUTE, () => {
+caseTest('the implementations of contracts/implementations.json are the feature language set', () => {
   assert.deepEqual(implementations.map(entry => entry.name).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
   assert.deepEqual(implementationLanguages(), implementations.map(entry => entry.name));
 });
@@ -36,7 +36,7 @@ function handWrittenSet(source: string): boolean {
 }
 
 for (const file of readers) {
-  caseTest(`${file} reads the language set from contracts/implementations.json`, COMPUTE, async () => {
+  caseTest(`${file} reads the language set from contracts/implementations.json`, async () => {
     const source = await readFile(resolve(root, file), 'utf8');
     assert.equal(handWrittenSet(source), false, `${file} writes its own language list`);
     assert.match(source, /implementationLanguages\(\)|featureLanguages\(/, `${file} does not read the language set of contracts/implementations.json`);
@@ -45,7 +45,7 @@ for (const file of readers) {
 
 // A feature's languages are the implementations whose roots hold one of its tests, php-extension among them; a root outside
 // packages (examples, benchmarks/rust) belongs to its implementation too.
-caseTest('featureLanguages derives the implementations whose roots hold the tests', COMPUTE, () => {
+caseTest('featureLanguages derives the implementations whose roots hold the tests', () => {
   assert.deepEqual(featureLanguages(['legacy/packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php', 'legacy/packages/go/orm/codec_test.go']), ['go', 'php-extension']);
   assert.equal(implementationOf('legacy/packages/php-ext/tests/x.php'), 'php-extension');
   assert.equal(implementationOf('legacy/packages/php/tests/x.php'), 'php');
@@ -60,17 +60,17 @@ const probe: Implementation = {
   support: ['legacy/packages/go/orm/test_helpers_test.go'], internal: [{ glob: 'legacy/packages/go/orm/split_plan_test.go', reason: 'internal' }],
 };
 
-caseTest('the test inventory is the files its globs select, less its support files and internal tests', COMPUTE, () => {
+caseTest('the test inventory is the files its globs select, less its support files and internal tests', () => {
   const files = ['legacy/packages/go/orm/codec_test.go', 'legacy/packages/go/orm/test_helpers_test.go', 'legacy/packages/go/orm/split_plan_test.go', 'legacy/packages/go/orm/codec.go', 'docs/x_test.go'];
   assert.deepEqual(implementationTestInventory(files, [probe]), { tests: { go: ['legacy/packages/go/orm/codec_test.go'] }, stale: [] });
 });
 
-caseTest('a support or internal glob that selects no test file is stale', COMPUTE, () => {
+caseTest('a support or internal glob that selects no test file is stale', () => {
   const { stale } = implementationTestInventory(['legacy/packages/go/orm/codec_test.go', 'legacy/packages/go/orm/split_plan_test.go'], [probe]);
   assert.deepEqual(stale, ['go: legacy/packages/go/orm/test_helpers_test.go selects no test file of legacy/packages/go']);
 });
 
-caseTest('the declared inventory of this checkout has no stale declaration, and names its support and internal files', COMPUTE, () => {
+caseTest('the declared inventory of this checkout has no stale declaration, and names its support and internal files', () => {
   const inventory = implementationTestInventory(implementationFiles(root));
   assert.deepEqual(inventory.stale, []);
   assert.equal(inventory.tests['go']?.includes('legacy/packages/go/orm/test_helpers_test.go'), false, 'a declared Go support file is no feature test');
@@ -79,7 +79,7 @@ caseTest('the declared inventory of this checkout has no stale declaration, and 
   assert.equal(inventory.tests['typescript']?.includes('legacy/packages/ts/tests/coverage_transactions.mjs'), true);
 });
 
-caseTest('an unlisted test selected by the globs of each implementation fails feature ownership', COMPUTE, () => {
+caseTest('an unlisted test selected by the globs of each implementation fails feature ownership', () => {
   const cases = [
     ['go', 'legacy/packages/go/orm/new_contract_probe_test.go'],
     ['php', 'legacy/packages/php/tests/NewContractProbeTest.php'],
@@ -93,7 +93,7 @@ caseTest('an unlisted test selected by the globs of each implementation fails fe
   assert.deepEqual(unlistedFeatureTestErrors(tests, new Set()), cases.map(([language, file]) => `${file}: ${language} test file belongs to no feature`));
 });
 
-caseTest('the feature checker pairs English documents with their Korean twin exactly once', COMPUTE, () => {
+caseTest('the feature checker pairs English documents with their Korean twin exactly once', () => {
   assert.equal(koreanDocumentPath('docs/spec/interfaces.md'), 'docs/spec/interfaces.ko.md');
   assert.equal(koreanDocumentPath('docs/spec/interfaces.ko.md'), 'docs/spec/interfaces.ko.md');
 });
@@ -101,7 +101,7 @@ caseTest('the feature checker pairs English documents with their Korean twin exa
 // A generated file that the repository ignores is no test file: the fixture models that make python-models writes into
 // legacy/packages/python/tests/models matched the Python test glob on disk, and the feature check named them a test of no feature,
 // while only the files Git tracks or would track are files of the tree (T339-17).
-caseTest('the implementation files are the checked files of the roots, without the files Git ignores', COMPUTE, () => {
+caseTest('the implementation files are the checked files of the roots, without the files Git ignores', () => {
   const base = mkdtempSync(join(tmpdir(), 'orm-feature-files-'));
   try {
     mkdirSync(join(base, 'legacy/packages/python/tests/models'), { recursive: true });

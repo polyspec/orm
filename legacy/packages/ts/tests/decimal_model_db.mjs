@@ -1,4 +1,4 @@
-import { caseTest, COMPUTE, DATABASE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 const args = process.argv.slice(2);
 if (args.length !== 2 || args[0] !== '--dialect' || !['mysql', 'postgres', 'sqlite'].includes(args[1])) {
@@ -14,7 +14,7 @@ const [{ OrmError }, { DecimalCase, connect }] = await Promise.all([
 ]);
 
 // There are two cases: rejection by the generated setter (COMPUTE), and write and read in the database followed by rollback (DATABASE).
-caseTest(`decimal_db/${dialect}/setters`, COMPUTE, () => {
+caseTest(`decimal_db/${dialect}/setters`, () => {
   for (const invalid of ['1.00001', '1000000000.0000', 'NaN', 48.045]) {
     try {
       new DecimalCase().setAmount(invalid);
@@ -32,7 +32,7 @@ caseTest(`decimal_db/${dialect}/setters`, COMPUTE, () => {
 });
 
 // Requirements: DIA-25, COD-2.
-caseTest(`decimal_db/${dialect}/round_trip`, DATABASE, async () => {
+caseTest(`decimal_db/${dialect}/round_trip`, async () => {
   const db = await connect(dsn);
   try {
     const rollback = new Error('decimal fixture rollback');

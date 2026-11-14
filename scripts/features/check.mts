@@ -2,7 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { runCommand, typescriptLease, typescriptLeaseProgram, type TypeScriptLease } from './typescript-lease.mts';
 import { resolve } from 'node:path';
-import { COMPUTE, runGroup, sections, stepLines, type Step } from '../../tests/testcase.mts';
+import { runGroup, sections, stepLines, type Step } from '../../tests/testcase.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
 import type { Check } from './select.mts';
 import { manifestInputErrors } from './owners.mts';
@@ -18,7 +18,7 @@ import { readManifest as readInterfaceManifest, validateManifest as validateInte
 const root = resolve(new URL('../..', import.meta.url).pathname);
 // The manifest check before the verify command is one case that reads a file and compares it.
 const log = sections();
-log.begin('features/contracts', COMPUTE);
+log.begin('features/contracts');
 const errors: string[] = [];
 // The manifest is read with the schema (scripts/features/schema/features.schema.json): its shape, status values, and the tests of implemented features,
 // the doc and verify-command fields are checked by the schema, and the checks below look at what the schema cannot say (VERSION, the path on disk, unique ids,

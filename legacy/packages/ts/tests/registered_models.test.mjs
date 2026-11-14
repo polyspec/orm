@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { classesFromModel, manifestOf, models } from './registered_models.mjs';
 
-caseTest('registers a model class for each entity in the document', COMPUTE, () => {
+caseTest('registers a model class for each entity in the document', () => {
   const text = [
     'dbspec 1 test',
     '',

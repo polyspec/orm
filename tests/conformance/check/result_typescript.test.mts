@@ -7,7 +7,7 @@ import { executeVector, resultValue } from '../../../legacy/packages/ts/testing/
 // Deadline of each case 1 s: the case writes a few result values in memory and compares them.
 // COD-16 and COD-20: an ordered-json number keeps its exact text, and SQL NULL is its own styled state.
 // Requirement: COD-16, COD-20.
-caseTest('ordered-json numbers and styled states remain exact in result output', 1000, () => {
+caseTest('ordered-json numbers and styled states remain exact in result output', () => {
   const result = resultValue({
     exact: parse('9007199254740993'),
     exactBigInt: 9007199254740993n,
@@ -18,12 +18,12 @@ caseTest('ordered-json numbers and styled states remain exact in result output',
 });
 
 // COD-16: a TypeScript toJSON fails with CODEC_ENCODE when JavaScript would reorder a member key.
-caseTest('a member key that JavaScript reorders reports an error', 1000, () => {
+caseTest('a member key that JavaScript reorders reports an error', () => {
   assert.throws(() => resultValue(parse('{"1":1,"a":2}')), { code: 'CODEC_ENCODE' });
 });
 
 // COD-21: an undefined member or a non-finite number fails with CODEC_ENCODE and is never written as null.
-caseTest('a result never drops an undefined field or writes a non-finite number as null', 1000, () => {
+caseTest('a result never drops an undefined field or writes a non-finite number as null', () => {
   assert.throws(() => resultValue({ missing: undefined }), /undefined conformance result/);
   assert.throws(() => resultValue([Number.NaN]), /non-finite conformance result/);
   assert.throws(() => resultValue(StyledValue.value({ missing: undefined })), { code: 'CODEC_ENCODE' });
@@ -37,7 +37,7 @@ caseTest('a result never drops an undefined field or writes a non-finite number 
 });
 
 // COD-46: the TypeScript conformance runner preserves a vector's original error and uses the supplied transaction for writes.
-caseTest('unexpected vector errors preserve their cause and write vectors use a transaction', 1000, async () => {
+caseTest('unexpected vector errors preserve their cause and write vectors use a transaction', async () => {
   const cause = new Error('invalid row');
   await assert.rejects(executeVector('invalid', async () => { throw cause; }), (error: unknown) => {
     assert.ok(error instanceof Error, String(error));

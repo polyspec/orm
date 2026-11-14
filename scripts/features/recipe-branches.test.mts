@@ -1,7 +1,7 @@
 // Requirements: FCV-16.
 // The check of the database branches of the recipes: each rule of FCV-16 has an accepted case and a refused one.
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { branchFaults, caseBranches, vectorBranches, type BranchedCase } from './recipe-branches.mts';
 
 const ITEMS = new Set(['DIA-1', 'PRT-72']);
@@ -10,14 +10,14 @@ function branched(overrides: Partial<BranchedCase>): BranchedCase {
   return { file: 'contracts/fixtures/unit/unit.json', line: 3, id: 'unit_case', branches: [], reason: undefined, ...overrides };
 }
 
-caseTest('an only of a case or of a step is a branch on its databases', COMPUTE, () => {
+caseTest('an only of a case or of a step is a branch on its databases', () => {
   assert.deepEqual(caseBranches({ id: 'c', only: ['mysql', 'postgres'], steps: [] }), [{ path: '/only', kind: 'only', databases: ['mysql', 'postgres'] }]);
   assert.deepEqual(caseBranches({ id: 'c', steps: [{ op: 'model.count' }, { op: 'utils.run', only: ['sqlite'] }] }), [
     { path: '/steps/1/only', kind: 'only', databases: ['sqlite'] },
   ]);
 });
 
-caseTest('a map by database is a branch only when its entries differ', COMPUTE, () => {
+caseTest('a map by database is a branch only when its entries differ', () => {
   const same = { mysql: { value: { int: '1' } }, postgres: { value: { int: '1' } }, sqlite: { value: { int: '1' } } };
   assert.deepEqual(caseBranches({ id: 'c', steps: [{ op: 'model.count', expect: same }] }), []);
   const differ = { mysql: 'SELECT 1', postgres: 'SELECT 1', sqlite: 'SELECT 2' };
@@ -28,25 +28,25 @@ caseTest('a map by database is a branch only when its entries differ', COMPUTE, 
   assert.deepEqual(caseBranches({ id: 'c', steps: [{ op: 'model.count', expect: { value: { int: '1' }, error: 'X' } }] }), []);
 });
 
-caseTest('a branch with a reason that names a defined item has no fault', COMPUTE, () => {
+caseTest('a branch with a reason that names a defined item has no fault', () => {
   const branch = { path: '/only', kind: 'only' as const, databases: ['mysql'] };
   assert.deepEqual(branchFaults([branched({ branches: [branch], reason: 'MySQL alone has it (DIA-1).' })], ITEMS), []);
 });
 
-caseTest('a branch without a reason is a fault', COMPUTE, () => {
+caseTest('a branch without a reason is a fault', () => {
   const branch = { path: '/only', kind: 'only' as const, databases: ['mysql', 'postgres'] };
   assert.deepEqual(branchFaults([branched({ branches: [branch] })], ITEMS), [
     'contracts/fixtures/unit/unit.json:3 case unit_case: branches on a database (/only mysql,postgres) and states no databases_differ',
   ]);
 });
 
-caseTest('a reason without a branch is a fault', COMPUTE, () => {
+caseTest('a reason without a branch is a fault', () => {
   assert.deepEqual(branchFaults([branched({ reason: 'Each server keeps it (PRT-72).' })], ITEMS), [
     'contracts/fixtures/unit/unit.json:3 case unit_case: states databases_differ and holds no branch on a database',
   ]);
 });
 
-caseTest('a reason must name an item that docs/spec defines', COMPUTE, () => {
+caseTest('a reason must name an item that docs/spec defines', () => {
   const branch = { path: '/only', kind: 'only' as const, databases: ['sqlite'] };
   // UTF-8 has the form of an id but no prefix of docs/spec, so it is text and the reason names no item.
   assert.deepEqual(branchFaults([branched({ branches: [branch], reason: 'SQLite reads UTF-8 only.' })], ITEMS), [
@@ -57,7 +57,7 @@ caseTest('a reason must name an item that docs/spec defines', COMPUTE, () => {
   ]);
 });
 
-caseTest('a step that names a vector case takes its dialect branches, and a plan_physical step those of plans-physical.json', COMPUTE, () => {
+caseTest('a step that names a vector case takes its dialect branches, and a plan_physical step those of plans-physical.json', () => {
   const files: Record<string, unknown> = {
     '/r/tests/v/ddl.json': { cases: [{ id: 'd', behavior: [{ sql: 'S' }, { sql: 'T', dialects: ['sqlite'] }] }] },
     '/r/tests/v/introspect.json': { cases: [{ id: 'i', dialect: 'mysql', statements: [] }, { id: 'every', statements: [] }] },

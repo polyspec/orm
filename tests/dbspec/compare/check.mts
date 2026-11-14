@@ -20,11 +20,8 @@
 // (after the TypeScript build, the debug build of the Rust example, and the build of the PHP extension)
 import { compare, type Output } from './compare.mts';
 import { runRunner, runners, type Runner } from './runners.mts';
-import { COMPUTE, runCase } from '../../testcase.mts';
+import { runCase } from '../../testcase.mts';
 
-// TIMEOUT is the deadline for one runner run. The Go runner includes the `go run` compile, and all
-// runner reads the stress document and six vector files.
-const TIMEOUT = 120000;
 const inputs = process.argv.slice(2);
 if (inputs.length !== 5) {
   console.error('usage: node tests/dbspec/compare/check.mts <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>');
@@ -32,7 +29,7 @@ if (inputs.length !== 5) {
 }
 
 async function run(runner: Runner): Promise<string> {
-  const result = await runRunner(runner, inputs, TIMEOUT);
+  const result = await runRunner(runner, inputs);
   if (result.code !== 0) throw new Error(`${runner.name} exited with ${result.code ?? result.signal}: ${result.stderr}`);
   return result.stdout;
 }
@@ -40,7 +37,7 @@ async function run(runner: Runner): Promise<string> {
 const outputs: Output[] = [];
 for (const runner of runners) {
   for (const round of [1, 2]) {
-    const passed = await runCase(`dbspec-compare/${runner.name}/${round}`, TIMEOUT, async ({ step }) => {
+    const passed = await runCase(`dbspec-compare/${runner.name}/${round}`, async ({ step }) => {
       const output = await run(runner);
       const count = output.split('\n').filter((line: string) => line !== '' && !/^[|!=] /.test(line)).length;
       step(`${count} cases`);
@@ -49,7 +46,7 @@ for (const runner of runners) {
     if (!passed) process.exit(1);
   }
 }
-const agreed = await runCase('dbspec-compare/agreement', COMPUTE, ({ step }) => {
+const agreed = await runCase('dbspec-compare/agreement', ({ step }) => {
   const difference = compare(outputs);
   if (difference !== null) {
     throw new Error(`${difference.other} differs from ${difference.reference} in ${difference.case} at line ${difference.line}\n` +

@@ -2,7 +2,7 @@
 // refuses each shape outside it, and the schema of a shared fixture refuses a fixture without its feature or its cases.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { parseJson, refusedPaths, SchemaError } from '../json/schema.mts';
 import { parseFeatures, type ManifestFeature } from './manifest.mts';
 import { completionItemAdapterErrors } from './behavior-adapters.mts';
@@ -37,12 +37,12 @@ function unresolvedCfg9Contract() {
   return contract;
 }
 
-caseTest('the schema of contracts/features.json accepts the repository manifest', COMPUTE, () => {
+caseTest('the schema of contracts/features.json accepts the repository manifest', () => {
   assert.deepEqual(refused(manifest), []);
   assert.deepEqual(refused(withFeature(feature => ({ ...feature, status: 'planned', verification: [] }))), []);
 });
 
-caseTest('the schema refuses a list of cases on a recipe owner and requires one on a native owner', COMPUTE, () => {
+caseTest('the schema refuses a list of cases on a recipe owner and requires one on a native owner', () => {
   const owner = (command: Record<string, unknown>) => withFeature(feature => ({ ...feature, coverage: {
     kind: 'independent', dependents: [], owners: { go: { part: 'p', tests: ['t'], commands: { none: [{ runner: 'go', test: 't', ...command }] } } },
   } }));
@@ -51,7 +51,7 @@ caseTest('the schema refuses a list of cases on a recipe owner and requires one 
   assert.ok(refused(owner({})).some(path => path.endsWith('/commands/none/0')));
 });
 
-caseTest('the schema of contracts/features.json refuses a manifest outside its shape', COMPUTE, () => {
+caseTest('the schema of contracts/features.json refuses a manifest outside its shape', () => {
   assert.ok(refused({ ...manifest, manifest_version: 2 }).includes('/manifest_version'));
   assert.ok(refused({ ...manifest, features: [] }).includes('/features'));
   assert.ok(refused({ ...manifest, source: { ...manifest.source, read_order: [] } }).includes('/source/read_order'));
@@ -68,7 +68,7 @@ caseTest('the schema of contracts/features.json refuses a manifest outside its s
   assert.ok(refused(withFeature(feature => ({ ...feature, verification: [{ id: 'a', command: 'x', shard: 'other', environment: 'mac' }] }))).includes('/features/0/verification/0/environment'));
 });
 
-caseTest('canonical non-done checklist states allow unresolved runtime adapters', COMPUTE, () => {
+caseTest('canonical non-done checklist states allow unresolved runtime adapters', () => {
   const contract = unresolvedCfg9Contract();
   for (const state of [
     '[ ]',
@@ -80,7 +80,7 @@ caseTest('canonical non-done checklist states allow unresolved runtime adapters'
   }
 });
 
-caseTest('a done checklist item still requires every declared runtime adapter', COMPUTE, () => {
+caseTest('a done checklist item still requires every declared runtime adapter', () => {
   const contract = unresolvedCfg9Contract();
   const failures = completionItemAdapterErrors(adapterChecklist('[o]'), [contract]);
   assert.ok(failures.some(error => error.includes('KSTD-2-11-16: CFG-9/php: unresolved native behavior adapter')),
@@ -89,7 +89,7 @@ caseTest('a done checklist item still requires every declared runtime adapter', 
     'item completion passed with unresolved PHP extension cancellation');
 });
 
-caseTest('missing and non-canonical checklist states fail the adapter guard', COMPUTE, () => {
+caseTest('missing and non-canonical checklist states fail the adapter guard', () => {
   const contract = unresolvedCfg9Contract();
   for (const state of ['', '[x]', '[!] cause: deferred without retry', '[o] cause: invalid suffix']) {
     const errors = completionItemAdapterErrors(adapterChecklist(state), [contract]);
@@ -100,7 +100,7 @@ caseTest('missing and non-canonical checklist states fail the adapter guard', CO
 });
 
 // This guards the manifest state only; native behavior is exercised by the declared extension owner tests and coverage runs.
-caseTest('the features whose PHP extension owner runs the shared cases are implemented', COMPUTE, () => {
+caseTest('the features whose PHP extension owner runs the shared cases are implemented', () => {
   for (const id of ['planner', 'parameter_chunking', 'composite_keys',
     'dsn_connection', 'transactions', 'statement_events', 'audit_triggers',
     'request_hook', 'constraints_and_relations', 'complex_query']) {
@@ -111,7 +111,7 @@ caseTest('the features whose PHP extension owner runs the shared cases are imple
   }
 });
 
-caseTest('the schema of a shared fixture refuses a fixture without its feature or its cases', COMPUTE, () => {
+caseTest('the schema of a shared fixture refuses a fixture without its feature or its cases', () => {
   const schema = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
   const read = (value: unknown) => {
     try {
@@ -128,7 +128,7 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
   assert.notDeepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o' }] }), []);
 });
 
-caseTest('the composite-key recipe holds distinct bounded tuples with equal concatenations', COMPUTE, () => {
+caseTest('the composite-key recipe holds distinct bounded tuples with equal concatenations', () => {
   const recipePath = 'contracts/fixtures/composite_keys/composite_keys.json';
   const feature = manifest.features.find(item => item.id === 'composite_keys');
   assert.ok(feature, 'contracts/features.json declares composite_keys');
@@ -199,7 +199,7 @@ function markdownNamingErrors(sources: Record<string, string>, registrations: Re
   return errors;
 }
 
-caseTest('Markdown test server names and owner registrations stay aligned across clients', COMPUTE, () => {
+caseTest('Markdown test server names and owner registrations stay aligned across clients', () => {
   const implementations = readFileSync(`${root}/contracts/implementations.json`, 'utf8');
   assert.ok(implementations.includes('legacy/packages/php/tests/markdown_test_server.php'), 'contracts/implementations.json omits the PHP Markdown test server');
   assert.ok(!implementations.includes('markdown_fake_server.php'), 'contracts/implementations.json retains the previous PHP Markdown test server path');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { CatalogConnection } from '../dist/catalog.js';
 import { OrmError } from '../dist/runtime_error.js';
 
@@ -13,7 +13,7 @@ const descriptor = {
 
 // Requirements: INT-121. What no server can answer: a statement names its columns in the select list, and a server answers
 // with those names.
-caseTest('tablePage refuses prepared columns that differ from the descriptor', COMPUTE, async () => {
+caseTest('tablePage refuses prepared columns that differ from the descriptor', async () => {
   const session = {
     async describe() { return descriptor; },
     async collect() { return { columns: [{ name: 'renamed' }], rows: [] }; },
@@ -67,7 +67,7 @@ for (const [name, dialect, type, value] of [
   ['a driver time with a digit past six fraction digits', 'mysql', 'TIME', '12:34:56.1234567'],
   ['a boolean text that is neither t nor f', 'postgres', 'BOOL', 'yes'],
 ]) {
-  caseTest(`readOnlyGridQuery refuses ${name}`, COMPUTE, async () => {
+  caseTest(`readOnlyGridQuery refuses ${name}`, async () => {
     const catalog = injected(dialect, [{ name: 'a', type: dialect === 'mysql' ? 'BIGINT' : 'INT8' }, { name: 'b', type }], ['1', value]);
     await assert.rejects(
       catalog.readOnlyGridQuery('SELECT 1, 2', []),
@@ -79,7 +79,7 @@ for (const [name, dialect, type, value] of [
 // Requirements: INT-165, INT-172. A PostgreSQL bytea text that is in neither form of bytea_output fails to decode; the refusal names no
 // column and keeps the decoder's failure as its cause, in the grid query and in the plain query.
 for (const text of ['\\x0', '\\xzz', '\\9', 'café']) {
-  caseTest(`the catalog keeps the decode failure of the bytea text ${JSON.stringify(text)} as its cause`, COMPUTE, async () => {
+  caseTest(`the catalog keeps the decode failure of the bytea text ${JSON.stringify(text)} as its cause`, async () => {
     const decodes = [
       catalog => catalog.readOnlyGridQuery('SELECT 1, 2', []),
       catalog => catalog.readOnlyQuery('SELECT 1, 2', []),

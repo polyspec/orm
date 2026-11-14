@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { OrmError, Service, connect } from '../dist/index.js';
 import { installBench } from './bench-set.mjs';
-import { DATABASE, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-transaction-flow-'));
 after(() => rm(work, { recursive: true, force: true }));
@@ -22,7 +22,7 @@ async function database(name) {
 const stop = new Error('stop');
 
 // Requirements: PLN-18.
-caseTest('transaction flow: asynchronous work inside the callback shares the transaction', DATABASE, async () => {
+caseTest('transaction flow: asynchronous work inside the callback shares the transaction', async () => {
   const db = await database('shared');
   try {
     const failed = await db.transaction(async () => {
@@ -37,7 +37,7 @@ caseTest('transaction flow: asynchronous work inside the callback shares the tra
 });
 
 // Requirements: PLN-18.
-caseTest('transaction flow: overlapping statements on the transaction connection return CONFIG', DATABASE, async () => {
+caseTest('transaction flow: overlapping statements on the transaction connection return CONFIG', async () => {
   const db = await database('overlap');
   try {
     let settled;

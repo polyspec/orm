@@ -77,13 +77,13 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   });
 
   // Requirements: DBS-119.
-  caseTest(`${dialect}: connect takes the DSN and options without a schema path`, 30_000, async ({ step }) => {
+  caseTest(`${dialect}: connect takes the DSN and options without a schema path`, async ({ step }) => {
     database = await createCaseDatabase(dialect, step);
     db = await Db.connect(database.dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key' });
     assert.equal(db.driver, dialect);
   });
 
-  caseTest(`${dialect}: install renders the dbspec documents and repeats without a change`, 60_000, async () => {
+  caseTest(`${dialect}: install renders the dbspec documents and repeats without a change`, async () => {
     await db.utils().schema().install(schemaOf(probeText));
     await db.utils().schema().install(schemaOf(probeText));
     await db.utils().schema().install(schemaOf(auditText));
@@ -91,7 +91,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     assert.equal(await new Item().connect(db).getCount(), 0);
   });
 
-  caseTest(`${dialect}: the default select set leaves out only select explicit columns`, 30_000, async () => {
+  caseTest(`${dialect}: the default select set leaves out only select explicit columns`, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 2);
     row[CORE].setValue('wide', 8);
@@ -108,7 +108,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   });
 
   // Requirements: INT-99.
-  caseTest(`${dialect}: every codec stage and dbspec type reads its value type`, 30_000, async () => {
+  caseTest(`${dialect}: every codec stage and dbspec type reads its value type`, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 3);
     row[CORE].setValue('wide', 9);
@@ -130,7 +130,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   });
 
   // Requirements: INT-98.
-  caseTest(`${dialect}: close and drop the case database`, 30_000, async ({ step }) => {
+  caseTest(`${dialect}: close and drop the case database`, async ({ step }) => {
     const left = database;
     database = undefined;
     try { await db?.close(); } finally { await left?.drop(step); }

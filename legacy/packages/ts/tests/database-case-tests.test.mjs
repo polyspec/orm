@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest } from '../../../../tests/testcase.mts';
 import { registerDatabaseCases } from './database-case-tests.mjs';
 
-caseTest('registers selected database cases in dialect order and runs their fixture', 1000, async () => {
+caseTest('registers selected database cases in dialect order and runs their fixture', async () => {
   const registrations = [];
   const events = [];
   let failures = 0;
@@ -36,21 +36,21 @@ caseTest('registers selected database cases in dialect order and runs their fixt
   ]);
 });
 
-caseTest('rejects selected database cases that do not exist', 1000, () => {
+caseTest('rejects selected database cases that do not exist', () => {
   assert.throws(() => registerDatabaseCases({
     feature: 'sample', cases: {}, args: ['missing'], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost', ORM_TEST_POSTGRES_DSN: 'postgres://user:pass@localhost' }, deadline: 5000,
     withDatabase: async () => {}, getFailures: () => 0, setCurrent: () => {}, runCase: () => {}, register: () => {},
   }), { message: 'unknown case missing' });
 });
 
-caseTest('names a missing database DSN and the target that provides it', 1000, () => {
+caseTest('names a missing database DSN and the target that provides it', () => {
   assert.throws(() => registerDatabaseCases({
     feature: 'sample', cases: {}, args: [], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost' }, deadline: 5000,
     withDatabase: async () => {}, getFailures: () => 0, setCurrent: () => {}, runCase: () => {}, register: () => {},
   }), { message: 'ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers' });
 });
 
-caseTest('fails a database case when one of its assertions fails', 1000, async () => {
+caseTest('fails a database case when one of its assertions fails', async () => {
   let failures = 0;
   let run;
   registerDatabaseCases({

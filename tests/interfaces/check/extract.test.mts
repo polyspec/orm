@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { isolatedEnvironment } from '../../environment.mts';
 import { errorCode } from '../../errors.mts';
-import { caseTest, PROCESS } from '../../testcase.mts';
+import { caseTest } from '../../testcase.mts';
 import { run } from './extract.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
@@ -67,16 +67,16 @@ function running(pid: number): boolean {
   }
 }
 
-/** Resolves when every connection has closed, and rejects when the signal of the case aborts first, naming the processes that still run. */
+/** Resolves when every connection has closed, and rejects when the run is stopped first (the signal of the case), naming the processes that still run. */
 function closed(held: Holder[], signal: AbortSignal): Promise<unknown> {
   const ended = Promise.all(held.map(holder => holder.gone));
-  const deadline = new Promise((_, fail) => {
+  const stopped = new Promise((_, fail) => {
     signal.addEventListener('abort', () => {
       const left = held.filter(holder => running(holder.pid)).map(holder => holder.pid);
-      fail(new Error(`a process that the checker started is still running at the deadline: ${left.length === 0 ? 'none runs, so a connection did not report its end' : left.join(', ')}`));
+      fail(new Error(`a process that the checker started is still running when the run was stopped: ${left.length === 0 ? 'none runs, so a connection did not report its end' : left.join(', ')}`));
     }, { once: true });
   });
-  return Promise.race([ended, deadline]);
+  return Promise.race([ended, stopped]);
 }
 
 /** Ends the process if it is still running. */
@@ -102,7 +102,7 @@ async function withHolders(body: (holders: Holders, directory: string) => Promis
 }
 
 for (const signalName of ['SIGKILL', 'SIGTERM'] as const) {
-  caseTest(`${signalName} of the checker ends its hung extractor and the child of the extractor`, PROCESS, async ({ signal }) => {
+  caseTest(`${signalName} of the checker ends its hung extractor and the child of the extractor`, async ({ signal }) => {
     await withHolders(async (holders, directory) => {
       const checker = spawn(process.execPath, ['tests/interfaces/check/main.mts', '-language', 'python'], {
         cwd: root,
@@ -131,7 +131,7 @@ for (const signalName of ['SIGKILL', 'SIGTERM'] as const) {
   });
 }
 
-caseTest('the abort of a run ends the program and the child of the program', PROCESS, async ({ signal }) => {
+caseTest('the abort of a run ends the program and the child of the program', async ({ signal }) => {
   await withHolders(async (holders, directory) => {
     process.env['ORM_HANG_PORT'] = String(holders.port);
     const controller = new AbortController();
@@ -147,7 +147,7 @@ caseTest('the abort of a run ends the program and the child of the program', PRO
 const CLEANS_UP = (marker: string): string => `const { writeFileSync } = require('node:fs'); const server = require('node:net').createServer().listen();
   process.on('SIGTERM', () => { writeFileSync(${JSON.stringify(marker)}, 'cleaned'); server.close(); }); console.log('ready');`;
 
-caseTest('the abort of a run asks the program to end and the run waits for its cleanup', PROCESS, async () => {
+caseTest('the abort of a run asks the program to end and the run waits for its cleanup', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orm-interface-abort-'));
   try {
     const marker = join(directory, 'cleaned');
@@ -163,7 +163,7 @@ caseTest('the abort of a run asks the program to end and the run waits for its c
   }
 });
 
-caseTest('the reaper asks the groups of an ended checker to end', PROCESS, async () => {
+caseTest('the reaper asks the groups of an ended checker to end', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orm-interface-reaper-'));
   try {
     const marker = join(directory, 'cleaned');

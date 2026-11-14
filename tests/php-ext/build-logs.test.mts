@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { isolatedEnvironment } from '../environment.mts';
-import { PROCESS, caseTest, withTemporaryDirectory } from '../testcase.mts';
+import { caseTest, withTemporaryDirectory } from '../testcase.mts';
 
 const root = resolve(import.meta.dirname, '../..');
 const buildScript = join(root, 'legacy/packages/php-ext/scripts/build.sh');
@@ -47,7 +47,7 @@ function initCheckout(checkout: string): string {
   return packageRoot;
 }
 
-caseTest('the PHP extension wrapper resolves the installed public Kit CLI and preserves build arguments', PROCESS, async ({ signal }) => {
+caseTest('the PHP extension wrapper resolves the installed public Kit CLI and preserves build arguments', async ({ signal }) => {
   await withTemporaryDirectory('orm-php-extension-installed-kit-', temporary => {
     const checkout = join(temporary, 'checkout');
     const packageRoot = initCheckout(checkout);
@@ -85,7 +85,7 @@ writeFileSync(process.env.KIT_CLI_PROOF, JSON.stringify({ file: import.meta.file
   });
 });
 
-caseTest('the PHP extension wrapper refuses a missing or different copy of the SQLite cancel callback before the build', PROCESS, async ({ signal }) => {
+caseTest('the PHP extension wrapper refuses a missing or different copy of the SQLite cancel callback before the build', async ({ signal }) => {
   await withTemporaryDirectory('orm-php-extension-cancel-copy-', temporary => {
     const checkout = join(temporary, 'checkout');
     const packageRoot = initCheckout(checkout);
@@ -109,7 +109,7 @@ writeFileSync(process.env.KIT_CLI_PROOF, 'called');
   });
 });
 
-caseTest('the PHP extension build failure keeps warnings and the make cause without publishing', PROCESS, async ({ signal }) => {
+caseTest('the PHP extension build failure keeps warnings and the make cause without publishing', async ({ signal }) => {
   await withTemporaryDirectory('orm-php-extension-build-logs-', temporary => {
     const checkout = join(temporary, 'checkout');
     const packageRoot = initCheckout(checkout);

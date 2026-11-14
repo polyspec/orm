@@ -8,7 +8,6 @@ import MarkdownIt from 'markdown-it';
 import { caseTest } from '../testcase.mts';
 import { dbsFences, dbsInfo, renderDbs } from '../../docs/.vitepress/dbs.ts';
 
-const TIMEOUT = 15000;
 const escape = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 /** A fence token of markdown-it: its info string, its content and the lines it spans. */
 type FenceToken = { type: string; info: string; content: string; map: [number, number] };
@@ -39,42 +38,42 @@ function nth<T>(fences: readonly T[], index: number): T {
 const CORE = 'dbspec 1 core\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n';
 const SHOP = 'dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  user_id i64\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict\n}\n';
 
-caseTest('the info string accepts dbs alone and a set with its document', TIMEOUT, () => {
+caseTest('the info string accepts dbs alone and a set with its document', () => {
   assert.deepEqual(dbsInfo('dbs'), { set: null, document: null });
   assert.deepEqual(dbsInfo('dbs set=shop document=core'), { set: 'shop', document: 'core' });
   assert.equal(dbsInfo('text'), null);
   assert.equal(dbsInfo('mermaid'), null);
 });
 
-caseTest('a malformed dbs info string is an error', TIMEOUT, () => {
+caseTest('a malformed dbs info string is an error', () => {
   for (const info of ['dbs set=shop', 'dbs document=core', 'dbs set=', 'dbs other=1', 'dbs set=a set=b document=c', 'dbs set']) {
     assert.throws(() => dbsInfo(info), /dbs fence info/, info);
   }
 });
 
-caseTest('a fence of a set reads the other fences of the page as its set', TIMEOUT, () => {
+caseTest('a fence of a set reads the other fences of the page as its set', () => {
   const fences = dbsFences([fence('dbs set=shop document=core', CORE, 10), fence('dbs set=shop document=shop', SHOP, 20)]);
   const html = renderDbs(nth(fences, 1), fences, 'dbspec.md', escape);
   assert.match(html, /^<pre class="dbs" v-pre><code><span class="dbs-keyword">dbspec<\/span> <span class="dbs-number">1<\/span> <span class="dbs-name">shop<\/span>/);
   assert.match(html, /<span class="dbs-type">i64<\/span>/);
 });
 
-caseTest('a fence with a diagnostic fails with its page, line and rule', TIMEOUT, () => {
+caseTest('a fence with a diagnostic fails with its page, line and rule', () => {
   const fences = dbsFences([fence('dbs set=shop document=shop', SHOP, 20)]);
   assert.throws(() => renderDbs(nth(fences, 0), fences, 'dbspec.md', escape), /dbspec\.md:24:5: use: /);
 });
 
-caseTest('a declared name that differs from the header fails through the use rule', TIMEOUT, () => {
+caseTest('a declared name that differs from the header fails through the use rule', () => {
   const fences = dbsFences([fence('dbs set=shop document=base', CORE, 10), fence('dbs set=shop document=shop', SHOP.replace('use core', 'use base'), 20)]);
   assert.throws(() => renderDbs(nth(fences, 1), fences, 'dbspec.md', escape), /: use: /);
 });
 
-caseTest('a set that declares one document twice is an error', TIMEOUT, () => {
+caseTest('a set that declares one document twice is an error', () => {
   const fences = dbsFences([fence('dbs set=shop document=core', CORE, 1), fence('dbs set=shop document=core', CORE, 10), fence('dbs set=shop document=shop', SHOP, 20)]);
   assert.throws(() => renderDbs(nth(fences, 2), fences, 'dbspec.md', escape), /declares the document core twice/);
 });
 
-caseTest('text is escaped inside and between the spans', TIMEOUT, () => {
+caseTest('text is escaped inside and between the spans', () => {
   const text = "dbspec 1 shop\n\n# a <comment> & more\ntable t {\n  id i64 identity\n  s varchar(8) default '<&>'\n  primary key (id)\n}\n";
   const fences = dbsFences([fence('dbs', text, 1)]);
   const html = renderDbs(nth(fences, 0), fences, 'dbspec.md', escape);
@@ -83,7 +82,7 @@ caseTest('text is escaped inside and between the spans', TIMEOUT, () => {
 });
 
 // Requirements: ORE-20, ORES-27, ORES-50.
-caseTest('VitePress markdown-it renders dbs set fences and refuses diagnostics', TIMEOUT, async () => {
+caseTest('VitePress markdown-it renders dbs set fences and refuses diagnostics', async () => {
   const md = new MarkdownIt();
   // VitePress 1.6.4's declaration exports an unresolved `anchor.Token` alias, so the module is imported by a computed
   // specifier and read as unknown: each function that the case calls is checked before Reflect.apply calls it.
@@ -103,7 +102,7 @@ caseTest('VitePress markdown-it renders dbs set fences and refuses diagnostics',
 });
 
 // Requirements: ORES-51.
-caseTest('the docs theme gives every token class a light and dark color', TIMEOUT, () => {
+caseTest('the docs theme gives every token class a light and dark color', () => {
   const css = readFileSync(new URL('../../docs/.vitepress/theme/style.css', import.meta.url), 'utf8');
   const light = css.match(/:root\s*\{([^}]*--dbs-keyword[^}]*)\}/)?.[1] ?? '';
   const dark = css.match(/\.dark\s*\{([^}]*--dbs-keyword[^}]*)\}/)?.[1] ?? '';

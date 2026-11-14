@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { COMPUTE, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import * as codes from '../dist/codes.js';
 import { Db } from '../dist/database.js';
 import { OrmError } from '../dist/runtime_error.js';
@@ -20,7 +20,7 @@ function makeFrame({ primary, setZero, restore }) {
 }
 
 // Requirements: INT-49.
-caseTest('SQLite NOWAIT busy_timeout restore outcomes preserve primary and cleanup errors', COMPUTE, async () => {
+caseTest('SQLite NOWAIT busy_timeout restore outcomes preserve primary and cleanup errors', async () => {
   const db = new Db({ name: 'sqlite' }, 'UTC', {}, { version: 1, key: '', keyring: undefined });
   const primaryCause = { errcode: 5, message: 'database is locked' };
   const restore = new OrmError(codes.DRIVER, 'restore rejected');

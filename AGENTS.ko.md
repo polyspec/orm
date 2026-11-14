@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: ab94f0b71b45a1d84c120385b59db5c9a1eec54bf39585de78f19c7e39f34832 -->
+<!-- source-sha256: 20a69da06863cc399ccde0ac9431244b1edfde3dcfc3de335a274702064b57ac -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -121,7 +121,7 @@
 - Own: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
-  실패하고, 기한은 멈추지 않는 case를 끝낼 뿐이다. `make repo-check`(Go는 `make go-vet-check`)는 측정한 시간이 한도를
+  실패하고 시계로 실패하지 않는다. `make repo-check`(Go는 `make go-vet-check`)는 측정한 시간이 한도를
   넘었다고 실패하는 test를 거부한다. 경고를 없애려고 기준값을 올리지 않는다. 바꾸려면 CI runner에서 얻은 같은 종류의 새 증거가 필요하다.
   Enforced by: `make repo-check`
 - Own: 검사는 결과가 시간에 따라 달라지는 registry 조회를 하지 않는다: 최신 version 조회, version 범위의 해석, 오래된
@@ -201,14 +201,15 @@
   Enforced by: `make repo-check`
 - Own: 항목을 진행하는 동안에는 바뀐 것의 unit test만 실행하고, 수정할
   때마다 테스트를 기계적으로 다시 실행하지 않는다. 짧은 검증 단위인 모든 테스트 case는 자신의
-  실행·완료·성공·실패와 경과 시간을 출력하고 자기 타임아웃을 가지며, 전체 일괄 타임아웃은 쓰지
-  않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
+  실행·완료·성공·실패와 경과 시간을 출력한다. 어떤 시계도 테스트 case나 테스트의 process를 끝내지
+  않는다. 부하가 큰 machine은 같은 일을 더 느리게 실행하며, 그 결과가 부하에 따라 바뀌면 안 되기 때문이다. case는 그 일이 끝날 때
+  끝나고, 끝나지 않는 실행은 그 실행과 함께(SIGINT나 SIGTERM) 멈춘다. TypeScript harness `tests/testcase.mts`에는 기한이 없고,
+  Go, Python, Rust, PHP harness에 남은 기한은 T474가 없앤다. 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
   `cargo test --no-run`, 전체 suite, server나 도구 실행)은 타임아웃 대신 상세 단계 로그를 두고,
   출력 없음 기한을 포함해 어떤 기한도 없이 과정과 결과를 관측할 수 있게 한다. 그 성공과 실패는
   시계가 아니라 관측한 결과와 오류로 판정한다. 테스트가 자기 계산에 두는 시간 제한은 그 계산을 실행한 thread나 process의 CPU 시간을
   잰다. 공유 machine에서 wall-clock 시간은 다른 process가 processor를 쓰는 시간도 담기 때문이다.
-  멈춘 case를 끊는 timer, database나 다른 process가 하는 일의 제한, 시간 동작 자체를 확인하는
-  테스트는 wall-clock 시간을 잰다.
+  database나 다른 process가 하는 일의 제한과 시간 동작 자체를 확인하는 테스트는 wall-clock 시간을 잰다.
   Enforced by: none, 이 규칙은 에이전트의 작업을 다스리며 어떤 도구도 실행한 test를 보지 않는다
 - Own: 완료 결과 없이 미완료 항목 수를 늘리기 전에 진행 중인 작업을 완료한다. 지속 적용할 개발 규칙은 이 파일에 두고 구체 산출물과 증거는 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부한다.
   Enforced by: `make docs-check`
@@ -228,7 +229,7 @@
   Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: 소유 client는 `packages/<runtime>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
   Enforced by: `make feature-unit-check`
-- Own: 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 선언된 기한에는 타이머를 사용할 수 있다. 이 저장소가 만드는 것에 심볼릭 링크를 쓰지 않고 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
+- Own: 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 시간 동작을 확인하는 테스트는 타이머를 사용할 수 있다. 이 저장소가 만드는 것에 심볼릭 링크를 쓰지 않고 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
   Enforced by: none, polling, timer, symbolic link를 검사하는 도구가 없다
 - Own: 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
   Enforced by: none, code가 경로를 해석하는 방식을 읽는 검사가 없다

@@ -15,7 +15,6 @@ import { build } from 'esbuild';
 import { caseTest } from '../../../tests/testcase.mts';
 import { dbspec, dbspecDiagnostics, formatDbspec } from '../dist/index.js';
 
-const TIMEOUT = 15000;
 const dir = new URL('../../../tests/editor/', import.meta.url);
 const names = readdirSync(dir).filter(name => name.endsWith('.dbs')).map(name => name.slice(0, -'.dbs'.length)).sort();
 const DECLARED_EDITOR_FIXTURES = ['canonical-block', 'header-end-of-line', 'non-bmp-comment-and-string', 'normalize-spacing', 'syntax-after-non-bmp'];
@@ -52,12 +51,12 @@ function format(state) {
   return { handled, text: (next ?? state).doc.toString() };
 }
 
-caseTest('the editor fixtures exist', TIMEOUT, () => {
+caseTest('the editor fixtures exist', () => {
   assert.deepEqual(names, DECLARED_EDITOR_FIXTURES);
 });
 
 // Requirements: ORES-47.
-caseTest('the CodeMirror adapter runs from a browser-target bundle', TIMEOUT, async () => {
+caseTest('the CodeMirror adapter runs from a browser-target bundle', async () => {
   const bundle = await build({
     stdin: {
       contents: `import { EditorState } from '@codemirror/state';\nimport { dbspec, dbspecDiagnostics } from '../dist/index.js';\n` +
@@ -81,7 +80,7 @@ caseTest('the CodeMirror adapter runs from a browser-target bundle', TIMEOUT, as
     setTimeout,
   };
   context.globalThis = context;
-  runInNewContext(bundle.outputFiles[0].text, context, { timeout: TIMEOUT });
+  runInNewContext(bundle.outputFiles[0].text, context);
   assert.equal(context.__dbspecDiagnostics.length, 0);
 });
 
@@ -99,21 +98,21 @@ function assertEditorFixture(name) {
   else assert.deepEqual(result, { handled: true, text: expected.formatted });
 }
 
-caseTest('fixture canonical-block through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('canonical-block'));
-caseTest('fixture header-end-of-line through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('header-end-of-line'));
-caseTest('fixture non-bmp-comment-and-string through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('non-bmp-comment-and-string'));
-caseTest('fixture normalize-spacing through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('normalize-spacing'));
-caseTest('fixture syntax-after-non-bmp through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('syntax-after-non-bmp'));
+caseTest('fixture canonical-block through the CodeMirror adapter', () => assertEditorFixture('canonical-block'));
+caseTest('fixture header-end-of-line through the CodeMirror adapter', () => assertEditorFixture('header-end-of-line'));
+caseTest('fixture non-bmp-comment-and-string through the CodeMirror adapter', () => assertEditorFixture('non-bmp-comment-and-string'));
+caseTest('fixture normalize-spacing through the CodeMirror adapter', () => assertEditorFixture('normalize-spacing'));
+caseTest('fixture syntax-after-non-bmp through the CodeMirror adapter', () => assertEditorFixture('syntax-after-non-bmp'));
 
 // Requirements: ORES-26.
-caseTest('the set option resolves use lines', TIMEOUT, () => {
+caseTest('the set option resolves use lines', () => {
   const core = 'dbspec 1 core\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n';
   const shop = 'dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n';
   assert.match(dbspecDiagnostics(stateOf(shop))[0].message, /^use: /);
   assert.deepEqual(dbspecDiagnostics(stateOf(shop, { set: { core } })), []);
 });
 
-caseTest('a change of the document is analyzed again', TIMEOUT, () => {
+caseTest('a change of the document is analyzed again', () => {
   const state = stateOf('dbspec 1 shop\n');
   assert.deepEqual(dbspecDiagnostics(state), []);
   const next = state.update({ changes: { from: 0, to: 6, insert: 'dbspek' } }).state;

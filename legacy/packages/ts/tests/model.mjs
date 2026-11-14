@@ -14,7 +14,7 @@ import {
   ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { DATABASE, caseTest, withTemporaryDirectory } from '../../../../tests/testcase.mts';
+import { caseTest, withTemporaryDirectory } from '../../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 import { mysqlConnection, onSqliteConnections, postgresClient, withCaseDatabase } from './case-database.mjs';
 
@@ -41,7 +41,7 @@ function dsnOf(dialect) {
  * execute() of tests/testcase.mts.
  */
 export function modelCase(name, dialects, body) {
-  caseTest(name, DATABASE * dialects.length, async ({ step }) => {
+  caseTest(name, async ({ step }) => {
     const before = failures;
     for (const dialect of dialects) {
       current = `${dialect}/${name}`;

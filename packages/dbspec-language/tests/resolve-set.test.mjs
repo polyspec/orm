@@ -14,9 +14,7 @@ import { nodeSetHost } from '../dist/cli/host.js';
 import { repo } from './helpers.mjs';
 import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 
-// The deadline of one case: it writes a tree of a few files and reads it.
-const TIMEOUT = 15000;
-const vector = (name, body) => caseTest(name, TIMEOUT, body);
+const vector = (name, body) => caseTest(name, body);
 const SET_NAME = 'dbspec-set.json';
 
 // The set-files recipe holds each tree, set file and result in the one step of its case. The edge, scan and focused cases and the

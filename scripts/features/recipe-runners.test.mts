@@ -1,7 +1,7 @@
 // Requirements: FCV-15.
 // The check of one recipe runner per runtime: each rule of FCV-15 has an accepting tree and a refused one.
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { CASE_RUNNERS, findings, READERS, readTree, recipeBindings, stepOps, VECTOR_RUNNERS, type Tree } from './recipe-runners.mts';
 
 const RUNNER_SOURCES: [string, string][] = [
@@ -25,11 +25,11 @@ function tree(overrides: Partial<Tree> & { extra?: [string, string][] } = {}): T
   };
 }
 
-caseTest('a tree of one runner per runtime has no finding', COMPUTE, () => {
+caseTest('a tree of one runner per runtime has no finding', () => {
   assert.deepEqual(findings(tree()), []);
 });
 
-caseTest('a PHP binding that extends a recipe test class of PHP hands its recipe to the runner', COMPUTE, () => {
+caseTest('a PHP binding that extends a recipe test class of PHP hands its recipe to the runner', () => {
   for (const base of ['DatabaseRecipeTestCase', 'SqliteRecipeTestCase']) {
     const php = tree({
       bindings: [{ implementation: 'php', test: 'legacy/packages/php/tests/UnitRecipeTest.php', recipes: ['tests/unit/unit.json'] }],
@@ -39,41 +39,41 @@ caseTest('a PHP binding that extends a recipe test class of PHP hands its recipe
   }
 });
 
-caseTest('a binding that hands its recipe to no runner is a finding', COMPUTE, () => {
+caseTest('a binding that hands its recipe to no runner is a finding', () => {
   const refused = tree({ extra: [['legacy/packages/ts/tests/unit.test.mjs', 'run the cases here;']] });
   assert.match(findings(refused).join('\n'), /hands no recipe to the runner/);
 });
 
-caseTest('a binding that implements an op is a finding', COMPUTE, () => {
+caseTest('a binding that implements an op is a finding', () => {
   const refused = tree({ extra: [['legacy/packages/ts/tests/unit.test.mjs', "runRecipe('unit.json', NONE); const op = 'model.count';"]] });
   assert.match(findings(refused).join('\n'), /implements the op model\.count/);
 });
 
-caseTest('a runner that dispatches by a prefix is a finding', COMPUTE, () => {
+caseTest('a runner that dispatches by a prefix is a finding', () => {
   const refused = tree({ extra: [['legacy/packages/php/tests/Recipe.php', "OP_UNKNOWN; if (str_starts_with($s['op'], 'model.')) {}"]] });
   assert.match(findings(refused).join('\n'), /dispatches an op by a prefix/);
 });
 
-caseTest('a runner that refuses no op is a finding', COMPUTE, () => {
+caseTest('a runner that refuses no op is a finding', () => {
   const refused = tree({ extra: [['legacy/packages/python/tests/recipe.py', 'pass']] });
   assert.match(findings(refused).join('\n'), /python: the runner refuses no op/);
 });
 
-caseTest('a second runner is a finding', COMPUTE, () => {
+caseTest('a second runner is a finding', () => {
   const refused = tree({ extra: [['packages/rust/src/second.rs', 'OP_UNKNOWN']] });
   assert.match(findings(refused).join('\n'), /second\.rs: refuses an op outside the runner/);
 });
 
-caseTest('a schema op with no step is a finding', COMPUTE, () => {
+caseTest('a schema op with no step is a finding', () => {
   assert.match(findings(tree({ ops: ['model.count', 'utils.local'] })).join('\n'), /schema op utils\.local is the op of no step/);
 });
 
-caseTest('the ops of nested steps count, and a predicate op does not', COMPUTE, () => {
+caseTest('the ops of nested steps count, and a predicate op does not', () => {
   const ops = stepOps({ cases: [{ steps: [{ op: 'transaction', steps: [{ op: 'model.count', where: { op: 'eq' } }] }] }] });
   assert.deepEqual([...ops].sort(), ['model.count', 'transaction']);
 });
 
-caseTest('a test that names a recipe, or a PHP extension test that extends one, is a recipe test', COMPUTE, () => {
+caseTest('a test that names a recipe, or a PHP extension test that extends one, is a recipe test', () => {
   const sources = new Map([
     ['legacy/packages/ts/tests/unit.test.mjs', "runRecipe('tests/unit/unit.json', NONE);"],
     ['legacy/packages/ts/tests/other.test.mjs', '// the cases of tests/unit/unit.json run elsewhere\ntest(() => {});'],
@@ -90,19 +90,19 @@ caseTest('a test that names a recipe, or a PHP extension test that extends one, 
   ]);
 });
 
-caseTest('a reader that names no recipe is a finding', COMPUTE, () => {
+caseTest('a reader that names no recipe is a finding', () => {
   const [reader] = Object.keys(READERS);
   assert.ok(reader);
   assert.match(findings(tree({ readers: Object.keys(READERS).filter(name => name !== reader) })).join('\n'), /a reader of READERS that names no recipe/);
 });
 
-caseTest('the tree of this checkout has no finding', COMPUTE, () => {
+caseTest('the tree of this checkout has no finding', () => {
   assert.deepEqual(findings(readTree()), []);
 });
 
 // The conformance bodies run through the vector runner of each runtime (FCV-15), so a declared runner program that is not a source
 // is a finding.
-caseTest('a vector runner that is no source is a finding', COMPUTE, () => {
+caseTest('a vector runner that is no source is a finding', () => {
   const [gone] = VECTOR_RUNNERS.go ?? [];
   assert.ok(gone !== undefined, 'Go declares a vector runner');
   const sources = new Map(tree().sources);
@@ -112,7 +112,7 @@ caseTest('a vector runner that is no source is a finding', COMPUTE, () => {
 
 // The bodies of a case file run through the case runner of each runtime (FCV-15), so a runner that is no source, or that names no
 // case file, is a finding.
-caseTest('a case runner that is no source or names no case file is a finding', COMPUTE, () => {
+caseTest('a case runner that is no source or names no case file is a finding', () => {
   const runner = CASE_RUNNERS['tests/markdown/cases.json']?.go?.file;
   assert.ok(runner !== undefined, 'Go declares a case runner of tests/markdown/cases.json');
   const gone = new Map(tree().sources);

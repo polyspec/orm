@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
+import { runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { GO_TEST_TAGS } from '../../tests/go-test.mts';
 import { readFeatures } from './manifest.mts';
@@ -238,8 +238,8 @@ export function checkCoverage(
 // run executes the program and collects its output. When there is a step, the stderr lines (cargo and go build progress)
 // are sent as steps while it runs. stdout is test events, so it is only collected and read. limit is
 // the maximum length of the output being collected. Test output does not exceed 1000000 characters, but build JSON messages are one line per dependency, so
-// the line is longer. timeoutMs is the deadline of the executed process, and a long-running build runs with null, meaning no deadline.
-export function run(program: string, args: string[], cwd: string | undefined, timeoutMs: number | null, env: NodeJS.ProcessEnv = process.env, step?: StepWriter, limit = 1_000_000): Promise<RunResult> {
+// the line is longer. No clock ends the process: a run ends when the program ends, at its output limit, or with the run (T473).
+export function run(program: string, args: string[], cwd: string | undefined, env: NodeJS.ProcessEnv = process.env, step?: StepWriter, limit = 1_000_000): Promise<RunResult> {
   return new Promise<RunResult>((finish) => {
     const child = spawn(program, args, { cwd, env, detached: true });
     const progress = step ? stepLines(step) : null;
@@ -263,7 +263,6 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
     const done = (error: string | null, value?: string) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
       finish({ error, value, stdout, pid: child.pid });
     };
     // The output that is kept ends at the limit: a program that was asked to end may write on while it ends.
@@ -300,10 +299,8 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
         : `exit ${code}: ${output.trim()}`);
       done(null, output);
     });
-    // When timeoutMs is null, it is a long-running build, so no timer is set.
-    // The run reports a process that has ended: at the deadline the program is asked to end, and the close of its output
+    // The run reports a process that has ended: past its output limit the program is asked to end, and the close of its output
     // settles the run. A child that did not start has no group and settles by its error event.
-    const timer: NodeJS.Timeout | undefined = timeoutMs === null ? undefined : setTimeout(() => { stop(`timeout after ${timeoutMs} ms`); }, timeoutMs);
   });
 }
 
@@ -450,7 +447,7 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
     return passed ? null : failure;
   };
   const go = async (args: string[], cwd: string, step: StepWriter) => {
-    const result = await run('go', args, cwd, null, process.env, step);
+    const result = await run('go', args, cwd, process.env, step);
     if (result.error) throw new Error(result.error);
   };
   const specs = plans.flatMap(plan => plan.native);
@@ -681,7 +678,7 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const { LEASE: lease, CARGO_LEASES: leases } = process.env;
       if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
       const manifestPath = resolve(crate, 'Cargo.toml');
-      const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', manifestPath], crate, null, process.env, step, 10_000_000);
+      const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', manifestPath], crate, process.env, step, 10_000_000);
       if (metadata.error) throw new Error(`cargo metadata: ${metadata.error}`);
       const project = cargoMetadataOf(metadata.stdout ?? '');
       const selectedPackage = project.packages?.find(packageInfo => resolve(packageInfo.manifest_path) === manifestPath);
@@ -702,7 +699,7 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const copies = resolve(directory, `cargo-${builds.cargo.size}-${relative(plans.root, crate).replaceAll('/', '_') || 'root'}`);
       await mkdir(copies, { recursive: true });
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, cargoTestScript, '--copy', copies, '--',
-        ...cargoBuildArgs(workspaceManifestPath, selectedPackage.name, features, targetArgs)], crate, null, process.env, step, 100_000_000);
+        ...cargoBuildArgs(workspaceManifestPath, selectedPackage.name, features, targetArgs)], crate, process.env, step, 100_000_000);
       if (result.error) throw new Error(result.error);
       const copied = readBinaries(copies);
       programPaths = programEnvironment(copied.programs);
@@ -745,15 +742,11 @@ function prepared(spec: Spec, builds: Builds, root: string): Prepared[] {
 // usesCargo is whether the run uses the cargo test binary (the Rust build of buildNative).
 const usesCargo = (plan: Plan): boolean => plan.native.some(spec => spec.format === 'cargo');
 
-// The deadline of executeCoverage.
-// timeoutMs: the deadline of one process that a run starts, the test binary or test runner of an entry. The
-// case keeps its own deadline through its own level (testcase.Start, caseTest), so this deadline is the outer
-// boundary that ends a stuck process, and is not shorter than the longest declarable level PROCESS (5 minutes). The build before it is a long-running task, so it has no deadline.
-export const NATIVE_DEADLINE = PROCESS;
+// executeCoverage builds and runs the native tests of the manifest. No clock ends a process that a run starts: a run of a
+// machine under load is slower and passes, and a process that does not end is ended with the run (T473).
 export async function executeCoverage(
   manifest: Manifest,
   root: string,
-  timeoutMs = NATIVE_DEADLINE,
 ): Promise<string[]> {
   const reports: Record<string, Report[]> = {};
   const errors: string[] = [];
@@ -822,12 +815,8 @@ export async function executeCoverage(
       let processes: Prepared[][];
       try { processes = native.map(spec => prepared(spec, shared, root)); }
       catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
-      // The deadline of a run is the sum of those of its processes. A process runs the cases of its entry, each with its own
-      // deadline, so it holds one deadline per case.
-      const processDeadline = (spec: Spec | undefined): number => timeoutMs * Math.max(1, spec?.cases.length ?? 1);
-      const runDeadline = processes.reduce((sum, children, index) => sum + children.length * processDeadline(native[index]), 0);
       let failure: string | undefined;
-      const passed = await runCase(`${key} run`, runDeadline, async ({ step }) => {
+      const passed = await runCase(`${key} run`, async ({ step }) => {
         let caught = false;
         try {
             for (let index = 0; index < native.length; index++) {
@@ -837,7 +826,7 @@ export async function executeCoverage(
             const results = join(directory, `${key.replaceAll('/', '_')}-${index}.results`);
             for (const child of processes[index] ?? []) {
               step(child.label ?? `${child.program} ${entry.test}`);
-              const result = await run(child.program, child.args, child.cwd, processDeadline(spec), { ...process.env, ...child.env, ORM_RECIPE_RESULTS: results }, step);
+              const result = await run(child.program, child.args, child.cwd, { ...process.env, ...child.env, ORM_RECIPE_RESULTS: results }, step);
               if (result.error) throw new Error(result.error);
             }
             resultCases(await recipeOutput(results), spec.cases, spec.database);
@@ -851,7 +840,7 @@ export async function executeCoverage(
         }
         if (caught) throw new Error(failure);
       });
-      if (!passed) errors.push(`${key}: ${failure ?? `deadline ${runDeadline} ms exceeded`}`);
+      if (!passed) errors.push(`${key}: ${failure ?? 'the run failed'}`);
     }
   }
 }

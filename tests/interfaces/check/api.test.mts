@@ -3,17 +3,17 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { caseTest, COMPUTE } from '../../testcase.mts';
+import { caseTest } from '../../testcase.mts';
 import { apiProblems, ERROR_CATALOGS, readImplementationNames } from './api.mts';
 import { readErrorCatalog } from './manifest.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
-caseTest('the catalog file of every implementation holds each code of errors.yaml once', COMPUTE, () => {
+caseTest('the catalog file of every implementation holds each code of errors.yaml once', () => {
   assert.deepEqual(apiProblems(root, readImplementationNames(root), readErrorCatalog(root)), []);
 });
 
-caseTest('the catalog check refuses a missing code, a code held twice, a constant of no code and an implementation with no file', COMPUTE, () => {
+caseTest('the catalog check refuses a missing code, a code held twice, a constant of no code and an implementation with no file', () => {
   const codes = readErrorCatalog(root);
   const [code] = [...codes];
   assert.ok(code, 'docs/spec/errors.yaml declares no code');

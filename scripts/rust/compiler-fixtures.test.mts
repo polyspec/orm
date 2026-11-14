@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const examples = join(root, 'packages/rust/programs/examples');
@@ -13,7 +13,7 @@ const runner = join(root, 'scripts/rust/compiler-fixtures.mts');
 const toolchain = readFileSync(join(root, 'rust-toolchain.toml'), 'utf8').match(/^channel = "(.*)"$/m)?.[1];
 const fixture = 'generated-typed-getter-positive';
 
-caseTest('a stale source of the case is overwritten and the scratch directory is removed', PROCESS, () => {
+caseTest('a stale source of the case is overwritten and the scratch directory is removed', () => {
   assert.ok(toolchain, 'rust-toolchain.toml names a channel');
   assert.ok(process.env.ORM_RUST_TEST_FEATURES && process.env.CARGO_TARGET_DIR, 'the Rust test features and CARGO_TARGET_DIR are set');
   mkdirSync(examples, { recursive: true });

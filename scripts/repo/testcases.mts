@@ -10,12 +10,13 @@ export type Unit = { name: string; commands: string[]; dialect: Dialect };
 /** read(path) is the text of a tracked file, or undefined when it is not tracked. */
 export type Read = (path: string) => string | undefined;
 
-// Test case reporting rule (AGENTS.md testing rule): every test case runs under its own deadline, reports its steps, results and
-// elapsed time, and runs long-running work (build, install, tool run, full suite) without a deadline, with step logs.
+// Test case reporting rule (AGENTS.md testing rule): every test case reports its steps, results and elapsed time, and runs
+// long-running work (build, install, tool run, full suite) without a deadline, with step logs. A TypeScript case has no deadline
+// (T473): it ends when its work ends.
 // This module finds the tests and commands that break that rule in the text of the tracked files.
 
 // nodeTestErrors returns one error for each JavaScript file that directly uses node:test's test functions (test, it, describe, or the default import).
-// node:test tests do not emit a RUN line and a deadline per case, so a test
+// node:test tests do not emit a RUN line per case, so a test
 // is declared with caseTest from tests/testcase.mts. Hooks such as after and before may be used. files is
 // {path: text}, and tests/testcase.mts, which defines caseTest, is not checked.
 export function nodeTestErrors(files: Record<string, string>) {
@@ -26,7 +27,7 @@ export function nodeTestErrors(files: Record<string, string>) {
       const clause = match[1] ?? '';
       const named = /\{([^}]*)\}/.exec(clause)?.[1]?.split(',').map(item => item.trim().split(/\s+as\s+/)[0] ?? '').filter(Boolean) ?? [];
       const direct = !clause.trim().startsWith('{') || named.some(name => ['test', 'it', 'describe', 'suite'].includes(name));
-      if (direct) errors.push(`${path} declares tests with node:test directly; use caseTest of tests/testcase.mts, which gives each case its deadline and RUN, PASS or FAIL line`);
+      if (direct) errors.push(`${path} declares tests with node:test directly; use caseTest of tests/testcase.mts, which reports each case with its RUN, PASS or FAIL line`);
     }
   }
   return errors;
@@ -136,7 +137,7 @@ export function reportingScriptErrors(commands: { source: string; command: strin
       checked.add(path);
       if (read(path) === undefined) errors.push(`${source} runs ${path}, which is not a tracked file`);
       else if (path.endsWith('.php')) errors.push(`${source} runs ${path} with php, not with PHPUnit (vendor-php/bin/phpunit with the phpunit.xml.dist of its package), so it runs without a deadline or a case report`);
-      else if (!reports(path)) errors.push(`${source} runs ${path}, which reports no case through tests/testcase.mts, so it runs without a deadline or RUN line`);
+      else if (!reports(path)) errors.push(`${source} runs ${path}, which reports no case through tests/testcase.mts, so it runs without a RUN line`);
     }
   }
   return errors;

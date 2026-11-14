@@ -98,7 +98,7 @@ export async function runOnCaseDatabase(dialect, file = `coverage_transactions-$
   after(() => database.drop(text => console.log(text)));
   const db = await connect(database.dsn);
   try { await installBench(db); } finally { await db.close(); }
-  await runCasesOn(dialect, file, cases, 300_000, database.dsn);
+  await runCasesOn(dialect, file, cases, database.dsn);
 }
 
 if (import.meta.main) {

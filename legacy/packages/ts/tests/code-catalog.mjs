@@ -2,7 +2,7 @@
 // the catalog is an exported constant whose value is the code and whose note is the note of the catalog, and the file
 // holds no other code. Usage: node packages/ts/tests/code-catalog.mjs
 import { readFile } from 'node:fs/promises';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 // readCatalog reads docs/spec/errors.yaml, a flat list of "- code: X  # comment" lines each followed by "origin: Y", and returns
 // each code with the note that its generated constant carries: the origin, then ": " and the comment when it has one.
@@ -29,7 +29,7 @@ const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Each case is a node:test test (tests/testcase.mts, caseTest).
 // Requirements: INT-65.
-caseTest('code-catalog/matches-errors-yaml', COMPUTE, async () => {
+caseTest('code-catalog/matches-errors-yaml', async () => {
   const catalog = readCatalog(await readFile(new URL('../../../../docs/spec/errors.yaml', import.meta.url), 'utf8'));
   const source = await readFile(new URL('../src/codes.ts', import.meta.url), 'utf8');
   const problems = [];
@@ -42,7 +42,7 @@ caseTest('code-catalog/matches-errors-yaml', COMPUTE, async () => {
   if (constants.length !== catalog.length) problems.push(`codes.ts holds ${constants.length} codes, docs/spec/errors.yaml ${catalog.length}`);
   if (problems.length > 0) throw new Error(`${problems.join('; ')}; run orm-gen errors --lang typescript --out packages/ts/src/codes.ts`);
 });
-caseTest('code-catalog/exported-from-package-root', COMPUTE, async () => {
+caseTest('code-catalog/exported-from-package-root', async () => {
   const catalog = readCatalog(await readFile(new URL('../../../../docs/spec/errors.yaml', import.meta.url), 'utf8'));
   const exported = await import('../dist/index.js');
   const missing = catalog.filter(({ code }) => exported.codes?.[code] !== code).map(({ code }) => code);

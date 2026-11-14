@@ -3,7 +3,7 @@
 //
 // Usage: node packages/ts/tests/markdown.mjs (after npm run typescript:build)
 import { isDeepStrictEqual } from 'node:util';
-import { COMPUTE, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { OrmError } from '../dist/index.js';
 import { checkAssign, checkParam, transformParam } from '../dist/bind_check.js';
 import * as publicIndex from '../dist/index.js';
@@ -30,7 +30,7 @@ function vectorValue(value) {
   if (value.bytes !== undefined) return new Uint8Array(Buffer.from(value.bytes, 'base64'));
   throw new Error(`value ${JSON.stringify(value)} has no host form`);
 }
-caseTest('bind/vectors', COMPUTE, () => {
+caseTest('bind/vectors', () => {
   for (const c of bind.bind) {
     let value = vectorValue(c.value);
     const slot = { type: c.slot.type, precision: c.slot.precision ?? 0, scale: c.slot.scale ?? 0, length: c.slot.length ?? 0 };

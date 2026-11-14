@@ -15,9 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { isBuiltinModule, scanModule } from '../../../tests/module-scan.mjs';
 import { resolveImports, walkModules } from '../../../tests/module-graph.mjs';
 
-// The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
-const TIMEOUT = 15000;
-const vector = (name, body) => caseTest(name, TIMEOUT, body);
+const vector = (name, body) => caseTest(name, body);
 
 const pkgRoot = fileURLToPath(new URL('../', import.meta.url));
 const start = resolve(pkgRoot, 'dist/index.js');

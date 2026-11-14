@@ -8,13 +8,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createChecks } from '../dist/dbspec/introspect_mysql.js';
 
-// TIMEOUT is the deadline (ms) of one case. It is a computation that reads one string.
-const TIMEOUT = 60000;
 const data = JSON.parse(readFileSync(new URL('../../../tests/dbspec/show-create.json', import.meta.url), 'utf8'));
 
 for (const c of data.cases) {
   // Requirements: DIA-84.
-  caseTest(c.id, TIMEOUT, () => {
+  caseTest(c.id, () => {
     const checks = createChecks(c.create.join('\n') + '\n');
     const got = checks.get(c.name);
     if (c.expected === 'not found') {

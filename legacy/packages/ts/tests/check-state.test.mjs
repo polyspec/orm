@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest } from '../../../../tests/testcase.mts';
 import { createCaseAssertions, createFailureCheck } from './check-state.mjs';
 
-caseTest('reports only failed checks with the current case and increments once', 1000, () => {
+caseTest('reports only failed checks with the current case and increments once', () => {
   let current = 'first';
   let failures = 0;
   const reports = [];
@@ -19,7 +19,7 @@ caseTest('reports only failed checks with the current case and increments once',
   assert.deepEqual(reports, ['FAIL first: expected detail', 'FAIL second: another detail']);
 });
 
-caseTest('captures rejected database cases and preserves undefined for successful cases', 1000, async () => {
+caseTest('captures rejected database cases and preserves undefined for successful cases', async () => {
   const { raised } = createCaseAssertions(() => 'case', () => {});
   const failure = new Error('database case failed');
   assert.equal(await raised(async () => {}), undefined);

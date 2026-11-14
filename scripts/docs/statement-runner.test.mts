@@ -2,7 +2,7 @@
 // docs/spec/interfaces.md and its Korean twin, and every runtime implements it unless a declared exception with its reason says otherwise.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 
 const root = new URL('../../', import.meta.url);
 const english = readFileSync(new URL('docs/spec/interfaces.md', root), 'utf8');
@@ -17,7 +17,7 @@ function rule(text: string): string {
   return text.slice(start, next === -1 ? undefined : start + 1 + next);
 }
 
-caseTest('the statement runner rule is stated once in each interfaces spec', COMPUTE, () => {
+caseTest('the statement runner rule is stated once in each interfaces spec', () => {
   const en = rule(english);
   const ko = rule(korean);
   assert.equal(english.split('**INT-150**').length - 1, 1, 'INT-150 is stated once in the English spec');

@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import {
   PERFORMANCE_DATABASES, PERFORMANCE_RUNTIMES, PERFORMANCE_WORKLOADS,
   performanceCommands, performanceMeasurementRecord, performanceTest, performanceMeasurementsFromOutput, performanceReferenceReport,
@@ -44,7 +44,7 @@ function referenceDeclaration() {
   };
 }
 
-caseTest('official child output yields an identified paired measurement for every runtime', COMPUTE, () => {
+caseTest('official child output yields an identified paired measurement for every runtime', () => {
   for (const runtime of PERFORMANCE_RUNTIMES) {
     const output = runtime === 'go'
       ? `${JSON.stringify({ Action: 'output', Output: `${line(runtime, 'sqlite', 'pk')}\n`})}\n`
@@ -59,7 +59,7 @@ caseTest('official child output yields an identified paired measurement for ever
   assert.throws(() => performanceMeasurementsFromOutput('php', 'sqlite', 1, line('php', 'mysql', 'pk')), /identity php\/mysql differs from child php\/sqlite/);
 });
 
-caseTest('Rust libtest diagnostic prefixes retain the exact saved PK observation and case identity', COMPUTE, () => {
+caseTest('Rust libtest diagnostic prefixes retain the exact saved PK observation and case identity', () => {
   const saved = 'PERF hot_path_gate rust mysql pk: native p50=217.1µs client p50=316.0µs ratio=1.46 samples=1000 cpu=451.4ms wall=532.3ms machine=macos aarch64 reference=not-recorded';
   assert.deepEqual(performanceMeasurementsFromOutput('rust', 'mysql', 1,
     `test coverage_hot_path_gate_mysql ... ${saved}\n`, 'coverage_hot_path_gate_mysql'), [{
@@ -72,7 +72,7 @@ caseTest('Rust libtest diagnostic prefixes retain the exact saved PK observation
     `test coverage_hot_path_gate_mysql ... ${saved}\n`, 'coverage_hot_path_gate_mysql'), /identity rust\/mysql differs from child rust\/postgres/);
 });
 
-caseTest('a measurement runs the test of PERF-1 of every runtime on every database, naming its exact test', COMPUTE, () => {
+caseTest('a measurement runs the test of PERF-1 of every runtime on every database, naming its exact test', () => {
   const env = { POLYSPEC_ORM_EXTENSION: '/run/polyspec_orm.so', ORM_PYTHON: '/venv/python', MAKE: 'make' };
   const commands = performanceCommands(env);
   for (const runtime of PERFORMANCE_RUNTIMES) for (const database of PERFORMANCE_DATABASES) {
@@ -90,7 +90,7 @@ caseTest('a measurement runs the test of PERF-1 of every runtime on every databa
   assert.throws(() => performanceCommands({ POLYSPEC_ORM_EXTENSION: '/run/polyspec_orm.so' }), /ORM_PYTHON is unset/);
 });
 
-caseTest('reference recording requires the exact 72 observations and never promotes a threshold', COMPUTE, () => {
+caseTest('reference recording requires the exact 72 observations and never promotes a threshold', () => {
   const measurements = matrix();
   const record = performanceMeasurementRecord(measurements);
   assert.equal(record.schema, 1);
@@ -109,7 +109,7 @@ caseTest('reference recording requires the exact 72 observations and never promo
   assert.throws(() => validatePerformanceMeasurements(measurements.map((entry, index) => index === 0 ? { ...entry, machine: 'another runner' } : entry)), /machine identity differs within go observations/);
 });
 
-caseTest('fixed references require provenance and the exact 36 runtime database workload keys', COMPUTE, () => {
+caseTest('fixed references require provenance and the exact 36 runtime database workload keys', () => {
   const declaration = referenceDeclaration();
   assert.equal(validatePerformanceReferenceDeclaration(declaration).status, 'recorded');
   assert.equal(declaration.references.length, 6 * 3 * 2);
@@ -131,7 +131,7 @@ caseTest('fixed references require provenance and the exact 36 runtime database 
   assert.throws(() => validatePerformanceReferenceDeclaration({ ...declaration, unexpected: true }), /unknown fields or status/);
 });
 
-caseTest('performance references warn above the bound without changing correctness results', COMPUTE, () => {
+caseTest('performance references warn above the bound without changing correctness results', () => {
   const declaration = validatePerformanceReferenceDeclaration(referenceDeclaration());
   const measurements = matrix();
   const report = performanceReferenceReport(measurements, declaration);
@@ -149,7 +149,7 @@ caseTest('performance references warn above the bound without changing correctne
   ]);
 });
 
-caseTest('pending references remain explicit and never use raw observations as thresholds', COMPUTE, () => {
+caseTest('pending references remain explicit and never use raw observations as thresholds', () => {
   const pending = validatePerformanceReferenceDeclaration({
     schema: 1, kind: 'fixed-performance-references', status: 'pending', references: [],
   });
@@ -162,7 +162,7 @@ caseTest('pending references remain explicit and never use raw observations as t
   }), /pending performance references must have exactly an empty references array/);
 });
 
-caseTest('the tracked performance reference declaration satisfies its declared status and matrix shape', COMPUTE, async () => {
+caseTest('the tracked performance reference declaration satisfies its declared status and matrix shape', async () => {
   const declaration = await readPerformanceReferenceDeclaration(new URL('../..', import.meta.url).pathname);
   assert.equal(declaration.schema, 1);
   assert.equal(declaration.kind, 'fixed-performance-references');
@@ -170,7 +170,7 @@ caseTest('the tracked performance reference declaration satisfies its declared s
   else assert.equal(declaration.references.length, 6 * 3 * 2);
 });
 
-caseTest('raw observations publish atomically under ignored evidence without promoting references', COMPUTE, async () => {
+caseTest('raw observations publish atomically under ignored evidence without promoting references', async () => {
   const root = await mkdtemp(join(tmpdir(), 'performance-reference-'));
   try {
     const path = await writePerformanceMeasurementRecord(root, matrix());
@@ -201,7 +201,7 @@ function checkRunRecord(id: string, commit: string, tree: string, log: string): 
   };
 }
 
-caseTest('the check run recorder promotes attempt one of a passed run on a clean checkout of HEAD', COMPUTE, async () => {
+caseTest('the check run recorder promotes attempt one of a passed run on a clean checkout of HEAD', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'performance-reference-run-')));
   const id = 'orm_check_17_0a1b2c3d';
   const name = 'observations-2026-01-01T000200000Z-17.json';
@@ -245,7 +245,7 @@ caseTest('the check run recorder promotes attempt one of a passed run on a clean
   }
 });
 
-caseTest('the check run recorder rejects a failed, dirty or other-commit run and cannot raise a fixed reference', COMPUTE, () => {
+caseTest('the check run recorder rejects a failed, dirty or other-commit run and cannot raise a fixed reference', () => {
   const base = performanceMeasurementRecord(matrix());
   const prior = validatePerformanceReferenceDeclaration(referenceDeclaration());
   if (prior.status !== 'recorded') throw new Error('the prior-reference fixture is recorded');

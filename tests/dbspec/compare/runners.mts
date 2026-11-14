@@ -59,12 +59,12 @@ export type Runner = { name: string; readonly command: string; readonly args: st
 /** The end of a runner: its exit code or signal and its output. */
 export type RunnerResult = { code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string };
 
-export function runRunner(runner: Runner, inputs: string[], timeout: number, pace = 0): Promise<RunnerResult> {
+export function runRunner(runner: Runner, inputs: string[], pace = 0): Promise<RunnerResult> {
   const reads = runner.reads;
   if (reads && inputs.length !== INPUTS.length) throw new Error(`runRunner gives a compare runner the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}; pass all six, and the runner takes those its reads names`);
   const args = reads ? reads.map(name => inputs[INPUTS.indexOf(name)] ?? '') : inputs;
   return new Promise<RunnerResult>((resolve, reject) => {
-    const child = spawn(runner.command, [...runner.args, ...args], { cwd: root, timeout });
+    const child = spawn(runner.command, [...runner.args, ...args], { cwd: root });
     const out: Buffer[] = [];
     const err: Buffer[] = [];
     child.stdout.on('data', (chunk: Buffer) => out.push(chunk));

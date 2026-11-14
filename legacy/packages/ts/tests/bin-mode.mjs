@@ -5,12 +5,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 const root = new URL('..', import.meta.url).pathname;
 const bins = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).bin ?? {};
 
-caseTest('bin-mode/executable', COMPUTE, () => {
+caseTest('bin-mode/executable', () => {
   assert.ok(Object.keys(bins).length > 0, 'the package declares its bins');
   for (const [name, file] of Object.entries(bins)) {
     const mode = statSync(join(root, file)).mode & 0o777;

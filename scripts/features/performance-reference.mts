@@ -273,7 +273,7 @@ export function performanceCommands(env: NodeJS.ProcessEnv): PerformanceCommand[
 /**
  * Measures every command of performanceCommands twice, one process at a time, so that no measurement overlaps another, and
  * writes the raw record and the comparison with the fixed references. A command that fails is reported and the rest still run;
- * the build inside a go or cargo run has no deadline, and each test keeps its own.
+ * no clock ends a build or a test of a run.
  */
 async function measurePerformance(root: string): Promise<void> {
   const commands = performanceCommands(process.env);
@@ -283,7 +283,7 @@ async function measurePerformance(root: string): Promise<void> {
     for (const command of commands) {
       const name = `performance_gate/${command.runtime}/${command.database} attempt ${attempt}`;
       const passed = await runLong(name, async ({ step }) => {
-        const result = await run(command.program, command.args, root, null, { ...process.env, ...command.env }, step, 100_000_000);
+        const result = await run(command.program, command.args, root, { ...process.env, ...command.env }, step, 100_000_000);
         if (result.error) throw new Error(result.error);
         const found = performanceMeasurementsFromOutput(command.runtime, command.database, attempt, result.value ?? '', command.runtime === 'rust' ? command.symbol : undefined);
         if (found.length === 0) throw new Error(`${command.symbol} reported no measurement`);

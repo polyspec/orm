@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { paginate } from '../dist/database.js';
 import { Author, Engine } from '../dist/index.js';
 
-caseTest('paginate/internal-plan-order-and-dispatch', COMPUTE, async () => {
+caseTest('paginate/internal-plan-order-and-dispatch', async () => {
   const request = {
     ir_version: 1,
     manifest_hash: Author.entity.model.manifestHash,

@@ -14,10 +14,8 @@ import { checkSetMessage } from './recipe.mjs';
 import { parseSet, readDbspecSet } from '../dist/dbspec/index.js';
 import { parseSet as browserParseSet } from '../dist/dbspec/entry.js';
 
-const TIMEOUT = 15000;
-
 // DBS-176: the TypeScript package validates parseSet(bytes, path) inputs before parsing without reading a file.
-caseTest('set-files parseSet takes a Uint8Array and a string', TIMEOUT, () => {
+caseTest('set-files parseSet takes a Uint8Array and a string', () => {
   assert.throws(() => browserParseSet('{}', 'dbspec-set.json'), TypeError);
   assert.throws(() => browserParseSet(new Uint8Array(), 1), TypeError);
   assert.throws(() => readDbspecSet(1), TypeError);
@@ -60,7 +58,7 @@ function needsNoTree(c) {
 assert.ok(cases.some(needsNoTree), 'some cases need no file tree');
 for (const c of cases) {
   if (needsNoTree(c)) {
-    caseTest(`set-files parseSet ${c.id}`, TIMEOUT, () => {
+    caseTest(`set-files parseSet ${c.id}`, () => {
       for (const [entry, parse] of [['node', parseSet], ['browser', browserParseSet]]) {
         const result = parse(new Uint8Array(treeBytes(c.tree, c.set)), c.set);
         assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), c.want.errors.map(e => ({ rule: e.rule, path: e.path })), entry);
@@ -71,7 +69,7 @@ for (const c of cases) {
       }
     });
   } else if (!('errors' in c.want)) {
-    caseTest(`set-files parseSet ${c.id}`, TIMEOUT, () => {
+    caseTest(`set-files parseSet ${c.id}`, () => {
       const result = browserParseSet(new Uint8Array(treeBytes(c.tree, c.set)), c.set);
       assert.deepEqual(result.errors, []);
       for (const list of ['documents', 'external']) {
@@ -82,12 +80,12 @@ for (const c of cases) {
   }
 }
 
-caseTest('set-files edge the joined path keeps the written path and an empty prefix', TIMEOUT, () => {
+caseTest('set-files edge the joined path keeps the written path and an empty prefix', () => {
   const result = browserParseSet(new TextEncoder().encode('{"schema": 1, "documents": ["a.dbs"], "external": ["../b/c.dbs"]}'), 'dbspec-set.json');
   assert.deepEqual([...result.documents, ...result.external].map(p => [p.written, p.path]), [['a.dbs', 'a.dbs'], ['../b/c.dbs', '../b/c.dbs']]);
 });
 
-caseTest('set-files edge a set path relative to the working directory', TIMEOUT, () => {
+caseTest('set-files edge a set path relative to the working directory', () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-ts-set-'));
   writeFileSync(join(root, 'dbspec-set.json'), '{"schema": 1, "documents": ["a.dbs"]}', 'utf8');
   writeFileSync(join(root, 'a.dbs'), 'dbspec 1 a\n', 'utf8');

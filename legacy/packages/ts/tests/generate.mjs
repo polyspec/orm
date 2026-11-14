@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
-import { caseTest, PROCESS, runLong, stepLines } from '../../../../tests/testcase.mts';
+import { caseTest, runLong, stepLines } from '../../../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../../../tests/environment.mts';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { writeTextIfChanged } from '../dist/generate/typescript.js';
@@ -56,7 +56,7 @@ async function setOf(dir, documents, external = []) {
 // The generator check is one case that runs the orm-gen and tsc processes.
 // Requirements: DBS-121, DSL-37, DSL-130, PLN-22, ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
 // Requirements: DSL-154.
-caseTest('generate', PROCESS, async () => {
+caseTest('generate', async () => {
   const work = await mkdtemp(join(tmpdir(), 'orm-ts-gen-'));
   try {
     const usage = join(work, 'usage.ts');
@@ -132,7 +132,7 @@ caseTest('generate', PROCESS, async () => {
 // The positive consumer compiles and runs without diagnostic suppression. Its separate negative fixture must fail only
 // at the raw typed-field assignment, with TypeScript's exact code and source location.
 // Requirements: DBS-112, DBS-114, INT-66.
-caseTest('generated typed getter consumer compiler fixture', PROCESS, async () => {
+caseTest('generated typed getter consumer compiler fixture', async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });
   const consumerDir = await mkdtemp(join(runDir, 'ts-generated-getter-'));
@@ -195,7 +195,7 @@ void rawPrice;
 });
 
 // Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
-caseTest('generated field types follow the runtime model', PROCESS, async () => {
+caseTest('generated field types follow the runtime model', async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });
   const dir = await mkdtemp(join(runDir, 'ts-generated-field-types-'));
@@ -249,7 +249,7 @@ if (row.getMoment() !== '2026-01-02 03:04:05.006' || row.getDay() !== '2026-01-0
 
 // Requirements: DBS-104.
 // Requirements: DBS-104, DBS-111, DBS-120.
-caseTest('generated manifest text and hash match', PROCESS, async () => {
+caseTest('generated manifest text and hash match', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-ts-manifest-'));
   try {
     const manifestText = 'dbspec 1 manifest\n\ntable first_item {\n  id i64 identity\n  primary key (id)\n}\n\ntable second_item {\n  id i64 identity\n  primary key (id)\n}\n';
@@ -272,7 +272,7 @@ caseTest('generated manifest text and hash match', PROCESS, async () => {
 // The generated schema value carries the external text at run time: the generated connect registers a set that uses an
 // external document, and the model of a used external table, compiled by tsc, reads a row of that table.
 // Requirements: DBS-110, DBS-173.
-caseTest('generated external model reads its table', PROCESS, async () => {
+caseTest('generated external model reads its table', async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });
   const consumerDir = await mkdtemp(join(runDir, 'ts-generated-external-'));
@@ -327,7 +327,7 @@ function writeIfChangedDirectory() {
   return mkdtempSync(join(tmpdir(), 'write-if-changed-'));
 }
 
-caseTest('writeTextIfChanged leaves a file that holds the text as it is', PROCESS, () => {
+caseTest('writeTextIfChanged leaves a file that holds the text as it is', () => {
   const dir = writeIfChangedDirectory();
   try {
     const file = join(dir, 'models.ts');
@@ -343,7 +343,7 @@ caseTest('writeTextIfChanged leaves a file that holds the text as it is', PROCES
   }
 });
 
-caseTest('writeTextIfChanged renames a changed text over the old file from its directory', PROCESS, () => {
+caseTest('writeTextIfChanged renames a changed text over the old file from its directory', () => {
   const dir = writeIfChangedDirectory();
   try {
     const file = join(dir, 'models.ts');
@@ -358,7 +358,7 @@ caseTest('writeTextIfChanged renames a changed text over the old file from its d
   }
 });
 
-caseTest('writeTextIfChanged creates a missing file', PROCESS, () => {
+caseTest('writeTextIfChanged creates a missing file', () => {
   const dir = writeIfChangedDirectory();
   try {
     const file = join(dir, 'models.ts');

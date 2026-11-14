@@ -141,7 +141,7 @@ from kit and holds as its own; this file states only the rules of orm.
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record
   and the summary and writes as a GitHub `::warning::` annotation; the test still passes. A test fails only on
-  correctness, and a deadline only ends a case that does not stop. `make repo-check` (and `make go-vet-check` for Go) refuses a
+  correctness, never on a clock. `make repo-check` (and `make go-vet-check` for Go) refuses a
   test that fails on a measured time above a bound. A reference value is never raised to remove a warning; a change needs new evidence of
   the same kind from the CI runner.
   Enforced by: `make repo-check`
@@ -234,15 +234,18 @@ from kit and holds as its own; this file states only the rules of orm.
   Enforced by: `make repo-check`
 - Own: During an item run only the unit tests of what changed; never rerun
   tests mechanically after each fix. Every test case, a short verification unit, reports its own
-  running, completion, success or failure with its elapsed time and has its own timeout; a
-  whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
+  running, completion, success or failure with its elapsed time. No clock ends a test case or a
+  process of a test, because a machine under load runs the same work more slowly and its result must not change with that load:
+  a case ends when its work ends, and a run that does not end is stopped with its run (SIGINT or SIGTERM). The TypeScript
+  harness `tests/testcase.mts` holds no deadline; T474 removes the deadlines that the Go, Python, Rust and PHP harnesses
+  still hold. A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
   `go generate`, `go vet`, `cargo build`, `cargo test --no-run`, a whole suite, a server or a tool
   run) gets detailed step logs instead of a timeout, with no deadline at all, a no-output deadline
   included, so its process and result stay observable; its success or failure comes from its
   observed result and errors, never from a clock. A time limit on a test's own computation measures the CPU time of the thread or
   process that runs it, because wall-clock time on a shared machine includes the time other
-  processes hold the processors; a timer that stops a stuck case, a limit on work that a database
-  or another process does, and a test of timing behavior measure wall-clock time.
+  processes hold the processors; a limit on work that a database or another process does, and a test of timing
+  behavior, measure wall-clock time.
   Enforced by: none, the rule governs the work of an agent; no tool sees which tests run
 - Own: Complete work in progress before increasing the number of unfinished items without completed results. Keep persistent development rules in this file and concrete deliverables with their evidence in the checklist. The checklist checker rejects unnumbered policy and status prose.
   Enforced by: `make docs-check`
@@ -262,7 +265,7 @@ from kit and holds as its own; this file states only the rules of orm.
   Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: An owning client executes its own behavior cases from tests located under `packages/<runtime>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
   Enforced by: `make feature-unit-check`
-- Own: Use an event instead of polling or a timer to observe it. A declared deadline may use a timer. Do not use symbolic links in what this repository creates, and do not use alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
+- Own: Use an event instead of polling or a timer to observe it. A test of timing behavior may use a timer. Do not use symbolic links in what this repository creates, and do not use alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
   Enforced by: none, no check reads the code for polling, timers or symbolic links
 - Own: A path is resolved declaratively, by a name in a tracked file, or by discovery, by a discovery rule that a document or a script states, never as a relative path.
   Enforced by: none, no check reads how the code resolves its paths

@@ -1,7 +1,7 @@
 // Test of component documents and the command line, JSON format.
 import assert from 'node:assert/strict';
 import { join, resolve } from 'node:path';
-import { caseTest, COMPUTE } from '../../testcase.mts';
+import { caseTest } from '../../testcase.mts';
 import { diagram } from './diagram.mts';
 import { goJson, JsonNumber } from './json.mts';
 import { goFlags } from './main.mts';
@@ -10,7 +10,7 @@ import { readManifest } from './manifest.mts';
 const root = resolve(import.meta.dirname, '../../..');
 
 // Requirements: INT-139.
-caseTest('the component diagrams use the requested language and list the complete manifest', COMPUTE, () => {
+caseTest('the component diagrams use the requested language and list the complete manifest', () => {
   const m = readManifest(join(root, 'contracts/interfaces.json'));
   const en = diagram(m, false), ko = diagram(m, true);
   assert.ok(en.includes('| Component | Behavior and state |') && !en.includes('| 구성요소 |'), 'English diagram contains an invalid table heading');
@@ -21,13 +21,13 @@ caseTest('the component diagrams use the requested language and list the complet
   assert.ok(count(en, '    class ') === count(ko, '    class ') && count(en, '\n| ') === count(ko, '\n| '), 'localized diagrams contain different structures');
 });
 
-caseTest('JSON is written as Go encoding/json writes it', COMPUTE, () => {
+caseTest('JSON is written as Go encoding/json writes it', () => {
   assert.equal(goJson({ b: 'x<&> ', a: [new JsonNumber('1.0'), null, true] }), '{"a":[1.0,null,true],"b":"x\\u003c\\u0026\\u003e\\u2028"}');
   assert.equal(goJson({ b: '1', a: { c: [] } }, '  '), '{\n  "a": {\n    "c": []\n  },\n  "b": "1"\n}');
   assert.equal(goJson({ 'é': 1, z: 2 }), '{"z":2,"é":1}');
 });
 
-caseTest('the options are read as Go flag reads them', COMPUTE, () => {
+caseTest('the options are read as Go flag reads them', () => {
   assert.deepEqual(goFlags(['-generate', '--self-test', '-language', 'php', '-root=a', '--root', 'b', '-generate=false', 'rest', '-root', 'x']),
     ['--generate', '--self-test', '--language=php', '--root=a', '--root=b']);
   assert.throws(() => goFlags(['-nope']), /flag provided but not defined: -nope/);

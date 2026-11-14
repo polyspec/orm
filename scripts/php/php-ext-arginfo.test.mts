@@ -6,7 +6,7 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, watch, writeFileSync, type FSWatcher } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 
 const module = new URL('./php-ext-arginfo.mts', import.meta.url).pathname;
 
@@ -31,7 +31,7 @@ function untilPublishStarts(dir: string, destination: string, reader: ChildProce
   });
 }
 
-caseTest('an interrupted arginfo write leaves the previous header whole', PROCESS, async () => {
+caseTest('an interrupted arginfo write leaves the previous header whole', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'orm-arginfo-interrupt-'));
   const writer = { child: undefined as ReturnType<typeof spawn> | undefined };
   try {

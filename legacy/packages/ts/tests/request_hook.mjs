@@ -6,7 +6,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, DATABASE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { cases, runOn } from './request_hook_run.mjs';
 
 // Requirements by case of request_hook_run.mjs (what the recipe request_hook cannot state, FCV-4):
@@ -15,7 +15,7 @@ import { cases, runOn } from './request_hook_run.mjs';
 let failures = 0;
 for (const [name, run] of Object.entries(cases)) {
   // INT-78: the hook of a handle receives each request right before it is planned; a handle without a hook runs the request as is.
-  caseTest(`request-hook/${name}`, DATABASE, async ({ step }) => {
+  caseTest(`request-hook/${name}`, async ({ step }) => {
     const dir = await mkdtemp(join(tmpdir(), 'orm-request-hook-'));
     try { await runOn(`sqlite://${join(dir, 'hook.sqlite')}`, step, run); } finally { await rm(dir, { recursive: true, force: true }); }
   });

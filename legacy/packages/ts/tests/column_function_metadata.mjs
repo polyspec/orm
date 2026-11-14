@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
@@ -26,7 +26,7 @@ const selectedRequest = () => ({
   columns: { mode: 'none', fn: { selected_year: { column: 'start_dt', fn: { name: 'year' } } } },
 });
 
-caseTest('planner rejects missing post-validation predicate field and preserves public code', COMPUTE, () => {
+caseTest('planner rejects missing post-validation predicate field and preserves public code', () => {
   const valid = { ...structuredClone(predicateCase.input), manifest_hash: manifest.manifestHash };
   validate(model, valid);
   assert.equal(paramUses(model, valid)[0][0].type, 'date', 'date column function retains its parameter type');
@@ -40,14 +40,14 @@ caseTest('planner rejects missing post-validation predicate field and preserves 
   }
 });
 
-caseTest('parameter-use collection rejects missing post-validation function field', COMPUTE, () => {
+caseTest('parameter-use collection rejects missing post-validation function field', () => {
   const valid = { ...structuredClone(predicateCase.input), manifest_hash: manifest.manifestHash };
   validate(model, valid);
   valid.where.items[0].pred.column = 'missing_column';
   assert.throws(() => paramUses(model, valid), error => isInternalColumnError(error, 'author', 'missing_column'));
 });
 
-caseTest('planner output projection rejects missing post-validation function field', COMPUTE, () => {
+caseTest('planner output projection rejects missing post-validation function field', () => {
   const valid = selectedRequest();
   validate(model, valid);
   const plan = new Engine(model, 'sqlite').planner.compile(valid);

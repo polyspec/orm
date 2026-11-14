@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
-import { caseTest, DATABASE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 const execute = promisify(execFile);
 const require = createRequire(new URL('../package.json', import.meta.url));
@@ -198,7 +198,7 @@ export async function withCaseCorpus(setPath, step, body) {
  * case-database-mysql.test.mjs and case-database-mariadb.test.mjs run it on the two servers of the MySQL dialect (DIA-200).
  */
 export function dropDiscardsItsSession(dialect) {
-  caseTest(`${dialect}: the drop of a case database leaves the next admin session with foreign_key_checks 1`, DATABASE, async ({ step }) => {
+  caseTest(`${dialect}: the drop of a case database leaves the next admin session with foreign_key_checks 1`, async ({ step }) => {
     const database = await createCaseDatabase(dialect, step);
     await database.drop();
     const { rows } = await admin(dialect, 'SELECT @@SESSION.foreign_key_checks AS checks');

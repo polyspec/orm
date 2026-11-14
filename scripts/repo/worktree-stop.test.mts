@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { stopTargetOf } from '@polyspec/kit/land';
 
@@ -64,18 +64,18 @@ function runWorktreeRemove(hasServerState: boolean, stopStatus = 0) {
   }
 }
 
-caseTest('the kit make database reads the ORM Makefile-origin stop target', COMPUTE, () => {
+caseTest('the kit make database reads the ORM Makefile-origin stop target', () => {
   assert.deepEqual(withIsolatedEnvironment(() => stopTargetOf(root)), ['orm-test-servers-stop']);
   assert.match(readFileSync(join(root, 'Makefile'), 'utf8'), /^WORKTREE_STOP = orm-test-servers-stop$/m);
 });
 
-caseTest('worktree-remove skips the server make target when a source-only worktree has no server state', PROCESS, () => {
+caseTest('worktree-remove skips the server make target when a source-only worktree has no server state', () => {
   const { result, events, worktree } = runWorktreeRemove(false);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.deepEqual(events, [`git worktree remove ${worktree}`]);
 });
 
-caseTest('worktree-remove stops managed servers before removal and preserves the tree on stop failure', PROCESS, () => {
+caseTest('worktree-remove stops managed servers before removal and preserves the tree on stop failure', () => {
   const stopped = runWorktreeRemove(true);
   assert.equal(stopped.result.status, 0, stopped.result.stdout + stopped.result.stderr);
   assert.deepEqual(stopped.events, [

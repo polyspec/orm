@@ -6,17 +6,17 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { NO_RECIPE_CASE, RUNNER_SOURCES, compareOutput, compareOutputs, declaredBodies, expectations, fixedClockExpectations, list, plain, readRecipe, record, runnerCommand, sequenceDifferences, sequenceStatement, type Output, type Sequence } from './recipe_vectors.mts';
 import { readJsonFile } from '../../../scripts/json/schema.mts';
-import { COMPUTE, caseTest } from '../../testcase.mts';
+import { caseTest } from '../../testcase.mts';
 
 const VECTORS_SCHEMA = join(import.meta.dirname, '../../../tests/conformance/schema/vectors.schema.json');
 const INTERFACES_SCHEMA = join(import.meta.dirname, '../../../scripts/schema/interfaces-manifest.schema.json');
 
-caseTest('a wrapper of a recipe value reads as plain JSON', COMPUTE, () => {
+caseTest('a wrapper of a recipe value reads as plain JSON', () => {
   assert.deepEqual(plain({ array: [{ object: [['a', { int: '7' }], ['b', { text: 'x' }]] }, { null: 'int' }, { bool: true }] }), [{ a: 7, b: 'x' }, null, true]);
   assert.deepEqual(plain({ json: { seq: 42 } }), { seq: 42 });
 });
 
-caseTest('each body with generated methods has the expects of its recipe case on each database', COMPUTE, () => {
+caseTest('each body with generated methods has the expects of its recipe case on each database', () => {
   for (const database of ['mysql', 'postgres', 'sqlite']) {
     const want = expectations('generated', database);
     assert.deepEqual([...want.keys()], ['terminal_by', 'terminal_reuse', 'relation_empty', 'aes_values', 'hex_malformed', 'empty_reads', 'now_defaults', 'delete_recursive', 'affected_counts']);
@@ -30,18 +30,18 @@ caseTest('each body with generated methods has the expects of its recipe case on
   }
 });
 
-caseTest('the sequence statement comes from the recipe', COMPUTE, () => {
+caseTest('the sequence statement comes from the recipe', () => {
   assert.match(sequenceStatement(), /^SELECT setval\(/);
 });
 
-caseTest('the fixed-clock expects state the exact clock where the client writes it', COMPUTE, () => {
+caseTest('the fixed-clock expects state the exact clock where the client writes it', () => {
   const fixed = (database: string) => record(expectations('fixed-clock', database).get('clock_truncate_write')?.result).at6_fixed;
   assert.equal(fixed('sqlite'), true);
   assert.equal(fixed('postgres'), true);
   assert.equal(fixed('mysql'), false);
 });
 
-caseTest('a result or a statement that differs from its expect fails', COMPUTE, () => {
+caseTest('a result or a statement that differs from its expect fails', () => {
   const want = { result: { count: 40 }, statements: [{ sql: 'SELECT 1', binds: [1] }] };
   assert.doesNotThrow(() => { compareOutput('same', { result: { count: 40 }, statements: [{ sql: 'SELECT 1', binds: [1], error: null }] }, want); });
   assert.throws(() => { compareOutput('result', { result: { count: 1000 }, statements: want.statements }, want); }, /result differs/);
@@ -52,7 +52,7 @@ caseTest('a result or a statement that differs from its expect fails', COMPUTE, 
 });
 
 // T457: the forms that the conformance rule of AGENTS.md names as an error.
-caseTest('the comparison of a selection refuses an empty selection, an output outside it and a missing output', COMPUTE, () => {
+caseTest('the comparison of a selection refuses an empty selection, an output outside it and a missing output', () => {
   const one: Output = { result: 1, statements: [] };
   const want = new Map<string, Output>([['a', one]]);
   compareOutputs('go/sqlite', { a: { result: 1, statements: [] } }, want);
@@ -63,7 +63,7 @@ caseTest('the comparison of a selection refuses an empty selection, an output ou
 });
 
 // T457: a fixed-clock case has a nonempty id of its own and exactly the expects of mysql, postgres and sqlite.
-caseTest('a fixed-clock file with no case, an empty or repeated id or other databases is refused', COMPUTE, () => {
+caseTest('a fixed-clock file with no case, an empty or repeated id or other databases is refused', () => {
   const held = { result: 1, statements: [] };
   const expect = { mysql: held, postgres: held, sqlite: held };
   assert.deepEqual([...fixedClockExpectations({ cases: [{ id: 'a', expect }, { id: 'b', expect }] }, 'sqlite').keys()], ['a', 'b']);
@@ -75,7 +75,7 @@ caseTest('a fixed-clock file with no case, an empty or repeated id or other data
   assert.throws(() => fixedClockExpectations({ cases: [{ id: 'a', expect: {} }] }, 'sqlite'), /case a states the expects of no database, not exactly those of mysql, postgres, sqlite/);
 });
 
-caseTest('every vector name is a recipe case or a fixed-clock body', COMPUTE, () => {
+caseTest('every vector name is a recipe case or a fixed-clock body', () => {
   const cases = new Set(readRecipe().cases.map(item => item.id));
   const { vectors } = readJsonFile<{ vectors: { name: string }[] }>(join(import.meta.dirname, '../vectors.json'), VECTORS_SCHEMA);
   for (const { name } of vectors) assert.ok(cases.has(name) || name in NO_RECIPE_CASE, `the vector ${name} has no recipe case`);
@@ -83,7 +83,7 @@ caseTest('every vector name is a recipe case or a fixed-clock body', COMPUTE, ()
 
 // A vector that a recipe case holds has no body: the checks reach only the generated-method and the fixed-clock bodies, and a
 // body that no check reaches is code that nothing runs.
-caseTest('each runner declares exactly the bodies that the checks reach', COMPUTE, () => {
+caseTest('each runner declares exactly the bodies that the checks reach', () => {
   const reached = ['generated', 'fixed-clock'].flatMap(mode => [...expectations(mode, 'sqlite').keys()]).sort();
   assert.equal(reached.length, 11);
   for (const [language, sources] of Object.entries(RUNNER_SOURCES)) {
@@ -92,14 +92,14 @@ caseTest('each runner declares exactly the bodies that the checks reach', COMPUT
   }
 });
 
-caseTest('a body declared in any runner form is read by its name', COMPUTE, () => {
+caseTest('a body declared in any runner form is read by its name', () => {
   assert.deepEqual(declaredBodies('run("go_body", func() {\nrun!("rust_body", async {\nrun!(\n    "rust_long",\n'), ['go_body', 'rust_body', 'rust_long']);
   assert.deepEqual(declaredBodies("vector('php_body', fn() => 1);\nvector(\n    'php_long',\nawait run('ts_body', async () => {"), ['php_body', 'php_long', 'ts_body']);
   assert.deepEqual(declaredBodies('func run() {\nfunction vector(string $name, callable $fn)\nrun($name, $fn);\nexecuteVector("write", fn)'), []);
 });
 
 // Requirements: PAR-1.
-caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
+caseTest('TestPHPExtensionCommandLine', () => {
   const extension = '/run/php-extension/polyspec_orm.so';
   assert.deepEqual(runnerCommand('php-extension', 'dsn', [], { POLYSPEC_ORM_EXTENSION: extension }), [
     'php', ['-d', `extension=${extension}`, 'legacy/packages/php/testing/conformance/runner.php', '--dsn', 'dsn'],
@@ -109,7 +109,7 @@ caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
 
 const contracts = (): Sequence[] => readJsonFile<{ sequences: Sequence[] }>(join(import.meta.dirname, '../../../contracts/interfaces.json'), INTERFACES_SCHEMA).sequences;
 
-caseTest('every state contract of the interfaces holds in its recipe case on each database', COMPUTE, () => {
+caseTest('every state contract of the interfaces holds in its recipe case on each database', () => {
   const cases = new Map(readRecipe().cases.map(item => [item.id, item]));
   const sequences = contracts();
   assert.ok(sequences.length > 0, 'contracts/interfaces.json holds no state contract');
@@ -122,7 +122,7 @@ caseTest('every state contract of the interfaces holds in its recipe case on eac
   }
 });
 
-caseTest('a changed statement kind or result of a state contract is a difference', COMPUTE, () => {
+caseTest('a changed statement kind or result of a state contract is a difference', () => {
   const cases = new Map(readRecipe().cases.map(item => [item.id, item]));
   const sequence = contracts().find(item => item.id === 'transactions');
   assert.ok(sequence);

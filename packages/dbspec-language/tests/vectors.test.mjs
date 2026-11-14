@@ -18,9 +18,7 @@ import { parseDbspec } from '@polyspec/orm/dbspec';
 import { dbspecManifest } from '@polyspec/orm';
 import { codePointIndex, join, parserLines, utf16Index, vectorsFile } from './helpers.mjs';
 
-// The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
-const TIMEOUT = 15000;
-const vector = (name, body) => caseTest(name, TIMEOUT, body);
+const vector = (name, body) => caseTest(name, body);
 
 const { openDocument, resolveSet } = language;
 // The hashes and sets recipes: the owned documents of their dbspec.set step, and the analyze steps that give the tokens.

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { minimatch } from 'minimatch';
-import { caseTest, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
 import { parseJson, refusedPaths } from '../json/schema.mts';
@@ -24,7 +24,7 @@ const helperIds = async (paths: string[]) => (await selectHelpers(manifest, root
 
 // Each case reads only repository files, so its deadline is 5 s.
 // Requirements: FCV-7.
-caseTest('a changed test selects only the commands that run it', 5000, async () => {
+caseTest('a changed test selects only the commands that run it', async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['legacy/packages/go/orm/sqlite_crashed_holder_test.go'])), ['dsn_connection/connection-sqlite-crashed-holder-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['legacy/packages/go/orm/register_test.go'])), ['schema_install/install-register-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['legacy/packages/php/tests/DsnConnectionRecipeTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
@@ -39,7 +39,7 @@ function isOwnerRule(value: unknown): value is OwnerRule {
 
 // The owner rules of config/owner-checks.json select the lint target of each language (KSTD-5-47): a path of each language
 // selects that language's lint target by its glob, so land runs the lint of a branch that changes the language.
-caseTest('a changed path selects the lint target of its language', 5000, async () => {
+caseTest('a changed path selects the lint target of its language', async () => {
   const text = await readFile(new URL('../../config/owner-checks.json', import.meta.url), 'utf8');
   const parsed: unknown = JSON.parse(text);
   const rules = typeof parsed === 'object' && parsed !== null && 'owners' in parsed && Array.isArray(parsed.owners) ? parsed.owners.filter(isOwnerRule) : [];
@@ -65,20 +65,20 @@ caseTest('a changed path selects the lint target of its language', 5000, async (
 // tests module, and Go's transaction_end_test.go, context_reset_test.go,
 // cancelled_session_test.go tests cleanup at transaction end. failing_driver_test.go, which that test uses, is a helper, so it selects only its own
 // check (go-test-helpers).
-caseTest('a changed file selects the transaction end tests that it holds or that test it', 5000, async () => {
+caseTest('a changed file selects the transaction end tests that it holds or that test it', async () => {
   for (const path of ['packages/rust/src/tx.rs'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust'], path);
   for (const path of ['legacy/packages/go/orm/transaction_end_test.go', 'legacy/packages/go/orm/context_reset_test.go', 'legacy/packages/go/orm/cancelled_session_test.go'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-end-go'], path);
 });
 
-caseTest('a whole-suite command is split by package', 5000, async () => {
+caseTest('a whole-suite command is split by package', async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['legacy/packages/go/engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['legacy/packages/php/tests/DbspecRenderStatementsRecipeTest.php'])), ['schema_definition/schema-php']);
 });
 
 // Requirements: FCV-7.
-caseTest('a shared helper selects its own check and no feature', 5000, async () => {
+caseTest('a shared helper selects its own check and no feature', async () => {
   const helped: [string, string][] = [
     ['legacy/packages/php/tests/coverage_cases.php', 'coverage-runner-php'],
     ['legacy/packages/php/tests/bootstrap.php', 'php-test-autoload'],
@@ -98,7 +98,7 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
   assert.deepEqual(await helperIds(['legacy/packages/go/orm/sqlite_crashed_holder_test.go']), []);
 });
 
-caseTest('a fixture selects the units whose declared data names it', 5000, async () => {
+caseTest('a fixture selects the units whose declared data names it', async () => {
   // The coverage of schema_definition renders audit.dbs from tests/dbspec/schema-definition.json.
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
   assert.deepEqual(ids(owners), ['schema_definition', 'constraints_and_relations']);
@@ -107,7 +107,7 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by tests/dbspec/schema-definition.json)']);
 });
 
-caseTest('a missing named fixture is optional and a directory named as a fixture keeps its read error', 5000, async () => {
+caseTest('a missing named fixture is optional and a directory named as a fixture keeps its read error', async () => {
   const base = mkdtempSync(join(tmpdir(), 'owners-reader-'));
   try {
     const fixture = 'fixture.json';
@@ -130,12 +130,12 @@ caseTest('a missing named fixture is optional and a directory named as a fixture
   }
 });
 
-caseTest('a path that no unit declares selects nothing', 5000, async () => {
+caseTest('a path that no unit declares selects nothing', async () => {
   assert.deepEqual(await selectOwners(manifest, root, ['README.md', 'docs/plans/execution/checklist.md']), []);
   assert.deepEqual(await helperIds(['README.md']), []);
 });
 
-caseTest('a command without inputs or a helper used as an input fails the declaration', 5000, async () => {
+caseTest('a command without inputs or a helper used as an input fails the declaration', async () => {
   const tracked = ['a_test.go', 'helper.php', 'b.php', 'fixture.json'];
   const declared = {
     features: [{ id: 'f', verification: [{ id: 'none', command: 'x' }, { id: 'uses', command: 'y', inputs: ['b.php', 'helper.php'] }, { id: 'missing', command: 'z', inputs: ['gone/**'] }],
@@ -159,14 +159,14 @@ caseTest('a command without inputs or a helper used as an input fails the declar
 const inputs = readCheckInputs(root).targets;
 const targets = (selected: { target: string }[]) => selected.map(item => item.target);
 
-caseTest('a changed document selects the documentation checks', 5000, async () => {
+caseTest('a changed document selects the documentation checks', async () => {
   const selected = targets(selectTargets(inputs, ['docs/plans/execution/checklist.md']));
   for (const target of ['docs-check', 'docs-rules-check', 'docs-verify-idempotent'])
     assert.ok(selected.includes(target), `selected ${selected.join(', ')}`);
   assert.ok(!selected.includes('rust-check'), `selected ${selected.join(', ')}`);
 });
 
-caseTest('a declared pattern matches by path segment', 5000, async () => {
+caseTest('a declared pattern matches by path segment', async () => {
   const owner = (inputs: string[]): TargetDeclaration => ({ scope: 'owner', needs: [], inputs });
   const declared = { one: owner(['docs/*.md']), deep: owner(['docs/**']), rust: owner(['packages/rust/**/*.rs']), any: owner(['**']) };
   assert.deepEqual(targets(selectTargets(declared, ['docs/a/b.md'])), ['deep', 'any']);
@@ -175,14 +175,14 @@ caseTest('a declared pattern matches by path segment', 5000, async () => {
   assert.deepEqual(targets(selectTargets(declared, ['packages/rust/Cargo.toml'])), ['any']);
 });
 
-caseTest('empty and comment input patterns are rejected', 5000, () => {
+caseTest('empty and comment input patterns are rejected', () => {
   for (const pattern of ['', '# comment']) {
     assert.throws(() => checkInputErrors({ invalid: { scope: 'owner', needs: [], inputs: [pattern] } }, ['invalid'], []),
       /the input pattern .* is not a glob/);
   }
 });
 
-caseTest('every target of CHECK_TARGETS declares inputs that match tracked files', 5000, async () => {
+caseTest('every target of CHECK_TARGETS declares inputs that match tracked files', async () => {
   const makefile = await readFile(new URL('Makefile', `file://${root}`), 'utf8');
   const checkTargets = [...makefile.matchAll(/^CHECK_TARGETS (?:\+)?= (.*)$/gm)].flatMap(match => match[1]?.trim().split(/\s+/) ?? []);
   assert.ok(checkTargets.length > 0, 'the Makefile declares CHECK_TARGETS');
@@ -199,7 +199,7 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
 
 // The selected target receives owner-check's server and decimal environment, but not the Rust target directory: each checkout builds into its own
 // target directory (AGENTS.md).
-caseTest('a selected make target runs with the environments of owner-check and the target directory of its checkout', 5000, async () => {
+caseTest('a selected make target runs with the environments of owner-check and the target directory of its checkout', async () => {
   assert.deepEqual(makeArguments('docs-check', {}), ['--no-print-directory', '-k', 'docs-check']);
   assert.deepEqual(makeArguments('client-db-check', { ORM_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', CARGO_TARGET_DIR: '/main/cargo-target' }),
     ['--no-print-directory', '-k', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'client-db-check']);
@@ -215,7 +215,7 @@ const t42 = [
   'contracts/fixtures/statement_events/statement_events.dbs',
 ];
 
-caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
+caseTest('a change across the four clients selects no full-suite target', async () => {
   // comment-language-check reads every source file (T131), so a source change selects it.
   // statement-events-check/<runtime> are the owner checks of the recipe fixture (contracts/fixtures/statement_events/**, added by
   // 4569473b6 in contracts/check-inputs.json), which t42 changes. They are the changed feature's own checks, all of owner scope.
@@ -243,13 +243,13 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
 const declarationsOf = (targets: unknown, paths: unknown = {}) => JSON.stringify({ comment: '', targets, paths });
 const refused = (text: string): string[] => refusedPaths(() => parseJson<CheckInputs>(text, CHECK_INPUTS_SCHEMA, 'contracts/check-inputs.json'));
 
-caseTest('the schema of contracts/check-inputs.json accepts the declared shapes', 5000, () => {
+caseTest('the schema of contracts/check-inputs.json accepts the declared shapes', () => {
   assert.deepEqual(refused(declarationsOf({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, b: { scope: 'owner', needs: ['go'], lints: ['**/*.go'] }, c: { scope: 'suite', needs: [] } },
     { 'b/LICENSE': { scope: 'lint', reason: 'license text' } })), []);
   assert.deepEqual(targets(selectTargets({ a: { scope: 'suite', needs: [] }, b: { scope: 'owner', needs: [], inputs: ['docs/**'] } }, ['docs/x.md'])), ['b']);
 });
 
-caseTest('the schema of contracts/check-inputs.json refuses a target or path outside its shape', 5000, () => {
+caseTest('the schema of contracts/check-inputs.json refuses a target or path outside its shape', () => {
   for (const [target, at] of [
     [{ needs: [], inputs: ['docs/**'] }, '/targets/a'],
     [['docs/**'], '/targets/a'],
@@ -269,13 +269,13 @@ caseTest('the schema of contracts/check-inputs.json refuses a target or path out
 
 // The needs case (G5.38-1, G5.52) checks setup-step declarations: every target declares needs, and the values are what the setup step
 // provides (scripts/check/ci-setup.mts).
-caseTest('every target declares the setup steps it needs', 5000, async () => {
+caseTest('every target declares the setup steps it needs', async () => {
   assert.deepEqual(checkInputErrors({ b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['b', 'c'], []), [
     'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, mysql-privilege-server, mariadb-server, node-modules, go, go-lease, interfaces-typescript, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
   ]);
 });
 
-caseTest('a changed feature entry of contracts/features.json selects that feature only', 5000, async () => {
+caseTest('a changed feature entry of contracts/features.json selects that feature only', async () => {
   const feature = (id: string, n: number) => ({ id, n, verification: [{ id: 'c', command: 'x', inputs: ['x.php'] }] });
   const before = { manifest_version: 1, features: [feature('one', 1), feature('two', 1)] };
   const after = { manifest_version: 1, features: [feature('one', 2), feature('two', 1), feature('three', 1)] };
@@ -294,7 +294,7 @@ caseTest('a changed feature entry of contracts/features.json selects that featur
 
 // The executed-database case checks how owner-check picks the target that builds its bench and decimal databases, and how it
 // reads the database's environment file.
-caseTest('owner-check creates the databases of its run for a target that reads the server environment', 5000, () => {
+caseTest('owner-check creates the databases of its run for a target that reads the server environment', () => {
   const { environmentFile, usesTestEnv } = ownerSelection;
   const makefile = 'WITH_TEST_ENV = x\nuses:\n\t$(WITH_TEST_ENV) go test ./a\n\nplain:\n\tnode --test a.test.mjs\n';
   assert.equal(usesTestEnv(makefile, 'uses'), true);
@@ -310,7 +310,7 @@ caseTest('owner-check creates the databases of its run for a target that reads t
 // The behavior-test case (G5.51) checks that owner-check selects the behavior test for each changed path. It does so not with inputs but with
 // a path matched only by lints (go vet, gofmt, document rules) is not tested; a path with a scope declared in paths passes
 // with that declaration.
-caseTest('a path that only a lint selects is untested unless its scope is declared', 5000, () => {
+caseTest('a path that only a lint selects is untested unless its scope is declared', () => {
   const declared: Record<string, TargetDeclaration> = { lint: { scope: 'owner', needs: [], lints: ['**/*.go'] }, unit: { scope: 'owner', needs: [], inputs: ['a/*_test.go'], lints: ['**/*.go'] } };
   const targets = selectTargets(declared, ['a/x.go', 'a/x_test.go', 'b/LICENSE']);
   assert.deepEqual(targets.map(({ target, tested }) => [target, tested]), [['lint', []], ['unit', ['a/x_test.go']]]);
@@ -323,20 +323,20 @@ caseTest('a path that only a lint selects is untested unless its scope is declar
   ]);
 });
 
-caseTest('a generator source selects the check that regenerates the models', 5000, () => {
+caseTest('a generator source selects the check that regenerates the models', () => {
   const { targets: declared } = readCheckInputs(root);
   const selected = selectTargets(declared, ['legacy/packages/go/generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
   assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generator-consumer-check', 'generated-lint-check', 'recipe-runners-check']);
 });
 
 // The bootstrap tsconfig that the TypeScript build reads before the models exist is tracked, so it must declare its scope (KSTD-5-5-1).
-caseTest('the bootstrap tsconfig of the TypeScript build declares its scope', 5000, () => {
+caseTest('the bootstrap tsconfig of the TypeScript build declares its scope', () => {
   const { paths } = readCheckInputs(root);
   assert.equal(paths['legacy/packages/ts/tsconfig.bootstrap.json']?.scope, 'suite');
 });
 
 // The whole-tree case checks that each tracked file has a behavior test or a scope declaration. If any lacks one, it names that file and fails.
-caseTest('every tracked file selects a behaviour test or declares its scope', 30000, async () => {
+caseTest('every tracked file selects a behaviour test or declares its scope', async () => {
   const declarations = readCheckInputs(root);
   const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   const owners = await selectOwners(manifest, root, tracked);
@@ -348,7 +348,7 @@ caseTest('every tracked file selects a behaviour test or declares its scope', 30
 
 // A touched Python test selects only its own owner: no make target that runs the discovery of every Python test (python-check) is selected by a
 // file under legacy/packages/python/tests, since kit refuses that discovery outside CI. Each such file has an owner of its own (CR24).
-caseTest('a touched Python test selects no discovery target', 5000, () => {
+caseTest('a touched Python test selects no discovery target', () => {
   const declared = readCheckInputs(root).targets;
   const tests = execFileSync('git', ['ls-files', 'legacy/packages/python/tests'], { cwd: root, encoding: 'utf8' }).split('\n').filter(path => path.endsWith('.py'));
   assert.ok(tests.length > 0, 'the Python tests are tracked');
@@ -359,7 +359,7 @@ caseTest('a touched Python test selects no discovery target', 5000, () => {
 });
 
 // A selected php-extension coverage part runs on the built extension, so owners builds it before that step (CR24).
-caseTest('a php-extension coverage part is the one that needs the built extension', 5000, () => {
+caseTest('a php-extension coverage part is the one that needs the built extension', () => {
   const feature = manifest.features.find(item => item.id === 'statement_events');
   assert.ok(feature, 'the statement_events feature is in the manifest');
   assert.equal(ownerSelection.isPhpExtensionPart(feature, 'owner/php-extension'), true);
@@ -368,13 +368,13 @@ caseTest('a php-extension coverage part is the one that needs the built extensio
 });
 
 // The contracts pass on this tree: a recipe and a document set are no feature fixture, and every test of a moved unit has its feature.
-caseTest('the feature contracts of this checkout pass', PROCESS, () => {
+caseTest('the feature contracts of this checkout pass', () => {
   const output = execFileSync(process.execPath, ['scripts/features/check.mts'], { cwd: root, encoding: 'utf8' });
   assert.match(output, /ok - features\/contracts/);
 });
 
 // A Rust verification names a test program that exists: `cargo test --no-run` fails the whole command on a program that was removed.
-caseTest('every Rust verification names a test program of the workspace', 60_000, async () => {
+caseTest('every Rust verification names a test program of the workspace', async () => {
   const features = readFeatures(root);
   const programs = execFileSync('git', ['ls-files', 'packages/rust/*/tests/*.rs', 'packages/rust/*/tests/*/main.rs'], { cwd: root, encoding: 'utf8' })
     .split('\n').filter(Boolean).map(path => /\/tests\/(?:([^/]+)\/main|([^/]+))\.rs$/.exec(path)).map(match => match?.[1] ?? match?.[2]);
@@ -421,20 +421,20 @@ for (const [command, expected] of [
   ['cargo test --manifest-path packages/rust/Cargo.toml --test gone', ['rust test program: --test gone']],
   ['cargo test --manifest-path packages/rust/Cargo.toml --test kept gone_case', ['rust test: gone_case in --test kept']],
 ] as [string, string[]][]) {
-  caseTest(`test-names reads ${command}`, 5000, () => {
+  caseTest(`test-names reads ${command}`, () => {
     assert.deepEqual(checkCommand(nameTree, command), expected);
   });
 }
 
 // One alternative is judged by itself, because the other branches of the filter would still select a test.
-caseTest('a filter is judged branch by branch', 5000, () => {
+caseTest('a filter is judged branch by branch', () => {
   assert.deepEqual(alternatives('^(TestA|TestB(C|D)?)$'), ['^TestA$', '^TestBC$', '^TestBD$', '^TestB$']);
   assert.deepEqual(alternatives('^a$|^b$'), ['^a$', '^b$']);
   assert.deepEqual(alternatives('^x(?!y)'), ['^x(?!y)']);
 });
 
 // A make recipe reads its variables, $(if) and $(call), and a command that fills a filter is read with that value.
-caseTest('a Makefile recipe is read after make expands it', 5000, () => {
+caseTest('a Makefile recipe is read after make expands it', () => {
   const makefile = readMakefile("F ?=\nGO = node tests/go-test.mts\none:\n\t$(GO) ./legacy/packages/go/orm $(if $(F),-run '$(F)',-run '^TestKept$$')\n");
   assert.deepEqual(makefileCommands(makefile).map(({ command }) => command), ["node tests/go-test.mts ./legacy/packages/go/orm -run '^TestKept$'"]);
   assert.equal(expand("'^Test($(subst a,A,$(subst b,B,$(LIST))))$$'", new Map([['LIST', 'a|b']])), "'^Test(A|B)$'");
@@ -445,7 +445,7 @@ caseTest('a Makefile recipe is read after make expands it', 5000, () => {
 });
 
 // A verification, a Makefile recipe and a check input name only what the tree holds (FCV-7).
-caseTest('every declared command and input names a test of the tree', 120_000, async () => {
+caseTest('every declared command and input names a test of the tree', async () => {
   const read = async (path: string) => readFile(join(root, path), 'utf8');
   const stale = staleNames(readTree(root), {
     makefile: await read('Makefile'),

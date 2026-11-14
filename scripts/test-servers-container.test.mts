@@ -8,7 +8,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileS
 import { EventEmitter, once } from 'node:events';
 import { createServer, type Socket } from 'node:net';
 import { join } from 'node:path';
-import { caseTest, COMPUTE, withTemporaryDirectory } from '../tests/testcase.mts';
+import { caseTest, withTemporaryDirectory } from '../tests/testcase.mts';
 import { containerName, remove, run, start, type Context } from './test-servers-container.mts';
 import { ORM_ACCOUNTS_SQL } from './test-servers.mts';
 
@@ -127,7 +127,7 @@ const checkouts = (dir: string, program: string): [Context, Context] => {
   return [{ root: first, program }, { root: second, program }];
 };
 
-caseTest('two checkouts start a server of the same kind at once, each in a container of its own (T444)', COMPUTE, () =>
+caseTest('two checkouts start a server of the same kind at once, each in a container of its own (T444)', () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const { program, state } = stand;
@@ -149,7 +149,7 @@ caseTest('two checkouts start a server of the same kind at once, each in a conta
     });
   }));
 
-caseTest('a start of MySQL starts its replica, which follows the primary from the first binary log, before the databases (T444)', COMPUTE, () =>
+caseTest('a start of MySQL starts its replica, which follows the primary from the first binary log, before the databases (T444)', () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const { program } = stand;
@@ -175,7 +175,7 @@ caseTest('a start of MySQL starts its replica, which follows the primary from th
     });
   }));
 
-caseTest('a run removes its container when its command ends, fails or gets SIGINT or SIGTERM (T444)', COMPUTE, () =>
+caseTest('a run removes its container when its command ends, fails or gets SIGINT or SIGTERM (T444)', () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const { program, state } = stand;
@@ -201,7 +201,7 @@ caseTest('a run removes its container when its command ends, fails or gets SIGIN
     });
   }));
 
-caseTest('a start that fails removes the container that it started (T444)', COMPUTE, () =>
+caseTest('a start that fails removes the container that it started (T444)', () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const { program, state } = stand;
@@ -224,7 +224,7 @@ else process.exit(2);
     });
   }));
 
-caseTest('a start reads the lines that the container writes before the watch of its log takes effect (T445)', COMPUTE, () =>
+caseTest('a start reads the lines that the container writes before the watch of its log takes effect (T445)', () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const { state } = stand;
@@ -263,7 +263,7 @@ esac
     });
   }));
 
-caseTest('the stand-in containers end when the process that started them dies without removing them (T444)', COMPUTE, () =>
+caseTest('the stand-in containers end when the process that started them dies without removing them (T444)', () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir, { hold: false });
     const [context] = checkouts(dir, stand.program);

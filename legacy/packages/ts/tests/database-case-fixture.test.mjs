@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest } from '../../../../tests/testcase.mts';
 import { loadDatabaseCaseFixture } from './database-case-fixture.mjs';
 
-caseTest('loads a schema and model with independent database-case state', 1000, async () => {
+caseTest('loads a schema and model with independent database-case state', async () => {
   const reports = [];
   const Model = class {};
   const fixture = await loadDatabaseCaseFixture('refusal.dbs', 'refused_row', {
@@ -21,13 +21,13 @@ caseTest('loads a schema and model with independent database-case state', 1000, 
   assert.deepEqual(reports, ['FAIL trigger_refused/sqlite: row was changed']);
 });
 
-caseTest('loads the generated model for a fixture without connecting to a database', 5000, async () => {
+caseTest('loads the generated model for a fixture without connecting to a database', async () => {
   const fixture = await loadDatabaseCaseFixture('rollback.dbs', 'rollback_probe');
   assert.equal(typeof fixture.model, 'function');
   assert.match(fixture.text, /table rollback_probe/);
 });
 
-caseTest('reports a missing model by the fixture and model name', 1000, async () => {
+caseTest('reports a missing model by the fixture and model name', async () => {
   await assert.rejects(loadDatabaseCaseFixture('rollback.dbs', 'missing', { modelFactory: () => ({}) }), {
     message: 'rollback.dbs does not provide model missing',
   });

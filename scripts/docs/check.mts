@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { defaultTreeAdapter, parse, type DefaultTreeAdapterMap } from 'parse5';
 import { docs, dist, files, siteBase } from './lib.mts';
-import { COMPUTE, runCase, type CaseBody } from '../../tests/testcase.mts';
+import { runCase, type CaseBody } from '../../tests/testcase.mts';
 
 // docs check reads the built site's HTML with parse5: for each Markdown page it checks that an HTML page exists, and that all internal links, images,
 // scripts and stylesheets point to files in dist, that fragments are ids of their page, and that the Mermaid fences are included as source (<pre
@@ -26,7 +26,7 @@ function elementsOf(document: Node): Element[] {
 // attribute returns the value of an attribute of an element, decoded by the parser, or undefined when it has none.
 const attribute = (element: Element, name: string): string | undefined => element.attrs.find(attr => attr.name === name)?.value;
 let failed = 0;
-const check = async (name: string, body: CaseBody) => { if (!(await runCase(name, COMPUTE, body))) failed++; };
+const check = async (name: string, body: CaseBody) => { if (!(await runCase(name, body))) failed++; };
 
 const base = siteBase();
 let pages: string[] = [];

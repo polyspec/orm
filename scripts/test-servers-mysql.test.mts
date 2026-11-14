@@ -3,11 +3,11 @@ import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isolatedEnvironment } from '../tests/environment.mts';
-import { caseTest, COMPUTE, PROCESS } from '../tests/testcase.mts';
+import { caseTest } from '../tests/testcase.mts';
 import { collisions, countDifferences } from './test-servers-mysql.mts';
 import { paths } from './test-servers.mts';
 
-caseTest('collisions names the schemas and tables that one lower case name would merge', COMPUTE, () => {
+caseTest('collisions names the schemas and tables that one lower case name would merge', () => {
   assert.deepEqual(collisions(['Shop', 'shop', 'other'], [['other', 'Foo'], ['other', 'foo'], ['Other', 'bar'], ['shop', 'item']]), [
     'schemas Shop, shop',
     'tables of other: Foo, foo',
@@ -15,7 +15,7 @@ caseTest('collisions names the schemas and tables that one lower case name would
   assert.deepEqual(collisions(['a', 'b'], [['a', 'x'], ['b', 'x']]), []);
 });
 
-caseTest('countDifferences compares counts by lower case name', COMPUTE, () => {
+caseTest('countDifferences compares counts by lower case name', () => {
   assert.deepEqual(countDifferences({ 'Shop tables': 2, 'Shop.Item rows': 3 }, { 'shop tables': 2, 'shop.item rows': 3 }), []);
   assert.deepEqual(countDifferences({ 'Shop tables': 2, users: 1 }, { 'shop tables': 1, users: 1, 'x events': 1 }), [
     'shop tables: 2 before, 1 after',
@@ -80,7 +80,7 @@ function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: st
 
 // The lease case checks that, while another run holds the server's shared lease, the migration changes nothing and fails
 // naming the holder. The holder is a shell stopped reading a FIFO, ended by a write to it after the check.
-caseTest('the MySQL migration is refused while another run holds a lease of the servers', PROCESS, () => {
+caseTest('the MySQL migration is refused while another run holds a lease of the servers', () => {
   const lease = process.env.LEASE;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const servers = fixture(39305, 39306);
@@ -105,7 +105,7 @@ caseTest('the MySQL migration is refused while another run holds a lease of the 
   }
 });
 
-caseTest('a MySQL setting other than the declared one migrates the data with equal counts, then nothing', PROCESS, () => {
+caseTest('a MySQL setting other than the declared one migrates the data with equal counts, then nothing', () => {
   const servers = fixture(39301, 39302);
   try {
     servers.sql(39301, `
@@ -142,7 +142,7 @@ caseTest('a MySQL setting other than the declared one migrates the data with equ
   }
 });
 
-caseTest('names that one lower case name would merge refuse the migration before any change', PROCESS, () => {
+caseTest('names that one lower case name would merge refuse the migration before any change', () => {
   const servers = fixture(39311, 39312);
   try {
     servers.sql(39311, 'CREATE DATABASE Pair; CREATE TABLE Pair.Foo (id INT)');
@@ -165,7 +165,7 @@ caseTest('names that one lower case name would merge refuse the migration before
 });
 
 // A failed setup leaves no temporary root: the fixture stops what it started, removes its folders and rethrows the error.
-caseTest('the MySQL fixture removes its root when its setup fails', PROCESS, () => {
+caseTest('the MySQL fixture removes its root when its setup fails', () => {
   let root = '';
   assert.throws(() => fixture(39315, 39316, (declared, at) => {
     root = at;

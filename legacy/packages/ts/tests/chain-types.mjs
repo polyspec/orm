@@ -4,7 +4,7 @@
 // operator, with Eq and with Ne) and DSL-124 (begin, commit and rollback are not public) (docs/spec/dsl.md). Each use
 // is a file of its own, so tsc reports each rejected use at its file.
 import { fileURLToPath } from 'node:url';
-import { PROCESS, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { tscDiagnostics } from './tsc-diagnostics.mjs';
 
 const source = fileURLToPath(new URL('../src/index.js', import.meta.url));
@@ -34,7 +34,7 @@ const diagnostics = () => tscDiagnostics('orm-chain-types-', 'call', calls.map((
 
 // Requirements: PLN-19.
 // Requirements: DSL-49, DSL-50, DSL-124, PLN-4.
-caseTest('chain argument types', PROCESS, async () => {
+caseTest('chain argument types', async () => {
   const byCall = await diagnostics();
   const wrong = [];
   for (const [i, { call, code, accept }] of calls.entries()) {

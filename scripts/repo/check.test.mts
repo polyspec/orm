@@ -4,7 +4,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
@@ -50,8 +50,8 @@ const trackedAll = new Set(trackedFiles('*'));
 // or when no apply event comes within the database deadline, which each event restarts (CR15-10 had narrowed it to the 120 second
 // database deadline). The guard of each runtime that writes its own failure text writes the same two texts, which the unit test of
 // each guard holds. PHP and the PHP extension hold none: their deadline was the test runner's, and kit 0.0.105 holds no time
-// limit; T385.1 replaces the guards of the other runtimes by the end events of the waits that they cover.
-caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Go, TypeScript, Python and Rust', COMPUTE, () => {
+// limit. TypeScript holds none either: no clock ends a TypeScript case (T473). T474 removes the guards of the other runtimes.
+caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Go, Python and Rust', () => {
   const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
   const stress = recipe.cases.find(recipeCase => recipeCase.id === 'stress_plan_commits_each_step');
   assert.ok(stress !== undefined, 'the recipe holds the stress case');
@@ -74,10 +74,6 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
     ['legacy/packages/go/internal/recipe/database.go', /return testcase\.StepBudget\(c\.Deadline\.Steps\)/],
     ['legacy/packages/go/internal/recipe/database.go', /testcase\.Start\(t, caseDeadlineOf\(c\)\)/],
     ['legacy/packages/go/internal/recipe/database.go', /testcase\.StepGuard\(ctx, caseDeadlineOf\(c\), testcase\.Database\)/],
-    ['tests/testcase.mts', /export const STEP_BUDGET = 250;/],
-    ['tests/testcase.mts', /export const FIXED_BUDGET = 60_000;/],
-    ['legacy/packages/ts/tests/recipe.mjs', /stepBudget\(recipeCase\.deadline\.steps\)/],
-    ['legacy/packages/ts/tests/recipe.mjs', /stepGuard\(caseDeadline\(recipeCase\), DATABASE\)/],
     ['legacy/packages/python/tests/testcase.py', /^STEP_BUDGET = 0\.25$/m],
     ['legacy/packages/python/tests/testcase.py', /^FIXED_BUDGET = 60\.0$/m],
     ['legacy/packages/python/tests/recipe.py', /testcase\.step_budget\(case\["deadline"\]\["steps"\]\)/],
@@ -90,11 +86,11 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
   // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
   const texts = ['no step was applied within 120s', 'step budget 60.25s exceeded'];
-  const guardTests = ['legacy/packages/go/testcase/stall_test.go', 'scripts/harness/testcase.test.mts', 'legacy/packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
+  const guardTests = ['legacy/packages/go/testcase/stall_test.go', 'legacy/packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
   for (const path of guardTests) for (const expected of texts) assert.ok(text(path).includes(`"${expected}"`) || text(path).includes(`'${expected}'`), `${path} holds the text ${expected}`);
 });
 
-caseTest('every PHPUnit test class declares its size', COMPUTE, () => {
+caseTest('every PHPUnit test class declares its size', () => {
   // The size states the kind of a case: #[Small] computes in memory, #[Medium] runs statements on a database, #[Large] runs a
   // child process (phpunit.xml.dist); no size sets a time limit.
   const unsized = [...trackedAll].filter(path => /^legacy\/packages\/php(?:-ext)?\/tests\/.*Test\.php$/.test(path)).filter(path => {
@@ -107,7 +103,7 @@ caseTest('every PHPUnit test class declares its size', COMPUTE, () => {
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
 const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 
-caseTest('dbspec-apply-stress-bench runs the stress case on the databases it names', COMPUTE, () => {
+caseTest('dbspec-apply-stress-bench runs the stress case on the databases it names', () => {
   const dryRun = (...variables: string[]) => spawnSync('make', ['-n', ...variables, 'dbspec-apply-stress-bench'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
   const tests = text('legacy/packages/go/orm/recipe_dbspec_apply_test.go');
   for (const [dialects, names] of [['mysql', 'Mysql'], ['postgres|sqlite', 'Postgres|Sqlite'], ['mysql|postgres|sqlite', 'Mysql|Postgres|Sqlite']] as const) {
@@ -120,7 +116,7 @@ caseTest('dbspec-apply-stress-bench runs the stress case on the databases it nam
     assert.notEqual(dryRun(`APPLY_STRESS_DIALECTS=${dialects}`).status, 0, dialects);
   }
 });
-caseTest('the Go model build regenerates models', COMPUTE, () => {
+caseTest('the Go model build regenerates models', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', 'build-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
@@ -131,7 +127,7 @@ caseTest('the Go model build regenerates models', COMPUTE, () => {
 
 // A model generator's key covers the directory of the document set of each of its entries, which holds the set and its documents, so a
 // fixture change regenerates the models that it is read into: the Go and PHP keys once named only their own package.
-caseTest('the key of a model generator covers the document set of each of its entries', COMPUTE, () => {
+caseTest('the key of a model generator covers the document set of each of its entries', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const sets = (file: string, base: string) => [...text(file).matchAll(/^--set (\S+)/gm)].map(match => posix.dirname(posix.normalize(posix.join(base, match[1] ?? ''))));
   const expected: [string, string[]][] = [
@@ -149,7 +145,7 @@ caseTest('the key of a model generator covers the document set of each of its en
   }
 });
 
-caseTest('the TypeScript runtime build generates models before compiling their consumers', COMPUTE, () => {
+caseTest('the TypeScript runtime build generates models before compiling their consumers', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', 'build-ts'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
@@ -163,7 +159,7 @@ caseTest('the TypeScript runtime build generates models before compiling their c
 // The Rust recipe public_interface runs tests/interfaces/check/main.mts through packages/rust/programs/src/recipe.rs, and that
 // check reads the entity order from legacy/packages/ts/dist; typescriptReaderErrors sees only the node runs of a recipe, so this
 // test states the prerequisite of test-rust (T339-5-1).
-caseTest('the Rust unit tests build and hold the TypeScript client that the interface check reads (T339-5-1)', COMPUTE, () => {
+caseTest('the Rust unit tests build and hold the TypeScript client that the interface check reads (T339-5-1)', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', '--no-print-directory', 'test-rust'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
@@ -179,7 +175,7 @@ caseTest('the Rust unit tests build and hold the TypeScript client that the inte
 // The Go tests of the repository build with GO_TEST_TAGS of tests/go-test.mts: without ormtest the recipe steps fault.next_rollback,
 // fault.next_statement and db.last_affected fail on SQLite. The interface_symbols case of the Go recipe runs
 // interfaces/error-catalogs, which reads the generated error file of every implementation (orm-codes) (T449).
-caseTest('the Go unit tests take the build tags of the Go runner and the generated error files (T449)', COMPUTE, () => {
+caseTest('the Go unit tests take the build tags of the Go runner and the generated error files (T449)', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', '--no-print-directory', 'test-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
@@ -198,7 +194,7 @@ caseTest('the Go unit tests take the build tags of the Go runner and the generat
 // The bind recipes of the Python tests (tests/bind/messages.json and its variants, the markdown.send and markdown.builder
 // steps) import the slot models that ORM_PYTHON_BIND_MODELS names, which bind-python-models writes, as python-unit-check
 // gives them; without them every such case fails with `ORM_PYTHON_BIND_MODELS names no model directory` (T451).
-caseTest('the Python unit tests take the slot models of the bind recipes (T451)', COMPUTE, () => {
+caseTest('the Python unit tests take the slot models of the bind recipes (T451)', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', '--no-print-directory', 'test-python'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
@@ -219,7 +215,7 @@ caseTest('the Python unit tests take the slot models of the bind recipes (T451)'
 // QueryCancellationTest loads the SQLite cancellation helper that php-cancel-helper-build writes, and the tests read the
 // models of php-models; without them a run of make test-php in a fresh checkout fails with
 // `SQLite cancellation helper for <platform> is not installed in the polyspec/orm package` (T453).
-caseTest('the PHP unit tests take the generated models and the SQLite cancellation helper (T453)', COMPUTE, () => {
+caseTest('the PHP unit tests take the generated models and the SQLite cancellation helper (T453)', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const result = spawnSync('make', ['-n', '--no-print-directory', 'test-php'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
@@ -232,7 +228,7 @@ caseTest('the PHP unit tests take the generated models and the SQLite cancellati
   assert.ok(models >= 0 && models < tests, `test-php runs the php tests without writing the PHP models first (php-models): ${result.stdout}`);
 });
 
-caseTest('the Makefile includes no recipe file of @polyspec/kit', COMPUTE, () => {
+caseTest('the Makefile includes no recipe file of @polyspec/kit', () => {
   // kit 0.0.98 ships no recipes (kit docs/spec/utilities-and-recipes.md): the Makefile states its own targets, which run the
   // utilities of the installed package, and exports its own CARGO_TARGET_DIR, which no include unexports.
   const makefile = text('Makefile');
@@ -240,7 +236,7 @@ caseTest('the Makefile includes no recipe file of @polyspec/kit', COMPUTE, () =>
   assert.match(makefile, /^export CARGO_TARGET_DIR := \$\(abspath packages\/rust\/target\)$/m);
 });
 
-caseTest('the root holds the lint configurations that the lint tools read', COMPUTE, () => {
+caseTest('the root holds the lint configurations that the lint tools read', () => {
   // The lint utilities of kit 0.0.98 run each tool with the configuration of the repository (kit K1050).
   for (const file of ['ruff.toml', 'phpcs.xml.dist', 'phpstan.dist.neon', '.golangci.yml', 'clippy.toml', '.oxlintrc.json', 'knip.json']) {
     assert.ok(trackedAll.has(file), `${file} is tracked`);
@@ -248,7 +244,7 @@ caseTest('the root holds the lint configurations that the lint tools read', COMP
   assert.ok(!trackedAll.has('config/knip-entries.json'), 'the entries of knip live in knip.json');
 });
 
-caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
+caseTest('a script path must be a tracked file or directory', () => {
   assert.deepEqual(scriptPathErrors({ 'schema:check': 'node scripts/schema/check.mts' }, tracked), [
     'package.json script schema:check names scripts/schema/check.mts, which is not a tracked file or directory',
   ]);
@@ -268,7 +264,7 @@ caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
 
 const workflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
 
-caseTest('the CI workflow provides every variable of make orm-test-servers', COMPUTE, () => {
+caseTest('the CI workflow provides every variable of make orm-test-servers', () => {
   const variables = SERVER_VARIABLES;
   for (const variable of ['ORM_TEST_MYSQL_REPLICA_DSN', 'ORM_TEST_POSTGRES_REPLICA_DSN', 'ORM_TEST_PROXYSQL_DSN',
     'ORM_TEST_PGBOUNCER_DSN', 'ORM_TEST_MYSQL_TLS_DSN', 'ORM_RUN_MYSQL_DSN', 'ORM_RUN_POSTGRES_DSN',
@@ -293,11 +289,11 @@ const steps = [
 ].join('\n');
 const script = ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_PGBOUNCER_DSN'];
 
-caseTest('a workflow that starts the servers with make orm-test-servers passes', COMPUTE, () => {
+caseTest('a workflow that starts the servers with make orm-test-servers passes', () => {
   assert.deepEqual(ciServerErrors(steps, script), []);
 });
 
-caseTest('a workflow without make orm-test-servers names each variable it lacks', COMPUTE, () => {
+caseTest('a workflow without make orm-test-servers names each variable it lacks', () => {
   const written = steps.replace('run: make orm-test-servers', "run: 'true'").replace(
     '      - name: checks',
     '      - run: printf "export ORM_TEST_MYSQL_DSN=x" > .runtime/servers/env\n      - name: checks',
@@ -310,12 +306,12 @@ caseTest('a workflow without make orm-test-servers names each variable it lacks'
   ]);
 });
 
-caseTest('a workflow that defines a server variable itself fails', COMPUTE, () => {
+caseTest('a workflow that defines a server variable itself fails', () => {
   const defined = steps.replace('    steps:', '    env:\n      ORM_TEST_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_test"\n    steps:');
   assert.deepEqual(ciServerErrors(defined, script), ['ci.yml defines ORM_TEST_MYSQL_DSN; make orm-test-servers defines it']);
 });
 
-caseTest('a check before make orm-test-servers fails', COMPUTE, () => {
+caseTest('a check before make orm-test-servers fails', () => {
   const early = steps.replace('      - name: database servers', '      - name: early\n        run: make feature-check\n      - name: database servers');
   assert.deepEqual(ciServerErrors(early, script), ['ci.yml step "early" runs make before make orm-test-servers starts the servers']);
   // make install and that part only download, so they may come before the server.
@@ -323,7 +319,7 @@ caseTest('a check before make orm-test-servers fails', COMPUTE, () => {
   assert.deepEqual(ciServerErrors(install, script), []);
 });
 
-caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {
+caseTest('a workflow that creates a symbolic link fails', () => {
   for (const command of ['ln -s a b', 'sudo ln -sf /usr/lib/a.so.1t64 /usr/lib/a.so.1', 'ln --symbolic a b', `node -e "fs.symlinkSync('a', 'b')"`]) {
     const linked = steps.replace('      - name: database servers', `      - name: link\n        run: ${command}\n      - name: database servers`);
     assert.deepEqual(ciServerErrors(linked, script), ['ci.yml step "link" creates a symbolic link'], command);
@@ -333,7 +329,7 @@ caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {
 // The case after make orm-check (G5.38-4) looks at the repository's workflow and, in a minimal workflow, at the summary and report declared after make orm-check
 // accepts only those two steps. It rejects another command step, another action step, an upload at another path, a missing step, and
 // a make orm-check without ORM_CHECK_RUN_ID.
-caseTest('a workflow runs only the summary and the report upload after make orm-check', COMPUTE, () => {
+caseTest('a workflow runs only the summary and the report upload after make orm-check', () => {
   assert.deepEqual(ciAfterCheckErrors(workflows), []);
   const check = ['      - name: make orm-check', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: make orm-check'];
   const summary = ['      - name: summary', '        if: ${{ !cancelled() }}', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: node scripts/check/summary.mts'];
@@ -375,7 +371,7 @@ const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/w
 // mise writes the tool node of mise.toml from a version, or none for an empty one.
 const mise = (version: string) => version ? `[tools]\nnode = "${version}"\n` : '[tools]\n';
 
-caseTest('the checks and every workflow run the Node of mise.toml', COMPUTE, () => {
+caseTest('the checks and every workflow run the Node of mise.toml', () => {
   assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/documents.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
@@ -383,21 +379,21 @@ caseTest('the checks and every workflow run the Node of mise.toml', COMPUTE, () 
 const archive = 'https://github.com/polyspec/ordered-json/releases/download/v0.0.2/polyspec-ordered-json-0.0.2.tgz';
 const lockOf = (resolved: string) => JSON.stringify({ lockfileVersion: 3, packages: { '': { name: 'a' }, 'node_modules/@polyspec/ordered-json': { version: '0.0.2', resolved } } });
 
-caseTest('npm dependencies from a release archive and the registry pass', COMPUTE, () => {
+caseTest('npm dependencies from a release archive and the registry pass', () => {
   assert.deepEqual(npmGitSourceErrors({
     'legacy/packages/ts/package.json': JSON.stringify({ dependencies: { '@polyspec/ordered-json': archive, pg: '^8.23.0' }, devDependencies: { '@types/node': '22.20.2' } }),
     'legacy/packages/ts/package-lock.json': lockOf(archive),
   }), []);
 });
 
-caseTest('a package.json dependency from git fails', COMPUTE, () => {
+caseTest('a package.json dependency from git fails', () => {
   for (const spec of ['github:polyspec/ordered-json#v0.0.1', 'git+https://github.com/polyspec/ordered-json.git#v0.0.1', 'git+ssh://git@github.com/polyspec/ordered-json.git', 'polyspec/ordered-json#v0.0.1'])
     assert.deepEqual(npmGitSourceErrors({ 'package.json': JSON.stringify({ devDependencies: { '@polyspec/ordered-json': spec } }) }), [
       `package.json devDependencies @polyspec/ordered-json is ${spec}, a git source; use the release archive URL of the GitHub tag`,
     ]);
 });
 
-caseTest('a package-lock.json entry resolved from git fails', COMPUTE, () => {
+caseTest('a package-lock.json entry resolved from git fails', () => {
   for (const resolved of ['git+ssh://git@github.com/polyspec/ordered-json.git#f491200d3179c36afe29255b0f3ee964f6e83570', 'git://github.com/polyspec/ordered-json.git', 'ssh://git@github.com/polyspec/ordered-json.git', 'github:polyspec/ordered-json'])
     assert.deepEqual(npmGitSourceErrors({ 'legacy/packages/ts/package-lock.json': lockOf(resolved) }), [
       `legacy/packages/ts/package-lock.json resolves node_modules/@polyspec/ordered-json from ${resolved}, a git source; use the release archive URL of the GitHub tag`,
@@ -406,21 +402,21 @@ caseTest('a package-lock.json entry resolved from git fails', COMPUTE, () => {
 
 const composerLockOf = (version: string) => JSON.stringify({ packages: [{ name: 'polyspec/ordered-json', version: '0.0.2' }], 'packages-dev': [{ name: 'min-0-max/json-schema', version }] });
 
-caseTest('Composer dependencies by a release pass', COMPUTE, () => {
+caseTest('Composer dependencies by a release pass', () => {
   assert.deepEqual(composerBranchErrors({
     'composer.json': JSON.stringify({ require: { php: '>=8.4', 'polyspec/orm': '0.0.22' }, 'require-dev': { 'min-0-max/json-schema': '2.6.0-p2', 'phpunit/phpunit': '^13.4' } }),
     'composer.lock': composerLockOf('v2.6.0-p2'),
   }), []);
 });
 
-caseTest('a composer.json requirement of a branch fails', COMPUTE, () => {
+caseTest('a composer.json requirement of a branch fails', () => {
   for (const spec of ['dev-polyspec-origin-2.6.0', '2.6.x-dev', 'dev-main#5978fa780990500c5d85e08464b7d7a7391f93d0', '2.6.0#5978fa7'])
     assert.deepEqual(composerBranchErrors({ 'composer.json': JSON.stringify({ 'require-dev': { 'min-0-max/json-schema': spec } }) }), [
       `composer.json require-dev min-0-max/json-schema is ${spec}, a branch; require a release, which the fork names in its FORK.md`,
     ]);
 });
 
-caseTest('a composer.lock package at a branch fails', COMPUTE, () => {
+caseTest('a composer.lock package at a branch fails', () => {
   for (const version of ['dev-polyspec-origin-2.6.0', '2.6.x-dev'])
     assert.deepEqual(composerBranchErrors({ 'legacy/packages/php-ext/composer.lock': composerLockOf(version) }), [
       `legacy/packages/php-ext/composer.lock locks min-0-max/json-schema at ${version}, a branch; require a release, which the fork names in its FORK.md`,
@@ -439,11 +435,11 @@ const node = [
   '',
 ].join('\n');
 
-caseTest('a workflow that reads mise.toml on the declared Node passes', COMPUTE, () => {
+caseTest('a workflow that reads mise.toml on the declared Node passes', () => {
   assert.deepEqual(nodeVersionErrors(mise('26.8.1'), '>=22.16.0', { 'ci.yml': node }, '26.8.1'), []);
 });
 
-caseTest('a workflow that declares node-version itself fails', COMPUTE, () => {
+caseTest('a workflow that declares node-version itself fails', () => {
   const literal = node.replace('node-version-file: mise.toml', 'node-version: "22.16.0"');
   assert.deepEqual(nodeVersionErrors(mise('26.8.1'), '>=22.16.0', { 'ci.yml': literal }, '26.8.1'), [
     'ci.yml declares node-version itself; mise.toml declares it',
@@ -455,7 +451,7 @@ caseTest('a workflow that declares node-version itself fails', COMPUTE, () => {
   ]);
 });
 
-caseTest('a setup-node step that caches npm fails', COMPUTE, () => {
+caseTest('a setup-node step that caches npm fails', () => {
   // The cache of setup-node runs the npm of the runner in the checkout, which devEngines refuses (EBADDEVENGINES).
   for (const cache of ['cache: npm', 'package-manager-cache: true']) {
     const cached = node.replace('package-manager-cache: false', cache);
@@ -465,13 +461,13 @@ caseTest('a setup-node step that caches npm fails', COMPUTE, () => {
   }
 });
 
-caseTest('a Node other than that of mise.toml fails', COMPUTE, () => {
+caseTest('a Node other than that of mise.toml fails', () => {
   assert.deepEqual(nodeVersionErrors(mise('26.8.1'), '>=22.16.0', { 'ci.yml': node }, '22.16.0'), [
     'Node 22.16.0 runs the checks; mise.toml declares 26.8.1; run make install-tools TOOLS=npm, which installs it into var/tools',
   ]);
 });
 
-caseTest('a mise.toml node that is not one exact version fails', COMPUTE, () => {
+caseTest('a mise.toml node that is not one exact version fails', () => {
   assert.deepEqual(nodeVersionErrors(mise(''), '>=22.16.0', {}, '26.8.1'), [
     'mise.toml must declare the tool node with one exact version x.y.z, found ""',
   ]);
@@ -489,7 +485,7 @@ caseTest('a mise.toml node that is not one exact version fails', COMPUTE, () => 
 // The PHP and Rust cases check the repository's declarations and the running rustc, and change the minimal workflow one at a time.
 const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { cwd: repository }).toString())?.[1] ?? '';
 
-caseTest('the checks and every workflow run the PHP of .php-version and the Rust of rust-toolchain.toml', COMPUTE, () => {
+caseTest('the checks and every workflow run the PHP of .php-version and the Rust of rust-toolchain.toml', () => {
   const composer = readComposer(join(repository.pathname, 'legacy/packages/php/composer.json'));
   assert.deepEqual(phpVersionErrors(text('.php-version'), composer.require?.php, workflows), []);
   assert.deepEqual(rustToolchainErrors(text('rust-toolchain.toml'), text('Makefile'), workflows, runningRustc), []);
@@ -508,7 +504,7 @@ const php = [
   '',
 ].join('\n');
 
-caseTest('a workflow that declares php-version itself fails', COMPUTE, () => {
+caseTest('a workflow that declares php-version itself fails', () => {
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php }), []);
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('php-version-file: .php-version', 'php-version: "8.4"') }), [
     'ci.yml declares php-version itself; .php-version declares it',
@@ -520,7 +516,7 @@ caseTest('a workflow that declares php-version itself fails', COMPUTE, () => {
   ]);
 });
 
-caseTest('a workflow that sets up PHP with a coverage driver fails', COMPUTE, () => {
+caseTest('a workflow that sets up PHP with a coverage driver fails', () => {
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('          coverage: none\n', '') }), [
     'ci.yml sets up PHP without coverage: none, so Xdebug or pcov can load',
   ]);
@@ -529,7 +525,7 @@ caseTest('a workflow that sets up PHP with a coverage driver fails', COMPUTE, ()
   ]);
 });
 
-caseTest('a .php-version below composer.json or not one release fails', COMPUTE, () => {
+caseTest('a .php-version below composer.json or not one release fails', () => {
   assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}), ['.php-version 8.3 is below legacy/packages/php/composer.json require.php >=8.4']);
   assert.deepEqual(phpVersionErrors('8.5.10\n', '>=8.4', {}), ['.php-version must hold one release x.y and a newline, found "8.5.10\\n"']);
   assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}), ['legacy/packages/php/composer.json require.php must be ">=x.y", found "^8.4"']);
@@ -548,7 +544,7 @@ const rust = [
   '',
 ].join('\n');
 
-caseTest('a workflow or Makefile that chooses a Rust toolchain itself fails', COMPUTE, () => {
+caseTest('a workflow or Makefile that chooses a Rust toolchain itself fails', () => {
   assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust }, '1.98.1'), []);
   const action = rust.replace('      - name: Rust toolchain\n        run: rustup toolchain install\n',
     '      - uses: dtolnay/rust-toolchain@stable\n        with:\n          components: clippy\n');
@@ -566,7 +562,7 @@ caseTest('a workflow or Makefile that chooses a Rust toolchain itself fails', CO
   ]);
 });
 
-caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
+caseTest('a rustc other than rust-toolchain.toml fails', () => {
   assert.deepEqual(rustToolchainErrors(toolchain, makefile, {}, '1.98.0'), ['rustc 1.98.0 runs the checks; rust-toolchain.toml declares 1.98.1']);
   assert.deepEqual(rustToolchainErrors('[toolchain]\nchannel = "stable"\ncomponents = ["clippy"]\n', makefile, {}, '1.98.1'), [
     'rust-toolchain.toml must declare one channel x.y.z under [toolchain]',
@@ -587,12 +583,12 @@ const crossCrateErrors = (files: string[], read: (path: string) => string, crate
     .filter(({ crosses }) => crosses)
     .map(({ target }) => `${file} names ${target} by #[path], a file of another crate`));
 
-caseTest('a Rust file names no file of another crate by #[path]', COMPUTE, () => {
+caseTest('a Rust file names no file of another crate by #[path]', () => {
   const crates = new Set([...trackedAll].filter(file => file.endsWith('Cargo.toml')).map(file => posix.dirname(file)));
   assert.deepEqual(crossCrateErrors(trackedFiles('*.rs'), text, crates), []);
 });
 
-caseTest('a #[path] into another crate fails the Rust crate check', COMPUTE, () => {
+caseTest('a #[path] into another crate fails the Rust crate check', () => {
   const crates = new Set(['packages/rust/a', 'packages/rust/b', 'packages/rust/programs']);
   const sources: Record<string, string> = {
     'packages/rust/a/tests/case.rs': '#[path = "../src/lib.rs"]\nmod own;\n#[path = "../../b/src/shared.rs"]\nmod shared;\n',
@@ -606,14 +602,14 @@ caseTest('a #[path] into another crate fails the Rust crate check', COMPUTE, () 
 
 // A PHPUnit run starts through kit's run-tests, which stops a test at its timeout (K436): no line of the Makefile starts the
 // vendor PHPUnit binary itself, whether in a recipe or in a variable such as PHP_EXTENSION_TESTS.
-caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, () => {
+caseTest('every PHPUnit run of the Makefile goes through run-tests', () => {
   const direct = /[=;&(@\s]vendor-php\/bin\/phpunit\s/;
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
 // legacy/packages/python/tests/testcase.py keeps the deadline of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the
 // process GRACE after it; run-tests holds no time limit (kit 0.0.105), so the class of a case alone decides when it fails.
-caseTest('every Python run of run-tests goes through the testcase harness and gives run-tests no time limit', COMPUTE, () => {
+caseTest('every Python run of run-tests goes through the testcase harness and gives run-tests no time limit', () => {
   const makefile = text('Makefile');
   assert.match(makefile, /^PYTHON_TESTS = (?:[A-Z_]+=\S+ )*\$\(RUN_TESTS\) python --venv \$\(PYTHON_VENV\) --module legacy\.packages\.python\.tests\.testcase$/m,
     'PYTHON_TESTS runs the testcase harness with no --timeout');
@@ -621,7 +617,7 @@ caseTest('every Python run of run-tests goes through the testcase harness and gi
     'every Python run of run-tests goes through PYTHON_TESTS');
 });
 
-caseTest('a whole suite that holds markdown units gets the pinned flowmark, and flowmark-check refuses a missing one', COMPUTE, () => {
+caseTest('a whole suite that holds markdown units gets the pinned flowmark, and flowmark-check refuses a missing one', () => {
   // test-php-ext runs the native tests of the extension and python-unit-check discovers every Python test; both hold markdown
   // units and run without WITH_TEST_ENV, so each exports FLOWMARK itself. A simple assignment takes the value FLOWMARK has
   // where make reads it, so the export must follow the definition of FLOWMARK; the database of make (-p) holds the value that
@@ -643,7 +639,7 @@ caseTest('a whole suite that holds markdown units gets the pinned flowmark, and 
   assert.equal(check(process.execPath), 0, 'an executable FLOWMARK passes');
 });
 
-caseTest('the PHP extension suite and its profiled native cases use their owning inputs', COMPUTE, () => {
+caseTest('the PHP extension suite and its profiled native cases use their owning inputs', () => {
   const makefile = text('Makefile');
   const filterText = /^PHP_EXTENSION_NATIVE_CASES = (.+)$/m.exec(makefile)?.[1];
   assert.ok(filterText, 'the extension suite declares its native test selection');
@@ -696,7 +692,7 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   assert.doesNotMatch(markdownRecipe, /--filter/, 'the dedicated target runs the complete native markdown test file');
 });
 
-caseTest('the Rust test recipe gives Kit one libtest thread option', PROCESS, async () => {
+caseTest('the Rust test recipe gives Kit one libtest thread option', async () => {
   const root = repository.pathname;
   const recipe = /^dbspec-verify-errors-rust-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(text('Makefile'))?.[1];
   assert.ok(recipe, 'the Rust test recipe exists');
@@ -761,7 +757,7 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 // The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
-caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
+caseTest('the CI workflow runs every target of CHECK_TARGETS once', () => {
   const targets = checkTargets(text('Makefile'));
   for (const target of ['ts-min-check', 'php-min-check', 'feature-performance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-described-temporal-go-check'])
     assert.ok(targets.includes(target), `${target} is not in CHECK_TARGETS`);
@@ -769,7 +765,7 @@ caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () 
   assert.deepEqual(checkTargets('CHECK_TARGETS = first\nCHECK_TARGETS += second third\n'), ['first', 'second', 'third']);
 });
 
-caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COMPUTE, () => {
+caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', () => {
   const make = 'CHECK_TARGETS = repo-check ts-min-check feature-check\n';
   const listed = steps.replace('make repo-check', 'make repo-check feature-check\n          make ts-min-check');
   assert.deepEqual(ciCheckTargetErrors(listed, make), []);
@@ -786,7 +782,7 @@ caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COM
 
 // The CI group case (G5.111) checks whether the repository's Makefile and workflow split CHECK_TARGETS exactly into groups, and the minimal
 // one rejects a target missing from the Makefile and workflow, a target in two groups, a target outside CHECK_TARGETS, and a matrix other than CI_GROUPS.
-caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit in exactly one job', COMPUTE, () => {
+caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit in exactly one job', () => {
   const makefile = text('Makefile');
   const { groups, targets } = ciGroups(makefile);
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
@@ -902,7 +898,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
 });
 
-caseTest('database-free dbspec verification stays in the static CI group', COMPUTE, () => {
+caseTest('database-free dbspec verification stays in the static CI group', () => {
   const makefile = text('Makefile');
   const staticGroup = /^CI_TARGETS_static = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
   const dbspecApplyGroup = /^CI_TARGETS_dbspec_apply = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
@@ -915,7 +911,7 @@ caseTest('database-free dbspec verification stays in the static CI group', COMPU
   assert.ok(!inputs.targets['dbspec-verify-errors-check']?.needs.includes('databases'));
 });
 
-caseTest('the CI groups leave out the gates of kit, which the gates workflow runs (KSTD-5-115)', COMPUTE, () => {
+caseTest('the CI groups leave out the gates of kit, which the gates workflow runs (KSTD-5-115)', () => {
   const grouped = `jobs:\n  test:\n    strategy:\n      matrix:\n        group: [one]\n    steps:\n      - name: make orm-check\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
   const make = (...lines: string[]) => ['CHECK_TARGETS = a-check lint-go layout-check', ...lines, ''].join('\n');
   assert.deepEqual(ciCheckTargetErrors(grouped, make('CI_KIT_GATES = lint-go layout-check', 'CI_GROUPS = one', 'CI_TARGETS_one = a-check')), []);
@@ -930,7 +926,7 @@ caseTest('the CI groups leave out the gates of kit, which the gates workflow run
   assert.ok(gates.includes('layout-check') && gates.includes('lint-ts'), 'the Makefile declares the gates of kit');
 });
 
-caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {
+caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', () => {
   const grouped = (matrix = '[one, two]') => `jobs:\n  test:\n    strategy:\n      matrix:\n        group: ${matrix}\n    steps:\n      - name: make orm-check\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
   const make = (groups: string[]) => ['CHECK_TARGETS = a-check b-check c-check', ...groups, ''].join('\n');
   const good = make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check c-check', 'CI_TARGETS_two = b-check']);
@@ -976,7 +972,7 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
 
 // The report path case (G5.128) checks whether the report directory a CI job uploads is the directory that the runner uses, for each group of CI_GROUPS, as that job's ORM_CHECK_RUN_ID
 // directory. The runner replaces `-` with `_`, so reports of a group with `-` in its name were not uploaded.
-caseTest('every CI group uploads the report directory that the runner writes', COMPUTE, () => {
+caseTest('every CI group uploads the report directory that the runner writes', () => {
   assert.deepEqual(ciReportPathErrors(workflow, text('Makefile')), []);
   const make = text('Makefile').replace(/^CI_GROUPS = (.*)$/m, 'CI_GROUPS = $1 stress-x').concat('\nCI_TARGETS_stress-x = feature-stress-mysql-check\n');
   assert.deepEqual(ciReportPathErrors(workflow.replace('group: [static, ', 'group: [static, stress-x, '), make), [
@@ -989,7 +985,7 @@ caseTest('every CI group uploads the report directory that the runner writes', C
 // program, and a case runs on flowmark too, so a group of a target that declares only databases also needs the server-programs and the
 // flowmark outputs. The output is checked in the control case, where the target does not look at databases: stress-db skips the
 // server-programs and the flowmark setup steps.
-caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
+caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', () => {
   assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs', 'flowmark']);
   assert.deepEqual(expandNeeds(['php-extension-tools']), ['php-extension-tools', 'php', 'composer', 'node-modules']);
   assert.deepEqual(expandNeeds(['interfaces-typescript']), ['interfaces-typescript', 'node-modules']);
@@ -1023,7 +1019,7 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
     ['CI group both needs both databases and mariadb-server; the runner installs the MySQL or the MariaDB packages, which conflict, so the targets of MariaDB are a group of their own']);
 });
 
-caseTest('feature helper checks provision the databases and PHP extension their owners execute', COMPUTE, () => {
+caseTest('feature helper checks provision the databases and PHP extension their owners execute', () => {
   const needs = declaredNeeds(repository.pathname)['feature-helper-check'] ?? [];
   assert.ok(needs.includes('databases'), 'the helper target reads the run-owned databases');
   assert.ok(needs.includes('php-extension-tools'), 'the helper target builds the PHP extension');
@@ -1034,7 +1030,7 @@ caseTest('feature helper checks provision the databases and PHP extension their 
 
 // The CI group setup case (G5.111) checks whether the group job's setup step runs only under the condition ci-setup.mts declares, and the group-needs
 // step writes the output of make ci-group-needs, and whether the summary and report after it write each group's run id and report.
-caseTest('a CI group job runs each setup step under its declared condition and reports per group', COMPUTE, () => {
+caseTest('a CI group job runs each setup step under its declared condition and reports per group', () => {
   assert.equal(stepCondition('go'), '${{ !cancelled() }}');
   assert.equal(stepCondition('go-lease-modules'), '${{ !cancelled() }}');
   assert.equal(stepCondition('go-modules'), "${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}");
@@ -1080,7 +1076,7 @@ caseTest('a CI group job runs each setup step under its declared condition and r
 
 // The ci-passed case (G5.113-2) checks whether the repository's ci.yml places job ci-passed last and takes every other job as needs, and the minimal
 // workflow rejects a missing job, a job that is not last, a condition other than always(), and another step.
-caseTest('the job ci-passed runs last under always() and needs every other job', COMPUTE, () => {
+caseTest('the job ci-passed runs last under always() and needs every other job', () => {
   assert.deepEqual(ciPassedErrors(workflow), []);
   const step = `    steps:\n${yamlSteps(CI_PASSED_STEPS)}`;
   const job = (condition: string, needs: string) => `  ci-passed:\n    if: ${condition}\n    needs: [${needs}]\n    runs-on: ubuntu-26.04-arm\n${step}`;
@@ -1099,14 +1095,14 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
 });
 
 // The duplicate-run case checks the repository's workflow, Makefile, feature contract and the minimal workflow.
-caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
+caseTest('the CI workflow does not run a verification command of feature-check again', () => {
   const commands = featureCommands(readFeatures(repository.pathname));
   for (const command of ['make perf-check', 'node tests/run-long.mts typescript-build -- npm run typescript:build && ORM_PYTHON=legacy/packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test'])
     assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
   assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
 });
 
-caseTest('a workflow that runs a verification command of feature-check again fails', COMPUTE, () => {
+caseTest('a workflow that runs a verification command of feature-check again fails', () => {
   const make = [
     'CHECK_TARGETS = feature-check',
     'interface-check:',
@@ -1137,7 +1133,7 @@ caseTest('a workflow that runs a verification command of feature-check again fai
 
 // The helper environment case checks whether the Makefile exports the shell variables read by the make commands of helper checks: the repository's contracts/features.json and
 // Makefile, and a minimal manifest that reads a variable (ORM_OWNER_TEST_ENV) that set only one execution path.
-caseTest('every variable a helper make command reads is exported by the Makefile', COMPUTE, () => {
+caseTest('every variable a helper make command reads is exported by the Makefile', () => {
   assert.deepEqual(helperEnvironmentErrors(readFeatures(repository.pathname), text('Makefile')), []);
   const makefile = 'export ORM_TEST_ENV = $(abspath $(TEST_ENV))\nDECIMAL_ENV =\nexport DECIMAL_ENV\nexport A B\n';
   const manifest = { helpers: [
@@ -1154,7 +1150,7 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 // A workflow in the form of kit follows kit's example, so the workflow rules of this repository do not check it (T115, T391).
 const kitWorkflowPaths = kitOwned.filter(path => path.startsWith('.github/workflows/'));
 
-caseTest('the workflow rules skip the workflows in the form of kit', COMPUTE, () => {
+caseTest('the workflow rules skip the workflows in the form of kit', () => {
   assert.deepEqual(kitWorkflowPaths, ['.github/workflows/release.yml', '.github/workflows/ci-pipeline.yml']);
   const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b', '.github/workflows/ci-pipeline.yml': 'c' };
   assert.deepEqual(ownWorkflows(all, kitWorkflowPaths), { '.github/workflows/ci.yml': 'a' });
@@ -1162,19 +1158,19 @@ caseTest('the workflow rules skip the workflows in the form of kit', COMPUTE, ()
   assert.throws(() => ownWorkflows(all, null), /no Kit-owned paths/);
 });
 
-caseTest('the files in the form of kit are tracked files of orm, read from no installed package', COMPUTE, () => {
+caseTest('the files in the form of kit are tracked files of orm, read from no installed package', () => {
   // kit 0.0.98 writes no copy (kit docs/spec/utilities-and-recipes.md), so the list is orm's own and names only files it tracks.
   const all = new Set(execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(Boolean));
   for (const file of [...Object.keys(copies), ...kitOwned]) assert.ok(all.has(file), `${file} is tracked`);
   assert.ok(!Object.hasOwn(copies, '.claude/settings.json'), 'the Claude Code settings of the kit hook are gone');
 });
 
-caseTest('every workflow job runs on the runner of .github/runner', COMPUTE, () => {
+caseTest('every workflow job runs on the runner of .github/runner', () => {
   assert.equal(text('.github/runner'), 'ubuntu-26.04-arm\n');
   assert.deepEqual(runnerErrors(text('.github/runner'), ownWorkflows(workflows, kitOwned)), []);
 });
 
-caseTest('a job on another runner fails', COMPUTE, () => {
+caseTest('a job on another runner fails', () => {
   const job = 'jobs:\n  test:\n    runs-on: ubuntu-26.04-arm\n    steps:\n      - run: "true"\n';
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job }), []);
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('ubuntu-26.04-arm', 'ubuntu-24.04') }), [
@@ -1189,7 +1185,7 @@ caseTest('a job on another runner fails', COMPUTE, () => {
   ]);
 });
 
-caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () => {
+caseTest('the lowest PHP release comes only from the php-min step', () => {
   const minimum = [
     'jobs:',
     '  test:',
@@ -1223,7 +1219,7 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
 // must fail naming the first socket path over the platform limit (Linux 107, macOS 103 bytes) and that limit, creating
 // neither the socket folder nor the servers directory. That the real declaration fits for any checkout is the case of
 // scripts/test-servers.test.mts.
-caseTest('test-servers.mts refuses a socket path longer than the platform limit', PROCESS, async () => {
+caseTest('test-servers.mts refuses a socket path longer than the platform limit', async () => {
   const limits: Partial<Record<NodeJS.Platform, number>> = { linux: 107, darwin: 103 };
   const limit = limits[process.platform];
   assert.ok(limit !== undefined, `the socket path limit of ${process.platform} is not known`);
@@ -1255,7 +1251,7 @@ caseTest('test-servers.mts refuses a socket path longer than the platform limit'
 });
 
 // The shared target case checks the repository's Makefile and a minimal Makefile.
-caseTest('the Makefile runs no program from the shared Rust target directory and builds there under its lease', COMPUTE, () => {
+caseTest('the Makefile runs no program from the shared Rust target directory and builds there under its lease', () => {
   assert.deepEqual(sharedTargetErrors(text('Makefile')), []);
   const makefile = [
     'DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress.dbs',
@@ -1276,7 +1272,7 @@ caseTest('the Makefile runs no program from the shared Rust target directory and
 });
 
 // The executable file case checks the repository's Makefile and a minimal Makefile.
-caseTest('the files of one run live in its run directory and a TypeScript build holds its output', COMPUTE, () => {
+caseTest('the files of one run live in its run directory and a TypeScript build holds its output', () => {
   assert.deepEqual(runtimePathErrors(text('Makefile')), []);
   assert.deepEqual(typescriptHolderErrors(text('Makefile')), []);
   const makefile = [
@@ -1309,7 +1305,7 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
 });
 
 // The Makefile reading case checks whether, as make reads it, each target gives back its prerequisite targets and recipe (T137-1-4-2-2).
-caseTest('the Makefile reader names every target with its prerequisites and recipe', COMPUTE, () => {
+caseTest('the Makefile reader names every target with its prerequisites and recipe', () => {
   const makefile = [
     '.PHONY: a b/c',
     'A := 1',
@@ -1340,7 +1336,7 @@ caseTest('the Makefile reader names every target with its prerequisites and reci
 });
 
 // The lease case checks commands outside the Makefile and a minimal unit.
-caseTest('commands outside the Makefile build into the shared Rust target directory only under its lease', COMPUTE, () => {
+caseTest('commands outside the Makefile build into the shared Rust target directory only under its lease', () => {
   const { packageUnits } = runUnits();
   const commands = [...makeRecipes(text('Makefile')), ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   const scripts = reachedScripts(commands, readScript, { throughLong: true });
@@ -1357,7 +1353,7 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
 });
 
 // The TypeScript reading case checks the repository's Makefile, a minimal Makefile, and a file.
-caseTest('a target that runs code using the TypeScript build output holds it', COMPUTE, () => {
+caseTest('a target that runs code using the TypeScript build output holds it', () => {
   const files = new Set(trackedFiles('*'));
   assert.deepEqual(typescriptReaderErrors(text('Makefile'), (path: string) => files.has(path) ? text(path) : undefined), []);
   const sources: Record<string, string> = {
@@ -1372,7 +1368,7 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
 });
 
 // T339-5: a target that reads the build output holds it, and reaches typescript-build through its prerequisites, so the output exists when it runs alone.
-caseTest('a TypeScript reader holds the build output and has typescript-build as a prerequisite', COMPUTE, () => {
+caseTest('a TypeScript reader holds the build output and has typescript-build as a prerequisite', () => {
   const sources: Record<string, string> = { 'legacy/packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n" };
   const read = (path: string) => sources[path];
   const reader = (target: string) => `Makefile ${target} reads the TypeScript build output without the prerequisite typescript-current, which builds it; add typescript-current to its prerequisites`;
@@ -1383,7 +1379,7 @@ caseTest('a TypeScript reader holds the build output and has typescript-build as
 });
 
 // Runs share the Python model directories of .runtime/run, so a publish holds their lease: six runs of bind-python-models together failed in mv.
-caseTest('the shared Python model directories are published under a lease', COMPUTE, () => {
+caseTest('the shared Python model directories are published under a lease', () => {
   for (const target of ['bind-python-models', 'conformance-python-models']) {
     const commands = makeTargets(text('Makefile')).filter(rule => rule.target === target).flatMap(rule => rule.commands);
     assert.ok(commands.length === 1 && commands[0]?.includes('$(call py_models_publish,'), `${target}: ${commands.join(' ')}`);
@@ -1392,7 +1388,7 @@ caseTest('the shared Python model directories are published under a lease', COMP
 });
 
 // A target that only builds the output and runs node on it holds the shared lease, so runs of such targets go together.
-caseTest('a target that only reads the TypeScript build output does not hold it exclusively', COMPUTE, () => {
+caseTest('a target that only reads the TypeScript build output does not hold it exclusively', () => {
   assert.deepEqual(typescriptExclusiveReaderErrors(text('Makefile')), []);
   const error = (target: string) => `Makefile ${target} holds the TypeScript build output exclusively only to read it; start the recipe with $(READ_TYPESCRIPT) and add typescript-current`;
   assert.deepEqual(typescriptExclusiveReaderErrors('a/typescript: tool\n\t$(HOLD_TYPESCRIPT)\n\t$(TSC_BUILD)\n\t$(WITH_TEST_ENV) $(NODE) --test x.mjs\n'), [error('a/typescript')]);
@@ -1407,7 +1403,7 @@ caseTest('a target that only reads the TypeScript build output does not hold it 
 });
 
 // T341-1: a target that runs PHPUnit with the legacy/packages/php configuration reaches php-models, which writes the bootstrap it requires, directly or through a prerequisite.
-caseTest('a PHPUnit reader of legacy/packages/php reaches php-models', COMPUTE, () => {
+caseTest('a PHPUnit reader of legacy/packages/php reaches php-models', () => {
   const makefile = [
     'php-models: php-vendor-check\n\ttrue',
     'php-vendor-check:\n\ttrue',
@@ -1427,7 +1423,7 @@ caseTest('a PHPUnit reader of legacy/packages/php reaches php-models', COMPUTE, 
 // The name-only case (G5.40) does not count as reading a TypeScript test whose path is only written as a string (expected output of a fake node, stub,
 // template, regular expression), but counts as reading a file that runs that path with node (a program and argument array, or the shell string of exec or spawn),
 // and checks that a multi-line import also counts as reading.
-caseTest('a test that only names a TypeScript test path does not read the build output', COMPUTE, () => {
+caseTest('a test that only names a TypeScript test path does not read the build output', () => {
   const sources: Record<string, string> = {
     'legacy/packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
     'scripts/names.test.mjs': [
@@ -1452,7 +1448,7 @@ caseTest('a test that only names a TypeScript test path does not read the build 
 });
 
 // The go run case checks a minimal unit. The whole repository is checked by the repository check.
-caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
+caseTest('a go run, whose build has no step log, fails', () => {
   assert.deepEqual(goRunErrors([
     { name: 'raw', commands: ['go run ./tests/interfaces/check --self-test'], dialect: 'sh' },
     { name: 'env', commands: ['PATH="$HOME/.cargo/bin:$PATH" go run ./bench/install -dsn x'], dialect: 'sh' },
@@ -1463,7 +1459,7 @@ caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
   ]);
 });
 
-caseTest('generated Go model helpers build through the logged go-run wrapper', COMPUTE, () => {
+caseTest('generated Go model helpers build through the logged go-run wrapper', () => {
   const helpers = (readFeatures(repository.pathname).helpers ?? []).filter(helper => ['go-decimal-model-generated', 'go-markdown-model-generated'].includes(helper.id));
   assert.deepEqual(helpers.map(helper => helper.id), ['go-decimal-model-generated', 'go-markdown-model-generated']);
   for (const helper of helpers) assert.match(helper.command, /node \.\.\/\.\.\/tests\/go-run\.mts/);
@@ -1471,7 +1467,7 @@ caseTest('generated Go model helpers build through the logged go-run wrapper', C
 });
 
 // The language case checks the repository's tracked files and a minimal list.
-caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript', COMPUTE, () => {
+caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript', () => {
   assert.deepEqual(toolingLanguageErrors(trackedFiles('*')), []);
   assert.deepEqual(toolingLanguageErrors(['scripts/stop-process.py', 'tests/stop-process/main.go', 'scripts/a.sh', 'tools/x.rb', 'legacy/packages/php/src/Db.php']), [
     'scripts/stop-process.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
@@ -1494,7 +1490,7 @@ caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript
 // a ready line and keeps running: startLogged must return before the server ends, and the lines up to the ready line appear on stderr. Only 1.5 seconds
 // later does it write the ready line. It also starts a slow but normal server, and a server that ends without a ready line fails with its log. The server runs
 // outside the process group of the process that started it, in its own session (G5.62). Its output goes to a file of another node process.
-caseTest('startLogged waits for a ready line or an exit, with no deadline', PROCESS, () => {
+caseTest('startLogged waits for a ready line or an exit, with no deadline', () => {
   const dir = mkdtempSync(join(tmpdir(), 'orm-logged-'));
   try {
     const module = new URL('../test-servers.mts', import.meta.url).pathname;
@@ -1503,7 +1499,7 @@ caseTest('startLogged waits for a ready line or an exit, with no deadline', PROC
       const code = `const { startLogged, TestServerError } = await import(${JSON.stringify(module)});
 try { await startLogged(${JSON.stringify(dir)}, 'fake', 'accepting connections', 'sh', ['-c', ${JSON.stringify(server)}]); console.log('returned'); }
 catch (error) { if (!(error instanceof TestServerError)) throw error; console.error(error.message); process.exitCode = 1; }`;
-      const status = spawnSync(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
+      const status = spawnSync(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')] }).status;
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
     // The first line of a start names what it waits for (FCV-18).
@@ -1544,7 +1540,7 @@ catch (error) { if (!(error instanceof TestServerError)) throw error; console.er
 });
 
 // The timeout case checks that the repository's workflow and the minimal workflow have no timeout-minutes on their steps and jobs.
-caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
+caseTest('no workflow step or job has timeout-minutes', () => {
   assert.deepEqual(stepTimeoutErrors(workflows), []);
   const plain = [
     'jobs:',
@@ -1573,7 +1569,7 @@ caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
 // The lease case checks that the repository's workflow does not run, outside make, a program that reads the lease variable, and that the minimal workflow's
 // step rejects running such a program (Go checker, Node script, shell script) directly. It checks that make targets
 // allow a program that does not read the lease.
-caseTest('a workflow step runs a program that reads the lease variables only through make', COMPUTE, () => {
+caseTest('a workflow step runs a program that reads the lease variables only through make', () => {
   const all = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
   const read = (path: string) => all.includes(path) ? text(path) : undefined;
   assert.deepEqual(ciLeaseErrors(workflows, all, read), []);
@@ -1604,7 +1600,7 @@ caseTest('a workflow step runs a program that reads the lease variables only thr
 });
 
 // The target case rejects an execution command that writes packages/rust/target/ directly.
-caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR', COMPUTE, () => {
+caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR', () => {
   assert.deepEqual(targetPathErrors({
     Makefile: '# measured packages/rust/target 10 GiB\nexport CARGO_TARGET_DIR := $(abspath packages/rust/target)\nx:\n\t$(CARGO_TARGET_DIR)/debug/integration\n',
     'scripts/a.sh': '"${CARGO_TARGET_DIR:?}/debug/integration"\n',
@@ -1625,7 +1621,7 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
 });
 
 // The manifest directory case rejects Rust source that reads the package directory with env! at compile time.
-caseTest('Rust source reads the package directory when the program runs', COMPUTE, () => {
+caseTest('Rust source reads the package directory when the program runs', () => {
   assert.deepEqual(manifestDirErrors({
     'packages/rust/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
     'benchmarks/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
@@ -1642,7 +1638,7 @@ caseTest('Rust source reads the package directory when the program runs', COMPUT
 });
 
 // The connection probe case rejects a statement that the client runtime asks the server for when it connects.
-caseTest('a client connects without a probe statement', COMPUTE, () => {
+caseTest('a client connects without a probe statement', () => {
   assert.deepEqual(connectProbeErrors({
     'legacy/packages/go/orm/db.go': '\tversion := sqliteVersion\n',
     'legacy/packages/ts/src/database.ts': "    try { (await pool.reserve()).release(false); } catch (error) { throw error; }\n",
@@ -1663,7 +1659,7 @@ caseTest('a client connects without a probe statement', COMPUTE, () => {
 });
 
 // The program path case rejects a Rust test that reads the path of a package program with env! at compile time.
-caseTest('Rust tests read the paths of package programs when they run', COMPUTE, () => {
+caseTest('Rust tests read the paths of package programs when they run', () => {
   assert.deepEqual(binExeErrors({
     'benchmarks/rust/tests/a.rs': 'let program = &polyspec_orm_testcase::program("native");\n// env!("CARGO_BIN_EXE_native") was the old form\n',
   }), []);
@@ -1675,7 +1671,7 @@ caseTest('Rust tests read the paths of package programs when they run', COMPUTE,
 // The test declaration case checks the repository's JavaScript files and a minimal file.
 // The helper run case (G5.120) checks whether make orm-check runs each helper check once: the repository's Makefile, feature contract and
 // scripts/check/databases.mts, and a minimal Makefile that runs a helper twice or never.
-caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
+caseTest('make orm-check runs the check of every helper once', () => {
   assert.deepEqual(helperRunErrors(readFeatures(repository.pathname), text('Makefile'), scriptTexts.get('scripts/check/databases.mts') ?? ''), []);
   const manifest = { features: [], helpers: [
     { id: 'plain', command: 'php tests/plain_test.php' },
@@ -1723,13 +1719,13 @@ caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
   ]);
 });
 
-caseTest('every JavaScript test declares its cases with caseTest', COMPUTE, () => {
+caseTest('every JavaScript test declares its cases with caseTest', () => {
   const javascript = ['*.mjs', '*.mts', '*.js'].flatMap(pattern => trackedFiles(pattern)).filter(path => !path.startsWith('docs/'));
   assert.deepEqual(nodeTestErrors(trackedTexts(javascript)), []);
 });
 
-caseTest('a JavaScript test that declares tests with node:test directly fails', COMPUTE, () => {
-  const message = (path: string) => `${path} declares tests with node:test directly; use caseTest of tests/testcase.mts, which gives each case its deadline and RUN, PASS or FAIL line`;
+caseTest('a JavaScript test that declares tests with node:test directly fails', () => {
+  const message = (path: string) => `${path} declares tests with node:test directly; use caseTest of tests/testcase.mts, which reports each case with its RUN, PASS or FAIL line`;
   assert.deepEqual(nodeTestErrors({
     'a.test.mjs': "import { test } from 'node:test';\n",
     'b.test.mjs': "import test from 'node:test';\n",
@@ -1741,7 +1737,7 @@ caseTest('a JavaScript test that declares tests with node:test directly fails', 
 
 // The calling environment case (G5.119) checks that a JavaScript test does not pass the environment of the process that ran it to a child process. The make -n orm-check run
 // by the CI group's job stopped after receiving the job's GROUP.
-caseTest('a JavaScript test gives its child processes only the variables of the case', COMPUTE, () => {
+caseTest('a JavaScript test gives its child processes only the variables of the case', () => {
   assert.deepEqual(callerEnvironmentErrors(trackedTexts(trackedFiles('*.test.mjs'))), []);
   // The environment names in the fixture below are assembled so that this file itself does not fall under that rule.
   const caller = ['process', 'env'].join('.');
@@ -1761,11 +1757,11 @@ caseTest('a JavaScript test gives its child processes only the variables of the 
   }), [make('f.test.mts:1')]);
 });
 
-caseTest('every Rust test starts its case with the shared testcase package', COMPUTE, () => {
+caseTest('every Rust test starts its case with the shared testcase package', () => {
   assert.deepEqual(rustTestCaseErrors(trackedTexts(trackedFiles('*.rs'))), []);
 });
 
-caseTest('a Rust test without a case of its own fails', COMPUTE, () => {
+caseTest('a Rust test without a case of its own fails', () => {
   const rust = [
     '#[tokio::test]',
     'async fn started() {',
@@ -1783,7 +1779,7 @@ caseTest('a Rust test without a case of its own fails', COMPUTE, () => {
 });
 
 // The case report case checks the PHP and TypeScript tests the repository runs, and a minimal file.
-caseTest('every PHP and TypeScript test that a check runs reports its cases', COMPUTE, () => {
+caseTest('every PHP and TypeScript test that a check runs reports its cases', () => {
   const commands = [
     ...recipeLines(text('Makefile')).filter(line => line.recipe).map(line => ({ source: 'Makefile', command: line.text })),
     ...featureCommands(readFeatures(repository.pathname)).map(command => ({ source: 'contracts/features.json', command })),
@@ -1795,7 +1791,7 @@ caseTest('every PHP and TypeScript test that a check runs reports its cases', CO
   assert.deepEqual(reportingScriptErrors(commands, path => files.has(path) ? text(path) : undefined), []);
 });
 
-caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared case report fails', COMPUTE, () => {
+caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared case report fails', () => {
   const files: Record<string, string> = {
     'legacy/packages/php/tests/BareTest.php': "<?php\nfinal class BareTest extends PHPUnit\\Framework\\TestCase {}\n",
     'legacy/packages/ts/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
@@ -1811,7 +1807,7 @@ caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared cas
     { source: 'scripts/y.sh', command: 'php scripts/setup.php' },
   ], read), [
     'Makefile runs legacy/packages/php/tests/BareTest.php with php, not with PHPUnit (vendor-php/bin/phpunit with the phpunit.xml.dist of its package), so it runs without a deadline or a case report',
-    'contracts/features.json runs legacy/packages/ts/tests/bare.mjs, which reports no case through tests/testcase.mts, so it runs without a deadline or RUN line',
+    'contracts/features.json runs legacy/packages/ts/tests/bare.mjs, which reports no case through tests/testcase.mts, so it runs without a RUN line',
     'scripts/x.sh runs legacy/packages/php/tests/missing.php, which is not a tracked file',
   ]);
 });
@@ -1824,11 +1820,11 @@ function featureUnits() {
   ...(manifest.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command], dialect: 'sh' as const }))];
 }
 
-caseTest('every build tool of a verification command runs under run-long without a deadline', COMPUTE, () => {
+caseTest('every build tool of a verification command runs under run-long without a deadline', () => {
   assert.deepEqual(unwrappedToolErrors(featureUnits()), []);
 });
 
-caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () => {
+caseTest('a build tool outside run-long or under a deadline fails', () => {
   assert.deepEqual(segments(`a && node tests/run-long.mts x -- sh -c 'go generate ./ && git diff' || (cd b; c | d)`, 'sh'),
     ['a', `node tests/run-long.mts x -- sh -c 'go generate ./ && git diff'`, 'cd b', 'c', 'd']);
   const unit = (name: string, command: string) => ({ name, commands: [command], dialect: 'sh' as const });
@@ -1868,14 +1864,14 @@ function runUnits() {
   return { recipes, packageUnits, scripts: reachedScripts(commands, readScript) };
 }
 
-caseTest('every cargo test run goes through cargo-test.mts', COMPUTE, () => {
+caseTest('every cargo test run goes through cargo-test.mts', () => {
   const { recipes, packageUnits, scripts } = runUnits();
   assert.ok(scripts.some(unit => unit.name === 'scripts/client-db-test.mts'));
   assert.ok(!scripts.some(unit => unit.name === 'scripts/package-check.mts'), 'package-check.sh runs under run-long');
   assert.deepEqual(unbuiltCargoTestErrors([...recipes, ...featureUnits(), ...packageUnits, ...scripts]), []);
 });
 
-caseTest('a cargo test run outside cargo-test.mts, or a build under a deadline, fails', COMPUTE, () => {
+caseTest('a cargo test run outside cargo-test.mts, or a build under a deadline, fails', () => {
   assert.deepEqual(makeRecipes('A = 1\nx: y\n\tcd a && cargo test\n\n# c\nz:\n\techo\n').map(unit => unit.name), ['Makefile x', 'Makefile z']);
   const message = (name: string, args: string) => `${name} runs cargo test ${args} outside tests/cargo-test.mts, so it runs the test binaries of the shared Rust target directory`;
   const timed = (name: string, args: string, form: string, segment: string) => `${name} runs the build cargo test --no-run ${args} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
@@ -1888,13 +1884,13 @@ caseTest('a cargo test run outside cargo-test.mts, or a build under a deadline, 
     timed('timed', '--locked --test a', 'run-case.mjs', 'node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a')]);
 });
 
-caseTest('every build tool of the Makefile, package.json and the scripts runs under run-long', COMPUTE, () => {
+caseTest('every build tool of the Makefile, package.json and the scripts runs under run-long', () => {
   const { recipes, packageUnits, scripts } = runUnits();
   assert.ok(scripts.some(unit => unit.name === 'scripts/typescript/sqlite-test.mts'));
   assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0] ?? '', 'sh').length > 1), ...scripts]), []);
 });
 
-caseTest('a go command is go or a path to go, and a make target name that holds go is none', COMPUTE, () => {
+caseTest('a go command is go or a path to go, and a make target name that holds go is none', () => {
   const goBuild = tools.find(([name]) => name === 'go build')?.[1];
   assert.ok(goBuild);
   for (const command of ['go build ./...', 'cd legacy/packages/go && go build ./...', '/repo/var/tools/mise/shims/go build ./...'])
@@ -1906,11 +1902,11 @@ caseTest('a go command is go or a path to go, and a make target name that holds 
 });
 
 // The rerun case checks the repository's workflow and the minimal workflow by the runner's identity.
-caseTest('the CI workflow runs no test runner outside make orm-check', COMPUTE, () => {
+caseTest('the CI workflow runs no test runner outside make orm-check', () => {
   assert.deepEqual(ciRerunErrors(workflow, text('Makefile')), []);
 });
 
-caseTest('a workflow that runs a test runner after make orm-check fails by identity', COMPUTE, () => {
+caseTest('a workflow that runs a test runner after make orm-check fails by identity', () => {
   assert.equal(runnerIdentity('PATH="$HOME/.cargo/bin:$PATH" cargo +1.98.1 test --locked -p polyspec-orm codec'), 'cargo test');
   assert.equal(runnerIdentity("go test -v -timeout 0 ./legacy/packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
@@ -1951,13 +1947,13 @@ caseTest('a workflow that runs a test runner after make orm-check fails by ident
 });
 
 // The generation case checks the recipe and verification commands of make orm-check, and a minimal unit.
-caseTest('make orm-check runs each go generate once', COMPUTE, () => {
+caseTest('make orm-check runs each go generate once', () => {
   const targets = new Set(checkTargets(text('Makefile')));
   const { recipes } = runUnits();
   assert.deepEqual(repeatedGenerateErrors([...recipes.filter(unit => targets.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits()]), []);
 });
 
-caseTest('a go generate that make orm-check runs twice fails', COMPUTE, () => {
+caseTest('a go generate that make orm-check runs twice fails', () => {
   assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd legacy/packages/go/model && go generate ./ && git diff --exit-code -- .'`, 'make'), ['legacy/packages/go/model']);
   assert.deepEqual(generateRuns(`go test ./legacy/packages/go/generator && node tests/run-long.mts g --cwd legacy/packages/go/model -- sh -c 'go generate ./ && git diff'`, 'sh'), ['legacy/packages/go/model']);
   assert.deepEqual(generateRuns('cd legacy/packages/go/other && go generate ./', 'sh'), ['legacy/packages/go/other']);
@@ -1969,7 +1965,7 @@ caseTest('a go generate that make orm-check runs twice fails', COMPUTE, () => {
 });
 
 // The go test case checks the repository's Makefile (with variables resolved), verification commands, scripts and a minimal unit.
-caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
+caseTest('every go test runs through go-test.mts or run-long', () => {
   const makefile = text('Makefile');
   const variables = makeVariables(makefile);
   const { recipes, scripts } = runUnits();
@@ -1977,7 +1973,7 @@ caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
   assert.deepEqual(rawGoTestErrors([...expanded, ...featureUnits(), ...scripts]), []);
 });
 
-caseTest('a go test without its build step, or under a deadline, fails', COMPUTE, () => {
+caseTest('a go test without its build step, or under a deadline, fails', () => {
   const message = (name: string, segment: string) => `${name} runs go test outside tests/go-test.mts, so its compile has no RUN line or step log: ${segment}`;
   const fuzz = "$(RUN_CASE) fuzz/ir 8m -- go test -v -timeout 0 ./legacy/packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s";
   assert.deepEqual(rawGoTestErrors([
@@ -1993,7 +1989,7 @@ caseTest('a go test without its build step, or under a deadline, fails', COMPUTE
 
 // The deadline case checks the repository's Makefile (with variables resolved), verification commands, package.json scripts, and every script,
 // including those under run-long, and a minimal unit.
-caseTest('no check puts a deadline on a long operation', COMPUTE, () => {
+caseTest('no check puts a deadline on a long operation', () => {
   const makefile = text('Makefile');
   const variables = makeVariables(makefile);
   const { recipes, packageUnits } = runUnits();
@@ -2004,7 +2000,7 @@ caseTest('no check puts a deadline on a long operation', COMPUTE, () => {
   assert.deepEqual(longDeadlineErrors([...expanded, ...featureUnits(), ...packageUnits, ...scripts]), []);
 });
 
-caseTest('a deadline on a long operation fails', COMPUTE, () => {
+caseTest('a deadline on a long operation fails', () => {
   const message = (name: string, form: string, segment: string) => `${name} puts a deadline (${form}) on a long operation; it gets step logs and no deadline, and only a test case has its own: ${segment}`;
   const units = {
     'run-case': 'node tests/run-case.mjs package 8m -- node scripts/package-check.mts',
@@ -2030,7 +2026,7 @@ caseTest('a deadline on a long operation fails', COMPUTE, () => {
 
 // The full suite rule case (G5.38-5) checks that AGENTS.md and AGENTS.ko.md state the rule that the full suite runs in CI after push, and do not state the earlier
 // local rule.
-caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, () => {
+caseTest('AGENTS states that the full suite runs on CI after a push', () => {
   const read = (path: string) => readFileSync(new URL(path, repository), 'utf8');
   assert.deepEqual(fullSuiteRuleErrors({ 'AGENTS.md': read('AGENTS.md'), 'AGENTS.ko.md': read('AGENTS.ko.md') }), []);
   assert.deepEqual(fullSuiteRuleErrors({ 'AGENTS.md': 'The full suite (`make orm-check`) runs exactly once, when every active checklist\n  item is complete.', 'AGENTS.ko.md': '' }).slice(0, 2), [
@@ -2043,7 +2039,7 @@ caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, (
 
 // The CI setup case (G5.52) checks that, when a setup step in the workflow fails, the steps after it and make orm-check still run and pass the failure on to the runner.
 // A setup step without an id, as in main's workflow, a step with no condition, continue-on-error, and a make orm-check without ORM_CI_SETUP are errors.
-caseTest('a workflow runs every setup step and make orm-check after a failed setup step and passes the results on', COMPUTE, () => {
+caseTest('a workflow runs every setup step and make orm-check after a failed setup step and passes the results on', () => {
   assert.equal(CI_SETUP['kit-bootstrap'], 'node-modules');
   assert.equal(stepCondition('kit-bootstrap'), '${{ !cancelled() }}');
   assert.deepEqual(failedCiSetup(JSON.stringify({ 'go-lease-modules': { outcome: 'failure' } })), [
@@ -2084,7 +2080,7 @@ caseTest('a workflow runs every setup step and make orm-check after a failed set
 });
 
 // make install-tools checks the checkout PHP version before installing its tools; the npm-only install does not need PHP.
-caseTest('CI installs the declared PHP before make install-tools', COMPUTE, () => {
+caseTest('CI installs the declared PHP before make install-tools', () => {
   const workflow = (steps: string) => `jobs:\n  test:\n    steps:\n${steps}`;
   const php = `      - uses: shivammathur/setup-php@v2\n        id: php-bootstrap\n        if: \${{ !cancelled() }}\n        with:\n          php-version-file: .php-version\n`;
   const make = `      - name: mise tools\n        id: tools\n        if: \${{ !cancelled() }}\n        run: make install-tools\n`;
@@ -2106,7 +2102,7 @@ caseTest('CI installs the declared PHP before make install-tools', COMPUTE, () =
 
 // The independent test case (G5.53) treats as an error a recipe with two or more separate test or lint runs, or a verification command that chains tests with `&&`.
 // A second run of the same test, a line that only compiles, a line that creates input, and a build of a dependency tool are not tests.
-caseTest('a recipe or a command that runs independent tests in sequence is refused', COMPUTE, () => {
+caseTest('a recipe or a command that runs independent tests in sequence is refused', () => {
   const makefile = [
     'GO_TEST = node tests/go-test.mts -v -timeout 0',
     'two:', "\t$(GO_TEST) ./a -count=1", '\tphp legacy/packages/php/tests/b_test.php',
@@ -2129,7 +2125,7 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
   assert.deepEqual(plannerRecipe, []);
 });
 
-caseTest('a script that starts a process group of its own checks that group after it ends', COMPUTE, () => {
+caseTest('a script that starts a process group of its own checks that group after it ends', () => {
   assert.deepEqual(detachedGroupErrors({
     'a.mjs': "const child = spawn('go', ['test'], { detached: true });",
     'b.mjs': "const child = spawn('go', ['test'], { detached: true });\nchild.on('exit', () => endGroup(child.pid));",
@@ -2140,7 +2136,7 @@ caseTest('a script that starts a process group of its own checks that group afte
   assert.deepEqual(detachedGroupErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(join(root, path), 'utf8')]))), []);
 });
 
-caseTest('every CI step runs a make target', COMPUTE, () => {
+caseTest('every CI step runs a make target', () => {
   const workflow = (summary: string, extra = '') => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n      - name: install\n        run: make install-node\n${extra}      - name: summary\n        run: ${summary}\n`;
   assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': workflow('node scripts/check/summary.mts') }), []);
   assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': workflow('node scripts/check/summary.mts', '      - name: deps\n        run: |\n          npm ci\n          make orm-install-php\n') }), [
@@ -2159,7 +2155,7 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
   assert.deepEqual(ciMakeErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')])), kitOwned)), []);
 });
 
-caseTest('a test does not fail on a measured time above a bound', COMPUTE, () => {
+caseTest('a test does not fail on a measured time above a bound', () => {
   assert.deepEqual(timeFailureErrors({
     'b.rs': '    assert!(cpu < Duration::from_secs(1), "cpu {cpu:?}");\n',
     'c.test.mjs': "    assert.ok(parseMs <= PARSE_BUDGET_MS, 'slow');\n",
@@ -2195,19 +2191,19 @@ const SELECTION: { name: string; paths: string[]; starts: boolean }[] = [
   { name: 'a version commit', paths: ['VERSION', 'CHANGELOG.md', 'CHANGELOG.ko.md', 'package.json', 'legacy/packages/ts/package.json', 'legacy/packages/php/composer.json'], starts: true },
 ];
 for (const change of SELECTION) {
-  caseTest(`ci.yml on push: ${change.name} ${change.starts ? 'starts every group' : 'starts no run'}`, COMPUTE, () => {
+  caseTest(`ci.yml on push: ${change.name} ${change.starts ? 'starts every group' : 'starts no run'}`, () => {
     assert.equal(workflowStarts(ciPush(), change.paths), change.starts, `${change.paths.join(', ')} against ${JSON.stringify(ciPush())}`);
   });
 }
 
-caseTest('ci.yml ignores no package file of config/release.json and no VERSION, so a version commit runs every group', COMPUTE, () => {
+caseTest('ci.yml ignores no package file of config/release.json and no VERSION, so a version commit runs every group', () => {
   const release: unknown = JSON.parse(readFileSync(join(repositoryRoot, 'config/release.json'), 'utf8'));
   const manifests: unknown = typeof release === 'object' && release !== null ? Object.entries(release).find(([key]) => key === 'manifests')?.[1] : undefined;
   assert.ok(typeof manifests === 'object' && manifests !== null, 'config/release.json names its manifests');
   for (const file of ['VERSION', ...Object.keys(manifests)]) assert.ok(workflowStarts(ciPush(), [file]), `ci.yml ignores ${file}`);
 });
 
-caseTest('a push trigger without a path filter starts on every push, and paths-ignore reads * within one segment', COMPUTE, () => {
+caseTest('a push trigger without a path filter starts on every push, and paths-ignore reads * within one segment', () => {
   assert.equal(workflowStarts({ branches: ['main'] }, ['README.md']), true);
   assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['README.md']), false);
   assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['legacy/packages/go/README.md']), true);
@@ -2215,7 +2211,7 @@ caseTest('a push trigger without a path filter starts on every push, and paths-i
   assert.throws(() => workflowStarts({ 'paths-ignore': 'docs/**' }, ['a']), /paths-ignore is no list of patterns/);
 });
 
-caseTest('every path that ci.yml ignores is read by the document checks of documents.yml alone', COMPUTE, () => {
+caseTest('every path that ci.yml ignores is read by the document checks of documents.yml alone', () => {
   const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repositoryRoot }).toString().split('\0').filter(Boolean);
   const documentChecks = (makeVariables(readFileSync(join(repositoryRoot, 'Makefile'), 'utf8')).get('DOCUMENT_CHECKS') ?? '').split(/\s+/).filter(Boolean);
   assert.ok(documentChecks.length > 0, 'the Makefile declares DOCUMENT_CHECKS');
@@ -2232,7 +2228,7 @@ caseTest('every path that ci.yml ignores is read by the document checks of docum
 
 const SHA_BEFORE = 'a'.repeat(40);
 const SHA_AFTER = 'b'.repeat(40);
-caseTest('the diff of a push is the two-dot diff of its before and after commits, and a manual run has none', COMPUTE, () => {
+caseTest('the diff of a push is the two-dot diff of its before and after commits, and a manual run has none', () => {
   assert.deepEqual(diffOf('push', { ref: 'refs/heads/main', before: SHA_BEFORE, after: SHA_AFTER }), { range: `${SHA_BEFORE}..${SHA_AFTER}` });
   assert.ok('none' in diffOf('workflow_dispatch', {}));
   assert.throws(() => diffOf('push', { ref: 'refs/heads/main', before: '0'.repeat(40), after: SHA_AFTER }), /creates refs\/heads\/main/);
@@ -2240,12 +2236,12 @@ caseTest('the diff of a push is the two-dot diff of its before and after commits
   assert.throws(() => diffOf('pull_request', {}), /pull_request is none that ci\.yml filters/);
 });
 
-caseTest(`a diff of ${LIMIT} files passes the size check and one of ${LIMIT + 1} fails it`, COMPUTE, () => {
+caseTest(`a diff of ${LIMIT} files passes the size check and one of ${LIMIT + 1} fails it`, () => {
   assert.equal(judge('x..y', LIMIT), undefined);
   assert.match(judge('x..y', LIMIT + 1) ?? '', /x\.\.y changes 3001 files, more than the 3000/);
 });
 
-caseTest('the size check counts the changed files of the range, a rename as its two paths', PROCESS, () => {
+caseTest('the size check counts the changed files of the range, a rename as its two paths', () => {
   const directory = mkdtempSync(join(tmpdir(), 'diff-size-'));
   try {
     const git = (...args: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd: directory, encoding: 'utf8' }).trim();
@@ -2271,7 +2267,7 @@ caseTest('the size check counts the changed files of the range, a rename as its 
 const RELEASE_SHA = 'c'.repeat(40);
 const apiRun = (fields: Record<string, unknown>): Record<string, unknown> => ({ id: 7, name: 'ci', path: '.github/workflows/ci.yml', event: 'push', status: 'completed', conclusion: 'success', head_sha: RELEASE_SHA, head_branch: 'main', ...fields });
 
-caseTest('make release-tag runs the run check on RUN before kit tags its commit', COMPUTE, () => {
+caseTest('make release-tag runs the run check on RUN before kit tags its commit', () => {
   const makefile = readFileSync(join(repositoryRoot, 'Makefile'), 'utf8');
   const recipe = makefile.split(/^release-tag:.*\n/m)[1]?.split(/^\S/m)[0] ?? '';
   const check = recipe.indexOf('scripts/repo/release-run.mts "$$RUN"$(if $(AUTO), --commit "$$(git rev-parse HEAD)")');
@@ -2279,13 +2275,13 @@ caseTest('make release-tag runs the run check on RUN before kit tags its commit'
   assert.ok(recipe.indexOf('release-run.$(KIT_EXT) tag "$$RUN"') > check, 'the run check comes before the tag step of kit');
 });
 
-caseTest('a release takes a successful push or manual run of ci.yml, also on the commit that it tags', COMPUTE, () => {
+caseTest('a release takes a successful push or manual run of ci.yml, also on the commit that it tags', () => {
   assert.deepEqual(runErrors('7', apiRun({})), []);
   assert.deepEqual(runErrors('7', apiRun({}), RELEASE_SHA), []);
   assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_dispatch' })), []);
 });
 
-caseTest('a release refuses a run of documents.yml and of docs-pages.yml and names the workflow', COMPUTE, () => {
+caseTest('a release refuses a run of documents.yml and of docs-pages.yml and names the workflow', () => {
   for (const [id, workflow] of [['8', 'documents.yml'], ['9', 'docs-pages.yml']] as const) {
     assert.deepEqual(runErrors(id, apiRun({ path: `.github/workflows/${workflow}` })), [
       `run ${id} is a run of .github/workflows/${workflow}, not of .github/workflows/ci.yml; a release takes a successful run of .github/workflows/ci.yml`,
@@ -2293,7 +2289,7 @@ caseTest('a release refuses a run of documents.yml and of docs-pages.yml and nam
   }
 });
 
-caseTest('a release refuses a ci.yml run of another event, without success or on another commit', COMPUTE, () => {
+caseTest('a release refuses a ci.yml run of another event, without success or on another commit', () => {
   assert.deepEqual(runErrors('7', apiRun({ event: 'workflow_run' })), ['run 7 is a workflow_run run, not a push or workflow_dispatch run']);
   assert.deepEqual(runErrors('7', apiRun({ conclusion: 'cancelled' })), ['run 7 has the conclusion cancelled, not success']);
   assert.deepEqual(runErrors('7', apiRun({}), 'd'.repeat(40)), [`run 7 ran on ${RELEASE_SHA}, not on the commit ${'d'.repeat(40)} that the release tags`]);
@@ -2305,7 +2301,7 @@ caseTest('a release refuses a ci.yml run of another event, without success or on
 
 // The trigger case (G5.98) checks that the `on:` blocks of ci.yml and docs-pages.yml match their declarations, and that other workflows do not run on push,
 // pull_request or merge_group.
-caseTest('every workflow runs on its declared events only', COMPUTE, () => {
+caseTest('every workflow runs on its declared events only', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
   const actual = Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]));
@@ -2332,7 +2328,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   ]);
 });
 
-caseTest('every workflow that runs on push cancels the run of the push before it', COMPUTE, () => {
+caseTest('every workflow that runs on push cancels the run of the push before it', () => {
   const concurrency = 'concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: true\n';
   const workflow = (on: string, extra = '') => `name: x\non:\n${on}\n${extra}jobs:\n  a:\n    runs-on: ubuntu\n`;
   assert.deepEqual(concurrencyErrors({ 'a.yml': workflow('  push:\n    branches: [main]', concurrency) }), []);
@@ -2347,7 +2343,7 @@ caseTest('every workflow that runs on push cancels the run of the push before it
 // mise.toml declares the one Go release (kit K127), which make install-tools installs from mise.lock, and every workflow
 // that runs Go installs it with make install-tools, never with actions/setup-go.
 const goWorkflow = 'jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make install-tools\n      - run: make orm-check\n';
-caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
+caseTest('every workflow runs the Go of mise.toml', () => {
   assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow }), []);
   assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow.replace('      - run: make install-tools\n', '      - uses: actions/setup-go@v6\n        with: { go-version-file: go.mod }\n') }), [
     'ci.yml sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools',
@@ -2362,7 +2358,7 @@ caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
 
 // The Go module path case (G5.113-5) checks that every go.mod in the repository declares the module path of its own directory, and rejects, in a minimal file, a root or subdirectory go.mod that declares another
 // path.
-caseTest('every go.mod declares the module path of its directory', COMPUTE, () => {
+caseTest('every go.mod declares the module path of its directory', () => {
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(path => /(?:^|\/)go\.mod$/.test(path) && notVendored(path));
   assert.ok(paths.includes('legacy/packages/go/go.mod') && paths.includes('tests/go.mod') && paths.includes('examples/go.mod'), paths.join(' '));
   assert.deepEqual(goModulePathErrors(Object.fromEntries(paths.map(path => [path, text(path)]))), []);
@@ -2375,7 +2371,7 @@ caseTest('every go.mod declares the module path of its directory', COMPUTE, () =
 });
 
 const MISE = '[tools]\n"http:composer" = { version = "2.10.3", url = "https://getcomposer.org/download/{{ version }}/composer.phar", bin = "composer" }\n';
-caseTest('every setup-php step installs the Composer of mise.toml', COMPUTE, () => {
+caseTest('every setup-php step installs the Composer of mise.toml', () => {
   const php = 'jobs:\n  test:\n    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
   assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php }, '2.10.3'), []);
   assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php.replace('          tools: composer:2.10.3\n', '') }, '2.11.0'), [
@@ -2388,7 +2384,7 @@ caseTest('every setup-php step installs the Composer of mise.toml', COMPUTE, () 
 });
 
 // T70: a running Composer is accepted regardless of patch if its major and minor match the declared release.
-caseTest('a running Composer with the declared major and minor passes whatever its patch', COMPUTE, () => {
+caseTest('a running Composer with the declared major and minor passes whatever its patch', () => {
   const php = 'jobs:\n  test:\n    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
   for (const running of ['2.10.3', '2.10.0', '2.10.9'])
     assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php }, running), [], running);
@@ -2398,7 +2394,7 @@ caseTest('a running Composer with the declared major and minor passes whatever i
     ], running);
 });
 
-caseTest('a Makefile build output is published through a temporary file', COMPUTE, () => {
+caseTest('a Makefile build output is published through a temporary file', () => {
   const makefile = [
     'LEASE_BUILD = go build -o $(LEASE) ./tests/lease',
     'PUBLISHED = $(PUBLISH) $(LEASE) go build -o @OUT@ ./tests/lease',
@@ -2425,7 +2421,7 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
   assert.deepEqual(unpublishedOutputErrors(readFileSync(new URL('../../Makefile', import.meta.url), 'utf8')), []);
 });
 
-caseTest('a failure message for a missing condition names its fix', COMPUTE, () => {
+caseTest('a failure message for a missing condition names its fix', () => {
   // The fixture's text is built by concatenation: this file is also a check target.
   const required = ['is', 'required'].join(' ');
   const files: Record<string, string> = {
@@ -2436,7 +2432,7 @@ caseTest('a failure message for a missing condition names its fix', COMPUTE, () 
   assert.deepEqual(fixlessMessageErrors(files).map(error => error.split(': a failure')[0]), ['tests/a.mjs:1', 'scripts/c.sh:1']);
 });
 
-caseTest('no Makefile or script fixes a TCP port of the test servers', COMPUTE, () => {
+caseTest('no Makefile or script fixes a TCP port of the test servers', () => {
   const makefile = ['TEST_MYSQL_PORT = 33171', '# TEST_POSTGRES_PORT = 55471', 'orm-test-servers:', '\tnode scripts/test-servers.mts start $(TEST_MYSQL_PORT)', '\tnode scripts/test-servers.mts start'].join('\n');
   assert.deepEqual(fixedPortErrors({ Makefile: makefile, 'scripts/a.sh': 'export PGPORT=5432\nport=$(node scripts/free-ports.mts 1)\n' }).map(error => error.split(' fixes ')[0]), [
     'Makefile:1', 'Makefile:4', 'scripts/a.sh:1',
@@ -2447,7 +2443,7 @@ caseTest('no Makefile or script fixes a TCP port of the test servers', COMPUTE, 
 
 // The shell reader case (T137-1-4-2) checks that commands are read by the shell parser (unbash): an escaped quote outside quotes, comments, make's
 // joined lines and references, workflow expressions, `&&` lists, and commands that the parser rejects.
-caseTest('the checks read commands with the shell parser', COMPUTE, () => {
+caseTest('the checks read commands with the shell parser', () => {
   // An escaped quote opens no string, so the command after the `;` is a command of its own.
   assert.deepEqual(segments("echo it\\'s; go vet ./a", 'sh'), ["echo it\\'s", 'go vet ./a']);
   assert.deepEqual(unwrappedToolErrors([{ name: 'x', commands: ["echo it\\'s; go vet ./a"], dialect: 'sh' }]),
@@ -2482,7 +2478,7 @@ caseTest('the checks read commands with the shell parser', COMPUTE, () => {
 
 // The workflow reader case (T137-1-4-2) checks that workflows are read as YAML documents: flow-form steps, timeout-minutes in action inputs,
 // and a workflow that is not YAML or has no jobs.
-caseTest('the checks read a workflow as a YAML document', COMPUTE, () => {
+caseTest('the checks read a workflow as a YAML document', () => {
   // A step in flow style is a step.
   assert.deepEqual(ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - { name: tests, run: go test ./... }\n' }),
     ['ci.yml step "tests" runs go test ./...; run it through a make target']);
@@ -2499,7 +2495,7 @@ caseTest('the checks read a workflow as a YAML document', COMPUTE, () => {
 
 // The run texts and the Makefile rules are read by the shell reader (scripts/repo/shell.mts) and the recipe reader
 // (makeRecipes): a command is a segment the text runs, never a substring of a line (T137-1-4-2-1).
-caseTest('the server checks read the commands that a step runs', COMPUTE, () => {
+caseTest('the server checks read the commands that a step runs', () => {
   const step = (run: string) => steps.replace('      - name: database servers', `      - name: other\n        run: |\n          ${run.split('\n').join('\n          ')}\n      - name: database servers`);
   // A comment and a quoted word run nothing.
   for (const run of ['# ln -s is never used here', 'echo "ln -s a b"', 'echo "x >> .runtime/servers/env"'])
@@ -2520,7 +2516,7 @@ caseTest('the server checks read the commands that a step runs', COMPUTE, () => 
   ]);
 });
 
-caseTest('the duplicate check reads the commands that a step runs', COMPUTE, () => {
+caseTest('the duplicate check reads the commands that a step runs', () => {
   const make = 'CHECK_TARGETS = feature-check\nperf-check:\n\t$(WITH_TEST_ENV) node scripts/perf-test.mts\n';
   const commands = ['node scripts/perf-test.mts'];
   const run = (text: string) => steps.replace('make repo-check', text);
@@ -2533,7 +2529,7 @@ caseTest('the duplicate check reads the commands that a step runs', COMPUTE, () 
   ]);
 });
 
-caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () => {
+caseTest('the toolchain checks read the commands that a step runs', () => {
   const go = (run: string) => `jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: ${run}\n`;
   assert.deepEqual(goVersionErrors({ 'ci.yml': go('echo go test') }), []);
   assert.deepEqual(goVersionErrors({ 'ci.yml': go('cd a; go test ./...') }), ['ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools']);
@@ -2550,7 +2546,7 @@ caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () 
 
 // The error code files are build output of orm-codes-<lang> (config/generated.json): a target that reads one has the target that
 // writes it among its prerequisites, directly or through a hub, so make writes the file before the recipe reads it.
-caseTest('a target that reads an error code file has the target that writes it as a prerequisite', COMPUTE, () => {
+caseTest('a target that reads an error code file has the target that writes it as a prerequisite', () => {
   assert.deepEqual(generatedCodesErrors(text('Makefile')), []);
   const kit = 'lint-ts: typescript-build\nlint-php test-php-ext: orm-codes-php\n';
   const makefile = [
@@ -2616,7 +2612,7 @@ caseTest('a target that reads an error code file has the target that writes it a
 
 // build.sh reads the arginfo header and the copy of the SQLite cancel callback, build output of php-ext-sources, and refuses a stale
 // or missing one: only php-ext-build, which has php-ext-sources as a prerequisite, runs it.
-caseTest('only php-ext-build runs the build of the PHP extension', COMPUTE, () => {
+caseTest('only php-ext-build runs the build of the PHP extension', () => {
   assert.deepEqual(phpExtensionBuildErrors(text('Makefile')), []);
   const makefile = [
     'php-ext-build: php-ext-sources',
@@ -2639,7 +2635,7 @@ caseTest('only php-ext-build runs the build of the PHP extension', COMPUTE, () =
 // The lease tool is built once per job (B3-7): two targets of one job that need it run one build, and the second finds the
 // published file up to date. The build is the publish of the lease program (BUILD_LEASE), so a fake publish, given on the
 // command line, counts its calls and writes the output file it is given.
-caseTest('the lease tool is built once for two targets of one job', PROCESS, () => {
+caseTest('the lease tool is built once for two targets of one job', () => {
   const dir = mkdtempSync(join(tmpdir(), 'orm-lease-build-'));
   try {
     const log = join(dir, 'build.log');
@@ -2660,13 +2656,13 @@ caseTest('the lease tool is built once for two targets of one job', PROCESS, () 
 
 // The CI jobs case (CR9) checks that no CHECK_TARGETS target runs in two CI jobs: a test group, the kit gates, the docs job (make docs-ci)
 // or the editor job (make ci-vscode-integration). A target that two jobs run is run twice in one CI run.
-caseTest('no target of CHECK_TARGETS runs in two CI jobs', COMPUTE, () => {
+caseTest('no target of CHECK_TARGETS runs in two CI jobs', () => {
   assert.deepEqual(jobOverlapErrors(text('Makefile')), []);
 });
 
 // The locked caches case (CR8, B3-4) checks that every CI job restores the caches of its locked installs: npm is cached by its
 // package-lock.json files, and the composer, uv, Go module and mise tool installs each follow a cache keyed by their lock file.
-caseTest('every CI job restores the caches of its locked installs', COMPUTE, () => {
+caseTest('every CI job restores the caches of its locked installs', () => {
   assert.deepEqual(lockedCacheErrors(text('.github/workflows/ci.yml')), []);
   // A hashFiles key is evaluated again after the last step, over the workspace as the job left it (CI run 42784034583).
   const cache = (key: string) => ['jobs:', '  test:', '    steps:', '      - uses: actions/cache@v4', '        with:', '          path: ~/.cache/uv', `          key: ${key}`, '      - run: make orm-install-python', ''].join('\n');
@@ -2677,7 +2673,7 @@ caseTest('every CI job restores the caches of its locked installs', COMPUTE, () 
 
 // The generator case (CR6, B3-2) runs go-models twice on the same inputs with a fake go on the command line. The fake logs each `run`,
 // the generator call. The first make runs the generator and the second, on the same tracked inputs, runs none.
-caseTest('an up-to-date Go model generator runs nothing again', PROCESS, () => {
+caseTest('an up-to-date Go model generator runs nothing again', () => {
   const dir = mkdtempSync(join(tmpdir(), 'orm-generate-once-'));
   try {
     const log = join(dir, 'go.log');
@@ -2734,7 +2730,7 @@ const statedAll = [
   '  - In `legacy/packages/go/orm/a_test.go`, `TestShared` and `TestStated` stay as native tests: a reason.',
   '  - `a-unit` stays native in PHP and Rust, as an FCV-2 surface: a reason. Its tests: in `legacy/packages/php/tests/ATest.php`, `testOwn` and `testFromTrait`; in `packages/rust/tests/cases/a.rs`, `a_trial`, `an_attributed_test`.',
 ];
-caseTest('a native test of a shared behaviour that FCV-2 does not name is a finding', COMPUTE, () => {
+caseTest('a native test of a shared behaviour that FCV-2 does not name is a finding', () => {
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(1))), [unstated('legacy/packages/go/orm/a_test.go', 'TestShared'), unstated('legacy/packages/go/orm/a_test.go', 'TestStated')]);
   // A test that a PHP class takes from a trait of a support file, a Rust trial and a Rust test under a comment are native tests too.
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll.slice(0, 1))), [unstated('legacy/packages/php/tests/ATest.php', 'testOwn'), unstated('legacy/packages/php/tests/ATest.php', 'testFromTrait'),
@@ -2743,7 +2739,7 @@ caseTest('a native test of a shared behaviour that FCV-2 does not name is a find
 
 // A Rust file of cases without native_trials! makes its trials in the harness function `trials`, which is its native test (T400-1).
 // Requirements: FCV-2.
-caseTest('the harness function trials of a Rust file of cases is its native test', COMPUTE, () => {
+caseTest('the harness function trials of a Rust file of cases is its native test', () => {
   const harness = 'packages/rust/tests/cases/b.rs';
   const files = { ...nativeFiles, [harness]: 'pub fn trials() -> Vec<Trial> {\n    cases().map(|c| Trial::test(c.id, run)).collect()\n}\n' };
   const inputs = nativeInputs(statedAll, files);
@@ -2753,7 +2749,7 @@ caseTest('the harness function trials of a Rust file of cases is its native test
   assert.deepEqual(nativeTestErrors(widened), [unstated(harness, 'trials')]);
   assert.deepEqual(nativeTestErrors({ ...widened, spec: widened.spec.replace('- **FCV-3**', `  - In \`${harness}\`, \`trials\` stays as a native test: a compile fixture.\n- **FCV-3**`) }), []);
 });
-caseTest('a native test that a line of FCV-2 names with its reason passes, and so do a recipe, an internal and a one-runtime test', COMPUTE, () => {
+caseTest('a native test that a line of FCV-2 names with its reason passes, and so do a recipe, an internal and a one-runtime test', () => {
   // recipe_a_test.go runs a recipe, internal_test.go is no test of the inventory, and only_test.go is a feature of Go alone.
   assert.deepEqual(nativeTestErrors(nativeInputs(statedAll)), []);
   assert.deepEqual(nativeLines(nativeInputs(statedAll).spec).map(line => line.tests.length), [2, 4]);
@@ -2766,14 +2762,14 @@ caseTest('a native test that a line of FCV-2 names with its reason passes, and s
 // A test that runs every case of a case file in every runtime (CASE_RUNNERS, FCV-15) is no native test, and the other tests of its
 // file still are (T400-1).
 // Requirements: FCV-2, FCV-15.
-caseTest('a case runner test is no native test, and the other tests of its file are', COMPUTE, () => {
+caseTest('a case runner test is no native test, and the other tests of its file are', () => {
   const inputs = nativeInputs(statedAll.slice(1));
   assert.deepEqual(nativeTestErrors({ ...inputs, caseRunnerTests: new Set(['legacy/packages/go/orm/a_test.go\0TestShared']) }), [unstated('legacy/packages/go/orm/a_test.go', 'TestStated')]);
   // A line that names the case runner test names no native test of that file.
   assert.deepEqual(nativeTestErrors({ ...nativeInputs(statedAll), caseRunnerTests: new Set(['legacy/packages/go/orm/a_test.go\0TestShared']) }),
     ['docs/spec/feature-coverage.md FCV-2 keeps the native test TestShared of legacy/packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line']);
 });
-caseTest('a line of FCV-2 that names no native test is a finding', COMPUTE, () => {
+caseTest('a line of FCV-2 that names no native test is a finding', () => {
   const spec = 'docs/spec/feature-coverage.md FCV-2';
   assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `legacy/packages/go/orm/a_test.go`, `TestGone` stays as a native test: a reason.'])),
     [`${spec} keeps the native test TestGone of legacy/packages/go/orm/a_test.go, and that file holds no such test; remove the name from the line`]);

@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
-import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
+import { caseTest } from '../tests/testcase.mts';
 import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
 import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
 import { environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError, TLS_SERVERS, type Paths } from './test-servers.mts';
@@ -44,7 +44,7 @@ function cleanupStartedChild(dir: string, name: string): void {
 
 // The PostgreSQL locale cases. A PostgreSQL server with no locale in its environment fails at start with postmaster became
 // multithreaded during startup, so the tool sets LC_ALL for initdb and the server it starts, whatever the caller set.
-caseTest('the database server environments use Asia/Seoul independently of the host', COMPUTE, () => {
+caseTest('the database server environments use Asia/Seoul independently of the host', () => {
   assert.equal(POSTGRES_LOCALE, 'en_US.UTF-8');
   assert.equal(SERVER_TIME_ZONE, 'Asia/Seoul');
   assert.equal(mysqlEnvironment({ PATH: '/bin', TZ: 'UTC' }).TZ, SERVER_TIME_ZONE);
@@ -57,7 +57,7 @@ caseTest('the database server environments use Asia/Seoul independently of the h
 // The start case runs initdb and the PostgreSQL server with the environment postgresEnvironment builds from a caller that
 // sets no locale, then reads the environment that the server started with from its own process and stops it. A
 // server that fails at start never logs its ready line, so the start is the observed ready event (startLogged).
-caseTest('the PostgreSQL server starts with no locale set by the caller, and reads the locale it sets', DATABASE, async ({ step }) => {
+caseTest('the PostgreSQL server starts with no locale set by the caller, and reads the locale it sets', async ({ step }) => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-pglocale-')));
   const data = join(dir, 'data');
   const caller = { PATH: process.env.PATH ?? '', HOME: dir, TMPDIR: dir };
@@ -95,7 +95,7 @@ function freePort(): Promise<number> {
   });
 }
 
-caseTest('stopPid waits for the exit event of the server, with no polling', COMPUTE, () => {
+caseTest('stopPid waits for the exit event of the server, with no polling', () => {
   assert.ok(process.env.STOP_PROCESS, 'STOP_PROCESS is unset; run make orm-test-servers-check, which builds it');
   const dir = mkdtempSync(join(tmpdir(), 'orm-stop-'));
   try {
@@ -105,7 +105,7 @@ caseTest('stopPid waits for the exit event of the server, with no polling', COMP
       const server = spawnSync('sh', ['-c', `mkfifo ${ready}
 sh -c 'trap "sleep ${delay}; kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
 echo $! > ${pidFile}
-read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
+read state < ${ready}`], { env: isolatedEnvironment() });
       assert.equal(server.status, 0, String(server.stderr));
       const pid = Number(readFileSync(pidFile, 'utf8').trim());
       const started = Date.now();
@@ -122,7 +122,7 @@ read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
 // The earlier-start case leaves a fake server running on the datadir of an earlier start, known by its pid file under
 // .runtime/servers, and checks that stopEarlierStart, which start runs before it starts servers, stops it on its exit
 // event and removes the directory. No database starts.
-caseTest('a start first stops the server an earlier start left on its datadir, by its pid file', COMPUTE, () => {
+caseTest('a start first stops the server an earlier start left on its datadir, by its pid file', () => {
   const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
   assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make orm-test-servers-check, which builds them');
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-earlier-')));
@@ -133,7 +133,7 @@ caseTest('a start first stops the server an earlier start left on its datadir, b
     const server = spawnSync('sh', ['-c', `mkfifo ${ready}
 sh -c 'trap "kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
 echo $! > ${p.proxysqlPid}
-read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
+read state < ${ready}`], { env: isolatedEnvironment() });
     assert.equal(server.status, 0, String(server.stderr));
     const pid = Number(readFileSync(p.proxysqlPid, 'utf8').trim());
     stopEarlierStart(p);
@@ -159,7 +159,7 @@ function fakeServer(pidFile: string): number {
   const server = spawnSync('sh', ['-c', `mkfifo ${ready}
 sh -c 'trap "kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
 echo $! > ${pidFile}
-read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
+read state < ${ready}`], { env: isolatedEnvironment() });
   assert.equal(server.status, 0, String(server.stderr));
   return Number(readFileSync(pidFile, 'utf8').trim());
 }
@@ -202,7 +202,7 @@ async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stop
   return { lines, error, pids };
 }
 
-caseTest('stop stops each running database server by its process, whatever mysqladmin the PATH holds', COMPUTE, async () => {
+caseTest('stop stops each running database server by its process, whatever mysqladmin the PATH holds', async () => {
   let names: [string, string][] = [];
   const { lines, error, pids } = await stopFixture(p => { names = DATABASE_SERVERS(p); for (const [file] of names) fakeServer(file); });
   assert.equal(error, undefined, `stop failed: ${errorText(error)}`);
@@ -210,7 +210,7 @@ caseTest('stop stops each running database server by its process, whatever mysql
   for (const [, name] of names) assert.ok(lines.includes(`test-servers: stopped ${name}`), `stop did not report stopping ${name}: ${lines.join(' | ')}`);
 });
 
-caseTest('stop reports a database server whose pid file names an exited process and succeeds', COMPUTE, async () => {
+caseTest('stop reports a database server whose pid file names an exited process and succeeds', async () => {
   // A process that has exited and been reaped: spawnSync returns after the wait.
   const dead = spawnSync('true').pid;
   assert.ok(dead !== undefined && exited(dead), 'the dead process fixture still runs');
@@ -221,7 +221,7 @@ caseTest('stop reports a database server whose pid file names an exited process 
     assert.ok(lines.includes(`test-servers: ${name} is not running: process ${dead} of ${file} has exited`), `stop did not report ${name} as not running: ${lines.join(' | ')}`);
 });
 
-caseTest('stop fails with the output of a failed stop of a running database server', COMPUTE, async () => {
+caseTest('stop fails with the output of a failed stop of a running database server', async () => {
   const { error } = await stopFixture(p => { fakeServer(p.mysqlPid); fakeServer(p.mariadbPid); }, {
     stopProcess: bin => {
       const refusing = join(bin, 'stop-process');
@@ -237,7 +237,7 @@ caseTest('stop fails with the output of a failed stop of a running database serv
 
 const errorText = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
-caseTest('only ESRCH means a server is gone and other kill errors keep its data directory', COMPUTE, () => {
+caseTest('only ESRCH means a server is gone and other kill errors keep its data directory', () => {
   for (const code of ['EPERM', 'EINVAL']) {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-kill-error-')));
     const p = paths(root, join(root, 'sockets'));
@@ -282,7 +282,7 @@ caseTest('only ESRCH means a server is gone and other kill errors keep its data 
   }
 });
 
-caseTest('a PID-file read failure is preserved before any kill check', COMPUTE, () => {
+caseTest('a PID-file read failure is preserved before any kill check', () => {
   let called = false;
   withPidFixture(({ paths: p }) => {
     mkdirSync(p.dir, { recursive: true });
@@ -297,7 +297,7 @@ caseTest('a PID-file read failure is preserved before any kill check', COMPUTE, 
   });
 });
 
-caseTest('invalid PID-file values never signal unrelated processes or remove server data', COMPUTE, () => {
+caseTest('invalid PID-file values never signal unrelated processes or remove server data', () => {
   for (const value of ['0', '-1', 'NaN', '9007199254740992']) {
     let called = false;
     withPidFixture(({ paths: p }) => {
@@ -319,7 +319,7 @@ caseTest('invalid PID-file values never signal unrelated processes or remove ser
 // The lease case copies the scripts of this checkout to a temporary root and checks that, while another run holds the
 // server's shared lease, `test-servers.mts stop` refuses naming that holder and keeps the server directory, and that the
 // stop proceeds once the hold ends. The holder is a shell that waits reading a FIFO; ready and end go through FIFOs.
-caseTest('stopping the test servers is refused while another run holds a lease, naming the holder', COMPUTE, () => {
+caseTest('stopping the test servers is refused while another run holds a lease, naming the holder', () => {
   const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
   assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make orm-test-servers-check, which builds them');
   // The script names its servers by its real path (Node resolves the module path), so the root is a real path too.
@@ -365,7 +365,7 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
 // child refuse naming A. When A ends, a child with --wait takes it, and the same process taking it again reuses its
 // hold. Then two child shells under the outer shell hold shared together. The releaser removes a child's hold after its
 // process ends, so the first hold after an earlier one waits for that release with --wait.
-caseTest('children of an exclusive holder share its lease one exclusive holder at a time', COMPUTE, () => {
+caseTest('children of an exclusive holder share its lease one exclusive holder at a time', () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-nested-'));
@@ -412,7 +412,7 @@ function writeHolder(dir: string, name: string, fields: { kind: string; pid: num
 // A refused attempt writes nothing in the lease directory: every waiter watches that directory, so a write of one waiter's attempt
 // wakes the others, whose attempts wake it again, and they spin for as long as the holder runs. The directory's time shows a write
 // that was removed again.
-caseTest('a refused attempt leaves the lease directory untouched, so waiters do not wake each other', COMPUTE, () => {
+caseTest('a refused attempt leaves the lease directory untouched, so waiters do not wake each other', () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-quiet-'));
@@ -433,7 +433,7 @@ caseTest('a refused attempt leaves the lease directory untouched, so waiters do 
   }
 });
 
-caseTest('an ended holder whose releaser still runs is waited for, and taken over when the releaser ends without removing it', COMPUTE, async () => {
+caseTest('an ended holder whose releaser still runs is waited for, and taken over when the releaser ends without removing it', async () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
@@ -459,7 +459,7 @@ caseTest('an ended holder whose releaser still runs is waited for, and taken ove
   }
 });
 
-caseTest('a dead shared lease is taken over by any request, a dead exclusive one only by an exclusive request', COMPUTE, () => {
+caseTest('a dead shared lease is taken over by any request, a dead exclusive one only by an exclusive request', () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
@@ -484,7 +484,7 @@ caseTest('a dead shared lease is taken over by any request, a dead exclusive one
   }
 });
 
-caseTest('hold records its releaser in the lease file before it returns', COMPUTE, async () => {
+caseTest('hold records its releaser in the lease file before it returns', async () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
@@ -501,7 +501,7 @@ caseTest('hold records its releaser in the lease file before it returns', COMPUT
     assert.ok(record.releaser > 0 && record.releaser !== holder.pid, JSON.stringify(record));
     process.kill(record.releaser, 0);
     holder.kill('SIGKILL');
-    const after = spawnSync(lease, ['run', leases, 'exclusive', '--wait', '--', 'true'], { encoding: 'utf8', timeout: 20_000 });
+    const after = spawnSync(lease, ['run', leases, 'exclusive', '--wait', '--', 'true'], { encoding: 'utf8' });
     assert.equal(after.status, 0, after.stderr);
     assert.doesNotMatch(after.stderr, /took over/, 'the releaser removed the lease itself');
   } finally {
@@ -512,7 +512,7 @@ caseTest('hold records its releaser in the lease file before it returns', COMPUT
 
 // The shared database case checks that the server environment file names no bench database and creates no decimal
 // database that the Makefile shares; scripts/check/databases.mts creates that database for each run.
-caseTest('the server environment names no bench or decimal database that runs share', COMPUTE, () => {
+caseTest('the server environment names no bench or decimal database that runs share', () => {
   const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   assert.deepEqual(Object.keys(variables).filter(name => /^(?:ORM_)?(?:BENCH|DECIMAL)_/.test(name)), [], 'the server environment names a shared bench or decimal database');
   assert.equal(variables['ORM_RUN_MYSQL_DSN'], 'mysql://root@127.0.0.1:1/orm_run?timezone=%2B00:00');
@@ -524,14 +524,14 @@ caseTest('the server environment names no bench or decimal database that runs sh
 // SQLite is a local file selected by its absolute-path DSN; the test-server provisioning has replicas only for
 // MySQL and PostgreSQL and exposes no SQLite replica endpoint.
 // Requirements: CFG-26.
-caseTest('the test-server environment has no SQLite replica endpoint', COMPUTE, () => {
+caseTest('the test-server environment has no SQLite replica endpoint', () => {
   const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], 'mysql://root@127.0.0.1:3/orm_test');
   assert.equal(variables['ORM_TEST_POSTGRES_REPLICA_DSN'], 'postgres://orm@127.0.0.1:4/orm_test');
   assert.deepEqual(Object.keys(variables).filter(name => /SQLITE.*REPLICA|REPLICA.*SQLITE/.test(name)), []);
 });
 
-caseTest('PostgreSQL trusts only the orm login and requires SCRAM for other loopback roles', COMPUTE, () => {
+caseTest('PostgreSQL trusts only the orm login and requires SCRAM for other loopback roles', () => {
   assert.deepEqual(POSTGRES_HBA, [
     'host replication orm 127.0.0.1/32 trust',
     'host all orm 127.0.0.1/32 trust',
@@ -541,7 +541,7 @@ caseTest('PostgreSQL trusts only the orm login and requires SCRAM for other loop
   assert.ok(POSTGRES_HBA.every(rule => !/^host all all .* trust$/.test(rule)));
 });
 
-caseTest('the MySQL primary has a positive localhost TLS DSN and the replica has a TCP hostname-mismatch DSN', COMPUTE, () => {
+caseTest('the MySQL primary has a positive localhost TLS DSN and the replica has a TCP hostname-mismatch DSN', () => {
   const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   const positiveTls = variables['ORM_TEST_MYSQL_TLS_DSN'];
   const mismatchTls = variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'];
@@ -558,7 +558,7 @@ caseTest('the MySQL primary has a positive localhost TLS DSN and the replica has
   assert.match(mismatchTls, /ssl-mode=VERIFY_IDENTITY/);
 });
 
-caseTest('the PostgreSQL primary has a verified localhost TLS DSN and the replica has a hostname-mismatch DSN', COMPUTE, () => {
+caseTest('the PostgreSQL primary has a verified localhost TLS DSN and the replica has a hostname-mismatch DSN', () => {
   const p = paths('/checkout');
   const variables = environment(p, { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   const dsn = (name: string) => { const value = variables[name]; assert.ok(value, `the environment writes ${name}`); return new URL(value); };
@@ -580,7 +580,7 @@ caseTest('the PostgreSQL primary has a verified localhost TLS DSN and the replic
 // The storage case (KSTD-5-88-5) checks the settings that bound what the servers keep: the redo log, undo and binary log
 // of both mysqld, and the WAL of both PostgreSQL servers. A server that keeps the defaults takes 100 MiB of redo log per
 // mysqld from its start and up to 1 GB of WAL per PostgreSQL server, in every checkout.
-caseTest('the test servers keep small redo logs, binary logs and WAL', COMPUTE, () => {
+caseTest('the test servers keep small redo logs, binary logs and WAL', () => {
   for (const replica of [false, true]) {
     const args = mysqldArguments(paths('/checkout'), replica, 1);
     for (const flag of ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216', '--max-binlog-size=16777216', '--binlog-expire-logs-seconds=3600', '--log-bin-trust-function-creators=ON'])
@@ -595,7 +595,7 @@ caseTest('the test servers keep small redo logs, binary logs and WAL', COMPUTE, 
     '-c', 'timezone=Asia/Seoul', '-c', 'ssl=on', '-c', 'ssl_cert_file=/tls/postgres-replica-cert.pem', '-c', 'ssl_key_file=/tls/postgres-replica-key.pem', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
 });
 
-caseTest('the MySQL privilege probe has a separate writable binlog server with trust creators off', COMPUTE, () => {
+caseTest('the MySQL privilege probe has a separate writable binlog server with trust creators off', () => {
   const p = paths('/checkout');
   const args = mysqlPrivilegeArguments(p, 3310);
   assert.ok(args.includes(`--datadir=${p.mysqlPrivilegeData}`));
@@ -608,7 +608,7 @@ caseTest('the MySQL privilege probe has a separate writable binlog server with t
   assert.deepEqual(MYSQLD_PRIVILEGE_BINLOG, ['--log-bin=binlog', '--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=OFF']);
 });
 
-caseTest('the test MySQL server removes an expired binary log by itself', DATABASE, async () => {
+caseTest('the test MySQL server removes an expired binary log by itself', async () => {
   const flags = MYSQLD_BINLOG;
   const expireFlag = flags.find(f => f.startsWith('--binlog-expire-logs-seconds='));
   const sizeFlag = flags.find(f => f.startsWith('--max-binlog-size='));
@@ -664,7 +664,7 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
 // the pg_basebackup arguments of test-servers.mts, leaving the shared servers alone. While the replica is stopped, the
 // primary writes and switches WAL segments and checks points, so a primary that keeps no WAL for the replica removes the
 // segments the replica still needs. The replica started again must stream, and a commit that waits for it must return.
-caseTest('the test PostgreSQL replica streams again after the primary wrote WAL while it was stopped', DATABASE, async () => {
+caseTest('the test PostgreSQL replica streams again after the primary wrote WAL while it was stopped', async () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-pgwal-'));
   const [primaryPort, replicaPort] = [await freePort(), await freePort()];
   const primary = join(root, 'primary');
@@ -705,7 +705,7 @@ caseTest('the test PostgreSQL replica streams again after the primary wrote WAL 
 
 // The socket path case (T135) takes the paths of the servers of a long checkout. A Unix socket path must fit the sun_path
 // limit (103 bytes on macOS, 107 on Linux, NUL excluded) and must not depend on the depth of the checkout.
-caseTest('test server sockets stay within the Unix socket path limit for a long checkout', COMPUTE, () => {
+caseTest('test server sockets stay within the Unix socket path limit for a long checkout', () => {
   const root = `/Users/someone/Projects/polyspec/${'a-very-long-worktree-name-'.repeat(4)}T135`;
   const sockets = Object.values(paths(root).sockets);
   // The MySQL primary, replica and privilege probe server, the three of the ProxySQL of MySQL, and the same six of MariaDB.
@@ -728,7 +728,7 @@ async function withForwarded(line: (text: string) => void, body: () => Promise<v
   try { await body(); } finally { process.stderr.write = originalWrite; }
 }
 
-caseTest('startLogged names what it waits for, and a cancellation asks its server to end and waits for its exit', PROCESS, async () => {
+caseTest('startLogged names what it waits for, and a cancellation asks its server to end and waits for its exit', async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   const log = join(dir, 'silent.log');
   const marker = join(dir, 'cleaned');
@@ -758,7 +758,7 @@ caseTest('startLogged names what it waits for, and a cancellation asks its serve
   }
 });
 
-caseTest('startLogged keeps the cancellation and the failure of its request, and forwards no line after it settled', PROCESS, async () => {
+caseTest('startLogged keeps the cancellation and the failure of its request, and forwards no line after it settled', async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-cleanup-')));
   const originalKill = process.kill.bind(process);
   const denied = Object.assign(new Error('process group is not signalable'), { code: 'EPERM' });
@@ -805,7 +805,7 @@ caseTest('startLogged keeps the cancellation and the failure of its request, and
   }
 });
 
-caseTest('startLogged resolves when the ready line is written at once, before its watcher is attached', COMPUTE, async () => {
+caseTest('startLogged resolves when the ready line is written at once, before its watcher is attached', async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   try {
     await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], isolatedEnvironment());
@@ -823,7 +823,7 @@ esac
 exit 0
 `;
 
-caseTest('the start reports a stopped MySQL replica SQL thread with its last error, and accepts a running one', COMPUTE, () => {
+caseTest('the start reports a stopped MySQL replica SQL thread with its last error, and accepts a running one', () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'replica-sql-')));
   const savedPath = process.env.PATH;
   try {
@@ -844,7 +844,7 @@ caseTest('the start reports a stopped MySQL replica SQL thread with its last err
 });
 
 // The Unix socket authenticates a client as 'orm'@'localhost', and the backends of ProxySQL as 'orm'@'127.0.0.1'; a running server takes the same statements (T343-7).
-caseTest('the MySQL accounts of the user orm name both hosts and are idempotent', COMPUTE, () => {
+caseTest('the MySQL accounts of the user orm name both hosts and are idempotent', () => {
   for (const host of ['127.0.0.1', 'localhost']) {
     assert.ok(servers.ORM_ACCOUNTS_SQL.includes(`CREATE USER IF NOT EXISTS 'orm'@'${host}' IDENTIFIED BY 'orm';`), `no account for ${host}`);
     assert.ok(servers.ORM_ACCOUNTS_SQL.includes(`GRANT ALL ON *.* TO 'orm'@'${host}';`), `no grant for ${host}`);
@@ -852,7 +852,7 @@ caseTest('the MySQL accounts of the user orm name both hosts and are idempotent'
 });
 
 // A client that stops reading must not take the pooler down, and a client that disconnects must not leave its statement running (CFG-34, CFG-35, T343-13).
-caseTest('the ProxySQL of the test servers declares the settings that CFG-34 and CFG-35 state', COMPUTE, () => {
+caseTest('the ProxySQL of the test servers declares the settings that CFG-34 and CFG-35 state', () => {
   const config = proxysqlConfig(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   const variables = config.slice(config.indexOf('mysql_variables='), config.indexOf('pgsql_variables='));
   assert.match(variables, /^ {2}threshold_resultset_size=65536$/m, 'mysql-threshold_resultset_size is not 64 KiB');
@@ -860,7 +860,7 @@ caseTest('the ProxySQL of the test servers declares the settings that CFG-34 and
 });
 
 // The case-socket DSN of the MySQL recipe cases (FCV-4, CFG-10) reads the primary's Unix socket from the environment file.
-caseTest('the test-server environment writes the MySQL socket of the primary as ORM_TEST_MYSQL_SOCKET', COMPUTE, () => {
+caseTest('the test-server environment writes the MySQL socket of the primary as ORM_TEST_MYSQL_SOCKET', () => {
   const p = paths('/checkout');
   const variables = environment(p, { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   assert.equal(variables.ORM_TEST_MYSQL_SOCKET, p.sockets.mysql, 'the environment does not write the primary socket');
@@ -869,13 +869,13 @@ caseTest('the test-server environment writes the MySQL socket of the primary as 
 // The MariaDB servers (scripts/test-servers-mariadb.mts) write every variable of MARIADB_VARIABLES and read their ports back; the
 // replica refuses writes, the privilege probe server logs binary changes with trust-function-creators off and has no TLS files, and
 // every server keeps a TCP client at 127.0.0.1 the user of that host.
-caseTest('the MariaDB build leaves out the DTrace probes and records its options, so a build of other options is built again', COMPUTE, () => {
+caseTest('the MariaDB build leaves out the DTrace probes and records its options, so a build of other options is built again', () => {
   assert.ok(CMAKE_OPTIONS.includes('-DENABLE_DTRACE=OFF'), CMAKE_OPTIONS.join(' '));
   assert.equal(buildOptionsText(['-DA=1', '-DB=2']), '-DA=1\n-DB=2\n');
   assert.notEqual(buildOptionsText(CMAKE_OPTIONS), buildOptionsText(CMAKE_OPTIONS.filter(option => option !== '-DENABLE_DTRACE=OFF')));
 });
 
-caseTest('the MariaDB servers write their environment and give each role its settings', COMPUTE, () => {
+caseTest('the MariaDB servers write their environment and give each role its settings', () => {
   const p = paths('/checkout');
   const ports = { mariadb: 1, mariadbReplica: 2, mariadbPrivilege: 3, proxysql: 4 };
   const variables = mariadbEnvironment(p, ports);

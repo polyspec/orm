@@ -1,5 +1,5 @@
-// Checks through a child process that runCase and caseTest in tests/testcase.mts write node:test output (TAP) for each case, and that a case past its deadline
-// ends with `Bail out!`.
+// Checks through a child process that runCase and caseTest in tests/testcase.mts write node:test output (TAP) for each case, that
+// a process that ends inside a case ends with `Bail out!`, and that no clock fails a case.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { execFailure } from '../../tests/errors.mts';
-import { budgetText, caseTest, COMPUTE, DATABASE, duration, PROCESS, stallText, stepBudget, stepGuard } from '../../tests/testcase.mts';
+import { caseTest, duration } from '../../tests/testcase.mts';
 
 const harness = new URL('../../tests/testcase.mts', import.meta.url).href;
 
@@ -24,8 +24,8 @@ function inOrder(output: string, patterns: string[]) {
   }
 }
 
-// timeout is the time (ms) given to end the child process, so that a stuck fixture cannot hold this test.
-async function runChild(source: string, args: string[] = [], timeout = 30_000): Promise<{ code: number | string | undefined; stdout: string }> {
+// runChild runs the fixture in a node process of its own and returns its exit code and output when it has ended.
+async function runChild(source: string, args: string[] = []): Promise<{ code: number | string | undefined; stdout: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'orm-testcase-'));
   try {
     const file = join(dir, 'fixture.mjs');
@@ -34,17 +34,16 @@ async function runChild(source: string, args: string[] = [], timeout = 30_000): 
     // it does not report as a child of that runner.
     const env = isolatedEnvironment();
     try {
-      const { stdout } = await promisify(execFile)(process.execPath, [...args, file], { env, timeout, killSignal: 'SIGKILL' });
+      const { stdout } = await promisify(execFile)(process.execPath, [...args, file], { env });
       return { code: 0, stdout };
     } catch (error) {
       const failure = execFailure(error);
-      if (failure.killed) throw new Error(`fixture did not exit within ${duration(timeout)}\n${failure.stdout}`, { cause: error });
       return { code: failure.code, stdout: failure.stdout };
     }
   } finally { await rm(dir, { recursive: true, force: true }); }
 }
 
-caseTest('testcase/duration', COMPUTE, () => {
+caseTest('testcase/duration', () => {
   assert.equal(duration(0.5), '500µs');
   assert.equal(duration(12), '12ms');
   assert.equal(duration(0.9996), '1ms');
@@ -55,63 +54,23 @@ caseTest('testcase/duration', COMPUTE, () => {
   assert.equal(duration(3_600_000), '1h0m0s');
 });
 
-// The step guard ends a case that reports no step within its stall limit, and one that keeps reporting steps past its step budget,
-// each with the text that every runtime writes; the texts name the limits of a recipe case in seconds.
-caseTest('testcase/stepGuard', COMPUTE, async () => {
-  assert.equal(stallText(DATABASE), 'no step was applied within 120s');
-  assert.equal(budgetText(stepBudget(1)), 'step budget 60.25s exceeded');
-  const stalled = stepGuard(3_600_000, 500);
-  let ended = false;
-  void stalled.ended.then(() => { ended = true; });
-  try {
-    for (let index = 0; index < 10; index++) {
-      stalled.progress();
-      await new Promise(done => setTimeout(done, 5));
-    }
-    assert.equal(ended, false, 'the guard ended a case that reported its steps');
-    assert.equal((await stalled.ended).message, 'no step was applied within 0.5s');
-  } finally {
-    stalled.stop();
-  }
-  const spent = stepGuard(250, 3_600_000);
-  const steps = setInterval(spent.progress, 5);
-  try {
-    assert.equal((await spent.ended).message, 'step budget 0.25s exceeded');
-  } finally {
-    clearInterval(steps);
-    spent.stop();
-  }
-});
-
-caseTest('testcase/runCase', PROCESS, async () => {
+caseTest('testcase/runCase', async () => {
   const { code, stdout } = await runChild(`
 import { runCase } from ${JSON.stringify(harness)};
-await runCase('fixture/pass', 60000, ({ step }) => step('first step'));
-await runCase('fixture/fail', 60000, () => { throw new Error('fixture failure reason'); });
-await runCase('fixture/signal', 100, ({ signal }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason))));
-console.log('after signal');
+await runCase('fixture/pass', ({ step }) => step('first step'));
+await runCase('fixture/fail', () => { throw new Error('fixture failure reason'); });
+console.log('after fail');
 `);
   assert.equal(code, 0, stdout);
   inOrder(stdout, ['first step', 'ok - fixture/pass']);
-  inOrder(stdout, ['not ok - fixture/fail', '# fixture failure reason']);
-  inOrder(stdout, ['not ok - fixture/signal', '# deadline 100ms exceeded', 'after signal']);
+  inOrder(stdout, ['not ok - fixture/fail', '# fixture failure reason', 'after fail']);
   assert.doesNotMatch(stdout, /elapsed=|RUN |STEP |PASS |FAIL /);
-  // A case that ignores the signal and stops while holding a handle such as a timer or socket ends the process after GRACE.
-  // If it does not end the process, that handle keeps the process alive.
-  const stuck = await runChild(`
-import { runCase } from ${JSON.stringify(harness)};
-await runCase('fixture/stuck', 100, () => new Promise(() => { setInterval(() => {}, 1000); }));
-console.log('after stuck');
-`);
-  assert.equal(stuck.code, 1, stuck.stdout);
-  inOrder(stuck.stdout, ['Bail out! fixture/stuck: deadline 100ms exceeded and the case did not stop']);
-  assert.doesNotMatch(stuck.stdout, /after stuck/);
 });
 
 // A case ends when its work ends, and no clock fails it (T473): the fixture runs every timer of the process on a mock
 // clock, moves that clock a week past the start of each case, and then lets the work end; each case passes, and its signal
 // was not aborted. The test result therefore does not depend on the time that the machine gives the work.
-caseTest('testcase/no clock fails a case', PROCESS, async () => {
+caseTest('testcase/no clock fails a case', async () => {
   const { code, stdout } = await runChild(`
 import { mock } from 'node:test';
 import { cases, runCase, sections } from ${JSON.stringify(harness)};
@@ -141,7 +100,7 @@ console.log('cases passed', await registered, 'finish', runner.finish());
   assert.doesNotMatch(stdout, /deadline|Bail out!/);
 });
 
-caseTest('testcase/runGroup', PROCESS, async () => {
+caseTest('testcase/runGroup', async () => {
   const { code, stdout } = await runChild(`
 import { runGroup, stepLines } from ${JSON.stringify(harness)};
 await runGroup('fixture/group', ({ step }) => {
@@ -158,16 +117,16 @@ await runGroup('fixture/group-fail', () => { throw new Error('group failure reas
   inOrder(stdout, ['not ok - fixture/group-fail', '# group failure reason']);
 });
 
-caseTest('testcase/sections', PROCESS, async () => {
+caseTest('testcase/sections', async () => {
   const { code, stdout } = await runChild(`
 import { sections } from ${JSON.stringify(harness)};
 const log = sections();
-log.begin('fixture/section-pass', 60000);
+log.begin('fixture/section-pass');
 log.step('section step');
 log.end();
-log.begin('fixture/section-fail', 60000);
+log.begin('fixture/section-fail');
 log.end('2 check(s) failed');
-log.begin('fixture/section-crash', 60000);
+log.begin('fixture/section-crash');
 throw new Error('uncaught section error');
 `);
   assert.notEqual(code, 0, stdout);
@@ -178,28 +137,19 @@ throw new Error('uncaught section error');
   const exited = await runChild(`
 import { sections } from ${JSON.stringify(harness)};
 const log = sections();
-log.begin('fixture/section-exit', 60000);
+log.begin('fixture/section-exit');
 console.error('first problem');
 console.error('git.subject-format: subject exceeds 50 characters');
 process.exit(1);
 `);
   assert.equal(exited.code, 1, exited.stdout);
   inOrder(exited.stdout, ['Bail out! fixture/section-exit: the process ended inside the case: git.subject-format: subject exceeds 50 characters']);
-  const stuck = await runChild(`
-import { sections } from ${JSON.stringify(harness)};
-const log = sections();
-log.begin('fixture/section-stuck', 100);
-await new Promise(resolve => setTimeout(resolve, 60000));
-`);
-  assert.equal(stuck.code, 1, stuck.stdout);
-  inOrder(stuck.stdout, ['Bail out! fixture/section-stuck: deadline 100ms exceeded']);
-  assert.doesNotMatch(stuck.stdout, /process ended inside/);
 });
 
 // The run-long case checks that a slow but normal build (a command that waits 1.5 s between output lines and ends with 0) runs to the end with no deadline,
 // shows its output lines as they are, and reports exit code 0 and `ok`; that a failed command reports its exit code and error output,
 // and that it does not accept a deadline argument.
-caseTest('testcase/run-long', PROCESS, async () => {
+caseTest('testcase/run-long', async () => {
   const runLongScript = new URL('../../tests/run-long.mts', import.meta.url).pathname;
   const run = async (args: string[]) => {
     try {
@@ -229,23 +179,23 @@ caseTest('testcase/run-long', PROCESS, async () => {
   assert.match(deadline.stderr, /usage: node tests\/run-long\.mts <name> \[--cwd <dir>\] -- /);
 });
 
-caseTest('testcase/caseTest', PROCESS, async () => {
+caseTest('testcase/caseTest', async () => {
   const { code, stdout } = await runChild(`
 import { caseTest } from ${JSON.stringify(harness)};
-caseTest('fixture/node-pass', 60000, ({ step }) => step('node step'));
-caseTest('fixture/node-fail', 60000, () => { throw new Error('node failure reason'); });
+caseTest('fixture/node-pass', ({ step }) => step('node step'));
+caseTest('fixture/node-fail', () => { throw new Error('node failure reason'); });
 `, ['--test', '--test-reporter=tap']);
   assert.notEqual(code, 0, stdout);
   inOrder(stdout, ['.*ok 1 - fixture/node-pass', '# node step', '.*not ok 2 - fixture/node-fail', `.*error: 'node failure reason'`]);
   assert.doesNotMatch(stdout, /RUN |PASS |FAIL |elapsed=/);
 });
 
-caseTest('testcase/cases registers each run as a native test and ignores filtered skips', PROCESS, async () => {
+caseTest('testcase/cases registers each run as a native test and ignores filtered skips', async () => {
   const failing = await runChild(`
 import { cases } from ${JSON.stringify(harness)};
 const runner = cases();
-const first = await runner.run('fixture/first', 60000, ({ step }) => { console.log('body:first'); step('first step'); });
-const second = await runner.run('fixture/second', 60000, () => { console.log('body:second'); throw new Error('second failure'); });
+const first = await runner.run('fixture/first', ({ step }) => { console.log('body:first'); step('first step'); });
+const second = await runner.run('fixture/second', () => { console.log('body:second'); throw new Error('second failure'); });
 console.log('results', first, second, 'finish', runner.finish());
 `, ['--test', '--test-reporter=tap']);
   assert.equal(failing.code, 1, failing.stdout);
@@ -258,8 +208,8 @@ console.log('results', first, second, 'finish', runner.finish());
   const skipped = await runChild(`
 import { cases } from ${JSON.stringify(harness)};
 const runner = cases();
-const chosen = await runner.run('fixture/chosen', 60000, () => {});
-const omitted = await runner.run('fixture/omitted', 60000, () => { throw new Error('filtered body ran'); });
+const chosen = await runner.run('fixture/chosen', () => {});
+const omitted = await runner.run('fixture/omitted', () => { throw new Error('filtered body ran'); });
 console.log('results', chosen, omitted, 'finish', runner.finish());
 `, ['--test', '--test-reporter=tap', '--test-name-pattern=chosen']);
   assert.equal(skipped.code, 0, skipped.stdout);

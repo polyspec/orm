@@ -1,6 +1,6 @@
 // Execute every generated decimal model owner twice against each isolated database.
 import { fileURLToPath } from 'node:url';
-import { run, state, step, TIMEOUT_MS } from './physical.mts';
+import { run, state, step } from './physical.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { parseGoTestEvent } from './json/formats.mts';
 import { implementationLanguages } from './features/languages.mts';
@@ -41,7 +41,7 @@ export function command(language: string, database: string, environment: NodeJS.
   throw new Error(`unknown decimal physical runtime: ${language}`);
 }
 
-/** The copy of the Rust test binary that make decimal-physical-check builds before the deadlines of the cases. */
+/** The copy of the Rust test binary that make decimal-physical-check builds before the cases. */
 function rustTest(environment: NodeJS.ProcessEnv): { copy: string; manifestDir: string } {
   const directory = environment['ORM_DECIMAL_RUST_RUN'];
   if (!directory) throw new Error('ORM_DECIMAL_RUST_RUN is required; run this check through make decimal-physical-check, which builds the Rust test');
@@ -106,20 +106,20 @@ export function observed(language: string, database: string, output: string): bo
 }
 
 async function main(): Promise<void> {
-  await step('decimal/models', TIMEOUT_MS, () => run('node', ['legacy/packages/ts/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
+  await step('decimal/models', () => run('node', ['legacy/packages/ts/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
     '--out', 'legacy/packages/ts/src/models/decimal_fixture', '--scan', 'legacy/packages/ts/tests/decimal_model_db.mjs', '--check']));
   for (const database of databases) {
     const key = `DECIMAL_${database.toUpperCase()}_DSN`;
     const dsn = process.env[key];
     if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make orm-test-servers`);
     let before: string|undefined;
-    await step(`decimal/${database}/state`, TIMEOUT_MS, async ({ step: progress }) => {
+    await step(`decimal/${database}/state`, async ({ step: progress }) => {
       before = await state(database, dsn);
       progress(`state ${before}`);
     });
     for (const language of languages) {
       for (let attempt = 1; attempt <= 2; attempt++) {
-        await step(`decimal/${database}/${language}/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
+        await step(`decimal/${database}/${language}/${attempt}`, async ({ step: progress }) => {
           const [program, args] = command(language, database);
           await runPhysicalCommandCase(run, program, args, commandEnvironment(language, process.env), dsn,
             { kind: 'predicate', accepts: output => observed(language, database, output) },

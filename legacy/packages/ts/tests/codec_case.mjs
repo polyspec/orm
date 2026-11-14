@@ -1,11 +1,11 @@
 // codec_case.mjs holds the helpers of the AES binding files: check, which runs one case as a top-level test and fails it
 // with every problem its body finds, and the AES read fixtures.
 import { hostEncode } from '../dist/index.js';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 // check runs the checks of one case, which push each problem they find to the list it is given, and fails the case with
 // every problem.
-export const check = (name, body) => caseTest(name, COMPUTE, async () => {
+export const check = (name, body) => caseTest(name, async () => {
   const wrong = [];
   await body(wrong);
   if (wrong.length > 0) throw new Error(`${name}:\n${wrong.join('\n')}`);

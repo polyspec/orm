@@ -37,7 +37,7 @@ import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession } from './coverage_case.mjs';
 import { readStep } from './recipe_reads.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
-import { caseTest, COMPUTE, DATABASE, PROCESS, stepBudget, stepGuard } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
@@ -50,25 +50,9 @@ function reportCase(id, database) {
   appendFileSync(path, database === NONE ? `CASE ${id} PASS\n` : `CASE ${id} [${database}] PASS\n`);
 }
 
-// caseDeadline is the deadline of a database case: DATABASE, or the step budget of the steps that its deadline states (FCV-4).
-function caseDeadline(recipeCase) {
-  return recipeCase.deadline === undefined ? DATABASE : stepBudget(recipeCase.deadline.steps);
-}
-
-// guarded runs work with the step guard of a case with a step deadline, armed at the start of the case: the guard ends the case at
-// its step budget, or when no apply event comes within DATABASE (FCV-4). A case without a step deadline gets none.
-async function guarded(recipeCase, work) {
-  const guard = recipeCase.deadline === undefined ? undefined : stepGuard(caseDeadline(recipeCase), DATABASE);
-  try {
-    return await work(guard);
-  } finally {
-    guard?.stop();
-  }
-}
-
 // registerRecipeCase registers one case of a recipe with node:test.
-function registerRecipeCase(recipeCase, database, deadline, body) {
-  return caseTest(recipeCase.id, deadline, async context => {
+function registerRecipeCase(recipeCase, database, body) {
+  return caseTest(recipeCase.id, async context => {
     await body(context);
     reportCase(recipeCase.id, database);
   });
@@ -94,9 +78,7 @@ export function runRecipe(path, database) {
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    // The interface check is another process, which may build its extractor; the other cases compute in memory.
-    const deadline = recipeCase.steps.some(step => step.op === 'interface.symbols') ? PROCESS : COMPUTE;
-    registerRecipeCase(recipeCase, database, deadline, async () => {
+    registerRecipeCase(recipeCase, database, async () => {
       const bound = new Map();
       for (const [index, rawStep] of recipeCase.steps.entries()) {
         const reads = readStep(rawStep, database);
@@ -625,12 +607,12 @@ async function databaseRecipe(path, database) {
     if (markdown) {
       // flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a corpus of no table.
       const setPath = fixture !== NONE_FIXTURE && recipeCase.install !== false ? resolve(root, fixture) : null;
-      registerRecipeCase(recipeCase, database, caseDeadline(recipeCase), ({ step }) =>
-        guarded(recipeCase, guard => withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }))));
+      registerRecipeCase(recipeCase, database, ({ step }) =>
+        withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
       continue;
     }
-    registerRecipeCase(recipeCase, database, caseDeadline(recipeCase), ({ step }) =>
-      guarded(recipeCase, guard => withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }))));
+    registerRecipeCase(recipeCase, database, ({ step }) =>
+      withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
 }
 
@@ -688,34 +670,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
   }
 }
 
-// endCaseSessions ends, on the server, every other session on the database of dsn: the catalog, the model connections, the
-// native ones of sql.exec and the dbspec sessions of a case. A case that its step guard ended stops its running statement so, and
-// its cleanup does not wait for that statement (FCV-4), as Go cancels the context of the statement and Python and Rust end the
-// case. A corpus and SQLite run their statements in this process, so none is running when the guard ends the case.
-async function endCaseSessions(database, dsn) {
-  if (dialectOfDatabase(database) === 'mysql') {
-    const session = await nativeSession(database, dsn);
-    try {
-      const sessions = await session.query('SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()');
-      for (const { ID } of sessions) {
-        // A session that ended after the list was read is no thread any more (ER_NO_SUCH_THREAD).
-        await session.query(`KILL ${Number(ID)}`).catch(error => { if (error?.code !== 'ER_NO_SUCH_THREAD') throw error; });
-      }
-    } finally {
-      await session.close();
-    }
-  } else if (database === 'postgres') {
-    await nativeQuery(database, dsn, ['SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()']);
-  }
-}
-
-async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }) {
-  // The sessions of a case that its step guard ended are ended at that event. Such a case has failed with the text of its guard,
-  // so a failure to end them is a line of that case, which keeps the text of the guard as its failure.
-  let ending;
-  guard?.ended.then(() => {
-    ending = endCaseSessions(database, caseDatabase.dsn).then(() => undefined, error => error);
-  });
+async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
   try {
     // A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
@@ -727,11 +682,9 @@ async function runCase({ name, recipe, recipeCase, database, schema, installFirs
       for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
       step('schema installed');
     }
-    await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db, guard });
+    await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db });
   } finally {
     await db.close();
-    const unended = await ending;
-    if (unended !== undefined) step(`the sessions of the case could not be ended: ${unended.message}`);
   }
 }
 
@@ -748,7 +701,7 @@ async function runCaseSteps({ name, recipeCase, database, context, step }) {
   }
 }
 
-async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db, guard }) {
+async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db }) {
   const closers = [];
   const catalog = await connectCatalog(caseDatabase.dsn);
   let context;
@@ -756,7 +709,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path, guard };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -1255,7 +1208,7 @@ const OPS = {
   },
 };
 
-// The ops of the dbspec apply API (FCV-4); a command of a large plan is bounded by the deadline of its case.
+// The ops of the dbspec apply API (FCV-4).
 const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runStep: (s, context) => runStep(s, context) });
 
 async function runStep(rawStep, context) {
@@ -1275,10 +1228,7 @@ async function runStep(rawStep, context) {
   const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[dialectKey(context.database, rawStep.expect)], context));
   let actual;
   try {
-    // An op is bounded by the deadline of its case alone, as in every runtime: the step guard of a case with a step deadline, and
-    // otherwise the case deadline (caseTest).
-    const work = Promise.resolve().then(() => op(s, context));
-    actual = await (context.guard === undefined ? work : Promise.race([work, context.guard.ended.then(error => { throw error; })]));
+    actual = await op(s, context);
   } catch (error) {
     const code = error === callbackError ? 'CALLBACK' : error?.code;
     if (expected?.error === undefined || typeof code !== 'string') throw error;
@@ -3222,7 +3172,7 @@ async function checkIntrospectSqlite(step, database) {
 // INT-18, INT-19, INT-57, INT-61, INT-64). A check that exits other than 0 rejects with its output.
 async function checkInterfaceSymbols() {
   await new Promise((done, fail) => {
-    execFile('node', ['tests/interfaces/check/main.mts', '-language', 'typescript'], { cwd: root, maxBuffer: 16 * 1024 * 1024, timeout: 280_000 }, (error, stdout, stderr) => {
+    execFile('node', ['tests/interfaces/check/main.mts', '-language', 'typescript'], { cwd: root, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) fail(new Error(`interface check failed (${error.code ?? error.signal}): ${stdout}${stderr}`, { cause: error }));
       else done();
     });

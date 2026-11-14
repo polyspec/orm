@@ -1,7 +1,7 @@
 // The collection key identity of tests/collection/keys.json: every value type has its own key, and a NULL key is CODEC_DECODE.
 // Usage: node packages/ts/tests/collection_identity.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../tests/collection/keys.json', import.meta.url), 'utf8'));
 const databaseModule = await import('../dist/database.js');
@@ -34,7 +34,7 @@ function compositeValueOf(entry) {
 
 // Each case is a node:test test (tests/testcase.mts, caseTest).
 // Requirements: PRT-35.
-caseTest('collection-key/composite-typed-components', COMPUTE, () => {
+caseTest('collection-key/composite-typed-components', () => {
   const seen = new Map();
   for (const entry of fixture.composites) {
     const values = entry.values.map(compositeValueOf);
@@ -56,7 +56,7 @@ caseTest('collection-key/composite-typed-components', COMPUTE, () => {
 
 // A Date stops at the millisecond, so the key of a datetime column holds the whole instant in toJSON (INT-11): only TypeScript
 // has this form.
-caseTest('collection-key/datetime-key-holds-its-microseconds', COMPUTE, () => {
+caseTest('collection-key/datetime-key-holds-its-microseconds', () => {
   const { DatetimeKey, keyText } = databaseModule;
   const first = new DatetimeKey('2026-10-18 09:30:00.000010');
   const second = new DatetimeKey('2026-10-18 09:30:00.000011');
@@ -68,7 +68,7 @@ caseTest('collection-key/datetime-key-holds-its-microseconds', COMPUTE, () => {
   if (keyText(first) === keyText(new Date('2026-10-18T09:30:00.000Z'))) throw new Error('a Date is the key of a finer instant');
 });
 
-caseTest('collection-key/nullable-composite-row-has-no-key', COMPUTE, () => {
+caseTest('collection-key/nullable-composite-row-has-no-key', () => {
   const row = fixture.nullable_composite.map(compositeValueOf);
   if (rowKey(row, [{ index: 0 }, { index: 1 }]) !== undefined) throw new Error('a nullable composite row acquired a key');
 });

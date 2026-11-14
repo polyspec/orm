@@ -11,14 +11,14 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TOKEN_CLASSES } from '@polyspec/dbspec-language';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
-import { caseTest, COMPUTE, PROCESS } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 const contributes = manifest.contributes ?? {};
 const LANGUAGE = 'dbspec';
 
-caseTest('the manifest contributes the language dbspec for .dbs', COMPUTE, () => {
+caseTest('the manifest contributes the language dbspec for .dbs', () => {
   const languages = contributes.languages ?? [];
   assert.equal(languages.length, 1);
   assert.equal(languages[0].id, LANGUAGE);
@@ -29,12 +29,12 @@ caseTest('the manifest contributes the language dbspec for .dbs', COMPUTE, () =>
 });
 
 // Requirements: ORES-2, ORE-19, ORES-49.
-caseTest('the manifest has no TextMate grammar', COMPUTE, () => {
+caseTest('the manifest has no TextMate grammar', () => {
   assert.equal(contributes.grammars, undefined);
 });
 
 // Requirements: ORE-19, ORES-49.
-caseTest('the semantic token types are the token classes in order, each with a scope', COMPUTE, () => {
+caseTest('the semantic token types are the token classes in order, each with a scope', () => {
   assert.deepEqual((contributes.semanticTokenTypes ?? []).map(type => type.id), [...TOKEN_CLASSES]);
   const scopes = contributes.semanticTokenScopes ?? [];
   assert.equal(scopes.length, 1);
@@ -47,11 +47,11 @@ caseTest('the semantic token types are the token classes in order, each with a s
 });
 
 // Requirements: ORE-19, ORES-49.
-caseTest('semantic highlighting is enabled by default for dbspec', COMPUTE, () => {
+caseTest('semantic highlighting is enabled by default for dbspec', () => {
   assert.deepEqual(contributes.configurationDefaults?.[`[${LANGUAGE}]`], { 'editor.semanticHighlighting.enabled': true });
 });
 
-caseTest('the bundle starts the bundled server', COMPUTE, () => {
+caseTest('the bundle starts the bundled server', () => {
   assert.equal(manifest.main, './dist/extension.cjs');
   const extension = readFileSync(join(root, 'dist', 'extension.cjs'), 'utf8');
   assert.ok(extension.includes('"dist/server.cjs"'), 'dist/extension.cjs names dist/server.cjs');
@@ -59,7 +59,7 @@ caseTest('the bundle starts the bundled server', COMPUTE, () => {
   assert.ok(!/require\("@polyspec\//.test(extension + readFileSync(join(root, 'dist', 'server.cjs'), 'utf8')), 'the bundles carry the workspace packages');
 });
 
-caseTest('the bundled server answers with the token classes as its legend', PROCESS, async () => {
+caseTest('the bundled server answers with the token classes as its legend', async () => {
   const server = spawn(process.execPath, [join(root, 'dist', 'server.cjs'), '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'] });
   const exited = new Promise(resolve => server.once('exit', code => resolve(code)));
   const connection = createMessageConnection(new StreamMessageReader(server.stdout), new StreamMessageWriter(server.stdin));

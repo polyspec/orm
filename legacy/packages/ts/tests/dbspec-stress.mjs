@@ -21,7 +21,6 @@ import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const generator = fileURLToPath(new URL('tests/dbspec/stress.mts', root));
-const TIMEOUT = 60000;
 // REFERENCE_RATIO is the documented reference value of the ratio of the median parse CPU time to the median CPU time of
 // the reference work (docs/spec/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the
 // test.
@@ -30,14 +29,14 @@ const PARSES = 5;
 
 function generate() {
   return new Promise((resolve, reject) => {
-    execFile(process.execPath, [generator], { maxBuffer: 64 * 1024 * 1024, timeout: TIMEOUT }, (error, stdout, stderr) => {
+    execFile(process.execPath, [generator], { maxBuffer: 64 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) reject(new Error(`stress generator failed: ${error.message}\n${stderr}`));
       else resolve(stdout);
     });
   });
 }
 
-caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async ({ step }) => {
+caseTest('dbspec stress document parses and emits canonically', async ({ step }) => {
     const text = await generate();
     step(`generated ${Buffer.byteLength(text)} bytes`);
     const parses = [];

@@ -15,9 +15,6 @@ import { caseTest } from '../../../../tests/testcase.mts';
 import { isBuiltinModule, scanModule } from '../../../../tests/module-scan.mjs';
 import { resolveImports, walkModules } from '../../../../tests/module-graph.mjs';
 
-// The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
-const TIMEOUT = 15000;
-
 const pkgRoot = fileURLToPath(new URL('../', import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(pkgRoot, 'package.json'), 'utf8'));
 const subpath = pkg.exports['./dbspec'];
@@ -59,14 +56,14 @@ function graph() {
 }
 
 // Requirements: ORE-6, ORES-53, ORES-55.
-caseTest('the subpath module reaches no Node module, undeclared package or Node global', TIMEOUT, () => {
+caseTest('the subpath module reaches no Node module, undeclared package or Node global', () => {
   const { modules, violations } = graph();
   assert.ok(modules.size > 1, 'the graph follows the imports of the subpath module');
   assert.deepEqual(violations, [], `the browser entry reaches a Node or driver dependency:\n${violations.join('\n')}`);
 });
 
 // Requirement: ORES-54.
-caseTest('readDbspecBytes encodes the signature with TextEncoder', TIMEOUT, () => {
+caseTest('readDbspecBytes encodes the signature with TextEncoder', () => {
   const { modules } = graph();
   const source = readFileSync([...modules].find(file => file.endsWith('/read_bytes.js')), 'utf8');
   assert.match(source, /new TextEncoder\(\)\.encode\(DBSPEC_SIGNATURE\)/);
@@ -74,7 +71,7 @@ caseTest('readDbspecBytes encodes the signature with TextEncoder', TIMEOUT, () =
 });
 
 // Requirements: ORE-1, ORES-52.
-caseTest('the subpath module exports exactly the parser functions', TIMEOUT, async () => {
+caseTest('the subpath module exports exactly the parser functions', async () => {
   const entry = await import(start);
   assert.deepEqual(
     Object.keys(entry).sort(),

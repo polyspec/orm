@@ -7,19 +7,19 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { COMMANDS as CLIENT_DB_COMMANDS } from '../client-db-test.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 
-caseTest('Rust workspace dispatch matches a skip by its full symbol', COMPUTE, () => {
+caseTest('Rust workspace dispatch matches a skip by its full symbol', () => {
   const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));
   assert.ok(rustCommand?.endsWith('--exact'), 'libtest skips must match the full declared symbol');
 });
 
-caseTest('the rust lane runs the sections of the integration program in its workspace run, with no ignored run', COMPUTE, () => {
+caseTest('the rust lane runs the sections of the integration program in its workspace run, with no ignored run', () => {
   for (const command of CLIENT_DB_COMMANDS) {
     assert.ok(!/ --(include-)?ignored( |$)/.test(command), `a command runs ignored tests: ${command}`);
     assert.ok(!command.includes('integration_program::'), `a command runs the integration program apart from the workspace run: ${command}`);
@@ -56,7 +56,7 @@ async function declared(script: string, program: string): Promise<string[]> {
   return commands;
 }
 
-caseTest('the PHP lane of client-db-test runs every test after a failed one and names the failures', PROCESS, async () => {
+caseTest('the PHP lane of client-db-test runs every test after a failed one and names the failures', async () => {
   const f = fake(['php'], 'ModelTest');
   try {
     const result = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php' });
@@ -70,7 +70,7 @@ caseTest('the PHP lane of client-db-test runs every test after a failed one and 
   }
 });
 
-caseTest('the TypeScript SQLite tests run every test after a failed one and name the failures', PROCESS, async () => {
+caseTest('the TypeScript SQLite tests run every test after a failed one and name the failures', async () => {
   const f = fake(['node'], 'model.mjs');
   try {
     const result = f.run(['scripts/typescript/sqlite-test.mts']);
@@ -87,7 +87,7 @@ caseTest('the TypeScript SQLite tests run every test after a failed one and name
 
 // The sequential-lane case (G5.53) checks whether, when lanes run in sequence rather than in parallel, the lanes after a failed lane still run. A failed lane
 // only collects its own failures and returns them; it does not end the whole run.
-caseTest('client-db-test runs the next lane after a failed lane in sequence and names the failed lanes', PROCESS, () => {
+caseTest('client-db-test runs the next lane after a failed lane in sequence and names the failed lanes', () => {
   const f = fake(['php', 'node'], 'ModelTest');
   try {
     const result = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php,typescript', ORM_CLIENT_DB_LANES: '' });
@@ -103,7 +103,7 @@ caseTest('client-db-test runs the next lane after a failed lane in sequence and 
 // The php-extension lane case (KSTD-5-88-6) checks that the lane of the implementation php-extension of contracts/implementations.json builds the
 // extension into the directory of its run through make php-ext-build, then runs every PHP database test file of the php lane with
 // that build loaded, through kit's run-tests in extension mode, and removes the build.
-caseTest('client-db-test runs the php-extension lane with the extension it builds', PROCESS, () => {
+caseTest('client-db-test runs the php-extension lane with the extension it builds', () => {
   const f = fake(['php', 'node', 'make'], 'none');
   try {
     const result = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php-extension', ORM_CLIENT_DB_LANES: '' });
@@ -126,7 +126,7 @@ caseTest('client-db-test runs the php-extension lane with the extension it build
 
 // The perf case (G5.53) checks whether all five performance gate commands still run when an earlier one fails: the three Go
 // gates and PerfGateTest without and under CPU load.
-caseTest('the performance gates run every gate after a failed one and name the failures', PROCESS, () => {
+caseTest('the performance gates run every gate after a failed one and name the failures', () => {
   const f = fake(['node', 'php'], 'TestNative');
   try {
     const result = f.run(['scripts/perf-test.mts']);
@@ -141,7 +141,7 @@ caseTest('the performance gates run every gate after a failed one and name the f
 });
 
 // The package case (G5.53) checks whether all four package checks (TypeScript, PHP, Rust, Go) still run when an earlier check fails.
-caseTest('the package checks run every package after a failed one and name the failures', PROCESS, () => {
+caseTest('the package checks run every package after a failed one and name the failures', () => {
   const f = fake(['npm', 'node', 'composer', 'cargo', 'go'], 'pack');
   try {
     writeFileSync(join(f.base, 'bin', 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
@@ -156,7 +156,7 @@ caseTest('the package checks run every package after a failed one and name the f
   }
 });
 
-caseTest('database commands report unreadable server configuration before calling MySQL or PostgreSQL', PROCESS, () => {
+caseTest('database commands report unreadable server configuration before calling MySQL or PostgreSQL', () => {
   const f = fake(['mysql', 'psql'], 'never');
   try {
     const dir = join(f.base, 'databases');
@@ -185,7 +185,7 @@ caseTest('database commands report unreadable server configuration before callin
 });
 
 // The drop case (G5.53) checks whether the PostgreSQL database and the run directory are still removed when the MySQL database cannot be dropped.
-caseTest('dropping the run databases removes every part after a failed one and names the failures', PROCESS, () => {
+caseTest('dropping the run databases removes every part after a failed one and names the failures', () => {
   const f = fake(['mysql', 'psql'], 'DROP DATABASE IF EXISTS `orm_x_bench`');
   try {
     const servers = join(f.base, 'servers.env');
@@ -208,7 +208,7 @@ caseTest('dropping the run databases removes every part after a failed one and n
 // The binary log case (G5.55-1) checks whether the run's last step (databases.mts drop) removes the binary log files of the two MySQL servers only after the replica has applied
 // them, and fails without deleting them if the replica could not apply them. The fake mysql tells the primary (1) and
 // the replica (3) apart by port and gives fixed answers to status queries. The real servers are used by the drop step of make owner-check.
-caseTest('dropping the run databases purges the binary logs that the replica applied', PROCESS, () => {
+caseTest('dropping the run databases purges the binary logs that the replica applied', () => {
   for (const applied of ['7', 'NULL']) {
     const base = realpathSync(mkdtempSync(join(tmpdir(), 'continue-')));
     try {
@@ -252,7 +252,7 @@ esac
 // The finished-run case (G5.59) checks whether databases of runs killed before they started are removed. The fake mysql and psql list databases
 // and log DROP. Only the orm_owner_ and orm_check_ databases of ended pids are removed; the databases of a live pid (this test
 // process), CI names, and other databases are kept.
-caseTest('a run first drops the databases of runs whose process no longer runs', PROCESS, () => {
+caseTest('a run first drops the databases of runs whose process no longer runs', () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'continue-')));
   try {
     const dead = spawnSync('true').pid;
@@ -286,7 +286,7 @@ esac
 
 // The lane-name case (G5.54) checks that when ORM_CLIENT_DB_LANGS holds a name that is not a lane, or selects no lane at all, it fails without running
 // anything. A misspelled name passed without running any lane.
-caseTest('client-db-test refuses an unknown lane name and an empty selection', PROCESS, () => {
+caseTest('client-db-test refuses an unknown lane name and an empty selection', () => {
   const f = fake(['php', 'node'], 'none');
   try {
     const typo = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'typscript' });

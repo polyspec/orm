@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { resolveImports, walkModules } from '../../tests/module-graph.mjs';
 
-caseTest('collects resolved import targets and violations in source order', COMPUTE, () => {
+caseTest('collects resolved import targets and violations in source order', () => {
   const result = resolveImports(
     [
       { specifier: './local.js', at: 'entry:1' },
@@ -18,7 +18,7 @@ caseTest('collects resolved import targets and violations in source order', COMP
   });
 });
 
-caseTest('visits reachable modules once in breadth-first order and keeps violations', COMPUTE, () => {
+caseTest('visits reachable modules once in breadth-first order and keeps violations', () => {
   const edges = new Map([
     ['entry', { targets: ['left', 'right'], violations: ['entry violation'] }],
     ['left', { targets: ['shared'], violations: [] }],
