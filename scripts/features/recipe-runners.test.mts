@@ -107,7 +107,7 @@ caseTest('a vector runner that is no source is a finding', () => {
   assert.ok(gone !== undefined, 'Go declares a vector runner');
   const sources = new Map(tree().sources);
   sources.delete(gone);
-  assert.match(findings(tree({ sources })).join('\n'), /the vector runner packages\/go\/internal\/conformance\/main\.go does not exist/);
+  assert.match(findings(tree({ sources })).join('\n'), /the vector runner legacy\/packages\/go\/internal\/conformance\/main\.go does not exist/);
 });
 
 // The bodies of a case file run through the case runner of each runtime (FCV-15), so a runner that is no source, or that names no
@@ -117,8 +117,8 @@ caseTest('a case runner that is no source or names no case file is a finding', (
   assert.ok(runner !== undefined, 'Go declares a case runner of tests/markdown/cases.json');
   const gone = new Map(tree().sources);
   gone.delete(runner);
-  assert.match(findings(tree({ sources: gone })).join('\n'), /go: the case runner packages\/go\/markdownmodel\/conformance_test\.go does not exist/);
+  assert.match(findings(tree({ sources: gone })).join('\n'), /go: the case runner legacy\/packages\/go\/markdownmodel\/conformance_test\.go does not exist/);
   const silent = new Map(tree().sources);
   silent.set(runner, 'package markdownmodel');
-  assert.match(findings(tree({ sources: silent })).join('\n'), /go: the case runner packages\/go\/markdownmodel\/conformance_test\.go names no tests\/markdown\/cases\.json/);
+  assert.match(findings(tree({ sources: silent })).join('\n'), /go: the case runner legacy\/packages\/go\/markdownmodel\/conformance_test\.go names no tests\/markdown\/cases\.json/);
 });

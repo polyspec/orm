@@ -1086,6 +1086,7 @@
         "packages/rust/tests/cases/common/typed_model.rs",
         "packages/rust/programs/tests/all/common/result_code.rs",
         "packages/rust/tests/cases/common/clock_test_support.rs",
+        "packages/rust/tests/cases/common/lock_wait.rs",
         "packages/rust/programs/src/lib.rs",
         "packages/rust/programs/src/recipe.rs",
         "packages/rust/programs/src/recipe_apply.rs",

@@ -7,6 +7,7 @@ namespace Polyspec\Orm;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
 use Polyspec\Orm\Dbspec\SetDocument;
+use Polyspec\Orm\Dbspec\Setting;
 
 /**
  * The runtime model of a dbspec document set (docs/spec/dbspec.md "Runtime model").
@@ -405,7 +406,7 @@ final class RuntimeModel
         $codecs = [];
         foreach ($settings['codec'] ?? [] as $args) {
             // A column holds the stage that each name means (DBS-185).
-            $codecs[$args[0]] = array_map(Dbspec\Setting::codecStageMeaning(...), array_slice($args, 1));
+            $codecs[$args[0]] = array_map(Setting::codecStageMeaning(...), array_slice($args, 1));
         }
         $blind = [];
         foreach ($settings['blind_index'] ?? [] as $args) {
