@@ -53,15 +53,11 @@ final class UtilsNativeTest extends TestCase
                 $db->transaction(function () use ($db, $dsn, $seq, &$child, &$pipes): void {
                     $child = WasInsertedCases::startLockWaiter($db, $dsn, $seq, $pipes);
                     self::assertIsResource($child, 'the waiting child did not start');
-                    $waiting = false;
-                    $deadline = microtime(true) + 10;
-                    while (!$waiting && microtime(true) < $deadline) {
-                        $waiting = $db->utils()->backendWaitingForLock();
-                        if (!$waiting) {
-                            usleep(20_000);
-                        }
-                    }
-                    self::assertTrue($waiting, 'the child backend waits for the row lock the native transaction holds');
+                    WasInsertedCases::awaitLockWait($pipes);
+                    self::assertTrue(
+                        $db->utils()->backendWaitingForLock(),
+                        'the child backend waits for the row lock the native transaction holds'
+                    );
                 }, retry: 0);
 
                 self::assertIsResource($child);

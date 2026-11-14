@@ -100,6 +100,23 @@ final class WasInsertedCases
         );
     }
 
+    /**
+     * Returns when the child of startLockWaiter prints "waiting", which it prints when the server reports that its
+     * update waits for the row lock (T475); a child that ends first fails the case with what it wrote.
+     *
+     * @param array<int, resource> $pipes
+     */
+    public static function awaitLockWait(array $pipes): void
+    {
+        $line = fgets($pipes[1]);
+        if ($line !== "waiting\n") {
+            throw new \RuntimeException(
+                'the waiting child ended before it waited for the row lock: '
+                    . var_export($line, true) . ' ' . stream_get_contents($pipes[2])
+            );
+        }
+    }
+
     public static function assertTracksGeneratedRows(TestCase $test, Db $db): void
     {
         $existing = 0;
