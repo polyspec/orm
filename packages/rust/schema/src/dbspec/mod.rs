@@ -110,6 +110,39 @@ pub fn comparison_operator(op: &str) -> Option<&'static str> {
 }
 
 #[cfg(test)]
+mod codec_stage_name_tests {
+    use std::collections::BTreeMap;
+
+    // A document with the codec stage ordered_json, and what the generator of release v0.0.32 writes for it: its
+    // canonical text and its manifest are the document as it was written, with ordered_json (CORE-122).
+    const DOCUMENT: &str = "dbspec 1 shop\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n  settings {\n    codec doc ordered_json\n    codec packed ordered_json gz\n  }\n}\n";
+    const RELEASED_MANIFEST_HASH: &str = "sha256:f64f18fe22793c6d6cf6f92391d462869606a29d4efdd11752a629b82ba62094";
+    const RELEASED_SCHEMA_HASH: &str = "sha256:3611b322d2794d3c6a0cd0b783fa806ad9b3fa4261c3e1e0cdc441b863780bf1";
+
+    #[test]
+    fn ordered_json_keeps_its_name_in_the_canonical_text_and_the_manifest() {
+        let _case = polyspec_orm_testcase::case!();
+        let none = BTreeMap::new();
+        assert_eq!(super::format(DOCUMENT, &none).map_err(|errors| format!("{errors:?}")), Ok(DOCUMENT.to_owned()), "the canonical text is not that of the release");
+        let document = super::parse(DOCUMENT, &none).map(|parsed| parsed.document).map_err(|errors| format!("{errors:?}"));
+        let document = document.as_ref().map_err(String::as_str);
+        assert!(document.is_ok(), "{document:?}");
+        let Ok(document) = document else { return };
+        let manifest = super::manifest(&[document]).map_err(|errors| format!("{errors:?}"));
+        assert_eq!(manifest.as_ref().map(|m| (m.manifest_text.as_str(), m.manifest_hash.as_str(), m.schema_hash.as_str())), Ok((DOCUMENT, RELEASED_MANIFEST_HASH, RELEASED_SCHEMA_HASH)));
+        // The stage means json, in the runtime model of the document and in that of its manifest text.
+        let codecs = |model: &super::RuntimeModel| {
+            let entity = model.entity("t");
+            ["doc", "packed"].map(|name| entity.and_then(|e| e.field(name)).map(|f| f.codec.clone()).unwrap_or_default())
+        };
+        let expected = [vec!["json".to_owned()], vec!["json".to_owned(), "gz".to_owned()]];
+        assert_eq!(super::runtime_model(&[document]).as_ref().map(codecs).map_err(|e| format!("{e:?}")), Ok(expected.clone()));
+        let read = super::parse_manifest(DOCUMENT).and_then(|documents| super::runtime_model(&documents.iter().collect::<Vec<_>>()));
+        assert_eq!(read.as_ref().map(codecs).map_err(|e| format!("{e:?}")), Ok(expected));
+    }
+}
+
+#[cfg(test)]
 mod operator_tests {
     use super::operator_allowed_for_type;
 
