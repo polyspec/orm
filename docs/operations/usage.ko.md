@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 58ac77003a2f2771649ba021c27e45d5fc0e0343e3384d04102de93dd162a06a -->
+<!-- source-sha256: b8bc7b1d0453d231f492b186d2026cef11477fb001fb4487ca6f1337c852af84 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -318,7 +318,7 @@ let row = master.transaction(async || Author::new().set_name("x")./*…*/.create
 `audit` setting([audit](../spec/dbspec.ko.md#audit))이 있는 테이블은 작업 단위를 audit 기록 테이블, 곧 setting이 `references`로 정한 테이블에 기록하는 트랜잭션 안에서만 쓴다. 두 곳이 기록의 값을 준다:
 
 - 연결 설정은 프로세스마다 한 번 `auditSource`를 받는다([설정](../spec/config.ko.md)). 현재 요청의 audit 값, 곧 계정과 요청 id처럼 audit 기록 테이블의 컬럼 이름에서 값으로 가는 map을 돌려주는 함수다. ORM은 자기 audit 값을 쓰지 않는다.
-- 트랜잭션의 `audit` 옵션은 이 변경의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `transaction`, `transaction_send`, `transaction_once`의 `.audit(pairs)`, TypeScript `{ audit: {...} }`). 빈 map은 source의 값만 기록한다.
+- 트랜잭션의 `audit` 옵션은 이 변경의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `Db::transaction`의 `TransactionOptions`의 `audit`, TypeScript `{ audit: {...} }`). 빈 map은 source의 값만 기록한다.
 
 ```go
 master, err := model.Connect(dsn, orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error) {

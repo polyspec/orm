@@ -1,5 +1,5 @@
-//! The Rust transaction forms (transaction_send and transaction_once) with an audit. These stay native (FCV-2): only Rust has
-//! these forms, and the audit behaviour that every runtime has is the recipe contracts/fixtures/audit_triggers/audit_triggers.json.
+//! `Db::transaction` of the Rust core with the audit values of its options. It stays native (FCV-2): only Rust takes the audit
+//! values in `TransactionOptions`, and the audit behaviour that every runtime has is the recipe contracts/fixtures/audit_triggers/audit_triggers.json.
 //! Audit record transactions (docs/spec/dbspec.md, "Audit"): a transaction inserts one audit record, built from the connection setting's audit source and its own audit values,
 //! before the callback, and the executor writes its primary key to the audit column of every audited row that the transaction inserts or updates.
 //! The rendered trigger copies each version to a history table. Run on SQLite,

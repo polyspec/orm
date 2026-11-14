@@ -1,5 +1,5 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: 82b53672d6eb626541f030d22c74fd39af4dce68dead319af42879f7534e62bc -->
+<!-- source-sha256: 497e5be720ff344694ca186da4bcecf42b27e2dfd2d3e5165b4bc243e4936676 -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](../spec/interfaces.ko.md), [기계 명세](../../contracts/interfaces.json), [생성 모델](../spec/interfaces-model.ko.md). 재현 명령과 검사 범위는 [검증 안내](../../tests/interfaces/README.ko.md)에 있다.
@@ -15,7 +15,7 @@
 | 엔진 선택과 연결 | `Db::connect(dsn, pool_size, Config)`가 DSN에서 MySQL·PostgreSQL·SQLite를 선택하고 등록된 set 없이 제한된 pool을 만든다. 생성된 `model::connect`가 부르는 `Db::connect_schema(dsn, &SCHEMA, pool_size, Config)`는 생성 모델의 set도 등록한다. |
 | 스키마 해시 검사 | 생성된 `Schema::new(manifest_text, manifest_hash)`가 내장 manifest text를 검증하며, 해시가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 거부한다. |
 | 스키마 설치와 검사 | `db.utils().schema().install(&model::SCHEMA)`가 set을 설치하고 데이터베이스를 확인한 뒤 연결에 등록하고, `db.utils().schema().register(&model::SCHEMA)`가 데이터베이스를 읽지 않고 set을 등록하며 `exists`, `installed`, `empty`가 선택한 데이터베이스를 검사한다. manifest의 감사 지시어는 감사 테이블·trigger와 함께 설치된다. |
-| 트랜잭션 격리 수준·읽기 전용·시간 제한·재시도·audit | `db.transaction(callback).isolation(Isolation::...).read_only().timeout_ms(ms).retry(count)`가 선언된 옵션을 적용하며 `retry(0)`은 콜백을 한 번 실행한다. `Db::transaction_once(callback)`는 콜백 오류를 보존하고 재시도하지 않는다. 세 transaction builder 모두 `audit(values)`로 `Config::audit_source`의 값으로 작업 단위의 audit 기록을 삽입한다. |
+| 트랜잭션 격리 수준·읽기 전용·시간 제한·재시도·audit | `db.transaction(callback, TransactionOptions { isolation, read_only, timeout_ms, retry, audit })`가 선언된 옵션을 적용하며 `retry: Some(0)`은 콜백을 한 번 실행한다. 실패한 콜백은 rollback 뒤 그 실패를 바꾸지 않고 돌려준다(CORE-25). `audit`은 그 값과 `Config::audit_source`의 값으로 작업 단위의 audit 기록을 삽입한다. `tx.savepoint(callback)`은 옵션을 받지 않는다(CORE-21). |
 | 취소 | 문장 또는 트랜잭션 Future를 폐기하면 그것이 checkout한 연결을 닫으므로, 그 슬롯을 재사용하기 전에 서버 작업이 취소되거나 롤백된다. 드라이버 취소는 `CANCELED`로 대응한다. |
 | 암호화 열 | `Config::aes_version`, `Config::aes_keys`, `Config::blind_index_key`, `db.utils().aes()`가 생성된 암호화 열의 키 검증·암호화 쓰기·blind index·상태·회전을 제공한다. |
 

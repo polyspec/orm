@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 25c40a0537451080558328faddb323938bc7ffe4841a0d2404e36ced9944dae5 -->
+<!-- source-sha256: 390651dad4dedb215232474832d50719acaf956ca41e90d11d3fb6358ca579c4 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -160,21 +160,21 @@ recipe `conformance_verification`의 case `terminal_by`는 모든 runtime client
 ## 6. 연결·트랜잭션·유틸리티 — IF-13 ~ IF-17
 
 - **INT-72** `connection.transaction(fn, options)`은 콜백을 하나의 트랜잭션에서 실행한다. begin, commit, rollback, 실행기는 비공개다. 콜백 오류나 예외는 트랜잭션을 되돌리고, 그렇지 않으면 커밋하고 콜백 결과를 반환한다. 시작이 실패한 트랜잭션은 그 뒤 connection을 잡고 있지 않다: BEGIN 뒤의 시작 단계가 실패하면 열린 트랜잭션을 되돌리고 connection을 pool에 돌려주며, BEGIN 자체가 실패하면 session 상태를 알 수 없는 connection을 돌려주지 않고 닫는다. named lock, user variable, pragma는 pool connection에서 `COMMIT`과 `ROLLBACK` 뒤에도 남으므로, 클라이언트는 트랜잭션이 끝나기 전에 MySQL `lock` lock을 풀고 `setLocal`의 MySQL 값을 지우고 SQLite `query_only`와 `read_uncommitted` mode를 되돌린다. connection은 모든 정리 단계와 `COMMIT`이나 `ROLLBACK`이 성공했을 때만 pool에 돌아간다. 한 단계라도 실패하면 그 세션의 상태를 알 수 없으므로 클라이언트는 connection을 pool에 돌려주지 않고 닫고, 서버는 세션과 함께 그 트랜잭션, lock, 값을 종료한다. 따라서 pool의 connection은 깨끗하거나 버려진다. TypeScript SQLite 드라이버는 연결 하나를 유지하며 그 연결은 닫을 수 없다. 모든 정리 단계를 실행하고 실패한 단계를 모두 보고한다. 1을 돌려주지 않은 `RELEASE_LOCK`은 `CONFIG` `lock <key> was not held at transaction end`다. 커밋할 때 이 정리가 실패하면 트랜잭션을 되돌리고 정리 오류를 반환한다. 콜백, begin, 커밋 정리가 실패하고 정리나 rollback도 실패하면 오류는 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<transaction end error>)`다. 이 오류는 원인과 트랜잭션 종료 오류를 유지하며([protocol](protocol.ko.md)) 재시도하지 않는다. panic한 Go나 Rust 콜백과 `runtime.Goexit`로 떠난 Go 콜백은 트랜잭션을 되돌리고 panic을 이어 간다. 그 rollback이 실패하면 panic 값은 같은 형식의 `ROLLBACK` 오류다. server나 driver가 connection을 닫아서, 예를 들어 취소된 statement나 끝난 session 때문에 실패한 rollback도 실패한 rollback이며 같은 형식으로 보고한다. server가 session과 함께 트랜잭션을 끝냈어도 그렇다. 실패한 트랜잭션을 connection을 닫아 끝내는 클라이언트는 원인만 보고한다. context가 취소된 Go 트랜잭션은 정리 statement를 실행할 수 없으므로 connection을 pool에 돌려주지 않고 닫으며 `CANCELED`만 보고한다. server에서 session과 함께 트랜잭션, named lock, user variable, SQLite mode가 끝난다. 트랜잭션이 끝나기 전에 drop된 Rust 트랜잭션 future는 TLS에서도 connection을 바로 닫으므로, server에서 session과 함께 트랜잭션과 lock이 끝난다. 실패한 `COMMIT`은 자기 code로 보고한다. 그 `COMMIT`이 열어 둔 트랜잭션은 되돌리며, 그 rollback은 실패하지 않으면 아무것도 보고하지 않는다. [protocol 3.1](protocol.ko.md#_3-1-test-faults)의 rollback fault는 실패한 callback 뒤의 rollback에 속한다. 실패한 `BEGIN`이나 `COMMIT`은 fault를 설정된 채로 둔다.
-- **INT-72a** `polyspec-orm` crate의 `transaction_send`와 `transaction_once` form은 rollback fault를 INT-72가 `transaction`에 말하는 대로 보고하고 소비한다.
+- **INT-72a** `polyspec-orm` crate의 `Db::transaction`은 rollback fault를 callback의 실패를 담은 CORE-25의 kind `rollback_failed`로 보고하고 소비한다.
 
 - **INT-40** `isolation`: `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`
 - **INT-41** `readOnly`: 불리언
 - **INT-42** `timeoutMs`: 양의 정수이며 `0`은 생략과 같다. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환
 - **INT-43** `retry`: 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다
 - **INT-44** `audit`: 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 감사 대상 테이블에 처음 쓰기 직전에, 시도마다, 연결 audit source의 값에 이 값을 더해(값이 이긴다) audit 기록 테이블에 삽입하므로 감사 대상 row를 쓰지 않는 트랜잭션은 삽입하지 않고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](../operations/usage.ko.md#audited-writes))
-- **INT-44a** Rust는 트랜잭션의 각 형태 `transaction`, `transaction_send`, `transaction_once`에서 `audit`을 받고, 중첩된 `transaction_once`의 `audit`은 `CONFIG`로 거부한다.
+- **INT-44a** `polyspec-orm` crate는 하나뿐인 트랜잭션 형태인 `Db::transaction`의 `TransactionOptions`에서 `audit`을 받는다(CORE-20). `Tx::savepoint`는 옵션을 받지 않으므로 savepoint는 그 트랜잭션의 audit을 유지한다(CORE-21).
 - **INT-44b** `polyspec/orm-php-ext` 패키지의 PHP 확장은 audit 호출 `transaction`, `get`, `update`, `delete`, `restore`를 native 클래스의 내부 메서드로 실행한다.
 
 연결 설정은 현재 요청의 audit 값을 돌려주는 함수 `auditSource`를 받는다([설정](config.ko.md)). source 없는 연결에서 `audit`을 가진 트랜잭션, audit 기록 테이블의 컬럼이 아닌 값, `audit` 없는 감사 대상 쓰기는 `CONFIG`로 실패하고, source의 오류는 트랜잭션을 실패시킨다. 중첩 트랜잭션은 바깥 audit을 유지하며 `audit`을 받지 않는다.
 
 - **INT-45** 실행 흐름마다 활성 트랜잭션 스택을 유지한다. 실행 흐름은 Go의 goroutine, PHP의 요청, TypeScript의 비동기 컨텍스트, Rust의 task다. `connect` 없는 모델은 가장 안쪽 트랜잭션을 사용한다.
 - **INT-46** 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다. 콜백 오류, panic, Go `runtime.Goexit` 뒤에는 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 모두 실행하고, 둘 중 하나가 실패하면 오류나 panic 값은 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`다. 성공한 콜백 뒤에 실패한 `RELEASE SAVEPOINT`는 그 오류를 반환한다. 취소된 트랜잭션 context로 이미 끝난 트랜잭션의 savepoint는 트랜잭션과 함께 끝났다.
-- **INT-46a** `polyspec-orm` crate의 `transaction_send` 형식은 활성 트랜잭션 안에서 INT-46과 같은 savepoint를 만든다.
+- **INT-46a** `polyspec-orm` crate에는 중첩 트랜잭션이 없다: `Tx::savepoint`가 그 handle의 트랜잭션 안에 INT-46의 savepoint를 만든다(CORE-21).
 - **INT-47** 하나의 트랜잭션 연결을 동시에 사용하면 오류를 반환한다. 콜백 안에서 시작한 task나 goroutine에는 활성 트랜잭션이 없다.
 - **INT-48** `transactionConflict(message)`(Go: `orm.TransactionConflict`, Python과 Rust: `transaction_conflict`)는 재시도 대상 `DEADLOCK` 오류를 만든다.
 - **INT-49** 행 잠금 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 잠금 절을 추가하고 SQLite는 ORM 트랜잭션 범위의 잠금 행을 사용한다. `*_nowait` 요청이 잠금을 즉시 얻지 못하면 모든 adapter가 `LOCK_NOT_AVAILABLE`을 반환한다.

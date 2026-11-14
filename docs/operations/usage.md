@@ -317,7 +317,7 @@ let row = master.transaction(async || Author::new().set_name("x")./*…*/.create
 A table with an `audit` setting ([audit](../spec/dbspec.md#audit)) is written only inside a transaction that records its unit of work in the audit record table, the table that the setting names with `references`. Two places give the record its values:
 
 - The connection configuration takes `auditSource` once per process ([configuration](../spec/config.md)): a function that returns the audit values of the current request, a map from column name to value of the audit record table, such as the account and the request id. The ORM writes no audit value of its own.
-- The `audit` option of a transaction holds the values of this change, a map from column name to value (Go `orm.Audit(map[string]any)`, PHP `audit:` array, Rust `.audit(pairs)` on `transaction`, `transaction_send` and `transaction_once`, TypeScript `{ audit: {...} }`). An empty map records the source's values alone.
+- The `audit` option of a transaction holds the values of this change, a map from column name to value (Go `orm.Audit(map[string]any)`, PHP `audit:` array, Rust `audit` of the `TransactionOptions` of `Db::transaction`, TypeScript `{ audit: {...} }`). An empty map records the source's values alone.
 
 ```go
 master, err := model.Connect(dsn, orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error) {

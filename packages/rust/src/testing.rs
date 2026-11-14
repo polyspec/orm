@@ -31,8 +31,8 @@ pub fn compile_core_request(core: &crate::Core, kind: &str, dialect: crate::Dial
 
 /// Sets a test fault on the connection of `db` and all its clones. After a callback fails,
 /// the next transaction's rollback, once run, reports a `FAULT` error as the rollback error
-/// so the transaction returns an `Error::Rollback` carrying the callback error and the fault
-/// (or `TransactionOnceError::Rollback`). The fault remains until such a rollback
+/// so the transaction returns an error of the kind `rollback_failed` carrying the callback error and the fault
+/// (CORE-25). The fault remains until such a rollback
 /// consumes it.
 pub fn fail_next_rollback(db: &Db) {
     db.inner.rollback_fault.store(true, Ordering::Release);
