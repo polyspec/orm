@@ -101,6 +101,16 @@ fn step_guard_names_its_limits_in_seconds() {
     assert_eq!(budget_text(step_budget(1)), "step budget 60.25s exceeded");
 }
 
+/// No clock ends a case (T474): a case started without a deadline stays open while the paused clock of its runtime moves a week,
+/// and ends when its work ends, so the result of a case does not depend on the time that the machine gives its work.
+#[tokio::main(flavor = "current_thread", start_paused = true)]
+async fn no_clock_ends_a_case() {
+    let case = start("form/long");
+    tokio::time::sleep(Duration::from_secs(7 * 24 * 3600)).await;
+    case.step("a week of the clock passed");
+    drop(case);
+}
+
 /// Runs this test binary with the fixture name and returns the exit status and output (stdout and stderr). Stages are visible with `--nocapture`.
 fn run_fixture(name: &str, filter: &str) -> (Option<i32>, String) {
     let output = Command::new(std::env::current_exe().expect("test binary"))
@@ -156,5 +166,5 @@ fn report_form() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("form": fixture_pass, fixture_fail, fixture_inner, fixture_async, fixture_deadline, report_form, step_guard_ends_a_stalled_case, step_guard_ends_a_case_past_its_budget, step_guard_names_its_limits_in_seconds)
+    polyspec_orm_testcase::native_trials!("form": fixture_pass, fixture_fail, fixture_inner, fixture_async, fixture_deadline, report_form, step_guard_ends_a_stalled_case, step_guard_ends_a_case_past_its_budget, step_guard_names_its_limits_in_seconds, no_clock_ends_a_case)
 }

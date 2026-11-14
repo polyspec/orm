@@ -12,7 +12,7 @@ doctest = false
 
 [dependencies]
 polyspec-orm-testcase = { path = "../.." }
-tokio = { version = "1", features = ["rt", "macros", "time"] }
+tokio = { version = "1", features = ["rt", "macros", "time", "test-util"] }
 
 [lints]
 workspace = true
