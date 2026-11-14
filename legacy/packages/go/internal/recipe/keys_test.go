@@ -37,7 +37,7 @@ func recipeWith(top, steps string) string {
 // accepts a recipe whose keys the table holds.
 // Requirements: FCV-4.
 func TestCheckKeysAcceptsAndRefusesByName(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	const file = `"fixture":"none",`
 	for _, tc := range []struct {
 		name   string
@@ -71,7 +71,7 @@ func TestCheckKeysAcceptsAndRefusesByName(t *testing.T) {
 // its ops.
 // Requirements: FCV-4.
 func TestLoadKeyTableNamesTheSchemaTable(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	table, err := loadKeyTable("recipe.json", testSchema)
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +84,7 @@ func TestLoadKeyTableNamesTheSchemaTable(t *testing.T) {
 // TestConnectDSN checks the DSN that model.connect opens (FCV-4, CFG-10): "case" and an absent DSN are the case database,
 // "case-socket" is the MySQL case database through the socket of the environment, and other text is opened as written.
 func TestConnectDSN(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	const caseDSN = "mysql://root@127.0.0.1:3306/orm_test"
 	t.Run("absent DSN is the case database", func(t *testing.T) {
 		got, err := connectDSN("", "mysql", caseDSN)
@@ -136,7 +136,7 @@ func TestConnectDSN(t *testing.T) {
 // wrong model cannot pass as read.
 // Requirements: FCV-4.
 func TestChainFromRefusesAnotherModel(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	c := &databaseContext{bound: map[string]bound{"chain": {api: orm.NewCore(&orm.Entity{Name: "held"})}}}
 	s := chainStep{From: "chain", chainQuery: chainQuery{Model: "Other", reads: newStepReads([]byte(`{"op":"model.query","from":"chain","model":"Other"}`))}}
 	_, err := chainBuilt(s, nil, c)
@@ -149,7 +149,7 @@ func TestChainFromRefusesAnotherModel(t *testing.T) {
 // read, so an ignored field such as page or where cannot pass.
 // Requirements: FCV-4.
 func TestStepWithExpectFailsAnUnreadKey(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	raw := []byte(`{"op":"model.query","page":true}`)
 	s := databaseStep{Op: "model.query", Expect: map[string]json.RawMessage{"sqlite": json.RawMessage(`{"rows":[]}`)}, reads: newStepReads(raw)}
 	c := &databaseContext{database: "sqlite", bound: map[string]bound{}}
@@ -166,7 +166,7 @@ func TestStepWithExpectFailsAnUnreadKey(t *testing.T) {
 // annotation aside, and that an outcome key of an expected error that no compare takes does too.
 // Requirements: FCV-4.
 func TestStepReadsFailsAnUnreadKeyByName(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	reads := newStepReads([]byte(`{"op":"dsn.connect","dsn":"case","reason":"for the reader","bogus":1}`))
 	reads.mark("dsn")
 	err := reads.check()

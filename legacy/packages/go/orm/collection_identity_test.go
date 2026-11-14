@@ -82,7 +82,7 @@ func compositeKeyFromFixture(t *testing.T, name, encoded string, values []any) K
 
 func TestCompositeCollectionKeyTypedComponentsFromFixture(t *testing.T) {
 	// Requirements: PRT-35.
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	fixture := loadCollectionKeys(t)
 	seen := map[string]Key{}
 	for _, entry := range fixture.Composites {
@@ -107,7 +107,7 @@ func TestCompositeCollectionKeyTypedComponentsFromFixture(t *testing.T) {
 }
 
 func TestNullableCompositeRowHasNoCollectionKey(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	fixture := loadCollectionKeys(t)
 	row := make([]any, len(fixture.NullableComposite))
 	for i, value := range fixture.NullableComposite {

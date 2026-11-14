@@ -17,7 +17,7 @@ import (
 // TestCatalogPagePreparedColumnsDifferFromTheDescriptor holds what no server can answer (INT-121): a statement names its
 // columns in the select list, and a server answers with those names.
 func TestCatalogPagePreparedColumnsDifferFromTheDescriptor(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	columns := []CatalogColumn{{Name: "id", NativeType: "INTEGER"}}
 	if err := catalogSameNames([]string{"renamed"}, columns); ErrorCode(err) != catalogCodePageChanged {
 		t.Fatalf("prepared column name mismatch error = %v, want %s", err, catalogCodePageChanged)
@@ -118,7 +118,7 @@ func catalogAnswering(t *testing.T, text string) *CatalogConnection {
 // TestCatalogMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid holds a quoted MariaDB default that is not one whole
 // literal, which no server writes, so the recipes cannot hold it (FCV-2).
 func TestCatalogMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, text := range []string{"'a' 'b'", "'unterminated", "'a'x"} {
 		_, err := catalogAnswering(t, text).DescribeTable(context.Background(), CatalogTableRef{Namespace: "app", Name: "defaults"})
 		want := "TABLE_METADATA_INVALID: column \"broken\": default " + text + " is not one string literal"

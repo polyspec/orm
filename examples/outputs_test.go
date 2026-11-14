@@ -23,7 +23,7 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 	for name, rustVar := range examples {
 		t.Run(name, func(t *testing.T) {
 			// One example builds the Go program and runs the three programs once each.
-			c := testcase.Start(t, testcase.Process)
+			c := testcase.Start(t)
 			rust := os.Getenv(rustVar)
 			if rust == "" {
 				t.Fatalf("%s is required; it names the built Rust %s program; run make example-check, which builds it", rustVar, name)

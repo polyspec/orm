@@ -11,7 +11,7 @@ import (
 
 // Requirements: INT-72.
 func TestTransactionFailureRollback(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "transaction-failure.sqlite"))
 	inject(t, injectedFailure{rollback: true})
@@ -21,7 +21,7 @@ func TestTransactionFailureRollback(t *testing.T) {
 
 // Requirements: DIA-181, PLN-17.
 func TestTransactionFailureSavepointEnd(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "savepoint-failure.sqlite"))
 	nested := func() error {

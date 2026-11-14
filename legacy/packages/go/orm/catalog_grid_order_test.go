@@ -17,7 +17,7 @@ import (
 // the wrapper rests on the query flattener of SQLite, so the test asserts the plan: the CTE g must not be materialized or run
 // as a co-routine.
 func TestCoverageCatalogGridOrder(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	dsn := testdb.New(t, "sqlite")
 	raw, err := sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://"))
 	if err != nil {

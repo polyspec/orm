@@ -13,7 +13,7 @@ import (
 
 // Requirements: INT-53.
 func TestBackendWaitingForLockReportsPostgresWaiter(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	s := fixtureSchema(t, "clock")
 	dsn := newDatabase(t, "postgres")
 	db := connectInstalled(t, dsn, s)
@@ -75,23 +75,14 @@ func TestBackendWaitingForLockReportsPostgresWaiter(t *testing.T) {
 	}, orm.Retry(0))
 	if err != nil {
 		if childStarted {
-			select {
-			case <-childDone:
-			case <-time.After(10 * time.Second):
-				t.Errorf("waiting child did not stop after the parent transaction rolled back: %v", err)
-			}
+			<-childDone
 		}
 		t.Fatal(err)
 	}
 	if !waiting {
 		t.Fatal("PostgreSQL did not report the backend waiting for the row lock")
 	}
-	select {
-	case err := <-childDone:
-		if err != nil {
-			t.Fatalf("waiting child update: %v", err)
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("waiting child did not finish after the parent transaction released the row")
+	if err := <-childDone; err != nil {
+		t.Fatalf("waiting child update: %v", err)
 	}
 }

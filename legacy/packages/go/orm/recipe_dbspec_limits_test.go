@@ -10,6 +10,6 @@ import (
 // TestRecipeDbspecLimitsNone runs The limit and stress recipe, tests/dbspec/limits.json, without a database (FCV-3, FCV-4).
 // Requirements: DBS-123, DBS-144, DBS-151, DBS-170.
 func TestRecipeDbspecLimitsNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/limits.json"), recipe.None)
 }

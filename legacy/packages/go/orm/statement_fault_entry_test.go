@@ -12,7 +12,7 @@ import (
 // FailNextStatement is in fault_ormtest.go, so that file must be excluded from builds without the tag
 // and included in builds with it.
 func TestStatementFaultEntry(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	checkOrmtestFile(t, "fault_ormtest.go")
 }
 

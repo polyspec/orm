@@ -18,7 +18,7 @@ func softDeleteManifest(t *testing.T) *runtimemodel.Model {
 }
 
 func TestSoftDeleteFiltersReads(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	p := &Planner{M: softDeleteManifest(t), D: dialect.SQLite{}}
 	plan, err := p.Compile(&ir.Request{Kind: "all", Query: ir.Query{Entity: "account"}})
 	if err != nil {
@@ -30,7 +30,7 @@ func TestSoftDeleteFiltersReads(t *testing.T) {
 }
 
 func TestPaginatePlanOrdersCountBeforeRelations(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m := testModel(t, "dbspec 1 page\n\ntable parent {\n  id i64\n  primary key (id)\n}\n\ntable child {\n  id i64\n  parent_id i64\n  primary key (id)\n  index ix_child_parent (parent_id)\n  foreign key fk_child_parent (parent_id) references parent (id) on delete restrict on update restrict\n}\n")
 	p, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(&ir.Request{
 		Kind: "paginate",
@@ -66,7 +66,7 @@ func stepRoles(steps []plan.Step) []string {
 }
 
 func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	p := &Planner{M: softDeleteManifest(t), D: dialect.SQLite{}}
 	steps := compileAccountDelete(t, p)
 	sql := steps[0].SQL
@@ -81,7 +81,7 @@ func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 // TestSoftDeleteClockPrecision checks that soft delete uses the database clock at the fractional digits
 // declared on the column.
 func TestSoftDeleteClockPrecision(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, tc := range []struct {
 		column  string
 		dialect dialect.Dialect
@@ -104,7 +104,7 @@ func TestSoftDeleteClockPrecision(t *testing.T) {
 // The executor truncates the clock to those digits, so that
 // it satisfies SQLite's datetime(p) CHECK.
 func TestSoftDeleteClockSlotPrecision(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, precision := range []int{0, 3, 6} {
 		m := testModel(t, fmt.Sprintf("dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at datetime(%d) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n", precision))
 		steps := compileAccountDelete(t, (&Planner{M: m, D: dialect.SQLite{}}))

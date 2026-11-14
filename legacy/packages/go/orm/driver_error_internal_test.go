@@ -22,7 +22,7 @@ func mapCanceledDriverError() error {
 }
 
 func TestMapDriverErrorContextPreservesBothCauses(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	mapped := mapCanceledDriverError()
 	if !errors.Is(mapped, errServerCanceled) || !errors.Is(mapped, context.Canceled) {
 		t.Fatalf("mapped error does not preserve both causes: %#v", mapped)

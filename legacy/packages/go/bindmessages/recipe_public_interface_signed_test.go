@@ -15,7 +15,7 @@ import (
 // no statement can be sent.
 // Requirements: INT-159.
 func TestRecipePublicInterfaceSignedNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("contracts/fixtures/public_interface/public_interface_signed.json"), recipe.None, recipe.WithMarkdownBuilder(func(t *testing.T, calls []string) (string, string) {
 		t.Helper()
 		model := bindmodel.Slots()

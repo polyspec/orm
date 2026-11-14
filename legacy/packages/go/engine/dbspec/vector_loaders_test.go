@@ -3,7 +3,6 @@ package dbspec
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
@@ -12,7 +11,7 @@ import (
 // rejects sections and fields that are missing or of the wrong type with a "<file>: <location> <problem>" error;
 // the test checks that it does.
 func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	decoders := map[string]func(vectorReader, map[string]any) error{
 		"plan-cases.json": decodePlanVectors,
 	}
@@ -25,7 +24,7 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	for _, m := range mutations {
 		t.Run(m.file+":"+m.location, func(t *testing.T) {
 			r, object := readVectorFile(t, m.file)
-			runTimed(t, m.file+":"+m.location, 5*time.Second, func() error {
+			runTimed(t, m.file+":"+m.location, func() error {
 				m.change(object)
 				want := r.path + ": " + m.location + " " + m.problem
 				err := decoders[m.file](r, object)

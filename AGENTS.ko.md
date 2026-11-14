@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 20a69da06863cc399ccde0ac9431244b1edfde3dcfc3de335a274702064b57ac -->
+<!-- source-sha256: 08830f5fc23489e942ff26d64047896648387022e9c0772cd6a0fb3c8f45208f -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -203,8 +203,8 @@
   때마다 테스트를 기계적으로 다시 실행하지 않는다. 짧은 검증 단위인 모든 테스트 case는 자신의
   실행·완료·성공·실패와 경과 시간을 출력한다. 어떤 시계도 테스트 case나 테스트의 process를 끝내지
   않는다. 부하가 큰 machine은 같은 일을 더 느리게 실행하며, 그 결과가 부하에 따라 바뀌면 안 되기 때문이다. case는 그 일이 끝날 때
-  끝나고, 끝나지 않는 실행은 그 실행과 함께(SIGINT나 SIGTERM) 멈춘다. TypeScript harness `tests/testcase.mts`에는 기한이 없고,
-  Go, Python, Rust, PHP harness에 남은 기한은 T474가 없앤다. 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
+  끝나고, 끝나지 않는 실행은 그 실행과 함께(SIGINT나 SIGTERM) 멈춘다. TypeScript harness `tests/testcase.mts`와 Go harness
+  `legacy/packages/go/testcase`에는 기한이 없고, Python, Rust, PHP harness에 남은 기한은 T474가 없앤다. 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
   `cargo test --no-run`, 전체 suite, server나 도구 실행)은 타임아웃 대신 상세 단계 로그를 두고,
   출력 없음 기한을 포함해 어떤 기한도 없이 과정과 결과를 관측할 수 있게 한다. 그 성공과 실패는
   시계가 아니라 관측한 결과와 오류로 판정한다. 테스트가 자기 계산에 두는 시간 제한은 그 계산을 실행한 thread나 process의 CPU 시간을

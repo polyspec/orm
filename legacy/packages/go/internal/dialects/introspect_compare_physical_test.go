@@ -27,17 +27,6 @@ import (
 // "Introspection"). Exceeding it only warns and does not fail the test (AGENTS.md).
 const introspectReference = 5 * time.Second
 
-// compareRunnerDeadline is the deadline of one introspection runner process. If the runner is `go run`, it includes
-// compile, and a runner that exceeds the reference still waits to the end and reports that time.
-const compareRunnerDeadline = 5 * time.Minute
-
-// compareDeadline is the case deadline for one database. It covers applying the 22000 statements of the 2000-table document
-// separately and running the four runners in turn. The longest, MySQL, takes 6-7.7 minutes on
-// the machine (T27 measurement: 5m57s on a shared server, 7m44s on a separate server under load).
-// MySQL DDL is a database matter where each statement gets slower as tables grow, and even lowering the durability setting
-// reduced it by only 14%. That is about 1.3 times the measured value.
-const compareDeadline = 10 * time.Minute
-
 // applyProgressEvery is how many statements are applied between progress lines.
 const applyProgressEvery = 1000
 
@@ -84,7 +73,7 @@ func TestIntrospectCompare(t *testing.T) {
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(dialect, func(t *testing.T) {
-			c := testcase.Start(t, compareDeadline)
+			c := testcase.Start(t)
 			uri, cleanup := compareDatabase(t, dialect, name, mysqlDSN, postgresDSN)
 			defer cleanup()
 			statements, diagnostics := dbspec.Render([]*dbspec.Document{document}, dbspec.Dialect(dialect))
@@ -97,8 +86,7 @@ func TestIntrospectCompare(t *testing.T) {
 			var reference string
 			for _, r := range runners {
 				c.Step("running the %s runner", r.client)
-				ctx, cancel := context.WithTimeout(c.Context(), compareRunnerDeadline)
-				cmd := exec.CommandContext(ctx, r.args[0], append(r.args[1:], dialect, uri)...)
+				cmd := exec.CommandContext(c.Context(), r.args[0], append(r.args[1:], dialect, uri)...)
 				cmd.Dir = root
 				if len(r.env) > 0 {
 					cmd.Env = clientRunnerEnvironment(os.Environ(), r.env)
@@ -106,7 +94,6 @@ func TestIntrospectCompare(t *testing.T) {
 				var stdout, stderr bytes.Buffer
 				cmd.Stdout, cmd.Stderr = &stdout, &stderr
 				err := cmd.Run()
-				cancel()
 				if err != nil {
 					t.Fatalf("%s: %v\n%s", r.client, err, stderr.String())
 				}
@@ -132,7 +119,7 @@ func TestIntrospectCompare(t *testing.T) {
 }
 
 func TestIntrospectCompareRunnerEnvironment(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	got := clientRunnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, map[string]string{"ORM_PHP_MODE": "extension"})
 	if want := []string{"PATH=/bin", "KEEP=value", "ORM_PHP_MODE=extension"}; !sameEnvironment(got, want) {
 		t.Fatalf("runner environment = %q, want %q", got, want)

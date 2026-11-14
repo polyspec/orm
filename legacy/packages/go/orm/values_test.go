@@ -12,7 +12,7 @@ import (
 // (docs/spec/dsl.md section 10): a value function binds its arguments as parameters, and a column function
 // applies to the compared column and binds none.
 func TestFuncIR(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	params := []any{"preceding"}
 	got := SecondsAgo(30).irFunc(func(v any) int {
 		params = append(params, v)

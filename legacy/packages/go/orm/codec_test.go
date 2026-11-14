@@ -15,7 +15,7 @@ import (
 
 func TestOrderedJSONCodecTakesGoJSONInputs(t *testing.T) {
 	// The test of COD-17, COD-23 (docs/spec).
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if encoded, err := Encode([]string{"ordered_json"}, Value(jsontext.Value(`{"object":{},"array":[]}`))); err != nil || encoded != `{"object":{},"array":[]}` {
 		t.Fatalf("jsontext.Value must be parsed as ordered JSON: %v (%v)", encoded, err)
 	}
@@ -25,7 +25,7 @@ func TestOrderedJSONCodecTakesGoJSONInputs(t *testing.T) {
 }
 
 func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	type value struct {
 		ID      string         `json:"id"`
 		Empty   string         `json:"empty,omitempty"`
@@ -49,7 +49,7 @@ func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
 }
 
 func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	type value struct {
 		Config json.RawMessage `json:"config"`
 	}
@@ -67,7 +67,7 @@ func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
 // than 256 levels is, and a text at the limit is taken.
 func TestOrderedJSONCodecRefusesJSONTextPastTheNestingLimit(t *testing.T) {
 	// The test of COD-70 (docs/spec).
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	nested := func(levels int) []byte { return []byte(strings.Repeat("[", levels) + strings.Repeat("]", levels)) }
 	const refused = "CODEC_ENCODE: json: value nesting exceeds 256 levels"
 	for _, tc := range []struct {
@@ -95,7 +95,7 @@ func TestOrderedJSONCodecRefusesJSONTextPastTheNestingLimit(t *testing.T) {
 
 func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 	// The test of COD-22 (docs/spec).
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	type value struct {
 		Body customJSONValue `json:"body"`
 	}
@@ -110,7 +110,7 @@ func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 }
 
 func TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	type value struct {
 		Body    string     `json:"body"`
 		Revoked *time.Time `json:"revokedAt"`
@@ -126,7 +126,7 @@ func TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull(t *testing.T) {
 }
 
 func TestOrderedJSONCodecFlattensAnonymousStruct(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	type Details struct {
 		ID string `json:"id"`
 	}

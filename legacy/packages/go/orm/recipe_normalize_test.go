@@ -11,6 +11,6 @@ import (
 // Requirements: ORES-15, ORES-17, ORES-19.
 // Requirements: ORES-13.
 func TestRecipeNormalizeNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/normalize.json"), recipe.None)
 }

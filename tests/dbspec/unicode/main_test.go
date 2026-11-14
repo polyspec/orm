@@ -31,7 +31,7 @@ func goWord() []byte {
 
 // TestCommittedTablesAreGenerated checks that the three generated files match the content produced from Go's current table.
 func TestCommittedTablesAreGenerated(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	spans := wordSpans()
 	for _, o := range outputs {
 		got, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(o.path)))
@@ -46,7 +46,7 @@ func TestCommittedTablesAreGenerated(t *testing.T) {
 
 // TestSpansMatchGoForEveryCodePoint checks that binary search over the ranges matches Go's classification at every code point.
 func TestSpansMatchGoForEveryCodePoint(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	spans := wordSpans()
 	for r := rune(0); r <= lastCodePoint; r++ {
 		i := sort.Search(len(spans), func(i int) bool { return spans[i].hi >= r })
@@ -60,7 +60,7 @@ func TestSpansMatchGoForEveryCodePoint(t *testing.T) {
 // TestCTableAgreesWithGo compares the C extension's unicode_word_rune with Go at every code point. The C driver is
 // built with cc and run in a temporary directory of this test.
 func TestCTableAgreesWithGo(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	dir := t.TempDir()
 	driver := filepath.Join(dir, "driver.c")
 	src := "#include <stdio.h>\n#include \"unicode_word.h\"\n" +
@@ -85,7 +85,7 @@ func TestCTableAgreesWithGo(t *testing.T) {
 // TestPythonTableAgreesWithGo compares the Python module's is_word_rune_code_point with Go at every code point.
 // The Python interpreter is ORM_PYTHON if set, otherwise python3 from PATH.
 func TestPythonTableAgreesWithGo(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	python := os.Getenv("ORM_PYTHON")
 	if python == "" {
 		python = "python3"

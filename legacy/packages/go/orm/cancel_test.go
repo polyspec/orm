@@ -29,13 +29,13 @@ import (
 // mariadb-recipes-check/go runs.
 // Requirements: CFG-9.
 func TestWithContextCancels(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	withContextCancels(t, "sqlite", "mysql", "postgres")
 }
 
 // Requirements: CFG-9.
 func TestWithContextCancelsMariadb(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	withContextCancels(t, "mariadb")
 }
 
@@ -152,13 +152,13 @@ func mysqlFamily(driver string) bool { return driver == "mysql" || driver == "ma
 // TestWithContextCancelsTransactionMariadb is the case on MariaDB (DIA-200).
 // Requirements: INT-67.
 func TestWithContextCancelsTransaction(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	withContextCancelsTransaction(t, "sqlite", "mysql", "postgres")
 }
 
 // Requirements: INT-67.
 func TestWithContextCancelsTransactionMariadb(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	withContextCancelsTransaction(t, "mariadb")
 }
 
@@ -199,12 +199,12 @@ func withContextCancelsTransaction(t *testing.T, drivers ...string) {
 // reports CANCELED. TestWithContextCancelsInsideTransactionMariadb is the case on
 // MariaDB (DIA-200).
 func TestWithContextCancelsInsideTransaction(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	withContextCancelsInsideTransaction(t, "mysql", "postgres")
 }
 
 func TestWithContextCancelsInsideTransactionMariadb(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	withContextCancelsInsideTransaction(t, "mariadb")
 }
 
@@ -302,7 +302,7 @@ func withContextCancelsInsideTransaction(t *testing.T, drivers ...string) {
 // TestRootIdentifiesTheConnection checks that handles derived from one
 // connection report the same connection, so callers can compare them.
 func TestRootIdentifiesTheConnection(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	s := fixtureSchema(t, "zone")
 	db := connectSchemaDB(t, "sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), s)
 	defer testcase.Close(t, db)

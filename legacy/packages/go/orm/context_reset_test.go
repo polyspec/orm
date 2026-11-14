@@ -15,7 +15,7 @@ import (
 // hiding the failure of (mysql.context.user_variable_session_scope) would leave the value
 // on the pool connection.
 func TestTransactionReportsFailedLocalReset(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers")

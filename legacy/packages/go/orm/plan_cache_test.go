@@ -22,7 +22,7 @@ func planCacheIdentityLoadFixture(t *testing.T) (*runtimemodel.Model, *Schema) {
 }
 
 func TestPadInRepeatsTheLastCompositeTuple(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	rows := [][]any{{int64(990004), int64(1)}, {int64(990004), int64(2)}, {int64(990004), int64(3)}}
 	got := padIn(rows)
 	want := [][]any{{int64(990004), int64(1)}, {int64(990004), int64(2)}, {int64(990004), int64(3)}, {int64(990004), int64(3)}}
@@ -40,7 +40,7 @@ func TestPadInRepeatsTheLastCompositeTuple(t *testing.T) {
 // of buckets (1, 2, 4 ... 512: ten), not one per length.
 // Requirements: CPX-4.
 func TestPlanCacheBoundedByInListShape(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m, err := runtimemodel.LoadFiles(testcase.LegacyPath("contracts/fixtures/identity_load.dbs"))
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestPlanCacheBoundedByInListShape(t *testing.T) {
 // parameters follow the walk, and an index past the parameters is IR_INVALID.
 // Requirements: CPX-4.
 func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	in := func(ps ...int) *request {
 		params := make([]any, 0, len(ps)+1)
 		for i := range ps {
@@ -121,7 +121,7 @@ func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 
 // Requirements: PRT-78; T236.
 func TestPlanCachePagedReadBindsPageValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m, schema := planCacheIdentityLoadFixture(t)
 	for _, driver := range []string{"mysql", "postgres", "sqlite"} {
 		eng, err := engine.New(m, driver)

@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
-	"fmt"
 	"os"
 	"slices"
 	"strconv"
@@ -15,8 +13,6 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// probeDeadline bounds one probe, including its DDL and catalog queries.
-const probeDeadline = 30 * time.Second
 
 // uniqueToken returns a token that names a physical test run: the process id and
 // a random value, so that the names do not overlap with another run at the same time.
@@ -63,9 +59,7 @@ func runDDLSteps(e *Env, db string, steps []ddlStep) {
 // run, named by run; the servers are closed when the test ends.
 func openTestServers(t *testing.T, mysqlDSN, postgresDSN, run string) *Servers {
 	t.Helper()
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), run)
-	cancel()
+	servers, err := OpenServers(context.Background(), mysqlDSN, postgresDSN, t.TempDir(), run)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,8 +71,6 @@ func openTestServers(t *testing.T, mysqlDSN, postgresDSN, run string) *Servers {
 	return servers
 }
 
-// cleanupDeadline bounds dropping one probe's database, schema or file.
-const cleanupDeadline = 30 * time.Second
 
 // TestDialectFacts runs every probe against the databases of TEST_ENV:
 // ORM_TEST_MYSQL_DSN, ORM_TEST_POSTGRES_DSN, and a SQLite file per probe in a
@@ -174,21 +166,17 @@ func runProbe(t *testing.T, servers, privilegeServers *Servers, probe Probe, ind
 	return passed
 }
 
-// probeCaseDeadline is the deadline of the case that runs one probe. It adds to the probe's own probeDeadline
-// the cleanupDeadline by which a probe past its deadline deletes its own database, schema, and file.
-const probeCaseDeadline = probeDeadline + cleanupDeadline
-
-// runProbeCase runs one probe as a case under its own deadline, and reports the detail and
+// runProbeCase runs one probe as a case, and reports the detail and
 // the notes the probe observed as steps. It returns true if the probe passes.
 func runProbeCase(t *testing.T, servers *Servers, probe Probe, index int, detail string) bool {
 	t.Helper()
-	c := testcase.Start(t, probeCaseDeadline)
+	c := testcase.Start(t)
 	if detail == "" {
 		c.Step("start on %s", probe.DB)
 	} else {
 		c.Step("start on %s: %s", probe.DB, detail)
 	}
-	notes, err := runWithDeadline(servers, probe, index)
+	notes, err := servers.Run(c.Context(), context.Background(), probe, index)
 	for _, note := range notes {
 		c.Step("observed %s", note)
 	}
@@ -197,30 +185,4 @@ func runProbeCase(t *testing.T, servers *Servers, probe Probe, index int, detail
 		return false
 	}
 	return true
-}
-
-// runWithDeadline runs one probe and fails when the probe does not finish
-// before probeDeadline. Cleanup has its own deadline so a probe that timed
-// out still drops its objects.
-func runWithDeadline(servers *Servers, probe Probe, index int) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	defer cancel()
-	cleanup, cancelCleanup := context.WithTimeout(context.Background(), probeDeadline+cleanupDeadline)
-	defer cancelCleanup()
-	type result struct {
-		notes []string
-		err   error
-	}
-	done := make(chan result, 1)
-	go func() {
-		notes, err := servers.Run(ctx, cleanup, probe, index)
-		done <- result{notes, err}
-	}()
-	select {
-	case r := <-done:
-		return r.notes, r.err
-	case <-ctx.Done():
-		r := <-done // the probe observes the cancelled context and drops its objects
-		return r.notes, errors.Join(fmt.Errorf("deadline %s exceeded", probeDeadline), r.err)
-	}
 }

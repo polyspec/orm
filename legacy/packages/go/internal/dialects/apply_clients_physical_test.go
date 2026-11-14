@@ -60,14 +60,6 @@ func applyChain(t *testing.T) []*dbspec.Plan {
 	return plans
 }
 
-// runnerDeadline is the deadline of one apply runner process.
-const runnerDeadline = 2 * time.Minute
-
-// pairDeadline is the deadline of one ordered-pair case. A case runs the runner process at most three times
-// (stop, apply, recover), and creating a database and reading and deleting its history and schema
-// gets one more minute.
-const pairDeadline = 3*runnerDeadline + time.Minute
-
 // applyClients is the client with the apply runner of tests/dbspec/apply, as set by the implementations of contracts/implementations.json.
 var applyClients = dbspecLanguages()
 
@@ -118,12 +110,10 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	}
 	vectors := filepath.Join(legacyRoot, "tests", "dbspec", "plan-cases.json")
 	goRunner := filepath.Join(t.TempDir(), "apply-go")
-	// The Go runner build has the testcase.Process deadline (it takes minutes when the build cache is empty).
-	building, cancelBuild := context.WithTimeout(context.Background(), testcase.Process)
-	build := exec.CommandContext(building, "go", "build", "-o", goRunner, "./legacy/packages/go/internal/dbspec/apply")
+	// The Go runner build ends when go build ends; no clock ends it (T474).
+	build := exec.Command("go", "build", "-o", goRunner, "./legacy/packages/go/internal/dbspec/apply")
 	build.Dir = root
 	out, err := build.CombinedOutput()
-	cancelBuild()
 	if err != nil {
 		t.Fatalf("build the Go apply runner: %v\n%s", err, out)
 	}
@@ -135,10 +125,8 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	step := func(t *testing.T, c *testcase.Case, client, action, dialect, uri, want string) {
 		t.Helper()
 		begin := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), runnerDeadline)
-		defer cancel()
 		runner := runners[client]
-		cmd := exec.CommandContext(ctx, runner.args[0], append(runner.args[1:], action, dialect, uri, vectors)...)
+		cmd := exec.CommandContext(c.Context(), runner.args[0], append(runner.args[1:], action, dialect, uri, vectors)...)
 		cmd.Dir = root
 		if len(runner.env) > 0 {
 			cmd.Env = clientRunnerEnvironment(os.Environ(), runner.env)
@@ -160,7 +148,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		runs++
 		name := fmt.Sprintf("dbspec_pair_%s_%02d", token, runs)
 		t.Run(id, func(t *testing.T) {
-			c := testcase.Start(t, pairDeadline)
+			c := testcase.Start(t)
 			c.Step("database %s", name)
 			uri, cleanup := compareDatabase(t, dialect, name, mysqlDSN, postgresDSN)
 			defer cleanup()
@@ -243,7 +231,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 }
 
 func TestApplyExtensionRunnerMode(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	runners := applyClientRunners("go-runner", "rust-runner", "extension.so", "python")
 	if got := runners["php-extension"].env["ORM_PHP_MODE"]; got != "extension" {
 		t.Fatalf("PHP extension runner mode = %q, want extension", got)
@@ -389,9 +377,7 @@ func checkChainState(t *testing.T, dialect, uri string, want []string, target st
 	checkHistory(t, dialect, uri, want)
 	db := openURI(t, dialect, uri)
 	defer testcase.Close(t, db)
-	ctx, cancel := context.WithTimeout(context.Background(), runnerDeadline)
-	defer cancel()
-	document, unsupported, err := dbspec.Introspect(ctx, db, dbspec.Dialect(dialect), dbspec.Server(dialect), "x")
+	document, unsupported, err := dbspec.Introspect(context.Background(), db, dbspec.Dialect(dialect), dbspec.Server(dialect), "x")
 	if err != nil || len(unsupported) > 0 {
 		t.Fatalf("introspect: %v %+v", err, unsupported)
 	}

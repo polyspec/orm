@@ -3,7 +3,6 @@ package dbspec
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
@@ -42,7 +41,7 @@ var core = map[string][]string{"core": {"dbspec 1 core", "", "table accounts {",
 // TestEncodingDiagnostics holds the texts that the line form of a JSON recipe cannot write: an empty text and one that is not a sequence of Unicode scalar values (FCV-2).
 // Requirements: DBS-144.
 func TestEncodingDiagnostics(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	cases := []struct {
 		id   string
 		text string
@@ -54,7 +53,7 @@ func TestEncodingDiagnostics(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, c.id, 10*time.Second, func() error {
+			runTimed(t, c.id, func() error {
 				return expectDiagnostics(c.text, nil, c.want)
 			})
 		})
@@ -63,8 +62,8 @@ func TestEncodingDiagnostics(t *testing.T) {
 
 // TestParseReturnsModel checks the model fields of a parsed document.
 func TestParseReturnsModel(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	runTimed(t, "model", 5*time.Second, func() error {
+	testcase.Start(t)
+	runTimed(t, "model", func() error {
 		text := joinLines(with(block("use core { accounts }", ""), block("table orders {", "  id i64 identity", "  account_id i64 null",
 			"  total decimal(13,2) default 1", "  primary key (id)", "  index ix_account (account_id desc)",
 			"  foreign key fk_account (account_id) references accounts (id) on delete set_null", "}")), false)
@@ -91,7 +90,7 @@ func TestParseReturnsModel(t *testing.T) {
 
 // markdown: the manifest trait that names a markdown prose column.
 func TestMarkdownSetting(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	text := joinLines(with(block(
 		"table pages {",
 		"  id i64 identity",
@@ -163,7 +162,7 @@ var (
 
 // TestMarkdownStorageSetting: the storage, title, body, order, and task_marker settings of markdown storage are parsed, emitted canonically, and reach the settings model.
 func TestMarkdownStorageSetting(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	text := joinLines(markdownDoc(markdownColumns, pkID, markdownSettings...), false)
 	document := parseStable(t, text)
 	s := document.Tables[0].Settings

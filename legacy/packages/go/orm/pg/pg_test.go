@@ -9,7 +9,7 @@ import (
 )
 
 func TestMapErrClassifiesCheckConstraint(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	err := mapErr(&pgconn.PgError{Code: "23514", Message: "check constraint violated"})
 	if got := orm.ErrorCode(err); got != orm.CodeConstraint {
 		t.Fatalf("mapped PostgreSQL check error code = %q, want %q: %v", got, orm.CodeConstraint, err)
@@ -20,7 +20,7 @@ func TestMapErrClassifiesCheckConstraint(t *testing.T) {
 }
 
 func TestMapErrClassifiesNowaitLock(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	err := mapErr(&pgconn.PgError{Code: "55P03", Message: "could not obtain lock"})
 	if got := orm.ErrorCode(err); got != orm.CodeLockNotAvailable {
 		t.Fatalf("mapped PostgreSQL lock error code = %q, want %q: %v", got, orm.CodeLockNotAvailable, err)
@@ -31,7 +31,7 @@ func TestMapErrClassifiesNowaitLock(t *testing.T) {
 }
 
 func TestMapErrClassifiesReadOnly(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	err := mapErr(&pgconn.PgError{Code: "25006", Message: "cannot execute INSERT in a read-only transaction"})
 	if got := orm.ErrorCode(err); got != orm.CodeReadOnly {
 		t.Fatalf("mapped PostgreSQL read-only error code = %q, want %q: %v", got, orm.CodeReadOnly, err)

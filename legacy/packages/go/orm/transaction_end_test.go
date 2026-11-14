@@ -62,7 +62,7 @@ func recovered(fn func()) (value any) {
 // That connection is not returned to the pool (TestFailedTransactionEndDiscardsConnection).
 // Requirements: INT-72.
 func TestTransactionReportsFailedLockRelease(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers")
@@ -97,7 +97,7 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 // receives the same session (CONNECTION_ID) if the connection came back, and a named lock not released remains on that session.
 // Requirements: INT-72.
 func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers")
@@ -191,7 +191,7 @@ func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 // (checked).
 // Requirements: INT-72.
 func TestTransactionReportsFailedRollback(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "rollback.sqlite"))
 
@@ -249,7 +249,7 @@ func TestTransactionReportsFailedRollback(t *testing.T) {
 // restored remains on the connection.
 // Requirements: INT-72.
 func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "mode.sqlite"))
 	modeRejected := injectedFailure{statement: func(query string) bool { return query == "PRAGMA query_only = 0" }}
@@ -272,7 +272,7 @@ func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
 // and an already ended callback report that error together, and that a successful callback returns
 // the failed RELEASE SAVEPOINT.
 func TestSavepointReportsFailedEnd(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "savepoint.sqlite"))
 	rejected := func(prefix string) injectedFailure {

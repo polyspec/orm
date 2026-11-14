@@ -9,7 +9,7 @@ import (
 )
 
 func TestPickRejectsUnselectedField(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	row := model.Author().SetName("present")
 	defer func() {
 		if recover() == nil {
@@ -22,7 +22,7 @@ func TestPickRejectsUnselectedField(t *testing.T) {
 // TestPickTypedNilIsNone covers the child of a left join without a child row: a getter returns a nil model, and pick
 // takes it through an interface, which holds a typed nil.
 func TestPickTypedNilIsNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	var none *model.SoftRecordModel
 	if got := pick(none, "name"); got != nil {
 		t.Fatalf("pick of a nil model = %v, want nil", got)
@@ -30,7 +30,7 @@ func TestPickTypedNilIsNone(t *testing.T) {
 }
 
 func TestUnexpectedVectorErrorAndWriteTransaction(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	cause := errors.New("invalid row")
 	_, err := executeVector("invalid", func() (any, error) { return nil, cause }, nil)
 	if !errors.Is(err, cause) {
@@ -47,7 +47,7 @@ func TestUnexpectedVectorErrorAndWriteTransaction(t *testing.T) {
 }
 
 func TestBindRenderingRejectsInvalidBytes(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, input := range []any{
 		[]byte{0xff},
 		"\xff",
@@ -71,7 +71,7 @@ func TestBindRenderingRejectsInvalidBytes(t *testing.T) {
 }
 
 func TestVectorSelection(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	uri, selected, err := parseArgs([]string{"-dsn", "sqlite://x", "-vector", "relations", "-vector", "columns"})
 	if err != nil || uri != "sqlite://x" || len(selected) != 2 || !selected["relations"] || !selected["columns"] {
 		t.Fatalf("parseArgs = %q %v %v", uri, selected, err)

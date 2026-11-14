@@ -98,7 +98,7 @@ var pathTests = []string{
 // TestPathsFromAnyDirectory runs pathTests with the repository root as their working directory instead of the package
 // directory: they must pass there too, so they find the files of the checkout at any depth of the working directory (T448).
 func TestPathsFromAnyDirectory(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	pattern := "^(" + strings.Join(pathTests, "|") + ")$"
 	output, err := testcase.RunFrom(t, testcase.RepositoryRoot(), pattern)
 	if err != nil {

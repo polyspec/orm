@@ -19,7 +19,7 @@ func mustInt64(v any) int64 {
 
 // Requirements: INT-98a.
 func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, v := range []any{nil, "bad", "1.5", uint64(math.MaxUint64), math.Inf(1)} {
 		if _, err := orm.AsInt64(v); err == nil {
 			t.Errorf("AsInt64(%#v) accepted an invalid integer", v)
@@ -66,7 +66,7 @@ func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
 // A time(p) value is text with exactly p fractional digits.
 // Requirements: INT-99.
 func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, c := range []struct {
 		value     any
 		precision int
@@ -83,7 +83,7 @@ func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
 
 // Requirements: INT-99.
 func TestDatabaseValueConversionPreservesValidValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if got, err := orm.AsInt64("42"); err != nil || got != 42 {
 		t.Fatalf("integer: %d, %v", got, err)
 	}

@@ -22,11 +22,6 @@ const (
 	gatePairs = 1000
 )
 
-// gateDeadline is the deadline of a hot-path gate case. Each workload sends the gateWarm+gatePairs pairs of
-// native and client calls to the bench database, and even while a load process uses all CPUs,
-// they finish within a few tens of seconds, so five minutes only ends a case that is stuck.
-const gateDeadline = 5 * time.Minute
-
 // pairedRatio measures native and client in adjacent pairs, alternating which
 // side runs first, and returns the median native and client times and the
 // median of the per-pair client/native ratios. Load that slows one pair slows

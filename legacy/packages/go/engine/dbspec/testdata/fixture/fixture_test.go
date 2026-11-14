@@ -17,7 +17,7 @@ import (
 // TestFailingCaseFixture runs the first plan case of plan-cases.json with its expected changes removed, so the
 // case must fail on only that value, and reports it in the form of the case runner: one FAIL line and no PASS line.
 func TestFailingCaseFixture(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	cases, err := plancases.Read(filepath.Join(testcase.LegacyRoot(), "tests", "dbspec", "plan-cases.json"))
 	if err != nil {
 		t.Fatal(err)

@@ -29,10 +29,10 @@ const (
 )
 
 func TestStressDocument(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	// The generator is tests/dbspec/stress.mts at the root of the checkout, which make also runs for the other runtimes.
 	generator := filepath.Join(testcase.RepositoryRoot(), "tests", "dbspec", "stress.mts")
-	runTimed(t, "stress", 120*time.Second, func() error {
+	runTimed(t, "stress", func() error {
 		generated := time.Now()
 		command := exec.Command("node", generator)
 		var stdout, stderr bytes.Buffer

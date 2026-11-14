@@ -7,7 +7,7 @@ import (
 )
 
 func TestSQLitePreservesQualifiedPhysicalTableNames(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if got := (SQLite{}).Quote("core.account"); got != `"core__account"` {
 		t.Fatalf("qualified SQLite table = %q", got)
 	}

@@ -28,7 +28,7 @@ var _ = func() {
 }
 
 func TestChainArgumentTypes(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	imported := loadModelTypes(t)
 	for _, c := range []struct {
 		call   string

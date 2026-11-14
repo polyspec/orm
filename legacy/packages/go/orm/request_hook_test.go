@@ -143,7 +143,7 @@ var requestHookCases = []struct {
 // Requirements: INT-78, INT-78a.
 // TestRequestHook runs each case in a SQLite temp file. The file is removed when the test ends.
 func TestRequestHook(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	for _, c := range requestHookCases {
 		t.Run(c.id, func(t *testing.T) {
 			db, e, entry := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request_hook.sqlite"))
@@ -156,7 +156,7 @@ func TestRequestHook(t *testing.T) {
 // error of a later check such as the row-lock rule, with or without a request hook. The condition on an entity that is not
 // joined leaves the query built with its lock, so only the builder's own error keeps the statement from the lock check.
 func TestRequestBuilderErrorBeforeLockIsKept(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	db, e, entry := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request_builder_error.sqlite"))
 	for _, tc := range []struct {
 		name string
@@ -179,7 +179,7 @@ func TestRequestBuilderErrorBeforeLockIsKept(t *testing.T) {
 // TestCreatesRefusesANegativeBatch: a batch that is not a positive integer is CONFIG before any statement (PRT-41). A
 // recipe cannot write a negative batch, since the batch of the Rust client is a usize.
 func TestCreatesRefusesANegativeBatch(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
 	statements := 0
 	unsubscribe, err := db.Subscribe(func(orm.StatementEvent) error {

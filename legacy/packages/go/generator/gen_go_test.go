@@ -49,7 +49,7 @@ func thingDocument(columns ...string) string {
 
 // Requirements: DSL-39.
 func TestParseChain(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	m := namesManifest(t, namesDiagram)
 	e := m.Entities["product"]
 	cases := map[string][]chainKey{
@@ -96,7 +96,7 @@ func TestParseChain(t *testing.T) {
 
 // TestGeneratedFulltextPredicateCompiles checks the documented full-text chain shape, argument type, and generated column list.
 func TestGeneratedFulltextPredicateCompiles(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("example/example.go", `package example
 
@@ -111,7 +111,7 @@ func Search(keyword string) *model.ProductModel {
 }
 
 func TestSplitPair(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	m := namesManifest(t, namesDiagram)
 	left, right, err := splitPair(m, m.Entities["product"], m.Entities["brand"], "BrandSeqWithSeq")
 	if err != nil || left != "brand_seq" || right != "seq" {
@@ -129,7 +129,7 @@ func TestSplitPair(t *testing.T) {
 // and builds it.
 // Requirements: DSL-38, DSL-117, INT-27, PLN-1, PLN-40.
 func TestScanGeneratesUsedMethods(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("example/example.go", `package example
 
@@ -222,7 +222,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 // Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
 // Requirements: DBS-121.
 func TestGeneratedFieldTypes(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	m := namesManifest(t, `dbspec 1 typed
 
 table typed {
@@ -296,7 +296,7 @@ table typed {
 
 // Requirements: INT-12.
 func TestGeneratedPublicConnectCall(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	m := namesManifest(t, thingDocument("name"))
 	dir := filepath.Join(t.TempDir(), "model")
 	if err := generateGo(m, dir, "", nil); err != nil {

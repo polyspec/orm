@@ -12,7 +12,7 @@ import (
 // returns CODEC_ENCODE naming the column, and no row changes (T189).
 // Requirements: PRT-67a.
 func TestTimeSetterRecordsBadText(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		before := must(model.TimeCell().Connect(db).GetCount())
 		// The first bad set stays the error of the statement although a later set of the same column is good; the

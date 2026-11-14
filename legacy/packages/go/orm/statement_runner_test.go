@@ -14,7 +14,7 @@ import (
 // with CONFIG, and sends none. A recipe cannot hold it: a Rust frame cannot outlive its callback.
 // Requirements: INT-150a.
 func TestStatementRunnerFrameAfterItsTransactionEnded(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	db, err := orm.Connect(newDatabase(t, "sqlite"), orm.Config{})
 	if err != nil {
 		t.Fatal(err)

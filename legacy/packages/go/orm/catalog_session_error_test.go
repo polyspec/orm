@@ -45,7 +45,7 @@ func catalogSessionWithOpenTransaction(t *testing.T) *catalogSession {
 
 // Requirements: INT-72.
 func TestCatalogSessionEndPreservesPrimaryAndRollbackCauses(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	session := catalogSessionWithOpenTransaction(t)
 	inject(t, injectedFailure{rollback: true})
 
@@ -68,7 +68,7 @@ func TestCatalogSessionEndPreservesPrimaryAndRollbackCauses(t *testing.T) {
 
 // Requirements: INT-72.
 func TestCatalogSessionEndReportsRollbackCauseWithoutPrimary(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	session := catalogSessionWithOpenTransaction(t)
 	inject(t, injectedFailure{rollback: true})
 
@@ -83,7 +83,7 @@ func TestCatalogSessionEndReportsRollbackCauseWithoutPrimary(t *testing.T) {
 
 // Requirements: INT-118, PRT-79.
 func TestCatalogInsertPreservesIndeterminateCommitCause(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	useFailingDriver(t, "sqlite")
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "commit_cause", "CREATE TABLE commit_cause (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)")
 	inject(t, injectedFailure{statement: func(query string) bool { return query == "COMMIT" }})

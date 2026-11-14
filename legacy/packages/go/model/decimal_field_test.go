@@ -11,7 +11,7 @@ import (
 // Requirements: DBS-112, COD-2.
 func TestGeneratedDecimalFieldUsesExactText(t *testing.T) {
 	// The test of COD-2 (docs/spec).
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	stringPointer := reflect.TypeOf((*string)(nil))
 	getter := reflect.TypeOf((*model.AuthorModel).GetPrice)
 	setter := reflect.TypeOf((*model.AuthorModel).SetPrice)

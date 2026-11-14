@@ -1,13 +1,13 @@
-// Package testcase is a helper that gives each go test case a deadline and records its steps in the test's log.
+// Package testcase is a helper that starts each go test case and records its steps in the test's log.
 //
 // The report is the native output of go test. The results of the cases started with Start (`--- PASS`, `--- FAIL`, `--- SKIP`) and
-// the steps (lines of t.Log) are printed as they are by go test -json or -v. Group marks a group without a deadline of its own and writes
-// no line either. Each grouped case has its own deadline.
+// the steps (lines of t.Log) are printed as they are by go test -json or -v. Group marks a group and writes no line.
 //
 // Run and RunLong of the non-test runner run a case without a test and write its steps to stdout as they are. The result is
-// decided by the error returned. Long runner jobs (build, install, tool run) run without a deadline with RunLong.
+// decided by the error returned. Long runner jobs (build, install, tool run) run with RunLong.
 //
-// The deadline is wall-clock time, because it is the timer that ends a stuck case, not a limit that measures the case's own computation time (AGENTS.md testing rule).
+// No clock ends a case (T474): a machine under load runs the same work more slowly, and the result of a case must not change
+// with that load. A case ends when its work ends; a run that does not end is stopped with its run.
 package testcase
 
 import (
@@ -16,34 +16,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime/pprof"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 )
-
-// The deadline tiers. A case uses the tier that fits its work; work that takes longer than its tier uses
-// its own deadline, with the basis stated in a comment.
-const (
-	// Compute is the deadline of a case that only computes in memory and reads repository files. Basis:
-	// the largest of such cases (parse and emit of the dbspec stress document, the fuzz seed corpus) finishes
-	// within seconds, so a case that exceeds one minute is stuck.
-	Compute = time.Minute
-	// Database is the deadline of a case that connects to the database of TEST_ENV and runs a fixed number of statements.
-	// Basis: such a case runs up to a few hundred statements, including creating and dropping databases,
-	// and two minutes is ample, including the time spent waiting for locks on a shared server.
-	Database = 2 * time.Minute
-	// Process is the deadline of a case that runs subprocesses such as `go build`, `go run`, php, node, and Rust binaries.
-	// Basis: `go run` and `go build` take minutes to recompile the packages and
-	// dependencies when the build cache is empty.
-	Process = 5 * time.Minute
-)
-
-// Grace is the time to wait for the process to end after the deadline has passed. A case that follows Context
-// can fail with its own error at the deadline and finish its cleanup; only a stuck case that does not follow Context
-// ends after Grace.
-const Grace = 5 * time.Second
 
 var output sync.Mutex
 
@@ -66,29 +42,20 @@ func Warn(format string, args ...any) {
 
 // Case is one running case. log takes one step line: in a test it is the test's log, and in a runner it is stdout.
 type Case struct {
-	name     string
-	deadline time.Duration
-	ctx      context.Context
-	cancel   context.CancelFunc
-	watchdog *time.Timer
-	log      func(line string)
+	name   string
+	ctx    context.Context
+	cancel context.CancelFunc
+	log    func(line string)
 }
 
-// Start starts t as a case under a deadline. Context ends at the deadline. Adding Grace to the deadline
-// If it has not ended after that time, it writes the diagnostic and the stacks of all goroutines to stderr and ends the test binary,
-// because a stuck case does not return by itself. The result is reported to t by go test.
-func Start(t testing.TB, deadline time.Duration) *Case {
+// Start starts t as a case. Its Context ends when the test ends; no clock ends it. The result is reported to t by go test.
+func Start(t testing.TB) *Case {
 	t.Helper()
-	if deadline <= 0 {
-		t.Fatalf("testcase.Start: deadline %s is not positive", deadline)
-	}
-	c := &Case{name: t.Name(), deadline: deadline, log: func(line string) { t.Log(line) }}
-	c.ctx, c.cancel = context.WithTimeout(context.Background(), deadline)
-	c.watchdog = time.AfterFunc(deadline+Grace, c.expire)
+	c := &Case{name: t.Name(), log: func(line string) { t.Log(line) }}
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 	started.Store(c.name, c)
 	t.Cleanup(func() {
 		started.Delete(c.name)
-		c.watchdog.Stop()
 		c.cancel()
 	})
 	return c
@@ -127,57 +94,24 @@ func Close(t testing.TB, c io.Closer) {
 	}
 }
 
-// Group marks a test that groups cases, each started with Start. The group itself has no deadline and writes no line.
+// Group marks a test that groups cases, each started with Start. The group itself writes no line.
 func Group(t testing.TB) {
 	t.Helper()
 }
 
-// Run runs one case for a non-test runner (the check command). work must follow c.Context().
-// If work has not returned after the deadline plus Grace, it returns an error. The error of work is the result.
-func Run(name string, deadline time.Duration, work func(c *Case) error) error {
-	if deadline <= 0 {
-		return fmt.Errorf("testcase.Run %s: deadline %s is not positive", name, deadline)
-	}
-	c := &Case{name: name, deadline: deadline, log: func(line string) { emit("%s", line) }}
-	c.ctx, c.cancel = context.WithTimeout(context.Background(), deadline)
-	defer c.cancel()
-	ok, err := Bounded(deadline+Grace, func() error { return work(c) })
-	if !ok {
-		err = fmt.Errorf("deadline %s exceeded", deadline)
-	}
-	if err != nil {
-		return fmt.Errorf("%s: %w", name, err)
-	}
-	return nil
+// Run runs one case for a non-test runner (the check command). The error of work is the result; no clock ends the case.
+func Run(name string, work func(c *Case) error) error {
+	return run(name, work)
 }
 
-// Bounded runs work in its own goroutine and waits for its result for at most
-// wait. A panic of work is its error. ok is false when work has not returned by
-// then, and its result is dropped.
-func Bounded(wait time.Duration, work func() error) (ok bool, err error) {
-	done := make(chan error, 1)
-	go func() {
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				done <- fmt.Errorf("panic: %v", recovered)
-			}
-		}()
-		done <- work()
-	}()
-	timer := time.NewTimer(wait)
-	defer timer.Stop()
-	select {
-	case err := <-done:
-		return true, err
-	case <-timer.C:
-		return false, nil
-	}
-}
-
-// RunLong runs one long job (build, install, tool run) for a non-test runner without a deadline. So that a slow but normal
-// job does not fail because of the clock, no timer is set. Success and failure are decided by the result work observed (the command's exit code and
-// errors). c.Context() never ends.
+// RunLong runs one long job (build, install, tool run) for a non-test runner. Success and failure are decided by the result
+// work observed (the command's exit code and errors).
 func RunLong(name string, work func(c *Case) error) error {
+	return run(name, work)
+}
+
+// run runs work as the case name and returns its error, with a panic of work as its error. c.Context() ends when work returns.
+func run(name string, work func(c *Case) error) error {
 	c := &Case{name: name, log: func(line string) { emit("%s", line) }}
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	defer c.cancel()
@@ -196,7 +130,7 @@ func RunLong(name string, work func(c *Case) error) error {
 }
 
 // Step writes one step to the case's log. In a test it is t.Log, so go test -v and -json show it; in a runner it is
-// one line on stdout. A case that can run longer than a minute calls Step at each step.
+// one line on stdout. A case that runs long calls Step at each step, so that its progress is observable.
 func (c *Case) Step(format string, args ...any) {
 	c.log(fmt.Sprintf(format, args...))
 }
@@ -238,18 +172,5 @@ func (w *StepWriter) Flush() {
 	w.partial = nil
 }
 
-// Context is the context that ends at the case's deadline.
+// Context is the context of the case, which ends when the case ends.
 func (c *Case) Context() context.Context { return c.ctx }
-
-// Deadline is the deadline of the case.
-func (c *Case) Deadline() time.Duration { return c.deadline }
-
-// expire reports a case past its deadline as a diagnostic and ends the process. go test reports a test that has not ended as a failure.
-func (c *Case) expire() {
-	output.Lock()
-	fmt.Fprintf(os.Stderr, "testcase %s: deadline %s exceeded and the case did not stop\n", c.name, c.deadline)
-	if err := pprof.Lookup("goroutine").WriteTo(os.Stderr, 2); err != nil {
-		fmt.Fprintf(os.Stderr, "testcase %s: write the goroutine stacks: %v\n", c.name, err)
-	}
-	os.Exit(1)
-}

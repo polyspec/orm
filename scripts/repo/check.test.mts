@@ -50,8 +50,8 @@ const trackedAll = new Set(trackedFiles('*'));
 // or when no apply event comes within the database deadline, which each event restarts (CR15-10 had narrowed it to the 120 second
 // database deadline). The guard of each runtime that writes its own failure text writes the same two texts, which the unit test of
 // each guard holds. PHP and the PHP extension hold none: their deadline was the test runner's, and kit 0.0.105 holds no time
-// limit. TypeScript holds none either: no clock ends a TypeScript case (T473). T474 removes the guards of the other runtimes.
-caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Go, Python and Rust', () => {
+// limit. TypeScript and Go hold none either: no clock ends their cases (T473, T474). T474 removes the guards of the other runtimes.
+caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Python and Rust', () => {
   const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
   const stress = recipe.cases.find(recipeCase => recipeCase.id === 'stress_plan_commits_each_step');
   assert.ok(stress !== undefined, 'the recipe holds the stress case');
@@ -69,11 +69,6 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   const applied = (stress.steps ?? []).filter(step => step.op === 'dbspec.apply').flatMap(step => Object.values(step.expect ?? {})).map(appliedOf);
   assert.equal(stress.deadline?.steps, Math.max(...applied), 'the stress case states the most steps it applies on any database');
   const holds: [string, RegExp][] = [
-    ['legacy/packages/go/testcase/stall.go', /const stepBudget = 250 \* time\.Millisecond/],
-    ['legacy/packages/go/testcase/stall.go', /const fixedBudget = time\.Minute/],
-    ['legacy/packages/go/internal/recipe/database.go', /return testcase\.StepBudget\(c\.Deadline\.Steps\)/],
-    ['legacy/packages/go/internal/recipe/database.go', /testcase\.Start\(t, caseDeadlineOf\(c\)\)/],
-    ['legacy/packages/go/internal/recipe/database.go', /testcase\.StepGuard\(ctx, caseDeadlineOf\(c\), testcase\.Database\)/],
     ['legacy/packages/python/tests/testcase.py', /^STEP_BUDGET = 0\.25$/m],
     ['legacy/packages/python/tests/testcase.py', /^FIXED_BUDGET = 60\.0$/m],
     ['legacy/packages/python/tests/recipe.py', /testcase\.step_budget\(case\["deadline"\]\["steps"\]\)/],
@@ -86,7 +81,7 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
   // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
   const texts = ['no step was applied within 120s', 'step budget 60.25s exceeded'];
-  const guardTests = ['legacy/packages/go/testcase/stall_test.go', 'legacy/packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
+  const guardTests = ['legacy/packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
   for (const path of guardTests) for (const expected of texts) assert.ok(text(path).includes(`"${expected}"`) || text(path).includes(`'${expected}'`), `${path} holds the text ${expected}`);
 });
 

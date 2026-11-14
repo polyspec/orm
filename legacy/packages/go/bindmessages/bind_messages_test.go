@@ -25,7 +25,7 @@ import (
 // FCV-4): each markdown.send step runs one typed public call on a listener that records the first message it receives.
 // Requirements: PRT-67.
 func TestRecipeBindMessagesNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/bind/messages.json"), recipe.None, recipe.WithMarkdownSend(markdownSend), recipe.WithModelAssign(modelAssign))
 }
 
@@ -33,7 +33,7 @@ func TestRecipeBindMessagesNone(t *testing.T) {
 // database (FCV-3, FCV-4): a Go string holds any bytes, so the text_hex wrapper is its host value.
 // Requirements: PRT-67.
 func TestRecipeBindMessagesRawTextNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/bind/messages-raw-text.json"), recipe.None, recipe.WithMarkdownSend(markdownSend))
 }
 
@@ -41,7 +41,7 @@ func TestRecipeBindMessagesRawTextNone(t *testing.T) {
 // without a database (FCV-3, FCV-4).
 // Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64, INT-74, INT-88, INT-89, INT-130.
 func TestRecipePublicInterfaceNone(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("contracts/fixtures/public_interface/public_interface.json"), recipe.None, recipe.WithMarkdownBuilder(markdownBuilder))
 }
 
@@ -49,7 +49,7 @@ func TestRecipePublicInterfaceNone(t *testing.T) {
 // listener of sendFirst. A message that reaches the listener fails the test, since the terminal returns the error before it.
 func markdownBuilder(t *testing.T, calls []string) (string, string) {
 	t.Helper()
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	first := make(chan json.RawMessage, 1)
 	db := connectSendListener(t, first)
 	model := bindmodel.Slots().Connect(db)
@@ -83,7 +83,7 @@ func markdownBuilder(t *testing.T, calls []string) (string, string) {
 // is the process default zone for the step, restored afterward.
 func markdownSend(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (json.RawMessage, string) {
 	t.Helper()
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if processZone != "" {
 		loc, err := time.LoadLocation(processZone)
 		if err != nil {
@@ -120,7 +120,7 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 // typed setter takes no null, and the case excludes go.
 func modelAssign(t *testing.T, model, column string, value json.RawMessage) (json.RawMessage, string) {
 	t.Helper()
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if model != "slots" || column != "varchar_value" {
 		t.Fatalf("model.assign of %s.%s has no typed setter in the Go cases", model, column)
 	}

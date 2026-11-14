@@ -35,7 +35,7 @@ const crashedExit = 3
 // once, and SQLite rolls the uncommitted write back.
 // Requirements: CFG-43.
 func TestSQLiteCrashedHolderLeavesNoLock(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	if dsn := os.Getenv(holderEnv); dsn != "" {
 		db := openHolder(t, dsn)
 		err := db.Transaction(func() error {

@@ -2176,18 +2176,10 @@ func checkIntrospectSQLite(t *testing.T, s step, database string) error {
 	return nil
 }
 
-// interfaceCheckDeadline ends a hung interface check within the Process deadline of its case, so that no check is left running and
-// the case reports the failure itself.
-const interfaceCheckDeadline = 280 * time.Second
-
 // checkInterfaceSymbols runs one interface.symbols step: the interface check of the Go client (INT-17, INT-18, INT-19, INT-57,
 // INT-61, INT-64). The check exits 0 when it holds.
 func checkInterfaceSymbols() error {
-	ctx, cancel := context.WithTimeout(context.Background(), interfaceCheckDeadline)
-	defer cancel()
-	command := interfaceCheckCommand(ctx)
-	// A child of the check that keeps the output pipes open ends the wait after the kill.
-	command.WaitDelay = 10 * time.Second
+	command := interfaceCheckCommand(context.Background())
 	if output, err := command.CombinedOutput(); err != nil {
 		return fmt.Errorf("interface check: %w\n%s", err, output)
 	}

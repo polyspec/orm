@@ -10,7 +10,7 @@ import (
 )
 
 func TestLogicalContractRejectsNativeDrift(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if _, err := load(); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 }
 
 func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	var d document
 	if err := json.Unmarshal(source, &d); err != nil {
 		t.Fatal(err)
@@ -103,7 +103,7 @@ func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
 // TestExtensionContractRejectsDrift checks that the extension (PHP extension php-extension)'s adapter rejects a manifest where the common input and result
 // differ from the extension columns, or where a rule that the extension lists has a different adapter.
 func TestExtensionContractRejectsDrift(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	find := func(d *document, id string) *rule {
 		return findRule(t, d, id)
 	}
@@ -155,7 +155,7 @@ func TestExtensionContractRejectsDrift(t *testing.T) {
 
 // The language set of the contracts is the implementations of contracts/implementations.json, in their order.
 func TestLanguagesAreTheDeclaredImplementations(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	raw, err := os.ReadFile(testcase.RepositoryPath("contracts/implementations.json"))
 	if err != nil {
 		t.Fatal(err)

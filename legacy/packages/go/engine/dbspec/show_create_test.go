@@ -44,7 +44,7 @@ type showCreateCase struct {
 // as the expected body in CHECK_CLAUSE form (T62-4-8).
 // Requirements: DIA-84.
 func TestMySQLShownCheckVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	v := loadShowCreate(t)
 	if len(v.Cases) == 0 {
 		t.Fatal("tests/dbspec/show-create.json has no cases")

@@ -10,6 +10,6 @@ import (
 // TestRecipeGeneratorNone runs the generator recipe, contracts/fixtures/generator/generator.json, without a database (FCV-3).
 // Requirements: DBS-175, DSL-37, DSL-38, DSL-116, DSL-127, DSL-129, DSL-130, DSL-154, DBS-103, DBS-104, DBS-110, DBS-173, INT-66, PLN-1, PLN-22.
 func TestRecipeGeneratorNone(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("contracts/fixtures/generator/generator.json"), recipe.None)
 }

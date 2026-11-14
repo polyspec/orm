@@ -65,7 +65,7 @@ func testScannedModule(t *testing.T) {
 // getter does not exist yet.
 // Requirements: DSL-9, DSL-39.
 func TestGoGenerationIgnoresMethodsOfRelationResults(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("example/example.go", `package example
 
@@ -84,7 +84,7 @@ func Brands() *model.ProductModel {
 // TestGoGeneratedScalarGetterRejectsUnselectedRead checks the generated getter at runtime through
 // an external consumer that compiles against either the current or corrected getter signature.
 func TestGoGeneratedScalarGetterRejectsUnselectedRead(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("example/getter_test.go", `package example
 
@@ -126,7 +126,7 @@ func TestPriceGetterSelection(t *testing.T) {
 
 // Requirements: COD-20, COD-25.
 func TestGoGeneratedNonnullStyledSetterRejectsSqlNull(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	m := namesManifest(t, `dbspec 1 styled
 
@@ -186,7 +186,7 @@ func TestGeneratedNonnullStyledSetterRejectsSqlNull(t *testing.T) {
 
 // TestGoGeneratedScalarGetterCompilesAtItsDeclaredType checks a typed getter through an external consumer.
 func TestGoGeneratedScalarGetterCompilesAtItsDeclaredType(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("example/example.go", `package example
 
@@ -202,7 +202,7 @@ func Price(p *model.ProductModel) (int32, error) { return p.GetPrice() }
 // whose name equals a model constructor but belongs to another package does not
 // start a model chain.
 func TestGoGenerationIgnoresConstructorNamesOfOtherPackages(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("other/other.go", `package other
 
@@ -235,7 +235,7 @@ func Title() string { return other.Product().Title() }
 // a row of that table. Generating the same output also has to compile.
 // Requirements: DBS-110, DBS-173.
 func TestGeneratedExternalModelReadsItsTable(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	root := testcase.LegacyRoot()
 	read := func(name string) string {
 		t.Helper()

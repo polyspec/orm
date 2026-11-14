@@ -12,7 +12,7 @@ import (
 const TestCasePackage = "github.com/polyspec/orm/legacy/packages/go/testcase"
 
 // TestCaseStart reports each Test or Fuzz function of a test file that does not start its case with
-// legacy/packages/go/testcase (testcase.Start, Group, Run or Of): such a test runs without a RUN line and a deadline. The tests of
+// legacy/packages/go/testcase (testcase.Start, Group, Run or Of): such a test runs without a RUN line. The tests of
 // legacy/packages/go/testcase itself, which define that report, are not checked.
 var TestCaseStart = &analysis.Analyzer{
 	Name: "testcasestart",
@@ -61,7 +61,7 @@ func runTestCaseStart(pass *analysis.Pass) (any, error) {
 				return !started
 			})
 			if !started {
-				pass.Reportf(function.Name.Pos(), "%s does not start its case with legacy/packages/go/testcase, so it runs without a deadline or RUN line", name)
+				pass.Reportf(function.Name.Pos(), "%s does not start its case with legacy/packages/go/testcase, so it runs without a RUN line", name)
 			}
 		}
 	}

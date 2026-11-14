@@ -23,7 +23,7 @@ func describeTokens(text string, tokens []Token) []string {
 // line cannot hold the byte (FCV-2), and the other analysis cases are recipe cases of tests/dbspec/rules.json.
 // Requirements: DBS-134, DBS-135, DBS-144.
 func TestAnalyzeInvalidByte(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	text := "dbspec 1 shop\ntable t {\n  id \xff i64\n}\n"
 	want := []string{
 		"1 dbspec keyword", "1 1 number", "1 shop name",

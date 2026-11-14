@@ -71,14 +71,6 @@ type caseDeadline struct {
 	Steps int `json:"steps"`
 }
 
-// caseDeadlineOf is the deadline of c: testcase.Database, or the step budget that c states.
-func caseDeadlineOf(c databaseCase) time.Duration {
-	if c.Deadline == nil {
-		return testcase.Database
-	}
-	return testcase.StepBudget(c.Deadline.Steps)
-}
-
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
 	// reads records the keys that the run reads (FCV-4).
@@ -297,8 +289,6 @@ type databaseContext struct {
 	corpusDir string
 	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
 	applyStep int
-	// progress restarts the stall limit of the step guard of a case with a step deadline at each apply event; it does nothing otherwise.
-	progress func()
 	// records are the requests that a record action of the installed hook saw (hook.records).
 	records []hookRecord
 }
@@ -338,7 +328,7 @@ func runDatabase(t *testing.T, path, database string) {
 			continue
 		}
 		t.Run(c.ID, func(t *testing.T) {
-			testcase.Start(t, caseDeadlineOf(c))
+			testcase.Start(t)
 			runCase(t, path, f, c, database, schema, external)
 			reportCase(t, c.ID, database)
 		})
@@ -535,14 +525,6 @@ func fixtureSchema(setPath string) (*orm.Schema, []*orm.Schema, error) {
 func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema, external []*orm.Schema) {
 	step := testcase.Of(t)
 	ctx := step.Context()
-	progress := func() {}
-	if c.Deadline != nil {
-		// The step guard ends the case at its step budget, or when no apply event comes within the Database tier; its
-		// cause names the limit with the text of every runtime (FCV-4).
-		var stop func()
-		ctx, progress, stop = testcase.StepGuard(ctx, caseDeadlineOf(c), testcase.Database)
-		defer stop()
-	}
 	markdown := database == "markdown"
 	var dsn, corpusDir string
 	if markdown {
@@ -596,7 +578,7 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		}
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, progress: progress, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
+		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
 	defer func() {
@@ -1748,8 +1730,8 @@ const mysqlLockHolder = `SELECT t.PROCESSLIST_ID FROM performance_schema.metadat
 // awaitReplica returns after the replica has applied every change that the primary committed before the call (CFG-23). On
 // PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits
 // after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on
-// the database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
-// of the wait: the replica applies the writes of every client that runs in parallel, one after another. MariaDB names the two
+// the database of the environment, since the case database reaches the replica only by this wait. The wait has no timeout: it ends
+// when the replica has applied the position, or with NULL when its SQL thread stops (T474). MariaDB names the two
 // SHOW BINLOG STATUS and MASTER_POS_WAIT, and its status has four columns.
 func awaitReplica(c *databaseContext) error {
 	source := testdb.Open(c.t, c.database, c.dsn)
@@ -1779,9 +1761,9 @@ func awaitReplica(c *databaseContext) error {
 	var file string
 	var position int64
 	var ignored [3]any
-	status, wait, columns := "SHOW BINARY LOG STATUS", "SELECT SOURCE_POS_WAIT(?, ?, 60)", []any{&file, &position, &ignored[0], &ignored[1], &ignored[2]}
+	status, wait, columns := "SHOW BINARY LOG STATUS", "SELECT SOURCE_POS_WAIT(?, ?)", []any{&file, &position, &ignored[0], &ignored[1], &ignored[2]}
 	if c.database == "mariadb" {
-		status, wait, columns = "SHOW BINLOG STATUS", "SELECT MASTER_POS_WAIT(?, ?, 60)", columns[:4]
+		status, wait, columns = "SHOW BINLOG STATUS", "SELECT MASTER_POS_WAIT(?, ?)", columns[:4]
 	}
 	if err := source.QueryRow(status).Scan(columns...); err != nil {
 		return err
@@ -1797,7 +1779,7 @@ func awaitReplica(c *databaseContext) error {
 	if err := target.QueryRow(wait, file, position).Scan(&waited); err != nil {
 		return err
 	}
-	if waited == nil || *waited < 0 {
+	if waited == nil {
 		return fmt.Errorf("the replica did not reach %s:%d", file, position)
 	}
 	return nil

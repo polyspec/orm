@@ -106,7 +106,7 @@ func names(t *testing.T, c *orm.Collection[*model.AuthorModel]) string {
 
 // Requirements: DSL-60, PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-30, PLN-34, PLN-37, PLN-38, PLN-39.
 func TestConditions(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		svc := readColumn(t, f.service.GetSeq)
@@ -184,7 +184,7 @@ func TestConditions(t *testing.T) {
 
 // Requirements: PLN-30.
 func TestGoConstructorForms(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		created := must(model.User().Connect(db).SetName("constructor-form").Create())
 		rebound := created.Connect(db)
@@ -201,7 +201,7 @@ func TestGoConstructorForms(t *testing.T) {
 
 // Requirements: PLN-8, PLN-9, PLN-14.
 func TestColumnsAndSubqueries(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		users := must(model.User().Connect(db).
@@ -311,7 +311,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 
 // Requirements: PLN-12, PLN-27.
 func TestWrites(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		b := must(model.Author().Connect(db).GetBySeq(readColumn(t, f.authors[0].GetSeq)))
@@ -365,7 +365,7 @@ func TestWrites(t *testing.T) {
 // there returns CONFIG. A recipe step runs in one flow, so this form of Go stays native (FCV-2).
 // Requirements: PLN-18, DSL-122.
 func TestTransactions(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		err := db.Transaction(func() error {
 			done := make(chan error, 1)

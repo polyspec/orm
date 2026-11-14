@@ -90,7 +90,7 @@ func requireSQL(t *testing.T, sql string, parts ...string) {
 }
 
 func TestJoinedReferenceErrors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := formsEngine(t, "mysql")
 	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"joined":{"join":"owner"}}]}`, "ENTITY_NOT_JOINED")
 	formsError(t, e, `"kind":"all","entity":"place",
@@ -102,7 +102,7 @@ func TestJoinedReferenceErrors(t *testing.T) {
 }
 
 func TestExplicitKeyRelation(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "relations":[{"rel":"visits","kind":"many","keys":[{"left":"seq","right":"place_seq"}],
@@ -122,7 +122,7 @@ func TestExplicitKeyRelation(t *testing.T) {
 }
 
 func TestColumnComparisonWithJoinedModel(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "joins":[{"rel":"owner","kind":"inner","left":"owner_seq","right":"seq","query":{"entity":"owner"}}],
@@ -131,7 +131,7 @@ func TestColumnComparisonWithJoinedModel(t *testing.T) {
 }
 
 func TestColumnFunctionsForEveryDialect(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	body := `"kind":"all","entity":"place",
 	 "columns":{"fn":{"created_date":{"column":"created_ts","fn":{"name":"date"}}}},
 	 "where":{"items":[
@@ -175,7 +175,7 @@ func TestColumnFunctionsForEveryDialect(t *testing.T) {
 }
 
 func TestValueFunctionsForEveryDialect(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	body := `"kind":"all","entity":"place","where":{"items":[
 	  {"pred":{"column":"created_ts","op":"gt","value":{"name":"days_ago","ps":[0]}}},
 	  {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}},
@@ -206,7 +206,7 @@ func TestValueFunctionsForEveryDialect(t *testing.T) {
 }
 
 func TestTupleConditionsForEveryDialect(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	body := `"kind":"all","entity":"membership","where":{"items":[
 	  {"pred":{"column":"","op":"tuple_in","cols":["tenant_id","account_id"],"ps":[0,1,2,3]}},
 	  {"pred":{"conn":"and","op":"tuple_not_in","cols":["tenant_id","account_id"],"ps":[4,5]}}]}`
@@ -223,7 +223,7 @@ func TestTupleConditionsForEveryDialect(t *testing.T) {
 }
 
 func TestSubqueryConditionsAndColumns(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"owner",
 	 "columns":{"sub":{"visit_total":{"agg":"sum","column":"amount","query":{"entity":"visit",
@@ -241,7 +241,7 @@ func TestSubqueryConditionsAndColumns(t *testing.T) {
 }
 
 func TestRandomOrder(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for driver, want := range map[string]string{"mysql": "ORDER BY RAND()", "postgres": "ORDER BY random()", "sqlite": "ORDER BY random()"} {
 		p := formsCompile(t, formsEngine(t, driver), `"kind":"all","entity":"place","order":[{"random":true}]`)
 		requireSQL(t, p.Steps[0].SQL, want)
@@ -251,7 +251,7 @@ func TestRandomOrder(t *testing.T) {
 // The IR has no form that carries a SQL fragment. The old raw forms for conditions, columns, sorts, groups, and assignments
 // are unknown fields, so they are IR_INVALID.
 func TestRawFormsRejected(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := formsEngine(t, "postgres")
 	for _, body := range []string{
 		`"kind":"all","entity":"place","where":{"items":[{"pred":{"expr":"{price} > ?","ps":[0]}}]}`,
@@ -265,7 +265,7 @@ func TestRawFormsRejected(t *testing.T) {
 }
 
 func TestBinaryContains(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for driver, parts := range map[string][]string{
 		"mysql":    {"`a`.`name` LIKE ?"},
 		"postgres": {`"a"."name" LIKE $1`},
@@ -285,7 +285,7 @@ func TestBinaryContains(t *testing.T) {
 }
 
 func TestMultiRowInsert(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for driver, want := range map[string]string{
 		"mysql":    "INSERT INTO `visit` (`place_seq`, `amount`) VALUES (?, ?), (?, ?), (?, ?)",
 		"postgres": `INSERT INTO "visit" ("place_seq", "amount") VALUES ($1, $2), ($3, $4), ($5, $6)`,
@@ -311,7 +311,7 @@ func TestMultiRowInsert(t *testing.T) {
 // (postgres.identity.by_default_not_advanced), so without this rejection
 // the next generated key would collide.
 func TestKeyColumnsAreNotWritten(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	cases := []struct{ body, message string }{
 		{`"kind":"insert","entity":"place","set":[{"column":"seq","p":0},{"column":"owner_seq","p":1},{"column":"name","p":2}]`, "cannot set identity column seq"},
 		{`"kind":"update","entity":"place","set":[{"column":"seq","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`, "cannot update seq"},

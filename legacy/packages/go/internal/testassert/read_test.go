@@ -7,7 +7,7 @@ import (
 )
 
 func TestReadColumnReturnsGetterValue(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if got := ReadColumn(t, func() (string, error) { return "value", nil }); got != "value" {
 		t.Fatalf("ReadColumn() = %q, want value", got)
 	}

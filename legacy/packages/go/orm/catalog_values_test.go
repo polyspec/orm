@@ -14,7 +14,7 @@ import (
 //
 // Requirements: INT-171.
 func TestCatalogValueUnsupportedDriverValue(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, test := range []struct {
 		name    string
 		dialect string
@@ -50,7 +50,7 @@ func TestCatalogValueUnsupportedDriverValue(t *testing.T) {
 //
 // Requirements: INT-172.
 func TestCatalogValueDriverDecodeFailure(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	ctx, conn := failingSQLiteConn(t)
 	cause := errors.New("invalid length for int8: 3")
 	inject(t, injectedFailure{rows: func(string) error { return cause }})

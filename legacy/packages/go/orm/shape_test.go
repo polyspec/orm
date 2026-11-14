@@ -8,7 +8,7 @@ import (
 )
 
 func TestShapeIgnoresParamValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	a := &request{}
 	b := &request{}
 	for _, r := range []*request{a, b} {
@@ -25,7 +25,7 @@ func TestShapeIgnoresParamValues(t *testing.T) {
 
 // Requirements: INT-143.
 func TestPlanIDFixedWidthLowercaseHex(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, tc := range []struct {
 		key  uint64
 		want string

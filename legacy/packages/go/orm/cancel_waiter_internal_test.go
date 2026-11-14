@@ -11,7 +11,7 @@ import (
 // TestNewWaiterIgnoresSessionsThatAlreadyWaited pins the race that cancelled the context of a case before its
 // statement ran: a session left waiting by an earlier case is not the statement of this case.
 func TestNewWaiterIgnoresSessionsThatAlreadyWaited(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if newWaiter([]int64{7}, []int64{7}) {
 		t.Fatal("a session that waited before counts as the statement of this case")
 	}

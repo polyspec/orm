@@ -13,7 +13,7 @@ import (
 // repository root, where tests/interfaces/check/main.mts is, whatever the working directory and the directory of the
 // recipe are (T448).
 func TestInterfaceCheckRunsFromTheRepositoryRoot(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	root := testcase.RepositoryRoot()
 	t.Chdir(testcase.LegacyRoot())
 	command := interfaceCheckCommand(context.Background())

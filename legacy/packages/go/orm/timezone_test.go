@@ -18,7 +18,7 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 // ends the sole idle connection, then verifies the next statement succeeds.
 // Requirements: INT-92.
 func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	for _, driver := range []string{"mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
 			caseDSN := newDatabase(t, driver)
@@ -133,7 +133,7 @@ func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
 // setter takes the text form only, so the write is refused with CODEC_ENCODE.
 // Requirements: DBS-121.
 func TestNativeTimeIsRefusedByDatetime(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	s := fixtureSchema(t, "zone")
 	dsn := newDatabase(t, "sqlite")
 	db := connectSchemaDB(t, dsn, s)

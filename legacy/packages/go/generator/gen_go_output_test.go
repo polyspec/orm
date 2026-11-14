@@ -113,7 +113,7 @@ func requireUnchanged(t *testing.T, m *runtimemodel.Model, message string, patte
 // TestGoGenerationKeepsOutputOnManifestError checks that a manifest rejected
 // before the scan leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputOnManifestError(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	generatedScannedModule(t)
 	collision := namesManifest(t, "dbspec 1 names\n\ntable product {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n")
 	requireUnchanged(t, collision, "fixed method")
@@ -122,7 +122,7 @@ func TestGoGenerationKeepsOutputOnManifestError(t *testing.T) {
 // TestGoGenerationKeepsOutputOnGenerationError checks that an invalid model
 // call leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputOnGenerationError(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	write("example/bad.go", `package example
@@ -153,7 +153,7 @@ func commandBinary(t *testing.T) string {
 // messages of a scanned-source compile error and of a generation failure.
 // Requirements: DSL-39.
 func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	bin, write := namesCommand(t, false)
 	write("dbspec-set.json", namesSet)
 	run := func() (int, string, string) {
@@ -198,7 +198,7 @@ func namesCommand(t *testing.T, set bool) (string, func(name, body string)) {
 // flags are usage errors that name the flag, and nothing is written.
 // Requirements: ORES-21, DBS-5, DBS-98.
 func TestGoGenerationCommandRefusesTheRemovedDocumentFlags(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	bin := commandBinary(t)
 	root := testcase.LegacyRoot()
 	set := filepath.Join(root, "contracts", "fixtures", "bench", "dbspec-set.json")

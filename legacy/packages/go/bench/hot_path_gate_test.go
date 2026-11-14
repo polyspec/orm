@@ -19,7 +19,7 @@ import (
 )
 
 func TestHotPathGate(t *testing.T) {
-	testcase.Start(t, gateDeadline)
+	testcase.Start(t)
 	hotPathGate(t)
 }
 
@@ -27,7 +27,7 @@ func TestHotPathGate(t *testing.T) {
 // runs beside it. Load slows the native and the client side of each pair
 // alike, so the verdict equals the verdict without load.
 func TestHotPathGateUnderLoad(t *testing.T) {
-	testcase.Start(t, gateDeadline)
+	testcase.Start(t)
 	var load []*exec.Cmd
 	for i := 0; i < runtime.NumCPU(); i++ {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestCPULoad$")
@@ -60,7 +60,7 @@ func TestCPULoad(t *testing.T) {
 	if os.Getenv("ORM_BENCH_CPU_LOAD") != "1" {
 		// Load is generated only in a child process that TestHotPathGateUnderLoad starts and waits for,
 		// and that process runs without a deadline until the parent ends it.
-		testcase.Start(t, testcase.Compute)
+		testcase.Start(t)
 		return
 	}
 	x := uint64(1)

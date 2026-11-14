@@ -8,7 +8,7 @@ import (
 )
 
 func TestGeneratedAssignmentRejectsInvalidValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m := Author()
 	if _, err := m.assign("seq", int64(7)); err != nil {
 		t.Fatal(err)

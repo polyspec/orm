@@ -35,7 +35,7 @@ func withoutBenchDSN(empty bool) []string {
 }
 
 func TestExamplesRequireBenchDSN(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	programs := map[string][]string{}
 	dirs := map[string]string{"python/thin-slice": pythonRoot}
 	for _, name := range []string{"complex", "thin-slice"} {

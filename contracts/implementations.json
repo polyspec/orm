@@ -208,16 +208,12 @@
           "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
         },
         {
-          "glob": "legacy/packages/go/testcase/stall_test.go",
-          "reason": "harness: tests testcase step-budget and stalled-case cancellation primitives used to run tests; it does not exercise an ORM contract"
-        },
-        {
           "glob": "legacy/packages/go/testcase/testdata/fixture/fixture_test.go",
-          "reason": "harness: supplies testdata child-process fixtures whose deliberate pass, failure, skip, group and deadline outcomes are inspected by the testcase harness tests"
+          "reason": "harness: supplies testdata child-process fixtures whose deliberate pass, failure, skip and group outcomes are inspected by the testcase harness tests"
         },
         {
           "glob": "legacy/packages/go/testcase/testcase_test.go",
-          "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
+          "reason": "harness: tests testcase output formatting, runner and group primitives and that no clock ends a case; its subject is the Go test harness rather than an ORM client behavior"
         },
         {
           "glob": "legacy/packages/go/engine/dbspec/literal_test.go",

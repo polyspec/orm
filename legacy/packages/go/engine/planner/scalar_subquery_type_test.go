@@ -68,7 +68,7 @@ func testModel(t *testing.T, document string) *runtimemodel.Model {
 }
 
 func TestScalarSubqueryMissingColumnIsInternal(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m := testModel(t, runtimeDocument)
 	request := &ir.Request{
 		Kind: "all",
@@ -97,7 +97,7 @@ func TestScalarSubqueryMissingColumnIsInternal(t *testing.T) {
 }
 
 func TestColumnFunctionMissingPostValidationFieldIsInternal(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m := testModel(t, runtimeDocument)
 	p := func(i int) *int { return &i }
 	request := func(column string, selectFunction bool) *ir.Request {

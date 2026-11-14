@@ -11,6 +11,6 @@ import (
 // Requirements: DBS-30, DBS-35, DBS-99, DBS-101, DBS-105, DBS-106, DBS-168.
 // Requirements: ORES-13.
 func TestRecipeSetsNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/sets.json"), recipe.None)
 }
