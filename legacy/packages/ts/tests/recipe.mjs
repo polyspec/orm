@@ -1041,8 +1041,8 @@ const OPS = {
   // Returns after the replica has applied every change that the primary committed before the call (CFG-23). On PostgreSQL a
   // transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
   // standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
-  // database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the
-  // deadline of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+  // database of the environment, since the case database reaches the replica only by this wait. The wait has no timeout: it
+  // ends when the replica has applied the position, or with NULL when its SQL thread stops (T474).
   async 'replica.await'(s, context) {
     if (context.database === 'postgres') {
       const [, , [{ mode }]] = await nativeQuery('postgres', context.dsn, [
@@ -1061,8 +1061,8 @@ const OPS = {
     const mariadb = context.database === 'mariadb';
     const [[status]] = await nativeQuery('mysql', context.dsn, [mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS']);
     const wait = mariadb ? 'MASTER_POS_WAIT' : 'SOURCE_POS_WAIT';
-    const [[row]] = await nativeQuery('mysql', replica, [`SELECT ${wait}('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
-    if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
+    const [[row]] = await nativeQuery('mysql', replica, [`SELECT ${wait}('${status.File}', ${Number(status.Position)}) AS waited`]);
+    if (row.waited === null) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     return {};
   },
   // The file of the case database becomes one that the process may only read (CFG-24); a corpus, its directories.

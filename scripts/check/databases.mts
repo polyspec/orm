@@ -138,11 +138,12 @@ export function purgeBinlogs(serversPath: string, servers: Record<string, string
   const [file = '', position = ''] = status.stdout.split('\n')[0]?.split('\t') ?? [];
   if (!/^[A-Za-z0-9._-]+$/.test(file)) { console.error(`databases: the primary reported no binary log file: ${status.stdout.trim()}`); return false; }
   if (!/^\d+$/.test(position)) { console.error(`databases: the primary reported no binary log position: ${status.stdout.trim()}`); return false; }
-  // SOURCE_POS_WAIT gives the events it applied (0 or more), -1 past its deadline, and NULL when the replica SQL thread stops.
-  const waited = mysqlAt(replica, ['-N', '-e', `SELECT IFNULL(SOURCE_POS_WAIT('${file}', ${position}, 120), 'NULL')`], env);
+  // SOURCE_POS_WAIT without a timeout returns when the replica has applied the position, with the events it applied (0 or
+  // more), and NULL when the replica SQL thread stops; no clock ends the wait (T474).
+  const waited = mysqlAt(replica, ['-N', '-e', `SELECT IFNULL(SOURCE_POS_WAIT('${file}', ${position}), 'NULL')`], env);
   if (waited.status !== 0) return false;
   const applied = waited.stdout.trim();
-  if (applied === '-1' || applied === 'NULL' || applied === '') {
+  if (applied === 'NULL' || applied === '') {
     console.error(`databases: the replica did not apply the primary's binary log up to ${file}:${position} (SOURCE_POS_WAIT returned ${applied || 'nothing'}); ${replicaState(replica, env)}; the binary logs are kept`);
     return false;
   }

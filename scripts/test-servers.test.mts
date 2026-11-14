@@ -443,12 +443,15 @@ caseTest('an ended holder whose releaser still runs is waited for, and taken ove
     writeHolder(leases, 'shared-1-a.json', { kind: 'shared', pid: deadPid(), releaser: releaser.pid });
     const waiter = spawn(lease, ['run', leases, 'exclusive', '--wait', '--', 'echo', 'got'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '', err = '';
+    const waitingLine = /waiting for the exclusive lease .*ended, releaser \d+ running/s;
+    // The waiter reports that it waits on stderr; that line, not a timer, orders the end of the releaser after the wait (T474).
+    let reported: (value: string) => void = () => {};
+    const waiting = new Promise<string>(resolve => { reported = resolve; });
     waiter.stdout.on('data', chunk => { out += chunk; });
-    waiter.stderr.on('data', chunk => { err += chunk; });
+    waiter.stderr.on('data', chunk => { err += chunk; if (waitingLine.test(err)) reported('waiting'); });
     const ended = new Promise(resolve => waiter.on('close', code => resolve(code)));
-    const early = await Promise.race([ended, new Promise(resolve => setTimeout(() => resolve('waiting'), 500))]);
-    assert.equal(early, 'waiting', `the waiter ended while the releaser ran: ${err}`);
-    assert.match(err, /waiting for the exclusive lease .*ended, releaser \d+ running/s);
+    const first = await Promise.race([waiting, ended.then(() => 'ended')]);
+    assert.equal(first, 'waiting', `the waiter ended while the releaser ran: ${err}`);
     releaser.kill('SIGKILL');
     assert.equal(await ended, 0, err);
     assert.equal(out, 'got\n');
