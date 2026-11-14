@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: a723aa2436b73fa7feee17c07e2ffc68b8981480acb800d52ec485b2c80bc9ab -->
+<!-- source-sha256: 7dd95f66912c2124f939579d8a37ebdf2cabf17f3c4e914b9290bca0a4b4329e -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -579,6 +579,7 @@ make orm-test-container-run KIND=mysql RUN='make test-rust'  # 이 run만의 서
 make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'  # 같은 run을 commit의 clone으로 runner 안의 bay job 두 개로 실행한다. machine은 job을 한 번에 하나씩 실행한다. KEEP=1은 tool과 build가 든 directory를 남긴다
 make orm-test-container-run KIND=mysql FORM=runner BUILD='<build command>' RUN='make test-rust' CARGO_BUILD_JOBS=<count> RUNNER_MEMORY=<size> SERVER_MEMORY=<size>  # server가 시작하기 전에 job build 안에서 build한다. cargo의 job 수와 memory 한도는 machine에 맞게 준다
 make orm-test-container-remote KIND=mysql,postgres,sqlite RUN='make client-db-check' HOST=<ssh host> REMOTE=<directory>  # 한 run의 여러 kind: 각 kind의 server와, servers.env 하나에 든 각 kind의 변수
+make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory> CACHE=/srv/polyspec/gate/cache  # tool의 download(rustup, cargo의 CARGO_HOME, Go module과 build cache, npm, Composer)를 run보다 오래 남는 그곳의 directory에 둔다. clone과 target directory는 run에 남는다
 make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory>  # host에 sh와 bay만 있는 다른 machine에서 runner의 run을 실행한다. job은 그곳에서 실행되고 ssh를 통해 그곳에서 기다린다. 끝나지 않은 job은 그곳의 directory를 남기고 3으로 끝난다. 다시 시작해도 아무것도 두 번 넣지 않고 다시 기다린다. PULL=1은 그곳에서 image를 pull한다
 ```
 
