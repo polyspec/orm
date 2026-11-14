@@ -1,57 +1,72 @@
-// test-servers-container starts one test database server, MySQL, PostgreSQL or MariaDB, in an Apple container from the
-// image that config/containers.json pins by its digest, and writes the environment file of that one server. It is the
-// container form of the servers of scripts/test-servers.mts: the server takes the settings of the native primary
-// (time zone, lower-case table names, binary log retention, InnoDB log space, and for PostgreSQL its WAL and its
-// synchronous standby), and its data lives on a tmpfs of the container, so removing the container removes the data and no
-// volume is left. MySQL and PostgreSQL have a replica in a second container, polyspec-orm-test-<checkout>-<kind>-replica,
-// as the native primaries have: the MySQL replica reads the binary log of the primary from its first file, which the
-// primary resets after its image initialized it, and the PostgreSQL replica is a pg_basebackup of the primary that streams
-// through the physical replication slot orm_replica. Both follow the primary before it creates the databases of the checks.
+// test-servers-container writes the directory of a run of the test database servers of one kind, MySQL, PostgreSQL or
+// MariaDB, and starts the file run.sh of that directory, which executes the run (CONTRIBUTING.md "Test database servers
+// in containers", BAY1, BAY12). The servers are a Compose project that the program bay runs, on Apple container on macOS
+// and on Docker on Linux, from the images that config/containers.json pins by their digests. It is the container form of
+// the servers of scripts/test-servers.mts: a server takes the settings of the native primary (time zone, lower-case table
+// names, binary log retention, InnoDB log space, and for PostgreSQL its WAL and its synchronous standby), and MySQL and
+// PostgreSQL have a replica as a second service of the project.
 //
 //   node scripts/test-servers-container.mts start <mysql|postgres|mariadb>
-//   node scripts/test-servers-container.mts run <mysql|postgres|mariadb> -- <command> [argument...]
+//   node scripts/test-servers-container.mts run <mysql|postgres|mariadb> [--runner] [--keep] -- <command> [argument...]
+//   node scripts/test-servers-container.mts remote <mysql|postgres|mariadb> <host> <directory> [--keep] [--pull] -- <command> [argument...]
 //   node scripts/test-servers-container.mts stop
 //   node scripts/test-servers-container.mts pull
+//   node scripts/test-servers-container.mts install-bay
 //
-// CONTAINER_PROGRAM names the container program; make passes it. A container belongs to the checkout that started it:
-// its name is polyspec-orm-test-<checkout>-<kind>, where <checkout> is the first 12 hexadecimal digits of the sha256 of
-// the root of the checkout, so two checkouts run their servers at once, and stop removes only the containers of its own
-// checkout; a container of another name is never stopped or removed (T444). Each kind runs at most once in a checkout,
-// and kinds may run together: start refuses a kind whose container exists, and a start that fails removes the container
-// of its kind. run starts the server of a kind, runs the command with the variables of the server, and removes that
-// container when the command ends or fails, or when the run gets SIGINT or SIGTERM, which it forwards to the command.
+// The work is divided, so that a run executes on a machine whose host has only sh and bay. This script writes: the
+// directory .runtime/containers/<project> with compose.yaml, run.sh, the second CA of the TLS cases and the
+// initialization files, and for a run in the runner runner-setup.sh, check.sh and the bundle of the commit. run.sh
+// executes: it is a POSIX sh file whose steps are commands of bay -p <project>, each decided by its exit status; it
+// reads no JSON, starts no timer and repeats no request. <project> is orm-<checkout>-<run>, where <checkout> is the
+// first 12 hexadecimal digits of the sha256 of the root of the checkout and <run> is 8 random hexadecimal digits, so two
+// checkouts and two runs of one checkout share nothing, and stop removes every project of its checkout and no other.
 //
-// The environment file is .runtime/containers/<kind>.env; the MySQL and PostgreSQL files have the variables of the
-// primary of TEST_ENV, the MariaDB file those of the primary of MARIADB_ENV. The DSNs name the address of the container
-// on its network, which the container runtime assigns, and the port of the server in the container. The server has TLS
-// with a certificate that issueTls of scripts/test-servers.mts issues for each start under .runtime/containers/tls-<kind>:
-// it names the host name of the container, <name>.container.test, so the TLS DSN connects to that name, the DSN with the
-// second CA fails the chain, and the mismatch DSN connects to the address, which the certificate does not name. The Unix
-// socket of MySQL and MariaDB is published at .runtime/containers/<kind>.sock. The replica DSN names the address of the
-// replica container. MariaDB has no replica, as the native MariaDB server has none, and no pooler is started, so their
-// variables are absent and a check that reads them fails, naming the variable.
+// What a file of the directory names is read when the directory is written, from the bay of the machine that runs it:
+// bay plan --json gives the host name of each service and the authority of its certificate, so this script holds no
+// form and no suffix of a host name and run.sh needs no JSON. The IPv4 address of the mismatch DSN is known only after
+// the start; run.sh reads it from the resolver of the container of the primary.
 //
-// Waiting for a server is a long operation without a time limit: start reads the output of the attached container on each
-// change of its log file and resolves on the ready line that the server logs after its image finished its
-// initialization, and fails when the container stops first.
-// stop holds the exclusive lease of the servers of the checkout, then stops and removes each container of the checkout.
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, watch, writeFileSync } from 'node:fs';
+// A run has one of two forms, which the directory records and which does not change while it runs. In the form of the
+// host the command of the run is a process of the host with the variables of the servers, for the results of the host
+// system. In the form of the runner the run is two jobs of bay in a Debian base image, the runner: the job build, in
+// which runner-setup.sh installs the tools from a clone of the commit below the directory of the run and the build
+// command runs, and the job check, which runs the command with the servers; nothing of that form is installed on the
+// host. Both forms share the steps that prepare the servers: the host form runs them with bay exec in the container of
+// each server, the runner form with the client of the image over TCP in the one-shot service setup.
+//
+// start writes .runtime/containers/<kind>.env and refuses a kind that is started in the checkout; run removes its
+// project when its command ends or fails, or when the run gets SIGINT, SIGTERM or SIGHUP. No pooler is started, and bay
+// publishes no Unix socket on the host; their variables are absent from servers.env, and a check that reads one fails
+// naming the variable. A check through a Unix socket would run in the container of its server, where the socket is,
+// and the jobs of bay run no command there, so no run has one (BAY8).
+import { spawn, spawnSync } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
+import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { errorCode } from '../tests/errors.mts';
 import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_WAL, TestServerError } from './test-servers.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
-const PREFIX = 'polyspec-orm-test-';
-// TLS_MOUNT is the folder of the TLS files in the container.
-const TLS_MOUNT = '/etc/orm-tls';
+// SCHEMA is the contract schema version of bay that this script and its run.sh are written for. A run takes the bay of
+// its machine and compares no version: the contract of the output that it reads is what its result depends on.
+const SCHEMA = 1;
+// BAY_TLS is the folder where bay mounts the certificate of a container, its key and its authority, and INIT_MOUNT the
+// folder whose files an image runs once when it initializes its data directory.
+const BAY_TLS = '/etc/bay/tls';
+const INIT_MOUNT = '/docker-entrypoint-initdb.d';
 // POSTGRES_KEY is the copy of the key of the PostgreSQL server in the container, outside its data directory.
 const POSTGRES_KEY = '/var/lib/postgresql/orm-tls-key.pem';
+// RUN_MOUNT is the directory of the run in the runner.
+const RUN_MOUNT = '/orm-run';
 
 type Kind = 'mysql' | 'postgres' | 'mariadb';
+// Form is where the command of a run runs: a process of the host, or bay exec in the service runner.
+type Form = 'host' | 'runner';
 
-// Context is the checkout whose servers a command starts or removes, and the container program that it runs.
-export interface Context { root: string; program: string }
+// Context is the checkout whose servers a command starts or removes, with the command of bay: its program, or several
+// words, as sudo -n bay on a machine where bay runs as root. ssh and tar are the programs of a run on another machine
+// and curl that of the install target of bay; a test names stand-ins.
+export interface Context { root: string; bay: string; ssh?: string; tar?: string; curl?: string }
 
 // Folders are the files of the servers of a checkout: .runtime/containers and its leases.
 interface Folders { dir: string; leases: string }
@@ -61,138 +76,130 @@ function folders(root: string): Folders {
   return { dir, leases: join(dir, 'leases') };
 }
 
-// tlsDir is the folder of the TLS files of the server of kind on the host.
-const tlsDir = (dir: string, kind: Kind) => join(dir, `tls-${kind}`);
+// Yaml is a value of the Compose file: a string, a number, a boolean, a list of strings, or a mapping of such values.
+type Yaml = string | number | boolean | readonly string[] | { readonly [key: string]: Yaml };
 
-// Marks are the log lines that start waits for: initialized is the log line of the image after its initialization, and
-// ready is the first line after it that names a server that accepts connections on its port.
-interface Marks {
-  initialized: string;
-  ready: (line: string) => boolean;
-}
-
-// Replica is the replica of a primary in a container of its own. prepare runs in the primary after it is ready and before
-// the replica starts; arguments are the arguments of the replica container after its image, for the address of the
-// primary; follow, when the replica needs it, runs in the replica after it is ready and before the primary creates the
-// databases.
-interface Replica extends Marks {
-  prepare: string[];
-  arguments: (primary: string) => string[];
-  follow?: (primary: string) => string[];
-}
-
-interface Server extends Marks {
-  // port is the port of the server in the container.
+// Service is a service of the project of a start. data is the data directory of the image, which a tmpfs replaces, so
+// the data ends with the container; init is a file of the initialization directory of the image, for a setting that
+// must hold before the server accepts its first connection; health is the readiness program of the server, which runs
+// in the container; after is the service that must be healthy before this one starts.
+interface Service {
+  name: string;
   port: number;
-  // data is the data directory of the image, which a tmpfs replaces.
   data: string;
-  environment: string[];
-  arguments: string[];
-  replica?: Replica;
-  // databases runs in the container and creates the databases of the checks and, for MySQL and MariaDB, the accounts of
-  // the user orm, as the native servers do.
-  databases: string[];
-  // socket is the Unix socket of the server in the container, which start publishes on the host.
-  socket?: string;
+  command: string[];
+  environment: Record<string, string>;
+  init?: { file: string; text: string };
+  health: string[];
+  after?: string;
+}
+
+// Step is a command that prepares a started server: it runs in the container of its service after bay up returned.
+interface Step { service: string; command: string[] }
+
+// Endpoint is where the checks reach the servers of a project: the host name of each service by its name, the text
+// that run.sh replaces with the IPv4 address of the primary, the authority that signed the certificates of the servers,
+// the second CA, which signed nothing, and the lease folder.
+interface Endpoint { host: (service: string) => string; ipv4: string; authority: string; other: string; leases: string }
+
+interface Server {
+  // services are the services of the kind, the primary first; host is the host name of a service of the project.
+  services: (host: (service: string) => string) => Service[];
+  // steps run after bay up, each to its end before the next.
+  steps: (host: (service: string) => string) => Step[];
   variables: (server: Endpoint) => Record<string, string>;
 }
 
-// Endpoint is where the checks reach a started server: its address, its host name, which its certificate names, the
-// host path of its published socket, the folders of its checkout, and the address of its replica, which a kind without a
-// replica has not.
-interface Endpoint { address: string; host: string; socket: string; folders: Folders; replica?: string }
+const mysqlTls = (ca: string, host: string) => `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${ca}`;
+const postgresTls = (ca: string, host: string) => `postgres://orm@${host}:5432/orm_test?sslmode=verify-full&sslrootcert=${ca}`;
+// A MySQL or MariaDB server presents the certificate that bay mounts in its container.
+const mysqlTlsOptions = [`--ssl-ca=${BAY_TLS}/ca.pem`, `--ssl-cert=${BAY_TLS}/cert.pem`, `--ssl-key=${BAY_TLS}/key.pem`];
 
-// started is the address of the replica of kind, which start sets for each kind that has a replica.
-function started(replica: string | undefined, kind: Kind): string {
-  if (replica === undefined) throw new TestServerError(`test-servers-container: the replica of ${kind} has no address`);
-  return replica;
-}
-
-const mysqlTls = (tls: string, host: string, ca: string) => `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${tls}/${ca}.pem`;
-const postgresTls = (tls: string, host: string, ca: string) => `postgres://orm@${host}:5432/orm_test?sslmode=verify-full&sslrootcert=${tls}/${ca}.pem`;
-const mysqlTlsOptions = (kind: Kind) => [`--ssl-ca=${TLS_MOUNT}/ca.pem`, `--ssl-cert=${TLS_MOUNT}/${kind}-cert.pem`, `--ssl-key=${TLS_MOUNT}/${kind}-key.pem`];
-
-// The MySQL and the MariaDB server take the options of the native primary (scripts/test-servers.mts). The temporary
-// server of the image initialization listens on port 0, so the ready line of the server names port 3306.
+// The MySQL and the MariaDB server take the options of the native primary (scripts/test-servers.mts).
 const mysqlOptions = ['--secure-file-priv=NULL', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MYSQLD_BINLOG, ...MYSQLD_STORAGE];
-const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysqlOptions, `--server-id=${serverId}`, ...mysqlTlsOptions('mysql')];
+const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysqlOptions, `--server-id=${serverId}`, ...mysqlTlsOptions];
 
 // The PostgreSQL servers take the settings of postgresArguments of scripts/test-servers.mts; the primary names the replica
 // as its synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
-// PostgreSQL refuses a key that another user than its own can read, so the key is copied for the user postgres first.
-const postgresKey = `install -m 0600 -o postgres -g postgres ${TLS_MOUNT}/postgres-key.pem ${POSTGRES_KEY}`;
-const postgresSettings = ['-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'ssl=on', '-c', `ssl_cert_file=${TLS_MOUNT}/postgres-cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`,
+// PostgreSQL refuses a key that another user than its own can read, and bay mounts a key that every user of the
+// container reads, so the key is copied for the user postgres first.
+const postgresKey = `install -m 0600 -o postgres -g postgres ${BAY_TLS}/key.pem ${POSTGRES_KEY}`;
+const postgresSettings = ['-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'ssl=on', '-c', `ssl_cert_file=${BAY_TLS}/cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`,
   ...POSTGRES_WAL.flatMap(setting => ['-c', setting])];
-const mysqlReady = (line: string) => line.includes('ready for connections') && line.includes('port: 3306');
+
+// The temporary server that an image starts to initialize a data directory listens only on its socket, so each readiness
+// program connects over TCP on 127.0.0.1 and succeeds only for the server that the checks reach.
+const mysqlHealth = ['mysqladmin', 'ping', '--host=127.0.0.1', '--protocol=TCP', '--silent'];
+const postgresHealth = ['pg_isready', '--host=127.0.0.1', '--username=orm', '--dbname=postgres'];
+const DATABASES_SQL = `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL}`;
+const postgresEnvironment = { POSTGRES_USER: 'orm', POSTGRES_HOST_AUTH_METHOD: 'trust', POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C' };
 
 const SERVERS: Record<Kind, Server> = {
   mysql: {
-    port: 3306, data: '/var/lib/mysql', environment: ['MYSQL_ALLOW_EMPTY_PASSWORD=yes'],
-    arguments: mysqlArguments(1),
-    initialized: 'MySQL init process done', ready: mysqlReady,
-    // The replica reads the binary log of the primary from its first file, which the reset leaves empty, so it applies
-    // every change after the initialization of the image and none of the image, which initialized the replica as well.
-    replica: {
-      initialized: 'MySQL init process done', ready: mysqlReady,
-      prepare: ['mysql', '-uroot', '-e', 'RESET BINARY LOGS AND GTIDS'],
-      arguments: () => [...mysqlArguments(2), '--skip-replica-start'],
-      follow: primary => ['mysql', '-uroot', '-e',
-        `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${primary}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1; START REPLICA; SET GLOBAL super_read_only = ON`],
-    },
-    databases: ['mysql', '-uroot', '-e', `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL}`],
-    socket: '/var/run/mysqld/mysqld.sock',
-    variables: ({ address, host, socket, folders: { dir, leases }, replica }) => {
-      const mysql = `mysql://root@${address}:3306`;
-      const tls = tlsDir(dir, 'mysql');
+    services: () => [
+      { name: 'mysql', port: 3306, data: '/var/lib/mysql', command: mysqlArguments(1), environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes' }, health: mysqlHealth },
+      { name: 'mysql-replica', port: 3306, data: '/var/lib/mysql', command: [...mysqlArguments(2), '--skip-replica-start'], environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes' }, health: mysqlHealth },
+    ],
+    // The order of the native servers: the primary resets its binary log, which holds the initialization of its image,
+    // that the image of the replica ran as well; the replica then follows the primary from the first file of that log and
+    // is read-only; and the primary creates the databases and the accounts of the user orm, which the replica applies. Each step needs a server that accepts
+    // connections and changes what a running server does, so none is a file of the initialization of the image.
+    steps: host => [
+      { service: 'mysql', command: ['mysql', '-uroot', '-e', 'RESET BINARY LOGS AND GTIDS'] },
+      { service: 'mysql-replica', command: ['mysql', '-uroot', '-e',
+        `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host('mysql')}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1; START REPLICA; SET GLOBAL super_read_only = ON`] },
+      { service: 'mysql', command: ['mysql', '-uroot', '-e', DATABASES_SQL] },
+    ],
+    variables: ({ host, ipv4, authority, other, leases }) => {
+      const mysql = `mysql://root@${host('mysql')}:3306`;
       return {
         ORM_TEST_MYSQL_DSN: `${mysql}/orm_test`, ORM_TEST_MYSQL_SERVER_DSN: `${mysql}/orm_test`, ORM_TOOLS_MYSQL_DSN: `${mysql}/orm_tools`,
         ORM_RUN_MYSQL_DSN: `${mysql}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
-        ORM_TEST_MYSQL_TLS_DSN: mysqlTls(tls, host, 'ca'), ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: mysqlTls(tls, host, 'other-ca'), ORM_TEST_MYSQL_TLS_MISMATCH_DSN: mysqlTls(tls, address, 'ca'),
-        ORM_TEST_MYSQL_SOCKET: socket, ORM_TEST_MYSQL_REPLICA_DSN: `mysql://root@${started(replica, 'mysql')}:3306/orm_test`,
+        ORM_TEST_MYSQL_TLS_DSN: mysqlTls(authority, host('mysql')), ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: mysqlTls(other, host('mysql')), ORM_TEST_MYSQL_TLS_MISMATCH_DSN: mysqlTls(authority, ipv4),
+        ORM_TEST_MYSQL_REPLICA_DSN: `mysql://root@${host('mysql-replica')}:3306/orm_test`,
       };
     },
   },
   postgres: {
-    port: 5432, data: '/var/lib/postgresql/data',
-    environment: ['POSTGRES_USER=orm', 'POSTGRES_HOST_AUTH_METHOD=trust', 'POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C'],
-    arguments: ['sh', '-c', `${postgresKey} && exec docker-entrypoint.sh "$@"`, 'sh',
-      'postgres', ...postgresSettings, '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'],
-    initialized: 'PostgreSQL init process complete', ready: line => line.includes('database system is ready to accept connections'),
-    // The rules of the image let every host connect to every database, which does not cover replication, so prepare lets
-    // the role orm replicate. The replica is a pg_basebackup of the primary into the empty data directory, and the image
-    // skips its initialization for that directory; -R writes the standby configuration with the application_name that
-    // synchronous_standby_names lists, and -C -S creates the slot orm_replica, as postgresBaseBackupArguments does.
-    replica: {
-      initialized: 'Skipping initialization', ready: line => line.includes('database system is ready to accept read-only connections'),
-      prepare: ['sh', '-c', `echo 'host replication orm all trust' >> "$PGDATA/pg_hba.conf" && psql -X -q -t -U orm -d postgres -c 'SELECT pg_reload_conf()'`],
-      arguments: primary => ['sh', '-c', `${postgresKey} && chown postgres:postgres "$PGDATA" && chmod 0700 "$PGDATA" && gosu postgres pg_basebackup -D "$PGDATA" -R -C -S orm_replica -X stream -d 'host=${primary} port=5432 user=orm application_name=orm_replica' && exec docker-entrypoint.sh "$@"`, 'sh',
-        'postgres', ...postgresSettings],
-    },
-    databases: ['psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', 'orm', '-d', 'postgres', '-c', 'CREATE DATABASE orm_test', '-c', 'CREATE DATABASE orm_tools'],
-    variables: ({ address, host, folders: { dir, leases }, replica }) => {
-      const postgres = `postgres://orm@${address}:5432`;
-      const tls = tlsDir(dir, 'postgres');
+    services: host => [
+      // The rules of the image let every host connect to every database, which does not cover replication. The rule that
+      // lets the role orm replicate is a file of the initialization of the image, because bay up starts the standby as
+      // soon as the primary is healthy, before a step of this script can run.
+      { name: 'postgres', port: 5432, data: '/var/lib/postgresql/data', environment: postgresEnvironment, health: postgresHealth,
+        command: ['sh', '-c', `${postgresKey} && exec docker-entrypoint.sh "$@"`, 'sh',
+          'postgres', ...postgresSettings, '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'],
+        init: { file: 'orm.sh', text: `echo 'host replication orm all trust' >> "$PGDATA/pg_hba.conf"\n` } },
+      // The standby is a pg_basebackup of the healthy primary into the empty data directory, and the image skips its
+      // initialization for that directory; -R writes the standby configuration with the application_name that
+      // synchronous_standby_names lists, and -C -S creates the slot orm_replica, as postgresBaseBackupArguments does.
+      { name: 'postgres-replica', port: 5432, data: '/var/lib/postgresql/data', environment: postgresEnvironment, health: postgresHealth, after: 'postgres',
+        command: ['sh', '-c', `${postgresKey} && chown postgres:postgres "$PGDATA" && chmod 0700 "$PGDATA" && gosu postgres pg_basebackup -D "$PGDATA" -R -C -S orm_replica -X stream -d 'host=${host('postgres')} port=5432 user=orm application_name=orm_replica' && exec docker-entrypoint.sh "$@"`, 'sh',
+          'postgres', ...postgresSettings] },
+    ],
+    // The primary creates the databases after the standby follows it, as the native primary does.
+    steps: () => [{ service: 'postgres', command: ['psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', 'orm', '-d', 'postgres', '-c', 'CREATE DATABASE orm_test', '-c', 'CREATE DATABASE orm_tools'] }],
+    variables: ({ host, ipv4, authority, other, leases }) => {
+      const postgres = `postgres://orm@${host('postgres')}:5432`;
       return {
         ORM_TEST_POSTGRES_DSN: `${postgres}/orm_test`, ORM_TEST_POSTGRES_SERVER_DSN: `${postgres}/orm_test`, ORM_TOOLS_POSTGRES_DSN: `${postgres}/orm_tools`,
         ORM_RUN_POSTGRES_DSN: `${postgres}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
-        ORM_TEST_POSTGRES_TLS_DSN: postgresTls(tls, host, 'ca'), ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(tls, host, 'other-ca'), ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(tls, address, 'ca'),
-        ORM_TEST_POSTGRES_REPLICA_DSN: `postgres://orm@${started(replica, 'postgres')}:5432/orm_test`,
+        ORM_TEST_POSTGRES_TLS_DSN: postgresTls(authority, host('postgres')), ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(other, host('postgres')), ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(authority, ipv4),
+        ORM_TEST_POSTGRES_REPLICA_DSN: `postgres://orm@${host('postgres-replica')}:5432/orm_test`,
       };
     },
   },
   mariadb: {
-    port: 3306, data: '/var/lib/mysql', environment: ['MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1'],
-    arguments: ['mariadbd', ...mysqlOptions, '--server-id=1', ...mysqlTlsOptions('mariadb')],
-    initialized: 'MariaDB init process done', ready: mysqlReady,
-    databases: ['mariadb', '-uroot', '-e', `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL}`],
-    socket: '/run/mysqld/mysqld.sock',
-    variables: ({ address, host, socket, folders: { dir, leases } }) => {
-      const mariadb = `mysql://root@${address}:3306`;
-      const tls = tlsDir(dir, 'mariadb');
+    // healthcheck.sh is the readiness program of the image; --connect requires a connection over TCP.
+    services: () => [
+      { name: 'mariadb', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', ...mysqlOptions, '--server-id=1', ...mysqlTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' },
+        health: ['healthcheck.sh', '--connect', '--innodb_initialized'] },
+    ],
+    steps: () => [{ service: 'mariadb', command: ['mariadb', '-uroot', '-e', DATABASES_SQL] }],
+    variables: ({ host, ipv4, authority, other, leases }) => {
+      const mariadb = `mysql://root@${host('mariadb')}:3306`;
       return {
         ORM_TEST_MARIADB_DSN: `${mariadb}/orm_test`, ORM_TEST_MARIADB_SERVER_DSN: `${mariadb}/orm_test`, ORM_TOOLS_MARIADB_DSN: `${mariadb}/orm_tools`, ORM_TEST_MARIADB_LEASES: leases,
-        ORM_TEST_MARIADB_TLS_DSN: mysqlTls(tls, host, 'ca'), ORM_TEST_MARIADB_TLS_OTHER_CA_DSN: mysqlTls(tls, host, 'other-ca'), ORM_TEST_MARIADB_TLS_MISMATCH_DSN: mysqlTls(tls, address, 'ca'),
-        ORM_TEST_MARIADB_SOCKET: socket,
+        ORM_TEST_MARIADB_TLS_DSN: mysqlTls(authority, host('mariadb')), ORM_TEST_MARIADB_TLS_OTHER_CA_DSN: mysqlTls(other, host('mariadb')), ORM_TEST_MARIADB_TLS_MISMATCH_DSN: mysqlTls(authority, ipv4),
       };
     },
   },
@@ -213,169 +220,841 @@ function field(value: unknown, name: string): unknown {
   return isRecord(value) ? value[name] : undefined;
 }
 
-function image(kind: Kind): string {
+function image(kind: Kind | 'runner'): string {
   const file = join(REPOSITORY, 'config/containers.json');
   const reference = field(field(field(JSON.parse(readFileSync(file, 'utf8')), 'images'), kind), 'reference');
   if (typeof reference !== 'string' || !/@sha256:[0-9a-f]{64}$/.test(reference)) throw new TestServerError(`test-servers-container: ${file} pins no image of ${kind} by its digest`);
   return reference;
 }
 
-// checkout is the identifier of a checkout in the names of its containers: the first 12 hexadecimal digits of the sha256
+// checkout is the identifier of a checkout in the names of its projects: the first 12 hexadecimal digits of the sha256
 // of its root.
 function checkout(root: string): string {
   return createHash('sha256').update(root).digest('hex').slice(0, 12);
 }
 
-// containerName is the name of the container of a kind that the checkout at root starts; its replica is that name with
-// the suffix -replica.
-export function containerName(root: string, kind: Kind): string {
-  return `${PREFIX}${checkout(root)}-${kind}`;
+// Ran is the end of a program that this script ran to its end.
+interface Ran { status: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string }
+
+// At is a project: its name, which bay takes with -p, and its directory, where bay reads compose.yaml.
+interface At { name: string; dir: string }
+
+// bay runs a command of bay to its end with its output captured, for a project when at is given, and fails naming the
+// path, what bay does for this script and what provides it when the program is missing.
+function bay(context: Context, args: string[], at?: At): Ran {
+  const [program = '', ...first] = context.bay.split(' ').filter(word => word !== '');
+  const ran = spawnSync(program, [...first, ...(at ? ['-p', at.name] : []), ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...(at ? { cwd: at.dir } : {}) });
+  if (ran.error) {
+    if (errorCode(ran.error) === 'ENOENT')
+      throw new TestServerError(`test-servers-container: ${program} is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND`);
+    throw new TestServerError(`test-servers-container: ${context.bay}: ${ran.error.message}`);
+  }
+  return { status: ran.status, signal: ran.signal, stdout: ran.stdout, stderr: ran.stderr };
 }
 
-const replicaName = (root: string, kind: Kind) => `${containerName(root, kind)}-replica`;
-
-// container runs the container program and returns its standard output, or fails naming the command and its output.
-function container(program: string, args: string[]): string {
-  const ran = spawnSync(program, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  if (ran.error) throw new TestServerError(`test-servers-container: ${program}: ${ran.error.message}`);
-  if (ran.status !== 0) throw new TestServerError(`test-servers-container: container ${args.join(' ')} exited with ${ran.status ?? ran.signal}:\n${ran.stderr}${ran.stdout}`);
+// succeeded is the standard output of a program that must have exited with 0; what names it in the failure.
+function succeeded(ran: Ran, what: string): string {
+  if (ran.status !== 0) throw new TestServerError(`test-servers-container: ${what} exited with ${ran.status ?? ran.signal}:\n${ran.stderr}${ran.stdout}`);
   return ran.stdout;
 }
 
-// ours are the names of the containers of the checkout; a container of another name is never stopped or removed.
-function ours({ root, program }: Context): string[] {
-  const listed: unknown = JSON.parse(container(program, ['list', '--all', '--format', 'json']));
-  if (!Array.isArray(listed)) throw new TestServerError('test-servers-container: container list printed no list');
-  const prefix = `${PREFIX}${checkout(root)}-`;
-  return listed.map(entry => field(field(entry, 'configuration'), 'id')).filter((id): id is string => typeof id === 'string' && id.startsWith(prefix));
+// BayPin is the release of bay that CI installs, which config/containers.json pins: its version, the address of its
+// files, and the sha256 of its archive for each platform, named <system>_<processor> as the archives name it. Only the
+// install target reads it: a run takes the bay of its machine, as it takes make, and checks its contract alone.
+export interface BayPin { version: string; release: string; sha256: Record<string, string> }
+
+function bayPin(): BayPin {
+  const file = join(REPOSITORY, 'config/containers.json');
+  const declared = field(JSON.parse(readFileSync(file, 'utf8')), 'bay');
+  const [version, release, sha256] = [field(declared, 'version'), field(declared, 'release'), field(declared, 'sha256')];
+  if (typeof version !== 'string' || !/^v\d+\.\d+\.\d+$/.test(version) || typeof release !== 'string' || !release.startsWith('https://') || !isRecord(sha256) || !Object.values(sha256).every(each => typeof each === 'string' && /^[0-9a-f]{64}$/.test(each)))
+    throw new TestServerError(`test-servers-container: ${file} pins no release of bay with its version, its address and the sha256 of each archive`);
+  return { version, release, sha256: Object.fromEntries(Object.entries(sha256).map(([platform, each]) => [platform, String(each)])) };
 }
 
-// address is the IPv4 address of the container on its network, without its prefix length.
-function address(program: string, name: string): string {
-  const inspected: unknown = JSON.parse(container(program, ['inspect', name]));
-  const networks = Array.isArray(inspected) ? field(field(inspected[0], 'status'), 'networks') : undefined;
-  const ipv4 = Array.isArray(networks) ? field(networks[0], 'ipv4Address') : undefined;
-  const text = (typeof ipv4 === 'string' ? ipv4 : '').split('/')[0] ?? '';
-  if (!/^\d+\.\d+\.\d+\.\d+$/.test(text)) throw new TestServerError(`test-servers-container: container inspect ${name} names no IPv4 address`);
-  return text;
+// contracted fails unless what bay version --json printed has the contract that this script is written for; where
+// names the machine of that bay in the failure. What changes the result of a run is the contract of the output that
+// the script and run.sh read, and not the number of a release, so no version is compared.
+function contracted(printed: string, where: string): void {
+  const schema = field(JSON.parse(printed), 'schemaVersion');
+  if (schema !== SCHEMA)
+    throw new TestServerError(`test-servers-container: bay version --json reports the contract schema version ${JSON.stringify(schema)}${where}, and this script is written for ${SCHEMA}; install a bay of that contract`);
 }
 
-// launch starts the container attached, in a new session, with its output appended to .runtime/containers/<label>.log: the
-// container program outlives this command, and its exit is the event that the container stopped, which a log follower of
-// the container program does not report. The log is read on each change event of the file; each line is shown on stderr as
-// "test-servers-container: <label>: <line>". It resolves on the ready line after the line of the initialization, and fails
-// when the container stops first, naming the log.
-function launch(context: Context, label: string, server: Marks, args: string[]): Promise<void> {
-  const log = join(folders(context.root).dir, `${label}.log`);
-  writeFileSync(log, '');
-  const fd = openSync(log, 'a');
-  const child = spawn(context.program, args, { detached: true, stdio: ['ignore', fd, fd] });
-  closeSync(fd);
-  const reader = openSync(log, 'r');
-  let offset = 0, pending = '', initialized = false, done = false;
-  return new Promise((resolveReady, rejectReady) => {
-    const finish = (error?: TestServerError) => {
-      if (done) return;
-      done = true;
-      watcher.close();
-      closeSync(reader);
-      child.unref();
-      if (error) rejectReady(error); else resolveReady();
-    };
-    const read = () => {
-      if (done) return;
-      const chunk = Buffer.alloc(65536);
-      for (let n; (n = readSync(reader, chunk, 0, chunk.length, offset)) > 0; offset += n) pending += chunk.subarray(0, n).toString('utf8');
-      const lines = pending.split('\n');
-      pending = lines.pop() ?? '';
-      for (const line of lines) {
-        if (done) return;
-        process.stderr.write(`test-servers-container: ${label}: ${line}\n`);
-        if (line.includes(server.initialized)) initialized = true;
-        else if (initialized && server.ready(line)) finish();
-      }
-    };
-    // libuv watches a file with a one-shot kqueue event, which it adds in the poll phase after watch returns and adds
-    // again in the poll phase after each event, so a line written before the watch or between an event and that poll
-    // phase raises no event. settled reads in the second check phase from its call, which comes after a poll phase, also
-    // when it is called in one: it runs after the start of the watch and after each event, so each line is read (T445).
-    const settled = () => setImmediate(() => setImmediate(read));
-    const watcher = watch(log, () => { read(); settled(); });
-    child.on('error', error => finish(new TestServerError(`test-servers-container: ${context.program}: ${error.message}`)));
-    child.on('spawn', read);
-    settled();
-    child.on('exit', (code, signal) => {
-      read();
-      finish(new TestServerError(`test-servers-container: the container of ${label} stopped with ${code ?? signal} before it was ready; its log is ${log}`));
-    });
+// contract fails unless the bay of context has that contract.
+function contract(context: Context): void {
+  contracted(succeeded(bay(context, ['version', '--json']), 'bay version --json'), '');
+}
+
+// text is a property of a value that bay printed, which must be a string; what names the value in the failure.
+function text(value: unknown, name: string, what: string): string {
+  const found = field(value, name);
+  if (typeof found !== 'string' || found === '') throw new TestServerError(`test-servers-container: ${what} has no ${name}: ${JSON.stringify(value)}`);
+  return found;
+}
+
+// Planned is what bay plan --json of the machine of a run states for the project: the host name of each service, and
+// the authority that signs the certificates of the services by its path on that machine and by the path where bay
+// mounts it in each container.
+interface Planned { host: (service: string) => string; authority: string; mounted: string }
+
+// planned reads the plan that bay printed for the services of a kind.
+function planned(printed: string, kind: Kind): Planned {
+  const services = field(JSON.parse(printed), 'services');
+  if (!Array.isArray(services)) throw new TestServerError(`test-servers-container: bay plan --json prints no services: ${printed}`);
+  const byName = new Map(services.map(service => [text(service, 'name', 'a service of bay plan --json'), service] as const));
+  return {
+    host: service => text(byName.get(service), 'host', `the service ${service} of bay plan --json`),
+    authority: text(field(byName.get(kind), 'certificate'), 'ca', `the certificate of the service ${kind} of bay plan --json`),
+    mounted: text(field(byName.get(kind), 'certificate'), 'containerCa', `the certificate of the service ${kind} of bay plan --json`),
+  };
+}
+
+// yaml writes a mapping of the Compose file in block style with each string as a JSON string, which YAML reads as a
+// double-quoted scalar. Compose reads $NAME in a value as a variable of the environment of bay, so each dollar sign of a
+// string is written twice, which Compose reads as one.
+function yaml(mapping: { readonly [key: string]: Yaml }, indent = ''): string {
+  const scalar = (value: string | number | boolean) => typeof value === 'string' ? JSON.stringify(value.replaceAll('$', '$$$$')) : String(value);
+  return Object.entries(mapping).map(([key, value]) => {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return `${indent}${key}: ${scalar(value)}\n`;
+    if (isList(value)) return `${indent}${key}: [${value.map(scalar).join(', ')}]\n`;
+    return `${indent}${key}:\n${yaml(value, `${indent}  `)}`;
+  }).join('');
+}
+
+function isList(value: Yaml): value is readonly string[] {
+  return Array.isArray(value);
+}
+
+// Runner is what config/containers.json declares for the service runner besides its image: the packages of Debian that
+// runner-setup.sh installs, the releases of the node of the machine and of rustup with the sha256 of the file of each
+// processor, and timeout, the x-bay.timeout of each job of the runner.
+interface Runner { packages: string[]; node: Record<string, string>; rustup: { version: string; sha256: Record<string, string> }; timeout: string }
+
+function runner(): Runner {
+  const file = join(REPOSITORY, 'config/containers.json');
+  const declared = field(JSON.parse(readFileSync(file, 'utf8')), 'runner');
+  const strings = (value: unknown, what: string): Record<string, string> => {
+    if (!isRecord(value) || !Object.values(value).every(each => typeof each === 'string' && /^[0-9a-f]{64}$/.test(each))) throw new TestServerError(`test-servers-container: ${file} declares no sha256 of ${what} for each processor`);
+    return Object.fromEntries(Object.entries(value).map(([key, each]) => [key, String(each)]));
+  };
+  const packages = field(declared, 'packages');
+  const version = field(field(declared, 'rustup'), 'version');
+  const timeout = field(declared, 'timeout');
+  if (typeof timeout !== 'string' || !/^[1-9]\d*[hm]$/.test(timeout)) throw new TestServerError(`test-servers-container: ${file} declares no timeout of the jobs of the runner, such as 12h`);
+  if (!Array.isArray(packages) || !packages.every((each): each is string => typeof each === 'string' && /^[a-z0-9][a-z0-9.+-]*$/.test(each)) || typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version))
+    throw new TestServerError(`test-servers-container: ${file} declares no packages and no release of rustup for the runner`);
+  return { packages, node: strings(field(declared, 'node'), 'the node of the machine'), rustup: { version, sha256: strings(field(field(declared, 'rustup'), 'sha256'), 'rustup') }, timeout };
+}
+
+// nodeVersion is the release of node that mise.toml pins, which the runner takes as the node of its machine.
+function nodeVersion(): string {
+  const file = join(REPOSITORY, 'mise.toml');
+  const version = /^node = "(\d+\.\d+\.\d+)"$/m.exec(readFileSync(file, 'utf8'))?.[1];
+  if (version === undefined) throw new TestServerError(`test-servers-container: ${file} pins no release of node`);
+  return version;
+}
+
+// composeFile is the Compose file of a project: one service per server, with the pinned image, the port of the server in
+// expose and no key ports, so no port of the host is published, and the data directory of the image on a tmpfs. A
+// healthcheck is the bound of bay for a start, in the file on purpose. start_period declares the time in which the image
+// initializes its data directory, minutes on a loaded machine, during which a failed probe is not counted; after it,
+// retries probes a second apart fail the start, and a container that stops fails it at once.
+//
+// A run in the runner is two jobs of bay (BAY13), each a service with x-bay.job, which the machine runs one at a time
+// with the other jobs of the machine, in the order they were queued, in a process of the agent of bay that outlives the
+// command that queued it. The part build is compose.build.yaml: the job build alone, which installs the runner and runs
+// the build command, so that the build and the servers do not hold memory at the same time. The part check is
+// compose.run.yaml: the servers, the one-shot service setup, which prepares them, and the job check, which runs the
+// command of the run; bay starts the servers and setup before it runs the job, and removes them after it. Each job is the
+// runner: the Debian base image with the directory of the run at RUN_MOUNT. It keeps the trust and the certificate of
+// bay, as each service does, so its TLS DSNs name the authority that bay mounts in it. The tools of the runner keep their
+// files below the directory of the run (HOME, CARGO_HOME, RUSTUP_HOME): each job is a container of its own, so what the
+// job build installs below the home, such as the Go modules, is there for the job check, and removing the directory
+// removes them. timeout is the
+// x-bay.timeout of a job, the longest one run of it may take, which config/containers.json declares.
+//
+// The memory limit of a service is mem_limit, which the one who runs gives for the machine: limits.server for each
+// server, 4g without it, since mysqld is ended in the 1g that a container has by default, and limits.runner for each
+// job, which has no limit of this repository, because the memory that a build needs depends on the count of its jobs
+// and on the machine.
+type Part = 'servers' | 'build' | 'check';
+
+function composeFile(kind: Kind, services: readonly Service[], part: Part, limits: Limits): string {
+  const job = (name: 'build' | 'check', after: Record<string, Yaml>) => ({
+    [name]: {
+      image: image('runner'),
+      command: ['sh', `${RUN_MOUNT}/job-${name}.sh`],
+      environment: { HOME: `${RUN_MOUNT}/home`, CARGO_HOME: `${RUN_MOUNT}/cargo`, RUSTUP_HOME: `${RUN_MOUNT}/rustup` },
+      volumes: [`.:${RUN_MOUNT}`],
+      cpus: '4',
+      ...(limits.runner === undefined ? {} : { mem_limit: limits.runner }),
+      ...after,
+      'x-bay': { job: true, timeout: runner().timeout },
+    },
+  });
+  const servers = part === 'build' ? [] : services;
+  return yaml({
+    services: {
+      ...Object.fromEntries(servers.map(service => [service.name, {
+        image: image(kind),
+        command: service.command,
+        expose: [String(service.port)],
+        environment: { TZ: SERVER_TIME_ZONE, ...service.environment },
+        tmpfs: [service.data],
+        ...(service.init ? { volumes: [`./${service.name}-init:${INIT_MOUNT}:ro`] } : {}),
+        cpus: '4',
+        mem_limit: limits.server ?? '4g',
+        ...(service.after === undefined ? {} : { depends_on: { [service.after]: { condition: 'service_healthy' } } }),
+        healthcheck: { test: ['CMD', ...service.health], interval: '1s', timeout: '5s', retries: 10, start_period: '600s' },
+      }])),
+      ...(part === 'check' ? {
+        setup: {
+          image: image(kind),
+          command: ['sh', `${RUN_MOUNT}/setup.sh`],
+          volumes: [`.:${RUN_MOUNT}`],
+          depends_on: Object.fromEntries(services.map(service => [service.name, { condition: 'service_healthy' }])),
+        },
+        ...job('check', { depends_on: { setup: { condition: 'service_completed_successfully' } } }),
+      } : {}),
+      ...(part === 'build' ? job('build', {}) : {}),
+    },
   });
 }
 
-function writeEnvironment(file: string, variables: Record<string, string>): void {
-  const lines = Object.entries(variables).map(([name, value]) => {
-    if (/['\n\r]/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a quote or a newline: ${value}`);
-    return `export ${name}='${value}'\n`;
-  });
-  writeFileSync(`${file}.tmp`, lines.join(''));
-  renameSync(`${file}.tmp`, file);
+// Limits are the memory limits that the one who runs gives: of each server and of each job of the runner.
+export interface Limits { server?: string; runner?: string }
+
+// Extra is what a run in the runner is given besides its command: a build command, which runs before the servers
+// start, and the count of the jobs of cargo in the runner.
+interface Extra { build?: readonly string[]; jobs?: number }
+
+// checked fails for a limit that is no size and a count of jobs that is no whole number above 0.
+function checked(limits: Limits, extra: Extra, form: Form): void {
+  for (const [what, size] of [['each server', limits.server], ['the runner', limits.runner]] as const)
+    if (size !== undefined && !/^[1-9]\d*[kmg]$/.test(size)) throw new TestServerError(`test-servers-container: the memory limit ${size} of ${what} is no size such as 2600m or 3g`, 2);
+  if (extra.jobs !== undefined && (!Number.isSafeInteger(extra.jobs) || extra.jobs < 1)) throw new TestServerError(`test-servers-container: the count of cargo jobs ${extra.jobs} is no whole number above 0`, 2);
+  if (form === 'host' && (extra.build !== undefined || extra.jobs !== undefined || limits.runner !== undefined)) throw new TestServerError('test-servers-container: a build command runs in the runner; run with FORM=runner, which also takes the jobs of cargo and the memory limit of the runner', 2);
 }
 
-// start starts the server of a kind for the checkout of context, writes its environment file, and returns its variables.
-// A start that fails after the container was started removes the container of its kind.
-export async function start(kind: Kind, context: Context): Promise<Record<string, string>> {
-  const server = SERVERS[kind];
-  const name = containerName(context.root, kind);
-  for (const each of [name, replicaName(context.root, kind)])
-    if (ours(context).includes(each)) throw new TestServerError(`test-servers-container: ${each} exists; run make orm-test-container-stop first`);
+// quote writes a word of sh that holds text as it is.
+const quote = (word: string) => `'${word.replaceAll("'", "'\\''")}'`;
+const words = (command: readonly string[]) => command.map(quote).join(' ');
+
+// exports are the lines of servers.env: each variable as a word of sh in single quotes, except ${address} and ${dir},
+// which the file that writes servers.env replaces.
+function exports(variables: Record<string, string>): string[] {
+  return Object.entries(variables).map(([name, value]) => {
+    if (/['\n\r\\`]/.test(value) || /\$(?!\{(?:address|dir)\})/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a character that run.sh does not write: ${value}`);
+    return `export ${name}='${value}'`;
+  });
+}
+
+// The functions of sh that run.sh of each form has: say writes a line of run.sh, b runs bay for the project, at writes
+// the time of a step to the output and to report/steps.log, beside runs a long command beside run.sh and waits for it,
+// so that a signal ends it at once (a command that sh starts so ignores SIGINT, so it gets SIGTERM for each signal),
+// recorded runs a command with its output also in report/<name>.log and its status in report/<name>.status, since a
+// pipeline of sh returns the status of tee, and contract checks the contract schema version of bay.
+const SH_FUNCTIONS = `say() { printf 'run.sh: %s\\n' "$*" >&2; }
+b() { $bay -p "$project" "$@"; }
+
+at() {
+  stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  say "$stamp $*"
+  printf '%s %s\\n' "$stamp" "$*" >> "$dir/report/steps.log"
+}
+
+beside() {
+  "$@" >&2 &
+  child=$!
+  wait "$child"
+  ended=$?
+  child=
+  return "$ended"
+}
+
+recorded() {
+  name=$1
+  shift
+  { "$@" 2>&1; printf '%s\\n' "$?" > "$dir/report/$name.status"; } | tee -a "$dir/report/$name.log" >&2
+  read -r ended < "$dir/report/$name.status"
+  return "$ended"
+}
+
+contract() {
+  set -- $bay
+  command -v "$1" >/dev/null 2>&1 || { say "$1 is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND"; exit 1; }
+  stated=$($bay version) || { say "$bay version exited with $?"; exit 1; }
+  say "$stated"
+  printf '%s\\n' "$stated" > "$dir/report/bay-version"
+  case "$stated" in
+    *' schema ${SCHEMA}') ;;
+    *) say "bay version reports another contract schema version than ${SCHEMA}, for which this file is written: $stated; install a bay of that contract"; exit 1 ;;
+  esac
+}`;
+
+// head is the start of run.sh of each form: the directory, the command of bay and the functions.
+const head = (at: At, kind: Kind, form: Form, usage: string) => `#!/bin/sh
+# run.sh of the project ${at.name}: the ${kind} servers of a run in the form of the ${form}, written by
+# scripts/test-servers-container.mts. It needs sh and bay alone. BAY_COMMAND is the command of bay, of one or more words,
+# as sudo -n bay where bay runs as root; without it, bay of PATH.
+${usage}
+set -u
+dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd) || exit 1
+cd "$dir" || exit 1
+mkdir -p "$dir/report" || exit 1
+bay=\${BAY_COMMAND:-bay}
+project=${quote(at.name)}
+child=
+
+${SH_FUNCTIONS}
+`;
+
+// runFile is run.sh of a project in the form of the host. Each step is one command of bay, and its exit status decides
+// the run. The parts: up checks bay and the images, starts the servers, runs the steps that prepare them and writes
+// servers.env; down removes the project and writes the file removed; pull downloads the images; and no part is the
+// whole run, which also runs the command of the run and removes the project at its end, at a failed step and on SIGINT,
+// SIGTERM and SIGHUP. The address of the mismatch DSN is the first word that getent ahostsv4, which prints IPv4
+// addresses alone, prints for the host name of the primary in the container of the primary.
+//
+// run.sh writes the time of each step to its output and to report/steps.log, with the step and the status of a step that
+// failed. The output of bay up, which names the service that failed and why, and the last lines of the log of each
+// service after a failed bay up are also report/bay-up-servers.log, so a report shows the cause of a failed start. bay
+// starts the services one after another in the order of their dependencies and waits for the healthcheck of each before
+// it creates the next, so a service after the one that failed has no container, and its logs name none.
+function runFile(at: At, kind: Kind, services: readonly Service[], steps: readonly Step[], primary: string, variables: Record<string, string>, command: readonly string[] | undefined): string {
+  const environment = exports(variables);
+  const check = command === undefined ? ['say "this directory was written without a command; write a run with make orm-test-container-run"', 'exit 2']
+    : [`at "the command of the run"`, `beside sh -c '. "$1/servers.env" && shift && exec "$@"' sh "$dir" ${words(command)}`, 'status=$?'];
+  const logs = services.map(service => `    say "the last lines of the service ${service.name}:"; b logs -n 50 ${quote(service.name)} 2>&1 | tee -a "$dir/report/bay-up-servers.log" >&2`).join('\n');
+  return `${head(at, kind, 'host', `#   sh run.sh         the whole run: the servers, the command of the run, and the removal of the project
+#   sh run.sh up      start the servers and write servers.env
+#   sh run.sh down    remove the project
+#   sh run.sh pull    download the images of the project`)}
+down() {
+  at "bay down"
+  b down >&2 || { say "bay down of $project exited with $?; the project is not removed"; return 1; }
+  : > "$dir/removed"
+}
+
+# failed <status> <what>: a step that failed removes the project and ends the run with its status.
+failed() {
+  say "$2 of $project exited with $1"
+  printf '%s %s of %s exited with %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "$project" "$1" >> "$dir/report/steps.log"
+  down
+  exit "$1"
+}
+
+up() {
+  contract
+  b images >&2 || { say "an image of $project is not on this machine; run make orm-install-container-images, which pulls the images of config/containers.json, or sh $dir/run.sh pull"; exit 1; }
+  rm -f "$dir/removed"
+  : > "$dir/started"
+  at "bay up of the servers"
+  recorded bay-up-servers b up -no-pull || {
+    status=$?
+${logs}
+    failed "$status" "bay up"
+  }
+${steps.map(step => `  at ${quote(`bay exec ${step.service} ${step.command[0] ?? ''}`)}\n  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${quote(`bay exec ${step.service} ${step.command.join(' ')}`)}`).join('\n')}
+  resolved=$(b exec ${quote(kind)} getent ahostsv4 ${quote(primary)}) || failed "$?" ${quote(`bay exec ${kind} getent ahostsv4 ${primary}`)}
+  address=\${resolved%%[!0-9.]*}
+  case "$address" in
+    *.*.*.*) ;;
+    *) say "the host name ${primary} of the plan has no IPv4 address in the container of ${kind}: $resolved"; failed 1 "the address of the primary" ;;
+  esac
+  cat > "$dir/servers.env.tmp" <<ENVIRONMENT
+${environment.join('\n')}
+ENVIRONMENT
+  mv "$dir/servers.env.tmp" "$dir/servers.env"
+}
+
+interrupted() {
+  trap '' INT TERM HUP
+  if [ -n "$child" ]; then kill -s TERM "$child" 2>/dev/null; wait "$child"; fi
+  if [ -e "$dir/started" ]; then down; fi
+  exit "$1"
+}
+
+case "\${1:-}" in
+  up) up ;;
+  down) down ;;
+  pull) contract; b pull >&2 || { status=$?; say "bay pull of $project exited with $status"; exit "$status"; } ;;
+  '')
+    trap 'interrupted 130' INT
+    trap 'interrupted 143' TERM
+    trap 'interrupted 129' HUP
+    up
+    ${check.join('\n    ')}
+    down || exit 1
+    exit "$status"
+    ;;
+  *) say "usage: sh run.sh [up|down|pull]"; exit 2 ;;
+esac
+`;
+}
+
+// jobRunFile is run.sh of a project in the form of the runner, whose parts are the two jobs of composeFile. add <part>
+// checks bay and the images and queues the job of the part with the key <project>-<part>, so that a part queued again,
+// as after a lost connection, returns the job that is queued, running or ended instead of a second one; it prints the
+// ID of the job. wait <part> follows the output of the job of the part to its end, writes what bay records of it, its
+// exit status, its time and the highest memory where the machine reports one, to report/job-<part>.json and its output
+// to report/job-<part>.log. It judges the job by what bay job show records of it, not by the exit status of bay job
+// wait, which is 1 also when the wait itself ends: it ends with 0 when the job ended and succeeded, 1 when it ended and
+// did not succeed, and 3 when the job has not ended or bay cannot show it, so that a job whose end is not known is never
+// reported as a failed one, and wait <part> follows it again. The whole run adds and waits for build, and then for check when
+// build succeeded. A job queued and not ended when the whole run gets SIGINT, SIGTERM or SIGHUP is cancelled. bay
+// removes the servers after the job check, so the run removes no project; down removes what a cancelled job left.
+function jobRunFile(at: At, kind: Kind): string {
+  return `${head(at, kind, 'runner', `#   sh run.sh             the whole run: the job build and, when it succeeded, the job check
+#   sh run.sh add <part>  queue the job of the part, build or check, once for this directory, and print its ID
+#   sh run.sh wait <part> follow the job of the part to its end and end with its result
+#   sh run.sh down        remove the project
+#   sh run.sh pull        download the images of the project`)}
+job=
+
+# file <part>: the Compose file of a part.
+file() {
+  case "$1" in
+    build) printf '%s\\n' "$dir/compose.build.yaml" ;;
+    check) printf '%s\\n' "$dir/compose.run.yaml" ;;
+    *) say "a part is build or check, not $1"; exit 2 ;;
+  esac
+}
+
+# queued <part>: queue the job of the part and write its ID to job-<part>; the ID is the value of "id" in the JSON of bay.
+queued() {
+  compose=$(file "$1") || exit 2
+  b -f "$compose" images >&2 || { say "an image of $project is not on this machine; run make orm-install-container-images, which pulls the images of config/containers.json, or sh $dir/run.sh pull"; exit 1; }
+  rm -f "$dir/removed"
+  : > "$dir/started"
+  printed=$(b -f "$compose" job add -json -key "$project-$1" "$1") || { status=$?; say "bay job add of $1 of $project exited with $status"; exit "$status"; }
+  id=
+  while IFS= read -r line; do
+    case "$line" in *'"id": "'*) id=\${line#*'"id": "'}; id=\${id%%'"'*} ;; esac
+  done <<JSON
+$printed
+JSON
+  [ -n "$id" ] || { say "bay job add of $1 of $project printed no ID: $printed"; exit 1; }
+  printf '%s\\n' "$id" > "$dir/job-$1"
+}
+
+# waited <part>: follow the output of the job of the part to its end, record it, and return its result.
+waited() {
+  read -r job < "$dir/job-$1" || { say "the job of $1 of $project is not queued; run sh $dir/run.sh add $1"; exit 2; }
+  at "the job $1 ($job)"
+  beside b job logs -f -timeout ${quote(WAIT)} "$job"
+  b job wait -timeout ${quote(WAIT)} "$job" >&2
+  waited=$?
+  b job logs "$job" > "$dir/report/job-$1.log" 2>&1 || say "bay job logs of $job exited with $?"
+  b job show -json "$job" > "$dir/report/job-$1.json"
+  shown=$?
+  job=
+  if [ "$shown" -ne 0 ]; then
+    say "bay job show of the job $1 of $project exited with $shown, so its end is not known; sh $dir/run.sh wait $1 waits for it again"
+    return 3
+  fi
+  ended= succeeded=
+  while IFS= read -r line; do
+    case "$line" in
+      *'"ended": "'*) ended=1 ;;
+      *'"state": "succeeded"'*) succeeded=1 ;;
+    esac
+  done < "$dir/report/job-$1.json"
+  if [ -z "$ended" ]; then
+    say "the job $1 of $project has not ended after bay job wait exited with $waited; sh $dir/run.sh wait $1 waits for it again"
+    return 3
+  fi
+  [ -n "$succeeded" ] && return 0
+  printf '%s %s of %s did not succeed: bay job wait exited with %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "the job $1" "$project" "$waited" >> "$dir/report/steps.log"
+  return 1
+}
+
+down() {
+  at "bay down"
+  b -f "$dir/compose.run.yaml" down >&2 || { say "bay down of $project exited with $?; the project is not removed"; return 1; }
+  : > "$dir/removed"
+}
+
+interrupted() {
+  trap '' INT TERM HUP
+  if [ -n "$child" ]; then kill -s TERM "$child" 2>/dev/null; wait "$child"; fi
+  if [ -n "$job" ]; then b job cancel "$job" >&2 || say "bay job cancel of $job exited with $?"; fi
+  if [ -e "$dir/started" ]; then down; fi
+  exit "$1"
+}
+
+case "\${1:-}" in
+  add) contract; queued "\${2:-}"; cat "$dir/job-$2" ;;
+  wait) waited "\${2:-}" ;;
+  down) down ;;
+  pull) contract; b -f "$dir/compose.build.yaml" pull >&2 && b -f "$dir/compose.run.yaml" pull >&2 || { status=$?; say "bay pull of $project exited with $status"; exit "$status"; } ;;
+  '')
+    trap 'interrupted 130' INT
+    trap 'interrupted 143' TERM
+    trap 'interrupted 129' HUP
+    contract
+    queued build
+    waited build
+    status=$?
+    if [ "$status" -eq 0 ]; then
+      queued check
+      waited check
+      status=$?
+    fi
+    : > "$dir/removed"
+    exit "$status"
+    ;;
+  *) say "usage: sh run.sh [add <part>|wait <part>|down|pull]"; exit 2 ;;
+esac
+`;
+}
+
+// WAIT is how long run.sh follows and waits for a job, the time in the queue of the machine included: the bound of bay,
+// in the file on purpose. A wait that ends at it leaves the job running; sh run.sh wait <part> follows it again.
+const WAIT = '24h';
+
+// serverSetupFile is setup.sh, which the one-shot service setup runs in a container of the image of the servers after
+// each server is healthy, before the job check. It runs the steps of the kind with the client of the image over TCP to
+// the host name of each service, which the plan names; a MariaDB client verifies the certificate of the server, so it
+// names the authority that bay mounts. It writes the IPv4 address of the primary, the first word that getent ahostsv4
+// prints for its host name, to the file address, which job-check.sh writes into servers.env. Its output is also
+// report/setup.log, and the time of each step is in report/steps.log.
+function serverSetupFile(kind: Kind, steps: readonly Step[], host: (service: string) => string): string {
+  const tcp = (step: Step) => {
+    const [program = '', ...rest] = step.command;
+    const options = program === 'mariadb' ? ['-h', host(step.service), `--ssl-ca=${BAY_TLS}/ca.pem`] : ['-h', host(step.service)];
+    return [program, ...options, ...rest];
+  };
+  return `#!/bin/sh
+# setup.sh: the steps that prepare the ${kind} servers of the run, in the service setup, written by
+# scripts/test-servers-container.mts.
+run=${RUN_MOUNT}
+mkdir -p "$run/report"
+at() { printf '%s %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$run/report/steps.log"; }
+steps() {
+  set -e
+${steps.map(step => `  at ${quote(`setup: ${tcp(step).slice(0, 3).join(' ')}`)}\n  ${words(tcp(step))}`).join('\n')}
+  resolved=$(getent ahostsv4 ${quote(host(kind))})
+  address=\${resolved%%[!0-9.]*}
+  case "$address" in
+    *.*.*.*) ;;
+    *) echo "setup.sh: the host name ${host(kind)} of the plan has no IPv4 address: $resolved" >&2; exit 1 ;;
+  esac
+  printf '%s\\n' "$address" > "$run/address.tmp"
+  mv "$run/address.tmp" "$run/address"
+}
+{ (steps); echo "$?" > "$run/report/setup-status"; } 2>&1 | tee -a "$run/report/setup.log"
+exit "$(cat "$run/report/setup-status")"
+`;
+}
+
+// jobBuildFile is job-build.sh, the command of the job build: the installation of the runner, and the build command of
+// the run when it has one. The output of the installation is also report/runner-setup.log.
+function jobBuildFile(build: boolean): string {
+  return `#!/bin/sh
+# job-build.sh: the job build of the run in the runner, written by scripts/test-servers-container.mts.
+run=${RUN_MOUNT}
+mkdir -p "$run/report"
+at() { printf '%s %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$run/report/steps.log"; }
+at "the installation of the runner"
+{ sh "$run/runner-setup.sh"; echo "$?" > "$run/report/runner-setup-status"; } 2>&1 | tee "$run/report/runner-setup.log"
+status=$(cat "$run/report/runner-setup-status")
+[ "$status" -eq 0 ] || { at "the installation of the runner exited with $status"; exit "$status"; }
+${build ? `at "the build command"
+sh "$run/build.sh" || { status=$?; at "the build command exited with $status"; exit "$status"; }
+` : ''}`;
+}
+
+// jobCheckFile is job-check.sh, the command of the job check: it writes servers.env with the address of the primary that
+// setup.sh found, and runs check.sh.
+function jobCheckFile(variables: Record<string, string>): string {
+  return `#!/bin/sh
+# job-check.sh: the job check of the run in the runner, written by scripts/test-servers-container.mts.
+run=${RUN_MOUNT}
+at() { printf '%s %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$run/report/steps.log"; }
+read -r address < "$run/address" || { echo "job-check.sh: setup.sh wrote no address of the primary" >&2; exit 1; }
+cat > "$run/servers.env.tmp" <<ENVIRONMENT
+${exports(variables).join('\n')}
+ENVIRONMENT
+mv "$run/servers.env.tmp" "$run/servers.env"
+at "the command of the run"
+exec sh "$run/check.sh"
+`;
+}
+
+// setupFile is runner-setup.sh, which runs in the runner as root and installs what a check of this repository needs,
+// in the order of the first installation of CONTRIBUTING.md. It downloads, so it is an installation step, and each file
+// that it downloads is checked against the sha256 that config/containers.json pins. It skips what a kept directory has.
+//
+// lld is the linker of the Rust builds of the runner: with the default linker a build of the tests on a machine with
+// 3.7 GiB of memory took 30 minutes and 3.0 GiB of swap, and with lld 16 minutes and 0.86 GiB. The setting is the
+// config.toml of the CARGO_HOME of the runner, so no run of the host reads it. jobs, when the run is given it, is the
+// count of the jobs of cargo there: the highest memory of a build grows with it, so the one who runs sets it for the
+// machine, and this repository holds no value of it.
+function setupFile(jobs: number | undefined): string {
+  const { packages, node, rustup } = runner();
+  const version = nodeVersion();
+  // PLATFORMS are the names of nodejs.org for the processors that uname -m names.
+  const PLATFORMS: Record<string, string> = { aarch64: 'linux-arm64', x86_64: 'linux-x64' };
+  const processors = Object.keys(node).map(processor => {
+    const [platform, rustupSum] = [PLATFORMS[processor], rustup.sha256[processor]];
+    if (platform === undefined || rustupSum === undefined) throw new TestServerError(`test-servers-container: config/containers.json pins the node of the processor ${processor}, for which it pins no rustup or this script knows no platform of nodejs.org`);
+    return `  ${processor}) platform=${platform} node_sum=${node[processor]} rustup_sum=${rustupSum} ;;`;
+  });
+  return `#!/bin/sh
+# runner-setup.sh: the installation of the service runner, written by scripts/test-servers-container.mts.
+set -eu
+run=${RUN_MOUNT}
+export DEBIAN_FRONTEND=noninteractive
+# The home and the tools of the runner are directories below the directory of the run, which no image has: the
+# installation creates them before a tool writes into them, as git writes its configuration into the home.
+mkdir -p "$HOME" "$CARGO_HOME" "$RUSTUP_HOME"
+apt-get update
+apt-get install -y --no-install-recommends ${packages.join(' ')}
+
+processor=$(uname -m)
+case "$processor" in
+${processors.join('\n')}
+  *) echo "runner-setup.sh: config/containers.json pins no file for the processor $processor" >&2; exit 1 ;;
+esac
+# fetch <url> <sha256> <file>: a downloaded file is used only when it has the pinned sha256.
+fetch() {
+  curl -fsSL -o "$3" "$1"
+  echo "$2  $3" | sha256sum -c - >&2
+}
+
+if [ ! -x "$run/node/bin/node" ]; then
+  fetch "https://nodejs.org/dist/v${version}/node-v${version}-$platform.tar.xz" "$node_sum" "$run/node.tar.xz"
+  mkdir -p "$run/node"
+  tar -xJf "$run/node.tar.xz" --strip-components=1 -C "$run/node"
+  rm "$run/node.tar.xz"
+fi
+if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
+  fetch "https://static.rust-lang.org/rustup/archive/${rustup.version}/$processor-unknown-linux-gnu/rustup-init" "$rustup_sum" "$run/rustup-init"
+  chmod +x "$run/rustup-init"
+  "$run/rustup-init" -y --no-modify-path --default-toolchain none
+  rm "$run/rustup-init"
+fi
+cat > "$CARGO_HOME/config.toml" <<'CARGO'
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]${jobs === undefined ? '' : `
+[build]
+jobs = ${jobs}`}
+CARGO
+cat > "$run/runner.env" <<TOOLS
+export PATH='$run/node/bin:$CARGO_HOME/bin:$PATH'
+TOOLS
+. "$run/runner.env"
+
+# The clone of the commit of the run: the tools, the packages and the build outputs of the runner are below it.
+git config --global --add safe.directory "$run/repo"
+if [ ! -d "$run/repo/.git" ]; then
+  git init -q "$run/repo"
+  git -C "$run/repo" fetch -q "$run/repo.bundle" HEAD
+  git -C "$run/repo" checkout -q --detach FETCH_HEAD
+fi
+cd "$run/repo"
+if [ ! -d node_modules ]; then
+  npm_version=$(node -p 'require("./package.json").devEngines.packageManager.version')
+  (cd /tmp && npm exec --yes --package="npm@$npm_version" -- sh -c "cd '$run/repo' && npm ci --ignore-scripts --allow-remote=root")
+fi
+make install
+mkdir -p "$run/report" "$run/leases"
+`;
+}
+
+// checkFile is check.sh, which runs the command of a run in the runner, in the clone, with the tools of the runner and
+// the variables of the servers. Its output is also report/check.log and its exit status report/status, which a run on
+// another machine brings back.
+function checkFile(command: readonly string[]): string {
+  return `#!/bin/sh
+# check.sh: the command of the run in the service runner, written by scripts/test-servers-container.mts.
+run=${RUN_MOUNT}
+. "$run/runner.env"
+. "$run/servers.env"
+export ORM_RUN_REPORT="$run/report"
+cd "$run/repo" || exit 1
+{ ( ${words(command)} ); echo "$?" > "$run/report/status"; } 2>&1 | tee "$run/report/check.log"
+exit "$(cat "$run/report/status")"
+`;
+}
+
+// buildFile is build.sh, which runs the build command of a run in the runner, in the clone, with the tools of the runner
+// and without the variables of the servers, which are not up. Its output is also report/build.log and its exit status
+// report/build-status.
+function buildFile(command: readonly string[]): string {
+  return `#!/bin/sh
+# build.sh: the build command of the run in the service runner, written by scripts/test-servers-container.mts.
+run=${RUN_MOUNT}
+. "$run/runner.env"
+export ORM_RUN_REPORT="$run/report"
+cd "$run/repo" || exit 1
+{ ( ${words(command)} ); echo "$?" > "$run/report/build-status"; } 2>&1 | tee "$run/report/build.log"
+exit "$(cat "$run/report/build-status")"
+`;
+}
+
+// Written is what the directory of a run was written with.
+interface Written extends At { kind: Kind; form: Form }
+
+// Plan reads the output of bay plan --json for the project of a directory whose compose.yaml is written.
+type Plan = (at: At) => string;
+
+// write writes the directory of a run and returns its project. The plan is that of the machine that runs the directory,
+// so the Compose file is written once for the plan, with no host name, and once with the host names of the plan, which
+// the standby of PostgreSQL and the steps of setup.sh name. A write that fails removes the directory. name is the
+// project; without it, the project is orm-<checkout>-<8 random hexadecimal digits>, so that the runs of a checkout do
+// not share one.
+function write(kind: Kind, context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; other: string; authority: (planned: Planned) => string }, limits: Limits = {}, extra: Extra = {}, name = `orm-${checkout(context.root)}-${randomBytes(4).toString('hex')}`): Written {
+  checked(limits, extra, form);
   const dirs = folders(context.root);
   mkdirSync(dirs.leases, { recursive: true });
-  const env = join(dirs.dir, `${kind}.env`);
-  const socket = join(dirs.dir, `${kind}.sock`);
-  rmSync(env, { force: true });
-  rmSync(socket, { force: true });
-  const host = `${name}.container.test`;
-  // The servers of the images read the key as another user than the one that writes it here; these keys sign test data only.
-  const tls = tlsDir(dirs.dir, kind);
-  rmSync(tls, { recursive: true, force: true });
-  issueTls(tls, [[kind, `DNS:${host}`]]);
-  for (const file of [`${kind}-key.pem`, `${kind}-cert.pem`, 'ca.pem']) chmodSync(join(tls, file), 0o644);
-  const options = (container: string) => ['run', '--name', container, '--cpus', '4', '--memory', '4G', '--tmpfs', server.data, '--volume', `${tls}:${TLS_MOUNT}`,
-    '--env', `TZ=${SERVER_TIME_ZONE}`, ...server.environment.flatMap(setting => ['--env', setting])];
-  const started = launch(context, kind, server, [...options(name), ...(server.socket ? ['--publish-socket', `${socket}:${server.socket}`] : []), image(kind), ...server.arguments]);
+  const at: Written = { name, dir: join(dirs.dir, name), kind, form };
+  mkdirSync(at.dir);
   try {
-    await started;
-    const primary = address(context.program, name);
-    let replica: string | undefined;
-    if (server.replica) {
-      const replicaContainer = replicaName(context.root, kind);
-      container(context.program, ['exec', name, ...server.replica.prepare]);
-      await launch(context, `${kind}-replica`, server.replica, [...options(replicaContainer), image(kind), ...server.replica.arguments(primary)]);
-      replica = address(context.program, replicaContainer);
-      if (server.replica.follow) container(context.program, ['exec', replicaContainer, ...server.replica.follow(primary)]);
+    const file = join(at.dir, 'compose.yaml');
+    const part: Part = form === 'host' ? 'servers' : 'check';
+    writeFileSync(file, composeFile(kind, SERVERS[kind].services(() => 'unplanned.invalid'), part, limits));
+    const stated = planned(plan(at), kind);
+    const { host } = stated;
+    const services = SERVERS[kind].services(host);
+    for (const service of services) {
+      if (!service.init) continue;
+      const init = join(at.dir, `${service.name}-init`);
+      mkdirSync(init);
+      chmodSync(init, 0o755);
+      writeFileSync(join(init, service.init.file), service.init.text);
+      chmodSync(join(init, service.init.file), 0o644);
     }
-    container(context.program, ['exec', name, ...server.databases]);
-    const variables = server.variables({ address: primary, host, socket, folders: dirs, ...(replica === undefined ? {} : { replica }) });
-    writeEnvironment(env, variables);
-    return variables;
+    writeFileSync(file, composeFile(kind, services, part, limits));
+    // The second CA signs nothing: the DSN that names it fails the chain of the certificate of the server.
+    issueTls(join(at.dir, 'tls'), []);
+    const variables = SERVERS[kind].variables({ host, ipv4: '${address}', authority: place.authority(stated), other: place.other, leases: place.leases });
+    const steps = SERVERS[kind].steps(host);
+    if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, kind, services, steps, host(kind), variables, command));
+    else {
+      if (command === undefined) throw new TestServerError('test-servers-container: a run in the runner needs a command');
+      writeFileSync(join(at.dir, 'run.sh'), jobRunFile(at, kind));
+      writeFileSync(join(at.dir, 'compose.run.yaml'), composeFile(kind, services, 'check', limits));
+      writeFileSync(join(at.dir, 'compose.build.yaml'), composeFile(kind, services, 'build', limits));
+      writeFileSync(join(at.dir, 'runner-setup.sh'), setupFile(extra.jobs));
+      writeFileSync(join(at.dir, 'setup.sh'), serverSetupFile(kind, steps, host));
+      writeFileSync(join(at.dir, 'job-build.sh'), jobBuildFile(extra.build !== undefined));
+      writeFileSync(join(at.dir, 'job-check.sh'), jobCheckFile(variables));
+      writeFileSync(join(at.dir, 'check.sh'), checkFile(command));
+      if (extra.build !== undefined) writeFileSync(join(at.dir, 'build.sh'), buildFile(extra.build));
+      bundle(context.root, join(at.dir, 'repo.bundle'));
+    }
+    return at;
   } catch (error) {
-    console.error(`test-servers-container: start of ${kind} failed; removing ${name}`);
-    remove(context, kind);
+    rmSync(at.dir, { recursive: true, force: true });
     throw error;
   }
 }
 
-// remove stops and removes the containers of the checkout of context, or the container of kind alone, and the files of
-// their servers.
-export function remove(context: Context, kind?: Kind): void {
-  const { dir } = folders(context.root);
-  const kinds = kind === undefined ? KINDS : [kind];
-  const names = new Set(kinds.flatMap(each => [replicaName(context.root, each), containerName(context.root, each)]));
-  for (const name of ours(context).filter(each => names.has(each))) {
-    container(context.program, ['stop', name]);
-    container(context.program, ['delete', name]);
-    console.error(`test-servers-container: removed ${name}`);
+// hostPlace and RUNNER_PLACE are where the variables of each form name the files of a run: the host names the directory
+// by the variable dir of run.sh and the authority by its path on the machine, the runner names the directory by its
+// mount and the authority by the path where bay mounts it in a container.
+const hostPlace = (leases: string) => ({ leases, other: '${dir}/tls/other-ca.pem', authority: (stated: Planned) => stated.authority });
+const RUNNER_PLACE = { leases: `${RUN_MOUNT}/leases`, other: `${RUN_MOUNT}/tls/other-ca.pem`, authority: (stated: Planned) => stated.mounted };
+
+// bundle writes the commit of the checkout as a Git bundle, which the runner clones; the host of the run needs no git.
+// A run in the runner is a run of that commit, so a checkout whose tracked files differ from it is refused.
+function bundle(root: string, file: string): void {
+  const git = (args: string[]) => {
+    const ran = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    if (ran.error) throw new TestServerError(`test-servers-container: git: ${ran.error.message}`);
+    return succeeded({ status: ran.status, signal: ran.signal, stdout: ran.stdout, stderr: ran.stderr }, `git ${args.join(' ')} in ${root}`);
+  };
+  const changed = git(['status', '--porcelain', '--untracked-files=no']);
+  if (changed !== '') throw new TestServerError(`test-servers-container: the tracked files of ${root} differ from its commit, and a run in the runner runs the commit; commit the changes first:\n${changed}`);
+  git(['bundle', 'create', file, 'HEAD']);
+}
+
+// localPlan reads the plan from the bay of this machine.
+const localPlan = (context: Context): Plan => at => succeeded(bay(context, ['plan', '--json'], at), `bay plan --json of ${at.name}`);
+
+// Executed is how run.sh ended, with the last part of what it wrote to its standard error.
+interface Executed { code: number | null; signal: NodeJS.Signals | null; said: string }
+
+// execute runs a part of run.sh of a project with sh and resolves when it ends; the end of that process is the only
+// event that this script waits for. Its output is that of this script, and the last part of its standard error is kept
+// for the failure. kill, when it is given, receives the call that sends a signal to sh.
+function execute(context: Context, at: At, part: 'up' | 'down' | 'pull' | undefined, kill?: (send: (signal: NodeJS.Signals) => void) => void, started?: () => void): Promise<Executed> {
+  return new Promise((resolveRun, rejectRun) => {
+    const child = spawn('sh', [join(at.dir, 'run.sh'), ...(part === undefined ? [] : [part])], { env: { ...process.env, BAY_COMMAND: context.bay }, stdio: ['ignore', 'inherit', 'pipe'] });
+    let said = '';
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk: string) => { process.stderr.write(chunk); said = `${said}${chunk}`.slice(-8192); });
+    kill?.(signal => child.kill(signal));
+    child.on('spawn', () => started?.());
+    child.on('error', error => rejectRun(new TestServerError(`test-servers-container: sh: ${error.message}`)));
+    child.on('close', (code, signal) => resolveRun({ code, signal, said }));
+  });
+}
+
+// down removes a project with the part down of its run.sh, and then its directory. A project whose bay down fails
+// keeps its directory, so that stop finds it again; a directory without run.sh was never started.
+function down(context: Context, at: At): void {
+  if (existsSync(join(at.dir, 'run.sh'))) {
+    const ran = spawnSync('sh', [join(at.dir, 'run.sh'), 'down'], { env: { ...process.env, BAY_COMMAND: context.bay }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    if (ran.error) throw new TestServerError(`test-servers-container: sh: ${ran.error.message}`);
+    succeeded({ status: ran.status, signal: ran.signal, stdout: ran.stdout, stderr: ran.stderr }, `sh ${join(at.dir, 'run.sh')} down`);
   }
-  for (const each of kinds) for (const file of [`${each}.env`, `${each}.sock`, `${each}.log`, `${each}-replica.log`, `tls-${each}`]) rmSync(join(dir, file), { recursive: true, force: true });
+  rmSync(at.dir, { recursive: true, force: true });
+  console.error(`test-servers-container: removed ${at.name}`);
+}
+
+// environment reads the variables of servers.env of a started project.
+function environment(file: string): Record<string, string> {
+  return Object.fromEntries([...readFileSync(file, 'utf8').matchAll(/^export ([A-Z_]+)='(.*)'$/gm)].map(([, name, value]) => [name ?? '', value ?? '']));
+}
+
+// claim is the file that names the project of the kind that start started in a checkout.
+const claim = (dir: string, kind: Kind) => join(dir, `${kind}.project`);
+
+// start starts the servers of a kind for the checkout of context, writes the environment file of the kind, and returns
+// its variables. It refuses a kind that is started in the checkout, because the environment file names one project.
+export async function start(kind: Kind, context: Context, limits: Limits = {}): Promise<Record<string, string>> {
+  const { dir, leases } = folders(context.root);
+  mkdirSync(dir, { recursive: true });
+  try {
+    writeFileSync(claim(dir, kind), '', { flag: 'wx' });
+  } catch (error) {
+    if (errorCode(error) !== 'EEXIST') throw error;
+    throw new TestServerError(`test-servers-container: ${kind} is started in this checkout; run make orm-test-container-stop, which removes it`);
+  }
+  try {
+    contract(context);
+    const at = write(kind, context, 'host', undefined, localPlan(context), hostPlace(leases), limits);
+    const ended = await execute(context, at, 'up');
+    if (ended.code !== 0) {
+      // run.sh removed the project when a step failed after bay up; a part that failed before it started nothing.
+      finish(at, false);
+      throw new TestServerError(`test-servers-container: sh run.sh up of ${at.name} exited with ${ended.code ?? ended.signal}:\n${ended.said}`);
+    }
+    writeFileSync(claim(dir, kind), `${at.name}\n`);
+    copyFileSync(join(at.dir, 'servers.env'), `${join(dir, `${kind}.env`)}.tmp`);
+    renameSync(`${join(dir, `${kind}.env`)}.tmp`, join(dir, `${kind}.env`));
+    console.error(`test-servers-container: ${kind} is the project ${at.name}`);
+    return environment(join(at.dir, 'servers.env'));
+  } catch (error) {
+    rmSync(claim(dir, kind), { force: true });
+    throw error;
+  }
+}
+
+// remove removes every project of the checkout of context, the project of a killed run included, and the files of its
+// starts. A project of another checkout is never removed: its directory is below its own checkout.
+export function remove(context: Context): void {
+  const { dir } = folders(context.root);
+  if (!existsSync(dir)) return;
+  const prefix = `orm-${checkout(context.root)}-`;
+  for (const name of readdirSync(dir).filter(each => each.startsWith(prefix))) down(context, { name, dir: join(dir, name) });
+  for (const kind of KINDS) for (const file of [`${kind}.env`, `${kind}.project`]) rmSync(join(dir, file), { force: true });
 }
 
 // Signals is where a run receives SIGINT and SIGTERM: the process, or the emitter of a test.
@@ -390,52 +1069,222 @@ export interface RunOptions { signals?: Signals; started?: () => void }
 // Ended is how the command of a run ended: its exit code, or the signal that ended it.
 export interface Ended { code: number | null; signal: NodeJS.Signals | null }
 
-// run starts the server of a kind, runs the command with the variables of the server, and removes that container when
-// the command ends or fails, or when the run gets SIGINT or SIGTERM, which it forwards to the command. A signal that
-// comes while the server starts ends the run once the start ends, without the command.
-export async function run(kind: Kind, command: readonly string[], context: Context, options: RunOptions = {}): Promise<Ended> {
-  const [file, ...args] = command;
-  if (file === undefined) throw new TestServerError('test-servers-container: run needs a command after --', 2);
+// RunForm is how a run runs its command: in the runner instead of on the host, and with its directory kept at its end,
+// so that a later sh run.sh of that directory finds the installed tools and the build of the commit; with a build
+// command, which runs in the runner before the servers start; with a count of the jobs of cargo in the runner; and with
+// the memory limits of the runner and of each server.
+export interface RunForm { runner?: boolean; keep?: boolean; build?: readonly string[]; jobs?: number; runnerMemory?: string; serverMemory?: string }
+
+const limitsOf = (form: RunForm): Limits => ({ ...(form.runnerMemory === undefined ? {} : { runner: form.runnerMemory }), ...(form.serverMemory === undefined ? {} : { server: form.serverMemory }) });
+const extraOf = (form: RunForm): Extra => ({ ...(form.build === undefined ? {} : { build: form.build }), ...(form.jobs === undefined ? {} : { jobs: form.jobs }) });
+
+// run writes the directory of a run of a kind and runs its run.sh, which starts the servers, runs the command with
+// their variables, and removes the project when the command ends or fails, or when the run gets SIGINT or SIGTERM,
+// which this script sends on to sh. It then removes the directory, unless the run keeps it; a directory whose project
+// run.sh did not remove stays, so that stop finds it.
+export async function run(kind: Kind, command: readonly string[], context: Context, options: RunOptions & RunForm = {}): Promise<Ended> {
+  if (command.length === 0) throw new TestServerError('test-servers-container: run needs a command after --', 2);
   const signals = options.signals ?? process;
   let received: NodeJS.Signals | undefined;
-  let child: ChildProcess | undefined;
-  const interrupt = () => { received = 'SIGINT'; child?.kill('SIGINT'); };
-  const terminate = () => { received = 'SIGTERM'; child?.kill('SIGTERM'); };
+  let send: ((signal: NodeJS.Signals) => void) | undefined;
+  const interrupt = () => { received = 'SIGINT'; send?.('SIGINT'); };
+  const terminate = () => { received = 'SIGTERM'; send?.('SIGTERM'); };
   signals.on('SIGINT', interrupt);
   signals.on('SIGTERM', terminate);
   try {
-    const variables = await start(kind, context);
-    if (received !== undefined) return { code: null, signal: received };
-    return await new Promise<Ended>((resolveRun, rejectRun) => {
-      const spawned = spawn(file, args, { env: { ...process.env, ...variables }, stdio: 'inherit' });
-      child = spawned;
-      spawned.on('spawn', () => {
-        if (received !== undefined) spawned.kill(received);
-        options.started?.();
-      });
-      spawned.on('error', error => rejectRun(new TestServerError(`test-servers-container: ${file}: ${error.message}`)));
-      spawned.on('exit', (code, signal) => resolveRun({ code, signal }));
-    });
+    contract(context);
+    const { leases } = folders(context.root);
+    const at = write(kind, context, options.runner ? 'runner' : 'host', command, localPlan(context), options.runner ? RUNNER_PLACE : hostPlace(leases), limitsOf(options), extraOf(options));
+    const ended = await execute(context, at, undefined, kill => { send = kill; if (received !== undefined) kill(received); }, options.started);
+    finish(at, options.keep === true);
+    return received !== undefined ? { code: null, signal: received } : { code: ended.code, signal: ended.signal };
   } finally {
     signals.off('SIGINT', interrupt);
     signals.off('SIGTERM', terminate);
-    remove(context, kind);
   }
 }
 
-// pull pulls each pinned image; it is the only command that downloads.
-function pull(program: string): void {
-  for (const kind of KINDS) {
-    const ran = spawnSync(program, ['image', 'pull', image(kind)], { stdio: 'inherit' });
-    if (ran.status !== 0) throw new TestServerError(`test-servers-container: container image pull ${image(kind)} exited with ${ran.status ?? ran.signal}`);
+// finish removes the directory of a run that ended, unless the run keeps it. run.sh writes the file started before bay
+// up and the file removed after bay down; a directory with started and without removed has a project that is not
+// removed, and stays.
+function finish(at: At, keep: boolean): void {
+  const left = existsSync(join(at.dir, 'started')) && !existsSync(join(at.dir, 'removed'));
+  if (left) throw new TestServerError(`test-servers-container: run.sh did not remove the project ${at.name}; run make orm-test-container-stop, which removes it`);
+  if (keep) console.error(`test-servers-container: kept ${at.dir}; sh ${join(at.dir, 'run.sh')} runs it again`);
+  else rmSync(at.dir, { recursive: true, force: true });
+}
+
+// Remote is a run on another machine: the host that ssh names, the directory there that receives the directory of the
+// run, the command of bay there (bay of PATH without it), and whether the run pulls the images first.
+export interface Remote extends RunForm { host: string; directory: string; bay?: string; pull?: boolean }
+
+// definition is the part of the project of a run on another machine that names what it runs: the first 8 hexadecimal
+// digits of the sha256 of the commit of the checkout, the kind and the form of the run. The same make command at the
+// same commit names the same project, so a command started again after a lost connection finds the directory that it
+// sent and the jobs that it queued, whose keys are the project and the part, and queues no second run.
+function definition(root: string, kind: Kind, command: readonly string[], form: RunForm): string {
+  const head = spawnSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+  if (head.status !== 0) throw new TestServerError(`test-servers-container: git rev-parse HEAD in ${root} exited with ${head.status ?? head.signal}: ${head.stderr}`);
+  const named = { commit: head.stdout.trim(), kind, command, build: form.build ?? null, jobs: form.jobs ?? null, runner: form.runnerMemory ?? null, server: form.serverMemory ?? null };
+  return createHash('sha256').update(JSON.stringify(named)).digest('hex').slice(0, 8);
+}
+
+// remote runs a kind in the runner on another machine, whose host needs sh and bay alone. It writes the directory with
+// the plan of the bay of that machine and sends it as a tar archive through ssh into <directory>/<project>.part, which
+// it renames to <directory>/<project>, so a directory there with run.sh is whole; a directory there with run.sh is not
+// sent again. It then queues each job with ssh <host> sh <directory>/<project>/run.sh add <part>, which prints its ID,
+// and waits for it with ssh <host> sh <directory>/<project>/run.sh wait <part>, which waits on the machine that runs the
+// job, so that a job queued a moment before is known to the wait, and judges the job by what bay records of it. The job
+// check is queued only when the job build succeeded. A job that has not ended, or whose end is not known here, as when
+// the connection drops, is no failed job: the run then queues nothing more, keeps the directory there, and ends with 3,
+// and the same command waits for the job again. Every file that a job reads is in its directory before the job is
+// queued, and the directory there is removed only after each job ended and report/ came back into
+// .runtime/containers/reports/<project>, unless the run keeps it. run.sh knows no machine: only this command names the
+// host and the directory.
+export function remote(kind: Kind, command: readonly string[], context: Context, where: Remote): number {
+  if (command.length === 0) throw new TestServerError('test-servers-container: remote needs a command after --', 2);
+  const [ssh, tar] = [context.ssh ?? 'ssh', context.tar ?? 'tar'];
+  const program = (file: string, args: string[], stdio: [number | 'ignore', number | 'pipe', 2]) => {
+    const ran = spawnSync(file, args, { encoding: 'utf8', stdio, maxBuffer: 2 ** 30 });
+    if (ran.error) throw new TestServerError(`test-servers-container: ${file}: ${ran.error.message}`);
+    return ran;
+  };
+  // send packs a directory and unpacks it in a directory of the machine; the archive is a file, so that the exit status
+  // of each program is read.
+  const send = (from: string, to: string) => {
+    const archive = `${from}.tar`;
+    try {
+      if (program(tar, ['-C', from, '-cf', archive, '.'], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: ${tar} of ${from} failed`);
+      const input = openSync(archive, 'r');
+      try {
+        if (program(ssh, [where.host, `rm -rf ${quote(to)} && mkdir -p ${quote(to)} && tar -C ${quote(to)} -xf -`], [input, 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: sending ${from} to ${where.host}:${to} failed`);
+      } finally {
+        closeSync(input);
+      }
+    } finally {
+      rmSync(archive, { force: true });
+    }
+  };
+  // The bay of that machine has the contract of this script: it is read before anything is written or sent.
+  const theirs = where.bay ?? 'bay';
+  if (/['\n]/.test(theirs)) throw new TestServerError(`test-servers-container: the command of bay of ${where.host} holds a quote: ${theirs}`);
+  const stated = program(ssh, [where.host, `${theirs} version --json`], ['ignore', 'pipe', 2]);
+  if (stated.status !== 0) throw new TestServerError(`test-servers-container: ${theirs} version --json on ${where.host} exited with ${stated.status ?? stated.signal}; install bay there, or name its command in REMOTE_BAY_COMMAND`);
+  contracted(stated.stdout, ` on ${where.host}`);
+  const name = `orm-${checkout(context.root)}-${definition(context.root, kind, command, where)}`;
+  const target = `${where.directory}/${name}`;
+  const local = join(folders(context.root).dir, name);
+  rmSync(local, { recursive: true, force: true });
+  const sent = program(ssh, [where.host, `test -f ${quote(`${target}/run.sh`)}`], ['ignore', 2, 2]).status === 0;
+  if (sent) {
+    mkdirSync(local, { recursive: true });
+    console.error(`test-servers-container: ${where.host}:${target} holds the run ${name}; its jobs are queued once`);
+  } else {
+    write(kind, context, 'runner', command, planning => {
+      const there = `${target}.plan`;
+      send(planning.dir, there);
+      const printed = program(ssh, [where.host, `cd ${quote(there)} && ${theirs} -p ${quote(planning.name)} plan --json; status=$?; rm -rf ${quote(there)}; exit "$status"`], ['ignore', 'pipe', 2]);
+      if (printed.status !== 0) throw new TestServerError(`test-servers-container: bay plan --json of ${planning.name} on ${where.host} exited with ${printed.status ?? printed.signal}`);
+      return printed.stdout;
+    }, RUNNER_PLACE, limitsOf(where), extraOf(where), name);
+    send(local, `${target}.part`);
+    if (program(ssh, [where.host, `mv ${quote(`${target}.part`)} ${quote(target)}`], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: renaming ${target}.part on ${where.host} failed`);
+  }
+  const report = join(local, 'report');
+  mkdirSync(report, { recursive: true });
+  const runSh = (part: string) => `BAY_COMMAND=${quote(theirs)} sh ${quote(`${target}/run.sh`)} ${part}`;
+  // job queues the job of a part there and waits for it there: run.sh wait ends with 0 when the job succeeded and 1 when
+  // it failed; any other status, its 3 or 255 of ssh, leaves the end of the job unknown here.
+  const job = (part: 'build' | 'check'): 'succeeded' | 'failed' | 'open' => {
+    const added = program(ssh, [where.host, runSh(`add ${part}`)], ['ignore', 'pipe', 2]);
+    const id = added.stdout.trim().split('\n').at(-1) ?? '';
+    if (added.status !== 0 || !/^[0-9A-Za-z.-]+$/.test(id)) throw new TestServerError(`test-servers-container: sh run.sh add ${part} of ${name} on ${where.host} exited with ${added.status ?? added.signal} and printed no ID of a job: ${added.stdout}`);
+    console.error(`test-servers-container: the job ${part} of ${name} is ${id} on ${where.host}`);
+    const waited = program(ssh, [where.host, runSh(`wait ${part}`)], ['ignore', 2, 2]);
+    return waited.status === 0 ? 'succeeded' : waited.status === 1 ? 'failed' : 'open';
+  };
+  try {
+    if (where.pull && program(ssh, [where.host, runSh('pull')], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: sh run.sh pull of ${name} on ${where.host} failed`);
+    let ended = job('build');
+    if (ended === 'succeeded') ended = job('check');
+    else if (ended === 'failed') console.error(`test-servers-container: the job build of ${name} failed, so the job check is not queued`);
+    const archive = `${report}.tar`;
+    const output = openSync(archive, 'w');
+    try {
+      const fetched = program(ssh, [where.host, `mkdir -p ${quote(`${target}/report`)} && tar -C ${quote(`${target}/report`)} -cf - .`], ['ignore', output, 2]);
+      if (fetched.status !== 0 || program(tar, ['-C', report, '-xf', archive], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: bringing the report of ${name} back from ${where.host} failed; ${where.host}:${target} stays, and the same command brings it back`);
+    } finally {
+      closeSync(output);
+      rmSync(archive, { force: true });
+    }
+    const kept = join(folders(context.root).dir, 'reports', name);
+    mkdirSync(join(folders(context.root).dir, 'reports'), { recursive: true });
+    rmSync(kept, { recursive: true, force: true });
+    renameSync(report, kept);
+    console.error(`test-servers-container: the report of ${name} is ${kept}`);
+    if (ended === 'open') {
+      console.error(`test-servers-container: a job of ${name} has not ended or its end is not known here; ${where.host}:${target} stays, and the same command waits for it again`);
+      return 3;
+    }
+    if (!where.keep) program(ssh, [where.host, `rm -rf ${quote(target)}`], ['ignore', 2, 2]);
+    return ended === 'succeeded' ? 0 : 1;
+  } finally {
+    rmSync(local, { recursive: true, force: true });
   }
 }
 
-// containerProgram is the container program that make names in CONTAINER_PROGRAM.
-function containerProgram(): string {
-  const program = process.env['CONTAINER_PROGRAM'];
-  if (!program) throw new TestServerError('test-servers-container: CONTAINER_PROGRAM is unset; run this through make, which names the container program');
-  return program;
+// pull downloads each pinned image with bay pull; it is the only command of this script that downloads on this
+// machine. bay pulls the images of a Compose file, so pull writes one with a service for each image into a directory
+// of its own, which it removes; bay pull creates and starts no container.
+export function pull(context: Context): void {
+  contract(context);
+  const { dir } = folders(context.root);
+  mkdirSync(dir, { recursive: true });
+  const name = `orm-${checkout(context.root)}-pull-${randomBytes(4).toString('hex')}`;
+  const at: At = { name, dir: join(dir, name) };
+  mkdirSync(at.dir);
+  try {
+    writeFileSync(join(at.dir, 'compose.yaml'), yaml({ services: Object.fromEntries([...KINDS, 'runner' as const].map(each => [each, { image: image(each) }])) }));
+    const pulled = bay(context, ['pull'], at);
+    process.stderr.write(`${pulled.stdout}${pulled.stderr}`);
+    if (pulled.status !== 0) throw new TestServerError(`test-servers-container: bay pull of the images of config/containers.json exited with ${pulled.status ?? pulled.signal}`);
+  } finally {
+    rmSync(at.dir, { recursive: true, force: true });
+  }
+}
+
+// installBay installs the release of bay that CI installs into var/tools/bay of the checkout: it downloads the archive
+// of the platform, uses it only with the sha256 that config/containers.json pins, and publishes bay and bayd, which bay finds
+// beside itself. It changes nothing of the machine: the machine setup is bay install, which the target
+// orm-install-bay-machine runs.
+export function installBay(context: Context, pin: BayPin = bayPin()): void {
+  const platform = `${process.platform}_${process.arch === 'x64' ? 'amd64' : process.arch}`;
+  const sum = pin.sha256[platform];
+  if (sum === undefined) throw new TestServerError(`test-servers-container: config/containers.json pins no archive of bay for ${platform}; add its sha256 from SHA256SUMS of ${pin.release}`);
+  const name = `bay_${pin.version}_${platform}`;
+  const tools = join(context.root, 'var/tools');
+  const staging = join(tools, `bay.${randomBytes(4).toString('hex')}`);
+  mkdirSync(staging, { recursive: true });
+  try {
+    const archive = join(staging, `${name}.tar.gz`);
+    const ran = (file: string, args: string[]) => {
+      const ended = spawnSync(file, args, { encoding: 'utf8', stdio: ['ignore', 2, 2] });
+      if (ended.error) throw new TestServerError(`test-servers-container: ${file}: ${ended.error.message}`);
+      if (ended.status !== 0) throw new TestServerError(`test-servers-container: ${file} ${args.join(' ')} exited with ${ended.status ?? ended.signal}`);
+    };
+    ran(context.curl ?? 'curl', ['-fsSL', `${pin.release}/${name}.tar.gz`, '-o', archive]);
+    const found = createHash('sha256').update(readFileSync(archive)).digest('hex');
+    if (found !== sum) throw new TestServerError(`test-servers-container: ${name}.tar.gz has the sha256 ${found}, and config/containers.json pins ${sum}; the archive is not used`);
+    ran(context.tar ?? 'tar', ['-C', staging, '-xzf', archive]);
+    const target = join(tools, 'bay');
+    mkdirSync(target, { recursive: true });
+    for (const program of ['bay', 'bayd']) {
+      chmodSync(join(staging, name, program), 0o755);
+      renameSync(join(staging, name, program), join(target, program));
+    }
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
+  }
 }
 
 // exitCode is the exit code of a run whose command ended: its code, or 128 and the number of the signal that ended it.
@@ -445,20 +1294,46 @@ function exitCode({ code, signal }: Ended): number {
 }
 
 if (import.meta.main) {
-  const [command, kind, separator, ...rest] = process.argv.slice(2);
+  const [command, kind, ...rest] = process.argv.slice(2);
   try {
-    const context: Context = { root: REPOSITORY, program: containerProgram() };
+    const program = process.env['BAY_COMMAND'];
+    if (!program) throw new TestServerError('test-servers-container: BAY_COMMAND is unset; run this through make, which names the command of bay');
+    const context: Context = { root: REPOSITORY, bay: program };
     const { dir, leases } = folders(REPOSITORY);
-    if (command === 'start' && isKind(kind) && separator === undefined) {
-      await start(kind, context);
-      console.log(`test-servers-container: ${kind} in ${containerName(REPOSITORY, kind)}; its environment file is ${join(dir, `${kind}.env`)}`);
-    } else if (command === 'run' && isKind(kind) && separator === '--' && rest.length > 0) process.exitCode = exitCode(await run(kind, rest, context));
+    const usage = new TestServerError('usage: test-servers-container.mts start <kind> [--server-memory=<size>] | run <kind> [--runner] [--keep] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | remote <kind> <host> <directory> [--keep] [--pull] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb', 2);
+    const separator = rest.indexOf('--');
+    const [options, words] = separator < 0 ? [rest, []] : [rest.slice(0, separator), rest.slice(separator + 1)];
+    const flags = options.filter(option => option.startsWith('--'));
+    const names = options.filter(option => !option.startsWith('--'));
+    const allowed = (...known: string[]) => flags.every(flag => known.includes(flag.split('=')[0] ?? ''));
+    const value = (name: string) => flags.find(flag => flag.startsWith(`${name}=`))?.slice(name.length + 1);
+    // BUILD of make reaches this script as ORM_CONTAINER_BUILD, a shell command as RUN is.
+    const built = process.env['ORM_CONTAINER_BUILD'];
+    // SOCKET_BUILD and SOCKET_RUN of make named a check through a Unix socket, which runs in the container of its server;
+    // the jobs of the runner run no command there, so a run that is given one is refused and not run without it.
+    if (process.env['ORM_CONTAINER_SOCKET_BUILD'] || process.env['ORM_CONTAINER_SOCKET_RUN']) throw new TestServerError('test-servers-container: a check through a Unix socket runs in the container of its server, and the jobs of bay of the runner run no command there; no run takes SOCKET_BUILD or SOCKET_RUN (BAY8)', 2);
+    const form = (): RunForm => ({
+      keep: flags.includes('--keep'),
+      ...(built ? { build: ['/bin/sh', '-c', built] } : {}),
+      ...(value('--jobs') === undefined ? {} : { jobs: Number(value('--jobs')) }),
+      ...(value('--runner-memory') === undefined ? {} : { runnerMemory: value('--runner-memory') ?? '' }),
+      ...(value('--server-memory') === undefined ? {} : { serverMemory: value('--server-memory') ?? '' }),
+    });
+    const sizes = ['--jobs', '--runner-memory', '--server-memory'];
+    if (command === 'start' && isKind(kind) && words.length === 0 && names.length === 0 && allowed('--server-memory')) {
+      await start(kind, context, limitsOf(form()));
+      console.log(`test-servers-container: ${kind} is started; its environment file is ${join(dir, `${kind}.env`)}`);
+    } else if (command === 'run' && isKind(kind) && words.length > 0 && names.length === 0 && allowed('--runner', '--keep', ...sizes))
+      process.exitCode = exitCode(await run(kind, words, context, { ...form(), runner: flags.includes('--runner') }));
+    else if (command === 'remote' && isKind(kind) && words.length > 0 && names.length === 2 && allowed('--keep', '--pull', ...sizes))
+      process.exitCode = remote(kind, words, context, { ...form(), host: names[0] ?? '', directory: names[1] ?? '', pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
     else if (command === 'stop' && kind === undefined) {
       mkdirSync(leases, { recursive: true });
       holdExclusiveLease(leases);
       remove(context);
-    } else if (command === 'pull' && kind === undefined) pull(context.program);
-    else throw new TestServerError('usage: test-servers-container.mts start <mysql|postgres|mariadb> | run <mysql|postgres|mariadb> -- <command> [argument...] | stop | pull', 2);
+    } else if (command === 'pull' && kind === undefined) pull(context);
+    else if (command === 'install-bay' && kind === undefined) installBay(context);
+    else throw usage;
   } catch (error) {
     if (!(error instanceof TestServerError)) throw error;
     if (error.message) console.error(error.message);

@@ -1700,34 +1700,79 @@ orm-test-mysql-privilege-start:
 # make orm-test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make orm-test-servers does it at the
 # start.
-# make orm-test-container KIND=<mysql|postgres|mariadb> starts one test database server in an Apple container from the image
-# that config/containers.json pins by its digest, and writes .runtime/containers/<kind>.env (scripts/test-servers-container.mts).
-# A check reads it as TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and,
-# for MySQL and MariaDB, its published Unix socket; the variables of the replicas and the poolers are absent. Each kind runs at
-# most once in a checkout, and kinds may run together. The container belongs to this checkout: its name holds the identifier
-# of the checkout, so two checkouts run their servers at once (T444). make orm-test-container-stop removes the containers of
-# this checkout and their data, and no other container. make orm-test-container-run KIND=<kind> RUN='<command>' starts the
-# server for that run alone, runs the shell command RUN with the variables of the server, and removes the container when RUN
-# ends or fails, or when the run gets SIGINT or SIGTERM. make orm-install-container-images pulls the pinned images.
-# CONTAINER_PROGRAM names the container program, which each of these targets passes to the script.
-CONTAINER_PROGRAM = /opt/homebrew/bin/container
-.PHONY: orm-test-container orm-test-container-run orm-test-container-stop orm-install-container-images
-orm-test-container:
-	CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts start $(KIND)
+# make orm-test-container KIND=<mysql|postgres|mariadb> starts the test database servers of one kind as a Compose project that
+# bay runs, from the images that config/containers.json pins by their digests, and writes .runtime/containers/<kind>.env
+# (scripts/test-servers-container.mts; CONTRIBUTING.md "Test database servers in containers", BAY1, BAY12). A check reads it
+# as TEST_ENV=.runtime/containers/<kind>.env, or for MariaDB as MARIADB_ENV. It starts the primary with TLS and, for MySQL
+# and PostgreSQL, its replica; the variables of the poolers and of a Unix socket are absent. A kind is started at most once
+# in a checkout, and kinds may run together. Each start is a project of its own below .runtime/containers of this checkout,
+# so two checkouts run their servers at once (T444). make orm-test-container-stop removes the projects of this checkout and
+# their data, and no other project.
+#
+# The script writes the directory of a run, and the file run.sh of that directory, which needs sh and bay alone, executes
+# it. make orm-test-container-run KIND=<kind> RUN='<command>' starts the servers for that run alone, runs the shell command
+# RUN with the variables of the servers, and removes the project when RUN ends or fails, or when the run gets SIGINT or
+# SIGTERM. RUN is a process of this host; with FORM=runner it runs in the service runner of the project, from a clone of
+# the commit of this checkout, and uses no tool of this host. A run in the runner starts the runner alone, installs it,
+# runs the shell command BUILD when it is given, and only then starts the servers, so that the build and the servers do
+# not hold memory at the same time. CARGO_BUILD_JOBS is the count of the jobs of cargo in the runner, and RUNNER_MEMORY
+# and SERVER_MEMORY are the memory limits of the runner and of each server (sizes of Compose, such as 2600m); the one
+# who runs gives them for the machine, and this file holds no value of them. The form of the runner is two jobs of bay,
+# which the machine runs one at a time with its other jobs (BAY13): the job build installs the runner and runs BUILD, and
+# the job check, queued after build succeeded, runs RUN with the servers. KEEP=1 keeps the directory of the run, with the
+# tools and the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
+# RUN='<command>' HOST=<ssh host> REMOTE=<directory there> runs the form of the runner on another machine, whose host
+# has sh and bay alone: it sends the directory, queues each job there through ssh and waits for it there through ssh,
+# so a lost connection ends no job, brings the report back under .runtime/containers/reports and removes the directory
+# there once every job ended; a job that has not ended, or whose end is not known, keeps the directory and ends the
+# command with 3. PULL=1 pulls the images there first. The same command at the same commit sends nothing and queues
+# nothing a second time, and waits again for a job that has not ended.
+#
+# BAY_COMMAND is the command of bay, the only program that these targets run for the servers and their images. bay is a
+# tool of the machine, as make is: the default is bay of PATH, and a run compares no version of it and checks its
+# contract alone. The one who runs make sets BAY_COMMAND when bay must run as another user: bay keeps its state below
+# the home of the user that runs it and its machine setup needs root on Linux, so a CI runner, a user with sudo without a
+# password, sets BAY_COMMAND='sudo -n <path of bay>' and every command of bay runs as root (BAY6). REMOTE_BAY_COMMAND is
+# the command of bay on the machine of make orm-test-container-remote, bay of its PATH without it. A CI job has no bay
+# and must download one, so config/containers.json pins the release that CI installs with the sha256 of its archives:
+# make orm-install-bay puts it into var/tools/bay and changes nothing of the machine (BAY5), and make
+# orm-install-bay-machine runs bay install, which applies the machine setup that is missing and asks for the rights it
+# needs, and bay check -scope run, which fails while a part that a run needs is missing. No start pulls an image: make
+# orm-install-container-images, the only target that downloads an image on this machine, pulls the pinned images with
+# bay pull.
+BAY_COMMAND ?= bay
+CONTAINER_SERVERS = BAY_COMMAND='$(BAY_COMMAND)' $(if $(REMOTE_BAY_COMMAND),REMOTE_BAY_COMMAND='$(REMOTE_BAY_COMMAND)') $(NODE) scripts/test-servers-container.mts
+.PHONY: orm-test-container orm-test-container-run orm-test-container-remote orm-test-container-stop orm-install-container-images orm-install-bay orm-install-bay-machine
+orm-install-bay:
+	$(ONLINE) $(CONTAINER_SERVERS) install-bay
 
-orm-test-container-run: export ORM_CONTAINER_RUN = $(value RUN)
+orm-install-bay-machine:
+	$(BAY_COMMAND) install
+	$(BAY_COMMAND) check -scope run
+
+CONTAINER_LIMITS = $(if $(CARGO_BUILD_JOBS),--jobs=$(CARGO_BUILD_JOBS)) $(if $(RUNNER_MEMORY),--runner-memory=$(RUNNER_MEMORY)) $(if $(SERVER_MEMORY),--server-memory=$(SERVER_MEMORY))
+orm-test-container:
+	$(CONTAINER_SERVERS) start $(KIND) $(if $(SERVER_MEMORY),--server-memory=$(SERVER_MEMORY))
+
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_RUN = $(value RUN)
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_BUILD = $(value BUILD)
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_SOCKET_BUILD = $(value SOCKET_BUILD)
+orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_SOCKET_RUN = $(value SOCKET_RUN)
 orm-test-container-run:
-	CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts run $(KIND) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+
+orm-test-container-remote:
+	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts stop
+	LEASE=$(LEASE) $(CONTAINER_SERVERS) stop
 
 orm-install-container-images:
-	$(ONLINE) CONTAINER_PROGRAM=$(CONTAINER_PROGRAM) $(NODE) scripts/test-servers-container.mts pull
+	$(ONLINE) $(CONTAINER_SERVERS) pull
 
-# orm-test-container-check runs the tests of scripts/test-servers-container.mts against a stand-in container program that
-# each test writes, so it needs no container runtime (T444).
+# orm-test-container-check runs the tests of scripts/test-servers-container.mts against a stand-in bay that each test
+# writes, so it needs no container and no image (BAY1, T444).
 .PHONY: orm-test-container-check
 orm-test-container-check:
 	$(RUN_TESTS) node -- --test-concurrency=1 scripts/test-servers-container.test.mts

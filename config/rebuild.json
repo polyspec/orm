@@ -312,7 +312,7 @@
     },
     "scripts/test-servers-container.mts": {
       "kind": "policy",
-      "reason": "starts and stops one database server of the checks of this repository in an Apple container from an image pinned by its digest, with the settings of the native primary of scripts/test-servers.mts; it runs the container program"
+      "reason": "writes the directory of a run of the database servers of one kind of the checks of this repository, a Compose project of bay from images pinned by their digests with the settings of the native primary of scripts/test-servers.mts, and the sh file that executes it; it runs bay, sh, git, ssh and tar"
     },
     "scripts/test-servers-mysql.mts": {
       "kind": "policy",
