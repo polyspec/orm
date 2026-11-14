@@ -12,6 +12,13 @@
   "php": [
     "8.4"
   ],
+  "phpExtension": {
+    "minors": [
+      "8.4",
+      "8.5"
+    ],
+    "reason": "the PHP minors for which the release builds the PHP extension of the binding on each platform (binding GN-19d): an extension loads only into the PHP minor whose headers built it, so each supported minor that the requirement php >=8.4 of packages/php-ext/composer.json admits has an asset of its own. The job platform of .github/workflows/assets.yml sets up each with setup-php and runs make release-php-ext PHP=php after it, which extensionMinorErrors of scripts/repo/toolchains.mts compares with this list"
+  },
   "symbolExtractors": [
     "php"
   ],

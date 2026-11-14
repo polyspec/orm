@@ -6,10 +6,11 @@
 # The job platform runs on the runner of its platform, ubuntu-26.04, ubuntu-26.04-arm or macos-15, the one exception to the
 # runner of .github/runner (runnerErrors of scripts/repo/ci.mts): the asset of a platform is linked and loaded only on that
 # platform, because no tool of the release compiles for another platform. Each job builds the static library of the Go module
-# (with the musl library of its arch on Linux), the abi3 wheel, the PHP extension for the PHP of .php-version and the npm
-# platform package of its platform, and the job npm the npm package itself with the wasm-bindgen of mise.toml. Each uploads
-# var/release/assets as an artifact, which the workflow release downloads. Each run step is one make target and runs also
-# after a failed one, so one run names every asset that does not build. No step or job has timeout-minutes.
+# (with the musl library of its arch on Linux), the abi3 wheel, the PHP extension for each PHP minor of phpExtension.minors
+# of config/toolchain.json and the npm platform package of its platform, and the job npm the npm package itself with the
+# wasm-bindgen of mise.toml. Each uploads var/release/assets as an artifact, which the workflow release downloads. Each run
+# step is one make target and runs also after a failed one, so one run names every asset that does not build. No step or
+# job has timeout-minutes.
 name: assets
 
 on:
@@ -48,13 +49,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.ref }}
-      # The PHP of .php-version with its php-config, which the build of the extension reads; make release-php-ext PHP=php
-      # resolves php on PATH. The Composer of the checks is pinned, as in ci.yml, so setup-php installs no newer one.
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version-file: .php-version
-          tools: composer:2.10.3
-          coverage: none
       # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
       # rustup installs the toolchain of rust-toolchain.toml with its component llvm-tools and its targets, then the crates
@@ -82,7 +76,25 @@ jobs:
       - name: Install the LLVM of config/toolchain.json
         if: ${{ !cancelled() }}
         run: make install-llvm
-      - name: Build the PHP extension
+      # Each PHP minor of phpExtension.minors of config/toolchain.json with its php-config, which the build of the extension
+      # reads; make release-php-ext PHP=php resolves php on PATH, and each minor builds in a target folder of its own
+      # (extensionMinorErrors of scripts/repo/toolchains.mts). The build runs no Composer, so setup-php installs no tool.
+      - uses: shivammathur/setup-php@v2
+        if: ${{ !cancelled() }}
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Build the PHP extension for PHP 8.4
+        if: ${{ !cancelled() }}
+        run: make release-php-ext PHP=php
+      - uses: shivammathur/setup-php@v2
+        if: ${{ !cancelled() }}
+        with:
+          php-version: '8.5'
+          tools: none
+          coverage: none
+      - name: Build the PHP extension for PHP 8.5
         if: ${{ !cancelled() }}
         run: make release-php-ext PHP=php
       - name: Build the npm platform package

@@ -9,7 +9,7 @@ import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors, runtimeSource } from './probes.mts';
-import { composerBranchErrors, composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
+import { composerBranchErrors, composerVersionErrors, extensionMinorErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
@@ -200,6 +200,8 @@ const text = (path: string) => existsSync(join(root, path)) ? readFileSync(join(
 const reported = (program: string, args: string[]) => execFileSync(program, args, { cwd: root }).toString().trim();
 const composer = readComposer(join(root, 'legacy/packages/php/composer.json'));
 failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows));
+// The job platform of assets.yml builds the PHP extension for each PHP minor of config/toolchain.json.
+failures.push(...extensionMinorErrors(text('config/toolchain.json'), workflows));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
 // Every workflow sets up the Go of the go line of legacy/packages/go/go.mod, the one Go release of mise.toml (kit K127).

@@ -43,6 +43,7 @@ const below = (a: string, b: string): boolean => semver.lt(release(a), release(b
 //     reads only the output of the step `php-min` that uses scripts/php/php-min.mts --version. The last
 //     setup-php step reads .php-version, so that PHP becomes the php in PATH. A workflow that runs php or composer
 //     uses setup-php.
+//     The job platform of assets.yml is checked by extensionMinorErrors instead.
 export function phpVersionErrors(declared: string, minimum: string | undefined, workflows: Record<string, string>): string[] {
   const errors: string[] = [];
   const exact = /^\d+\.\d+$/.test(declared.trim()) && declared === `${declared.trim()}\n`;
@@ -57,6 +58,7 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     // Each job runs on a runner of its own, so each job that sets up PHP is checked alone: the job preflight runs the steps of
     // the job test (T428).
     for (const job of readWorkflow(workflow, path).jobs) {
+    if (path === EXTENSION_JOB.path && job.id === EXTENSION_JOB.job) continue;
     const steps = job.steps.filter(step => step.uses?.split('@')[0] === 'shivammathur/setup-php');
     if (steps.length === 0) continue;
     // The php-min step writes composer.json's lowest release as the output version, and the setup-php step that
@@ -87,6 +89,45 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
       errors.push(`${path} must set up the PHP of .php-version last, so that it is php on PATH`);
     }
   }
+  return errors;
+}
+
+// EXTENSION_JOB is the job that builds the PHP extension of the binding of its platform, and BUILD_EXTENSION the step that
+// builds it for the PHP on PATH (packages/release.mk, binding GN-19d).
+export const EXTENSION_JOB = { path: '.github/workflows/assets.yml', job: 'platform' };
+export const BUILD_EXTENSION = 'make release-php-ext PHP=php';
+
+// extensionMinorErrors returns one error at each place where the job platform of assets.yml does not build the PHP extension
+// for each PHP minor of phpExtension.minors of config/toolchain.json; toolchain is the text of that file and workflows is
+// {path: text}. An extension loads only into the PHP minor whose headers built it, so the release has one extension per minor
+// that require.php admits. The job sets up each minor, in the order of the list, with a shivammathur/setup-php step that
+// writes php-version and coverage: none, and runs BUILD_EXTENSION after each; it sets up no other PHP.
+export function extensionMinorErrors(toolchain: string, workflows: Record<string, string>): string[] {
+  const value: unknown = JSON.parse(toolchain);
+  const extension: unknown = typeof value === 'object' && value !== null && 'phpExtension' in value ? value.phpExtension : undefined;
+  const named: unknown = typeof extension === 'object' && extension !== null && 'minors' in extension ? extension.minors : undefined;
+  const minors = Array.isArray(named) ? named.filter((minor): minor is string => typeof minor === 'string' && /^\d+\.\d+$/.test(minor)) : [];
+  if (!Array.isArray(named) || minors.length === 0 || minors.length !== named.length)
+    return [`config/toolchain.json phpExtension.minors must list the PHP minors x.y of the extension, found ${JSON.stringify(named)}`];
+  const workflow = workflows[EXTENSION_JOB.path];
+  const job = workflow === undefined ? undefined : readWorkflow(workflow, EXTENSION_JOB.path).jobs.find(entry => entry.id === EXTENSION_JOB.job);
+  if (job === undefined) return [`${EXTENSION_JOB.path} has no job ${EXTENSION_JOB.job}, which builds the PHP extension`];
+  const errors: string[] = [];
+  const set: string[] = [];
+  const built: string[] = [];
+  let current: string | undefined;
+  for (const step of job.steps) {
+    if (step.uses?.split('@')[0] === 'shivammathur/setup-php') {
+      const version = step.with['php-version'];
+      current = typeof version === 'string' ? version : JSON.stringify(version ?? step.with['php-version-file']);
+      set.push(current);
+      if (step.with['coverage'] !== 'none') errors.push(`${EXTENSION_JOB.path} sets up PHP ${current} without coverage: none, so Xdebug or pcov can load`);
+    }
+    if (step.run === BUILD_EXTENSION && current !== undefined) built.push(current);
+  }
+  const of = `the minors ${minors.join(', ')} of config/toolchain.json phpExtension.minors`;
+  if (set.join(' ') !== minors.join(' ')) errors.push(`${EXTENSION_JOB.path} job ${EXTENSION_JOB.job} sets up PHP ${set.join(', ') || 'none'}, not ${of}`);
+  if (built.join(' ') !== minors.join(' ')) errors.push(`${EXTENSION_JOB.path} job ${EXTENSION_JOB.job} builds the PHP extension for PHP ${built.join(', ') || 'none'}, not for ${of}`);
   return errors;
 }
 

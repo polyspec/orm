@@ -16,7 +16,7 @@ import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors } from './probes.mts';
 import { nativeLines, nativeTestErrors } from './native-tests.mts';
-import { composerBranchErrors, composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
+import { composerBranchErrors, composerVersionErrors, BUILD_EXTENSION, EXTENSION_JOB, extensionMinorErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -503,6 +503,7 @@ const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { 
 caseTest('the checks and every workflow run the PHP of .php-version and the Rust of rust-toolchain.toml', () => {
   const composer = readComposer(join(repository.pathname, 'legacy/packages/php/composer.json'));
   assert.deepEqual(phpVersionErrors(text('.php-version'), composer.require?.php, workflows), []);
+  assert.deepEqual(extensionMinorErrors(text('config/toolchain.json'), workflows), []);
   assert.deepEqual(rustToolchainErrors(text('rust-toolchain.toml'), text('Makefile'), workflows, runningRustc), []);
 });
 
@@ -529,6 +530,28 @@ caseTest('a workflow that declares php-version itself fails', () => {
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('shivammathur/setup-php@v2', 'actions/checkout@v5') }), [
     'ci.yml runs PHP without shivammathur/setup-php',
   ]);
+});
+
+caseTest('the job platform of assets.yml builds the PHP extension for each minor of config/toolchain.json and for no other', () => {
+  const toolchain = (minors: string[]) => JSON.stringify({ phpExtension: { minors } });
+  const setup = (minor: string) => `      - uses: shivammathur/setup-php@v2\n        with:\n          php-version: '${minor}'\n          coverage: none\n`;
+  const assets = `jobs:\n  platform:\n    steps:\n${setup('8.4')}      - run: ${BUILD_EXTENSION}\n${setup('8.5')}      - run: ${BUILD_EXTENSION}\n`;
+  const path = EXTENSION_JOB.path;
+  assert.deepEqual(extensionMinorErrors(toolchain(['8.4', '8.5']), { [path]: assets }), []);
+  assert.deepEqual(extensionMinorErrors(toolchain(['8.4', '8.5', '8.6']), { [path]: assets }), [
+    `${path} job platform sets up PHP 8.4, 8.5, not the minors 8.4, 8.5, 8.6 of config/toolchain.json phpExtension.minors`,
+    `${path} job platform builds the PHP extension for PHP 8.4, 8.5, not for the minors 8.4, 8.5, 8.6 of config/toolchain.json phpExtension.minors`,
+  ]);
+  assert.deepEqual(extensionMinorErrors(toolchain(['8.4', '8.5']), { [path]: assets.replace(/ {6}- run: make release-php-ext PHP=php\n$/, '') }), [
+    `${path} job platform builds the PHP extension for PHP 8.4, not for the minors 8.4, 8.5 of config/toolchain.json phpExtension.minors`,
+  ]);
+  assert.deepEqual(extensionMinorErrors(toolchain(['8.4', '8.5']), { [path]: assets.replace('          coverage: none\n', '') }), [
+    `${path} sets up PHP 8.4 without coverage: none, so Xdebug or pcov can load`,
+  ]);
+  assert.deepEqual(extensionMinorErrors('{}', { [path]: assets }), ['config/toolchain.json phpExtension.minors must list the PHP minors x.y of the extension, found undefined']);
+  assert.deepEqual(extensionMinorErrors(toolchain(['8.4']), {}), [`${path} has no job platform, which builds the PHP extension`]);
+  // The job is checked by extensionMinorErrors alone, so its php-version is no finding of phpVersionErrors.
+  assert.deepEqual(phpVersionErrors('8.4\n', '>=8.4', { [path]: assets }), []);
 });
 
 caseTest('a workflow that sets up PHP with a coverage driver fails', () => {

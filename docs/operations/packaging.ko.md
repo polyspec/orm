@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: c365c93a388c1cf66482d4c8e86be5bf4c5df2528d8599da79dafd85bb753670 -->
+<!-- source-sha256: 00a0c3a9248883a8b92a58bc5bfa8d13a61de74a9163cf417085745482ea21d5 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -66,7 +66,7 @@ root의 Cargo.toml이 하나뿐인 Cargo workspace다: packages/rust의 core cra
 
 Go module은 넷이다. `github.com/polyspec/orm/legacy/packages/go`(legacy/packages/go/go.mod)는 Go client, 그 engine, generator, harness이며 module 경로는 그 디렉터리의 경로다. `github.com/polyspec/orm/packages/go`(packages/go/go.mod)는 binding scaffold가 쓰는 Go binding이다. `github.com/polyspec/orm/tests`와 `github.com/polyspec/orm/examples`는 tests/의 Go program과 예제다. root의 go.work는 legacy/packages/go, tests, examples를 묶는다. 그 경로의 release가 없으므로 tests와 examples의 go.mod는 legacy/packages/go를 require하지 않고 workspace에서만 찾는다. 그래서 tests나 examples의 Go 명령은 root의 go.work로 돌고, `GOWORK=off`로는 legacy/packages/go를 찾지 못한다. go.work는 packages/go를 묶지 않으므로 binding의 명령은 `GOWORK=off`로 실행한다(Makefile의 `GO_BINDING_ENV`).
 
-release의 binding asset은 `packages/release.mk`의 recipe가 build한다. 이 파일은 `make release-recipes`가 binding release-recipes로 packages/rust/interface.json에서 쓰며 Git이 무시하고, Makefile이 include한다. package.json이 binding release v0.0.4의 asset에서 받는 npm package `@polyspec/binding`이 그 도구를 주고, `@napi-rs/cli`가 npm platform package를 묶는다. `.github/workflows/assets.yml`은 Linux x64와 arm64, macOS arm64의 각 platform에서 그 platform의 runner로 Go module의 static library, abi3 wheel, PHP 확장, npm platform package를 build하고, mise.toml의 wasm-bindgen으로 npm package를 build한다. CI workflow는 자기 run의 commit으로 그것을 부르고, release workflow는 binding의 release 검사(`make release-binding-check`)와 함께 tag의 tree로 그것을 부른다. 그 뒤 release는 static library를 tag의 Go module로 옮기고(`make release-go-module`) 각 platform의 asset을 draft에 올린다(`make release-platform-assets`). config/toolchain.json의 LLVM이 ext-php-rs의 bindgen이 읽는 libclang을 주고, rust-toolchain.toml은 component llvm-tools와 wasm, musl build의 target을 더한다.
+release의 binding asset은 `packages/release.mk`의 recipe가 build한다. 이 파일은 `make release-recipes`가 binding release-recipes로 packages/rust/interface.json에서 쓰며 Git이 무시하고, Makefile이 include한다. package.json이 binding release v0.0.4의 asset에서 받는 npm package `@polyspec/binding`이 그 도구를 주고, `@napi-rs/cli`가 npm platform package를 묶는다. `.github/workflows/assets.yml`은 Linux x64와 arm64, macOS arm64의 각 platform에서 그 platform의 runner로 Go module의 static library, abi3 wheel, config/toolchain.json의 `phpExtension.minors`에 있는 PHP minor(8.4와 8.5)마다의 PHP 확장(확장은 자기를 build한 header의 PHP minor에만 load되기 때문이다), npm platform package를 build하고, mise.toml의 wasm-bindgen으로 npm package를 build한다. CI workflow는 자기 run의 commit으로 그것을 부르고, release workflow는 binding의 release 검사(`make release-binding-check`)와 함께 tag의 tree로 그것을 부른다. 그 뒤 release는 static library를 tag의 Go module로 옮기고(`make release-go-module`) 각 platform의 asset을 draft에 올린다(`make release-platform-assets`). config/toolchain.json의 LLVM이 ext-php-rs의 bindgen이 읽는 libclang을 주고, rust-toolchain.toml은 component llvm-tools와 wasm, musl build의 target을 더한다.
 
 ## 생성되는 error code source
 
