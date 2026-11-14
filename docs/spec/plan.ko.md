@@ -1,5 +1,5 @@
 <!-- doc-id: plan -->
-<!-- source-sha256: 5b9c27c73d809a0b636e4c9f267b50c360313faa53842fdfdf06ba5082b5d001 -->
+<!-- source-sha256: ee66d5ffa5ecd092ab725231d2ac1a82e0c46f7f2bb79637dda45d3e0e44d1c3 -->
 # ORM 설계 계획
 
 이 문서는 ORM의 단일 설계 계획이다. 이전의 초기 설계, 수정 설계, DSL v3 기록을 대체한다. 결과 문법과 구조는 [DSL](dsl.md)과 [공통 인터페이스](interfaces.md)에서 정의하고, 이 문서는 목표·규칙·작업 순서를 기록한다.
@@ -29,7 +29,7 @@ ORM은 Go·PHP·Rust·TypeScript·Python에서 하나의 모델 기반 쿼리 �
 - **PLN-12** 쓰기: 저장 컬럼 `set<Col>`, 메모리 속성 `new<Name>`, `plus<Col>`, `minus<Col>`, `create`, `duplication(model)`과 `create`, `update`, `update(true)`, `save`, `delete`, `delete(true)`
 - **PLN-13** 트랜잭션: 교착 재시도를 포함한 `connection.transaction(fn)`
 - **PLN-14** 페이지: 같은 모델의 전체 개수와 한 페이지 행
-- **PLN-15** codec stage([DBS-184](dbspec.md)): `ip`, `aes`, `hex`, `serialize`, `base64`, `gz`, `json` (legacy `ordered_json`), `yaml`
+- **PLN-15** codec stage([DBS-185](dbspec.md)): `ip`, `aes`, `hex`, `serialize`, `base64`, `gz`, `json` (legacy `ordered_json`), `yaml`
 
 `serialize`와 `aes_serialize`는 공개된 PHP 직렬화 형식을 사용하며 각 클라이언트가 이 형식을 구현한다.
 
