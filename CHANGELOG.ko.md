@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ba6c790e88df66f42c456f1ec6f3dc13eb8b619be7024091e960e1b3504d2958 -->
+<!-- source-sha256: 31409a6977feed57a994e2295e0003d11047f7cefcb3b184298044dee13c0fe3 -->
 # 변경 이력
 
 ## Unreleased
 
+- value alias는 kind를 보존하는 `IntegerValue`, `FloatValue`, `BytesValue`, `MapValue` class를 선언하고 그 공개 표현을 `changes`에 기록한다(T493-2, CORE-123, CORE-124). 전에는 native 정수, 정수값 number, UTF-8 byte string, 순차 key의 PHP array가 `int`와 `int64`, `float`와 `int`, bytes와 text, map과 list의 구분을 잃었다. class는 그 kind를 유지하고 map 출력은 실제 순서가 있는 key에서 `sequence_keys`를 선언한다. contract와 native 회귀 case는 모호한 표현, 잘못된 class 내용, 그대로 유지되는 getter 예외를 다룬다. native compile과 생성된 runtime 검증은 아직 완료하지 않았으며, lock이 고정한 binding은 float의 `safe_integer` 분할을 CK-8 네 건으로 거부한다.
 - interface contract는 binding 경계의 `io` error category를 `OrmIoError`(Python에서는 `ORMIoError`)에 연결한다(T493-1, CORE-6). PHP, Python, Node, WASM의 연결이 없어서 contract 검사가 CK-10 네 건을 보고했다. 회귀 시험은 binding 검사로 실제 contract를 확인한다. 생성된 runtime의 오류 동작은 아직 검증하지 않았다.
 - core 명세는 legacy 언어 구현 각각을 언제 제거할 수 있는지 정한다(T492, CORE-4, CORE-5). 전에는 legacy API와 시험을 보존하면서 제거 조건은 적지 않았다. 이제 제거하려면 해당 언어의 생성된 binding이 모든 interface contract case를 실패와 skip 없이 통과하고 legacy 시험도 그 binding으로 통과해야 한다. API 차이와 허용하는 시험 변경은 각각 규칙과 함께 contract의 `changes`에 선언한다. legacy package는 계속 릴리스 대상이 아니며, 제거 검사와 차이 목록은 아직 완료하지 않았다.
 - checklist가 행 T495를 가진다(T495): 릴리스는 `pie install`이 찾을 수 있도록 binding의 PHP 확장의 Composer 패키지 `polyspec/orm`을 담는다.

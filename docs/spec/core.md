@@ -37,8 +37,9 @@ the core that differ from the rules that the language implementations of `legacy
   removed or weakened to satisfy CORE-4 without a specified API change.
 
 The language implementations still coexist with the core under CORE-1. The removal conditions of CORE-4 have not been
-verified, and the inventory of differences required by CORE-5 is not populated: the interface contract's `changes` is
-empty. No language implementation is eligible for removal on that evidence.
+verified, and the inventory of differences required by CORE-5 is incomplete. The value representations of CORE-124 are
+recorded in `changes`; those entries do not establish that every legacy API difference is recorded. No language
+implementation is eligible for removal on that evidence.
 
 ## Errors
 
@@ -232,7 +233,8 @@ empty. No language implementation is eligible for removal on that evidence.
   another style stage is its value of the common value model in the kinds `null`, `bool`, `int64`, `float`, `text`,
   `list` and `map`: a number with no fraction and no exponent that fits `i64` is `int64`, any other number that fits
   `i64` or a finite `f64` is `float`, and a number that fits neither is `codec_decode`.
-- **CORE-63** A value of a language enters the core by the one function `from_host`, which reads the value alone:
+- **CORE-63** Retired, replaced by CORE-123: the native input rules now also accept the kind-preserving classes of CORE-124.
+- **CORE-123** A value of a language enters the core by the one function `from_host`, which reads the value alone:
   null is `null`, a boolean `bool`, an integer `int64`, a float `float`, a text `text`, bytes `bytes`, a list `list`
   and a map `map`. A number of a language with one number type is `int` when it has no fraction and is in the range
   of -(2^53 - 1) to 2^53 - 1, and `float` otherwise. A text of a language whose text is bytes is `text` when the
@@ -242,8 +244,35 @@ empty. No language implementation is eligible for removal on that evidence.
   alike. A value that is none of these is `codec_encode` with the message `the value is no value of a column: <what>`,
   which names no value: an integer outside `i64`, a float that is not finite, a text that is no sequence of Unicode
   scalar values, a map key that is no text, a list or map nested deeper than 256 levels, and an undefined value, a
-  date, a function or an object of the language. Not implemented: a value of `json_value` that enters; the alias has
+  date, a function or an object of the language other than a class of CORE-124. Such a class is read through its declared
+  property, and its kind is preserved even when the property's native value would enter with another kind. A property
+  that raises returns that same exception; a property whose content does not have the declared representation is
+  `codec_encode`. Not implemented: a value of `json_value` that enters; the alias has
   no `in` row for a value of another library, so such a value is an object and is refused.
+- **CORE-124** A binding preserves each outgoing kind when that value enters the core again. It uses the generated
+  `origin: value` classes below only where a native value would lose the kind; every unambiguous native representation
+  stays native. Each class has a required constructor argument and a read-only property of the same name. The property
+  gives the contained native value, and a constructor accepts exactly the declared type, without coercion.
+
+  | Kind | Languages and condition | Class | Argument and property | Type |
+  |---|---|---|---|---|
+  | `int` | PHP, Python, Go; Node and WASM when `safe_integer` is false | `IntegerValue` | `value` | `int64` |
+  | `float` | Node and WASM, when `safe_integer` is true, including `-0.0` | `FloatValue` | `value` | `float` |
+  | `bytes` | PHP, when `utf8` is true, including empty bytes | `BytesValue` | `value` | `bytes` |
+  | `map` | PHP, when `sequence_keys` is true, including an empty map | `MapValue` | `entries` | map of `orm_value` with text keys |
+
+  `IntegerValue` holds an `int` independently of the size of its value; a native integer still enters as `int64`.
+  Node and WASM keep a safe `int` as a native number and use `IntegerValue` for the other `int` values, so no integer loses precision.
+  A safe integral float remains a float through `FloatValue`, and retains the sign of zero; a fraction or an integral
+  float outside the safe-integer range remains a native number. A PHP byte string remains bytes
+  through `BytesValue`, even when its content is valid UTF-8. `MapValue` keeps a map when PHP would represent its keys as
+  0 to n-1 in order; the core declares that predicate from the keys, and reads those keys as text under CORE-123.
+  PHP classes are in `Polyspec\Orm`, Python classes in `polyspec.orm`, Node and WASM classes in the package entry, and
+  Go classes in the binding package. The interface contract's `changes` records these public representation changes.
+  The generated bindings have not yet been rebuilt and tested with these class representations.
+  The locked binding rejects `safe_integer` for outgoing floats, so the float rows remain unverified until that
+  predicate is supported for floats; replacing them with a class for every integral float would also change native
+  large numbers whose kind is already unambiguous.
 - **CORE-64** A value leaves the core by the one function `to_host`, which describes it one level at a time. A value
   of `nested:json_value` is described in the kinds of the `out` table of `json_value`: `null`, `bool`, `number` with
   the number text, `text`, `list` and `map` in member order. A JSON string that holds an unpaired surrogate has no

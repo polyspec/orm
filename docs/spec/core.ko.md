@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 4254af9c7bc1ec16ada0bf3d0fc01a018d3596f710ac03d27d885152463f422c -->
+<!-- source-sha256: 3c68f7ac109ca31a07b6e798691f0ce79cb90218108ad0c491f95bd70071cb1c -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -32,7 +32,8 @@
   따라서 명세로 정한 API 변경 없이 실패하는 legacy 시험을 제거하거나 약화해서 CORE-4를 만족시킬 수 없다.
 
 언어 구현은 아직 CORE-1에 따라 core와 공존한다. CORE-4의 제거 조건은 검증하지 않았으며, CORE-5가 요구하는 차이
-목록은 아직 채우지 않았다. interface contract의 `changes`는 비어 있다. 이 증거로 제거할 수 있는 언어 구현은 없다.
+목록은 아직 완전하지 않다. `changes`는 CORE-124의 값 표현을 기록하지만, 그 항목들만으로 모든 legacy API 차이가
+기록되었다고 볼 수 없다. 이 증거로 제거할 수 있는 언어 구현은 없다.
 
 ## 오류
 
@@ -184,7 +185,8 @@
   `nested:json_value`다(CORE-122). 다른 style stage 뒤의 열은 공통 값 모델의 값이며 kind는 `null`, `bool`, `int64`,
   `float`, `text`, `list`, `map`이다: 소수부와 지수가 없고 `i64`에 들어가는 수는 `int64`, `i64`나 유한한 `f64`에
   들어가는 그 밖의 수는 `float`이고, 어느 쪽에도 들어가지 않는 수는 `codec_decode`다.
-- **CORE-63** 언어의 값은 함수 `from_host` 하나로 코어에 들어오며, 이 함수는 값만 읽는다: null은 `null`, boolean은
+- **CORE-63** 폐기되었고 CORE-123이 대체한다. native 입력 규칙은 이제 CORE-124의 kind 보존 class도 받아들인다.
+- **CORE-123** 언어의 값은 함수 `from_host` 하나로 코어에 들어오며, 이 함수는 값만 읽는다: null은 `null`, boolean은
   `bool`, 정수는 `int64`, float는 `float`, 텍스트는 `text`, bytes는 `bytes`, list는 `list`, map은 `map`이다. 수 타입이
   하나인 언어의 수는 소수부가 없고 -(2^53 - 1)부터 2^53 - 1까지의 범위에 있으면 `int`이고 그렇지 않으면 `float`다.
   텍스트가 byte인 언어의 텍스트는 그 byte가 UTF-8이면 `text`이고 아니면 `bytes`다. key가 순서대로 0부터 n-1인 PHP
@@ -192,8 +194,33 @@
   무엇을 받는지는 값을 bind하는 곳에서 열의 타입이 정하므로(PRT-32a) `int`와 `int64`는 똑같이 bind된다. 이 가운데
   어느 것도 아닌 값은 `codec_encode`이고 메시지는 `the value is no value of a column: <what>`이며 값을 적지 않는다:
   `i64` 밖의 정수, 유한하지 않은 float, Unicode scalar 값의 열이 아닌 텍스트, 텍스트가 아닌 map key, 256단계보다 깊이
-  중첩된 list나 map, 그리고 언어의 undefined 값, 날짜, 함수, 객체다. 구현되지 않았다: 들어오는 `json_value`의 값.
+  중첩된 list나 map, 그리고 언어의 undefined 값, 날짜, 함수, CORE-124의 class가 아닌 객체다. 그 class는 선언한
+  property로 읽으며 property의 native 값이 다른 kind로 들어오더라도 class의 kind를 보존한다. property가 예외를 내면
+  그 예외를 그대로 돌려주고, 내용이 선언된 표현이 아니면 `codec_encode`다. 구현되지 않았다: 들어오는 `json_value`의 값.
   alias에는 다른 라이브러리의 값을 위한 `in` 행이 없으므로 그런 값은 객체이고 거부된다.
+- **CORE-124** binding은 나가는 값이 core로 다시 들어올 때 그 kind를 보존한다. native 값이 kind를 잃는 곳에만
+  아래의 생성된 `origin: value` class를 쓰고, 모호하지 않은 native 표현은 모두 native로 유지한다. 각 class는 같은 이름의
+  필수 constructor 인자와 읽기 전용 property를 가진다. property는 담긴 native 값을 주며, constructor는 coercion 없이
+  선언된 type만 받는다.
+
+  | Kind | 언어와 조건 | Class | 인자와 property | Type |
+  |---|---|---|---|---|
+  | `int` | PHP, Python, Go; `safe_integer`가 false인 Node와 WASM | `IntegerValue` | `value` | `int64` |
+  | `float` | Node와 WASM, `-0.0`을 포함해 `safe_integer`가 true일 때 | `FloatValue` | `value` | `float` |
+  | `bytes` | PHP, 빈 bytes를 포함해 `utf8`이 true일 때 | `BytesValue` | `value` | `bytes` |
+  | `map` | PHP, 빈 map을 포함해 `sequence_keys`가 true일 때 | `MapValue` | `entries` | text key의 `orm_value` map |
+
+  `IntegerValue`는 값의 크기와 무관하게 `int`를 담고, native 정수는 계속 `int64`로 들어온다. Node와 WASM은 안전한 `int`를
+  native number로 유지하고 그 밖의 `int`에는 `IntegerValue`를 써서 정밀도를 잃지 않는다. 정수값 float는
+  안전한 정수 범위에서는 `FloatValue`를 거쳐 float로 유지되고 0의 부호를 지킨다. 소수나 그 범위 밖의 정수값 float는
+  native number로 유지된다. PHP byte string은 내용이 올바른 UTF-8이어도 `BytesValue`를
+  거쳐 bytes로 유지된다. `MapValue`는 PHP가 key를 순서대로 0부터 n-1로 표현할 때 map을 유지한다. core는 key에서 그
+  predicate를 선언하고 CORE-123에 따라 그 key를 text로 읽는다. PHP class는 `Polyspec\Orm`, Python class는
+  `polyspec.orm`, Node와 WASM class는 package entry, Go class는 binding package에 있다. interface contract의
+  `changes`는 이 공개 표현 변경을 기록한다.
+  이 class 표현을 쓰는 생성된 binding은 아직 다시 build하고 시험하지 않았다.
+  lock이 고정한 binding은 나가는 float의 `safe_integer`를 거부하므로, float에 그 predicate를 지원할 때까지 float 행은
+  검증되지 않았다. 모든 정수값 float에 class를 쓰는 것으로 바꾸면 kind가 이미 모호하지 않은 큰 native number도 바뀐다.
 - **CORE-64** 값은 함수 `to_host` 하나로 코어를 나가며, 이 함수는 값을 한 단계씩 기술한다. `nested:json_value`의 값은
   `json_value`의 `out` 표의 kind로 기술한다: `null`, `bool`, 수 텍스트를 가진 `number`, `text`, `list`, member 순서의
   `map`이다. 짝 없는 surrogate를 가진 JSON 문자열에는 `text`가 없으므로, 그런 문자열을 가진 JSON 값은 그 열의 값을

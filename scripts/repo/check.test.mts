@@ -56,6 +56,21 @@ caseTest('T493-1: the interface declares every binding error category (CORE-6)',
   const missing = checkContract(withoutIo).filter(finding => finding.check === 'CK-10');
   assert.deepEqual(missing.map(finding => finding.message), ['php', 'python', 'node', 'wasm'].map(language => `the category io has no ${language} class (E-2)`));
 });
+
+caseTest('T493-2: the value alias preserves each kind across its native representations (CORE-124)', () => {
+  const contract = JSON.parse(text('packages/rust/interface.json')) as Contract;
+  const findings = checkContract(contract).filter(finding => ['CK-8', 'CK-78'].includes(finding.check));
+  assert.deepEqual(findings, [], findings.map(finding => `${finding.path}: ${finding.message}`).join('\n'));
+  const native = structuredClone(contract);
+  const alias = native.units.find(unit => unit.id === 'orm_value');
+  assert.ok(alias?.out, 'the value alias declares its outgoing kinds');
+  const integer = alias.out.find(row => row.kind === 'int');
+  assert.ok(integer, 'the alias keeps the int kind distinct from int64');
+  integer.make.php = 'int';
+  const missing = checkContract(native).filter(finding => finding.check === 'CK-8');
+  assert.equal(missing.length, 1, JSON.stringify(missing));
+  assert.ok(missing[0]?.path.endsWith('/make/php'), JSON.stringify(missing));
+});
 // No clock ends a test case in any runtime (T473, T474): a machine under load runs the same work more slowly, and the result of
 // a case must not change with that load. No harness keeps a case class, a step budget or a step guard.
 caseTest('no test harness holds a deadline, a step budget or a step guard', () => {

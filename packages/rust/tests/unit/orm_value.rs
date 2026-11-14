@@ -1,7 +1,9 @@
 // orm_value (CORE-62 to CORE-64): the kind that the type of a column gives its value, the value of a language that
 // enters by from_host and the description of a value that leaves by to_host.
 
-use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Native, NativeObject, OutValue, OutValues, Prototype, Raised, ValueKind, ValueType};
+use binding_core::{
+    Failure, Handle, HostText, HostValue, HostValues, Native, NativeObject, OutValue, OutValues, Predicate, Prototype, Raised, ValueKind, ValueType,
+};
 use chrono::Timelike as _;
 use indexmap::IndexMap;
 use polyspec_orm_schema::dbspec::{Field, Type};
@@ -30,6 +32,8 @@ fn column(ty: Type) -> Field {
 struct Host {
     lists: Vec<Vec<HostValue>>,
     maps: Vec<Vec<(HostValue, HostValue)>>,
+    values: Vec<HostValue>,
+    read_failure: Option<Raised>,
 }
 
 impl Host {
@@ -44,6 +48,11 @@ impl Host {
         self.maps.push(entries);
         (Handle::new(self.maps.len() as u64 - 1), len)
     }
+
+    fn wrapped(&mut self, kind: ValueKind, value: HostValue) -> HostValue {
+        self.values.push(value);
+        HostValue::Value { kind, handle: Handle::new(self.values.len() as u64 - 1) }
+    }
 }
 
 impl HostValues for Host {
@@ -55,8 +64,11 @@ impl HostValues for Host {
         Ok(self.maps[map.raw() as usize][index as usize].clone())
     }
 
-    fn read(&mut self, _value: Handle) -> Result<HostValue, Raised> {
-        panic!("from_host of orm_value reads no object")
+    fn read(&mut self, value: Handle) -> Result<HostValue, Raised> {
+        match &self.read_failure {
+            Some(error) => Err(error.clone()),
+            None => Ok(self.values[value.raw() as usize].clone()),
+        }
     }
 }
 
@@ -126,7 +138,7 @@ fn a_styled_column_is_a_json_value_or_a_value_of_the_common_model() {
     assert_eq!(error.to_string(), "codec_decode: the JSON value holds a string that is no sequence of Unicode scalar values");
 }
 
-// Requirements: CORE-63. A value of a language is read alone: an integer is int64, a number of a language with one
+// Requirements: CORE-123. A value of a language is read alone: an integer is int64, a number of a language with one
 // number type is int or float, a text that is bytes is text or bytes, and a PHP array is a list or a map.
 #[test]
 fn from_host_reads_a_value_of_a_language() {
@@ -161,7 +173,85 @@ fn from_host_reads_a_value_of_a_language() {
     assert_eq!(map, OrmValue::Map([("k".to_owned(), OrmValue::Bool(true))].into()));
 }
 
-// Requirements: CORE-63. A value that is no value of a column is codec_encode, and its message names no value.
+// Requirements: CORE-123, CORE-124. A gathered value keeps its declared kind instead of the kind of its native content.
+#[test]
+fn gathered_values_preserve_the_kind_of_ambiguous_native_content() {
+    let _case = polyspec_orm_testcase::case!();
+    let mut host = Host::default();
+    for n in [i64::MIN, -7, 0, 7, i64::MAX] {
+        let value = host.wrapped(ValueKind::Int, HostValue::Int(n));
+        assert_eq!(taken(&mut host, value), OrmValue::Int(n));
+        assert_eq!(taken(&mut host, HostValue::Int(n)), OrmValue::Int64(n));
+    }
+    for n in [-0.0, 0.0, 7.0, 1.5] {
+        let value = host.wrapped(ValueKind::Float, HostValue::UntypedNumber(n));
+        let OrmValue::Float(actual) = taken(&mut host, value) else { panic!("a gathered float stays a float") };
+        assert_eq!(actual.to_bits(), n.to_bits(), "the sign of zero is retained");
+    }
+    for bytes in [Vec::new(), b"text".to_vec(), vec![0xff, 0]] {
+        let value = host.wrapped(ValueKind::Bytes, HostValue::Text(HostText::Bytes(bytes.clone())));
+        assert_eq!(taken(&mut host, value), OrmValue::Bytes(bytes));
+    }
+    let (handle, len) = host.entries(vec![(HostValue::Int(0), HostValue::Bool(true)), (HostValue::Int(1), HostValue::Null)]);
+    let value = host.wrapped(ValueKind::Map, HostValue::PhpArray { handle, len, is_list: true });
+    assert_eq!(taken(&mut host, value), OrmValue::Map([("0".to_owned(), OrmValue::Bool(true)), ("1".to_owned(), OrmValue::Null)].into()));
+    let (handle, len) = host.entries(Vec::new());
+    let value = host.wrapped(ValueKind::Map, HostValue::PhpArray { handle, len, is_list: true });
+    assert_eq!(taken(&mut host, value), OrmValue::Map(IndexMap::new()));
+}
+
+// Requirements: CORE-123, CORE-124. Invalid class content is refused and a getter's exception is returned unchanged.
+#[test]
+fn gathered_values_refuse_invalid_content_and_preserve_getter_exceptions() {
+    let _case = polyspec_orm_testcase::case!();
+    let mut host = Host::default();
+    for (kind, value) in
+        [(ValueKind::Int, HostValue::Null), (ValueKind::Float, HostValue::Null), (ValueKind::Bytes, HostValue::Null), (ValueKind::Map, HostValue::Null)]
+    {
+        let value = host.wrapped(kind, value);
+        let message = refusal(&mut host, value);
+        assert!(message.starts_with("codec_encode: the value is no value of a column:"), "{message}");
+    }
+    let raised = Raised::from_generated(Native::new(Kept));
+    host.read_failure = Some(raised.clone());
+    let value = host.wrapped(ValueKind::Int, HostValue::Int(7));
+    match from_host(&mut host, value) {
+        Err(Failure::Raised(actual)) => assert_eq!(actual, raised),
+        other => panic!("the getter's exception was not preserved: {other:?}"),
+    }
+}
+
+// Requirements: CORE-124. PHP map output selects a wrapper exactly when its keys form a list, including no keys.
+#[test]
+fn map_output_declares_sequence_keys_from_its_ordered_text_keys() {
+    let _case = polyspec_orm_testcase::case!();
+    for (keys, sequence) in [(vec![], true), (vec!["0", "1"], true), (vec!["1", "0"], false), (vec!["00"], false), (vec!["1"], false), (vec!["name"], false)] {
+        let entries = keys.iter().map(|key| ((*key).to_owned(), OrmValue::Null)).collect();
+        let value = OrmValue::Map(entries);
+        let OutValue::Map(map) = to_host(&value).0 else { panic!("a map stays a map") };
+        assert_eq!(map.sequence_keys(), sequence, "keys {keys:?}");
+    }
+}
+
+// Requirements: CORE-124. Numeric output keeps a native representation exactly when it preserves the kind and value.
+#[test]
+fn outgoing_numeric_predicates_distinguish_safe_and_large_integral_values() {
+    let _case = polyspec_orm_testcase::case!();
+    for (value, safe) in [
+        (OrmValue::Int(7), true),
+        (OrmValue::Int(i64::MAX), false),
+        (OrmValue::Float(-0.0), true),
+        (OrmValue::Float(7.0), true),
+        (OrmValue::Float(9_007_199_254_740_991.0), true),
+        (OrmValue::Float(1e16), false),
+        (OrmValue::Float(1.5), false),
+    ] {
+        let (out, _) = to_host(&value);
+        assert_eq!(out.predicate(Predicate::SafeInteger), Some(safe), "value {value:?}");
+    }
+}
+
+// Requirements: CORE-123. A value that is no value of a column is codec_encode, and its message names no value.
 /// A language object that a binding keeps (binding_core::Native), which a test makes without a language.
 #[derive(Debug)]
 struct Kept;

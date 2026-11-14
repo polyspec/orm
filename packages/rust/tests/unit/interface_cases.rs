@@ -9,11 +9,11 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Raised};
+use binding_core::{Failure, Handle, HostText, HostValue, HostValues, IntOut, OrderedMap, Raised, ValueKind};
 use serde_json::{Map, Value};
 
 use crate::or_panic::OrPanic as _;
-use crate::{AesKeyring, Config, Db, Error, Manifest, OrmValue, Query, Schema};
+use crate::{AesKeyring, BytesValue, Config, Db, Error, FloatValue, IntegerValue, Manifest, MapValue, OrmValue, Query, Schema};
 
 const CONTRACT: &str = include_str!("../../interface.json");
 const CASES: &str = include_str!("../../../../contracts/interface/core.json");
@@ -25,6 +25,10 @@ enum Instance {
     Schema(Schema),
     Query(Box<Query>),
     Model(Box<Manifest>),
+    Integer(IntegerValue),
+    Float(FloatValue),
+    Bytes(BytesValue),
+    Map(MapValue),
 }
 
 /// What a member returned: a value in its case form, or an instance.
@@ -49,6 +53,25 @@ fn uint(args: &Map<String, Value>, name: &str, member: &str) -> u32 {
 fn int(value: &Value, what: &str) -> i32 {
     let n = value.as_i64().unwrap_or_else(|| panic!("{what} is no integer"));
     i32::try_from(n).or_panic(|error| format!("{what} {n} does not fit i32: {error}"))
+}
+
+/// A signed 64-bit case value: decimal text when it is outside the safe native-number range (binding G-5).
+fn int64(value: &Value, what: &str) -> i64 {
+    if let Some(value) = value.as_i64() {
+        value
+    } else if let Some(text) = value.as_str() {
+        text.parse().or_panic(|error| format!("{what}: {text} is no int64: {error}"))
+    } else {
+        panic!("{what}: the value is no integer and no decimal text")
+    }
+}
+
+fn returned_integer(value: i64) -> Value {
+    if IntOut::new(value).safe_integer() {
+        Value::from(value)
+    } else {
+        Value::from(value.to_string())
+    }
 }
 
 /// A list of texts.
@@ -121,6 +144,7 @@ fn config(value: &Value, member: &str) -> Config {
 struct CaseHost {
     lists: Vec<Vec<HostValue>>,
     maps: Vec<Vec<(HostValue, HostValue)>>,
+    values: Vec<HostValue>,
 }
 
 fn handle(position: usize) -> Handle {
@@ -143,8 +167,8 @@ impl HostValues for CaseHost {
         Ok(self.maps[map][index].clone())
     }
 
-    fn read(&mut self, _value: Handle) -> Result<HostValue, Raised> {
-        panic!("a case value holds no object")
+    fn read(&mut self, value: Handle) -> Result<HostValue, Raised> {
+        Ok(self.values[position(value, 0).0].clone())
     }
 }
 
@@ -161,11 +185,19 @@ fn host_value(host: &mut CaseHost, case: &Value, what: &str) -> HostValue {
     match kind {
         "null" => HostValue::Null,
         "bool" => HostValue::Bool(given().as_bool().unwrap_or_else(|| panic!("{what}: the value of a bool is no boolean"))),
-        "int" => match (given().as_i64(), given().as_str()) {
-            (Some(n), _) => HostValue::Int(n),
-            (None, Some(digits)) => digits.parse().map_or_else(|_outside| HostValue::Number(digits.to_owned()), HostValue::Int),
-            _ => panic!("{what}: the value of an int is no integer and no decimal text"),
-        },
+        "int" | "int64" => {
+            let value = match (given().as_i64(), given().as_str()) {
+                (Some(n), _) => HostValue::Int(n),
+                (None, Some(digits)) => digits.parse().map_or_else(|_outside| HostValue::Number(digits.to_owned()), HostValue::Int),
+                _ => panic!("{what}: the value of an integer is no integer and no decimal text"),
+            };
+            if kind == "int" && matches!(value, HostValue::Int(_)) {
+                host.values.push(value);
+                HostValue::Value { kind: ValueKind::Int, handle: handle(host.values.len() - 1) }
+            } else {
+                value
+            }
+        }
         "float" => HostValue::Float(given().as_f64().unwrap_or_else(|| panic!("{what}: the value of a float is no number"))),
         "text" => host_text(given().as_str().unwrap_or_else(|| panic!("{what}: the value of a text is no text"))),
         "bytes" => {
@@ -215,8 +247,8 @@ fn case_value(value: &OrmValue, what: &str) -> Value {
     match value {
         OrmValue::Null => serde_json::json!({"kind": "null"}),
         OrmValue::Bool(flag) => of("bool", Value::from(*flag)),
-        OrmValue::Int(n) => of("int", Value::from(*n)),
-        OrmValue::Int64(n) => of("int64", Value::from(*n)),
+        OrmValue::Int(n) => of("int", returned_integer(*n)),
+        OrmValue::Int64(n) => of("int64", returned_integer(*n)),
         OrmValue::Float(x) => of("float", Value::from(*x)),
         OrmValue::Text(text) => of("text", Value::from(text.as_str())),
         OrmValue::Bytes(bytes) => of("bytes", serde_json::json!({"hex": bytes.iter().map(|byte| format!("{byte:02x}")).collect::<String>()})),
@@ -229,6 +261,31 @@ fn case_value(value: &OrmValue, what: &str) -> Value {
 /// Calls the core function that the contract names for `member`.
 async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
     Ok(match (member, receiver) {
+        ("integer_value.constructor", None) => {
+            let value = int64(field(args, "value", member), member);
+            Returned::Instance(Instance::Integer(IntegerValue::new(value)))
+        }
+        ("integer_value.value", Some(Instance::Integer(value))) => Returned::Value(returned_integer(value.value())),
+        ("float_value.constructor", None) => {
+            let value = field(args, "value", member).as_f64().unwrap_or_else(|| panic!("{member}: value is no float"));
+            Returned::Instance(Instance::Float(FloatValue::new(value)))
+        }
+        ("float_value.value", Some(Instance::Float(value))) => Returned::Value(Value::from(value.value())),
+        ("bytes_value.constructor", None) => Returned::Instance(Instance::Bytes(BytesValue::new(bytes(args, "value", member)))),
+        ("bytes_value.value", Some(Instance::Bytes(value))) => {
+            Returned::Value(serde_json::json!({"hex": value.value().iter().map(|byte| format!("{byte:02x}")).collect::<String>()}))
+        }
+        ("map_value.constructor", None) => {
+            let entries = field(args, "entries", member).as_object().unwrap_or_else(|| panic!("{member}: entries is no map"));
+            let mut values = OrderedMap::with_capacity(entries.len());
+            for (key, value) in entries {
+                assert!(values.insert(key.clone(), orm_value(value, member)?).is_none(), "{member}: repeated key {key}");
+            }
+            Returned::Instance(Instance::Map(MapValue::new(values)))
+        }
+        ("map_value.entries", Some(Instance::Map(value))) => {
+            Returned::Value(value.entries().iter().map(|(key, value)| (key.to_owned(), case_value(value, member))).collect::<Map<String, Value>>().into())
+        }
         ("schema.load", None) => Returned::Instance(Instance::Schema(Schema::load(
             &text(args, "manifest_text", member),
             &text(args, "external_text", member),
@@ -565,7 +622,7 @@ fn run_alias_case(case: &Value) {
     }
 }
 
-// Requirements: CORE-62, CORE-63, CORE-70, CORE-71, CORE-72.
+// Requirements: CORE-62, CORE-70, CORE-71, CORE-72, CORE-123, CORE-124.
 #[tokio::test]
 async fn the_core_passes_the_cases_of_its_contract() {
     let _case = polyspec_orm_testcase::case!();

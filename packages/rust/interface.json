@@ -2027,6 +2027,247 @@
       ]
     },
     {
+      "id": "integer_value",
+      "name": [
+        "integer",
+        "value"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "value",
+      "final": true,
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "go",
+          "node",
+          "wasm"
+        ],
+        "reason": "CORE-124"
+      },
+      "members": [
+        {
+          "id": "integer_value.constructor",
+          "name": [
+            "constructor"
+          ],
+          "kind": "constructor",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "value"
+              ],
+              "type": "int64",
+              "required": true
+            }
+          ],
+          "raises": [],
+          "wait": "none",
+          "core": "polyspec_orm::IntegerValue::new"
+        },
+        {
+          "id": "integer_value.value",
+          "name": [
+            "value"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "int64",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::IntegerValue::value",
+            "receiver": "&self"
+          }
+        }
+      ],
+      "core_type": "polyspec_orm::IntegerValue"
+    },
+    {
+      "id": "float_value",
+      "name": [
+        "float",
+        "value"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "value",
+      "final": true,
+      "only": {
+        "targets": [
+          "node",
+          "wasm"
+        ],
+        "reason": "CORE-124"
+      },
+      "members": [
+        {
+          "id": "float_value.constructor",
+          "name": [
+            "constructor"
+          ],
+          "kind": "constructor",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "value"
+              ],
+              "type": "float",
+              "required": true
+            }
+          ],
+          "raises": [],
+          "wait": "none",
+          "core": "polyspec_orm::FloatValue::new"
+        },
+        {
+          "id": "float_value.value",
+          "name": [
+            "value"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "float",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::FloatValue::value",
+            "receiver": "&self"
+          }
+        }
+      ],
+      "core_type": "polyspec_orm::FloatValue"
+    },
+    {
+      "id": "bytes_value",
+      "name": [
+        "bytes",
+        "value"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "value",
+      "final": true,
+      "only": {
+        "targets": [
+          "php"
+        ],
+        "reason": "CORE-124"
+      },
+      "members": [
+        {
+          "id": "bytes_value.constructor",
+          "name": [
+            "constructor"
+          ],
+          "kind": "constructor",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "value"
+              ],
+              "type": "bytes",
+              "required": true
+            }
+          ],
+          "raises": [],
+          "wait": "none",
+          "core": "polyspec_orm::BytesValue::new"
+        },
+        {
+          "id": "bytes_value.value",
+          "name": [
+            "value"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "bytes",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::BytesValue::value",
+            "receiver": "&self"
+          }
+        }
+      ],
+      "core_type": "polyspec_orm::BytesValue"
+    },
+    {
+      "id": "map_value",
+      "name": [
+        "map",
+        "value"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "value",
+      "final": true,
+      "only": {
+        "targets": [
+          "php"
+        ],
+        "reason": "CORE-124"
+      },
+      "members": [
+        {
+          "id": "map_value.constructor",
+          "name": [
+            "constructor"
+          ],
+          "kind": "constructor",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "entries"
+              ],
+              "type": {
+                "map": {
+                  "unit": "orm_value"
+                }
+              },
+              "required": true
+            }
+          ],
+          "raises": [],
+          "wait": "none",
+          "core": "polyspec_orm::MapValue::new"
+        },
+        {
+          "id": "map_value.entries",
+          "name": [
+            "entries"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": {
+            "map": {
+              "unit": "orm_value"
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::MapValue::entries",
+            "receiver": "&self"
+          }
+        }
+      ],
+      "core_type": "polyspec_orm::MapValue"
+    },
+    {
       "id": "orm_value",
       "name": [
         "value"
@@ -2066,12 +2307,30 @@
         },
         {
           "kind": "int",
+          "when": {
+            "predicate": "safe_integer",
+            "is": true
+          },
           "make": {
-            "php": "int",
-            "python": "int",
+            "php": "integer_value.constructor",
+            "python": "integer_value.constructor",
             "node": "int",
-            "go": "int",
+            "go": "integer_value.constructor",
             "wasm": "int"
+          }
+        },
+        {
+          "kind": "int",
+          "when": {
+            "predicate": "safe_integer",
+            "is": false
+          },
+          "make": {
+            "php": "integer_value.constructor",
+            "python": "integer_value.constructor",
+            "node": "integer_value.constructor",
+            "go": "integer_value.constructor",
+            "wasm": "integer_value.constructor"
           }
         },
         {
@@ -2086,6 +2345,24 @@
         },
         {
           "kind": "float",
+          "when": {
+            "predicate": "safe_integer",
+            "is": true
+          },
+          "make": {
+            "php": "float",
+            "python": "float",
+            "node": "float_value.constructor",
+            "go": "float",
+            "wasm": "float_value.constructor"
+          }
+        },
+        {
+          "kind": "float",
+          "when": {
+            "predicate": "safe_integer",
+            "is": false
+          },
           "make": {
             "php": "float",
             "python": "float",
@@ -2106,6 +2383,24 @@
         },
         {
           "kind": "bytes",
+          "when": {
+            "predicate": "utf8",
+            "is": true
+          },
+          "make": {
+            "php": "bytes_value.constructor",
+            "python": "bytes",
+            "node": "bytes",
+            "go": "bytes",
+            "wasm": "bytes"
+          }
+        },
+        {
+          "kind": "bytes",
+          "when": {
+            "predicate": "utf8",
+            "is": false
+          },
           "make": {
             "php": "bytes",
             "python": "bytes",
@@ -2126,6 +2421,24 @@
         },
         {
           "kind": "map",
+          "when": {
+            "predicate": "sequence_keys",
+            "is": true
+          },
+          "make": {
+            "php": "map_value.constructor",
+            "python": "map",
+            "node": "map",
+            "go": "map",
+            "wasm": "map"
+          }
+        },
+        {
+          "kind": "map",
+          "when": {
+            "predicate": "sequence_keys",
+            "is": false
+          },
           "make": {
             "php": "map",
             "python": "map",
@@ -2156,6 +2469,87 @@
         }
       ],
       "in": [
+        {
+          "node": "integer_value",
+          "cases": [
+            {
+              "kind": "int",
+              "read": "integer_value.value"
+            }
+          ]
+        },
+        {
+          "wasm": "integer_value",
+          "cases": [
+            {
+              "kind": "int",
+              "read": "integer_value.value"
+            }
+          ]
+        },
+        {
+          "php": "integer_value",
+          "cases": [
+            {
+              "kind": "int",
+              "read": "integer_value.value"
+            }
+          ]
+        },
+        {
+          "python": "integer_value",
+          "cases": [
+            {
+              "kind": "int",
+              "read": "integer_value.value"
+            }
+          ]
+        },
+        {
+          "go": "integer_value",
+          "cases": [
+            {
+              "kind": "int",
+              "read": "integer_value.value"
+            }
+          ]
+        },
+        {
+          "node": "float_value",
+          "cases": [
+            {
+              "kind": "float",
+              "read": "float_value.value"
+            }
+          ]
+        },
+        {
+          "wasm": "float_value",
+          "cases": [
+            {
+              "kind": "float",
+              "read": "float_value.value"
+            }
+          ]
+        },
+        {
+          "php": "bytes_value",
+          "cases": [
+            {
+              "kind": "bytes",
+              "read": "bytes_value.value"
+            }
+          ]
+        },
+        {
+          "php": "map_value",
+          "cases": [
+            {
+              "kind": "map",
+              "read": "map_value.entries"
+            }
+          ]
+        },
         {
           "php": "null",
           "cases": [
@@ -4333,8 +4727,94 @@
       ]
     }
   ],
-  "changes": [],
+  "changes": [
+    {
+      "id": "orm_value_int_kind",
+      "rule": "CORE-124",
+      "reason": "Native integers enter as int64, and an int outside the safe-integer range loses precision as a native number, so these forms need a distinct value class to preserve the int kind.",
+      "symbol": "orm_value.int",
+      "from": {
+        "php": "int",
+        "python": "int",
+        "go": "int64",
+        "node": "number outside the safe-integer range",
+        "wasm": "number outside the safe-integer range"
+      },
+      "to": "integer_value"
+    },
+    {
+      "id": "orm_value_integral_float_kind",
+      "rule": "CORE-124",
+      "reason": "An integral native number enters as int, so an integral float needs a distinct value class to preserve its kind and signed zero.",
+      "symbol": "orm_value.float",
+      "from": {
+        "node": "number",
+        "wasm": "number"
+      },
+      "to": "float_value"
+    },
+    {
+      "id": "orm_value_utf8_bytes_kind",
+      "rule": "CORE-124",
+      "reason": "A UTF-8 native string enters as text, so UTF-8 bytes need a distinct value class to preserve their kind.",
+      "symbol": "orm_value.bytes",
+      "from": {
+        "php": "string"
+      },
+      "to": "bytes_value"
+    },
+    {
+      "id": "orm_value_sequence_map_kind",
+      "rule": "CORE-124",
+      "reason": "An array with sequence keys enters as list, so a map with those keys needs a distinct value class to preserve its kind.",
+      "symbol": "orm_value.map",
+      "from": {
+        "php": "array"
+      },
+      "to": "map_value"
+    }
+  ],
   "cases": [
+    {
+      "member": "integer_value.constructor",
+      "file": "contracts/interface/core.json",
+      "group": "integer_value.constructor"
+    },
+    {
+      "member": "integer_value.value",
+      "file": "contracts/interface/core.json",
+      "group": "integer_value.value"
+    },
+    {
+      "member": "float_value.constructor",
+      "file": "contracts/interface/core.json",
+      "group": "float_value.constructor"
+    },
+    {
+      "member": "float_value.value",
+      "file": "contracts/interface/core.json",
+      "group": "float_value.value"
+    },
+    {
+      "member": "bytes_value.constructor",
+      "file": "contracts/interface/core.json",
+      "group": "bytes_value.constructor"
+    },
+    {
+      "member": "bytes_value.value",
+      "file": "contracts/interface/core.json",
+      "group": "bytes_value.value"
+    },
+    {
+      "member": "map_value.constructor",
+      "file": "contracts/interface/core.json",
+      "group": "map_value.constructor"
+    },
+    {
+      "member": "map_value.entries",
+      "file": "contracts/interface/core.json",
+      "group": "map_value.entries"
+    },
     {
       "member": "db.connect",
       "file": "contracts/interface/core.json",

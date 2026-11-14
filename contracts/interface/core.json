@@ -1,5 +1,5 @@
 {
-  "comment": "The cases of the members of packages/rust/interface.json that need no database (docs/spec/core.md CORE-70 to CORE-72, CORE-80 to CORE-83), one group per member in the case form of binding G-5: the keys of a case are the parameters of its member, a receiver is an instance value {new, args, then}, a keyed map is a list of [key, value] with the key {int}, and a class result is observed by after. A failure is raises: its kind, its category and its whole message (CORE-12). A value of orm_value is {kind, value} of the kinds null, bool, int (a number, or its decimal text outside the safe integers), float, text, bytes as {hex}, list and map (CORE-62, CORE-63), and the group orm_value holds the cases of the alias: a value that from_host refuses.",
+  "comment": "The cases of the members of packages/rust/interface.json that need no database (docs/spec/core.md CORE-70 to CORE-72, CORE-80 to CORE-83), one group per member in the case form of binding G-5: the keys of a case are the parameters of its member, a receiver is an instance value {new, args, then}, a keyed map is a list of [key, value] with the key {int}, and a class result is observed by the cases of its methods. A failure is raises: its kind, its category and its whole message (CORE-12). A value of orm_value is {kind, value} of the kinds null, bool, int and int64 (a number, or decimal text outside the safe integers), float, text, bytes as {hex}, list and map (CORE-62, CORE-123). The kind chooses the representation of CORE-124, including a gathered class when the native form is ambiguous. The group orm_value holds the cases of the alias: a value that from_host refuses. The gathered classes have constructor and property groups under CORE-124.",
   "db.connect": [
     {
       "id": "no_uri",
@@ -939,7 +939,7 @@
   "orm_value": [
     {
       "id": "an_integer_outside_i64",
-      "rule": "CORE-63",
+      "rule": "CORE-123",
       "value": {
         "kind": "int",
         "value": "9223372036854775808"
@@ -3268,6 +3268,125 @@
   ],
   "codec.decode": [
     {
+      "id": "safe_integral_float_kind",
+      "rule": "CORE-124",
+      "stages": [
+        "yaml"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "7.0"
+      },
+      "result": {
+        "kind": "float",
+        "value": 7.0
+      }
+    },
+    {
+      "id": "negative_zero_float_kind",
+      "rule": "CORE-124",
+      "stages": [
+        "yaml"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "-0.0"
+      },
+      "result": {
+        "kind": "float",
+        "value": -0.0
+      }
+    },
+    {
+      "id": "large_integral_float_kind",
+      "rule": "CORE-124",
+      "stages": [
+        "yaml"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "1.0e16"
+      },
+      "result": {
+        "kind": "float",
+        "value": 10000000000000000.0
+      }
+    },
+    {
+      "id": "empty_map_kind",
+      "rule": "CORE-124",
+      "stages": [
+        "yaml"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "{}"
+      },
+      "result": {
+        "kind": "map",
+        "value": {}
+      }
+    },
+    {
+      "id": "sequence_map_kind",
+      "rule": "CORE-124",
+      "stages": [
+        "yaml"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "{\"0\": true, \"1\": false}"
+      },
+      "result": {
+        "kind": "map",
+        "value": {
+          "0": {
+            "kind": "bool",
+            "value": true
+          },
+          "1": {
+            "kind": "bool",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "named_map_kind",
+      "rule": "CORE-124",
+      "stages": [
+        "yaml"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "{name: true}"
+      },
+      "result": {
+        "kind": "map",
+        "value": {
+          "name": {
+            "kind": "bool",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "empty_list_kind",
+      "rule": "CORE-124",
+      "stages": [
+        "yaml"
+      ],
+      "cell": {
+        "kind": "text",
+        "value": "[]"
+      },
+      "result": {
+        "kind": "list",
+        "value": []
+      }
+    },
+    {
       "id": "base64",
       "rule": "FMS-50",
       "stages": [
@@ -3316,6 +3435,42 @@
     }
   ],
   "codec.host_encode": [
+    {
+      "id": "utf8_byte_output_kind",
+      "rule": "CORE-124",
+      "value": {
+        "kind": "text",
+        "value": "127.0.0.1"
+      },
+      "stages": [
+        "ip"
+      ],
+      "key": "",
+      "result": {
+        "kind": "bytes",
+        "value": {
+          "hex": "7f000001"
+        }
+      }
+    },
+    {
+      "id": "binary_byte_output_kind",
+      "rule": "CORE-124",
+      "value": {
+        "kind": "text",
+        "value": "255.255.255.255"
+      },
+      "stages": [
+        "ip"
+      ],
+      "key": "",
+      "result": {
+        "kind": "bytes",
+        "value": {
+          "hex": "ffffffff"
+        }
+      }
+    },
     {
       "id": "hex",
       "rule": "FMS-50",
@@ -3514,6 +3669,483 @@
         "kind": "config",
         "category": "value",
         "message": "config: dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://"
+      }
+    }
+  ],
+  "integer_value.constructor": [
+    {
+      "id": "positive",
+      "rule": "CORE-124",
+      "value": 7
+    },
+    {
+      "id": "negative",
+      "rule": "CORE-124",
+      "value": -7
+    },
+    {
+      "id": "minimum",
+      "rule": "CORE-124",
+      "value": "-9223372036854775808"
+    },
+    {
+      "id": "maximum",
+      "rule": "CORE-124",
+      "value": "9223372036854775807"
+    }
+  ],
+  "integer_value.value": [
+    {
+      "id": "positive",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "integer_value.constructor",
+        "args": {
+          "value": 7
+        }
+      },
+      "result": 7
+    },
+    {
+      "id": "negative",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "integer_value.constructor",
+        "args": {
+          "value": -7
+        }
+      },
+      "result": -7
+    },
+    {
+      "id": "minimum",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "integer_value.constructor",
+        "args": {
+          "value": "-9223372036854775808"
+        }
+      },
+      "result": "-9223372036854775808"
+    },
+    {
+      "id": "maximum",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "integer_value.constructor",
+        "args": {
+          "value": "9223372036854775807"
+        }
+      },
+      "result": "9223372036854775807"
+    }
+  ],
+  "float_value.constructor": [
+    {
+      "id": "fraction",
+      "rule": "CORE-124",
+      "value": 1.5
+    },
+    {
+      "id": "integral",
+      "rule": "CORE-124",
+      "value": 7.0
+    },
+    {
+      "id": "negative_zero",
+      "rule": "CORE-124",
+      "value": -0.0
+    },
+    {
+      "id": "large_integral",
+      "rule": "CORE-124",
+      "value": 10000000000000000.0
+    }
+  ],
+  "float_value.value": [
+    {
+      "id": "fraction",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "float_value.constructor",
+        "args": {
+          "value": 1.5
+        }
+      },
+      "result": 1.5
+    },
+    {
+      "id": "integral",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "float_value.constructor",
+        "args": {
+          "value": 7.0
+        }
+      },
+      "result": 7.0
+    },
+    {
+      "id": "negative_zero",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "float_value.constructor",
+        "args": {
+          "value": -0.0
+        }
+      },
+      "result": -0.0
+    },
+    {
+      "id": "large_integral",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "float_value.constructor",
+        "args": {
+          "value": 10000000000000000.0
+        }
+      },
+      "result": 10000000000000000.0
+    }
+  ],
+  "bytes_value.constructor": [
+    {
+      "id": "empty",
+      "rule": "CORE-124",
+      "value": {
+        "hex": ""
+      }
+    },
+    {
+      "id": "utf8",
+      "rule": "CORE-124",
+      "value": {
+        "hex": "74657874"
+      }
+    },
+    {
+      "id": "binary",
+      "rule": "CORE-124",
+      "value": {
+        "hex": "ff00"
+      }
+    }
+  ],
+  "bytes_value.value": [
+    {
+      "id": "empty",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "bytes_value.constructor",
+        "args": {
+          "value": {
+            "hex": ""
+          }
+        }
+      },
+      "result": {
+        "hex": ""
+      }
+    },
+    {
+      "id": "utf8",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "bytes_value.constructor",
+        "args": {
+          "value": {
+            "hex": "74657874"
+          }
+        }
+      },
+      "result": {
+        "hex": "74657874"
+      }
+    },
+    {
+      "id": "binary",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "bytes_value.constructor",
+        "args": {
+          "value": {
+            "hex": "ff00"
+          }
+        }
+      },
+      "result": {
+        "hex": "ff00"
+      }
+    }
+  ],
+  "map_value.constructor": [
+    {
+      "id": "empty",
+      "rule": "CORE-124",
+      "entries": {}
+    },
+    {
+      "id": "sequence",
+      "rule": "CORE-124",
+      "entries": {
+        "0": {
+          "kind": "bool",
+          "value": true
+        },
+        "1": {
+          "kind": "null"
+        }
+      }
+    },
+    {
+      "id": "kinds",
+      "rule": "CORE-124",
+      "entries": {
+        "int": {
+          "kind": "int",
+          "value": 7
+        },
+        "wide_int": {
+          "kind": "int",
+          "value": "9223372036854775807"
+        },
+        "int64": {
+          "kind": "int64",
+          "value": "9223372036854775807"
+        },
+        "integral_float": {
+          "kind": "float",
+          "value": 7.0
+        },
+        "negative_zero": {
+          "kind": "float",
+          "value": -0.0
+        },
+        "large_float": {
+          "kind": "float",
+          "value": 10000000000000000.0
+        },
+        "utf8_bytes": {
+          "kind": "bytes",
+          "value": {
+            "hex": "74657874"
+          }
+        },
+        "empty_bytes": {
+          "kind": "bytes",
+          "value": {
+            "hex": ""
+          }
+        },
+        "binary_bytes": {
+          "kind": "bytes",
+          "value": {
+            "hex": "ff00"
+          }
+        },
+        "empty_map": {
+          "kind": "map",
+          "value": {}
+        },
+        "sequence_map": {
+          "kind": "map",
+          "value": {
+            "0": {
+              "kind": "bool",
+              "value": true
+            }
+          }
+        },
+        "named_map": {
+          "kind": "map",
+          "value": {
+            "name": {
+              "kind": "bool",
+              "value": true
+            }
+          }
+        }
+      }
+    }
+  ],
+  "map_value.entries": [
+    {
+      "id": "empty",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "map_value.constructor",
+        "args": {
+          "entries": {}
+        }
+      },
+      "result": {}
+    },
+    {
+      "id": "sequence",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "map_value.constructor",
+        "args": {
+          "entries": {
+            "0": {
+              "kind": "bool",
+              "value": true
+            },
+            "1": {
+              "kind": "null"
+            }
+          }
+        }
+      },
+      "result": {
+        "0": {
+          "kind": "bool",
+          "value": true
+        },
+        "1": {
+          "kind": "null"
+        }
+      }
+    },
+    {
+      "id": "kinds",
+      "rule": "CORE-124",
+      "receiver": {
+        "new": "map_value.constructor",
+        "args": {
+          "entries": {
+            "int": {
+              "kind": "int",
+              "value": 7
+            },
+            "wide_int": {
+              "kind": "int",
+              "value": "9223372036854775807"
+            },
+            "int64": {
+              "kind": "int64",
+              "value": "9223372036854775807"
+            },
+            "integral_float": {
+              "kind": "float",
+              "value": 7.0
+            },
+            "negative_zero": {
+              "kind": "float",
+              "value": -0.0
+            },
+            "large_float": {
+              "kind": "float",
+              "value": 10000000000000000.0
+            },
+            "utf8_bytes": {
+              "kind": "bytes",
+              "value": {
+                "hex": "74657874"
+              }
+            },
+            "empty_bytes": {
+              "kind": "bytes",
+              "value": {
+                "hex": ""
+              }
+            },
+            "binary_bytes": {
+              "kind": "bytes",
+              "value": {
+                "hex": "ff00"
+              }
+            },
+            "empty_map": {
+              "kind": "map",
+              "value": {}
+            },
+            "sequence_map": {
+              "kind": "map",
+              "value": {
+                "0": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            },
+            "named_map": {
+              "kind": "map",
+              "value": {
+                "name": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "result": {
+        "int": {
+          "kind": "int",
+          "value": 7
+        },
+        "wide_int": {
+          "kind": "int",
+          "value": "9223372036854775807"
+        },
+        "int64": {
+          "kind": "int64",
+          "value": "9223372036854775807"
+        },
+        "integral_float": {
+          "kind": "float",
+          "value": 7.0
+        },
+        "negative_zero": {
+          "kind": "float",
+          "value": -0.0
+        },
+        "large_float": {
+          "kind": "float",
+          "value": 10000000000000000.0
+        },
+        "utf8_bytes": {
+          "kind": "bytes",
+          "value": {
+            "hex": "74657874"
+          }
+        },
+        "empty_bytes": {
+          "kind": "bytes",
+          "value": {
+            "hex": ""
+          }
+        },
+        "binary_bytes": {
+          "kind": "bytes",
+          "value": {
+            "hex": "ff00"
+          }
+        },
+        "empty_map": {
+          "kind": "map",
+          "value": {}
+        },
+        "sequence_map": {
+          "kind": "map",
+          "value": {
+            "0": {
+              "kind": "bool",
+              "value": true
+            }
+          }
+        },
+        "named_map": {
+          "kind": "map",
+          "value": {
+            "name": {
+              "kind": "bool",
+              "value": true
+            }
+          }
+        }
       }
     }
   ]

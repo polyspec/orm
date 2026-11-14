@@ -64,7 +64,7 @@ pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscript
 pub use ir::VERSION as IR_VERSION;
 pub use kind::Kind;
 pub use model::{AnyModel, Entity, EntityRef, LoadedEntity, Model};
-pub use orm_value::{JsonValue, OrmValue};
+pub use orm_value::{BytesValue, FloatValue, IntegerValue, JsonValue, MapValue, OrmValue};
 pub use polyspec_json;
 pub use query::Query;
 pub use schema::{Manifest, Schema, SchemaRef};

@@ -1,18 +1,21 @@
 //! `orm_value`: the value of a column, of a condition and of a row as the contract passes it (docs/spec/core.md
-//! CORE-60, CORE-62 to CORE-64). A language value enters by [`from_host`] and a value leaves by [`to_host`]; every rule
+//! CORE-60, CORE-62, CORE-64, CORE-123 and CORE-124). A language value enters by [`from_host`] and a value leaves by [`to_host`]; every rule
 //! of what a language value is to orm is in these two functions and in [`OrmValue::of_column`], once.
 
-use binding_core::{BytesOut, Failure, FloatOut, Handle, HostText, HostValue, HostValues, IntOut, MapOut, OutValue, OutValues, ValueType};
+use binding_core::{BytesOut, Failure, FloatOut, Handle, HostText, HostValue, HostValues, IntOut, MapOut, OutValue, OutValues, ValueKind, ValueType};
 use indexmap::IndexMap;
 use polyspec_orm_schema::dbspec::{Field, Type};
 
 use crate::value::{Param, Val};
 use crate::{Error, Kind, Result};
 
-/// The levels of lists and maps that a value holds at most (CORE-63), the limit of the codec stages (COD-70).
+mod classes;
+pub use classes::{BytesValue, FloatValue, IntegerValue, MapValue};
+
+/// The levels of lists and maps that a value holds at most (CORE-123), the limit of the codec stages (COD-70).
 const DEPTH_LIMIT: usize = 256;
 
-/// The greatest integer that a number of a language with one number type holds exactly: 2^53 - 1 (CORE-63).
+/// The greatest integer that a number of a language with one number type holds exactly: 2^53 - 1 (CORE-123).
 const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
 
 /// A value of the contract type `orm_value` (CORE-62).
@@ -82,7 +85,7 @@ fn json_defect(cause: polyspec_json::Error) -> Error {
     Error::internal(format!("a JSON value did not give the content of its kind: {cause}"))
 }
 
-/// The refusal of a language value that is no `orm_value` (CORE-63). `what` names the reason and never the value.
+/// The refusal of a language value that is no `orm_value` (CORE-123). `what` names the reason and never the value.
 fn no_value(what: &str) -> Failure<Error> {
     Failure::Kind(Error::new(Kind::CodecEncode, format!("the value is no value of a column: {what}")))
 }
@@ -194,7 +197,7 @@ fn styled(value: serde_json::Value) -> Result<OrmValue> {
     })
 }
 
-/// The `orm_value` of a value of a language (CORE-63).
+/// The `orm_value` of a value of a language (CORE-123).
 ///
 /// # Errors
 ///
@@ -207,7 +210,7 @@ pub fn from_host(host: &mut dyn HostValues, value: HostValue) -> std::result::Re
 fn text(text: HostText) -> std::result::Result<OrmValue, Failure<Error>> {
     let scalars = || no_value("a text that is no sequence of Unicode scalar values");
     Ok(match text {
-        // A text of a language whose text is bytes: bytes that are no UTF-8 are bytes (CORE-63).
+        // A text of a language whose text is bytes: bytes that are no UTF-8 are bytes (CORE-123).
         HostText::Bytes(bytes) => match String::from_utf8(bytes) {
             Ok(text) => OrmValue::Text(text),
             Err(bytes) => OrmValue::Bytes(bytes.into_bytes()),
@@ -219,7 +222,7 @@ fn text(text: HostText) -> std::result::Result<OrmValue, Failure<Error>> {
     })
 }
 
-/// The key of an entry of a map: a text, or an integer key of a PHP array as its text (CORE-63).
+/// The key of an entry of a map: a text, or an integer key of a PHP array as its text (CORE-123).
 fn key(key: HostValue, php: bool) -> std::result::Result<String, Failure<Error>> {
     let not_text = || no_value("a map key that is no text");
     match key {
@@ -270,14 +273,32 @@ fn read(host: &mut dyn HostValues, value: HostValue, depth: usize) -> std::resul
         HostValue::Undefined => Err(no_value("an undefined value")),
         HostValue::Date(_) => Err(no_value("a date of the language")),
         HostValue::Callable(_) => Err(no_value("a function")),
-        // The alias has an `in` row for the map type of each language and for no object (CORE-63).
+        // CORE-123, CORE-124: a gathered class preserves the kind that its native content cannot distinguish.
+        HostValue::Value { kind, handle } if matches!(kind, ValueKind::Int | ValueKind::Float | ValueKind::Bytes | ValueKind::Map) => {
+            match (kind, host.read(handle)?) {
+                (ValueKind::Int, HostValue::Int(n)) => Ok(OrmValue::Int(n)),
+                (ValueKind::Int, HostValue::Number(_)) => Err(no_value("an integer outside i64")),
+                (ValueKind::Float, HostValue::Float(x) | HostValue::UntypedNumber(x)) => {
+                    if x.is_finite() {
+                        Ok(OrmValue::Float(x))
+                    } else {
+                        Err(no_value("a float that is not finite"))
+                    }
+                }
+                (ValueKind::Bytes, HostValue::Bytes(bytes) | HostValue::Text(HostText::Bytes(bytes))) => Ok(OrmValue::Bytes(bytes)),
+                (ValueKind::Map, HostValue::Map { handle, len }) => map(host, handle, len, nested(depth)?, false),
+                (ValueKind::Map, HostValue::PhpArray { handle, len, .. }) => map(host, handle, len, nested(depth)?, true),
+                _ => Err(no_value("a gathered value whose content does not match its kind")),
+            }
+        }
+        // Only the gathered classes of CORE-124 are values; an unrelated object is refused (CORE-123).
         HostValue::PlainObject { .. } | HostValue::StdClass { .. } | HostValue::Object { .. } | HostValue::Value { .. } | HostValue::Other { .. } => {
             Err(no_value("an object of the language"))
         }
     }
 }
 
-/// The integer of a number without a fraction in the range of -(2^53 - 1) to 2^53 - 1, or `None` (CORE-63).
+/// The integer of a number without a fraction in the range of -(2^53 - 1) to 2^53 - 1, or `None` (CORE-123).
 fn safe_integer(x: f64) -> Option<i64> {
     if x.fract() != 0.0 || !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&x) {
         return None;
@@ -336,7 +357,10 @@ impl<'a> Children<'a> {
             OrmValue::Bytes(bytes) => OutValue::Bytes(BytesOut::new(bytes.clone())),
             OrmValue::Json(json) => OutValue::Nested { value_type: ValueType::Json, value: Box::new(self.describe_json(json.value())) },
             OrmValue::List(items) => OutValue::List { handle: self.part(Part::List(items)), len: count(items.len()) },
-            OrmValue::Map(entries) => OutValue::Map(MapOut::new(self.part(Part::Map(entries)), count(entries.len()), false)),
+            OrmValue::Map(entries) => {
+                let sequence_keys = entries.keys().enumerate().all(|(index, key)| key == &index.to_string());
+                OutValue::Map(MapOut::new(self.part(Part::Map(entries)), count(entries.len()), sequence_keys))
+            }
         }
     }
 
