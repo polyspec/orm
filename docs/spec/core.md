@@ -301,6 +301,15 @@ implementation is eligible for removal on that evidence.
   `Query`, each request of such a `Query`, and each connection on which the schema is registered, until that
   connection is dropped. When the last of them is dropped the memory of the schema is returned; the process keeps
   no loaded schema. A schema of generated code is a static of that code and is not counted.
+- **CORE-125** The generated bindings admit a `Schema` only from `schema.load`, which validates its manifest and hash
+  before returning it and caches the validated runtime model (CORE-80). The class has no public constructor, writable
+  property or method that changes those texts or that model. `query.new` therefore declares only `entity_unknown`:
+  `schema_invalid` and `schema_hash_mismatch` occur in `schema.load`, before a query can receive that schema. An invalid
+  or uninitialized language object is rejected by the binding before it calls the core; it is not a schema validation
+  failure of `query.new`. This restriction describes the values admitted by the interface contract, not every native
+  Rust value. Native `Schema::new` and `Schema::with_external` remain lazy constructors, and `Query::new` still returns
+  their validation errors when it first reads an invalid native schema. The contract's `changes` records the correction
+  of the binding error inventory; the native constructors and their behavior are unchanged.
 - **CORE-81** `Query` is the query and the row state of one entity that is chosen by its name:
   `Query::new(schema, entity)`. An entity that the schema does not have is `entity_unknown`. A `Query` runs after
   `connect(connection)`, where the connection is a `Db` or a `Tx` (CORE-20); a terminal of a `Query` with no connection

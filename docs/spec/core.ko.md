@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 3c68f7ac109ca31a07b6e798691f0ce79cb90218108ad0c491f95bd70071cb1c -->
+<!-- source-sha256: 1a1e41f085154963c758c5f4187a9ffb0e44e508e4958053794fd2fd3d5909a5 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -245,6 +245,14 @@
   공유한다: schema 값과 그 사본, 그 schema의 `Query`와 그 `Query`의 행, 그런 `Query`의 요청, 그리고 그 schema가
   등록된 연결(그 연결이 놓일 때까지)이다. 그 가운데 마지막이 놓이면 schema의 메모리가 돌아오며, 프로세스는 불러온
   schema를 가지지 않는다. 생성된 코드의 schema는 그 코드의 static이고 세지 않는다.
+- **CORE-125** 생성된 binding은 `schema.load`가 만든 `Schema`만 받는다. 그 factory는 반환 전에 manifest와 hash를
+  검증하고 검증된 runtime model을 cache한다(CORE-80). 이 class에는 public constructor, 쓸 수 있는 property,
+  그 text나 model을 바꾸는 method가 없다. 따라서 `query.new`는 `entity_unknown`만 선언한다. `schema_invalid`와
+  `schema_hash_mismatch`는 query가 그 schema를 받기 전 `schema.load`에서 발생한다. 잘못되었거나 초기화되지 않은 언어
+  객체는 binding이 core를 호출하기 전에 거부하며, 이는 `query.new`의 schema 검증 실패가 아니다. 이 제한은 모든 native
+  Rust 값이 아니라 interface contract가 받는 값을 적는다. native `Schema::new`와 `Schema::with_external`은 계속
+  lazy constructor이며, `Query::new`는 잘못된 native schema를 처음 읽을 때 그 검증 오류를 그대로 반환한다. contract의
+  `changes`는 binding 오류 목록의 정정을 기록하며, native constructor와 그 동작은 바뀌지 않는다.
 - **CORE-81** `Query`는 이름을 주어 고른 엔티티 하나의 질의이자 행 상태다: `Query::new(schema, entity)`. schema에 없는
   엔티티는 `entity_unknown`이다. `Query`는 `connect(connection)` 뒤에 실행되고 그 연결은 `Db`나 `Tx`다(CORE-20).
   연결이 없는 `Query`의 terminal은 `config`다. `Query`의 엔티티 descriptor는 그 `Query`와 그 사본, 그 행이 공유하고 그 가운데

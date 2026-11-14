@@ -2990,9 +2990,7 @@
             "unit": "query"
           },
           "raises": [
-            "polyspec_orm::Kind::EntityUnknown",
-            "polyspec_orm::Kind::SchemaInvalid",
-            "polyspec_orm::Kind::SchemaHashMismatch"
+            "polyspec_orm::Kind::EntityUnknown"
           ],
           "wait": "none",
           "core": {
@@ -4772,6 +4770,20 @@
         "php": "array"
       },
       "to": "map_value"
+    },
+    {
+      "id": "query_new_validated_schema_errors",
+      "rule": "CORE-125",
+      "reason": "The bindings admit only immutable Schema values that schema.load has validated, so schema_invalid and schema_hash_mismatch belong to that factory rather than to query.new; native lazy Schema constructors retain their validation behavior.",
+      "symbol": "query.new",
+      "from": {
+        "php": "entity_unknown, schema_invalid and schema_hash_mismatch declared on query.new",
+        "python": "entity_unknown, schema_invalid and schema_hash_mismatch declared on query.new",
+        "node": "entity_unknown, schema_invalid and schema_hash_mismatch declared on query.new",
+        "go": "entity_unknown, schema_invalid and schema_hash_mismatch declared on query.new",
+        "wasm": "entity_unknown, schema_invalid and schema_hash_mismatch declared on query.new"
+      },
+      "to": "query.new"
     }
   ],
   "cases": [

@@ -71,6 +71,51 @@ caseTest('T493-2: the value alias preserves each kind across its native represen
   assert.equal(missing.length, 1, JSON.stringify(missing));
   assert.ok(missing[0]?.path.endsWith('/make/php'), JSON.stringify(missing));
 });
+caseTest('T493-3: query.new receives only validated immutable binding schemas (CORE-125)', () => {
+  const contract = JSON.parse(text('packages/rust/interface.json')) as Contract;
+  const schema = contract.units.find(unit => unit.id === 'schema');
+  const queryIndex = contract.units.findIndex(unit => unit.id === 'query');
+  const query = contract.units[queryIndex];
+  const newIndex = query?.members?.findIndex(member => member.id === 'query.new');
+  const queryNew = newIndex === undefined ? undefined : query?.members?.[newIndex];
+  assert.ok(schema && queryNew && newIndex !== undefined, 'the contract declares Schema and Query.new');
+  const path = `/units/${queryIndex}/members/${newIndex}`;
+  const caseFiles = new Map([...new Set(contract.cases.map(row => row.file))].map(file => [file, JSON.parse(text(file)) as unknown]));
+  const findings = (value: Contract) => checkContract(value, { caseFiles }).filter(finding => finding.check === 'CK-22' && (finding.path === path || finding.path.startsWith(`${path}/`)));
+  const missing = findings(contract);
+  assert.deepEqual(missing, [], missing.map(finding => `${finding.path}: ${finding.message}`).join('\n'));
+  assert.deepEqual(queryNew.raises, ['polyspec_orm::Kind::EntityUnknown']);
+  assert.equal(schema.constructible, false);
+  assert.equal(schema.final, true);
+  assert.deepEqual(schema.members?.map(member => member.id), ['schema.load', 'schema.hash'], 'Schema has no writable property or mutation method');
+  const namesSchema = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(namesSchema);
+    if (typeof value !== 'object' || value === null) return false;
+    const type = value as Record<string, unknown>;
+    return type.unit === 'schema' || Object.values(type).some(namesSchema);
+  };
+  const factories = contract.units.flatMap(unit => (unit.members ?? []).filter(member => namesSchema(member.returns)).map(member => member.id));
+  assert.deepEqual(factories, ['schema.load'], 'only the validating factory returns an admitted Schema');
+  const load = schema.members?.find(member => member.id === 'schema.load');
+  assert.deepEqual(load?.raises, ['polyspec_orm::Kind::SchemaInvalid', 'polyspec_orm::Kind::SchemaHashMismatch']);
+  const groups = caseFiles.get('contracts/interface/core.json') as Record<string, { raises?: { kind?: string } }[]>;
+  const validationKinds = [...new Set(groups['schema.load']?.map(kase => kase.raises?.kind).filter(kind => kind !== undefined))].sort();
+  assert.deepEqual(validationKinds, ['schema_hash_mismatch', 'schema_invalid'], 'validation failures keep their Schema.load cases');
+  const change = contract.changes.find(row => row.id === 'query_new_validated_schema_errors');
+  assert.ok(change, 'the contract records the binding error inventory correction');
+  assert.equal(change.rule, 'CORE-125');
+  assert.equal(change.to, 'query.new');
+  assert.deepEqual(Object.keys(change.from).sort(), [...contract.targets].sort(), 'the correction names every binding language');
+  const obsolete = structuredClone(contract);
+  const oldNew = obsolete.units[queryIndex]?.members?.[newIndex];
+  assert.ok(oldNew, 'the mutation finds Query.new');
+  oldNew.raises = ['polyspec_orm::Kind::EntityUnknown', 'polyspec_orm::Kind::SchemaInvalid', 'polyspec_orm::Kind::SchemaHashMismatch'];
+  assert.deepEqual(findings(obsolete).map(finding => finding.message), [
+    'no case of query.new raises the kind schema_invalid (K-1, B-4)',
+    'no case of query.new raises the kind schema_hash_mismatch (K-1, B-4)',
+  ], 'restoring unreachable declarations restores exactly their missing-outcome findings');
+});
+
 // No clock ends a test case in any runtime (T473, T474): a machine under load runs the same work more slowly, and the result of
 // a case must not change with that load. No harness keeps a case class, a step budget or a step guard.
 caseTest('no test harness holds a deadline, a step budget or a step guard', () => {

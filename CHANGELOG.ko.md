@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a2d859fd82ca839ebef0419602f9258e26d126355ab51ebb5ddd9d1bf40969e0 -->
+<!-- source-sha256: 9c5d770bfa52ab09b7a01892f031788f3d354a120017e2a95fd29cdbb6d07c48 -->
 # 변경 이력
 
 ## Unreleased
 
+- `query.new`의 binding 오류 목록은 `entity_unknown`만 선언한다(T493-3, CORE-125). 전에는 허용된 Schema factory가 `schema.load` 하나이고 query가 받기 전에 불변 schema를 검증하고 cache하는데도 `schema_invalid`와 `schema_hash_mismatch`를 함께 선언했다. interface는 모든 binding 언어의 정정을 `changes`에 기록한다. Schema.load 검증 case, Query.new entity case와 native lazy Schema의 동작은 유지한다. 집중 contract 회귀 시험은 factory 목록을 확인하고 옛 선언을 되돌렸을 때 finding 두 개가 다시 생기는지 확인하며, 새 runtime 검증은 아니다.
 - lock을 따르는 npm 설치는 `.npmrc`의 `audit=false`로 암묵적인 advisory 요청을 끈다(T496). 전에는 `make install-packages`의 `npm ci`가 기본 audit를 실행해 lock 밖의 advisory와 package metadata를 요청했다. native npm 설정은 이제 `false`를 보고하며, 명시적인 audit 검사는 자기 command를 유지한다. 이 설정을 위해 설치를 반복하지 않았다.
 - value alias는 kind를 보존하는 `IntegerValue`, `FloatValue`, `BytesValue`, `MapValue` class를 선언하고 그 공개 표현을 `changes`에 기록한다(T493-2, CORE-123, CORE-124). 전에는 native 정수, 정수값 number, UTF-8 byte string, 순차 key의 PHP array가 `int`와 `int64`, `float`와 `int`, bytes와 text, map과 list의 구분을 잃었다. class는 그 kind를 유지하고 map 출력은 실제 순서가 있는 key에서 `sequence_keys`를 선언한다. contract와 native 회귀 case는 모호한 표현, 잘못된 class 내용, 그대로 유지되는 getter 예외를 다룬다. native compile과 생성된 runtime 검증은 아직 완료하지 않았으며, lock이 고정한 binding은 float의 `safe_integer` 분할을 CK-8 네 건으로 거부한다.
 - interface contract는 binding 경계의 `io` error category를 `OrmIoError`(Python에서는 `ORMIoError`)에 연결한다(T493-1, CORE-6). PHP, Python, Node, WASM의 연결이 없어서 contract 검사가 CK-10 네 건을 보고했다. 회귀 시험은 binding 검사로 실제 contract를 확인한다. 생성된 runtime의 오류 동작은 아직 검증하지 않았다.
