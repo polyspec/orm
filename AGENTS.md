@@ -238,7 +238,7 @@ from kit and holds as its own; this file states only the rules of orm.
   process of a test, because a machine under load runs the same work more slowly and its result must not change with that load:
   a case ends when its work ends, and a run that does not end is stopped with its run (SIGINT or SIGTERM). The TypeScript
   harness `tests/testcase.mts`, the Go harness `legacy/packages/go/testcase`, the Python harness
-  `legacy/packages/python/tests/testcase.py` and the Rust harness `packages/rust/testcase` hold no deadline. A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
+  `legacy/packages/python/tests/testcase.py` and the Rust harness `packages/rust/testcase` hold no deadline, and PHPUnit enforces no time limit (`enforceTimeLimit` is false). A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
   `go generate`, `go vet`, `cargo build`, `cargo test --no-run`, a whole suite, a server or a tool
   run) gets detailed step logs instead of a timeout, with no deadline at all, a no-output deadline
   included, so its process and result stay observable; its success or failure comes from its

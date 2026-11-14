@@ -83,8 +83,8 @@ function limit_columns_peak_run(string $text): array
     ];
 }
 
-// The limit cases parse generated documents of up to 32 MiB: each has a CPU reference of 20 s, and its wall-clock
-// deadline is the large size (phpunit.xml.dist).
+// The limit cases parse generated documents of up to 32 MiB: each has a CPU reference of 20 s, and no clock ends it
+// (phpunit.xml.dist sets enforceTimeLimit to false).
 #[Large]
 final class DbspecRulesTest extends TestCase
 {

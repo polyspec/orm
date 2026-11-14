@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 386892e3886edc469a25eeb22abb6facd4202f57b7469fd57874900503a2c110 -->
+<!-- source-sha256: f00e14cb8541baebded405fc9b2250d2c7dbea5a25cdb53966e177d75d551a5a -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -205,7 +205,7 @@
   않는다. 부하가 큰 machine은 같은 일을 더 느리게 실행하며, 그 결과가 부하에 따라 바뀌면 안 되기 때문이다. case는 그 일이 끝날 때
   끝나고, 끝나지 않는 실행은 그 실행과 함께(SIGINT나 SIGTERM) 멈춘다. TypeScript harness `tests/testcase.mts`, Go harness
   `legacy/packages/go/testcase`, Python harness `legacy/packages/python/tests/testcase.py`, Rust harness
-  `packages/rust/testcase`에는 기한이 없다. 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
+  `packages/rust/testcase`에는 기한이 없고, PHPUnit은 시간 제한을 강제하지 않는다(`enforceTimeLimit`는 false). 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
   `cargo test --no-run`, 전체 suite, server나 도구 실행)은 타임아웃 대신 상세 단계 로그를 두고,
   출력 없음 기한을 포함해 어떤 기한도 없이 과정과 결과를 관측할 수 있게 한다. 그 성공과 실패는
   시계가 아니라 관측한 결과와 오류로 판정한다. 테스트가 자기 계산에 두는 시간 제한은 그 계산을 실행한 thread나 process의 CPU 시간을

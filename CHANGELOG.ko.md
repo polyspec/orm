@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5e887bd911ed700d08dc993a9c48f92127d2523b1a8e414b60880b701e774765 -->
+<!-- source-sha256: 1df3461f3905fc4843d4a13227e04a9ebfcab4086583aa9e19fdaf37885eabf7 -->
 # 변경 이력
 
 ## Unreleased
 
+- 어떤 시계도 PHP 시험 case를 끝내지 않는다(T474, AGENTS.md). `legacy/packages/php/tests/coverage_cases.php`의 `coverageProcess`는 기한을 받지 않고 자식의 출력 pipe가 닫힐 때까지 기다리며, `interface.symbols`의 interface check는 기한을 넘기지 않는다. PHP recipe runner의 replica 대기는 `SOURCE_POS_WAIT`와 `MASTER_POS_WAIT`를 timeout 없이 부르고, 그 대기가 NULL을 돌려줄 때만 실패한다.
 - 어떤 시계도 Rust 시험 case를 끝내지 않는다(T474, AGENTS.md). `packages/rust/testcase`에는 case class, grace, watchdog, step budget, step guard, `wall_for_cpu`가 없고, `case!()`, `start(name)`, `trial(name, body)`, `async_trial(name, body)`는 기한을 받지 않는다. Rust recipe runner에는 step guard가 없고, 그 interface check는 기한 없이 check의 pipe를 끝까지 읽으며, 그 replica 기다림은 `SOURCE_POS_WAIT`와 `MASTER_POS_WAIT`를 timeout 없이 부르고, `packages/rust/build`의 시험, case database runner, statement fault, rollback, was-inserted case는 `tokio::time::timeout`을 두지 않는다. case `no_clock_ends_a_case`는 runtime의 멈춘 시계를 case보다 한 주 앞으로 옮긴다. 저장소 case `no test harness holds a deadline, a step budget or a step guard`가 step budget parity case를 대신한다.
 - 어떤 시계도 Python 시험 case를 끝내지 않는다(T474, AGENTS.md). `legacy/packages/python/tests/testcase.py`에는 case class, grace, watchdog, step budget, step guard, `ending` cleanup이 없고, 시험 class는 `deadline`을 두지 않는다. Python recipe runner에는 step guard가 없고, 그 replica 기다림은 `SOURCE_POS_WAIT`와 `MASTER_POS_WAIT`를 timeout 없이 부르며, interface check, generator 실행, listener thread, transaction gate는 시간 제한 없이 기다리고, markdown conformance case는 timer를 두지 않는다. case `NoClockTest`는 case 하나를 `CaseRunner`로 실행하고 timer가 하나도 걸리지 않기를 기대한다.
 - 어떤 시계도 Go 시험 case를 끝내지 않는다(T474, AGENTS.md). `legacy/packages/go/testcase`에는 case class, grace, watchdog, step budget, step guard가 없다. `Start(t)`와 `Run(name, work)`는 기한을 받지 않고, case의 context는 case가 끝날 때 끝난다. Go recipe runner에는 step guard가 없고, `interface.symbols`의 interface check, `internal/dialects`의 physical 시험, dbspec apply와 harness 시험, write-set 시험은 시간 제한을 두지 않는다. case `TestNoClockEndsACase`는 synctest bubble의 가짜 시계를 case보다 한 주 앞으로 옮긴다. TypeScript와 Go recipe runner와 `scripts/check/databases.mts`의 replica 기다림은 `SOURCE_POS_WAIT`와 `MASTER_POS_WAIT`를 timeout 없이 부르고, lease 시험은 releaser를 timer가 아니라 기다림을 알리는 줄 다음에 끝낸다.

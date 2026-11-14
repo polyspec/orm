@@ -2081,9 +2081,6 @@ final class Recipe
         Assert::assertSame($step['expect'][$database]['unsupported'], $got);
     }
 
-    /** Ends a hung interface check within the 300 s of a Large test, which reports the failure itself. */
-    private const INTERFACE_CHECK_DEADLINE = 280.0;
-
     /**
      * Runs one interface.symbols step (FCV-4): the interface check of this client from the repository root
      * (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64).
@@ -2093,9 +2090,7 @@ final class Recipe
         $extension = getenv('ORM_PHP_MODE') === 'extension';
         [$status, $stdout, $stderr] = coverageProcess(
             ['node', 'tests/interfaces/check/main.mts', '-language', $extension ? 'php-extension' : 'php'],
-            ormRepositoryRoot(),
-            null,
-            self::INTERFACE_CHECK_DEADLINE
+            ormRepositoryRoot()
         );
         Assert::assertSame(0, $status, "interface check exited $status: $stderr$stdout");
     }
@@ -3609,8 +3604,8 @@ final class Recipe
                 // (CFG-23). On PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a
                 // transactional logical message, commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on
                 // the replica waits for the binary log position of the primary, on the database of the environment,
-                // since the case database reaches the replica only by this wait. The 60 seconds are the deadline of the
-                // wait: the replica applies the writes of every client.
+                // since the case database reaches the replica only by this wait. The wait has no timeout: it ends when
+                // the replica has applied the position, or with NULL when its SQL thread stops (T474).
                 $source = case_admin($context['dsn']);
                 if ($context['database'] === 'postgres') {
                     $source->beginTransaction();
@@ -3635,12 +3630,12 @@ final class Recipe
                 $status = $source->query($mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS')
                     ->fetch(\PDO::FETCH_NUM);
                 $wait = case_admin($replica)->prepare(
-                    $mariadb ? 'SELECT MASTER_POS_WAIT(?, ?, 60)' : 'SELECT SOURCE_POS_WAIT(?, ?, 60)'
+                    $mariadb ? 'SELECT MASTER_POS_WAIT(?, ?)' : 'SELECT SOURCE_POS_WAIT(?, ?)'
                 );
                 $wait->execute([$status[0], (int) $status[1]]);
                 $waited = $wait->fetchColumn();
                 Assert::assertTrue(
-                    $waited !== null && (int) $waited >= 0,
+                    $waited !== null,
                     "the replica did not reach {$status[0]}:{$status[1]}"
                 );
                 return [];
