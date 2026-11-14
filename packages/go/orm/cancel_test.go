@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	sqlite "modernc.org/sqlite"
+
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -76,15 +78,19 @@ func withContextCancels(t *testing.T, drivers ...string) {
 		got.Orm_().Connect(db.WithContext(ctx))
 		got.Orm_().Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 		started := time.Now()
-		if err := got.Orm_().Update(nil); orm.ErrorCode(err) != orm.CodeCanceled {
+		err = got.Orm_().Update(nil)
+		if orm.ErrorCode(err) != orm.CodeCanceled {
 			t.Fatalf("cancelled statement: %v (code %q)", err, orm.ErrorCode(err))
 		}
 		// The statement returned CANCELED while the other connection still held the rows (release runs at the end
 		// of the case), so the cancellation ended it, not a released lock.
 		elapsed := time.Since(started)
 		t.Logf("the cancelled statement returned after %s", elapsed)
-		if driver == "sqlite" && (elapsed < sqliteCancelAfter || elapsed >= 5*time.Second) {
-			t.Fatalf("the SQLite statement returned after %s; want the cancellation at %s to end its wait, before the busy timeout of 5s", elapsed, sqliteCancelAfter)
+		// The busy timeout of CFG-12 also ends a SQLite statement with CANCELED, and its error holds the SQLite result BUSY; a
+		// statement that the cancellation ended holds no SQLite result.
+		var result *sqlite.Error
+		if driver == "sqlite" && (elapsed < sqliteCancelAfter || errors.As(err, &result)) {
+			t.Fatalf("the SQLite statement returned after %s with %v; want the cancellation at %s to end its wait, not the busy timeout", elapsed, err, sqliteCancelAfter)
 		}
 		if err := <-waiting; err != nil {
 			t.Fatal(err)

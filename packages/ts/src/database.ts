@@ -209,7 +209,8 @@ export class TxFrame {
   public async run(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
     if (typeof sql !== 'string') throw new OrmError(codes.CONFIG, 'a statement must be text');
     if (this.finished) throw new OrmError(codes.CONFIG, 'transaction already finished');
-    return this.control(kind, tables, sql, params);
+    // The statement is bound to the signal of the handle that began the transaction, as the statements of its models are.
+    return this.session.control(sql, params, this.db.statementDone(kind, tables, this.number, params), this.db.signal);
   }
 
   /** @internal Sends a statement with no check of the frame: the end of a transaction sends its COMMIT or ROLLBACK after it marks the frame finished. */
@@ -926,7 +927,7 @@ export class Db {
    */
   private async rowLockTable(): Promise<void> {
     if (this.shared.rowLockTable) return;
-    await this.pool.execute(ROW_LOCK_DDL, [], undefined, this.statementDone('utility', ROW_LOCK_TABLES, null, []));
+    await this.pool.execute(ROW_LOCK_DDL, [], this.signal, this.statementDone('utility', ROW_LOCK_TABLES, null, []));
     this.shared.rowLockTable = true;
   }
 
@@ -940,7 +941,7 @@ export class Db {
     const driver = this.pool.name;
     const level = options.isolation === undefined ? '' : isolationSql(options.isolation);
     if (driver === 'sqlite') await this.rowLockTable();
-    const session = await this.pool.reserve(options.readOnly);
+    const session = await this.pool.reserve(options.readOnly, this.signal);
     const frame = new TxFrame(this, session, this.nextTransaction(), options);
     const steps: Array<[StatementKind, string]> = [];
     switch (driver) {

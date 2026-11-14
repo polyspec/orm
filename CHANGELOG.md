@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- In TypeScript, a statement of `utils().run` on a handle of `withSignal` is cancelled by its signal as a model statement is, and an aborted transaction that waits for its connection ends with `CANCELED` instead of waiting for the connection (T444, INT-150, CFG-9).
+
 - `make interface-check` builds the TypeScript client before its tests, and the hung-extractor cases fail at once with the output of a checker that ended before it started the extractor, instead of at their deadline of 5 minutes (T443).
 
 - The cancellation cases of Go and Rust cancel a SQLite statement that waits for the lock of another connection, as on the servers (T426-9, CFG-9): the Go case no longer cancels before the statement on SQLite, and the Rust cases no longer skip SQLite or drop at a timer. A cancellation during a SQLite lock wait ends the statement only at the busy timeout in Python (T426-11, open).
