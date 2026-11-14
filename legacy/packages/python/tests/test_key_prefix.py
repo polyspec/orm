@@ -13,7 +13,6 @@ ORM_GEN = [sys.executable, "-m", "polyspec.orm.bin_orm_gen"]
 
 
 class KeyPrefixTest(unittest.TestCase):
-    deadline = testcase.PROCESS
 
     # Requirements: DSL-43, DSL-154.
     def test_key_prefix_names_resolve_without_a_scan(self):

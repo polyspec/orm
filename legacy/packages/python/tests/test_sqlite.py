@@ -137,7 +137,6 @@ def installed_sqlite(test, path: str, models):
 
 
 class SqliteEndToEndTest(unittest.TestCase):
-    deadline = testcase.PROCESS
 
     @classmethod
     def setUpClass(cls):
@@ -279,7 +278,6 @@ class SqliteEndToEndTest(unittest.TestCase):
 
 
 class SqliteAuditTest(unittest.TestCase):
-    deadline = testcase.PROCESS
 
     @classmethod
     def setUpClass(cls):

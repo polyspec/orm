@@ -28,7 +28,6 @@ CASES = [
 
 
 class ModelFieldsTest(unittest.TestCase):
-    deadline = testcase.COMPUTE
 
     # Requirements: DBS-112, COD-2.
     def test_field_types(self):

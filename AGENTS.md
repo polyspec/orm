@@ -237,8 +237,9 @@ from kit and holds as its own; this file states only the rules of orm.
   running, completion, success or failure with its elapsed time. No clock ends a test case or a
   process of a test, because a machine under load runs the same work more slowly and its result must not change with that load:
   a case ends when its work ends, and a run that does not end is stopped with its run (SIGINT or SIGTERM). The TypeScript
-  harness `tests/testcase.mts` and the Go harness `legacy/packages/go/testcase` hold no deadline; T474 removes the deadlines
-  that the Python, Rust and PHP harnesses still hold. A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
+  harness `tests/testcase.mts`, the Go harness `legacy/packages/go/testcase` and the Python harness
+  `legacy/packages/python/tests/testcase.py` hold no deadline; T474 removes the deadlines that the Rust and PHP harnesses
+  still hold. A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
   `go generate`, `go vet`, `cargo build`, `cargo test --no-run`, a whole suite, a server or a tool
   run) gets detailed step logs instead of a timeout, with no deadline at all, a no-output deadline
   included, so its process and result stay observable; its success or failure comes from its

@@ -64,7 +64,6 @@ def code_of(run):
 
 
 class ConnectionPoolTest(unittest.TestCase):
-    deadline = testcase.DATABASE
 
     def test_idle_pool_discards_connection_that_fails_liveness_check(self):
         class Connection:

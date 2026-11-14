@@ -88,7 +88,6 @@ from polyspec.orm.names import ChainKey
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
-from . import testcase
 from .case_database import case_corpus, case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
@@ -129,16 +128,6 @@ CALLBACK_FAILURE = CallbackError("the transaction callback failed")
 
 class RecipeCase(VectorCase):
     """A case of a recipe."""
-
-    @property
-    def deadline(self) -> float:
-        """The interface check is another process; the other cases compute in memory."""
-        steps = self.case["steps"]
-        return (
-            testcase.PROCESS
-            if any(step["op"] == "interface.symbols" for step in steps)
-            else testcase.COMPUTE
-        )
 
 
 class _Failed:
@@ -1501,7 +1490,6 @@ def _interface_symbols() -> None:
         cwd=REPOSITORY_ROOT,
         capture_output=True,
         text=True,
-        timeout=280,
         env={**os.environ, "ORM_PYTHON": sys.executable},
     )
     if result.returncode != 0:
@@ -2248,7 +2236,7 @@ def _markdown_session(step: dict, database: str) -> None:
                 models.Slots().connect(db).gets()
         finally:
             db.close()
-    server.join(10)
+    server.join()
     listener.close()
     if received != step["messages"]:
         raise AssertionError(
@@ -2642,15 +2630,7 @@ def _server_variable(name: str, database: str) -> str:
 
 
 class DatabaseRecipeCase(VectorCase):
-    """A case of a recipe on a database: it creates and drops a database and runs a bounded number of statements."""
-
-    deadline = testcase.DATABASE
-
-    def __init__(self, case_id, check, case) -> None:
-        super().__init__(case_id, check, case)
-        # A case that states its steps gets their step budget instead of DATABASE (FCV-4).
-        if "deadline" in case:
-            self.deadline = testcase.step_budget(case["deadline"]["steps"])
+    """A case of a recipe on a database: it creates and drops a database and runs its statements."""
 
 
 def _database_recipe_tests(path: str, database: str):
@@ -2670,20 +2650,6 @@ def _database_recipe_tests(path: str, database: str):
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
-        # A case with a step deadline gets its step guard at its start: it ends the case at the step budget, or when no
-        # apply event comes within DATABASE (FCV-4); each event restarts the stall limit (recipe_apply).
-        guard = (
-            testcase.StepGuard(test.id(), test.deadline, testcase.DATABASE)
-            if "deadline" in case
-            else None
-        )
-        try:
-            _check_case(test, case, guard)
-        finally:
-            if guard is not None:
-                guard.stop()
-
-    def _check_case(test: unittest.TestCase, case: dict, guard) -> None:
         if markdown:
             # flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a
             # corpus of no table.
@@ -2698,16 +2664,13 @@ def _database_recipe_tests(path: str, database: str):
                     dsn,
                     install_first,
                     corpus,
-                    guard,
                 )
             return
         with (
             tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
             case_database(database, directory, "orm_recipe") as dsn,
         ):
-            _run_case(
-                path, recipe, case, database, schema, dsn, install_first, guard=guard
-            )
+            _run_case(path, recipe, case, database, schema, dsn, install_first)
 
     cases = [
         case
@@ -2768,7 +2731,6 @@ def _run_case(
     dsn: str,
     install_first: list,
     corpus: Path | None = None,
-    guard: testcase.StepGuard | None = None,
 ) -> None:
     db = Db.connect(dsn)
     try:
@@ -2779,7 +2741,7 @@ def _run_case(
             else:
                 for shared in [*install_first, schema]:
                     db.utils().schema().install(shared)
-        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus, guard)
+        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus)
     finally:
         db.close()
 
@@ -2804,7 +2766,6 @@ def _run_case_on(
     dsn: str,
     db: Db,
     corpus: Path | None = None,
-    guard: testcase.StepGuard | None = None,
 ) -> None:
     catalog = connect_catalog(dsn)
     closers: list = []
@@ -2825,8 +2786,6 @@ def _run_case_on(
         "fields": {},
         "records": [],
         "hook_bases": {},
-        # The step guard of a case with a step deadline, which each apply event restarts (recipe_apply).
-        "guard": guard,
     }
     try:
         namespace = catalog.current_namespace()
@@ -3281,8 +3240,8 @@ def _op_replica_await(step: dict, context: dict) -> dict:
     """Returns after the replica has applied every change that the primary committed before the call (CFG-23). On
     PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message,
     commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of
-    the primary, on the database of the environment, since the case database reaches the replica only by this wait. The 60
-    seconds are the deadline of the wait: the replica applies the writes of every client that runs in parallel."""
+    the primary, on the database of the environment, since the case database reaches the replica only by this wait. The
+    wait has no timeout: it ends when the replica has applied the position, or with NULL when its SQL thread stops (T474)."""
     if context["database"] == "postgres":
         with native_session("postgres", context["dsn"]) as run:
             run("BEGIN")
@@ -3314,9 +3273,9 @@ def _op_replica_await(step: dict, context: dict) -> dict:
     waited = native_query(
         "mysql",
         replica,
-        [f"SELECT {wait}('{file}', {position}, 60) AS waited"],
+        [f"SELECT {wait}('{file}', {position}) AS waited"],
     )[0][0]["waited"]
-    if waited is None or int(waited) < 0:
+    if waited is None:
         raise AssertionError(f"the replica did not reach {file}:{position}")
     return {}
 
@@ -4474,8 +4433,7 @@ def _pool_transactions(step: dict, context: dict) -> dict:
             state["begun"] += 1
             if state["begun"] == step["hold"]:
                 gate.set()
-        if not gate.wait(30):
-            raise AssertionError("the transactions did not begin")
+        gate.wait()
         with lock:
             state["active"] -= 1
 

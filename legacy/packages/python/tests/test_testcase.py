@@ -1,7 +1,6 @@
-# The unit test of the Python case harness (testcase.py): unittest's own report of each case, the step lines, the
-# deadline that ends a stalled case, and that every test of the package runs through it.
+# The unit test of the Python case harness (testcase.py): unittest's own report of each case, the step lines, that no
+# clock ends a case, and that every test of the package runs through it.
 import io
-import os
 import re
 import subprocess
 import sys
@@ -41,43 +40,10 @@ SAMPLE = textwrap.dedent("""
             for value in (1, 2):
                 with self.subTest(value=value):
                     self.assertEqual(value, 1)
-
-
-    class Stalled(unittest.TestCase):
-        deadline = 0.1
-
-        def test_stall(self):
-            import time
-            time.sleep(60)
-
-
-    class Guarded(unittest.TestCase):
-        def test_no_step(self):
-            import time
-            testcase.StepGuard(self.id(), 3600, 0.5)
-            time.sleep(60)
-
-        def test_past_budget(self):
-            import time
-            guard = testcase.StepGuard(self.id(), 0.25, 3600)
-            while True:
-                guard.progress()
-                time.sleep(0.005)
-
-
-    class Cleaned(unittest.TestCase):
-        def test_ended_inside(self):
-            import os, time
-            mark = os.environ["CLEANUP_MARK"]
-            with testcase.ending("withdrawn", lambda: open(mark + ".withdrawn", "w").close()):
-                pass
-            with testcase.ending("mark", lambda: open(mark, "w").close()):
-                testcase.StepGuard(self.id(), 3600, 0.5)
-                time.sleep(60)
 """)
 
 
-def run_sample(*names: str, env: dict | None = None) -> subprocess.CompletedProcess:
+def run_sample(*names: str) -> subprocess.CompletedProcess:
     """Runs the sample through the discovery entry point of python-unit-check."""
     with tempfile.TemporaryDirectory() as directory:
         (Path(directory) / "sample.py").write_text(SAMPLE)
@@ -98,8 +64,6 @@ def run_sample(*names: str, env: dict | None = None) -> subprocess.CompletedProc
             cwd=REPOSITORY_ROOT,
             capture_output=True,
             text=True,
-            timeout=testcase.PROCESS,
-            env=None if env is None else {**os.environ, **env},
         )
 
 
@@ -119,8 +83,6 @@ class DurationTest(unittest.TestCase):
 
 
 class ReportTest(unittest.TestCase):
-    deadline = testcase.PROCESS
-
     def test_unittest_report_of_each_outcome(self) -> None:
         result = run_sample("Sample")
         self.assertEqual(result.returncode, 1, result.stderr)
@@ -144,59 +106,6 @@ class ReportTest(unittest.TestCase):
         self.assertNotRegex(
             result.stdout + result.stderr, r"(?m)^(RUN|PASS|FAIL|SKIP|STEP) sample\."
         )
-
-    def test_stalled_case_ends_the_process(self) -> None:
-        result = run_sample("Stalled")
-        self.assertEqual(result.returncode, 1, result.stderr)
-        # The stall message follows the unfinished `test_stall ... ` text of unittest on the same stream line.
-        self.assertIn(
-            "sample.Stalled.test_stall: deadline 100ms exceeded and the case did not stop",
-            result.stderr,
-        )
-
-
-class StepGuardTest(unittest.TestCase):
-    deadline = testcase.PROCESS
-
-    def test_texts_name_the_limits_in_seconds(self) -> None:
-        self.assertEqual(
-            testcase.stall_text(testcase.DATABASE), "no step was applied within 120s"
-        )
-        self.assertEqual(
-            testcase.budget_text(testcase.step_budget(1)), "step budget 60.25s exceeded"
-        )
-
-    def test_a_case_without_a_step_ends_the_process(self) -> None:
-        result = run_sample("Guarded.test_no_step")
-        self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn(
-            "sample.Guarded.test_no_step: no step was applied within 0.5s",
-            result.stderr,
-        )
-
-    def test_a_case_past_its_budget_ends_the_process(self) -> None:
-        result = run_sample("Guarded.test_past_budget")
-        self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn(
-            "sample.Guarded.test_past_budget: step budget 0.25s exceeded", result.stderr
-        )
-
-    def test_a_case_that_the_guard_ends_runs_its_cleanups(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            mark = Path(directory) / "mark"
-            result = run_sample("Cleaned", env={"CLEANUP_MARK": str(mark)})
-            self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertIn(
-                "sample.Cleaned.test_ended_inside: no step was applied within 0.5s",
-                result.stderr,
-            )
-            self.assertTrue(
-                mark.exists(), "the cleanup of the block that the guard ended ran"
-            )
-            self.assertFalse(
-                Path(str(mark) + ".withdrawn").exists(),
-                "the cleanup of a block that ended by itself did not run",
-            )
 
 
 class NoClockTest(unittest.TestCase):
@@ -271,7 +180,6 @@ class StreamTest(unittest.TestCase):
             cwd=REPOSITORY_ROOT,
             capture_output=True,
             text=True,
-            timeout=testcase.PROCESS,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("test_pass (__main__.Sample.test_pass) ... ok", result.stdout)

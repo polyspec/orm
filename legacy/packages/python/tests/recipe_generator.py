@@ -154,7 +154,6 @@ def check_generated_files(step: dict, recipe_dir: Path) -> None:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=120,
                 check=False,
             )
             return done.returncode, done.stdout + done.stderr
@@ -213,7 +212,6 @@ def check_refused_generation(step: dict, recipe_dir: Path) -> None:
             ],
             capture_output=True,
             text=True,
-            timeout=120,
             check=False,
         )
         if done.returncode != 1 or done.stdout != "":

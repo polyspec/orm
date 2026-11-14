@@ -19,7 +19,6 @@ SCHEMA = (
 
 
 class QueryMethodsTest(unittest.TestCase):
-    deadline = testcase.PROCESS
 
     @classmethod
     def setUpClass(cls):

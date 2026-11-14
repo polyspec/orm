@@ -21,7 +21,6 @@ CHILD = Path(__file__).resolve().parent / "was_inserted_child.py"
 
 
 class WasInsertedTest(unittest.TestCase):
-    deadline = testcase.DATABASE
 
     @classmethod
     def setUpClass(cls):
@@ -82,7 +81,7 @@ class WasInsertedTest(unittest.TestCase):
                 return child
 
             child = db.transaction(parent, {"retry": 0})
-            out, err = child.communicate(timeout=60)
+            out, err = child.communicate()
             self.assertEqual(child.returncode, 0, f"the waiting child failed: {err}")
             self.assertEqual(out, "done\n")
 

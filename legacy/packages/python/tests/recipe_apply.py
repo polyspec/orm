@@ -213,8 +213,6 @@ def apply_ops(sql, run_step) -> dict:
         state = {"events": 0, "ran": False}
 
         def handler(event: dict) -> None:
-            if context.get("guard") is not None:
-                context["guard"].progress()
             state["events"] += 1
             kinds[event["kind"]] = kinds.get(event["kind"], 0) + 1
             if on is None or on["event"] != event["kind"]:

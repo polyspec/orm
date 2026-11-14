@@ -50,8 +50,8 @@ const trackedAll = new Set(trackedFiles('*'));
 // or when no apply event comes within the database deadline, which each event restarts (CR15-10 had narrowed it to the 120 second
 // database deadline). The guard of each runtime that writes its own failure text writes the same two texts, which the unit test of
 // each guard holds. PHP and the PHP extension hold none: their deadline was the test runner's, and kit 0.0.105 holds no time
-// limit. TypeScript and Go hold none either: no clock ends their cases (T473, T474). T474 removes the guards of the other runtimes.
-caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Python and Rust', () => {
+// limit. TypeScript, Go and Python hold none either: no clock ends their cases (T473, T474). T474 removes the guard of Rust.
+caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Rust', () => {
   const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
   const stress = recipe.cases.find(recipeCase => recipeCase.id === 'stress_plan_commits_each_step');
   assert.ok(stress !== undefined, 'the recipe holds the stress case');
@@ -69,10 +69,6 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   const applied = (stress.steps ?? []).filter(step => step.op === 'dbspec.apply').flatMap(step => Object.values(step.expect ?? {})).map(appliedOf);
   assert.equal(stress.deadline?.steps, Math.max(...applied), 'the stress case states the most steps it applies on any database');
   const holds: [string, RegExp][] = [
-    ['legacy/packages/python/tests/testcase.py', /^STEP_BUDGET = 0\.25$/m],
-    ['legacy/packages/python/tests/testcase.py', /^FIXED_BUDGET = 60\.0$/m],
-    ['legacy/packages/python/tests/recipe.py', /testcase\.step_budget\(case\["deadline"\]\["steps"\]\)/],
-    ['legacy/packages/python/tests/recipe.py', /testcase\.StepGuard\(test\.id\(\), test\.deadline, testcase\.DATABASE\)/],
     ['packages/rust/testcase/src/lib.rs', /pub const STEP_BUDGET: Duration = Duration::from_millis\(250\);/],
     ['packages/rust/testcase/src/lib.rs', /pub const FIXED_BUDGET: Duration = Duration::from_secs\(60\);/],
     ['packages/rust/programs/src/recipe.rs', /steps\.map_or\(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget\)/],
@@ -81,7 +77,7 @@ caseTest('the stress case of the dbspec_apply recipe runs under the step budget 
   for (const [path, hold] of holds) assert.match(text(path), hold, path);
   // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
   const texts = ['no step was applied within 120s', 'step budget 60.25s exceeded'];
-  const guardTests = ['legacy/packages/python/tests/test_testcase.py', 'packages/rust/testcase/tests/cases/form.rs'];
+  const guardTests = ['packages/rust/testcase/tests/cases/form.rs'];
   for (const path of guardTests) for (const expected of texts) assert.ok(text(path).includes(`"${expected}"`) || text(path).includes(`'${expected}'`), `${path} holds the text ${expected}`);
 });
 
@@ -602,8 +598,8 @@ caseTest('every PHPUnit run of the Makefile goes through run-tests', () => {
   assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
 });
 
-// legacy/packages/python/tests/testcase.py keeps the deadline of each case by its class (COMPUTE, DATABASE, PROCESS) and ends the
-// process GRACE after it; run-tests holds no time limit (kit 0.0.105), so the class of a case alone decides when it fails.
+// legacy/packages/python/tests/testcase.py ends no case by a clock (T474), and run-tests holds no time limit (kit 0.0.105), so
+// a case fails only on its result.
 caseTest('every Python run of run-tests goes through the testcase harness and gives run-tests no time limit', () => {
   const makefile = text('Makefile');
   assert.match(makefile, /^PYTHON_TESTS = (?:[A-Z_]+=\S+ )*\$\(RUN_TESTS\) python --venv \$\(PYTHON_VENV\) --module legacy\.packages\.python\.tests\.testcase$/m,

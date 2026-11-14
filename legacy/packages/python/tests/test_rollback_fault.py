@@ -120,7 +120,6 @@ def check_rollback(case: unittest.TestCase, error, subject: str):
 
 
 class RollbackFaultTest(unittest.TestCase):
-    deadline = testcase.DATABASE
 
     @classmethod
     def setUpClass(cls):
@@ -326,7 +325,6 @@ class RollbackFaultTest(unittest.TestCase):
 
 
 class RollbackFaultEntryTest(unittest.TestCase):
-    deadline = testcase.PROCESS
 
     def test_the_package_entry_point_does_not_export_the_fault(self):
         # Requirements: PRT-47.
@@ -363,7 +361,6 @@ class RollbackFaultEntryTest(unittest.TestCase):
 
 class NativeFaultEntryUnitTest(unittest.TestCase):
     # Requirements: INT-148, PRT-47, PRT-52, PRT-57, PRT-62.
-    deadline = testcase.COMPUTE
 
     def test_test_fault_facade_sets_only_the_requested_connection_state(self):
         db = SimpleNamespace(
@@ -395,7 +392,6 @@ class NativeFaultEntryUnitTest(unittest.TestCase):
 
 class HandleDisposalTest(unittest.TestCase):
     # Requirements: INT-67.
-    deadline = testcase.COMPUTE
 
     def test_close_during_transaction_rolls_back_and_closes_connection(self):
         db = _CloseDuringTransactionDb()

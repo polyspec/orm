@@ -19,7 +19,6 @@ EXTRACTOR = (
 
 
 class PythonExtractorTest(unittest.TestCase):
-    deadline = testcase.PROCESS
 
     def extract_package(self, root: str, package: str) -> dict:
         result = subprocess.run(
