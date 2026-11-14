@@ -808,6 +808,9 @@ function setupFile(jobs: number | undefined): string {
 set -eu
 run=${RUN_MOUNT}
 export DEBIAN_FRONTEND=noninteractive
+# The home and the tools of the runner are directories below the directory of the run, which no image has: the
+# installation creates them before a tool writes into them, as git writes its configuration into the home.
+mkdir -p "$HOME" "$CARGO_HOME" "$RUSTUP_HOME"
 apt-get update
 apt-get install -y --no-install-recommends ${packages.join(' ')}
 
@@ -834,7 +837,6 @@ if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
   "$run/rustup-init" -y --no-modify-path --default-toolchain none
   rm "$run/rustup-init"
 fi
-mkdir -p "$CARGO_HOME"
 cat > "$CARGO_HOME/config.toml" <<'CARGO'
 [target.aarch64-unknown-linux-gnu]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]

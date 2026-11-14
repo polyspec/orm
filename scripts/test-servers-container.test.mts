@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, watch, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, watch, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { dirname, join } from 'node:path';
 import { caseTest, PROCESS, withTemporaryDirectory } from '../tests/testcase.mts';
@@ -512,6 +512,28 @@ caseTest('a run in the runner is the job build, which installs the runner from a
         const read = spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)], { encoding: 'utf8' });
         assert.equal(read.status, 0, `sh does not read ${name}: ${read.stderr}`);
       }
+      // runner-setup.sh runs in a copy of the directory of the run, as a job runs it in a directory that has no home
+      // yet, with a stand-in apt-get, uname and make, the tools of a kept directory, and the git of this machine, so its
+      // writes below HOME are those of a job. Each job names the same HOME below the mounted directory of the run, so
+      // what the job build writes there is what the job check reads.
+      assert.match(file(context.root, project, 'compose.build.yaml'), /^ {6}HOME: "\/orm-run\/home"$/m, 'the job build has another home');
+      const copy = join(dir, 'runner');
+      cpSync(join(containers(context.root), project), copy, { recursive: true });
+      assert.ok(!existsSync(join(copy, 'home')), 'the directory of the run holds a home before a job runs');
+      writeFileSync(join(copy, 'runner-setup.sh'), installation.replace(/^run=\/orm-run$/m, `run='${copy}'`));
+      const tools = join(dir, 'runner-tools');
+      mkdirSync(tools);
+      for (const [name, body] of [['apt-get', ':'], ['uname', 'echo aarch64'], ['make', 'echo "$*" > "$HOME/made"']]) writeFileSync(join(tools, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+      for (const tool of ['node/bin/node', 'cargo/bin/rustup']) {
+        mkdirSync(dirname(join(copy, tool)), { recursive: true });
+        writeFileSync(join(copy, tool), '#!/bin/sh\n', { mode: 0o755 });
+      }
+      mkdirSync(join(copy, 'repo/.git'), { recursive: true });
+      mkdirSync(join(copy, 'repo/node_modules'));
+      const installed = spawnSync('/bin/sh', [join(copy, 'runner-setup.sh')], { encoding: 'utf8', env: { PATH: `${tools}:/usr/bin:/bin`, HOME: join(copy, 'home'), CARGO_HOME: join(copy, 'cargo'), RUSTUP_HOME: join(copy, 'rustup'), GIT_CONFIG_NOSYSTEM: '1' } });
+      assert.equal(installed.status, 0, `runner-setup.sh fails in a directory without a home: ${installed.stderr}`);
+      assert.match(readFileSync(join(copy, 'home/.gitconfig'), 'utf8'), /directory = .*\/repo$/m, 'the configuration of git is not in the home below the directory of the run');
+      assert.equal(readFileSync(join(copy, 'home/made'), 'utf8'), 'install\n', 'make install did not write into the home below the directory of the run');
       const bundled = spawnSync('git', ['bundle', 'verify', join(containers(context.root), project, 'repo.bundle')], { cwd: context.root, encoding: 'utf8' });
       assert.equal(bundled.status, 0, `repo.bundle is no bundle of the commit: ${bundled.stderr}`);
       assert.ok(file(context.root, project, 'check.sh').includes(`( 'make' 'CASES=a '\\''quoted'\\'' case' 'test-rust' )`), 'check.sh does not run the command of the run as it was given');
