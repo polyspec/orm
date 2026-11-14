@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from polyspec.orm import codes
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec_set
+from polyspec.orm.dbspec.parse import codec_stage_meaning
 from polyspec.orm.errors import OrmError
 
 __all__ = [
@@ -171,7 +172,8 @@ def _entity_of_table(t) -> Entity:
         elif s.kind == "select_explicit":
             explicit.update(s.columns)
         elif s.kind == "codec":
-            stages[s.column] = s.stages
+            # A field holds the stage that each name means (DBS-185).
+            stages[s.column] = tuple(codec_stage_meaning(stage) for stage in s.stages)
         elif s.kind == "blind_index":
             blind[s.column] = s.index_column
         elif s.kind == "audit":

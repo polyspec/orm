@@ -53,7 +53,7 @@ final class Parser
     private const ONCE_STORAGE = ['store', 'title', 'body', 'order', 'task_marker'];
     /** The codec stages, the fixed words after a codec column (docs/spec/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
-    /** The name of the stage ordered_json in the core (DBS-184). */
+    /** The name of the stage ordered_json in the core (DBS-185). */
     private const JSON_STAGE = 'json';
     /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
     private const UTF8_CHAR = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|'
@@ -1887,12 +1887,10 @@ final class Parser
         if (in_array($token[0], self::CODEC_STAGES, true)) {
             return $this->take('keyword');
         }
-        // json is the name of the stage ordered_json in the core, with the same encoding (DBS-184), so the reader takes
-        // it as ordered_json and the canonical form writes ordered_json.
+        // json is the name of the stage ordered_json in the core, with the same encoding: the reader keeps the name as
+        // written, so the canonical text and the manifest hash are those of the document (DBS-185).
         if ($token[0] === self::JSON_STAGE) {
-            $stage = $this->take('keyword');
-            $stage[0] = 'ordered_json';
-            return $stage;
+            return $this->take('keyword');
         }
         $this->cursor++;
         return $token;
@@ -2197,7 +2195,8 @@ final class Parser
                     $stages = array_slice($arguments, 1);
                     $known = true;
                     foreach ($stages as $n => $stage) {
-                        if (!in_array($stage[0], Setting::CODEC_STAGES, true)) {
+                        $meaning = Setting::codecStageMeaning($stage[0]);
+                        if (!in_array($meaning, Setting::CODEC_STAGES, true)) {
                             $this->error(
                                 'setting',
                                 $line,
@@ -2205,14 +2204,14 @@ final class Parser
                                 'codec stage ' . self::quoted($stage[0]) . ' is unknown'
                             );
                             $known = false;
-                        } elseif ($stage[0] === 'ordered_json' && $n > 0) {
+                        } elseif ($meaning === 'ordered_json' && $n > 0) {
                             $this->error('setting', $line, $stage[1], 'ordered_json is the first codec stage');
                         }
                     }
                     $definition = $column($arguments[0]);
                     if ($definition !== null && $known) {
                         $last = end($stages)[0];
-                        $text = in_array($last, self::TEXT_STAGES, true);
+                        $text = in_array(Setting::codecStageMeaning($last), self::TEXT_STAGES, true);
                         $type = $definition->type->name;
                         if ($text ? $type !== 'varchar' && $type !== 'text' : $type !== 'bytes') {
                             $this->error('setting', $line, $arguments[0][1], "the last codec stage $last stores "

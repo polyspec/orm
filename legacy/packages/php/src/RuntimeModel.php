@@ -404,7 +404,8 @@ final class RuntimeModel
         }
         $codecs = [];
         foreach ($settings['codec'] ?? [] as $args) {
-            $codecs[$args[0]] = array_slice($args, 1);
+            // A column holds the stage that each name means (DBS-185).
+            $codecs[$args[0]] = array_map(Dbspec\Setting::codecStageMeaning(...), array_slice($args, 1));
         }
         $blind = [];
         foreach ($settings['blind_index'] ?? [] as $args) {

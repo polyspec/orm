@@ -46,6 +46,17 @@ export type DbspecDefault = { readonly kind: 'now' } | { readonly kind: 'literal
 export type DbspecAction = 'restrict' | 'cascade' | 'set_null';
 
 export type DbspecCodecStage = 'ordered_json' | 'aes' | 'hex' | 'gz' | 'base64' | 'serialize' | 'yaml' | 'ip';
+/** A codec stage name as a document writes it: json is the name of the stage ordered_json in the core (DBS-185). */
+export type DbspecCodecStageName = DbspecCodecStage | 'json';
+
+/**
+ * The stage that a codec stage name means: json means ordered_json, with the same encoding, and any other name means
+ * itself (DBS-185). A document keeps the name that it was written with, so its canonical text and its manifest hash are
+ * those of the document as written.
+ */
+export function codecStageMeaning(name: DbspecCodecStageName): DbspecCodecStage {
+  return name === 'json' ? 'ordered_json' : name;
+}
 
 export interface DbspecColumn {
   readonly comments: readonly string[];
@@ -105,7 +116,7 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
   | { readonly kind: 'entity'; readonly name: string }
   | { readonly kind: 'updated' | 'soft_delete' | 'aes_version'; readonly column: string }
   | { readonly kind: 'select_explicit'; readonly columns: readonly string[] }
-  | { readonly kind: 'codec'; readonly column: string; readonly stages: readonly DbspecCodecStage[] }
+  | { readonly kind: 'codec'; readonly column: string; readonly stages: readonly DbspecCodecStageName[] }
   | { readonly kind: 'blind_index'; readonly column: string; readonly indexColumn: string }
   | { readonly kind: 'navigation'; readonly foreignKey: string; readonly childName: string; readonly parentName: string }
   | { readonly kind: 'markdown'; readonly column: string }

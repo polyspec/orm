@@ -5,6 +5,7 @@
 import type {
   DbspecAction,
   DbspecCodecStage,
+  DbspecCodecStageName,
   DbspecDefault,
   DbspecDocument,
   DbspecRule,
@@ -12,6 +13,7 @@ import type {
   DbspecTable,
   DbspecType,
 } from './model.js';
+import { codecStageMeaning } from './model.js';
 import { typeText } from './emit.js';
 import { containsWordRune } from './unicode_word.js';
 import { rendererName } from './names.js';
@@ -57,8 +59,11 @@ const INTEGER_RANGES: Record<string, readonly [bigint, bigint]> = {
 };
 const STAGE_LIST: readonly DbspecCodecStage[] = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
 const STAGES = new Set<string>(STAGE_LIST);
-// JSON_STAGE is the name of the stage ordered_json in the core (DBS-184).
+// JSON_STAGE is the name of the stage ordered_json in the core (DBS-185).
 const JSON_STAGE = 'json';
+// STAGE_NAMES are the names that a document may write for a codec stage.
+const STAGE_NAMES: readonly DbspecCodecStageName[] = [...STAGE_LIST, JSON_STAGE];
+const known = (name: string): boolean => STAGES.has(name) || name === JSON_STAGE;
 const ACTION_LIST: readonly DbspecAction[] = ['restrict', 'cascade', 'set_null'];
 const ACTIONS = new Set<string>(ACTION_LIST);
 const STORAGES: readonly ('files' | 'document' | 'block')[] = ['files', 'document', 'block'];
@@ -1475,12 +1480,12 @@ class DocumentParser {
         if (w === null) return;
         this.mark(w[0], 'name');
         this.name(present(w[0], 'w[0]'));
-        // json is the name of the stage ordered_json in the core, with the same encoding (DBS-184), so the reader takes it as
-        // ordered_json and the canonical form writes ordered_json.
-        const stages = w.slice(1).map(s => (s.t === JSON_STAGE ? { ...s, t: 'ordered_json' } : s));
+        // json is the name of the stage ordered_json in the core, with the same encoding: the reader keeps the name as
+        // written, so the canonical text and the manifest hash are those of the document (DBS-185).
+        const stages = w.slice(1);
         // R3: a codec stage of the known set is a keyword; another word is a word, with a semantic diagnostic.
-        for (const s of stages) if (STAGES.has(s.t)) this.mark(s, 'keyword');
-        if (!this.detachedBlock) for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `codec stage ${goQuote(s.t)} is unknown`);
+        for (const s of stages) if (known(s.t)) this.mark(s, 'keyword');
+        if (!this.detachedBlock) for (const s of stages) if (!known(s.t)) this.at('setting', s, `codec stage ${goQuote(s.t)} is unknown`);
         entry = { kw, comments, kind: 'codec', column: present(w[0], 'w[0]'), stages };
         break;
       }
@@ -2393,7 +2398,7 @@ class DocumentParser {
   /** The stage order and the storage type that the last stage needs. */
   private codec(table: ITable, s: Extract<ISetting, { kind: 'codec' }>, hasAesVersion: boolean): void {
     const column = this.lookup(table, s.column, 'setting');
-    const stages = s.stages.map(stage => stage.t);
+    const stages = s.stages.map(stage => (known(stage.t) ? codecStageMeaning(stage.t as DbspecCodecStageName) : stage.t));
     if (stages.includes('aes') && !hasAesVersion) this.at('setting', s.kw, 'a column with the aes stage requires an aes_version setting');
     const json = stages.indexOf('ordered_json');
     if (json > 0) this.at('setting', present(s.stages[json], 's.stages[json]'), 'ordered_json is the first codec stage');
@@ -2767,7 +2772,7 @@ function settingOf(s: ISetting): DbspecSetting {
       setting = { comments, kind: s.kind, columns: Object.freeze(s.columns.map(c => c.t)) };
       break;
     case 'codec':
-      setting = { comments, kind: s.kind, column: s.column.t, stages: Object.freeze(s.stages.map(c => oneOf(STAGE_LIST, c.t, 'the codec stage'))) };
+      setting = { comments, kind: s.kind, column: s.column.t, stages: Object.freeze(s.stages.map(c => oneOf(STAGE_NAMES, c.t, 'the codec stage'))) };
       break;
     case 'blind_index':
       setting = { comments, kind: s.kind, column: s.column.t, indexColumn: s.indexColumn.t };
