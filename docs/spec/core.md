@@ -446,3 +446,15 @@ their receiver, and the contract names no `machine`. They wait for a release of 
 - **CORE-72** A case that needs a database is not implemented: a SQLite DSN holds an absolute path (CFG-11) and a
   server DSN is given by the run, and the case form has no value for either. `contracts/interface/core.json` holds only
   cases that send no statement, and the members that need a database are tested by the tests of the core.
+- **CORE-121** The core holds a fault injection point at a branch of the category `internal` that no input reaches, so
+  that a case of the contract arms the point and checks the kind, the category and the message of the error that the
+  branch raises (binding G-5, X-1). A point is `binding_core::fault::point!` with a constant of the module
+  `polyspec_orm::fault`; it fires only in a build with the feature `fault-test` of the core and only for a call that a
+  case armed, so a build without the feature, and a call that no case armed, never take the branch through the point.
+  `faults` of the contract lists the points: `orm.internal` is the constant `polyspec_orm::fault::INTERNAL`, injected
+  as `broken`, in the planner, where it treats a column of the rows of a step as not projected, which raises
+  `internal`. The case `a_column_that_the_plan_does_not_project_is_internal` of `runtime_model.compile` arms it. The case
+  runner of the core arms the faults of a case for the call of its member, as a generated binding test does, installs
+  the arming around each poll of that call, and fails a case whose fault did not fire. The core is its own
+  dev-dependency with the feature `fault-test`, so `cargo test` of the core without flags arms its points (binding
+  CK-65).

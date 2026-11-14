@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 0551d5bc129db10ff706c96bd9219bfaf5992a601c53ab613ac635920e1a30f5 -->
+<!-- source-sha256: f87c05c6862bf3b0bf211b8bfd0169c658823641dc6e9c9b9b2725540dfd4ed6 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -373,3 +373,14 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
 - **CORE-72** 데이터베이스가 필요한 case는 구현되지 않았다: SQLite DSN은 절대 경로를 담고(CFG-11) 서버 DSN은 실행이
   주는데, case 형식에는 그 어느 쪽의 값도 없다. `contracts/interface/core.json`은 문장을 보내지 않는 case만 담고,
   데이터베이스가 필요한 member는 코어의 시험이 시험한다.
+- **CORE-121** 코어는 어떤 입력도 닿지 않는 category `internal`의 분기에 fault injection point를 두어, 계약의 case가
+  그 point를 설정하고 그 분기가 일으키는 오류의 kind, category, message를 확인하게 한다(binding G-5, X-1). point는
+  module `polyspec_orm::fault`의 상수를 받는 `binding_core::fault::point!`다. point는 코어의 feature `fault-test`가
+  켜진 빌드에서, case가 설정한 호출에서만 발동한다. 그래서 그 feature가 없는 빌드와 case가 설정하지 않은 호출은
+  point를 통해 그 분기를 타지 않는다. 계약의 `faults`가 point를 적는다: `orm.internal`은 상수
+  `polyspec_orm::fault::INTERNAL`이고 `broken`으로 주입되며, planner에서 step이 읽는 행의 열 하나를 projection되지
+  않은 것으로 다뤄 `internal`을 일으킨다. `runtime_model.compile`의 case
+  `a_column_that_the_plan_does_not_project_is_internal`이 그것을 설정한다. 코어의 case runner는 생성된 binding 시험처럼
+  case의 fault를 그 member의 호출에 대해 설정하고, 그 호출의 poll마다 설정을 설치하며, fault가 발동하지 않은 case를
+  실패시킨다. 코어는 feature `fault-test`를 켠 자신을 dev-dependency로 가지므로, flag 없는 코어의 `cargo test`가 그
+  point를 설정한다(binding CK-65).
