@@ -1478,7 +1478,7 @@ mod sqlite_lock_result_tests {
 
     #[tokio::test]
     async fn lock_setup_failure_keeps_error_when_unlock_fails() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let mut connection = FailingPostgresSetup;
         let clock: &ApplyClock<'_> = &|| Utc::now();
         let events: &mut ApplyEvents<'_> = &mut |_| Ok(());
@@ -1499,7 +1499,7 @@ mod sqlite_lock_result_tests {
     #[tokio::test]
     async fn command_entrypoints_share_sqlite_lock_lifecycle_for_empty_plan_chain() {
         use sqlx::Connection as _;
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.expect("SQLite memory connection");
         let clock: &ApplyClock<'_> = &|| Utc::now();
         let mut callback = |_event: &super::ApplyEvent| Ok(());
@@ -1513,7 +1513,7 @@ mod sqlite_lock_result_tests {
     #[tokio::test]
     // Requirements: PLN-89, PLN-90.
     async fn begin_exclusive_maps_only_lock_errors_and_keeps_the_driver_source() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         for code in [5, 6, 261, 517, 773, 262, 518, 10, 8, 14, 23, 1] {
             let initial = SqlitePragmas { foreign_keys: 1, legacy: 1, busy_timeout: 1300, locking_mode: "normal".to_owned() };
             let mut connection = FailingBegin { code, pragmas: initial.clone(), unexpected: Vec::new(), operations: Vec::new() };
@@ -1566,7 +1566,7 @@ mod sqlite_lock_result_tests {
 
     #[tokio::test]
     async fn invalid_pragma_values_preserve_parse_errors() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let pragmas = SqlitePragmas { foreign_keys: 1, legacy: 1, busy_timeout: 1300, locking_mode: "normal".to_owned() };
         let mut connection = FailingBegin { code: 5, pragmas, unexpected: Vec::new(), operations: Vec::new() };
         for statement in ["PRAGMA foreign_keys = invalid", "PRAGMA legacy_alter_table = invalid", "PRAGMA busy_timeout = invalid"] {

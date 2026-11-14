@@ -130,9 +130,7 @@ fn markdown_conformance_case(id: &str, expect: &Value) {
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     load_cases()
         .into_iter()
-        .map(|(id, expect)| {
-            polyspec_orm_testcase::trial(format!("markdown_conformance::{id}"), polyspec_orm_testcase::PROCESS, move || markdown_conformance_case(&id, &expect))
-        })
+        .map(|(id, expect)| polyspec_orm_testcase::trial(format!("markdown_conformance::{id}"), move || markdown_conformance_case(&id, &expect)))
         .collect()
 }
 

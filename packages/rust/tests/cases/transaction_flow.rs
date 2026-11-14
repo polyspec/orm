@@ -26,7 +26,7 @@ fn kind_of<T>(result: polyspec_orm::Result<T>) -> Option<Kind> {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CORE-20.
 async fn a_model_runs_in_the_transaction_only_through_its_handle() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let file = database("handle").await;
     let db = Db::connect_schema(&file.dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.unwrap();
     let (inside, unconnected, spawned) = db
@@ -50,7 +50,7 @@ async fn a_model_runs_in_the_transaction_only_through_its_handle() {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CORE-22.
 async fn overlapping_statements_on_the_transaction_are_busy() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let file = database("overlap").await;
     let db = Db::connect_schema(&file.dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.unwrap();
     let kinds = db
@@ -84,7 +84,7 @@ async fn overlapping_statements_on_the_transaction_are_busy() {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CORE-21, CORE-22.
 async fn the_parent_handle_is_busy_while_a_savepoint_runs() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let file = database("savepoint-busy").await;
     let db = Db::connect_schema(&file.dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.unwrap();
     let kinds = db
@@ -121,7 +121,7 @@ async fn parent_savepoint(handle: &Tx) -> polyspec_orm::Result<()> {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CORE-23.
 async fn a_handle_after_its_callback_is_transaction_ended() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let file = database("ended").await;
     let db = Db::connect_schema(&file.dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.unwrap();
     let kept = db.transaction(|tx: Tx| async move { Ok(tx) }, once()).await.unwrap();

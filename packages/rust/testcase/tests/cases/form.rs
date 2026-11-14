@@ -3,7 +3,7 @@
 use std::process::Command;
 use std::time::Duration;
 
-use polyspec_orm_testcase::{budget_text, case, duration, stall_text, start, step_budget, StepGuard, COMPUTE, DATABASE, PROCESS};
+use polyspec_orm_testcase::{case, duration, start};
 
 const FIXTURE: &str = "TESTCASE_FIXTURE";
 
@@ -15,7 +15,7 @@ fn fixture_pass() {
     if !fixture("report") {
         return;
     }
-    let c = case!(COMPUTE);
+    let c = case!();
     c.step("first step");
     helper_step();
 }
@@ -29,7 +29,7 @@ fn fixture_fail() {
     if !fixture("report") {
         return;
     }
-    let _case = case!(COMPUTE);
+    let _case = case!();
     panic!("fixture failure reason\nsecond line");
 }
 
@@ -37,8 +37,8 @@ fn fixture_inner() {
     if !fixture("report") {
         return;
     }
-    let _case = case!(COMPUTE);
-    let mut inner = start("fixture/inner", COMPUTE);
+    let _case = case!();
+    let mut inner = start("fixture/inner");
     inner.fail("inner failure reason");
 }
 
@@ -47,58 +47,8 @@ async fn fixture_async() {
     if !fixture("report") {
         return;
     }
-    let _case = case!(COMPUTE);
+    let _case = case!();
     tokio::task::yield_now().await;
-}
-
-fn fixture_deadline() {
-    if !fixture("deadline") {
-        return;
-    }
-    let _case = case!(Duration::from_millis(200));
-    std::thread::sleep(Duration::from_secs(60));
-}
-
-/// The step guard ends work that reports no step within its stall limit, with the stall text of every runtime, and lets work that
-/// keeps reporting steps run on.
-#[tokio::main(flavor = "current_thread")]
-async fn step_guard_ends_a_stalled_case() {
-    let _case = case!(COMPUTE);
-    let guard = StepGuard::new(Duration::from_secs(3600), Duration::from_millis(500));
-    let steps = guard
-        .run(async {
-            for _ in 0..10 {
-                guard.progressed();
-                tokio::time::sleep(Duration::from_millis(5)).await;
-            }
-        })
-        .await;
-    assert_eq!(steps, Ok(()), "the guard ended work that reported its steps");
-    let stalled = guard.run(tokio::time::sleep(Duration::from_secs(60))).await;
-    assert_eq!(stalled, Err("no step was applied within 0.5s".to_owned()));
-}
-
-/// The step guard ends work that keeps reporting steps at its step budget, with the budget text of every runtime.
-#[tokio::main(flavor = "current_thread")]
-async fn step_guard_ends_a_case_past_its_budget() {
-    let _case = case!(COMPUTE);
-    let guard = StepGuard::new(Duration::from_millis(250), Duration::from_secs(3600));
-    let spent = guard
-        .run(async {
-            loop {
-                guard.progressed();
-                tokio::time::sleep(Duration::from_millis(5)).await;
-            }
-        })
-        .await;
-    assert_eq!(spent, Err::<(), _>("step budget 0.25s exceeded".to_owned()));
-}
-
-/// The texts name the limits of a recipe case in seconds: the 120 second stall limit and the step budget of one step.
-fn step_guard_names_its_limits_in_seconds() {
-    let _case = case!(COMPUTE);
-    assert_eq!(stall_text(DATABASE), "no step was applied within 120s");
-    assert_eq!(budget_text(step_budget(1)), "step budget 60.25s exceeded");
 }
 
 /// No clock ends a case (T474): a case started without a deadline stays open while the paused clock of its runtime moves a week,
@@ -126,7 +76,7 @@ fn report_form() {
     if std::env::var(FIXTURE).is_ok() {
         return;
     }
-    let _case = case!(PROCESS);
+    let _case = case!();
     assert_eq!(duration(Duration::from_micros(500)), "500µs");
     assert_eq!(duration(Duration::from_millis(12)), "12ms");
     assert_eq!(duration(Duration::from_nanos(999_600)), "1ms");
@@ -156,15 +106,8 @@ fn report_form() {
         !output.lines().any(|line| line.starts_with("RUN ") || line.starts_with("PASS ") || line.starts_with("FAIL ")),
         "a harness line in the report\n{output}"
     );
-    let (code, output) = run_fixture("deadline", "form::fixture_deadline");
-    assert_eq!(code, Some(101), "the expired fixture ends the binary\n{output}");
-    assert!(output.contains("fixture_deadline: deadline 200ms exceeded and the case did not stop"), "no deadline line for the expired case\n{output}");
-    assert!(
-        !output.split_whitespace().collect::<Vec<_>>().join(" ").contains("test form::fixture_deadline ... ok"),
-        "an ok result for the expired case\n{output}"
-    );
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("form": fixture_pass, fixture_fail, fixture_inner, fixture_async, fixture_deadline, report_form, step_guard_ends_a_stalled_case, step_guard_ends_a_case_past_its_budget, step_guard_names_its_limits_in_seconds, no_clock_ends_a_case)
+    polyspec_orm_testcase::native_trials!("form": fixture_pass, fixture_fail, fixture_inner, fixture_async, report_form, no_clock_ends_a_case)
 }

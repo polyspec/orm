@@ -58,7 +58,7 @@ fn hex_decode(text: &str) -> Vec<u8> {
 
 fn composite_components_preserve_typed_identity_and_shared_encoding() {
     // Requirements: PRT-35.
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let fixture = fixture();
     let entries = fixture["composites"].as_array().expect("composites");
     let mut seen: Vec<(String, Key)> = Vec::new();
@@ -73,7 +73,7 @@ fn composite_components_preserve_typed_identity_and_shared_encoding() {
 }
 
 fn a_null_composite_row_has_no_key() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let values: Vec<Val> = fixture()["nullable_composite"].as_array().expect("nullable_composite").iter().map(composite_value_of).collect();
     let refs = vec![KeyRef { column: "first".into(), index: 0 }, KeyRef { column: "second".into(), index: 1 }];
     assert!(Key::of_row(&values, &refs).expect("nullable row result").is_none());

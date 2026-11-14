@@ -1,11 +1,7 @@
 //! Shared SQLite paths and dialect DSNs for physical grid and tool tests.
 
 pub use polyspec_orm_test_support::fixture_dsn::{fixture_dsn, server_dsn};
-use std::{
-    future::Future,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 
 /// Returns an unowned, process-scoped SQLite fixture path for one physical test.
 pub fn sqlite_path(stem: &str) -> PathBuf {
@@ -26,7 +22,7 @@ pub fn dsn_for(dialect: &str, sqlite_path: &Path) -> String {
 
 /// A missing fixture DSN names its variable and the target that writes it.
 fn fixture_dsn_names_the_missing_variable_and_its_remedy() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_eq!(fixture_dsn("ORM_TOOLS_MYSQL_DSN", Some("mysql://u@h/d".to_owned())), Ok("mysql://u@h/d".to_owned()));
     let remedy = "is required; run make orm-test-servers, which starts the databases and writes it";
     for variable in ["ORM_TOOLS_MYSQL_DSN", "ORM_TOOLS_POSTGRES_DSN"] {
@@ -46,10 +42,4 @@ pub async fn finish_physical_dialect<C>(database: polyspec_orm::Db, connection: 
     drop(connection);
     database.close().await;
     polyspec_orm_testcase::step(format_args!("{dialect} {result}"));
-}
-
-/// Waits for a physical test's future without moving its case guard out of the test function.
-#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
-pub async fn within<F: Future<Output = ()>>(seconds: u64, deadline: &str, future: F) {
-    tokio::time::timeout(Duration::from_secs(seconds), future).await.expect(deadline);
 }

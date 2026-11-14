@@ -16,7 +16,7 @@ impl Drop for Tree {
 }
 
 fn a_set_path_without_a_directory_reads_from_the_working_directory() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let tree = Tree(std::env::temp_dir().join(format!("orm-set-working-directory-{}", std::process::id())));
     std::fs::create_dir(&tree.0).expect("the directory is created");
     std::fs::write(tree.0.join("shop.dbs"), "dbspec 1 shop\n").expect("the document is written");

@@ -78,7 +78,7 @@ fn seqs(rows: &crate::Collection<Query>) -> Vec<OrmValue> {
 // the next terminal.
 #[tokio::test]
 async fn limit_reads_a_range_of_the_order() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-limit");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -117,7 +117,7 @@ type LockCase = (fn(&mut Query), &'static str, &'static str, &'static str);
 // PostgreSQL render it after the statement.
 #[test]
 fn the_four_locks_set_the_lock_of_the_request() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let schema = account_schema();
     let cases: [LockCase; 4] = [
         (Query::for_update, "update", " FOR UPDATE", " FOR UPDATE"),
@@ -145,7 +145,7 @@ fn the_four_locks_set_the_lock_of_the_request() {
 // Requirements: CORE-86. A lock outside a transaction is config, and a locked read inside one reads its row.
 #[tokio::test]
 async fn a_lock_needs_a_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-lock");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -182,7 +182,7 @@ fn read(row: &Query, column: &str) -> std::result::Result<OrmValue, String> {
 // remove_all_columns keeps the keys, add_column adds one column and remove_column removes one.
 #[tokio::test]
 async fn the_columns_of_a_row_follow_the_column_members() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-columns");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -229,7 +229,7 @@ fn labels(row: &Query, name: &str) -> Option<Vec<OrmValue>> {
 // alias, relation one row under <entity>_model, and a row reads them by related_rows and related.
 #[tokio::test]
 async fn relations_attach_the_rows_of_a_separate_query() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-relations");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -267,7 +267,7 @@ async fn relations_attach_the_rows_of_a_separate_query() {
 // child with a limit is limit_in_relation.
 #[tokio::test]
 async fn a_relation_child_needs_its_key_and_no_limit() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-relation-child");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -295,7 +295,7 @@ async fn a_relation_child_needs_its_key_and_no_limit() {
 // retention reads its locked rows with the requests that reference them.
 #[tokio::test]
 async fn a_relation_child_holds_its_own_lock() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-relation-lock");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -340,7 +340,7 @@ async fn a_relation_child_holds_its_own_lock() {
 // name that is no column is config at the next terminal.
 #[tokio::test]
 async fn key_name_keys_the_rows_by_a_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-key-name");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -378,7 +378,7 @@ fn key_accounts(schema: &Schema) -> Query {
 // start of the name joins it to the conditions before it, and a chain of another operator or key count is config.
 #[tokio::test]
 async fn where_in_compares_a_column_with_a_subquery() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-where-in");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -410,7 +410,7 @@ async fn where_in_compares_a_column_with_a_subquery() {
 // connection of its own.
 #[tokio::test]
 async fn a_subquery_reads_one_column_and_nothing_else() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-subquery");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -453,7 +453,7 @@ async fn account(schema: &Schema, db: &Db, seq: i64) -> Option<Query> {
 // unique key refuses fails with duplicate_key.
 #[tokio::test]
 async fn create_inserts_the_row_of_the_assignments() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-create");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -479,7 +479,7 @@ async fn create_inserts_the_row_of_the_assignments() {
 // that set assigned, and expect_revision writes only while the column holds the revision.
 #[tokio::test]
 async fn update_writes_the_assignments_to_its_row() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-update");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -514,7 +514,7 @@ async fn update_writes_the_assignments_to_its_row() {
 // Requirements: CORE-91. set refuses a name that is no column and a value that no column takes.
 #[tokio::test]
 async fn set_refuses_what_no_column_takes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-set");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -536,7 +536,7 @@ async fn set_refuses_what_no_column_takes() {
 // of rows deletes each of them.
 #[tokio::test]
 async fn delete_deletes_its_row() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-delete");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -601,7 +601,7 @@ async fn member_count(schema: &Schema, db: &Db) -> i64 {
 // is no_rows, and an entity without soft_delete is ir_invalid.
 #[tokio::test]
 async fn restore_restores_the_soft_deleted_row_of_its_key() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-restore");
     let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
     let db = member_db(&scratch, &schema).await;
@@ -635,7 +635,7 @@ async fn restore_restores_the_soft_deleted_row_of_its_key() {
 // written.
 #[tokio::test]
 async fn restore_or_create_restores_or_inserts_the_row() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-restore-or-create");
     let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
     let db = member_db(&scratch, &schema).await;
@@ -663,7 +663,7 @@ async fn restore_or_create_restores_or_inserts_the_row() {
 // not read has no key, a null column has its key, and a query that read no row holds nothing.
 #[tokio::test]
 async fn to_array_holds_the_columns_that_the_row_read() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-to-array");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;

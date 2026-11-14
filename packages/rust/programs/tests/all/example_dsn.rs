@@ -3,14 +3,14 @@
 const DSN: &str = "ORM_BENCH_MYSQL_DSN";
 
 fn examples_fail_when_dsn_is_unset() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     for program in &[polyspec_orm_testcase::program("complex"), polyspec_orm_testcase::program("demo")] {
         polyspec_orm_testcase::assert_env_required(program, polyspec_orm_testcase::run_with_env(program, &[], DSN, None), DSN);
     }
 }
 
 fn examples_fail_when_dsn_is_empty() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     for program in &[polyspec_orm_testcase::program("complex"), polyspec_orm_testcase::program("demo")] {
         polyspec_orm_testcase::assert_env_required(program, polyspec_orm_testcase::run_with_env(program, &[], DSN, Some("")), DSN);
     }

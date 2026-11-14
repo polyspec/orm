@@ -14,8 +14,6 @@ fn once() -> TransactionOptions {
 }
 use polyspec_orm_case_database::CaseDatabase;
 
-const CASE_DEADLINE: Duration = Duration::from_secs(60);
-
 /// Inserts one clock event with label in the transaction of `tx` and returns its identity key.
 async fn insert_event(tx: &Tx, label: &str) -> i64 {
     let mut row = connected::<ClockEvent>(tx);
@@ -79,8 +77,8 @@ async fn bounded(driver: &str) {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-53.
 async fn was_inserted_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(CASE_DEADLINE, bounded("postgres")).await.expect("postgres: the case ends");
+    let _case = polyspec_orm_testcase::case!();
+    bounded("postgres").await;
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

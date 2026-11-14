@@ -43,8 +43,8 @@ async fn close_dialect_fixture(
 // Rust insert_row; what any runtime answers is the recipe cases generated_keys and generated_key_lifecycle.
 // Requirements: INT-123a.
 async fn insert_phases_and_joined_keys_follow_the_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("generated identity deadline");
+    let _case = polyspec_orm_testcase::case!();
+    check().await;
 }
 
 async fn check() {

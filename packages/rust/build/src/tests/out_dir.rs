@@ -40,7 +40,7 @@ fn successful(output: Output, case: &str) {
 #[test]
 fn load_requires_out_dir() {
     let Some(case) = std::env::var_os(CASE) else {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         successful(child("valid-out-dir", Some("/tmp/kstd-5-65-out-dir")), "valid-out-dir");
         successful(child("explicit-out-dir", None), "explicit-out-dir");
         successful(child("missing-out-dir", None), "missing-out-dir");
@@ -48,7 +48,7 @@ fn load_requires_out_dir() {
     };
 
     let case = case.to_str().expect("case name is UTF-8");
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let set = set_path();
     match case {
         "valid-out-dir" => {

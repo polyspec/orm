@@ -18,12 +18,12 @@ fn assert_dsn_required(output: std::process::Output) {
 }
 
 fn client_bench_fails_when_dsn_is_unset() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     assert_dsn_required(run_without_dsn(None));
 }
 
 fn client_bench_fails_when_dsn_is_empty() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     assert_dsn_required(run_without_dsn(Some("")));
 }
 

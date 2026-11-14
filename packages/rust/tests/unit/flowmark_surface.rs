@@ -120,7 +120,7 @@ fn bench_documents() -> (Vec<Document>, String) {
 // the diagnostics and the documents of dbspec::parse_set as a value of the form of its result.
 #[test]
 fn parse_set_gives_the_result_of_each_text_of_a_set() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let vectors = vectors("tests/dbspec/set-parse.json");
     let texts = |step: &Value, key: &str| -> Vec<String> {
         match step.get(key) {
@@ -155,7 +155,7 @@ fn parse_set_gives_the_result_of_each_text_of_a_set() {
 // signature or of the encoding.
 #[test]
 fn read_bytes_gives_the_text_or_the_diagnostic_of_the_bytes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let text = parsed(&read_bytes("a.dbs", b"dbspec 1 a\n"));
     assert_eq!(text, json!({"text": "dbspec 1 a\n"}));
     let signature = parsed(&read_bytes("a.dbs", b"table a {\n}\n"));
@@ -171,7 +171,7 @@ fn read_bytes_gives_the_text_or_the_diagnostic_of_the_bytes() {
 // base64, and the errors of a set file that dbspec::read_set refuses.
 #[test]
 fn read_set_gives_the_files_or_the_errors_of_a_set() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-flowmark-read-set");
     for name in ["dbspec-set.json", "bench.dbs", "bench_reader.dbs", "bench_shared.dbs"] {
         let from = repository().join("contracts/fixtures/bench").join(name);
@@ -208,7 +208,7 @@ fn read_set_gives_the_files_or_the_errors_of_a_set() {
 // diagnostics of a set that is no set, and config for a text that is not of its form.
 #[test]
 fn the_functions_of_documents_give_the_values_of_dbspec() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let (documents, list) = bench_documents();
     let set: Vec<&Document> = documents.iter().collect();
 
@@ -270,7 +270,7 @@ fn the_functions_of_documents_give_the_values_of_dbspec() {
 // form does not have, a member that is null, an item of two members, a limit of one member and text after the object.
 #[test]
 fn a_text_that_is_no_request_of_the_form_is_ir_invalid() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let read = Request::from_json(r#"{"ir_version": 1, "manifest_hash": "h", "kind": "all", "entity": "author", "n_params": 0}"#).expect("a request");
     assert_eq!((read.ir_version, read.kind.as_str(), read.query.entity.as_str()), (1, "all", "author"));
     assert!(Request::from_json("{}").is_ok(), "an absent member has its default");
@@ -305,7 +305,7 @@ fn a_text_that_is_no_request_of_the_form_is_ir_invalid() {
 // and Request::from_json reads it back to the same serde text.
 #[test]
 fn the_serde_text_of_a_request_is_read_back_to_the_same_text() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let vectors = vectors("tests/planner/compile.json");
     let mut manifests = Manifests(HashMap::new());
     let mut requests = 0;
@@ -342,7 +342,7 @@ fn same<T>(id: &str, got: Result<String>, want: Result<T>, value: impl FnOnce(T)
 // Manifest::param_uses the uses of the validated request, and Manifest::restore_key the parts of restore_key.
 #[test]
 fn a_model_gives_the_plan_the_parameter_uses_and_the_restore_key_of_a_request_text() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let vectors = vectors("tests/planner/compile.json");
     let mut manifests = Manifests(HashMap::new());
     let (mut plans, mut uses, mut restores) = (0, 0, 0);
@@ -398,7 +398,7 @@ fn holds_null(value: &Value) -> bool {
 // Manifest::validate gives the result that the case states; a request that holds null is no request of the form.
 #[test]
 fn a_model_validates_a_request_text_as_the_validation_does() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let vectors = vectors("tests/ir/validate.json");
     let manifest = schema(&format!("tests/ir/{}", vectors["schema"].as_str().expect("the vector file names its schema")));
     let mut validated = 0;
@@ -441,7 +441,7 @@ fn a_model_validates_a_request_text_as_the_validation_does() {
 // but plan_id, which is 0, and a value that is no step of the form is config.
 #[test]
 fn a_step_is_read_back_from_its_form_without_its_plan_id() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let vectors = vectors("tests/planner/compile.json");
     let mut manifests = Manifests(HashMap::new());
     let mut read = 0;
@@ -483,7 +483,7 @@ fn a_step_is_read_back_from_its_form_without_its_plan_id() {
 // neither a text nor bytes nor null is codec_encode, a cell codec_decode.
 #[test]
 fn the_codec_functions_take_and_give_orm_value() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let stages = |names: &[&str]| -> Vec<String> { names.iter().map(|name| (*name).to_owned()).collect() };
     let text = |text: &str| OrmValue::Text(text.to_owned());
     for (value, names) in [
@@ -525,7 +525,7 @@ fn the_codec_functions_take_and_give_orm_value() {
 // Manifest::compile wrote; a text that is no step is config, and a list among the parameters is codec_encode.
 #[tokio::test]
 async fn execute_text_runs_a_step_that_compile_wrote() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-flowmark-execute");
     let text = "dbspec 1 note\n\ntable note {\n  seq i64\n  label varchar(32)\n  primary key (seq)\n}\n";
     let document = dbspec::parse(text, &Default::default()).expect("the note document parses").document;

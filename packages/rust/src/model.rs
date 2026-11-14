@@ -2022,7 +2022,7 @@ mod column_decode_tests {
 
     #[test]
     fn decoded_cell_failure_names_the_column() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let error = Error::new(crate::Kind::CodecDecode, "non-null JSON column received NULL");
         let error = column_decode_error("author", "jsons_tags", error);
         assert_eq!(error.kind(), crate::Kind::CodecDecode);
@@ -2093,7 +2093,7 @@ mod related_tests {
     /// Reading a stored relation value as another model type or another relation kind is INTERNAL.
     #[test]
     fn relation_results_report_a_mismatched_value() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let core = parent();
         assert!(core.related_one::<Right>("one").unwrap().is_some());
         assert!(core.related_one::<Right>("empty").unwrap().is_none());
@@ -2148,7 +2148,7 @@ mod split_plan_tests {
 
     #[tokio::test]
     async fn split_root_in_count_plans_no_statement_over_the_bind_limit() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let file = CaseFile(std::env::temp_dir().join(format!("orm-rust-split-plan-{}.sqlite", std::process::id())));
         let db = Db::connect(&format!("sqlite://{}", file.0.display()), 1, Config::default()).await.expect("connect");
         db.utils().schema().install(&SCHEMA).await.expect("install");

@@ -15,8 +15,6 @@ use or_panic::OrPanic;
 use crate::case_database_run;
 use case_database_run::run_case;
 
-use std::time::Duration;
-
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
@@ -29,7 +27,6 @@ static ROLLBACK_PROBE: Entity = Entity {
     collect: polyspec_orm::model::collect_boxed::<RollbackProbe>,
 };
 const COLUMNS: [&str; 2] = ["seq", "label"];
-const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 model_row!(RollbackProbe, ROLLBACK_PROBE, COLUMNS);
 
@@ -103,7 +100,7 @@ async fn transaction_forms_rollback_fault(driver: &str, dsn: &str) {
     db.close().await;
 }
 
-/// Runs the case within its deadline in its own case database, and drops the database when done.
+/// Runs the case in its own case database, and drops the database when done.
 async fn bounded(driver: &str, case: &str) {
     let database = CaseDatabase::create(driver).await;
     let dsn = database.dsn().to_owned();
@@ -113,27 +110,27 @@ async fn bounded(driver: &str, case: &str) {
             other => unreachable!("unknown case {other}"),
         }
     };
-    run_case(database, driver, case, CASE_DEADLINE, run).await;
+    run_case(database, run).await;
 }
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-190.
 async fn transaction_forms_rollback_fault_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     bounded("sqlite", "transaction_forms_rollback_fault").await;
 }
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-190.
 async fn transaction_forms_rollback_fault_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     bounded("mysql", "transaction_forms_rollback_fault").await;
 }
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-190.
 async fn transaction_forms_rollback_fault_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     bounded("postgres", "transaction_forms_rollback_fault").await;
 }
 
@@ -141,7 +138,7 @@ async fn transaction_forms_rollback_fault_postgres() {
 /// default feature enables it.
 /// Requirements: PRT-44, PRT-54, PRT-59.
 fn rollback_fault_entry() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let manifest = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../Cargo.toml")).unwrap();
     let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
     assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");

@@ -1,114 +1,19 @@
-//! Per-case deadlines and stage output for Rust tests (the Go format of internal/testcase; it uses the same deadline tiers as tests/testcase.mts).
+//! Cases and stage output for Rust tests (the Go format of legacy/packages/go/testcase).
 //!
 //! The result is cargo test's native output. A case is one libtest test that appears as `test <name> ... ok` or `FAILED`
 //! A failure is a panic, so libtest records the reason. Stages are written to stderr, keeping them separate from the
 //! `libtest-mimic` result lines on stdout; the standard libtest harness captures stderr for passing tests unless `--nocapture` is set.
-//! The deadline is wall-clock time, because it is the timer that ends a stuck case, not a limit on the case's own computation time
-//! (AGENTS.md testing rule). Rust has no means to cut off a case, so once the deadline plus [`GRACE`] has passed, it writes a diagnosis to
-//! stderr and ends the test process. A code that keeps the deadline itself (e.g. `tokio::time::timeout`) first fails with its own error
-//! and finishes its cleanup.
+//! No clock ends a case (T474): a machine under load runs the same work more slowly, and the result of a case must not change
+//! with that load. A case ends when its work ends; a run that does not end is stopped with its run.
 use std::fmt::Display;
-use std::future::Future;
 use std::io::Write;
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
-use std::sync::Mutex;
-use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use std::thread;
+use std::time::Duration;
 
 mod groups;
 mod sqlite_file;
 pub use groups::{run_groups, Group};
 pub use sqlite_file::SqliteFile;
-
-/// The time a case allows for each step of its work (the Go testcase package's stepBudget). The MySQL stress plan applies its steps
-/// at 28 to 35 ms a step on the slowest CI runs, so 250 ms is several times the slowest step rate: it is an upper bound, and a stuck
-/// step is found by [`StepGuard`] long before.
-pub const STEP_BUDGET: Duration = Duration::from_millis(250);
-/// The time for the work around the steps, such as creating and dropping a database (the Go testcase package's fixedBudget).
-pub const FIXED_BUDGET: Duration = Duration::from_secs(60);
-
-/// The deadline of a case that applies `steps` steps one after another: [`STEP_BUDGET`] for each step plus [`FIXED_BUDGET`].
-pub fn step_budget(steps: usize) -> Duration {
-    STEP_BUDGET * u32::try_from(steps).expect("the step count fits u32") + FIXED_BUDGET
-}
-
-/// The failure text of a case whose [`StepGuard`] saw no step within `limit`; every runtime writes the same text.
-pub fn stall_text(limit: Duration) -> String {
-    format!("no step was applied within {}", seconds(limit))
-}
-
-/// The failure text of a case that kept applying steps past its step `budget` ([`StepGuard`]); every runtime writes the same
-/// text.
-pub fn budget_text(budget: Duration) -> String {
-    format!("step budget {} exceeded", seconds(budget))
-}
-
-/// `d` as seconds with the digits it needs (120s, 60.25s), the form of the texts of the step guard.
-fn seconds(d: Duration) -> String {
-    format!("{}s", d.as_secs_f64())
-}
-
-/// Ends the work of a case with a step deadline (the Go testcase package's StepGuard): at its step `budget`, and when it reports
-/// no progress for `stall`. Each [`StepGuard::progressed`] call restarts the stall limit, so a long case that keeps applying steps
-/// is ended only by its budget, while a stuck step is ended by the stall limit. The error names the limit that ended the work
-/// ([`stall_text`], [`budget_text`]).
-pub struct StepGuard {
-    budget: Duration,
-    stall: Duration,
-    started: Instant,
-    last: Mutex<Instant>,
-}
-
-impl StepGuard {
-    /// A guard whose budget and stall limit start now.
-    pub fn new(budget: Duration, stall: Duration) -> Self {
-        let now = Instant::now();
-        Self { budget, stall, started: now, last: Mutex::new(now) }
-    }
-
-    /// Records one unit of progress, such as an applied step.
-    pub fn progressed(&self) {
-        *self.last.lock().expect("the step guard lock is not poisoned") = Instant::now();
-    }
-
-    /// Polls `work` until it ends and returns its output. It returns the text of the limit, and drops `work`, when the budget has
-    /// passed or no progress came within the stall limit.
-    pub async fn run<T>(&self, work: impl Future<Output = T>) -> Result<T, String> {
-        let mut work = std::pin::pin!(work);
-        let end = self.started + self.budget;
-        loop {
-            let due = *self.last.lock().expect("the step guard lock is not poisoned") + self.stall;
-            let now = Instant::now();
-            if end <= now {
-                return Err(budget_text(self.budget));
-            }
-            if due <= now {
-                return Err(stall_text(self.stall));
-            }
-            if let Ok(output) = tokio::time::timeout(due.min(end) - now, work.as_mut()).await {
-                return Ok(output);
-            }
-        }
-    }
-}
-
-/// Deadline for a case that only computes in memory and reads repository files. Basis: the largest of such cases
-/// (parse and emit of the dbspec stress document) finishes within a few seconds, so a case over one minute is stuck.
-pub const COMPUTE: Duration = Duration::from_secs(60);
-/// Deadline for a case that connects to the database in TEST_ENV and runs a fixed number of statements. Basis: 2 minutes is ample
-/// including creating and dropping the database and waiting for a lock on the shared server.
-pub const DATABASE: Duration = Duration::from_secs(120);
-/// Deadline for a case that runs child processes such as `go run`, cargo, php, or node. Basis: when the build cache is
-/// empty, compilation takes several minutes.
-pub const PROCESS: Duration = Duration::from_secs(300);
-/// The time to wait for the process to end after its deadline has passed.
-pub const GRACE: Duration = Duration::from_secs(5);
-
-/// The wall-clock deadline of a case that checks its own computation against a CPU-time limit `limit`. timing-check makes the test
-/// process get only a tenth of the CPU, so it is ten times the limit. The limit itself is checked by the case in CPU time.
-pub fn wall_for_cpu(limit: Duration) -> Duration {
-    limit * 10
-}
 
 /// The package directory of the running test. Reads the `CARGO_MANIFEST_DIR` that cargo test gave when running it.
 /// The compile-time `env!("CARGO_MANIFEST_DIR")` puts the built path into the binary. A test reads the package directory
@@ -150,18 +55,15 @@ pub fn assert_env_required(program: &str, output: std::process::Output, var: &st
     assert!(stderr.contains(&format!("{var} is required")), "{program} stderr lacks the {var} requirement: {stderr}");
 }
 
-/// Uses the test function name as the case name and starts the case under deadline `$deadline`. The case is checked for failure
-/// when it leaves scope, so keep it bound with `let _case = polyspec_orm_testcase::case!(..);`.
+/// Uses the test function name as the case name and starts the case. The case is checked for failure when it leaves scope, so
+/// keep it bound with `let _case = polyspec_orm_testcase::case!();`.
 #[macro_export]
 macro_rules! case {
-    ($deadline:expr) => {
-        $crate::start(
-            $crate::test_name({
-                fn here() {}
-                ::std::any::type_name_of_val(&here)
-            }),
-            $deadline,
-        )
+    () => {
+        $crate::start($crate::test_name({
+            fn here() {}
+            ::std::any::type_name_of_val(&here)
+        }))
     };
 }
 
@@ -187,16 +89,6 @@ pub fn warning(text: impl Display) {
 /// Prints one diagnostic stage line to stderr, separate from test result lines on stdout.
 pub fn step(text: impl Display) {
     eprintln!("{text}");
-}
-
-/// Runs one asynchronous database case under its wall-clock deadline and reports its elapsed time.
-pub async fn run_with_deadline(case: &str, deadline: Duration, body: impl Future<Output = ()>) {
-    let started = std::time::Instant::now();
-    step(format_args!("start {case}"));
-    if tokio::time::timeout(deadline, body).await.is_err() {
-        panic!("{case}: not finished within {deadline:?}");
-    }
-    step(format_args!("{case} {:?}", started.elapsed()));
 }
 
 /// Writes in Go's time.Duration String form (1m0s, 1.5s, 12ms, 500µs). The report lines of the four languages have the same
@@ -241,29 +133,16 @@ fn emit(line: &str) {
 /// One running case. When dropped, it checks for failure: if there is a reason, it panics so libtest reports it as a failure.
 pub struct Case {
     name: String,
-    stop: Option<Sender<()>>,
-    watchdog: Option<JoinHandle<()>>,
     failure: Option<String>,
 }
 
-/// Starts a case with name `name` and deadline `deadline`. If the case does not end after the deadline plus [`GRACE`],
-/// it writes the diagnosis to stderr and ends the process.
-pub fn start(name: impl Into<String>, deadline: Duration) -> Case {
-    let name = name.into();
-    assert!(!deadline.is_zero(), "case {name}: the deadline is zero");
-    let (stop, stopped) = mpsc::channel::<()>();
-    let watched = name.clone();
-    let watchdog = thread::spawn(move || {
-        if let Err(RecvTimeoutError::Timeout) = stopped.recv_timeout(deadline + GRACE) {
-            emit(&format!("{watched}: deadline {} exceeded and the case did not stop", duration(deadline)));
-            std::process::exit(101);
-        }
-    });
-    Case { name, stop: Some(stop), watchdog: Some(watchdog), failure: None }
+/// Starts a case with name `name`; no clock ends it.
+pub fn start(name: impl Into<String>) -> Case {
+    Case { name: name.into(), failure: None }
 }
 
 impl Case {
-    /// Prints one stage line. A case that can last over a minute calls it at each stage.
+    /// Prints one stage line. A case that runs long calls it at each stage, so that its progress is observable.
     pub fn step(&self, text: impl Display) {
         eprintln!("{text}");
     }
@@ -281,15 +160,6 @@ impl Case {
 
 impl Drop for Case {
     fn drop(&mut self) {
-        drop(self.stop.take());
-        if let Some(watchdog) = self.watchdog.take() {
-            if let Err(panic) = watchdog.join() {
-                // A watchdog that panicked reports its own panic, unless this case is already unwinding.
-                if !thread::panicking() {
-                    std::panic::resume_unwind(panic);
-                }
-            }
-        }
         // If already panicking, that panic is reported as the failure, so it does not panic again.
         if !thread::panicking() {
             if let Some(reason) = self.failure.take() {
@@ -302,24 +172,23 @@ impl Drop for Case {
 /// The libtest-mimic trial that [`trial`] builds and [`run`] runs.
 pub use libtest_mimic::Trial;
 
-/// A libtest-mimic trial for a test target with `harness = false`: the trial `name` runs `body` as the case `name`
-/// with the deadline `deadline`. A vector file's case is the trial `<test>::<case id>`, so the runner reports each
+/// A libtest-mimic trial for a test target with `harness = false`: the trial `name` runs `body` as the case `name`. A vector file's case is the trial `<test>::<case id>`, so the runner reports each
 /// case under its id and the filter `<test>::` selects the cases of one test. A panic in `body` fails the trial.
-pub fn trial(name: impl Into<String>, deadline: Duration, body: impl FnOnce() + Send + 'static) -> libtest_mimic::Trial {
+pub fn trial(name: impl Into<String>, body: impl FnOnce() + Send + 'static) -> libtest_mimic::Trial {
     let name = name.into();
     libtest_mimic::Trial::test(name.clone(), move || {
-        let _case = start(name, deadline);
+        let _case = start(name);
         body();
         Ok(())
     })
 }
 
 /// [`trial`] for an async case: `body` runs on a current-thread runtime of its own, as `#[tokio::test]` runs it.
-pub fn async_trial<F>(name: impl Into<String>, deadline: Duration, body: impl FnOnce() -> F + Send + 'static) -> libtest_mimic::Trial
+pub fn async_trial<F>(name: impl Into<String>, body: impl FnOnce() -> F + Send + 'static) -> libtest_mimic::Trial
 where
     F: std::future::Future<Output = ()>,
 {
-    trial(name, deadline, move || {
+    trial(name, move || {
         // A debug build polls nested transactions of a recipe on the stack of this thread, and they outgrow the 2 MiB of a test
         // thread, so the case runs on the stack size that the recipe connections take.
         let thread = thread::Builder::new()

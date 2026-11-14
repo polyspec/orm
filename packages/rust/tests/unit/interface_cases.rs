@@ -568,7 +568,7 @@ fn run_alias_case(case: &Value) {
 // Requirements: CORE-62, CORE-63, CORE-70, CORE-71, CORE-72.
 #[tokio::test]
 async fn the_core_passes_the_cases_of_its_contract() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let contract: Value = serde_json::from_str(CONTRACT).expect("packages/rust/interface.json is JSON");
     let cases: Value = serde_json::from_str(CASES).expect("contracts/interface/core.json is JSON");
     let rows = contract["cases"].as_array().expect("the contract has cases");
@@ -611,7 +611,7 @@ const KINDS_WITHOUT_A_CASE: [(&str, &str, &str); 1] =
 // case, because no input raises it.
 #[test]
 fn a_member_of_the_json_surface_has_a_case_of_each_kind_that_it_raises() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let contract: Value = serde_json::from_str(CONTRACT).expect("packages/rust/interface.json is JSON");
     let cases: Value = serde_json::from_str(CASES).expect("contracts/interface/core.json is JSON");
     let mut missing = Vec::new();

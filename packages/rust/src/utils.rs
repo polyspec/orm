@@ -904,7 +904,7 @@ mod keyring_tests {
     // FCV-2: the row lacks a selected column, an input that no recipe value can hold; it stays native.
     #[test]
     fn rotation_row_without_aes_column_is_internal() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let row = [Val::I64(7), Val::I64(1)];
         assert_eq!(rotation_columns(&row, 1, 1).unwrap_err().kind(), crate::Kind::Internal);
     }

@@ -51,7 +51,7 @@ fn count_of(schema: &Schema, connection: Connection) -> Query {
 // it; the handle that with_cancel was called on is not changed.
 #[tokio::test]
 async fn a_statement_after_the_cancellation_is_canceled_and_not_sent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-cancel-statement");
     let (db, schema, sent) = clock_db(&scratch).await;
     let (trigger, cancel) = cancel_pair();
@@ -72,7 +72,7 @@ async fn a_statement_after_the_cancellation_is_canceled_and_not_sent() {
 // canceled.
 #[tokio::test]
 async fn a_schema_install_after_the_cancellation_is_canceled_and_not_sent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-cancel-schema");
     let (db, schema, sent) = clock_db(&scratch).await;
     let (trigger, cancel) = cancel_pair();
@@ -88,7 +88,7 @@ async fn a_schema_install_after_the_cancellation_is_canceled_and_not_sent() {
 // callback does not run.
 #[tokio::test]
 async fn a_begin_after_the_cancellation_is_canceled_and_not_sent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-cancel-begin");
     let (db, _schema, sent) = clock_db(&scratch).await;
     let (trigger, cancel) = cancel_pair();
@@ -118,7 +118,7 @@ async fn a_begin_after_the_cancellation_is_canceled_and_not_sent() {
 // statement of the Tx after the cancellation is canceled, and the ROLLBACK of its transaction is still sent.
 #[tokio::test]
 async fn a_canceled_transaction_still_rolls_back() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-cancel-rollback");
     let (db, schema, sent) = clock_db(&scratch).await;
     let (trigger, cancel) = cancel_pair();
@@ -147,7 +147,7 @@ async fn a_canceled_transaction_still_rolls_back() {
 // whatever the cancellation.
 #[tokio::test]
 async fn a_canceled_transaction_still_commits() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-cancel-commit");
     let (db, _schema, sent) = clock_db(&scratch).await;
     let (trigger, cancel) = cancel_pair();
@@ -174,7 +174,7 @@ async fn a_canceled_transaction_still_commits() {
 // still sends RELEASE SAVEPOINT.
 #[tokio::test]
 async fn a_canceled_savepoint_still_ends() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-cancel-savepoint");
     let (db, schema, sent) = clock_db(&scratch).await;
     for (fails, ends) in [(true, &["begin", "savepoint", "rollback_to", "release", "commit"][..]), (false, &["begin", "savepoint", "release", "commit"][..])] {

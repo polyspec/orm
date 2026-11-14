@@ -430,25 +430,6 @@ fn first_failure(error: &ApplyError) -> &ApplyError {
     }
 }
 
-thread_local! {
-    /// The step guard of the case with a step deadline that runs on this thread (each case runs on a thread of its own).
-    static STALL: std::cell::RefCell<Option<std::sync::Arc<polyspec_orm_testcase::StepGuard>>> = const { std::cell::RefCell::new(None) };
-}
-
-/// Sets, or with None clears, the step guard of the case that runs on this thread.
-pub(crate) fn guard_case(guard: Option<std::sync::Arc<polyspec_orm_testcase::StepGuard>>) {
-    STALL.with(|stall| *stall.borrow_mut() = guard);
-}
-
-/// Records an apply event of the case that runs on this thread: it restarts the stall limit of its step guard, if it has one.
-fn progressed() {
-    STALL.with(|stall| {
-        if let Some(guard) = stall.borrow().as_ref() {
-            guard.progressed();
-        }
-    });
-}
-
 /// Makes one call of the command; its value is the code of its failure, or ok, and the events that count names.
 async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
     let dialect = dialect_of(database)?;
@@ -469,7 +450,6 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
     let result = {
         let nested_session = Arc::clone(&shared);
         let mut handler = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
-            progressed();
             events += 1;
             *kinds.entry(event.kind.as_str().to_owned()).or_default() += 1;
             let Some(on) = on else { return Ok(()) };

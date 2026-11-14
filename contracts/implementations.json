@@ -863,7 +863,7 @@
         },
         {
           "glob": "legacy/packages/ts/tests/coverage-case-unit.mjs",
-          "reason": "harness: exercises the TypeScript coverage-case runner, including selected-case order, duplicate rejection, deadlines, database selection, and cleanup; it does not run ORM client behavior"
+          "reason": "harness: exercises the TypeScript coverage-case runner, including selected-case order, duplicate rejection, database selection, and cleanup; it does not run ORM client behavior"
         },
         {
           "glob": "legacy/packages/ts/tests/error_code.test.mjs",
@@ -1014,7 +1014,7 @@
         },
         {
           "glob": "legacy/packages/python/tests/test_testcase.py",
-          "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
+          "reason": "harness: tests Python testcase discovery and reporting and that no clock ends a case; it does not exercise ORM client behavior"
         },
         {
           "glob": "legacy/packages/python/tests/test_recipe_send_listener.py",
@@ -1162,7 +1162,7 @@
         },
         {
           "glob": "packages/rust/testcase/tests/cases/form.rs",
-          "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and deadline results; it tests the Rust test harness"
+          "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and that no clock ends a case; it tests the Rust test harness"
         },
         {
           "glob": "packages/rust/build/src/tests/build_environment.rs",

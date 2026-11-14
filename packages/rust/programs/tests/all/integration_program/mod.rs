@@ -15,7 +15,7 @@ use result_code::code;
 
 // Requirements: DBS-112, DBS-114.
 fn generated_typed_getter_is_a_checked_public_consumer_api() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
 
     fn read_seq(row: &Author) -> polyspec_orm::Result<i64> {
         row.get_seq()
@@ -55,7 +55,7 @@ mod external_member {
 /// A relation to an entity of a used external document is a relation to an entity of the set: its getter returns the model of that
 /// entity, which the member set generates, and a row without a related row reads no error and no model.
 fn external_relation_getter_returns_the_external_entity_model() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let row = external_member::ExtPost::new();
     let audit: polyspec_orm::Result<Option<&external_member::ExtAudit>> = row.get_ext_audit_model();
     assert!(audit.expect("a row without a related row reads no error").is_none());
@@ -66,7 +66,7 @@ fn external_relation_getter_returns_the_external_entity_model() {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: DBS-110, DBS-173.
 async fn generated_external_model_reads_its_table() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let database = CaseDatabase::create("sqlite").await;
     let db = external_member::connect(database.dsn(), TARGET_POOL_SIZE, config()).await.or_panic(|e| format!("connect: {e}"));
     let Pool::Sqlite(pool) = db.pool() else { unreachable!("the DSN selects SQLite") };
@@ -80,7 +80,7 @@ async fn generated_external_model_reads_its_table() {
 
 // Requirements: COD-20, COD-25.
 fn generated_nonnull_styled_setter_rejects_sql_null() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let err = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::SqlNull) {
         Ok(_) => panic!("non-null styled setter accepted SQL NULL"),
         Err(err) => err,
@@ -146,7 +146,7 @@ fn config() -> polyspec_orm::Config {
 
 // Requirements: DBS-114.
 fn generated_fields_require_selection_or_assignment() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let model = Author::new();
     assert_eq!(model.get_name().unwrap_err().kind(), polyspec_orm::Kind::ColumnUnselected);
     assert_eq!(model.clone().set_name("assigned").get_name().unwrap(), "assigned");
@@ -416,10 +416,9 @@ async fn await_replica(primary: &Db, replica: &Db) {
         (Pool::MySql(p), Pool::MySql(r)) => {
             let status = sqlx::raw_sql("SHOW BINARY LOG STATUS").fetch_one(p).await.unwrap();
             let (file, position): (String, u64) = (status.get(0), status.get(1));
-            // The deadline is 60 seconds: a replica applies the writes of all clients running in parallel one by one, so on a 4-vCPU Linux
-            // runner it could not reach the primary within 10 seconds.
-            let waited: Option<i64> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 60)").bind(&file).bind(position).fetch_one(r).await.unwrap();
-            assert!(waited.is_some_and(|w| w >= 0), "the replica did not reach {file}:{position}");
+            // The wait has no timeout: it ends when the replica has applied the position, or with NULL when its SQL thread stops (T474).
+            let waited: Option<i64> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?)").bind(&file).bind(position).fetch_one(r).await.unwrap();
+            assert!(waited.is_some(), "the replica did not reach {file}:{position}");
         }
         _ => unreachable!("a MySQL or PostgreSQL primary and replica"),
     }
@@ -621,7 +620,7 @@ async fn installed_section(driver: &str, body: impl AsyncFn(&Target)) {
 async fn conditions() {
     check_bench_set();
     for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("conditions/{driver}"), polyspec_orm_testcase::DATABASE);
+        let case = polyspec_orm_testcase::start(format!("conditions/{driver}"));
         installed_section(driver, conditions_case).await;
         drop(case);
     }
@@ -631,7 +630,7 @@ async fn conditions() {
 async fn columns_and_subqueries() {
     check_bench_set();
     for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("columns_and_subqueries/{driver}"), polyspec_orm_testcase::DATABASE);
+        let case = polyspec_orm_testcase::start(format!("columns_and_subqueries/{driver}"));
         installed_section(driver, columns_and_subqueries_case).await;
         drop(case);
     }
@@ -641,7 +640,7 @@ async fn columns_and_subqueries() {
 async fn writes() {
     check_bench_set();
     for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("writes/{driver}"), polyspec_orm_testcase::DATABASE);
+        let case = polyspec_orm_testcase::start(format!("writes/{driver}"));
         installed_section(driver, writes_case).await;
         drop(case);
     }
@@ -651,7 +650,7 @@ async fn writes() {
 async fn json_values() {
     check_bench_set();
     for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("json_values/{driver}"), polyspec_orm_testcase::DATABASE);
+        let case = polyspec_orm_testcase::start(format!("json_values/{driver}"));
         installed_section(driver, json_values_case).await;
         drop(case);
     }
@@ -663,7 +662,7 @@ async fn json_values() {
 async fn primary_and_replica() {
     check_bench_set();
     for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("primary_and_replica/{driver}"), polyspec_orm_testcase::DATABASE);
+        let case = polyspec_orm_testcase::start(format!("primary_and_replica/{driver}"));
         let t = Target::installed(driver).await;
         if driver == "sqlite" {
             read_only_sqlite(&t).await;

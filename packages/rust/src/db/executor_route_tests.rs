@@ -4,7 +4,7 @@ use crate::test_support::Scratch;
 
 #[tokio::test]
 async fn query_and_execute_share_pool_and_transaction_routing() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-executor-route");
     let dsn = format!("sqlite://{}", scratch.join("route.sqlite").display());
     let db = Db::connect(&dsn, 1, crate::Config::default()).await.expect("connect to SQLite test database");

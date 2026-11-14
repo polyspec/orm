@@ -21,7 +21,7 @@ async fn on_each_database(name: &str, case: impl AsyncFn(&str, &str)) {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-188.
 async fn audit_transaction_entry_points() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     on_each_database("audit_transaction_entry_points", crate::audit_rows::entry_points_case).await;
 }
 

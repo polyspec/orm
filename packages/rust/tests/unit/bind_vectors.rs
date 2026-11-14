@@ -57,7 +57,7 @@ fn param_variant(p: &Param) -> u8 {
 // Requirements: PRT-67, DIA-31.
 #[test]
 fn bind_vectors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let raw = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../tests/bind/vectors.json")).unwrap();
     let vectors: Value = serde_json::from_str(&raw).unwrap();
     assert_eq!(vectors["zone"], "+00:00", "this runner checks in UTC");

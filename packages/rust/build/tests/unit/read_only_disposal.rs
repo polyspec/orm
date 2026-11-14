@@ -5,8 +5,8 @@ use polyspec_orm_test_support::fixture_dsn::server_dsn;
 #[tokio::test]
 // Requirements: INT-137.
 async fn aborted_read_only_connections_are_not_returned_to_the_pool() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("read-only disposal deadline");
+    let _case = polyspec_orm_testcase::case!();
+    check().await;
 }
 async fn check() {
     let path = std::env::temp_dir().join(format!("orm-query-discard-{}.sqlite", std::process::id()));

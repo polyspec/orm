@@ -4,7 +4,7 @@ use polyspec_orm_build::tool_db::{self, Val};
 
 // Requirements: SCH-4.
 fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let clock = polyspec_orm_case_clock::CaseClock::start();
     for value in [Val::Null, Val::Text("private-invalid-number".into()), Val::Text("9223372036854775808".into())] {
         let error = value.int().expect_err("invalid required integer must fail");
@@ -41,8 +41,8 @@ fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
 // Requirements: SCH-4.
 #[tokio::main(flavor = "current_thread")]
 async fn physical_tool_accessors_preserve_errors_on_all_databases() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), physical_accessors()).await.expect("physical accessor test deadline");
+    let _case = polyspec_orm_testcase::case!();
+    physical_accessors().await;
 }
 
 async fn physical_accessors() {

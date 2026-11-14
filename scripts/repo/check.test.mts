@@ -21,7 +21,7 @@ import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
-import { parseRecipeCases, readComposer, readPackage } from '../json/formats.mts';
+import { readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
@@ -45,40 +45,12 @@ const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
-// The stress case applies 1100 steps, more than the few hundred statements of a database case, so it states its steps and every
-// runner gives it the step budget of them (250 ms a step plus 60 s) on every database, with a step guard that ends it at that budget
-// or when no apply event comes within the database deadline, which each event restarts (CR15-10 had narrowed it to the 120 second
-// database deadline). The guard of each runtime that writes its own failure text writes the same two texts, which the unit test of
-// each guard holds. PHP and the PHP extension hold none: their deadline was the test runner's, and kit 0.0.105 holds no time
-// limit. TypeScript, Go and Python hold none either: no clock ends their cases (T473, T474). T474 removes the guard of Rust.
-caseTest('the stress case of the dbspec_apply recipe runs under the step budget of its steps in Rust', () => {
-  const recipe = parseRecipeCases(text('contracts/fixtures/dbspec_apply/dbspec_apply.json'), 'contracts/fixtures/dbspec_apply/dbspec_apply.json');
-  const stress = recipe.cases.find(recipeCase => recipeCase.id === 'stress_plan_commits_each_step');
-  assert.ok(stress !== undefined, 'the recipe holds the stress case');
-  // The applied count of an apply step is the int of its member "applied": {"value": {"object": [["applied", {"int": "<n>"}], ...]}}.
-  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-  const appliedOf = (expect: unknown): number => {
-    const value = isRecord(expect) ? expect.value : undefined;
-    const members: unknown = isRecord(value) ? value.object : undefined;
-    if (!Array.isArray(members)) return Number.NaN;
-    for (const entry of members as unknown[]) {
-      if (Array.isArray(entry) && entry[0] === 'applied' && isRecord(entry[1])) return Number(entry[1].int);
-    }
-    return Number.NaN;
-  };
-  const applied = (stress.steps ?? []).filter(step => step.op === 'dbspec.apply').flatMap(step => Object.values(step.expect ?? {})).map(appliedOf);
-  assert.equal(stress.deadline?.steps, Math.max(...applied), 'the stress case states the most steps it applies on any database');
-  const holds: [string, RegExp][] = [
-    ['packages/rust/testcase/src/lib.rs', /pub const STEP_BUDGET: Duration = Duration::from_millis\(250\);/],
-    ['packages/rust/testcase/src/lib.rs', /pub const FIXED_BUDGET: Duration = Duration::from_secs\(60\);/],
-    ['packages/rust/programs/src/recipe.rs', /steps\.map_or\(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget\)/],
-    ['packages/rust/programs/src/recipe.rs', /StepGuard::new\(deadline, polyspec_orm_testcase::DATABASE\)/],
-  ];
-  for (const [path, hold] of holds) assert.match(text(path), hold, path);
-  // The failure texts of the two limits of a recipe case, the same in every runtime that writes them.
-  const texts = ['no step was applied within 120s', 'step budget 60.25s exceeded'];
-  const guardTests = ['packages/rust/testcase/tests/cases/form.rs'];
-  for (const path of guardTests) for (const expected of texts) assert.ok(text(path).includes(`"${expected}"`) || text(path).includes(`'${expected}'`), `${path} holds the text ${expected}`);
+// No clock ends a test case in any runtime (T473, T474): a machine under load runs the same work more slowly, and the result of
+// a case must not change with that load. No harness keeps a case class, a step budget or a step guard.
+caseTest('no test harness holds a deadline, a step budget or a step guard', () => {
+  const harnesses = ['tests/testcase.mts', 'legacy/packages/go/testcase/testcase.go', 'legacy/packages/python/tests/testcase.py', 'packages/rust/testcase/src/lib.rs'];
+  for (const path of harnesses) assert.doesNotMatch(text(path), /StepGuard|stepGuard|step_budget|stepBudget|STEP_BUDGET|watchdog|\bGRACE\b|\bGrace\b/, path);
+  assert.equal(trackedAll.has('legacy/packages/go/testcase/stall.go'), false, 'the Go step guard is removed');
 });
 
 caseTest('every PHPUnit test class declares its size', () => {
@@ -1765,7 +1737,7 @@ caseTest('a Rust test without a case of its own fails', () => {
     '',
   ].join('\n');
   assert.deepEqual(rustTestCaseErrors({ 'packages/rust/tests/a.rs': rust }), [
-    'packages/rust/tests/a.rs: bare does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line',
+    'packages/rust/tests/a.rs: bare does not start its case with polyspec_orm_testcase, so it runs without a RUN line',
   ]);
 });
 

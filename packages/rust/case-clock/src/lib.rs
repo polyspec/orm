@@ -38,7 +38,7 @@ mod tests {
     // Sleeping time is not counted in CPU time; it is counted only in wall-clock time.
     #[test]
     fn case_clock_does_not_count_time_off_the_cpu() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let clock = CaseClock::start();
         std::thread::sleep(Duration::from_millis(200));
         let (cpu, wall) = (clock.cpu(), clock.wall());

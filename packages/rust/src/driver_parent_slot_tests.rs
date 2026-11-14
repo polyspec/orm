@@ -5,7 +5,7 @@ use crate::Param;
 #[test]
 // Requirements: DSL-153.
 fn preserves_bare_dollar() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let step = Step {
         id: 67,
         role: "relation".into(),

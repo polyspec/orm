@@ -215,7 +215,7 @@ mod tests {
     // the insert value is text written as hex of the AES envelope of key version 1.
     #[test]
     fn insert_email_is_an_aes_hex_envelope() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let text = super::insert_email();
         let envelope = polyspec_orm::codec::hex_decode(&text).expect("insert email is hex");
         let plain = polyspec_orm::codec::aes_decrypt(&envelope, "bench-salt")

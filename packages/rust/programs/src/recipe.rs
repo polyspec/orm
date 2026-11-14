@@ -119,10 +119,7 @@ fn trials_of(entry: &str, path: &str, database: &str, ids: Option<&[&str]>) -> V
             let case = case.clone();
             let (path, database, dir) = (path.to_owned(), database.to_owned(), dir.clone());
             let id = case["id"].as_str().unwrap_or_default().to_owned();
-            // The interface check is another process, which may build its extractor; the other cases compute in memory.
-            let is_process = case["steps"].as_array().is_some_and(|steps| steps.iter().any(|step| step["op"] == "interface.symbols"));
-            let deadline = if is_process { polyspec_orm_testcase::PROCESS } else { polyspec_orm_testcase::COMPUTE };
-            polyspec_orm_testcase::trial(format!("{entry}::{id}"), deadline, move || {
+            polyspec_orm_testcase::trial(format!("{entry}::{id}"), move || {
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
@@ -962,16 +959,11 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
     }
 }
 
-/// The deadline of a hung interface check, wall-clock time, since another process does the work: it takes 15 s measured, and 1 to 2
-/// minutes when the build cache is empty. A check past it is killed.
-const INTERFACE_CHECK_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
-
 /// The interface.symbols op (FCV-4): the interface check of the Rust client from the repository root, three levels above `dir`, the
 /// directory of the recipe (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64). The check exits 0 when it holds.
 fn interface_symbols(dir: &Path) -> Result<(), String> {
     use std::io::Read as _;
     use std::process::{Command, Stdio};
-    let started = std::time::Instant::now();
     let mut child = Command::new("node")
         .args(["tests/interfaces/check/main.mts", "-language", "rust"])
         .current_dir(dir.join("../../.."))
@@ -989,23 +981,15 @@ fn interface_symbols(dir: &Path) -> Result<(), String> {
         std::thread::spawn(move || {
             let mut text = String::new();
             let read = pipe.read_to_string(&mut text).map(|_| text);
-            // The receiver is gone only after the deadline, and that failure is already reported.
-            if closed.send(read).is_err() {
-                eprintln!("interface check output arrived after the deadline");
-            }
+            // The receiver reads both pipes to their end, so it is there for each send.
+            closed.send(read).expect("the interface check reads the output of its pipes");
         });
     }
     drop(closed);
     let mut output = String::new();
-    for _ in 0..2 {
-        match events.recv_timeout(INTERFACE_CHECK_DEADLINE.saturating_sub(started.elapsed())) {
-            Ok(read) => output.push_str(&read.map_err(|error| format!("interface check output: {error}"))?),
-            Err(_) => {
-                let killed = child.kill();
-                let waited = child.wait();
-                return Err(format!("interface check not finished within {INTERFACE_CHECK_DEADLINE:?} (kill: {killed:?}, wait: {waited:?})"));
-            }
-        }
+    // No clock ends the check (T474): its output pipes close when it ends.
+    for read in events.iter().take(2) {
+        output.push_str(&read.map_err(|error| format!("interface check output: {error}"))?);
     }
     let status = child.wait().map_err(|error| format!("interface check: {error}"))?;
     if status.success() {
@@ -3335,23 +3319,8 @@ mod database {
                 }
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
-                // A case that states its steps gets their step budget instead of DATABASE: its step guard ends it at that budget,
-                // or when no apply event comes within DATABASE (FCV-4); each event restarts the stall limit (recipe_apply::progressed).
-                let steps = case["deadline"]["steps"].as_u64().map(|steps| usize::try_from(steps).expect("the step count fits usize"));
-                let deadline = steps.map_or(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget);
-                polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), deadline, move || async move {
-                    let work = run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), &*models);
-                    if steps.is_some() {
-                        let guard = std::sync::Arc::new(polyspec_orm_testcase::StepGuard::new(deadline, polyspec_orm_testcase::DATABASE));
-                        crate::recipe_apply::guard_case(Some(std::sync::Arc::clone(&guard)));
-                        let ran = guard.run(work).await;
-                        crate::recipe_apply::guard_case(None);
-                        if let Err(limit) = ran {
-                            panic!("recipe {path}, case {id}, database {database}: {limit}");
-                        }
-                    } else {
-                        work.await;
-                    }
+                polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), move || async move {
+                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), &*models).await;
                     super::report_case(&id, &database);
                 })
             })
@@ -5837,8 +5806,8 @@ mod database {
     /// transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
     /// standby has applied it; the case connection opens on the server DSN, since a raw SQLx connection sends a startup parameter
     /// that PgBouncer rejects. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
-    /// database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
-    /// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+    /// database of the environment, since the case database reaches the replica only by this wait. The wait has no timeout: it
+    /// ends when the replica has applied the position, or with NULL when its SQL thread stops (T474).
     async fn await_replica(context: &Context<'_>) -> Result<(), String> {
         let session = case_session_dsn(context)?;
         let source = Db::connect(&session, 1, Config::default()).await.map_err(|e| e.to_string())?;
@@ -5879,15 +5848,15 @@ mod database {
         let file: String = sqlx::Row::get(&row, 0);
         let position: u64 = sqlx::Row::get(&row, 1);
         let target = sqlx::MySqlPool::connect(&replica).await.map_err(|e| format!("replica wait connection: {e}"))?;
-        let waited: Result<Option<i64>, _> = sqlx::query_scalar(if mariadb { "SELECT MASTER_POS_WAIT(?, ?, 60)" } else { "SELECT SOURCE_POS_WAIT(?, ?, 60)" })
+        let waited: Result<Option<i64>, _> = sqlx::query_scalar(if mariadb { "SELECT MASTER_POS_WAIT(?, ?)" } else { "SELECT SOURCE_POS_WAIT(?, ?)" })
             .bind(&file)
             .bind(position)
             .fetch_one(&target)
             .await;
         target.close().await;
         match waited.map_err(|e| format!("replica wait: {e}"))? {
-            Some(n) if n >= 0 => Ok(()),
-            other => Err(format!("the replica did not reach {file}:{position}: {other:?}")),
+            Some(_) => Ok(()),
+            None => Err(format!("the replica did not reach {file}:{position}: its SQL thread stopped")),
         }
     }
 

@@ -81,7 +81,7 @@ fn error_kind(outcome: &Value) -> &str {
 // row read, the rows of a relations result and the key of each row.
 #[tokio::test]
 async fn a_read_step_runs_its_calls_and_its_terminal() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-read");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -127,7 +127,7 @@ async fn a_read_step_runs_its_calls_and_its_terminal() {
 // duplicate_key, to the core that asked.
 #[tokio::test]
 async fn a_write_step_returns_its_row_or_the_kind_of_its_failure() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-write");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -164,7 +164,7 @@ async fn a_write_step_returns_its_row_or_the_kind_of_its_failure() {
 // orm_value and an entity that the schema does not have each return the kind of the failure.
 #[tokio::test]
 async fn a_step_that_the_runner_cannot_read_returns_its_kind() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-refused");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -218,7 +218,7 @@ fn end(rollback: bool) -> Value {
 // or rolls back.
 #[tokio::test]
 async fn a_transaction_step_runs_the_steps_until_its_end() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-transaction");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -243,7 +243,7 @@ async fn a_transaction_step_runs_the_steps_until_its_end() {
 // duplicate_key is rolled back to it and the transaction goes on.
 #[tokio::test]
 async fn a_savepoint_step_rolls_back_to_its_start() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-savepoint");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -271,7 +271,7 @@ async fn a_savepoint_step_rolls_back_to_its_start() {
 // close rolls back what is open and leaves the runner on its connection.
 #[tokio::test]
 async fn close_rolls_back_what_is_open() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-close");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -300,7 +300,7 @@ async fn close_rolls_back_what_is_open() {
 // returns to the pool, where the next statement takes it.
 #[tokio::test]
 async fn a_dropped_runner_rolls_back_its_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-drop");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -317,7 +317,7 @@ async fn a_dropped_runner_rolls_back_its_transaction() {
 // Requirements: CORE-94. The terminals restore and restore_or_create return the row, and their failures their kinds.
 #[tokio::test]
 async fn a_restore_step_returns_its_row_or_the_kind_of_its_failure() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-restore");
     let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
     let db = Db::connect(&format!("sqlite://{}", scratch.join("member.sqlite").display()), 1, Config::default()).await.expect("connect");

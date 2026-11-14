@@ -17,14 +17,14 @@ fn assert_versionless_row_is_internal(asm: &polyspec_orm::plan::Assemble) {
 // Requirements: COD-56.
 // FCV-2: the case builds a read plan without its version column, an input that no recipe value can hold; it stays native.
 fn aes_read_plan_without_version_column_is_internal() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_versionless_row_is_internal(&aes_read_assemble_without_version());
 }
 
 // Requirements: COD-48.
 // FCV-2: the case builds a selected row without its version cell, an input that no recipe value can hold; it stays native.
 fn aes_read_row_without_version_cell_is_internal() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_versionless_row_is_internal(&aes_read_assemble());
 }
 

@@ -22,8 +22,6 @@ use or_panic::OrPanic;
 use crate::case_database_run;
 use case_database_run::run_case;
 
-use std::time::Duration;
-
 use polyspec_orm::{Db, Model, Param};
 use polyspec_orm_case_database::CaseDatabase;
 use serde::Deserialize;
@@ -37,7 +35,6 @@ struct Fixture {
 }
 
 const FIXTURE_JSON: &str = include_str!("../../../../contracts/fixtures/statement_fault.json");
-const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 fn fixture() -> Fixture {
     serde_json::from_str(FIXTURE_JSON).expect("contracts/fixtures/statement_fault.json parses")
@@ -82,7 +79,7 @@ async fn empty_argument_refused(driver: &str, dsn: &str) {
     db.close().await;
 }
 
-/// Runs one case in its own case database within its deadline, then drops the database.
+/// Runs one case in its own case database, then drops the database.
 async fn bounded(driver: &str, case: &str) {
     let case = named_case(case);
     let database = CaseDatabase::create(driver).await;
@@ -93,7 +90,7 @@ async fn bounded(driver: &str, case: &str) {
             other => unreachable!("unknown case {other}"),
         }
     };
-    run_case(database, driver, &case, CASE_DEADLINE, run).await;
+    run_case(database, run).await;
 }
 
 /// Guard: every case the fixture names has a test function for each driver in
@@ -115,7 +112,7 @@ fn statement_fault_cases() -> Vec<polyspec_orm_testcase::Trial> {
         .cases
         .into_iter()
         .map(|case| {
-            polyspec_orm_testcase::async_trial(format!("statement_fault::statement_fault_cases::{case}"), CASE_DEADLINE * 3, move || async move {
+            polyspec_orm_testcase::async_trial(format!("statement_fault::statement_fault_cases::{case}"), move || async move {
                 for driver in ["sqlite", "mysql", "postgres"] {
                     let outcome = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(bounded(driver, &case))).await;
                     if let Err(payload) = outcome {
@@ -149,26 +146,10 @@ async fn empty_argument_refused_postgres() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    let mut trials = vec![polyspec_orm_testcase::trial(
-        "statement_fault::every_fixture_case_has_a_test_per_driver",
-        polyspec_orm_testcase::DATABASE,
-        every_fixture_case_has_a_test_per_driver,
-    )];
+    let mut trials = vec![polyspec_orm_testcase::trial("statement_fault::every_fixture_case_has_a_test_per_driver", every_fixture_case_has_a_test_per_driver)];
     trials.extend(statement_fault_cases());
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::empty_argument_refused_sqlite",
-        polyspec_orm_testcase::DATABASE,
-        empty_argument_refused_sqlite,
-    ));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::empty_argument_refused_mysql",
-        polyspec_orm_testcase::DATABASE,
-        empty_argument_refused_mysql,
-    ));
-    trials.push(polyspec_orm_testcase::async_trial(
-        "statement_fault::empty_argument_refused_postgres",
-        polyspec_orm_testcase::DATABASE,
-        empty_argument_refused_postgres,
-    ));
+    trials.push(polyspec_orm_testcase::async_trial("statement_fault::empty_argument_refused_sqlite", empty_argument_refused_sqlite));
+    trials.push(polyspec_orm_testcase::async_trial("statement_fault::empty_argument_refused_mysql", empty_argument_refused_mysql));
+    trials.push(polyspec_orm_testcase::async_trial("statement_fault::empty_argument_refused_postgres", empty_argument_refused_postgres));
     trials
 }

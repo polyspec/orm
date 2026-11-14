@@ -16,7 +16,7 @@ fn error_code<T>(result: &Result<T>) -> Option<Kind> {
 
 #[test]
 fn invalid_precision_is_schema_invalid_for_null_and_dotless_values() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut failures = Vec::new();
     for (ty, dotless) in [("time", "12:34:56"), ("datetime", "2024-01-02 03:04:05")] {
         for precision in [-1, 7] {
@@ -34,7 +34,7 @@ fn invalid_precision_is_schema_invalid_for_null_and_dotless_values() {
 
 #[test]
 fn temporal_precision_boundaries_and_fraction_semantics_are_preserved() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for precision in [0, 6] {
         assert!(checked("time", precision, Param::Null).is_ok());
         assert!(checked("datetime", precision, Param::Null).is_ok());
@@ -55,7 +55,7 @@ fn temporal_precision_boundaries_and_fraction_semantics_are_preserved() {
 
 #[test]
 fn executor_clock_still_truncates_to_valid_precision() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let full = "2024-01-02 03:04:05.123456";
     assert_eq!(clock_digits(full, 0).unwrap(), "2024-01-02 03:04:05");
     assert_eq!(clock_digits(full, 3).unwrap(), "2024-01-02 03:04:05.123");

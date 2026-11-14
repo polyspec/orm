@@ -16,8 +16,8 @@ use crate::lock_probe;
 // the Rust update_row, delete_row and insert_row; what any runtime answers is the recipe case row_mutation_lifecycle.
 // Requirements: INT-106a, INT-118, PRT-79.
 async fn mutation_phases_follow_the_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("native update deadline");
+    let _case = polyspec_orm_testcase::case!();
+    check().await;
 }
 async fn check() {
     let path = physical_fixture::sqlite_path("row-mutation");

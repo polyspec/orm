@@ -85,7 +85,7 @@ fn refusal(host: &mut Host, value: HostValue) -> String {
 // Requirements: CORE-60, CORE-62. The type of a column decides the kind of its value, whatever the size of the value.
 #[test]
 fn the_type_of_a_column_decides_the_kind_of_its_value() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let of = |ty: Type, cell: Val| OrmValue::of_column(&column(ty), cell).expect("a value of the column");
     assert_eq!(of(Type::I64, Val::I64(7)), OrmValue::Int64(7), "a small integer of a 64-bit column is int64");
     assert_eq!(of(Type::I32, Val::I64(7)), OrmValue::Int(7));
@@ -109,7 +109,7 @@ fn the_type_of_a_column_decides_the_kind_of_its_value() {
 // stage is its value in the kinds of orm_value, and a JSON string with an unpaired surrogate is codec_decode.
 #[test]
 fn a_styled_column_is_a_json_value_or_a_value_of_the_common_model() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let json = polyspec_json::Value::number("1.50").expect("a number");
     let value = OrmValue::of_column(&column(Type::Text), Val::Ordered(json.clone())).expect("a JSON value");
     assert_eq!(value, OrmValue::Json(JsonValue::new(json).expect("a JSON value")));
@@ -130,7 +130,7 @@ fn a_styled_column_is_a_json_value_or_a_value_of_the_common_model() {
 // number type is int or float, a text that is bytes is text or bytes, and a PHP array is a list or a map.
 #[test]
 fn from_host_reads_a_value_of_a_language() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut host = Host::default();
     let mut take = |value: HostValue| taken(&mut host, value);
     assert_eq!(take(HostValue::Null), OrmValue::Null);
@@ -170,7 +170,7 @@ impl NativeObject for Kept {}
 
 #[test]
 fn from_host_refuses_a_value_that_is_no_value_of_a_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut host = Host::default();
     let message = |what: &str| format!("codec_encode: the value is no value of a column: {what}");
     assert_eq!(refusal(&mut host, HostValue::Number("9223372036854775808".into())), message("an integer outside i64"));
@@ -207,7 +207,7 @@ fn from_host_refuses_a_value_that_is_no_value_of_a_column() {
 // is nested in the kinds of json_value, a number as its text and an object in member order.
 #[test]
 fn to_host_describes_a_value_one_level_at_a_time() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_eq!(to_host(&OrmValue::Int(7)).0.kind(), ValueKind::Int);
     assert_eq!(to_host(&OrmValue::Int64(7)).0, OutValue::Int64(7));
     assert_eq!(to_host(&OrmValue::Text("t".into())).0, OutValue::Text("t".into()));
@@ -245,7 +245,7 @@ fn to_host_describes_a_value_one_level_at_a_time() {
 // a Between key or the value groups of a tuple key; any other value is codec_encode.
 #[test]
 fn a_condition_takes_a_value_by_its_operator() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     use crate::args::Value;
     use crate::core::Arg;
     use crate::value::Param;

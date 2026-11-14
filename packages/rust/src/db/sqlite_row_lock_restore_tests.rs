@@ -45,7 +45,7 @@ fn restore_error() -> Error {
 #[tokio::test]
 // Requirements: INT-49.
 async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for (primary, restore) in [(false, false), (false, true), (true, false), (true, true)] {
         let mut sequence =
             FakeSequence { set_error: None, primary_error: primary.then(lock_error), restore_error: restore.then(restore_error), calls: Vec::new() };
@@ -69,7 +69,7 @@ async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore()
 #[tokio::test]
 // Requirements: INT-49.
 async fn failed_nowait_setup_still_restores_and_skips_lock_attempt() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut sequence = FakeSequence {
         set_error: Some(Error::new(crate::Kind::Canceled, "set zero failed")),
         primary_error: None,

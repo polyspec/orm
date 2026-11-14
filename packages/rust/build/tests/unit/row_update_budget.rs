@@ -28,20 +28,19 @@ fn snapshot_with_value_type(native_type: &str, value: GridCell) -> RowSnapshot {
 
 #[tokio::test]
 async fn rust_duplicate_update_assignment_budget_preserves_its_error_cause() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+    let _case = polyspec_orm_testcase::case!();
+    async {
         let snapshot = snapshot();
         let oversized = vec![("value".to_owned(), GridCell::Text("x".repeat(8 * 1024 * 1024 + 1)))];
         let error = snapshot.validate_update(&oversized).unwrap_err();
         assert!(error.message().starts_with("row_update_limit: assignment budget exceeded"));
-    })
-    .await
-    .expect("row update assignment budget deadline");
+    }
+    .await;
 }
 
 #[test]
 fn rust_row_update_enforces_declared_varchar_and_binary_capacity() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let varchar = snapshot_with_value_type("VARCHAR (3)", GridCell::Text("old".into()));
     assert!(varchar.validate_update(&[("value".into(), GridCell::Text("界界界".into()))]).is_ok());
     let error = varchar.validate_update(&[("value".into(), GridCell::Text("界界界界".into()))]).unwrap_err();

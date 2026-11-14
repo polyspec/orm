@@ -51,7 +51,7 @@ fn event(connection: impl Into<polyspec_orm::Connection>) -> ZoneEvent {
 /// PostgreSQL DSN, with or without `sslmode=disable`, connects without TLS (CFG-47).
 // Requirements: CFG-19, CFG-20, CFG-37, CFG-47, DIA-202.
 fn only_the_named_parameters_reach_sqlx() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let parsed = polyspec_orm::db::parse_dsn("mysql://orm@localhost/orm_example?socket=/run/mysqld/mysqld.sock&timezone=UTC").expect("mysql DSN");
     let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
     assert_eq!(options.get_socket().and_then(|path| path.to_str()), Some("/run/mysqld/mysqld.sock"), "socket reaches sqlx");
@@ -71,7 +71,7 @@ fn only_the_named_parameters_reach_sqlx() {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-92.
 async fn pool_discards_ended_idle_connection() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let server_dsn = database.related_dsn(&require_dsn(&format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase())));
@@ -189,7 +189,7 @@ impl HeldRows {
 // Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
 // Requirements: CFG-6, CFG-36.
 fn statement_timeout_negative_is_unrepresentable() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let timeout: u32 = polyspec_orm::Config::default().statement_timeout_ms;
     assert_eq!(timeout, 0);
 }
@@ -199,7 +199,7 @@ fn statement_timeout_negative_is_unrepresentable() {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-32.
 async fn postgres_float_round_trip() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, polyspec_orm::Config::default()).await.unwrap();
     let Pool::Postgres(pool) = db.pool() else { panic!("a postgres pool") };
     let values = [0.1 + 0.2, 1.0 / 3.0, f64::MIN_POSITIVE, 5e-324, f64::MAX, -123456.789e-7];
@@ -222,14 +222,14 @@ async fn postgres_float_round_trip() {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-9.
 async fn dropping_a_query_cancels_it() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     dropping_a_query_cancels_it_on(&["sqlite", "mysql", "postgres"]).await;
 }
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-9.
 async fn dropping_a_query_cancels_it_mariadb() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     dropping_a_query_cancels_it_on(&["mariadb"]).await;
 }
 
@@ -273,14 +273,14 @@ async fn dropping_a_query_cancels_it_on(drivers: &[&str]) {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-67.
 async fn dropping_a_transaction_frees_a_single_connection() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     dropping_a_transaction_frees_a_single_connection_on(&["sqlite", "mysql", "postgres"]).await;
 }
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-67.
 async fn dropping_a_transaction_frees_a_single_connection_mariadb() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     dropping_a_transaction_frees_a_single_connection_on(&["mariadb"]).await;
 }
 

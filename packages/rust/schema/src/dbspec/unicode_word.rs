@@ -765,12 +765,11 @@ pub(crate) fn is_word_rune(c: char) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
 
     /// For every code point, the binary search equals the bitmap that marks the ranges.
     #[test]
     fn binary_search_agrees_with_the_ranges_for_every_code_point() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(Duration::from_secs(10)));
+        let _case = polyspec_orm_testcase::case!();
         let mut listed = vec![false; 0x110000];
         for &(lo, hi) in WORD_RANGES {
             for cp in lo..=hi {

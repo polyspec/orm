@@ -14,7 +14,7 @@ pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
 }
 
 fn invalid_binds_cannot_be_rendered_as_valid_values() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     assert!(param_json(&Param::Bytes(vec![0xff])).is_err());
     assert!(param_json(&Param::Bytes(b"ORM-AES2\0".to_vec())).is_err());
     let mut encrypted = b"ORM-AES2\0".to_vec();
@@ -29,7 +29,7 @@ fn invalid_binds_cannot_be_rendered_as_valid_values() {
 }
 
 fn arguments_reject_missing_duplicate_and_unknown_flags() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let parse = |args: &[&str]| Args::parse(&args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>());
     let args = parse(&["--dsn", "sqlite://x", "--vector", "relations", "--vector", "conditions_values"]).unwrap();
     assert_eq!((args.dsn.as_str(), args.vectors), ("sqlite://x", vec!["relations".to_owned(), "conditions_values".to_owned()]));
@@ -50,7 +50,7 @@ fn arguments_reject_missing_duplicate_and_unknown_flags() {
 /// is a recipe case (tests/conformance/README.md). The declared names are read from this file: the first string literal after
 /// each run invocation.
 fn every_body_is_a_vector_of_the_vector_file() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let call = "run!(";
     let declared: Vec<&str> = include_str!("../../src/conformance.rs")
         .split(call)

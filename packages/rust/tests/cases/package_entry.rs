@@ -2,7 +2,7 @@ use polyspec_orm::{Db, Error, Schema, Val};
 
 /// Requirements: INT-138.
 fn public_package_entry() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let _: Option<Db> = None;
     let _: Option<Schema> = None;
     let _: Option<Val> = None;

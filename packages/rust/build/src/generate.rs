@@ -150,7 +150,7 @@ mod field_type_tests {
     #[test]
     // Requirements: DBS-112.
     fn generated_field_types_follow_the_runtime_model() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(base(&field_of(Type::Decimal(13, 3), &[])), "String");
         assert_eq!(base(&field_of(Type::I16, &[])), "i16");
         assert_eq!(base(&field_of(Type::Uuid, &[])), "String");
@@ -1115,7 +1115,7 @@ mod fixed_method_tests {
 
     #[test]
     fn fixed_list_names_the_public_methods_of_the_fixed_impl() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let listed: BTreeSet<String> = FIXED.iter().map(|s| s.to_string()).collect();
         assert_eq!(listed, impl_methods(), "FIXED differs from the public methods of the fixed impl in fixed.rs.txt");
     }

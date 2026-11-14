@@ -54,7 +54,7 @@ fn joined(lines: &Value) -> String {
 // manifest and the same statements in the three dialects.
 #[test]
 fn a_document_of_the_bench_set_keeps_its_text_hashes_and_statements() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let documents = bench_documents();
     let mut read = Vec::new();
     for document in &documents {
@@ -80,7 +80,7 @@ fn a_document_of_the_bench_set_keeps_its_text_hashes_and_statements() {
 // the checks, every setting and the diagrams: the form of each is a value of the schema and gives the same text.
 #[test]
 fn a_canonical_text_keeps_its_text_through_its_form() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let vectors: Value = serde_json::from_str(CANONICAL).expect("tests/dbspec/canonical.json is JSON");
     let mut texts = 0;
     for case in vectors["cases"].as_array().expect("the vector file holds cases") {
@@ -118,7 +118,7 @@ fn bench_form() -> Value {
 // predicate without its kind are each refused with a text that names the member.
 #[test]
 fn a_value_that_is_no_document_is_refused_by_the_name_of_its_member() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let refusal = |form: &Value| document_from_json(form).err().unwrap_or_else(|| panic!("the form {form} is read"));
 
     let mut unknown = bench_form();
@@ -150,7 +150,7 @@ fn a_value_that_is_no_document_is_refused_by_the_name_of_its_member() {
 // another kind or without its own is refused.
 #[test]
 fn a_type_has_exactly_the_parameters_of_its_kind() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let types = [
         (Type::I16, json!({"kind": "i16"})),
         (Type::I32, json!({"kind": "i32"})),
@@ -189,7 +189,7 @@ fn a_type_has_exactly_the_parameters_of_its_kind() {
 // wrote it, and the form with a manifest hash is a value of the schema.
 #[test]
 fn the_entities_of_a_runtime_model_are_read_back_from_their_form() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let documents = bench_documents();
     let set: Vec<&Document> = documents.iter().collect();
     let model = dbspec::runtime_model(&set).expect("the bench set has a runtime model");
@@ -214,7 +214,7 @@ fn the_entities_of_a_runtime_model_are_read_back_from_their_form() {
 // Requirements: FMS-15. A diagnostic and a declaration position have the members of their forms.
 #[test]
 fn a_diagnostic_and_a_position_have_the_members_of_their_forms() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let refused = dbspec::parse("dbspec 1 shop\n\ntable item {\n  seq i64 bad\n  primary key (seq)\n}\n", &BTreeMap::new());
     let diagnostics = refused.expect_err("the text holds a word that no column takes");
     let form = diagnostic_to_json(&diagnostics[0]);
@@ -237,7 +237,7 @@ fn a_diagnostic_and_a_position_have_the_members_of_their_forms() {
 // the canonical text of a literal of each type, and nothing for a text that is no literal of the type or no one token.
 #[test]
 fn the_canonical_text_of_a_literal_follows_its_type() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let varchar = Type::Varchar(8);
     let cases: [(&str, Type, &str, Option<&str>); 53] = [
         ("i16-negative-zero", Type::I16, "-0", Some("0")),

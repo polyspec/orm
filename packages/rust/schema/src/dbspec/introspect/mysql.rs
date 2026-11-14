@@ -607,13 +607,12 @@ fn read_triggers(results: &Results, c: &mut Catalog) -> Result<(), String> {
 #[cfg(test)]
 mod show_create_tests {
     use super::shown_checks;
-    use std::time::Duration;
 
     /// Every case of tests/dbspec/show-create.json reads to its expected body, or to no body for a name the statement lacks (T62-4-8).
     // Requirements: DIA-84.
     #[test]
     fn every_show_create_case_reads_to_its_expected_body() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(Duration::from_secs(10)));
+        let _case = polyspec_orm_testcase::case!();
         let data: serde_json::Value =
             serde_json::from_str(include_str!("../../../../../../tests/dbspec/show-create.json")).expect("tests/dbspec/show-create.json is valid JSON");
         let cases = data["cases"].as_array().expect("cases is an array");

@@ -9,7 +9,7 @@ mod checked_value_tests {
     // Requirements: INT-141.
     #[test]
     fn invalid_or_lossy_values_report_decode_errors() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let bad_integers = [Val::Str("not-a-number".into()), Val::Str("9223372036854775808".into()), Val::F64(1.5), Val::F64(f64::NAN), Val::Null];
         for value in bad_integers {
             assert_eq!(value.as_i64().unwrap_err().kind(), crate::Kind::CodecDecode, "{value:?}");
@@ -52,7 +52,7 @@ mod checked_value_tests {
     /// 2^53 and a value under the least subnormal, which is 0; a value past the finite range is refused.
     #[test]
     fn decimal_texts_read_as_the_nearest_f64() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let least = format!("0.{}", {
             let mut digits = vec![0u8; 1074];
             digits[1073] = 1;
@@ -95,7 +95,7 @@ mod checked_value_tests {
 
     #[test]
     fn styled_text_decodes_as_a_json_string_value() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let mut text = Val::Str("decoded text".into());
         assert_eq!(text.take_json().unwrap(), Some(serde_json::json!("decoded text")));
         assert_eq!(text, Val::Null);
@@ -104,7 +104,7 @@ mod checked_value_tests {
     /// The checked values outside the shared cases: integers past 2^53 round, and other kinds are refused.
     #[test]
     fn aggregate_numbers_round_integers_and_refuse_other_kinds() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(Val::I64((1i64 << 53) + 1).as_aggregate_f64().unwrap().to_bits(), 0x4340_0000_0000_0000);
         assert_eq!(Val::F64(f64::INFINITY).as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode);
         assert_eq!(Val::Bool(true).as_aggregate_f64().unwrap_err().kind(), crate::Kind::CodecDecode);
@@ -153,7 +153,7 @@ mod aggregate_numeric {
             $(
                 #[test]
                 fn $id() {
-                    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+                    let _case = polyspec_orm_testcase::case!();
                     run(stringify!($id));
                 }
             )*

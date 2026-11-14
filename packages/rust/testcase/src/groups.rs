@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn filters_are_the_arguments_that_no_option_takes() {
-        let _case = crate::case!(crate::COMPUTE);
+        let _case = crate::case!();
         let (filters, rest) = split_filters(line(&["all", "a::", "--skip", "b", "--exact", "c::d", "--test-threads", "1", "--nocapture", "--skip=e"]));
         assert_eq!(filters, line(&["a::", "c::d"]));
         assert_eq!(rest, line(&["all", "--skip", "b", "--exact", "--test-threads", "1", "--nocapture", "--skip=e"]));
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn a_filter_with_a_group_builds_only_the_groups_it_can_select() {
-        let _case = crate::case!(crate::COMPUTE);
+        let _case = crate::case!();
         assert!(may_select("dsn_connection_mysql", "dsn_connection_mysql::", false));
         assert!(may_select("dsn_connection_mysql", "mysql::x", false));
         assert!(!may_select("dsn_connection_mysql", "postgres::x", false));
@@ -181,14 +181,14 @@ mod tests {
 
     #[test]
     fn a_recipe_group_runs_its_trials_in_order() {
-        let _case = crate::case!(crate::COMPUTE);
+        let _case = crate::case!();
         assert!(Group::recipe("aes_rotation_mysql", Vec::new).in_order);
         assert!(!Group::new("aes_keys", Vec::new).in_order);
     }
 
     #[test]
     fn a_name_matches_as_libtest_matches_it() {
-        let _case = crate::case!(crate::COMPUTE);
+        let _case = crate::case!();
         assert!(matches("a::b", "a::", false));
         assert!(matches("a::b", "a::b", true));
         assert!(!matches("a::b", "a::", true));

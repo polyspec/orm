@@ -886,7 +886,7 @@ mod tests {
 
     #[tokio::test]
     async fn transaction_probe_count_reads_sqlite_rows() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let scratch = Scratch::new("orm-probe-count");
         let db = Db::connect(&format!("sqlite://{}", scratch.join("probe.sqlite").display()), 1, crate::Config::default()).await.unwrap();
         let Pool::Sqlite(pool) = db.pool() else { panic!("the test database is SQLite") };
@@ -899,7 +899,7 @@ mod tests {
 
     #[test]
     fn scratch_is_removed_after_a_failed_assertion() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let path = std::sync::Mutex::new(None);
         let unwound = std::panic::catch_unwind(|| {
             let scratch = Scratch::new("orm-scratch-unwind");
@@ -929,7 +929,7 @@ mod tests {
     #[tokio::test]
     // Requirements: CORE-24, INT-43, INT-48.
     async fn a_deadlock_runs_the_callback_again() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let tmp = Scratch::new("orm-transaction-retry");
         let db = sqlite_db(&tmp, "retry.sqlite").await;
         let runs = &AtomicU32::new(0);
@@ -967,7 +967,7 @@ mod tests {
     #[tokio::test]
     // Requirements: CORE-30, CORE-31.
     async fn an_exhausted_pool_is_pool_timeout_and_a_closed_one_is_closed() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let tmp = Scratch::new("orm-pool-timeout");
         let config = crate::Config { pool_acquire_timeout_ms: 200, ..crate::Config::default() };
         let db = Db::connect(&format!("sqlite://{}", tmp.join("pool.sqlite").display()), 1, config).await.expect("connect");
@@ -992,7 +992,7 @@ mod tests {
     // The wait before attempt n is 50 << (n - 1) milliseconds and the jitter (CORE-24).
     #[test]
     fn the_retry_wait_doubles() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(retry_wait(1, 0), std::time::Duration::from_millis(50));
         assert_eq!(retry_wait(2, 19), std::time::Duration::from_millis(119));
         assert_eq!(retry_wait(3, 0), std::time::Duration::from_millis(200));
@@ -1002,7 +1002,7 @@ mod tests {
     #[tokio::test]
     // Requirements: CORE-26.
     async fn a_panicking_callback_is_internal() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let tmp = Scratch::new("orm-transaction-panic");
         let db = sqlite_db(&tmp, "panic.sqlite").await;
         execute(&db, "CREATE TABLE orm_panic_probe (id INTEGER PRIMARY KEY)").await;
@@ -1034,7 +1034,7 @@ mod tests {
     #[tokio::test]
     // Requirements: CORE-21, INT-46.
     async fn a_failed_savepoint_reverts_only_its_work() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let tmp = Scratch::new("orm-savepoint");
         let db = sqlite_db(&tmp, "savepoint.sqlite").await;
         execute(&db, "CREATE TABLE orm_savepoint_probe (id INTEGER PRIMARY KEY)").await;
@@ -1134,7 +1134,7 @@ mod tests {
     #[tokio::test]
     // Requirements: INT-72.
     async fn sqlite_transaction_end_failures_are_reported() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let _denial = SQLITE_DENIAL.lock().await;
         let tmp = Scratch::new("orm-transaction-end");
         let db = Db::connect(&format!("sqlite://{}", tmp.join("end.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
@@ -1178,7 +1178,7 @@ mod tests {
     #[tokio::test]
     // Requirements: DIA-181, PLN-17.
     async fn savepoint_end_failures_are_reported() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let _denial = SQLITE_DENIAL.lock().await;
         let tmp = Scratch::new("orm-savepoint-end");
         let db = Db::connect(&format!("sqlite://{}", tmp.join("savepoint.sqlite").display()), 1, crate::Config::default()).await.expect("connect");

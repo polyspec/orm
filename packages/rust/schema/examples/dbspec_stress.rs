@@ -22,8 +22,7 @@ const RUN_DEADLINE: Duration = Duration::from_secs(10);
 
 fn main() -> ExitCode {
     let run = CaseClock::start();
-    // The wall-clock deadline of a stress case is ten times the CPU limit RUN_DEADLINE (timing-check).
-    let mut case = polyspec_orm_testcase::start("dbspec stress", polyspec_orm_testcase::wall_for_cpu(RUN_DEADLINE));
+    let mut case = polyspec_orm_testcase::start("dbspec stress");
     let Some(path) = std::env::args().nth(1) else {
         case.fail("missing document path argument");
         return ExitCode::FAILURE;

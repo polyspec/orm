@@ -4,7 +4,7 @@ use crate::{catalog::TableKind, tool_db::QueryColumn};
 // Requirements: INT-121. What no server can answer: a statement names its columns in the select list, and a server answers
 // with those names.
 fn page_assembly_refuses_prepared_columns_that_differ_from_the_descriptor() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let clock = polyspec_orm_case_clock::CaseClock::start();
     let metadata = TableMetadata {
         table: TableRef { namespace: "main".into(), name: "fixture".into() },

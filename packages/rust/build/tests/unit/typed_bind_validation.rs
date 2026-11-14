@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn decimal_parse_preserves_native_cause_message() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let error = decimal("private-decimal").expect_err("invalid decimal must fail").to_string();
     assert!(error.contains("tool_bind_invalid: unsupported or invalid native bind: "), "{error}");
     assert!(!error.contains("private-decimal"), "{error}");
@@ -10,7 +10,7 @@ fn decimal_parse_preserves_native_cause_message() {
 
 #[test]
 fn temporal_parse_preserves_native_cause_message() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for error in [date("private-date").unwrap_err(), time("private-time").unwrap_err(), datetime("private-datetime").unwrap_err()] {
         let message = error.to_string();
         assert!(message.contains("tool_bind_invalid: unsupported or invalid native bind: "), "{message}");
@@ -21,8 +21,8 @@ fn temporal_parse_preserves_native_cause_message() {
 #[tokio::test]
 // Requirements: INT-122.
 async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+    let _case = polyspec_orm_testcase::case!();
+    async {
         for dialect in ["mysql", "postgres", "sqlite"] {
             assert!(validate(&vec![P::Null(ParamType::Text); 65535], dialect).is_ok());
             assert!(validate(&vec![P::Null(ParamType::Text); 65536], dialect).unwrap_err().to_string().contains("tool_bind_limit"));
@@ -42,14 +42,13 @@ async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
         assert!(validate(&[P::Float32(f32::NAN.to_bits()), P::Float64(f64::NEG_INFINITY.to_bits())], "postgres").is_ok());
         assert!(validate(&[P::Null(ParamType::Unsigned)], "postgres").is_err());
         assert!(validate(&[P::Null(ParamType::Decimal)], "sqlite").is_err());
-    })
-    .await
-    .expect("typed bind validation deadline");
+    }
+    .await;
 }
 
 #[test]
 fn parameter_kind_is_shared_by_validation_and_postgres_type_selection() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let values = [
         (P::S("text".into()), ParamType::Text),
         (P::I(1), ParamType::Integer),
@@ -77,7 +76,7 @@ fn parameter_kind_is_shared_by_validation_and_postgres_type_selection() {
 
 #[test]
 fn mysql_and_postgres_share_typed_binding_with_unsigned_policy() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     use sqlx::{Arguments, Execute};
 
     let values = [P::S("value".into()), P::I(7), P::Unsigned(9), P::Null(ParamType::Unsigned)];

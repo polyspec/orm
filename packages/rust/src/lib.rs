@@ -346,7 +346,7 @@ mod sqlite_code_tests {
     // Requirements: PLN-24.
     #[test]
     fn sqlite_locked_is_driver_not_deadlock() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(sqlite_extended_code(6, "database table is locked"), Kind::Driver);
         assert_eq!(sqlite_extended_code(262, "database table is locked"), Kind::Driver);
     }
@@ -356,7 +356,7 @@ mod sqlite_code_tests {
     // checks the generator against its table; the recipe case sqlite_extended_code_names tests the messages.
     #[test]
     fn result_code_names_match_the_table() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let manifest = std::env::var("CARGO_MANIFEST_DIR").expect("cargo test sets CARGO_MANIFEST_DIR");
         let yaml = std::fs::read_to_string(format!("{manifest}/../../docs/spec/sqlite-result-codes.yaml")).expect("docs/spec/sqlite-result-codes.yaml");
         let mut listed = std::collections::HashMap::new();
