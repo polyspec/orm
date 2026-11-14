@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/legacy/packages/go/orm"
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
@@ -33,8 +32,10 @@ func TestBackendWaitingForLockReportsPostgresWaiter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	waiterDB := connectSchemaDB(t, dsn, s)
-	defer testcase.Close(t, waiterDB)
+	// The child is a session of the test that reports its lock waits (reportLockWaits, T475): the server sends it the LOG
+	// message "still waiting for" while its update waits for the row that the parent holds, and only then the parent reads
+	// BackendWaitingForLock once.
+	child, childWaits := reportLockWaits(t, dsn)
 	childDone := make(chan error, 1)
 	childStarted := false
 	var waiting bool
@@ -45,26 +46,19 @@ func TestBackendWaitingForLockReportsPostgresWaiter(t *testing.T) {
 		if err := parent.Update(nil); err != nil {
 			return err
 		}
-		monitor := openNative(t, "postgres", dsn)
-		defer testcase.Close(t, monitor)
-		before, err := waiters(monitor, "postgres")
-		if err != nil {
-			return err
-		}
 		go func() {
-			child := orm.NewCore(ent)
-			child.Set("seq", seq)
-			child.Set("label", "child")
-			child.Connect(waiterDB)
-			childDone <- child.Update(nil)
+			_, err := child.Exec(context.Background(), `UPDATE clock_event SET label = 'child' WHERE seq = $1`, seq)
+			childDone <- err
 		}()
 		childStarted = true
-		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-		defer cancel()
-		if err := awaitLockWait(ctx, monitor, "postgres", before); err != nil {
-			return fmt.Errorf("the child update did not wait on the held row: %w", err)
+		select {
+		case <-childWaits:
+		case err := <-childDone:
+			childStarted = false
+			return fmt.Errorf("the child update ended before it waited on the held row: %v", err)
 		}
-		waiting, err = db.Utils().BackendWaitingForLock(ctx)
+		var err error
+		waiting, err = db.Utils().BackendWaitingForLock(t.Context())
 		if err != nil {
 			return err
 		}

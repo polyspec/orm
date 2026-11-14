@@ -2458,7 +2458,8 @@
           "inputs": [
             "legacy/packages/go/orm/cancel_test.go",
             "legacy/packages/go/orm/cancel_waiter_internal_test.go",
-            "legacy/packages/go/orm/goexit_test.go"
+            "legacy/packages/go/orm/goexit_test.go",
+            "legacy/packages/go/orm/lock_wait_test.go"
           ]
         },
         {
