@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 1f2287e2c2ea8ac7825e5f049e40e343cfbea2fc3de4c742f9b991c0acd01a0e -->
+<!-- source-sha256: 278b36985d6d66fbe1aa771c14cbd8459cea903533f05108c0ce2befb91048c0 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -385,6 +385,19 @@ case가 없다(CORE-72).
   매개변수를 거부하므로, 옵션을 정하지 않는 호출자는 빈 record를 넘긴다.
 - **CORE-105** `Db::close`의 상태 기계는 `Io` 단계 하나, 곧 CORE-31의 pool 닫기를 내고 `Done(Ok(()))`로 끝난다. 언어 코드를
   호출하지 않으므로 `Call`도 `Await`도 내지 않고, 그 `settle`은 호출되지 않는다.
+
+- **CORE-127** binding member `db.execute`는 database handle, compiled-step text, parameter 값을 소유하는 machine인
+  `Db::execute_text_machine(self, step: String, params: Vec<OrmValue>)`를 사용한다. 첫 advance는 기존 `execute_text`
+  로직을 호출하는 `Io` future 하나를 준다. parse, step 검증, scalar 변환 순서(FMS-42)를 보존한다. 다음 advance는
+  그 결과를 바꾸지 않은 `Done(Result<(), Error>)`를 준다. `Call`이나 `Await`를 주지 않으며 생성이나 advance에서
+  I/O를 하지 않는다. contract의 receiver는 `&self`로 유지한다. binding은 handle을 clone하고 호출자는 자기 instance를
+  유지한다. native Rust `execute_text(&self, &str, Vec<OrmValue>)`는 native future API로 남는다. `Io`를 주기 전에
+  machine을 drop하거나 poll하지 않은 소유 future를 drop하면 statement를 보내지 않는다. 반환한 `Io`는 machine과
+  독립적으로 입력을 소유하고 machine을 drop한 뒤에도 완료할 수 있다. driver는 그 future도 drop하여 취소한다.
+  취소는 이미 실행한 statement를 되돌릴 수 없다.
+
+CORE-127은 구현되지 않았다. `db.execute`는 아직 `machine: true` 없이 빌린 future `Db::execute_text`를 가리킨다.
+이 member의 native machine 검증과 생성된 binding runtime 검증은 끝나지 않았다.
 
 ## 인터페이스 계약
 

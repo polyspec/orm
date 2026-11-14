@@ -1325,6 +1325,10 @@
         {
           "glob": "packages/rust/tests/unit/machine.rs",
           "reason": "test: directly drives the Rust Machine artifact through Io, Call, Await and Done, retained Rust borrows and cancellation of its driver; a language recipe cannot pause or drop these Rust machine states or construct their Passthrough and Raised handles (CORE-7, CORE-100 to CORE-105)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/execute_machine.rs",
+          "reason": "test: the Rust Machine artifact of compiled-step execution owns its Db, String and OrmValue parameters and exposes Io and Done states; a language recipe cannot inspect its constructor, pause its native driver or retain its Rust future (CORE-127, FCV-2)"
         }
       ]
     }

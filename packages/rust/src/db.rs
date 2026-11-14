@@ -718,6 +718,10 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, acqu
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/execute_machine.rs"]
+mod execute_machine_tests;
+
+#[cfg(test)]
 #[path = "db/sqlite_version_tests.rs"]
 mod sqlite_version_tests;
 

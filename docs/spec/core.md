@@ -460,6 +460,19 @@ has no case of the three members because each needs a database (CORE-72).
 - **CORE-105** The machine of `Db::close` gives one `Io` step, the close of the pool of CORE-31, and ends with
   `Done(Ok(()))`; it calls no language code, so it gives neither `Call` nor `Await`, and its `settle` is never called.
 
+- **CORE-127** The binding member `db.execute` uses `Db::execute_text_machine(self, step: String, params: Vec<OrmValue>)`,
+  a machine that owns the database handle, compiled-step text and parameter values. Its first advance gives one `Io`
+  future that calls the existing `execute_text` logic, preserving its parse, step-validation and scalar-conversion order
+  (FMS-42); its next advance gives `Done(Result<(), Error>)` with that result unchanged. It gives no `Call` or `Await`
+  and performs no I/O in construction or advancement. The contract keeps receiver `&self`: the binding clones the
+  handle, and the caller retains its instance. Native Rust `execute_text(&self, &str, Vec<OrmValue>)` remains the native
+  future API. Dropping the machine before it gives `Io`, or dropping the unpolled owned future, sends no statement.
+  A returned `Io` owns its inputs independently of the machine and can complete after the machine is dropped; the
+  driver cancels it by dropping that future too. Cancellation cannot undo an already executed statement.
+
+CORE-127 is not implemented: `db.execute` still names the borrowed future `Db::execute_text` without `machine: true`.
+Native machine verification and generated binding runtime verification of this member are incomplete.
+
 ## Interface contract
 
 - **CORE-70** The interface contract of the core is `packages/rust/interface.json`. It declares a unit or a member only

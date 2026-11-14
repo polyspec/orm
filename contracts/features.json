@@ -4901,7 +4901,8 @@
         "legacy/packages/go/engine/planner/scalar_subquery_type_test.go",
         "legacy/packages/go/orm/values_test.go",
         "legacy/packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-        "packages/rust/schema/src/dbspec/mod.rs"
+        "packages/rust/schema/src/dbspec/mod.rs",
+        "packages/rust/tests/unit/execute_machine.rs"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -5023,6 +5024,15 @@
           "shard": "other",
           "inputs": [
             "legacy/packages/ts/tests/plan-cache-in.mjs"
+          ]
+        },
+        {
+          "id": "execute-machine-rust",
+          "command": "make test-rust CASES=machine",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/tests/unit/execute_machine.rs",
+            "packages/rust/interface.json"
           ]
         }
       ],
