@@ -118,6 +118,18 @@ mod codec_stage_name_tests {
     const DOCUMENT: &str = "dbspec 1 shop\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n  settings {\n    codec doc ordered_json\n    codec packed ordered_json gz\n  }\n}\n";
     const RELEASED_MANIFEST_HASH: &str = "sha256:f64f18fe22793c6d6cf6f92391d462869606a29d4efdd11752a629b82ba62094";
     const RELEASED_SCHEMA_HASH: &str = "sha256:3611b322d2794d3c6a0cd0b783fa806ad9b3fa4261c3e1e0cdc441b863780bf1";
+    // The same document with the stage json, which the core and the language implementations write as written (DBS-185).
+    const JSON_DOCUMENT: &str = "dbspec 1 shop\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n  settings {\n    codec doc json\n    codec packed json gz\n  }\n}\n";
+    const JSON_MANIFEST_HASH: &str = "sha256:3b570f768034b5be7e0b79b683284af950b3231d144bd2d4dfe3b94ef31022ea";
+
+    #[test]
+    fn json_keeps_its_name_in_the_canonical_text_and_the_manifest() {
+        let _case = polyspec_orm_testcase::case!();
+        let none = BTreeMap::new();
+        assert_eq!(super::format(JSON_DOCUMENT, &none).map_err(|errors| format!("{errors:?}")), Ok(JSON_DOCUMENT.to_owned()));
+        let manifest = super::parse(JSON_DOCUMENT, &none).map_err(|errors| format!("{errors:?}")).and_then(|parsed| super::manifest(&[&parsed.document]).map_err(|errors| format!("{errors:?}")));
+        assert_eq!(manifest.as_ref().map(|m| (m.manifest_text.as_str(), m.manifest_hash.as_str(), m.schema_hash.as_str())), Ok((JSON_DOCUMENT, JSON_MANIFEST_HASH, RELEASED_SCHEMA_HASH)));
+    }
 
     #[test]
     fn ordered_json_keeps_its_name_in_the_canonical_text_and_the_manifest() {

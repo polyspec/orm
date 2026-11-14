@@ -10055,7 +10055,7 @@
     {
       "id": "codec-stage-ordered-json-keeps-its-name",
       "requirements": [
-        "DBS-184"
+        "DBS-185"
       ],
       "steps": [
         {
@@ -10103,6 +10103,22 @@
               "manifest": {
                 "manifest_hash": "sha256:f64f18fe22793c6d6cf6f92391d462869606a29d4efdd11752a629b82ba62094",
                 "manifest_text": "dbspec 1 shop\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n  settings {\n    codec doc ordered_json\n    codec packed ordered_json gz\n  }\n}\n",
+                "schema_hash": "sha256:3611b322d2794d3c6a0cd0b783fa806ad9b3fa4261c3e1e0cdc441b863780bf1",
+                "schema_text": "dbspec 1 schema\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n}\n"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.set",
+          "owned": [
+            "dbspec 1 shop\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n  settings {\n    codec doc json\n    codec packed json gz\n  }\n}\n"
+          ],
+          "expect": {
+            "none": {
+              "manifest": {
+                "manifest_hash": "sha256:3b570f768034b5be7e0b79b683284af950b3231d144bd2d4dfe3b94ef31022ea",
+                "manifest_text": "dbspec 1 shop\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n  settings {\n    codec doc json\n    codec packed json gz\n  }\n}\n",
                 "schema_hash": "sha256:3611b322d2794d3c6a0cd0b783fa806ad9b3fa4261c3e1e0cdc441b863780bf1",
                 "schema_text": "dbspec 1 schema\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n}\n"
               }
