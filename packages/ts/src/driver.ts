@@ -88,9 +88,10 @@ export interface DriverPool extends DriverConnection {
   /**
    * Takes one connection. It is used by a transaction, and by statements that must run on one connection outside a transaction (MySQL
    * schema statements and the catalog they read, and the SQLite statement that turns off foreign keys). shared says that the
-   * connection runs a read-only transaction, which takes no write lock, so that the SQLite pool holds such connections at once.
+   * connection runs a read-only transaction, which takes no write lock, so that the SQLite pool holds such connections at once. An
+   * aborted signal ends the wait for the connection with CANCELED.
    */
-  reserve(shared?: boolean): Promise<DriverSession>;
+  reserve(shared?: boolean, signal?: AbortSignal): Promise<DriverSession>;
   /** Opens a LISTEN connection of its own, outside the pool (DIA-194); only PostgreSQL has one. */
   openListener?(): Promise<PostgresListener>;
   stats(): PoolStats;
@@ -99,8 +100,11 @@ export interface DriverPool extends DriverConnection {
 
 /** One held connection. It is returned with release when finished. */
 export interface DriverSession extends DriverConnection {
-  /** Runs a statement that is not prepared (transaction control, savepoints, locks, session values, schema statements). */
-  control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult>;
+  /**
+   * Runs a statement that is not prepared (transaction control, savepoints, locks, session values, schema statements). An aborted signal
+   * cancels it as execute does and raises CANCELED; the end of a transaction sends its statements with none.
+   */
+  control(sql: string, params: readonly DriverValue[], done: StatementDone, signal?: AbortSignal): Promise<DriverResult>;
   /** Streams the rows of one statement into sink, which may stop it early (see RowSink). */
   scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void>;
   /** Whether the SQLite connection is inside a transaction. Other drivers do not report it. */
@@ -292,6 +296,29 @@ export function driverError(name: DriverName, error: unknown, server: MySqlServe
 /** The error of a statement the caller cancelled. */
 function canceled(name: DriverName): OrmError {
   return new OrmError(codes.CANCELED, `${name}: the statement was cancelled`);
+}
+
+/**
+ * Waits for the connection that taking takes, unless signal aborts first: then it raises CANCELED, and the connection that taking still
+ * takes is given back with release.
+ */
+async function heldUntilAbort<T>(name: DriverName, taking: Promise<T>, signal: AbortSignal | undefined, release: (held: T) => void): Promise<T> {
+  if (signal === undefined) return taking;
+  if (signal.aborted) {
+    taking.then(release, () => undefined);
+    throw canceled(name);
+  }
+  let abort = (): void => undefined;
+  const aborted = new Promise<never>((_, reject) => { abort = () => { reject(canceled(name)); }; });
+  signal.addEventListener('abort', abort, { once: true });
+  try {
+    return await Promise.race([taking, aborted]);
+  } catch (error) {
+    if (signal.aborted) taking.then(release, () => undefined);
+    throw error;
+  } finally {
+    signal.removeEventListener('abort', abort);
+  }
 }
 
 /**
@@ -532,10 +559,11 @@ class MySqlPoolDriver implements DriverPool {
       connection.release();
     }
   }
-  public async reserve(): Promise<DriverSession> {
+  public async reserve(_shared = false, signal?: AbortSignal): Promise<DriverSession> {
     let connection: MySqlConnection;
     // The session takes the server that the setup read, so the reserve waits for the setup of its connection (DIA-201, DIA-208).
-    try { connection = await this.checked(this.pool.getConnection().then(async held => setUp(this.setup, held))); } catch (error) { throw driverError(this.name, error, this.setup.server); }
+    const taking = this.pool.getConnection().then(async held => setUp(this.setup, held));
+    try { connection = await this.checked(heldUntilAbort(this.name, taking, signal, held => held.release())); } catch (error) { throw error instanceof OrmError && error.code === codes.CANCELED ? error : driverError(this.name, error, this.setup.server); }
     return new MySqlSession(connection, this.pool, this.setup.server);
   }
   public stats(): PoolStats {
@@ -554,8 +582,9 @@ class MySqlSession implements DriverSession {
     const work = observed(this.name, sql, done, 'statement', () => mysqlExecute(this.connection, sql, params), this.server, nowait);
     return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection, done, this.server), work);
   }
-  public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
-    return observed(this.name, sql, done, 'statement', () => mysqlControl(this.connection, sql, params), this.server);
+  public control(sql: string, params: readonly DriverValue[], done: StatementDone, signal?: AbortSignal): Promise<DriverResult> {
+    const work = observed(this.name, sql, done, 'statement', () => mysqlControl(this.connection, sql, params), this.server);
+    return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection, done, this.server), work);
   }
   public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
     return observed(this.name, sql, done, 'statement', () => mysqlScan(this.connection, sql, params, sink), this.server);
@@ -744,9 +773,9 @@ class PostgresPoolDriver implements DriverPool {
       return await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, client), work));
     } finally { this.release(client, discard); }
   }
-  public async reserve(): Promise<DriverSession> {
+  public async reserve(_shared = false, signal?: AbortSignal): Promise<DriverSession> {
     let client: pg.PoolClient;
-    try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
+    try { client = await heldUntilAbort(this.name, this.pool.connect(), signal, held => this.release(held)); } catch (error) { throw error instanceof OrmError && error.code === codes.CANCELED ? error : driverError(this.name, error); }
     return new PostgresSession(client, this.cacheSize, this.config, failed => this.release(client, failed));
   }
   public async openListener(): Promise<PostgresListener> {
@@ -784,14 +813,15 @@ class PostgresSession implements DriverSession {
   public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
     return observed(this.name, sql, done, 'statement', () => pgScan(this.client, sql, params, sink));
   }
-  public async control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
+  public async control(sql: string, params: readonly DriverValue[], done: StatementDone, signal?: AbortSignal): Promise<DriverResult> {
     // The server forgets its named statements here, and a client from the pool may list some of an earlier session: it forgets them
     // too, or the next use of a text it remembers would name a statement that the server has released.
     if (sql === 'DEALLOCATE ALL') {
       statementCaches.delete(this.client);
       privateMember<{ parsedStatements: Record<string, string> }>(this.client, 'connection').parsedStatements = {};
     }
-    const result = await observed(this.name, sql, done, 'statement', () => afterFailure(this.client.query({ text: sql, values: [...params], rowMode: 'array' }), () => this.failure));
+    const work = observed(this.name, sql, done, 'statement', () => afterFailure(this.client.query({ text: sql, values: [...params], rowMode: 'array' }), () => this.failure));
+    const result = await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work));
     return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null, columns: result.fields.map(pgColumn) };
   }
 }
@@ -927,8 +957,8 @@ class SqlitePoolDriver implements DriverPool {
     }
   }
   /** Takes a connection of the pool for a session once no statement runs and the sessions held admit it (see the class). */
-  public async reserve(shared = false): Promise<DriverSession> {
-    await this.until(() => this.running === 0 && !this.writer && (shared || this.readers === 0));
+  public async reserve(shared = false, signal?: AbortSignal): Promise<DriverSession> {
+    await this.until(() => this.running === 0 && !this.writer && (shared || this.readers === 0), signal);
     const end = (): void => {
       if (shared) this.readers--;
       else this.writer = false;
@@ -938,7 +968,7 @@ class SqlitePoolDriver implements DriverPool {
     else this.writer = true;
     let connection: SqliteConnection;
     try {
-      connection = await this.pool.acquire(undefined);
+      connection = await this.pool.acquire(signal);
     } catch (error) {
       end();
       throw error;
@@ -997,7 +1027,9 @@ class SqliteSession implements DriverSession {
     if (signal?.aborted) throw canceled(this.name);
     return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.connection.state, sql, params));
   }
-  public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
+  public async control(sql: string, params: readonly DriverValue[], done: StatementDone, signal?: AbortSignal): Promise<DriverResult> {
+    // node:sqlite runs a statement to its end without yielding, so the signal is read before the statement starts, as execute does.
+    if (signal?.aborted) throw canceled(this.name);
     return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.connection.state, sql, params));
   }
   public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {

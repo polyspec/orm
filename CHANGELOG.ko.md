@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 889af3bcba6af894638b8779aad32bd40be501982a5132d4085dccadbf2cfc7c -->
+<!-- source-sha256: 5e36aed178a0bcae8c60bf200268f124fffc18491a597186f21a7942d57a261d -->
 # 변경 이력
 
 ## Unreleased
+
+- TypeScript에서 `withSignal` handle의 `utils().run` statement는 model statement처럼 그 signal로 취소된다. 연결을 기다리는 transaction은 abort되면 연결을 계속 기다리지 않고 `CANCELED`로 끝난다(T444, INT-150, CFG-9).
 
 - `make interface-check`는 시험 전에 TypeScript client를 build한다. hung-extractor case는 extractor를 시작하기 전에 끝난 checker의 출력과 함께 곧바로 실패하고, 5분 deadline까지 기다리지 않는다(T443).
 
