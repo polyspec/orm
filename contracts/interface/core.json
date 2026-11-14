@@ -3175,6 +3175,29 @@
         "category": "value",
         "message": "schema_invalid: note: AES column requires the aes_version setting"
       }
+    },
+    {
+      "id": "a_column_that_the_plan_does_not_project_is_internal",
+      "rule": "CORE-121",
+      "receiver": {
+        "new": "runtime_model.load",
+        "args": {
+          "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
+        }
+      },
+      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "dialect": "sqlite",
+      "faults": [
+        {
+          "point": "orm.internal",
+          "kind": "broken"
+        }
+      ],
+      "raises": {
+        "kind": "internal",
+        "category": "internal",
+        "message": "internal: planner: column seq is not projected in note"
+      }
     }
   ],
   "runtime_model.operator_allowed": [

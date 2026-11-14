@@ -440,6 +440,20 @@
     "binding": [],
     "wrapped": []
   },
+  "faults": [
+    {
+      "id": "internal",
+      "core": "polyspec_orm::fault::INTERNAL",
+      "inject": [
+        "broken"
+      ],
+      "fills": [
+        "internal"
+      ],
+      "reason": "CORE-121",
+      "place": "polyspec_orm::Manifest::compile"
+    }
+  ],
   "units": [
     {
       "id": "orm",

@@ -5,6 +5,9 @@
 // given as {kind, value} (binding GN-13) and enters through from_host, as it enters from a language.
 
 use std::collections::BTreeMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Raised};
 use serde_json::{Map, Value};
@@ -440,6 +443,23 @@ async fn instance(value: &Value, what: &str) -> Instance {
     out
 }
 
+/// The call of a member under the arming of its case: the arming is installed on the thread around each poll of the
+/// call, as the generated entry point of a member installs it (binding G-5, GN-8a), so a point that the call reaches
+/// after an await reads it too.
+struct Faulted<F> {
+    armed: binding_core::fault::Armed,
+    call: Pin<Box<F>>,
+}
+
+impl<F: Future> Future for Faulted<F> {
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<F::Output> {
+        let this = self.get_mut();
+        this.armed.run(|| this.call.as_mut().poll(context))
+    }
+}
+
 /// The keys of a case that are no parameter of its member (binding G-5).
 const RESERVED: [&str; 8] = ["id", "note", "rule", "raises", "result", "receiver", "after", "faults"];
 
@@ -456,7 +476,21 @@ async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
         Some(value) => Some(instance(value, &what).await),
         None => None,
     };
-    let outcome = call(member, receiver.as_mut(), &args).await;
+    let outcome = match fields.get("faults") {
+        Some(faults) => {
+            // The faults of a case are armed for the call of its member alone, as a generated binding test arms them
+            // (binding G-5, X-1, CORE-121): the receiver is made before the arming, and a fault that did not fire fails.
+            let id = binding_core::fault::arm(member, &faults.to_string()).or_panic(|error| format!("{what}: {error}"));
+            let armed = binding_core::fault::take(member);
+            let outcome = Faulted { armed, call: Box::pin(call(member, receiver.as_mut(), &args)) }.await;
+            let left = binding_core::fault::left(id).or_panic(|error| format!("{what}: {error}"));
+            if !left.is_empty() {
+                failures.push(format!("{what}: the faults of {} did not fire", left.join(", ")));
+            }
+            outcome
+        }
+        None => call(member, receiver.as_mut(), &args).await,
+    };
     let mut result = None;
     match (outcome, fields.get("raises")) {
         (Err(error), Some(raises)) => {

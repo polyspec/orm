@@ -17,6 +17,9 @@ categories = ["database"]
 # The test entry point is polyspec_orm::testing. The build has it only when this feature is enabled,
 # and no default feature enables it.
 test-faults = []
+# The fault injection points of `polyspec_orm::fault`, which `faults` of the interface contract names (binding G-5, X-1;
+# CORE-121): the feature compiles their arming, and a generated binding crate turns it on for its tests alone.
+fault-test = ["polyspec-binding-core/fault-test"]
 
 [dependencies]
 # The boundary types that the generated bindings and this core share: the failure of a function that calls back
@@ -54,9 +57,10 @@ serde-saphyr = { version = "2.0.0", default-features = false, features = ["seria
 [dev-dependencies]
 # The tests make the wait tokens and raised exceptions that only generated code makes (binding design I-2 (4), U-3).
 polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", branch = "v1/rust-core", features = ["construct"] }
-# The fault entry point exists only with the feature test-faults. The integration tests of this crate
-# enable it through their own crate, so a test target runs with the feature and the normal build does not.
-polyspec-orm = { path = ".", features = ["test-faults"] }
+# The fault entry point exists only with the feature test-faults, and the fault injection points fire only with the
+# feature fault-test. The tests of this crate enable both through their own crate, so a test target, a plain cargo test
+# included, runs with them and the normal build does not (binding CK-65).
+polyspec-orm = { path = ".", features = ["test-faults", "fault-test"] }
 # The test case reports its start, result, elapsed time, and its own deadline.
 polyspec-orm-testcase = { path = "testcase" }
 # Used by the test that rejects the end-of-transaction statement with the SQLite authorizer. It is the same version as sqlx-sqlite.
