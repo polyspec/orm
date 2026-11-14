@@ -127,21 +127,33 @@ mod codec_stage_name_tests {
         let _case = polyspec_orm_testcase::case!();
         let none = BTreeMap::new();
         assert_eq!(super::format(JSON_DOCUMENT, &none).map_err(|errors| format!("{errors:?}")), Ok(JSON_DOCUMENT.to_owned()));
-        let manifest = super::parse(JSON_DOCUMENT, &none).map_err(|errors| format!("{errors:?}")).and_then(|parsed| super::manifest(&[&parsed.document]).map_err(|errors| format!("{errors:?}")));
-        assert_eq!(manifest.as_ref().map(|m| (m.manifest_text.as_str(), m.manifest_hash.as_str(), m.schema_hash.as_str())), Ok((JSON_DOCUMENT, JSON_MANIFEST_HASH, RELEASED_SCHEMA_HASH)));
+        let manifest = super::parse(JSON_DOCUMENT, &none)
+            .map_err(|errors| format!("{errors:?}"))
+            .and_then(|parsed| super::manifest(&[&parsed.document]).map_err(|errors| format!("{errors:?}")));
+        assert_eq!(
+            manifest.as_ref().map(|m| (m.manifest_text.as_str(), m.manifest_hash.as_str(), m.schema_hash.as_str())),
+            Ok((JSON_DOCUMENT, JSON_MANIFEST_HASH, RELEASED_SCHEMA_HASH))
+        );
     }
 
     #[test]
     fn ordered_json_keeps_its_name_in_the_canonical_text_and_the_manifest() {
         let _case = polyspec_orm_testcase::case!();
         let none = BTreeMap::new();
-        assert_eq!(super::format(DOCUMENT, &none).map_err(|errors| format!("{errors:?}")), Ok(DOCUMENT.to_owned()), "the canonical text is not that of the release");
+        assert_eq!(
+            super::format(DOCUMENT, &none).map_err(|errors| format!("{errors:?}")),
+            Ok(DOCUMENT.to_owned()),
+            "the canonical text is not that of the release"
+        );
         let document = super::parse(DOCUMENT, &none).map(|parsed| parsed.document).map_err(|errors| format!("{errors:?}"));
         let document = document.as_ref().map_err(String::as_str);
         assert!(document.is_ok(), "{document:?}");
         let Ok(document) = document else { return };
         let manifest = super::manifest(&[document]).map_err(|errors| format!("{errors:?}"));
-        assert_eq!(manifest.as_ref().map(|m| (m.manifest_text.as_str(), m.manifest_hash.as_str(), m.schema_hash.as_str())), Ok((DOCUMENT, RELEASED_MANIFEST_HASH, RELEASED_SCHEMA_HASH)));
+        assert_eq!(
+            manifest.as_ref().map(|m| (m.manifest_text.as_str(), m.manifest_hash.as_str(), m.schema_hash.as_str())),
+            Ok((DOCUMENT, RELEASED_MANIFEST_HASH, RELEASED_SCHEMA_HASH))
+        );
         // The stage means json, in the runtime model of the document and in that of its manifest text.
         let codecs = |model: &super::RuntimeModel| {
             let entity = model.entity("t");

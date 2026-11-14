@@ -159,7 +159,9 @@ fn entity(table: &Table) -> Entity {
                 .iter()
                 .find_map(|s| match s {
                     // A field holds the stage that each name means (CORE-122).
-                    Setting::Codec(col, stages) if col.text == name => Some(stages.iter().map(|n| super::parser::codec_stage_meaning(&n.text).to_owned()).collect()),
+                    Setting::Codec(col, stages) if col.text == name => {
+                        Some(stages.iter().map(|n| super::parser::codec_stage_meaning(&n.text).to_owned()).collect())
+                    }
                     _ => None,
                 })
                 .unwrap_or_default();

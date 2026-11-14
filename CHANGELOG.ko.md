@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: be6413a6e180c0813e13e5f95d946eedfe8298737eab825537147bc8f709923f -->
+<!-- source-sha256: 707a359dccd42cad7991279163977c4bf2f7ab40fd97840fdfaffe270ed90ab1 -->
 # 변경 이력
 
 ## Unreleased
 
+- `polyspec-orm-schema`의 Rust source는 rustfmt의 형식이다(T490). 입력: `make rust-fmt-check`. 이전 동작: 검사가 `packages/rust/schema/src/dbspec/mod.rs`의 세 곳과 `runtime.rs`의 한 곳을 보고하고 실패했다. 기대 동작: 두 파일이 형식을 갖추고 검사가 통과한다.
 - `@polyspec/dbspec-language`의 시험은 legacy TypeScript runtime과 그 vector를 읽는다(T489). 입력: `make dbspec-language-check`의 시험. 이전 동작: `module-graph.test.mjs`가 `legacy/packages/ts`로 옮겨진 parser entry `packages/ts/dist/dbspec/entry.js`를 적어서 case 둘이 실패했고, vector 시험은 Rust core의 vector인 `tests/dbspec`을 읽었다. 그 case `rule-diagnostics-codec-storage-and-order`는 service가 parse에 쓰는 TypeScript runtime이 `ordered_json is the first codec stage`를 보고하는 곳에서 `json is the first codec stage`를 기대한다. 기대 동작: 시험은 `legacy/packages/ts/dist/dbspec/entry.js`를 적고 `legacy/tests/dbspec`을 읽으며, 시험 950개가 통과한다.
 - 릴리스는 각 platform에서 binding의 PHP 확장을 `config/toolchain.json`의 `phpExtension.minors`에 있는 minor인 PHP 8.4와 PHP 8.5용으로 build한다(T488, binding GN-19d). 입력: `make repo-check/run`. 이전 동작: `.github/workflows/assets.yml`의 job `platform`이 `.php-version`의 PHP인 8.4용으로만 확장을 build해서, 요구 `php >=8.4`가 허용하는 PHP 8.5에는 load할 확장이 없었다. 확장은 자기를 build한 header의 PHP minor에만 load되기 때문이다. 기대 동작: job은 목록의 minor마다 setup-php로 그것을 준비하고 그 뒤에 `make release-php-ext PHP=php`를 실행하며, `scripts/repo/toolchains.mts`의 `extensionMinorErrors`는 다른 목록을 준비하거나 build하는 job을 보고한다. `scripts/repo/check.test.mts`의 시험(162개 통과)으로 확인했다. asset 자체는 CI의 job이 build한다.
 - orm의 어떤 코드 조각도 두 번 있지 않다(T487). 입력: CI가 실행하는 kit의 gate `make duplication-check`. 이전 동작: 검사가 clone 23개를 보고했다. Go package 열 개의 root 경로 시험, PHP library와 PHP 확장의 lock 대기 시험, JavaScript 시험 둘의 module 순회, `polyspec-orm-schema`의 JSON 형식 helper, flowmark surface 시험 둘의 schema 읽기가 그 안에 있었고, gate가 실패했다. 기대 동작: 각 조각은 쓰는 쪽이 부르는 helper 하나이고(`PassFromRoot`, `WasInsertedCases::assertReportsABackendWaitingForLock`, `walkScannedModules`, `Type::plain`, module `form`, `chain_keys`, `read_entity`, 그리고 시험 의존성 `jsonschema`를 `polyspec-orm`에서 넘겨받는 `polyspec-orm-test-support`의 `schema_form`), 검사는 clone을 보고하지 않는다. `make duplication-check`, 바뀐 Go, PHP, JavaScript, TypeScript 파일의 시험, Rust flowmark surface와 query 시험으로 확인했다. lock 대기의 PostgreSQL 시험은 실행하지 않았다.
