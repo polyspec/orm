@@ -1,11 +1,13 @@
 # The unit test of the Python case harness (testcase.py): unittest's own report of each case, the step lines, the
 # deadline that ends a stalled case, and that every test of the package runs through it.
+import io
 import os
 import re
 import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import types
 import unittest
 from pathlib import Path
@@ -195,6 +197,34 @@ class StepGuardTest(unittest.TestCase):
                 Path(str(mark) + ".withdrawn").exists(),
                 "the cleanup of a block that ended by itself did not run",
             )
+
+
+class NoClockTest(unittest.TestCase):
+    """No clock ends a case (T474): a case that runs through CaseRunner arms no timer, so its result does not depend on the
+    time that the machine gives its work."""
+
+    def test_a_case_arms_no_timer(self) -> None:
+        armed: list[float] = []
+        original = threading.Timer
+
+        def recording(interval, function, args=None, kwargs=None):
+            armed.append(interval)
+            return original(interval, function, args, kwargs)
+
+        class Long(unittest.TestCase):
+            def test_long(self) -> None:
+                testcase.step("long step")
+
+        threading.Timer = recording
+        try:
+            stream = io.StringIO()
+            result = testcase.CaseRunner(stream=stream, verbosity=2).run(
+                unittest.defaultTestLoader.loadTestsFromTestCase(Long)
+            )
+        finally:
+            threading.Timer = original
+        self.assertTrue(result.wasSuccessful(), stream.getvalue())
+        self.assertEqual(armed, [], "the harness armed a timer for the case")
 
 
 class EveryTestTest(unittest.TestCase):
