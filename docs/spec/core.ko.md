@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 7d880444ac78c851e82d2876bf2e482e7818c6d194428a5db18c511043dbc06f -->
+<!-- source-sha256: 0f09fe32b499249b54f8f16db690148d17ecb9a4e2a11c08fc6a072a4ef534f1 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -23,6 +23,16 @@
   그 schema의 오류 코드는 소문자 kind이거나 대문자 코드이고, 그 case 형식은 `supersedes`를 이름한다(CORE-2). 공유 case를
   `contracts/interfaces.json`의 state contract와 비교하는 검사는, state contract가 언어 구현이 돌려주는 코드를 적으므로,
   대문자 코드와 그 kind를 같은 오류로 본다(CORE-10).
+- **CORE-4** `legacy/packages/`의 언어 구현은 그 언어의 생성된 binding이 `packages/rust/interface.json`의 모든
+  contract case를 실패와 skip 없이 통과하고, 언어 구현의 시험이 contract의 `changes`에 선언된 것 밖의 변경 없이
+  그 binding으로 통과한 뒤에만 제거한다. 제거는 그 언어 구현의 변경 하나로 한다. 다른 언어 binding의 통과는 그
+  제거를 허용하지 않는다. 이 두 검사는 contract의 동작과 contract가 의도적으로 대체하지 않는 릴리스 API를 모두 보존한다.
+- **CORE-5** 제거 전에 언어 구현의 API와 `packages/rust/interface.json`의 차이 각각은 그 차이를 정의하는 규칙과
+  함께 contract의 `changes` 항목이다. binding으로 실행하는 데 필요한 시험 변경은 그런 항목이 허용할 때만 가능하다.
+  따라서 명세로 정한 API 변경 없이 실패하는 legacy 시험을 제거하거나 약화해서 CORE-4를 만족시킬 수 없다.
+
+언어 구현은 아직 CORE-1에 따라 core와 공존한다. CORE-4의 제거 조건은 검증하지 않았으며, CORE-5가 요구하는 차이
+목록은 아직 채우지 않았다. interface contract의 `changes`는 비어 있다. 이 증거로 제거할 수 있는 언어 구현은 없다.
 
 ## 오류
 

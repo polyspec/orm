@@ -26,6 +26,19 @@ the core that differ from the rules that the language implementations of `legacy
   error code of that schema is a kind in lower case or a code in capitals, and its case form names `supersedes` (CORE-2).
   A check that compares a shared case with a state contract of `contracts/interfaces.json`, which states the code that the
   language implementations return, takes a code in capitals and its kind as one error (CORE-10).
+- **CORE-4** A language implementation of `legacy/packages/` is removed only after the generated binding of that language
+  passes every contract case of `packages/rust/interface.json` with no failure and no skip, and the tests of the language
+  implementation pass against that binding with no change except those declared in the contract's `changes`. Removal is
+  one change for that language implementation; a passing binding of another language does not permit it. These two checks
+  preserve both the contract behavior and the released API that the contract does not deliberately replace.
+- **CORE-5** Before removal, every difference between a language implementation's API and
+  `packages/rust/interface.json` is an entry of that contract's `changes`, with the rule that defines the difference.
+  A test change needed to run against the binding is permitted only by such an entry, so a failing legacy test cannot be
+  removed or weakened to satisfy CORE-4 without a specified API change.
+
+The language implementations still coexist with the core under CORE-1. The removal conditions of CORE-4 have not been
+verified, and the inventory of differences required by CORE-5 is not populated: the interface contract's `changes` is
+empty. No language implementation is eligible for removal on that evidence.
 
 ## Errors
 

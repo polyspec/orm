@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ce9acc768ad959be70a9c45b326db0cb95c5f7a661091512c9e1c26439b94b8e -->
+<!-- source-sha256: 497daab4faec5639c73d1f0391b0463289a0f5b1fc3ec6612adcf9b30c1d16bf -->
 # 변경 이력
 
 ## Unreleased
 
+- core 명세는 legacy 언어 구현 각각을 언제 제거할 수 있는지 정한다(T492, CORE-4, CORE-5). 전에는 legacy API와 시험을 보존하면서 제거 조건은 적지 않았다. 이제 제거하려면 해당 언어의 생성된 binding이 모든 interface contract case를 실패와 skip 없이 통과하고 legacy 시험도 그 binding으로 통과해야 한다. API 차이와 허용하는 시험 변경은 각각 규칙과 함께 contract의 `changes`에 선언한다. legacy package는 계속 릴리스 대상이 아니며, 제거 검사와 차이 목록은 아직 완료하지 않았다.
 - checklist가 행 T495를 가진다(T495): 릴리스는 `pie install`이 찾을 수 있도록 binding의 PHP 확장의 Composer 패키지 `polyspec/orm`을 담는다.
 - checklist가 T492부터 T494까지의 행을 가진다(T492, T493, T494): 명세에 적을 legacy 구현에서 생성된 binding으로의 이행, release를 막는 `binding check --release`의 168건(CK-22 153, CK-8 7, CK-10 4, CK-68 4), 실패하는 `tests/`의 Go 시험 둘인 `TestCommittedTablesAreGenerated`와 `TestLogicalContractRejectsNativeDrift`.
 - `benchmarks/rust/Cargo.lock`은 시험 지원 crate가 T487부터 받는 `jsonschema`를 담는다(T491). 입력: `benchmarks/rust`에서 `cargo check --locked --offline`. 이전 동작: lock에 그 package가 없어서 benchmark의 locked build가 실패했다. 기대 동작: `cargo update -p polyspec-orm-test-support --offline`이 그것을 썼고, locked 검사가 통과한다.
