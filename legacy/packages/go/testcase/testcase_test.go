@@ -1,12 +1,14 @@
 package testcase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -112,4 +114,24 @@ func TestRunAndGroupAndWarn(t *testing.T) {
 	if err := RunLong("long failing", func(c *Case) error { return sentinel }); !errors.Is(err, sentinel) {
 		t.Fatalf("RunLong of a failing job returned %v, want the work's error", err)
 	}
+}
+
+// TestNoClockEndsACase checks that no clock ends a case (T474): in a synctest bubble the fake clock moves a week past the
+// start of a case and of a runner case, and the context of each is still open, so the result of a case does not depend on
+// the time that the machine gives its work.
+func TestNoClockEndsACase(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := Start(t)
+		time.Sleep(7 * 24 * time.Hour)
+		synctest.Wait()
+		if err := c.Context().Err(); err != nil {
+			t.Fatalf("the context of a case ended after a week of the clock: %v", context.Cause(c.Context()))
+		}
+		if err := Run("long runner case", func(c *Case) error {
+			time.Sleep(7 * 24 * time.Hour)
+			return c.Context().Err()
+		}); err != nil {
+			t.Fatalf("a runner case failed after a week of the clock: %v", err)
+		}
+	})
 }
