@@ -1,0 +1,12 @@
+dbspec 1 shop
+
+table t {
+  id i64 identity
+  doc text
+  packed bytes
+  primary key (id)
+  settings {
+    codec doc json
+    codec packed ordered_json gz
+  }
+}

@@ -2910,7 +2910,8 @@
         "tests/dbspec/runtime-model-accounts.dbs",
         "legacy/tests/dbspec/runtime-model-accounts.dbs",
         "tests/dbspec/runtime-model-members.dbs",
-        "legacy/tests/dbspec/runtime-model-members.dbs"
+        "legacy/tests/dbspec/runtime-model-members.dbs",
+        "legacy/tests/dbspec/runtime-model-codec-names.dbs"
       ]
     },
     "model-types-php-extension-check": {
