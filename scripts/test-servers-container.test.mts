@@ -32,14 +32,15 @@ const VERSION = 'v0.0.0-stand-in+dirty';
 // execFails exists, a step of a server exits with 7; while schema exists, version reports its text as the schema
 // version, and while release exists, its text as the version of bay; while checkFails exists, the command of the job
 // check exits with 5, and while buildFails exists, the build command of the job build exits with 6. A job runs when it
-// is added, and a job added again with its key is returned and does not run. ups.log has the services of each up and
+// is added, and a job added again with its key is returned and does not run; while unended exists, a job added is
+// queued and does not end, and its wait exits with 1 as a wait that ends before its job does. ups.log has the services of each up and
 // each job.
-interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string; buildFails: string; ups: string }
+interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string; buildFails: string; unended: string; ups: string }
 
 function standIn(dir: string): StandIn {
   const stand: StandIn = {
     bay: join(dir, 'bin/bay'), state: join(dir, 'projects'), calls: join(dir, 'calls.log'),
-    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), ups: join(dir, 'ups.log'),
+    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), unended: join(dir, 'unended'), ups: join(dir, 'ups.log'),
   };
   mkdirSync(stand.state, { recursive: true });
   mkdirSync(dirname(stand.bay), { recursive: true });
@@ -55,8 +56,7 @@ let composeFile = 'compose.yaml';
 if (command === '-f') { composeFile = rest[0]; [command, ...rest] = rest.slice(1); }
 const jobs = ${JSON.stringify(join(dir, 'jobs'))};
 const jobOf = id => JSON.parse(readFileSync(join(jobs, id + '.json'), 'utf8'));
-// bay job wait, show, logs and cancel name a job by its ID, with -peer for a job of an approved peer, and with or without
-// the project.
+// bay job wait, show, logs and cancel name a job by its ID, with or without the project.
 if (option === 'job' || (option === '-p' && command === 'job' && rest[0] !== 'add')) {
   if (option === '-p') name = rest[0];
   const id = process.argv.at(-1);
@@ -106,6 +106,13 @@ else if (is('images')) {
   const keyed = join(jobs, 'key-' + key);
   if (existsSync(keyed)) { console.log(JSON.stringify(jobOf(readFileSync(keyed, 'utf8')), null, 2)); process.exit(0); }
   if (absent) fail('an image is not in the local store');
+  const id = 'job-' + (readdirSync(jobs).filter(each => each.startsWith('key-')).length + 1);
+  if (existsSync(${JSON.stringify(stand.unended)})) {
+    writeFileSync(join(jobs, id + '.json'), JSON.stringify({ id, project: name, service, key, state: 'queued', queued: '2026-11-14T00:00:00Z' }));
+    writeFileSync(keyed, id);
+    console.log(JSON.stringify(jobOf(id), null, 2));
+    process.exit(0);
+  }
   appendFileSync(${JSON.stringify(stand.ups)}, JSON.stringify(services().map(each => each.name)) + '\\n');
   mkdirSync('report', { recursive: true });
   let exitCode = 0;
@@ -121,8 +128,7 @@ else if (is('images')) {
       writeFileSync('report/check.log', 'the output of the command\\n');
     }
   } else fail('the stand-in runs the jobs build and check, not ' + service);
-  const id = 'job-' + (readdirSync(jobs).filter(each => each.startsWith('key-')).length + 1);
-  writeFileSync(join(jobs, id + '.json'), JSON.stringify({ id, project: name, service, key, state: exitCode === 0 ? 'succeeded' : 'failed', exitCode }));
+  writeFileSync(join(jobs, id + '.json'), JSON.stringify({ id, project: name, service, key, state: exitCode === 0 ? 'succeeded' : 'failed', ended: '2026-11-14T00:00:01Z', exitCode }));
   writeFileSync(keyed, id);
   console.log(JSON.stringify(jobOf(id), null, 2));
 } else if (is('down')) rmSync(project, { force: true });
@@ -515,7 +521,7 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       assert.ok(jobCheck.includes(`export ORM_TEST_MYSQL_TLS_DSN='mysql://root@${host('mysql')}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=/stand-in/mounted-authority.pem'`), jobCheck);
       assert.ok(jobCheck.includes('ssl-ca=/orm-run/tls/other-ca.pem') && jobCheck.includes(`export ORM_TEST_SERVERS_LEASES='/orm-run/leases'`) && jobCheck.includes('@${address}:3306/'), jobCheck);
       // run.sh queues build and then check, each by its key, follows each, and records what bay records of it.
-      const followed = (id: string) => [`job logs -f -timeout 24h ${id}`, `job wait -timeout 24h ${id}`, `job show -json ${id}`, `job logs ${id}`];
+      const followed = (id: string) => [`job logs -f -timeout 24h ${id}`, `job wait -timeout 24h ${id}`, `job logs ${id}`, `job show -json ${id}`];
       assert.deepEqual(commands(stand).filter(command => !command.startsWith('plan')), ['images', `job add -json -key ${project}-build build`, ...followed('job-1'), 'images', `job add -json -key ${project}-check check`, ...followed('job-2')]);
       assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'setup', 'check']]);
       assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).service, 'check');
@@ -552,7 +558,7 @@ caseTest('a run in the runner whose job check fails ends with the result of the 
       const project = only(context.root);
       assert.equal(file(context.root, project, 'report/status'), '5\n');
       assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).exitCode, 5);
-      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ the job check of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
+      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ the job check of orm-[0-9a-f]{12}-[0-9a-f]{8} did not succeed: bay job wait exited with 1$/m);
       assert.deepEqual(readdirSync(stand.state), []);
       // An image that is absent fails the run before a job is queued, naming the install target, and leaves nothing.
       remove(context);
@@ -600,28 +606,32 @@ caseTest('run.sh refuses a bay of another contract and a missing bay before it s
     });
   }));
 
-caseTest('a run on another machine sends its directory once, queues each job there through ssh, waits for it through the peer, brings the report back and leaves nothing there (BAY12.4, BAY12.6, BAY13)', PROCESS, () =>
+caseTest('a run on another machine sends its directory once, queues and waits for each job there through ssh, brings the report back and leaves nothing there (BAY12.4, BAY12.6, BAY13, BAY13.1)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
     await removing([context], async () => {
       committed(context);
       // The stand-in ssh runs the command of its second argument on this machine with the stand-in bay as the bay of
-      // PATH, and records the host; the directory of the other machine is a directory of the test.
+      // PATH, and records the host; while drop exists, it ends a command that waits for a job with 255, as ssh ends when
+      // the connection drops. The directory of the other machine is a directory of the test.
       const ssh = join(dir, 'ssh');
-      writeFileSync(ssh, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(join(dir, 'hosts.log'))}\nPATH=${JSON.stringify(dirname(stand.bay))}:$PATH\nexport PATH\nexec /bin/sh -c "$2"\n`);
+      const drop = join(dir, 'drop');
+      writeFileSync(ssh, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(join(dir, 'hosts.log'))}\ncase "$2" in *' wait '*) [ -e ${JSON.stringify(drop)} ] && exit 255 ;; esac\nPATH=${JSON.stringify(dirname(stand.bay))}:$PATH\nexport PATH\nexec /bin/sh -c "$2"\n`);
       chmodSync(ssh, 0o755);
       const there = join(dir, 'other machine');
       writeFileSync(stand.checkFails, '');
-      const where = { host: 'runs@other.invalid', directory: there, peer: 'other', pull: true, keep: true };
+      const where = { host: 'runs@other.invalid', directory: there, pull: true, keep: true };
       const status = remote('postgres', ['make', 'test-rust'], { ...context, ssh }, where);
       assert.equal(status, 1, 'the run does not end with the result of its job check on the other machine');
       assert.deepEqual([...new Set(readFileSync(join(dir, 'hosts.log'), 'utf8').trim().split('\n'))], ['runs@other.invalid']);
       const ran = calls(stand).filter(call => call.args[0] === '-p');
       assert.ok(ran.length > 0 && ran.every(call => call.cwd.startsWith(realpathSync(there))), 'a command of bay of a project ran in a directory of this machine');
-      assert.deepEqual(ran.map(call => call.args[call.args[2] === '-f' ? 4 : 2]), ['plan', 'pull', 'pull', 'images', 'job', 'images', 'job']);
-      // This machine waits for each job and reads it through the peer.
-      assert.deepEqual(calls(stand).filter(call => call.args[0] === 'job').map(call => call.args.slice(0, 3).join(' ')), ['job wait -peer', 'job show -peer', 'job logs -peer', 'job wait -peer', 'job show -peer', 'job logs -peer']);
+      // Each job is queued and waited for on the machine that runs it, which knows a job as soon as it is queued.
+      const job = ['job', 'job', 'job', 'job', 'job'];
+      assert.deepEqual(ran.map(call => call.args[call.args[2] === '-f' ? 4 : 2]), ['plan', 'pull', 'pull', 'images', ...job, 'images', ...job]);
+      assert.deepEqual(ran.filter(call => call.args[2] === 'job').map(call => call.args[3]), ['logs', 'wait', 'logs', 'show', 'logs', 'wait', 'logs', 'show']);
+      assert.ok(calls(stand).every(call => !call.args.includes('-peer')), 'a job was read through a peer');
       const [report] = readdirSync(join(containers(context.root), 'reports'));
       assert.ok(report, 'the report did not come back');
       const reported = (name: string) => readFileSync(join(containers(context.root), 'reports', report, name), 'utf8');
@@ -637,12 +647,36 @@ caseTest('a run on another machine sends its directory once, queues each job the
       assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job of the run ran a second time');
       assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
       assert.deepEqual(projects(context.root), [], 'the run leaves its directory on this machine');
-      // A run with a failed build queues no job check; a run without a peer is refused.
+
+      // A job that has not ended is no failed job: the run queues no job check, keeps the directory there, whose files
+      // the queued job reads, and ends with 3; the same command, once the job ended, waits for it and goes on.
       rmSync(stand.checkFails);
+      writeFileSync(stand.unended, '');
+      const command = ['make', 'test-rust', 'unended'];
+      assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 3, 'a run whose job has not ended does not end with 3');
+      assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job that has not ended ran');
+      const [kept] = readdirSync(there);
+      assert.ok(kept && existsSync(join(there, kept, 'compose.build.yaml')), 'the run removed the directory that its queued job reads');
+      assert.equal(JSON.parse(readFileSync(join(containers(context.root), 'reports', kept, 'job-build.json'), 'utf8')).state, 'queued');
+      assert.ok(!existsSync(join(there, kept, 'job-check')), 'the job check was queued after a job build that has not ended');
+      rmSync(stand.unended);
+      const queued = join(dir, 'jobs', `${readFileSync(join(there, kept, 'job-build'), 'utf8').trim()}.json`);
+      writeFileSync(queued, JSON.stringify({ ...JSON.parse(readFileSync(queued, 'utf8')), state: 'succeeded', ended: '2026-11-14T00:00:02Z', exitCode: 0 }));
+      // A wait that ends with the connection is no end of the job either.
+      writeFileSync(drop, '');
+      assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 3, 'a run whose connection dropped does not end with 3');
+      assert.deepEqual(readdirSync(there), [kept], 'the run removed its directory after a dropped connection');
+      rmSync(drop);
+      assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 0);
+      const checked = readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line) as string[]);
+      assert.ok(checked.length === 1 && checked[0]?.includes('check'), `the job check did not run once: ${JSON.stringify(checked)}`);
+      assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
+
+      // A run with a failed build queues no job check.
+      writeFileSync(stand.ups, '');
       writeFileSync(stand.buildFails, '');
       assert.equal(remote('mysql', ['make', 'test-rust'], { ...context, ssh }, { ...where, keep: false, build: ['make', 'build'] }), 1);
       assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the job check ran after a failed build');
-      assert.throws(() => remote('mysql', ['true'], { ...context, ssh }, { ...where, peer: '' }), /remote needs the name of the machine as an approved peer of bay, PEER/);
     });
   }));
 

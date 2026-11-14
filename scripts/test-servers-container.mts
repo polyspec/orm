@@ -600,8 +600,10 @@ esac
 // as after a lost connection, returns the job that is queued, running or ended instead of a second one; it prints the
 // ID of the job. wait <part> follows the output of the job of the part to its end, writes what bay records of it, its
 // exit status, its time and the highest memory where the machine reports one, to report/job-<part>.json and its output
-// to report/job-<part>.log, and ends
-// with 0 when the job succeeded and 1 when it did not. The whole run adds and waits for build, and then for check when
+// to report/job-<part>.log. It judges the job by what bay job show records of it, not by the exit status of bay job
+// wait, which is 1 also when the wait itself ends: it ends with 0 when the job ended and succeeded, 1 when it ended and
+// did not succeed, and 3 when the job has not ended or bay cannot show it, so that a job whose end is not known is never
+// reported as a failed one, and wait <part> follows it again. The whole run adds and waits for build, and then for check when
 // build succeeded. A job queued and not ended when the whole run gets SIGINT, SIGTERM or SIGHUP is cancelled. bay
 // removes the servers after the job check, so the run removes no project; down removes what a cancelled job left.
 function jobRunFile(at: At, kind: Kind): string {
@@ -644,12 +646,29 @@ waited() {
   at "the job $1 ($job)"
   beside b job logs -f -timeout ${quote(WAIT)} "$job"
   b job wait -timeout ${quote(WAIT)} "$job" >&2
-  status=$?
-  b job show -json "$job" > "$dir/report/job-$1.json" || say "bay job show of $job exited with $?"
+  waited=$?
   b job logs "$job" > "$dir/report/job-$1.log" 2>&1 || say "bay job logs of $job exited with $?"
-  [ "$status" -eq 0 ] || printf '%s %s of %s exited with %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "the job $1" "$project" "$status" >> "$dir/report/steps.log"
+  b job show -json "$job" > "$dir/report/job-$1.json"
+  shown=$?
   job=
-  return "$status"
+  if [ "$shown" -ne 0 ]; then
+    say "bay job show of the job $1 of $project exited with $shown, so its end is not known; sh $dir/run.sh wait $1 waits for it again"
+    return 3
+  fi
+  ended= succeeded=
+  while IFS= read -r line; do
+    case "$line" in
+      *'"ended": "'*) ended=1 ;;
+      *'"state": "succeeded"'*) succeeded=1 ;;
+    esac
+  done < "$dir/report/job-$1.json"
+  if [ -z "$ended" ]; then
+    say "the job $1 of $project has not ended after bay job wait exited with $waited; sh $dir/run.sh wait $1 waits for it again"
+    return 3
+  fi
+  [ -n "$succeeded" ] && return 0
+  printf '%s %s of %s did not succeed: bay job wait exited with %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "the job $1" "$project" "$waited" >> "$dir/report/steps.log"
+  return 1
 }
 
 down() {
@@ -1095,10 +1114,8 @@ function finish(at: At, keep: boolean): void {
 }
 
 // Remote is a run on another machine: the host that ssh names, the directory there that receives the directory of the
-// run, peer, the name of that machine as an approved peer of the bay of this machine, through which this command waits
-// for the jobs of the run, the command of bay there (bay of PATH without it), and whether the run pulls the images
-// first.
-export interface Remote extends RunForm { host: string; directory: string; peer: string; bay?: string; pull?: boolean }
+// run, the command of bay there (bay of PATH without it), and whether the run pulls the images first.
+export interface Remote extends RunForm { host: string; directory: string; bay?: string; pull?: boolean }
 
 // definition is the part of the project of a run on another machine that names what it runs: the first 8 hexadecimal
 // digits of the sha256 of the commit of the checkout, the kind and the form of the run. The same make command at the
@@ -1115,15 +1132,16 @@ function definition(root: string, kind: Kind, command: readonly string[], form: 
 // the plan of the bay of that machine and sends it as a tar archive through ssh into <directory>/<project>.part, which
 // it renames to <directory>/<project>, so a directory there with run.sh is whole; a directory there with run.sh is not
 // sent again. It then queues each job with ssh <host> sh <directory>/<project>/run.sh add <part>, which prints its ID,
-// waits for it with bay job wait -peer <peer>, which reads the job again when the link drops, since the job runs on
-// there and keeps its result, and writes bay job show -json of it to report/job-<part>.json and the end of its output,
-// which the peer gives, to report/job-<part>.log. The job check is queued
-// only when the job build succeeded. At its end it brings report/ back into .runtime/containers/reports/<project> and
-// removes the directory of that machine, unless the run keeps it. run.sh knows no machine: only this command names the
-// host, the directory and the peer.
+// and waits for it with ssh <host> sh <directory>/<project>/run.sh wait <part>, which waits on the machine that runs the
+// job, so that a job queued a moment before is known to the wait, and judges the job by what bay records of it. The job
+// check is queued only when the job build succeeded. A job that has not ended, or whose end is not known here, as when
+// the connection drops, is no failed job: the run then queues nothing more, keeps the directory there, and ends with 3,
+// and the same command waits for the job again. Every file that a job reads is in its directory before the job is
+// queued, and the directory there is removed only after each job ended and report/ came back into
+// .runtime/containers/reports/<project>, unless the run keeps it. run.sh knows no machine: only this command names the
+// host and the directory.
 export function remote(kind: Kind, command: readonly string[], context: Context, where: Remote): number {
   if (command.length === 0) throw new TestServerError('test-servers-container: remote needs a command after --', 2);
-  if (where.peer === '') throw new TestServerError('test-servers-container: remote needs the name of the machine as an approved peer of bay, PEER', 2);
   const [ssh, tar] = [context.ssh ?? 'ssh', context.tar ?? 'tar'];
   const program = (file: string, args: string[], stdio: [number | 'ignore', number | 'pipe', 2]) => {
     const ran = spawnSync(file, args, { encoding: 'utf8', stdio, maxBuffer: 2 ** 30 });
@@ -1174,32 +1192,26 @@ export function remote(kind: Kind, command: readonly string[], context: Context,
   const report = join(local, 'report');
   mkdirSync(report, { recursive: true });
   const runSh = (part: string) => `BAY_COMMAND=${quote(theirs)} sh ${quote(`${target}/run.sh`)} ${part}`;
-  // job queues the job of a part there, waits for it here through the peer, and returns its result.
-  const job = (part: 'build' | 'check'): number => {
+  // job queues the job of a part there and waits for it there: run.sh wait ends with 0 when the job succeeded and 1 when
+  // it failed; any other status, its 3 or 255 of ssh, leaves the end of the job unknown here.
+  const job = (part: 'build' | 'check'): 'succeeded' | 'failed' | 'open' => {
     const added = program(ssh, [where.host, runSh(`add ${part}`)], ['ignore', 'pipe', 2]);
     const id = added.stdout.trim().split('\n').at(-1) ?? '';
     if (added.status !== 0 || !/^[0-9A-Za-z.-]+$/.test(id)) throw new TestServerError(`test-servers-container: sh run.sh add ${part} of ${name} on ${where.host} exited with ${added.status ?? added.signal} and printed no ID of a job: ${added.stdout}`);
-    console.error(`test-servers-container: the job ${part} of ${name} is ${id} on the peer ${where.peer}`);
-    const [file = '', ...first] = context.bay.split(' ').filter(word => word !== '');
-    const waited = program(file, [...first, 'job', 'wait', '-peer', where.peer, '-timeout', WAIT, id], ['ignore', 2, 2]);
-    const shown = bay(context, ['job', 'show', '-peer', where.peer, '-json', id]);
-    if (shown.status === 0) writeFileSync(join(report, `job-${part}.json`), shown.stdout);
-    else console.error(`test-servers-container: bay job show -peer ${where.peer} ${id} exited with ${shown.status ?? shown.signal}: ${shown.stderr}`);
-    // The peer gives the end of the output of a job; the whole output of each command is in the report there.
-    const output = bay(context, ['job', 'logs', '-peer', where.peer, id]);
-    writeFileSync(join(report, `job-${part}.log`), `${output.stdout}${output.stderr}`);
-    return waited.status ?? 1;
+    console.error(`test-servers-container: the job ${part} of ${name} is ${id} on ${where.host}`);
+    const waited = program(ssh, [where.host, runSh(`wait ${part}`)], ['ignore', 2, 2]);
+    return waited.status === 0 ? 'succeeded' : waited.status === 1 ? 'failed' : 'open';
   };
   try {
     if (where.pull && program(ssh, [where.host, runSh('pull')], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: sh run.sh pull of ${name} on ${where.host} failed`);
-    let status = job('build');
-    if (status === 0) status = job('check');
-    else console.error(`test-servers-container: the job build of ${name} failed, so the job check is not queued`);
+    let ended = job('build');
+    if (ended === 'succeeded') ended = job('check');
+    else if (ended === 'failed') console.error(`test-servers-container: the job build of ${name} failed, so the job check is not queued`);
     const archive = `${report}.tar`;
     const output = openSync(archive, 'w');
     try {
       const fetched = program(ssh, [where.host, `mkdir -p ${quote(`${target}/report`)} && tar -C ${quote(`${target}/report`)} -cf - .`], ['ignore', output, 2]);
-      if (fetched.status !== 0 || program(tar, ['-C', report, '-xf', archive], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: bringing the report of ${name} back from ${where.host} failed`);
+      if (fetched.status !== 0 || program(tar, ['-C', report, '-xf', archive], ['ignore', 2, 2]).status !== 0) throw new TestServerError(`test-servers-container: bringing the report of ${name} back from ${where.host} failed; ${where.host}:${target} stays, and the same command brings it back`);
     } finally {
       closeSync(output);
       rmSync(archive, { force: true });
@@ -1209,9 +1221,13 @@ export function remote(kind: Kind, command: readonly string[], context: Context,
     rmSync(kept, { recursive: true, force: true });
     renameSync(report, kept);
     console.error(`test-servers-container: the report of ${name} is ${kept}`);
-    return status;
-  } finally {
+    if (ended === 'open') {
+      console.error(`test-servers-container: a job of ${name} has not ended or its end is not known here; ${where.host}:${target} stays, and the same command waits for it again`);
+      return 3;
+    }
     if (!where.keep) program(ssh, [where.host, `rm -rf ${quote(target)}`], ['ignore', 2, 2]);
+    return ended === 'succeeded' ? 0 : 1;
+  } finally {
     rmSync(local, { recursive: true, force: true });
   }
 }
@@ -1283,7 +1299,7 @@ if (import.meta.main) {
     if (!program) throw new TestServerError('test-servers-container: BAY_COMMAND is unset; run this through make, which names the command of bay');
     const context: Context = { root: REPOSITORY, bay: program };
     const { dir, leases } = folders(REPOSITORY);
-    const usage = new TestServerError('usage: test-servers-container.mts start <kind> [--server-memory=<size>] | run <kind> [--runner] [--keep] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | remote <kind> <host> <directory> <peer> [--keep] [--pull] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb', 2);
+    const usage = new TestServerError('usage: test-servers-container.mts start <kind> [--server-memory=<size>] | run <kind> [--runner] [--keep] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | remote <kind> <host> <directory> [--keep] [--pull] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb', 2);
     const separator = rest.indexOf('--');
     const [options, words] = separator < 0 ? [rest, []] : [rest.slice(0, separator), rest.slice(separator + 1)];
     const flags = options.filter(option => option.startsWith('--'));
@@ -1308,8 +1324,8 @@ if (import.meta.main) {
       console.log(`test-servers-container: ${kind} is started; its environment file is ${join(dir, `${kind}.env`)}`);
     } else if (command === 'run' && isKind(kind) && words.length > 0 && names.length === 0 && allowed('--runner', '--keep', ...sizes))
       process.exitCode = exitCode(await run(kind, words, context, { ...form(), runner: flags.includes('--runner') }));
-    else if (command === 'remote' && isKind(kind) && words.length > 0 && names.length === 3 && allowed('--keep', '--pull', ...sizes))
-      process.exitCode = remote(kind, words, context, { ...form(), host: names[0] ?? '', directory: names[1] ?? '', peer: names[2] ?? '', pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
+    else if (command === 'remote' && isKind(kind) && words.length > 0 && names.length === 2 && allowed('--keep', '--pull', ...sizes))
+      process.exitCode = remote(kind, words, context, { ...form(), host: names[0] ?? '', directory: names[1] ?? '', pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
     else if (command === 'stop' && kind === undefined) {
       mkdirSync(leases, { recursive: true });
       holdExclusiveLease(leases);

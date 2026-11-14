@@ -1728,11 +1728,12 @@ orm-test-mysql-privilege-start:
 # which the machine runs one at a time with its other jobs (BAY13): the job build installs the runner and runs BUILD, and
 # the job check, queued after build succeeded, runs RUN with the servers. KEEP=1 keeps the directory of the run, with the
 # tools and the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
-# RUN='<command>' HOST=<ssh host> REMOTE=<directory there> PEER=<peer> runs the form of the runner on another machine,
-# whose host has sh and bay alone and which the bay of this machine knows as the approved peer PEER: it sends the
-# directory, queues each job there through ssh, waits for it through the peer, so a lost connection ends no job, brings
-# the report back under .runtime/containers/reports and removes the directory there; PULL=1 pulls the images there
-# first. The same command at the same commit sends nothing and queues nothing a second time.
+# RUN='<command>' HOST=<ssh host> REMOTE=<directory there> runs the form of the runner on another machine, whose host
+# has sh and bay alone: it sends the directory, queues each job there through ssh and waits for it there through ssh,
+# so a lost connection ends no job, brings the report back under .runtime/containers/reports and removes the directory
+# there once every job ended; a job that has not ended, or whose end is not known, keeps the directory and ends the
+# command with 3. PULL=1 pulls the images there first. The same command at the same commit sends nothing and queues
+# nothing a second time, and waits again for a job that has not ended.
 #
 # BAY_COMMAND is the command of bay, the only program that these targets run for the servers and their images. bay is a
 # tool of the machine, as make is: the default is bay of PATH, and a run compares no version of it and checks its
@@ -1768,7 +1769,7 @@ orm-test-container-run:
 	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-remote:
-	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(PEER) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)
