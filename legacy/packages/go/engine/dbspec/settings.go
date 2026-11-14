@@ -13,7 +13,7 @@ var codecStages = map[string]bool{
 	"aes": true, "gz": true, "ip": true,
 }
 
-// jsonStage is the name of the stage ordered_json in the core (DBS-69), which the
+// jsonStage is the name of the stage ordered_json in the core (DBS-184), which the
 // reader takes as ordered_json.
 const jsonStage = "json"
 

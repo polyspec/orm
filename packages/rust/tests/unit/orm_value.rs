@@ -105,7 +105,7 @@ fn the_type_of_a_column_decides_the_kind_of_its_value() {
     assert_eq!(error.kind(), Kind::Internal, "{error}");
 }
 
-// Requirements: CORE-61, CORE-62, CORE-64. A column after the stage json is a JSON value, a column after another style
+// Requirements: CORE-122, CORE-62, CORE-64. A column after the stage json is a JSON value, a column after another style
 // stage is its value in the kinds of orm_value, and a JSON string with an unpaired surrogate is codec_decode.
 #[test]
 fn a_styled_column_is_a_json_value_or_a_value_of_the_common_model() {

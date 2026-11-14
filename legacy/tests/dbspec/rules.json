@@ -10055,7 +10055,7 @@
     {
       "id": "codec-stage-json-is-ordered-json",
       "requirements": [
-        "DBS-69"
+        "DBS-184"
       ],
       "steps": [
         {

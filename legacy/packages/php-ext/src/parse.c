@@ -1969,7 +1969,7 @@ static void settings_line(parser *p)
     }
     if (str_eqc(keyword, "codec")) {
         for (size_t i = 1; i < args.n; i++) {
-            /* json and ordered_json name one stage (DBS-69): the stage json is read as ordered_json. */
+            /* json and ordered_json name one stage (DBS-184): the stage json is read as ordered_json. */
             if (str_eqc(args.v[i].text, "json")) {
                 args.v[i].text = SL("ordered_json");
             }

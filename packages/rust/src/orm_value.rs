@@ -28,7 +28,7 @@ pub enum OrmValue {
     /// A text; the canonical text of a date, a time or a date-time; the exact text of a decimal.
     Text(String),
     Bytes(Vec<u8>),
-    /// The value of a column after the stage `json` (CORE-61). No string of it holds an unpaired surrogate (CORE-64).
+    /// The value of a column after the stage `json` (CORE-122). No string of it holds an unpaired surrogate (CORE-64).
     Json(JsonValue),
     List(Vec<OrmValue>),
     Map(IndexMap<String, OrmValue>),

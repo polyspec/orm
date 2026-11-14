@@ -5,7 +5,7 @@ use super::check_type::{type_check, CheckLiterals};
 use super::lexer::go_quote;
 use super::model::*;
 use super::names::renderer_name;
-use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, Syntax, CODEC_STAGES};
+use super::parser::{codec_stage_meaning, name_problem, well_formed, DefaultToken, Diag, FailedKeys, Syntax, CODEC_STAGES};
 use std::collections::{HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
@@ -669,7 +669,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 Setting::Codec(name, stages) => {
                     // The storage type follows the last stage; a codec with an unknown stage has none.
                     let last = stages.last().map_or("", |s| s.text.as_str());
-                    let known = stages.iter().all(|s| CODEC_STAGES.contains(&s.text.as_str()));
+                    let known = stages.iter().all(|s| CODEC_STAGES.contains(&codec_stage_meaning(&s.text)));
                     let bytes = matches!(last, "aes" | "gz" | "ip");
                     if let (Some(column), true) = (self.setting_column(name), known) {
                         let text = matches!(column.ty, Type::Varchar(_) | Type::Text);

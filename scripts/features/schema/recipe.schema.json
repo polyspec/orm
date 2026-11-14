@@ -713,7 +713,7 @@
       ]
     },
     "encodeArgument": {
-      "description": "The value of codec.encode: an argument, a json_value wrapper (ordered_json in the fixed copies of the legacy implementations, CORE-61), the JSON value of its value whatever the stages, or a styled_unset wrapper, the styled value that is neither SQL NULL nor a value (FCV-4).",
+      "description": "The value of codec.encode: an argument, a json_value wrapper (ordered_json in the fixed copies of the legacy implementations, CORE-122), the JSON value of its value whatever the stages, or a styled_unset wrapper, the styled value that is neither SQL NULL nor a value (FCV-4).",
       "oneOf": [
         {
           "$ref": "#/$defs/argument"
