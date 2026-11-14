@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6f7907cdfea77b639e2669dfc773d1e4519cd7261b9b34e81f68985199f5bf73 -->
+<!-- source-sha256: ce1f977e2c2805f4877799fa93e2085f1a377a03fa49922fec0e40410f6db225 -->
 # 변경 이력
 
 ## Unreleased
 
+- checklist가 T492부터 T494까지의 행을 가진다(T492, T493, T494): 명세에 적을 legacy 구현에서 생성된 binding으로의 이행, release를 막는 `binding check --release`의 168건(CK-22 153, CK-8 7, CK-10 4, CK-68 4), 실패하는 `tests/`의 Go 시험 둘인 `TestCommittedTablesAreGenerated`와 `TestLogicalContractRejectsNativeDrift`.
 - `benchmarks/rust/Cargo.lock`은 시험 지원 crate가 T487부터 받는 `jsonschema`를 담는다(T491). 입력: `benchmarks/rust`에서 `cargo check --locked --offline`. 이전 동작: lock에 그 package가 없어서 benchmark의 locked build가 실패했다. 기대 동작: `cargo update -p polyspec-orm-test-support --offline`이 그것을 썼고, locked 검사가 통과한다.
 - `polyspec-orm-schema`의 Rust source는 rustfmt의 형식이다(T490). 입력: `make rust-fmt-check`. 이전 동작: 검사가 `packages/rust/schema/src/dbspec/mod.rs`의 세 곳과 `runtime.rs`의 한 곳을 보고하고 실패했다. 기대 동작: 두 파일이 형식을 갖추고 검사가 통과한다.
 - `@polyspec/dbspec-language`의 시험은 legacy TypeScript runtime과 그 vector를 읽는다(T489). 입력: `make dbspec-language-check`의 시험. 이전 동작: `module-graph.test.mjs`가 `legacy/packages/ts`로 옮겨진 parser entry `packages/ts/dist/dbspec/entry.js`를 적어서 case 둘이 실패했고, vector 시험은 Rust core의 vector인 `tests/dbspec`을 읽었다. 그 case `rule-diagnostics-codec-storage-and-order`는 service가 parse에 쓰는 TypeScript runtime이 `ordered_json is the first codec stage`를 보고하는 곳에서 `json is the first codec stage`를 기대한다. 기대 동작: 시험은 `legacy/packages/ts/dist/dbspec/entry.js`를 적고 `legacy/tests/dbspec`을 읽으며, 시험 950개가 통과한다.
