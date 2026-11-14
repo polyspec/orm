@@ -7887,7 +7887,7 @@ mod tables {
         let name = read["connection"].as_str().unwrap_or_default();
         let db = handles.get(name).ok_or_else(|| hook_step(format!("locked_read names connection {name:?}, which model.connect did not bind")))?;
         let model = read["model"].as_str().ok_or_else(|| hook_step("locked_read names no model".into()))?;
-        db.transaction(
+        db.transaction_async(
             |tx: Tx| async move {
                 let mut core = core_of(model).map_err(hook_step)?;
                 core.connect(&tx);

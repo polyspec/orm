@@ -1546,7 +1546,8 @@
           "core": {
             "path": "polyspec_orm::Db::close",
             "receiver": "&self",
-            "machine": true
+            "machine": true,
+            "result": true
           }
         },
         {

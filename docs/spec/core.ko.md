@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: be89d64e86a156e1811a4c2d9de7837b13c8729ddfd07ebca6ad48cfc1e047e3 -->
+<!-- source-sha256: 1f2287e2c2ea8ac7825e5f049e40e343cfbea2fc3de4c742f9b991c0acd01a0e -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -33,6 +33,18 @@
 
 언어 구현은 아직 CORE-1에 따라 core와 공존한다. CORE-4의 제거 조건은 검증하지 않았으며, CORE-5가 요구하는 차이
 목록은 아직 채우지 않았다. interface contract의 `changes`는 비어 있다. 이 증거로 제거할 수 있는 언어 구현은 없다.
+
+- **CORE-7** transaction 또는 savepoint machine을 취소하는 driver는 machine과 현재 I/O future를 함께 drop한다.
+  열린 transaction을 소유한 machine을 drop하면 보관된 모든 handle을 즉시 무효화한다. 열린 savepoint machine을
+  drop하면 transaction 전체를 무효화한다. Drop은 그 savepoint의 rollback을 await할 수 없기 때문이다.
+  transaction이나 savepoint를 아직 획득하지 않은 취소된 opening은 소유한 것이 없고 parent를 계속 사용할 수 있게 둔다.
+  독립적으로 보관된 operation은 그 future가 완료되거나 drop될 때까지 connection borrow를 소유한다. 논리적 무효화는
+  즉시 적용하고, 열린 상태이거나 상태를 알 수 없는 connection은 마지막 borrow가 끝날 때 폐기하며 pool에 반환하지 않는다.
+  무효화 뒤에는 새 operation이나 종료 동작을 받지 않는다. 종료 I/O의 수락 시점은 connection slot lock을 잡고 transaction이
+  중단되지 않았음을 확인한 뒤 connection을 꺼낼 때다. 이미 수락된 종료 future는 독립적으로 완료를 소유한다. 정상 반환은
+  종료 statement와 정리가 성공하고 중단 검사를 통과한 뒤에만 수락한다. 무효화 전에 수락된 반환 future는 정상임이 입증된
+  connection을 반환할 수 있다. 이미 보낸 COMMIT은 취소할 수 없다. machine을 drop해도 rollback을 입증하거나 commit된
+  결과와 알 수 없는 결과를 구별할 수 없으며, 완료된 commit을 되돌리지 않는다.
 
 ## 오류
 
@@ -323,11 +335,10 @@
 
 ## 상태 기계
 
-CORE-100부터 CORE-105는 `packages/rust/src/tx/machine.rs`에 구현되어 있고, 계약은 세 멤버에 `machine`을 이름한다. 이
-구현에는 `Passthrough`, `Step::Await`, `Machine::settle`이 있는 `polyspec-binding-core`가 필요한데, `Cargo.lock`이 고정한
-release에는 이 셋이 없다: lock이 이 셋이 있는 release를 고정할 때까지 workspace는 이 셋이 있는 `.links`의 개발 provider로만
-build된다. 계약에는 세 멤버의 case가 없다. 셋 다 데이터베이스가 필요하기 때문이다(CORE-72). 코어의 시험이 각 기계를 한
-단계씩 구동한다.
+CORE-100부터 CORE-105의 구현은 `packages/rust/src/tx/machine.rs`에 있고, 계약은 세 member에 `machine`을 적는다.
+고정된 `polyspec-binding-core` 0.0.4는 `Passthrough`, `Step::Await`, `Machine::settle`을 제공한다. 검증은 아직
+완료하지 않았다. core의 시험이 각 machine을 한 단계씩 구동하지만, 세 member는 각각 database가 필요해서 contract에
+case가 없다(CORE-72).
 
 - **CORE-100** 계약의 멤버 `db.transaction`, `tx.savepoint`, `db.close`는 `core`에 `"machine": true`를 이름한다. 셋 다
   `wait: async_driver`이고 언어 코드에 닿기 때문이다: 앞의 둘은 언어의 함수를 호출하고, `Db`나 `Tx`의 instance는 멤버가

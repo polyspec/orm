@@ -7,7 +7,7 @@ use crate::db::Pool;
 use crate::test_support::Scratch;
 use crate::{Config, Db, Error, Kind, Param, TransactionOptions, Tx};
 use binding_core::machine::{Machine, Step};
-use binding_core::{Failure, Handle, Passthrough, Raised};
+use binding_core::{Failure, Handle, Native, NativeObject, Passthrough, Raised};
 use std::cell::RefCell;
 use std::rc::Rc;
 use tokio::runtime::Runtime;
@@ -32,8 +32,17 @@ fn passed(handle: u64) -> Passthrough {
     Passthrough::from_generated(Handle::new(handle), release)
 }
 
+#[derive(Debug)]
+struct Thrown(u64);
+
+impl NativeObject for Thrown {}
+
 fn raised(handle: u64) -> Raised {
-    Raised::from_generated(Handle::new(handle))
+    Raised::from_generated(Native::new(Thrown(handle)))
+}
+
+fn raised_id(raised: &Raised) -> Option<u64> {
+    raised.native().downcast::<Thrown>().map(|thrown| thrown.0)
 }
 
 /// Drives `machine` to its end and gives the names of its steps with its result. `awaited` gives the outcome of each
@@ -85,6 +94,8 @@ fn probe_db(scratch: &Scratch) -> (Runtime, Db) {
         let db = Db::connect(&format!("sqlite://{}", scratch.join("machine.sqlite").display()), 2, Config::default()).await.expect("connect");
         let Pool::Sqlite(pool) = db.pool() else { panic!("the test database is SQLite") };
         sqlx::query("CREATE TABLE machine_probe (id INTEGER PRIMARY KEY)").execute(pool).await.expect("create the table");
+        let mut connection = pool.acquire().await.expect("wait for the fixture connection to return");
+        connection.return_to_pool().await;
         db
     });
     (runtime, db)
@@ -108,7 +119,7 @@ fn close(runtime: &Runtime, db: &Db) {
 // received is the result, the rows are committed, and the handle of the callback has ended.
 #[test]
 fn a_transaction_machine_commits_and_returns_the_settled_value() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-commit");
     let (runtime, db) = probe_db(&scratch);
     let kept = Rc::new(RefCell::new(None));
@@ -140,7 +151,7 @@ fn a_transaction_machine_commits_and_returns_the_settled_value() {
 // back and the machine ends with the same exception.
 #[test]
 fn a_transaction_machine_rolls_back_and_returns_the_exception_of_its_callback() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-raised");
     let (runtime, db) = probe_db(&scratch);
     let mut machine = db.clone().transaction(
@@ -152,7 +163,7 @@ fn a_transaction_machine_rolls_back_and_returns_the_exception_of_its_callback() 
     );
     let (steps, done) = drive(&runtime, &mut machine);
     assert_eq!(steps, ["Io", "Call", "Io", "Done"], "an exception has no kind, so it is not run again");
-    assert!(matches!(&done, Err(Failure::Raised(exception)) if exception.handle().raw() == 9), "{done:?}");
+    assert!(matches!(&done, Err(Failure::Raised(exception)) if raised_id(exception) == Some(9)), "{done:?}");
     assert_eq!(ids(&runtime, &db), [] as [i64; 0], "the row is rolled back");
     close(&runtime, &db);
 }
@@ -161,7 +172,7 @@ fn a_transaction_machine_rolls_back_and_returns_the_exception_of_its_callback() 
 // Await, Io, Done: the transaction is rolled back and the machine ends with that exception.
 #[test]
 fn a_transaction_machine_rolls_back_after_a_failed_settle() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-settle");
     let (runtime, db) = probe_db(&scratch);
     let mut machine = db.clone().transaction(
@@ -176,7 +187,7 @@ fn a_transaction_machine_rolls_back_after_a_failed_settle() {
         Err(raised(7))
     });
     assert_eq!(steps, ["Io", "Call", "Await", "Io", "Done"]);
-    assert!(matches!(&done, Err(Failure::Raised(exception)) if exception.handle().raw() == 7), "{done:?}");
+    assert!(matches!(&done, Err(Failure::Raised(exception)) if raised_id(exception) == Some(7)), "{done:?}");
     assert_eq!(released(), [1]);
     assert_eq!(ids(&runtime, &db), [] as [i64; 0], "the row is rolled back");
     close(&runtime, &db);
@@ -186,7 +197,7 @@ fn a_transaction_machine_rolls_back_after_a_failed_settle() {
 // rollback fails too the result is rollback_failed, whose callbackError is the failure of the callback as it was.
 #[test]
 fn a_transaction_machine_returns_the_failure_of_its_callback_unchanged() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-failure");
     let (runtime, db) = probe_db(&scratch);
     let mut machine = db.clone().transaction(|_tx: Tx| Err(Failure::Kind(Error::config("the callback failed"))), TransactionOptions::default());
@@ -200,7 +211,7 @@ fn a_transaction_machine_returns_the_failure_of_its_callback_unchanged() {
     assert_eq!(steps, ["Io", "Call", "Io", "Done"]);
     let Err(Failure::Kind(error)) = done else { panic!("rollback_failed expected: {done:?}") };
     assert_eq!(error.kind(), Kind::RollbackFailed, "{error}");
-    assert!(matches!(error.callback_error(), Some(Failure::Raised(exception)) if exception.handle().raw() == 9), "{error:?}");
+    assert!(matches!(error.callback_error(), Some(Failure::Raised(exception)) if raised_id(exception) == Some(9)), "{error:?}");
     assert!(matches!(error.rollback_error(), Some(rollback) if rollback.kind() == Kind::Fault), "{error:?}");
     close(&runtime, &db);
 }
@@ -208,7 +219,7 @@ fn a_transaction_machine_returns_the_failure_of_its_callback_unchanged() {
 // Requirements: CORE-26. A panic of the callback rolls the transaction back and is the error internal.
 #[test]
 fn a_transaction_machine_rolls_back_a_callback_that_panics() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-panic");
     let (runtime, db) = probe_db(&scratch);
     let mut machine = db.clone().transaction(
@@ -229,7 +240,7 @@ fn a_transaction_machine_rolls_back_a_callback_that_panics() {
 // and the callback is called once per attempt; retry 0 calls it once.
 #[test]
 fn a_transaction_machine_calls_its_callback_once_per_attempt() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-retry");
     let (runtime, db) = probe_db(&scratch);
     let mut calls = 0u32;
@@ -271,7 +282,7 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
 // Requirements: CORE-103. A failure of the opening ends the machine after its Io step, and the callback does not run.
 #[test]
 fn a_transaction_machine_whose_opening_fails_does_not_call_its_callback() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-opening");
     let (runtime, db) = probe_db(&scratch);
     close(&runtime, &db);
@@ -295,7 +306,7 @@ fn a_transaction_machine_whose_opening_fails_does_not_call_its_callback() {
 // released with the transaction, and one whose callback raises is rolled back alone and ends with the same exception.
 #[test]
 fn a_savepoint_machine_releases_or_rolls_back_inside_its_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-savepoint");
     let (runtime, db) = probe_db(&scratch);
     let mut machine = db.clone().transaction(
@@ -319,7 +330,7 @@ fn a_savepoint_machine_releases_or_rolls_back_inside_its_transaction() {
             });
             let (steps, done) = drive(&runtime, &mut reverted);
             assert_eq!(steps, ["Io", "Call", "Io", "Done"]);
-            assert!(matches!(&done, Err(Failure::Raised(exception)) if exception.handle().raw() == 9), "{done:?}");
+            assert!(matches!(&done, Err(Failure::Raised(exception)) if raised_id(exception) == Some(9)), "{done:?}");
             let mut settled = tx.clone().savepoint(|savepoint: Tx| {
                 insert(&runtime, &savepoint, 5).map_err(Failure::Kind)?;
                 Ok(passed(21))
@@ -329,7 +340,7 @@ fn a_savepoint_machine_releases_or_rolls_back_inside_its_transaction() {
                 Err(raised(8))
             });
             assert_eq!(steps, ["Io", "Call", "Await", "Io", "Done"]);
-            assert!(matches!(&done, Err(Failure::Raised(exception)) if exception.handle().raw() == 8), "{done:?}");
+            assert!(matches!(&done, Err(Failure::Raised(exception)) if raised_id(exception) == Some(8)), "{done:?}");
             insert(&runtime, &tx, 6).map_err(Failure::Kind)?;
             Ok(passed(1))
         },
@@ -349,7 +360,7 @@ fn a_savepoint_machine_releases_or_rolls_back_inside_its_transaction() {
 // its callback does not run.
 #[test]
 fn a_savepoint_machine_whose_opening_fails_does_not_call_its_callback() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-savepoint-opening");
     let (runtime, db) = probe_db(&scratch);
     let kept = Rc::new(RefCell::new(None));
@@ -387,7 +398,7 @@ fn a_savepoint_machine_whose_opening_fails_does_not_call_its_callback() {
 // clone of the handle is closed, and a second close succeeds.
 #[test]
 fn a_close_machine_gives_one_io_step() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-close");
     let (runtime, db) = probe_db(&scratch);
     let mut machine = db.clone().close();
@@ -399,4 +410,355 @@ fn a_close_machine_gives_one_io_step() {
     let (steps, done) = drive(&runtime, &mut db.clone().close());
     assert_eq!(steps, ["Io", "Done"]);
     done.expect("a second close succeeds");
+}
+
+/// The driver owns an I/O future between two advances and drops it with its machine on cancellation.
+#[derive(Clone, Copy, Debug)]
+enum Paused {
+    Created,
+    Opening,
+    Opened,
+    Call,
+    Await,
+    Keeping,
+    Kept,
+}
+
+const PAUSES: [Paused; 7] = [Paused::Created, Paused::Opening, Paused::Opened, Paused::Call, Paused::Await, Paused::Keeping, Paused::Kept];
+
+fn cancel_at<M: Machine>(runtime: &Runtime, mut machine: M, pause: Paused) {
+    if matches!(pause, Paused::Created) {
+        return;
+    }
+    let Step::Io(opening) = machine.resume(None) else { panic!("the machine starts with I/O") };
+    if matches!(pause, Paused::Opening) {
+        drop(machine);
+        drop(opening);
+        return;
+    }
+    let opened = runtime.block_on(opening);
+    if matches!(pause, Paused::Opened) {
+        drop(machine);
+        drop(opened);
+        return;
+    }
+    assert!(matches!(machine.resume(Some(opened)), Step::Call));
+    if matches!(pause, Paused::Call) {
+        return;
+    }
+    machine.call();
+    let Step::Await(value) = machine.resume(None) else { panic!("the callback returns an awaited value") };
+    if matches!(pause, Paused::Await) {
+        drop(machine);
+        drop(value);
+        return;
+    }
+    machine.settle(Ok(value));
+    let Step::Io(keeping) = machine.resume(None) else { panic!("the settled machine waits for its end") };
+    if matches!(pause, Paused::Keeping) {
+        drop(machine);
+        drop(keeping);
+        return;
+    }
+    let kept = runtime.block_on(keeping);
+    drop(machine);
+    drop(kept);
+}
+
+fn assert_ended(runtime: &Runtime, tx: &Tx) {
+    let error = insert(runtime, tx, 9).expect_err("an aborted machine invalidates retained handles");
+    assert_eq!(error.kind(), Kind::TransactionEnded, "{error}");
+}
+
+// Requirements: CORE-7. Dropping the machine and its owned I/O future leaves no checked-out connection, including
+// when the callback retained its handle; an already-completed commit is not undone.
+#[test]
+fn dropping_a_transaction_machine_discards_its_connection_at_each_stage() {
+    let _case = polyspec_orm_testcase::case!();
+    for pause in PAUSES {
+        let scratch = Scratch::new("orm-machine-drop-transaction");
+        let (runtime, db) = probe_db(&scratch);
+        let connections = db.stats().open_connections;
+        let kept = Rc::new(RefCell::new(None));
+        let handle = Rc::clone(&kept);
+        let machine = db.clone().transaction(
+            |tx: Tx| {
+                insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
+                *handle.borrow_mut() = Some(tx);
+                Ok(passed(1))
+            },
+            once(),
+        );
+        cancel_at(&runtime, machine, pause);
+        assert_eq!(db.stats().in_use, 0, "{pause:?}: no connection outlives its cancelled driver");
+        let discarded = matches!(pause, Paused::Opened | Paused::Call | Paused::Await | Paused::Keeping);
+        assert_eq!(db.stats().open_connections, connections - u32::from(discarded), "{pause:?}: an aborted connection is discarded rather than returned");
+        if let Some(tx) = kept.borrow().as_ref() {
+            assert_ended(&runtime, tx);
+        }
+        assert_eq!(ids(&runtime, &db), if matches!(pause, Paused::Kept) { vec![1] } else { vec![] }, "{pause:?}: only a completed commit keeps its row");
+        close(&runtime, &db);
+    }
+}
+
+// Requirements: CORE-7. An active savepoint machine cannot await rollback in Drop; its whole transaction is
+// discarded. A machine dropped before its opening is polled owns no savepoint and leaves its parent usable.
+#[test]
+fn dropping_a_savepoint_machine_invalidates_its_active_parent() {
+    let _case = polyspec_orm_testcase::case!();
+    for pause in PAUSES {
+        for callback_fails in [false, true] {
+            let scratch = Scratch::new("orm-machine-drop-savepoint");
+            let (runtime, db) = probe_db(&scratch);
+            let connections = db.stats().open_connections;
+            let mut outer = db.clone().transaction(
+                |tx: Tx| {
+                    let parent = tx.clone();
+                    let kept = Rc::new(RefCell::new(None));
+                    let handle = Rc::clone(&kept);
+                    let savepoint = tx.clone().savepoint(|child: Tx| {
+                        insert(&runtime, &child, 2).map_err(Failure::Kind)?;
+                        *handle.borrow_mut() = Some(child);
+                        Ok(passed(2))
+                    });
+                    cancel_at(&runtime, savepoint, pause);
+                    if matches!(pause, Paused::Created | Paused::Opening) {
+                        insert(&runtime, &parent, 1).map_err(Failure::Kind)?;
+                        Ok(passed(1))
+                    } else {
+                        assert_ended(&runtime, &parent);
+                        if let Some(child) = kept.borrow().as_ref() {
+                            assert_ended(&runtime, child);
+                        }
+                        assert_eq!(db.stats().in_use, 0, "{pause:?}: the savepoint discarded its transaction");
+                        assert_eq!(db.stats().open_connections, connections - 1, "{pause:?}: the parent connection did not return to the pool");
+                        if callback_fails {
+                            Err(Failure::Kind(Error::new(Kind::TransactionEnded, "the machine was aborted")))
+                        } else {
+                            Ok(passed(1))
+                        }
+                    }
+                },
+                once(),
+            );
+            let (_, done) = drive(&runtime, &mut outer);
+            if matches!(pause, Paused::Created | Paused::Opening) {
+                drop(done.expect("a savepoint that never opened leaves the transaction usable"));
+                assert_eq!(ids(&runtime, &db), [1]);
+            } else {
+                assert!(matches!(&done, Err(Failure::Kind(error)) if error.kind() == Kind::TransactionEnded), "{pause:?}: {done:?}");
+                assert_eq!(ids(&runtime, &db), [] as [i64; 0]);
+            }
+            close(&runtime, &db);
+        }
+    }
+}
+
+// Requirements: CORE-7. An independent future owns its active borrow until it ends or is dropped. Abort invalidates
+// handles at once and discards the connection when that borrow leaves; it is never returned to the pool.
+#[test]
+fn an_aborted_machine_discards_a_borrowed_connection_when_the_borrow_ends() {
+    let _case = polyspec_orm_testcase::case!();
+    for completes in [false, true] {
+        let scratch = Scratch::new("orm-machine-drop-borrowed");
+        let (runtime, db) = probe_db(&scratch);
+        let connections = db.stats().open_connections;
+        let kept = Rc::new(RefCell::new(None));
+        let handle = Rc::clone(&kept);
+        let mut machine = db.clone().transaction(
+            |tx: Tx| {
+                *handle.borrow_mut() = Some(tx);
+                Ok(passed(1))
+            },
+            once(),
+        );
+        let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
+        let opened = runtime.block_on(opening);
+        assert!(matches!(machine.resume(Some(opened)), Step::Call));
+        machine.call();
+        let Step::Await(value) = machine.resume(None) else { panic!("awaiting callback") };
+        let tx = kept.borrow_mut().take().expect("the callback retained a handle");
+        let (release, released) = tokio::sync::oneshot::channel::<()>();
+        let mut borrowing = Box::pin(async {
+            let guard = tx.shared.enter().expect("the transaction is active");
+            released.await.expect("the owner releases its borrow");
+            drop(guard);
+        });
+        let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+        assert!(std::future::Future::poll(borrowing.as_mut(), &mut context).is_pending());
+        drop(machine);
+        drop(value);
+        assert_ended(&runtime, &tx);
+        assert_eq!(db.stats().in_use, 1, "the independent future still owns its borrow");
+        if completes {
+            release.send(()).expect("the borrowing future still exists");
+            runtime.block_on(borrowing);
+        } else {
+            drop(borrowing);
+            drop(release);
+        }
+        assert_eq!(db.stats().in_use, 0, "an aborted connection was discarded on release");
+        assert_eq!(db.stats().open_connections, connections - 1, "the aborted connection did not return to the pool");
+        close(&runtime, &db);
+    }
+}
+
+// Requirements: CORE-102, CORE-105. The binding unwraps the machine's Result even though close declares no errors.
+#[test]
+fn the_close_machine_contract_declares_its_result() {
+    let _case = polyspec_orm_testcase::case!();
+    let contract: serde_json::Value = serde_json::from_str(include_str!("../../interface.json")).expect("interface contract");
+    let member = contract["units"]
+        .as_array()
+        .expect("units")
+        .iter()
+        .flat_map(|unit| unit["members"].as_array().into_iter().flatten())
+        .find(|member| member["id"] == "db.close")
+        .expect("db.close");
+    assert_eq!(member["core"]["result"], true);
+}
+
+#[derive(Default)]
+struct ReturnGate {
+    armed: std::sync::atomic::AtomicBool,
+    entered: tokio::sync::Notify,
+    release: tokio::sync::Notify,
+}
+
+// Requirements: CORE-7. Before terminal I/O acquires the connection, abort prevents COMMIT. After COMMIT and cleanup
+// prove the connection clean and admit its return, an independently retained return future may complete after Drop.
+#[test]
+fn an_admitted_clean_return_can_complete_after_its_machine_is_dropped() {
+    use std::sync::atomic::Ordering;
+    use std::sync::Arc;
+
+    let _case = polyspec_orm_testcase::case!();
+    for admitted in [false, true] {
+        let scratch = Scratch::new("orm-machine-drop-clean-return");
+        let (runtime, mut db) = probe_db(&scratch);
+        runtime.block_on(db.pool().close());
+        let gate = Arc::new(ReturnGate::default());
+        let on_return = Arc::clone(&gate);
+        let pool = runtime
+            .block_on(
+                sqlx::sqlite::SqlitePoolOptions::new()
+                    .max_connections(1)
+                    .after_release(move |_, _| {
+                        let gate = Arc::clone(&on_return);
+                        Box::pin(async move {
+                            if gate.armed.swap(false, Ordering::AcqRel) {
+                                gate.entered.notify_one();
+                                gate.release.notified().await;
+                            }
+                            Ok(true)
+                        })
+                    })
+                    .connect(&format!("sqlite://{}", scratch.join("machine.sqlite").display())),
+            )
+            .expect("the gated pool opens the fixture database");
+        Arc::get_mut(&mut db.inner).expect("the fixture owns its Db").pool = Pool::Sqlite(pool);
+        let kept = Rc::new(RefCell::new(None));
+        let handle = Rc::clone(&kept);
+        let mut machine = db.clone().transaction(
+            |tx: Tx| {
+                insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
+                *handle.borrow_mut() = Some(tx);
+                Ok(passed(1))
+            },
+            once(),
+        );
+        let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
+        let opened = runtime.block_on(opening);
+        assert!(matches!(machine.resume(Some(opened)), Step::Call));
+        machine.call();
+        let Step::Await(value) = machine.resume(None) else { panic!("awaiting callback") };
+        machine.settle(Ok(value));
+        let Step::Io(ending) = machine.resume(None) else { panic!("ending") };
+        if admitted {
+            gate.armed.store(true, Ordering::Release);
+            let ending = runtime.spawn(ending);
+            runtime.block_on(gate.entered.notified());
+            drop(machine);
+            assert_ended(&runtime, kept.borrow().as_ref().expect("the retained transaction"));
+            assert_eq!(db.stats().in_use, 1, "the admitted return future owns the proven-clean connection");
+            gate.release.notify_one();
+            drop(runtime.block_on(ending).expect("the independent terminal future completes"));
+        } else {
+            drop(machine);
+            drop(runtime.block_on(ending));
+        }
+        assert_eq!(db.stats().in_use, 0);
+        assert_eq!(db.stats().open_connections, u32::from(admitted), "only a previously admitted clean return may keep its connection");
+        assert_eq!(ids(&runtime, &db), if admitted { vec![1] } else { vec![] }, "Drop does not undo an already-completed COMMIT");
+        close(&runtime, &db);
+    }
+}
+
+// Requirements: CORE-7. An independently retained opening cannot acquire a savepoint after its owner was dropped.
+#[test]
+fn a_retained_savepoint_opening_cannot_start_after_its_owner_is_dropped() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-machine-retained-opening");
+    let (runtime, db) = probe_db(&scratch);
+    let mut outer = db.clone().transaction(
+        |tx: Tx| {
+            let mut child = tx.clone().savepoint(|_: Tx| panic!("a cancelled opening cannot call its callback"));
+            let Step::Io(opening) = child.resume(None) else { panic!("opening") };
+            drop(child);
+            drop(runtime.block_on(opening));
+            insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
+            Ok(passed(1))
+        },
+        once(),
+    );
+    let (_, done) = drive(&runtime, &mut outer);
+    drop(done.expect("the parent remains usable"));
+    assert_eq!(ids(&runtime, &db), [1]);
+    close(&runtime, &db);
+}
+
+// Requirements: CORE-7. A rollback Io is owned by the driver unless retained separately; only an already completed,
+// clean rollback can return its connection. Retained handles are invalid in every case.
+#[test]
+fn cancellation_at_rollback_preserves_terminal_ownership() {
+    let _case = polyspec_orm_testcase::case!();
+    for terminal in 0..3 {
+        let scratch = Scratch::new("orm-machine-drop-rollback");
+        let (runtime, db) = probe_db(&scratch);
+        let connections = db.stats().open_connections;
+        let kept = Rc::new(RefCell::new(None));
+        let handle = Rc::clone(&kept);
+        let mut machine = db.clone().transaction(
+            |tx: Tx| {
+                insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
+                *handle.borrow_mut() = Some(tx);
+                Err(Failure::Raised(raised(1)))
+            },
+            once(),
+        );
+        let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
+        let opened = runtime.block_on(opening);
+        assert!(matches!(machine.resume(Some(opened)), Step::Call));
+        machine.call();
+        let Step::Io(rollback) = machine.resume(None) else { panic!("rollback") };
+        match terminal {
+            0 => {
+                drop(machine);
+                drop(rollback);
+            }
+            1 => {
+                drop(machine);
+                drop(runtime.block_on(rollback));
+            }
+            _ => {
+                drop(runtime.block_on(rollback));
+                drop(machine);
+            }
+        }
+        assert_ended(&runtime, kept.borrow().as_ref().expect("the retained transaction"));
+        assert_eq!(db.stats().in_use, 0);
+        assert_eq!(db.stats().open_connections, connections - u32::from(terminal != 2));
+        assert_eq!(ids(&runtime, &db), [] as [i64; 0]);
+        close(&runtime, &db);
+    }
 }

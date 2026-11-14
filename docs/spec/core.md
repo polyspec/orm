@@ -40,6 +40,19 @@ The language implementations still coexist with the core under CORE-1. The remov
 verified, and the inventory of differences required by CORE-5 is not populated: the interface contract's `changes` is
 empty. No language implementation is eligible for removal on that evidence.
 
+- **CORE-7** A driver that cancels a transaction or savepoint machine drops both the machine and its current I/O
+  future. Dropping a machine that owns an open transaction invalidates every retained handle immediately. Dropping an
+  open savepoint machine invalidates its whole transaction, because Drop cannot await a rollback of that savepoint.
+  A cancelled opening that has not acquired a transaction or savepoint owns none and leaves its parent usable. An
+  independently retained operation owns its connection borrow until its future completes or is dropped: logical
+  invalidation is immediate, and an open or unknown connection is discarded when its final borrow ends, never returned
+  to the pool. No new operation or terminal action is admitted after invalidation. Terminal I/O is admitted when it
+  holds the connection slot lock, checks that the transaction is not aborted, and takes the connection. An already
+  admitted terminal future owns its completion independently. A clean return is admitted only after the terminal
+  statement and cleanup succeeded and the abort check passed; a retained return future admitted before invalidation
+  may return that proven-clean connection. A COMMIT already sent cannot be retracted: dropping the machine cannot prove
+  rollback or distinguish a committed result from an unknown outcome, and does not undo a completed commit.
+
 ## Errors
 
 - **CORE-6** The interface contract declares a class for every error category of the binding boundary, including `io`
@@ -391,11 +404,10 @@ empty. No language implementation is eligible for removal on that evidence.
 
 ## State machines
 
-CORE-100 to CORE-105 are implemented in `packages/rust/src/tx/machine.rs`, and the contract names `machine` on the three
-members. They need a `polyspec-binding-core` that has `Passthrough`, `Step::Await` and `Machine::settle`, which the
-release that `Cargo.lock` pins does not have: until the lock pins a release that has them, the workspace builds only
-with a development provider of `.links` that has them. The contract has no case of the three members, because each
-needs a database (CORE-72); the tests of the core drive each machine step by step.
+The implementation of CORE-100 to CORE-105 is in `packages/rust/src/tx/machine.rs`, and the contract names `machine`
+on the three members. The locked `polyspec-binding-core` 0.0.4 provides `Passthrough`, `Step::Await` and
+`Machine::settle`. Verification is incomplete: the tests of the core drive each machine step by step, but the contract
+has no case of the three members because each needs a database (CORE-72).
 
 - **CORE-100** The members `db.transaction`, `tx.savepoint` and `db.close` of the contract name `"machine": true` in
   their `core`, because each has `wait: async_driver` and reaches language code: the first two call a function of the

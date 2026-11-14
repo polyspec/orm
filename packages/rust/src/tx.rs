@@ -3,6 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
@@ -28,6 +29,8 @@ pub(crate) struct TxShared {
     pub(crate) number: u64,
     pub(crate) inner: tokio::sync::Mutex<Option<TxInner>>,
     pub(crate) finished: AtomicBool,
+    /// A dropped machine invalidates the transaction before its last independent borrow ends (CORE-7).
+    aborted: AtomicBool,
     /// The depth of the handle whose statements may run: 0 for the transaction, n while the callback of the n-th nested
     /// savepoint runs (CORE-22).
     running: AtomicU32,
@@ -136,12 +139,17 @@ fn insert_audit_boxed<'a>(ex: &'a Executor, record: &'a AuditInsert) -> Pin<Box<
 const AUDIT_SAVEPOINT: &str = "orm_audit";
 
 impl TxShared {
-    fn new(db: &Db, inner: TxInner, sqlite_mode: Option<(bool, bool)>) -> Self {
+    fn new(db: &Db, mut inner: TxInner, sqlite_mode: Option<(bool, bool)>) -> Self {
+        // A session of an unfinished transaction is never returned to the markdown pool by Drop.
+        if let TxInner::Markdown(session) = &mut inner {
+            session.discard();
+        }
         Self {
             db: db.clone(),
             number: db.next_transaction(),
             inner: tokio::sync::Mutex::new(Some(inner)),
             finished: AtomicBool::new(false),
+            aborted: AtomicBool::new(false),
             running: AtomicU32::new(0),
             locals: Mutex::new(HashMap::new()),
             locks: Mutex::new(Vec::new()),
@@ -209,11 +217,34 @@ impl TxShared {
 
     /// Marks the start of a statement: a finished transaction is `transaction_ended` (CORE-23), and a statement while
     /// another statement of the transaction runs is `busy` (CORE-22).
-    pub(crate) fn enter(&self) -> Result<tokio::sync::MutexGuard<'_, Option<TxInner>>> {
+    pub(crate) fn enter(&self) -> Result<TxGuard<'_>> {
+        if self.aborted.load(Ordering::SeqCst) {
+            return Err(aborted_transaction());
+        }
         if self.finished.load(Ordering::Acquire) {
             return Err(Error::new(Kind::TransactionEnded, "the transaction has ended"));
         }
-        self.inner.try_lock().map_err(|_locked| Error::new(Kind::Busy, "another statement of the transaction is running"))
+        let inner = self.inner.try_lock().map_err(|_locked| Error::new(Kind::Busy, "another statement of the transaction is running"))?;
+        let guard = TxGuard { shared: self, inner: Some(inner) };
+        // Invalidation may have raced with taking the borrow. The guard discards an aborted connection on this path too.
+        if self.aborted.load(Ordering::SeqCst) {
+            return Err(aborted_transaction());
+        }
+        if self.finished.load(Ordering::Acquire) {
+            return Err(Error::new(Kind::TransactionEnded, "the transaction has ended"));
+        }
+        Ok(guard)
+    }
+
+    /// Invalidates all handles now and discards the connection after its independent borrower releases it (CORE-7).
+    fn abort(&self) {
+        self.aborted.store(true, Ordering::SeqCst);
+        self.finished.store(true, Ordering::Release);
+        if let Ok(mut inner) = self.inner.try_lock() {
+            discard_connection(&mut inner);
+        }
+        // When the lock is held, TxGuard owns the connection and performs the discard on release. An admitted terminal
+        // I/O step owns its taken connection separately and decides whether its completed cleanup proves it clean.
     }
 
     /// Runs a statement text of `kind` on the transaction connection and
@@ -248,6 +279,56 @@ impl TxShared {
         }
         raw_on(&self.db, inner, Sent::bare(kind, &[], Some(self.number), &statement)).await
     }
+}
+
+/// A transaction's independent connection borrow, which cannot return an aborted connection to the pool (CORE-7).
+pub(crate) struct TxGuard<'a> {
+    shared: &'a TxShared,
+    inner: Option<tokio::sync::MutexGuard<'a, Option<TxInner>>>,
+}
+
+impl Deref for TxGuard<'_> {
+    type Target = Option<TxInner>;
+
+    fn deref(&self) -> &Self::Target {
+        self.inner.as_deref().expect("the borrow owns its guard")
+    }
+}
+
+impl DerefMut for TxGuard<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.inner.as_deref_mut().expect("the borrow owns its guard")
+    }
+}
+
+impl Drop for TxGuard<'_> {
+    fn drop(&mut self) {
+        let mut guard = self.inner.take().expect("the borrow owns its guard");
+        if self.shared.aborted.load(Ordering::SeqCst) {
+            discard_connection(&mut guard);
+        }
+        drop(guard);
+        // Abort may have missed the locked slot after our first check. After unlocking, either this check observes
+        // abort or abort itself can acquire the slot. The flag is sequentially consistent across this handoff.
+        if self.shared.aborted.load(Ordering::SeqCst) {
+            if let Ok(mut inner) = self.shared.inner.try_lock() {
+                discard_connection(&mut inner);
+            }
+        }
+    }
+}
+
+fn discard_connection(inner: &mut Option<TxInner>) {
+    if let Some(mut connection) = inner.take() {
+        if let TxInner::Markdown(session) = &mut connection {
+            session.discard();
+        }
+        drop(connection);
+    }
+}
+
+fn aborted_transaction() -> Error {
+    Error::new(Kind::TransactionEnded, "the transaction was aborted by a dropped machine")
 }
 
 /// Runs a statement without a bind on the transaction connection and publishes its event.
@@ -355,6 +436,9 @@ impl Tx {
     }
 
     fn check(&self) -> Result<()> {
+        if self.shared.aborted.load(Ordering::SeqCst) {
+            return Err(aborted_transaction());
+        }
         if !self.open.load(Ordering::Acquire) || self.shared.finished.load(Ordering::Acquire) {
             return Err(Error::new(Kind::TransactionEnded, "the callback of the transaction handle has returned"));
         }
@@ -772,20 +856,21 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
 
 /// Runs the statement that ends the transaction (COMMIT or ROLLBACK). If it succeeds and is `clean`, it returns the connection to the pool;
 /// if it fails or an earlier cleanup failed (not `clean`), it closes the connection of unknown state. Connections returned to the pool
-/// are either clean or discarded.
+/// are either clean or discarded. The final abort check admits a proven-clean return; its retained future may then
+/// finish independently of a later abort (CORE-7).
 async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) -> Result<()> {
     let s = Sent::bare(kind, &[], Some(tx.number), sql);
     match inner {
         TxInner::MySql(mut t) => {
             let mut conn = t.conn.take().expect("active MySQL transaction connection");
             events::raw(&tx.db, &mut *conn, s).await?;
-            if clean {
+            if clean && !tx.aborted.load(Ordering::SeqCst) {
                 conn.returned().await;
             }
         }
         TxInner::Postgres(mut t) => {
             events::raw(&tx.db, &mut *t, s).await?;
-            if clean {
+            if clean && !tx.aborted.load(Ordering::SeqCst) {
                 t.returned().await;
             }
         }
@@ -794,7 +879,7 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
             if kind != KIND_ROLLBACK || crate::db::sqlite_in_transaction(&mut t).await? {
                 events::raw(&tx.db, &mut *t, s).await?;
             }
-            if clean {
+            if clean && !tx.aborted.load(Ordering::SeqCst) {
                 t.returned().await;
             }
         }
@@ -802,7 +887,9 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
         // cleanup failed, has an unknown state, so it is closed instead of returned to the pool.
         TxInner::Markdown(mut session) => {
             let ended = events::raw(&tx.db, &mut session, s).await;
-            if ended.is_err() || !clean {
+            if ended.is_ok() && clean && !tx.aborted.load(Ordering::SeqCst) {
+                session.keep();
+            } else {
                 session.discard();
             }
             ended?;
@@ -819,8 +906,15 @@ async fn commit(tx: &TxShared) -> Result<()> {
 }
 
 async fn take_inner(tx: &TxShared) -> Result<TxInner> {
+    if tx.aborted.load(Ordering::SeqCst) {
+        return Err(aborted_transaction());
+    }
     tx.finished.store(true, Ordering::Release);
     let mut guard = tx.inner.lock().await;
+    if tx.aborted.load(Ordering::SeqCst) {
+        discard_connection(&mut guard);
+        return Err(aborted_transaction());
+    }
     guard.take().ok_or_else(|| Error::config("transaction already finished"))
 }
 
@@ -835,6 +929,11 @@ fn rollback_fault(db: &Db) -> Result<()> {
 }
 
 async fn rollback(tx: &TxShared) -> Result<()> {
+    // Abort already discarded the transaction, or its independent borrower owns the deferred discard. No new rollback
+    // is admitted, and the callback's original failure remains the result rather than becoming rollback_failed.
+    if tx.aborted.load(Ordering::SeqCst) {
+        return Ok(());
+    }
     let mut inner = take_inner(tx).await?;
     let cleanup = finish(tx, &mut inner).await;
     let rolled_back = end(tx, inner, KIND_ROLLBACK, "ROLLBACK", cleanup.is_ok()).await;
@@ -1050,7 +1149,8 @@ mod tests {
             .await;
         let ended: Result<()> = ended;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Internal && error.text() == "the callback panicked: callback panicked"), "{ended:?}");
-        let ended = db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async move { panic!("savepoint panicked") }).await }, once()).await;
+        let ended =
+            db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async move { panic!("savepoint panicked") }).await }, once()).await;
         let ended: Result<()> = ended;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Internal), "{ended:?}");
         assert_eq!(probe_row_count_of(&db, "orm_panic_probe").await, 0, "the panicked transaction rolled back");
@@ -1081,9 +1181,9 @@ mod tests {
                     })
                     .await;
                 assert!(matches!(&inner, Err(error) if error.kind() == Kind::Config && error.text() == "inner failed"), "{inner:?}");
-                tx.savepoint_async(
-                    |savepoint: Tx| async move { savepoint.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (3)", &[]).await.map(drop) },
-                )
+                tx.savepoint_async(|savepoint: Tx| async move {
+                    savepoint.run(KIND_UTILITY, &[], "INSERT INTO orm_savepoint_probe (id) VALUES (3)", &[]).await.map(drop)
+                })
                 .await
             },
             once(),
@@ -1221,14 +1321,20 @@ mod tests {
         for denied in [DENY_SAVEPOINT_ROLLBACK, DENY_SAVEPOINT_RELEASE, DENY_SAVEPOINT_END] {
             deny_on_sqlite(&db, denied).await;
             let error = db
-                .transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async { Err::<(), _>(Error::config("callback failed")) }).await }, once())
+                .transaction_async(
+                    |tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async { Err::<(), _>(Error::config("callback failed")) }).await },
+                    once(),
+                )
                 .await
                 .expect_err("callback error");
             both(&format!("callback error {denied}"), &error.to_string());
             if denied == DENY_SAVEPOINT_END {
                 assert_eq!(error.to_string().matches("not authorized").count(), 2, "both savepoint statements are reported: {error}");
             }
-            let error = db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| panics()).await }, once()).await.expect_err("the callback panics");
+            let error = db
+                .transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| panics()).await }, once())
+                .await
+                .expect_err("the callback panics");
             assert!(
                 error.kind() == Kind::RollbackFailed
                     && matches!(error.callback_error(), Some(crate::CallbackFailure::Kind(callback)) if callback.kind() == Kind::Internal),
@@ -1236,7 +1342,8 @@ mod tests {
             );
         }
         deny_on_sqlite(&db, DENY_SAVEPOINT_RELEASE).await;
-        let error = db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async { Ok(()) }).await }, once()).await.expect_err("release");
+        let error =
+            db.transaction_async(|tx: Tx| async move { tx.savepoint_async(|_savepoint: Tx| async { Ok(()) }).await }, once()).await.expect_err("release");
         assert!(error.to_string().contains("not authorized"), "release: {error}");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
         db.close_async().await;

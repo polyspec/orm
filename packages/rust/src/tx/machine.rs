@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::panic::AssertUnwindSafe;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 use binding_core::machine::{Machine, Step};
@@ -120,8 +120,14 @@ impl<F> Transaction<F> {
 
     fn end(&mut self, outcome: Outcome) -> Step<TransactionIo, Outcome> {
         self.stage = Stage::Ended;
-        self.handle = None;
-        self.shared = None;
+        if let Some(handle) = self.handle.take() {
+            handle.open.store(false, Ordering::Release);
+        }
+        if let Some(shared) = self.shared.take() {
+            if !shared.finished.load(Ordering::Acquire) {
+                shared.abort();
+            }
+        }
         Step::Done(outcome)
     }
 
@@ -140,7 +146,7 @@ impl<F> Transaction<F> {
         if let Some(handle) = self.handle.take() {
             handle.open.store(false, Ordering::Release);
         }
-        self.shared.take()
+        self.shared.clone()
     }
 
     /// Step 4 after a failure: sends `ROLLBACK` and keeps the failure for the result.
@@ -171,6 +177,14 @@ impl<F> Transaction<F> {
             tokio::time::sleep(wait).await;
             TransactionIo(TransactionOutput::Waited)
         }))
+    }
+}
+
+impl<F> Drop for Transaction<F> {
+    fn drop(&mut self) {
+        if let Some(shared) = self.close_handle() {
+            shared.abort();
+        }
     }
 }
 
@@ -283,6 +297,15 @@ enum SavepointOutput {
     Reverted(Result<()>),
 }
 
+/// Ownership of a savepoint opening shared by the machine and its current I/O future (CORE-7).
+#[derive(Clone, Copy)]
+enum SavepointState {
+    Waiting,
+    Open,
+    Ended,
+    Cancelled,
+}
+
 /// The state machine of `Tx::savepoint` (CORE-103), which owns its callback.
 pub struct Savepoint<F> {
     parent: Tx,
@@ -296,11 +319,24 @@ pub struct Savepoint<F> {
     value: Option<Passthrough>,
     /// The failure of the callback, or of the release, while the rollback is awaited.
     failure: Option<Failure<Error>>,
+    /// Shared with the opening future so Drop knows whether it acquired the savepoint before the next advance.
+    ownership: Arc<AtomicU8>,
 }
 
 impl<F> Savepoint<F> {
     pub(super) fn new(parent: Tx, callback: F) -> Self {
-        Self { parent, callback, stage: Stage::Start, before: None, handle: None, called: None, settled: None, value: None, failure: None }
+        Self {
+            parent,
+            callback,
+            stage: Stage::Start,
+            before: None,
+            handle: None,
+            called: None,
+            settled: None,
+            value: None,
+            failure: None,
+            ownership: Arc::new(AtomicU8::new(SavepointState::Waiting as u8)),
+        }
     }
 
     fn depth(&self) -> u32 {
@@ -313,12 +349,16 @@ impl<F> Savepoint<F> {
 
     fn end(&mut self, outcome: Outcome) -> Step<SavepointIo, Outcome> {
         self.stage = Stage::Ended;
-        self.handle = None;
+        self.close_handle();
+        if self.ownership.swap(SavepointState::Cancelled as u8, Ordering::AcqRel) == SavepointState::Open as u8 {
+            self.parent.shared.abort();
+        }
         Step::Done(outcome)
     }
 
     /// Ends after the savepoint was opened: the statements of the parent handle run again (CORE-22).
     fn end_opened(&mut self, outcome: Outcome) -> Step<SavepointIo, Outcome> {
+        self.ownership.store(SavepointState::Ended as u8, Ordering::Release);
         self.parent.shared.running.store(self.parent.depth, Ordering::Release);
         self.end(outcome)
     }
@@ -334,6 +374,9 @@ impl<F> Savepoint<F> {
     /// keeps the failure for the result.
     fn revert(&mut self, failure: Failure<Error>) -> Step<SavepointIo, Outcome> {
         self.close_handle();
+        if self.parent.shared.aborted.load(Ordering::SeqCst) {
+            return self.end_opened(Err(failure));
+        }
         let Some(before) = self.before.take() else {
             return self.end_opened(Err(out_of_order("a savepoint", self.stage)));
         };
@@ -361,7 +404,11 @@ where
             (Stage::Start, None) => {
                 self.stage = Stage::Opening;
                 let (parent, depth, name) = (self.parent.clone(), self.depth(), self.name());
+                let ownership = Arc::clone(&self.ownership);
                 Step::Io(Box::pin(async move {
+                    if ownership.load(Ordering::Acquire) == SavepointState::Cancelled as u8 {
+                        return SavepointIo(SavepointOutput::Opened(Err(super::aborted_transaction())));
+                    }
                     // The check of CORE-22 and CORE-23, then one atomic change of the state of the transaction.
                     if let Err(error) = parent.check() {
                         return SavepointIo(SavepointOutput::Opened(Err(error)));
@@ -371,6 +418,12 @@ where
                         let busy = Error::new(Kind::Busy, "a savepoint callback of the transaction handle is running");
                         return SavepointIo(SavepointOutput::Opened(Err(busy)));
                     }
+                    // Drop and admission use one atomic state: a retained opening cannot acquire a savepoint after
+                    // its owner cancelled it, and cancellation after admission invalidates the transaction.
+                    if ownership.compare_exchange(SavepointState::Waiting as u8, SavepointState::Open as u8, Ordering::AcqRel, Ordering::Acquire).is_err() {
+                        shared.running.store(parent.depth, Ordering::Release);
+                        return SavepointIo(SavepointOutput::Opened(Err(super::aborted_transaction())));
+                    }
                     // A savepoint that does not release undoes an audit record inserted inside it.
                     let audit = shared.audit();
                     let opened = match lock(&shared.inserted).map(|inserted| inserted.clone()) {
@@ -379,6 +432,7 @@ where
                     };
                     if opened.is_err() {
                         shared.running.store(parent.depth, Ordering::Release);
+                        ownership.store(SavepointState::Ended as u8, Ordering::Release);
                     }
                     SavepointIo(SavepointOutput::Opened(opened))
                 }))
@@ -435,6 +489,15 @@ where
 
     fn settle(&mut self, outcome: std::result::Result<Passthrough, Raised>) {
         self.settled = Some(outcome.map_err(Failure::Raised));
+    }
+}
+
+impl<F> Drop for Savepoint<F> {
+    fn drop(&mut self) {
+        self.close_handle();
+        if self.ownership.swap(SavepointState::Cancelled as u8, Ordering::AcqRel) == SavepointState::Open as u8 {
+            self.parent.shared.abort();
+        }
     }
 }
 

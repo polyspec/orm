@@ -1321,6 +1321,10 @@
         {
           "glob": "packages/rust/src/error.rs",
           "reason": "test: the message of an error of the core and the two errors that a failed rollback keeps (docs/spec/core.md CORE-12, CORE-25), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/machine.rs",
+          "reason": "test: directly drives the Rust Machine artifact through Io, Call, Await and Done, retained Rust borrows and cancellation of its driver; a language recipe cannot pause or drop these Rust machine states or construct their Passthrough and Raised handles (CORE-7, CORE-100 to CORE-105)"
         }
       ]
     }

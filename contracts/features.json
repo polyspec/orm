@@ -2268,7 +2268,8 @@
         "legacy/packages/php-ext/tests/TransactionsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/UtilsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/TransactionsMariadbRecipeTest.php",
-        "legacy/packages/php/tests/UtilsMariadbRecipeTest.php"
+        "legacy/packages/php/tests/UtilsMariadbRecipeTest.php",
+        "packages/rust/tests/unit/machine.rs"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -2530,6 +2531,18 @@
           "shard": "other",
           "inputs": [
             "legacy/packages/ts/tests/coverage_transactions-mysql.test.mjs"
+          ]
+        },
+        {
+          "id": "transaction-machines-rust",
+          "command": "make test-rust CASES=machine",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/src/tx/machine.rs",
+            "packages/rust/src/tx.rs",
+            "packages/rust/src/db.rs",
+            "packages/rust/tests/unit/machine.rs",
+            "packages/rust/interface.json"
           ]
         }
       ],

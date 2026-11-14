@@ -466,7 +466,8 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!({ "id": m.get_id()?, "name": m.get_name()?, "count": count })
         }
         "transaction_commit" => {
-            db.transaction_async(|tx: Tx| async move { Logs::new().connect(&tx).set_task("T3").set_note("committed").create().await.map(drop) }, options()).await?;
+            db.transaction_async(|tx: Tx| async move { Logs::new().connect(&tx).set_task("T3").set_note("committed").create().await.map(drop) }, options())
+                .await?;
             json!(Logs::new().connect(db).get_count().await?)
         }
         "transaction_rollback" => {

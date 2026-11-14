@@ -691,5 +691,5 @@ async fn to_array_holds_the_columns_that_the_row_read() {
     keyed.add_column("revision");
     let row = keyed.get().await.expect("get").expect("a row");
     assert_eq!(pairs(&row), vec![("seq".to_owned(), int(3)), ("revision".to_owned(), int(0))]);
-    db.close().await;
+    db.close_async().await;
 }

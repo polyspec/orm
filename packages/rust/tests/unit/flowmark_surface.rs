@@ -542,5 +542,5 @@ async fn execute_text_runs_a_step_that_compile_wrote() {
     let list = failure(db.execute_text(&step, vec![OrmValue::List(Vec::new()), OrmValue::Null]).await, "a list among the parameters");
     assert_eq!(list.kind(), Kind::CodecEncode, "{list}");
     assert_eq!(query.get_count().await.expect("count"), 1, "a refused call sends no statement");
-    db.close().await;
+    db.close_async().await;
 }
