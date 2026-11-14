@@ -108,6 +108,39 @@ console.log('after stuck');
   assert.doesNotMatch(stuck.stdout, /after stuck/);
 });
 
+// A case ends when its work ends, and no clock fails it (T473): the fixture runs every timer of the process on a mock
+// clock, moves that clock a week past the start of each case, and then lets the work end; each case passes, and its signal
+// was not aborted. The test result therefore does not depend on the time that the machine gives the work.
+caseTest('testcase/no clock fails a case', PROCESS, async () => {
+  const { code, stdout } = await runChild(`
+import { mock } from 'node:test';
+import { cases, runCase, sections } from ${JSON.stringify(harness)};
+mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+const week = 7 * 24 * 3600 * 1000;
+const work = () => { let finish; const ended = new Promise(resolve => { finish = resolve; }); return { ended, finish }; };
+const run = work();
+const passed = runCase('fixture/long-case', async ({ signal }) => { await run.ended; if (signal.aborted) throw new Error('the clock aborted the case'); });
+mock.timers.tick(week);
+run.finish();
+console.log('runCase passed', await passed);
+const log = sections();
+log.begin('fixture/long-section');
+mock.timers.tick(week);
+log.end();
+const runner = cases();
+const native = work();
+const registered = runner.run('fixture/long-native', async ({ signal }) => { await native.ended; if (signal.aborted) throw new Error('the clock aborted the case'); });
+mock.timers.tick(week);
+native.finish();
+console.log('cases passed', await registered, 'finish', runner.finish());
+`, ['--test', '--test-reporter=tap']);
+  assert.equal(code, 0, stdout);
+  inOrder(stdout, ['ok - fixture/long-case', 'runCase passed true', 'ok - fixture/long-section']);
+  assert.match(stdout, /ok \d+ - fixture\/long-native/);
+  assert.match(stdout, /cases passed true finish 0/);
+  assert.doesNotMatch(stdout, /deadline|Bail out!/);
+});
+
 caseTest('testcase/runGroup', PROCESS, async () => {
   const { code, stdout } = await runChild(`
 import { runGroup, stepLines } from ${JSON.stringify(harness)};
