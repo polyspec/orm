@@ -6,6 +6,8 @@
 
 pub mod chain;
 pub mod dbspec;
+#[doc(hidden)]
+pub mod form;
 pub mod message;
 pub mod names;
 pub mod sql;

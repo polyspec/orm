@@ -2041,7 +2041,6 @@ dependencies = [
  "futures-util",
  "hmac 0.12.1",
  "indexmap",
- "jsonschema",
  "libsqlite3-sys",
  "log",
  "polyspec-binding-core",
@@ -2219,6 +2218,7 @@ dependencies = [
 name = "polyspec-orm-test-support"
 version = "0.0.33"
 dependencies = [
+ "jsonschema",
  "polyspec-orm",
  "polyspec-orm-case-clock",
  "polyspec-orm-testcase",

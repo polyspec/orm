@@ -117,6 +117,48 @@ final class WasInsertedCases
         }
     }
 
+    /**
+     * PostgreSQL: a second backend that waits for a row lock is reported (INT-53). The transaction of $db holds the row;
+     * a child process updates the same row and blocks. The child prints "waiting" when the server reports that its update
+     * waits (T475), and only then the case reads the state once, before it commits and lets the child finish. The child
+     * and its pipes are closed whatever the case ends with.
+     */
+    public static function assertReportsABackendWaitingForLock(TestCase $test, Db $db, string $dsn): void
+    {
+        $seq = self::heldEventSeq($db);
+        $child = null;
+        $pipes = [];
+        try {
+            $db->transaction(static function () use ($test, $db, $dsn, $seq, &$child, &$pipes): void {
+                $child = self::startLockWaiter($db, $dsn, $seq, $pipes);
+                $test::assertIsResource($child, 'the waiting child did not start');
+                self::awaitLockWait($pipes);
+                $test::assertTrue(
+                    $db->utils()->backendWaitingForLock(),
+                    'the child backend waits for the row lock the transaction holds'
+                );
+            }, retry: 0);
+            $test::assertIsResource($child);
+            $test::assertSame("done\n", stream_get_contents($pipes[1]));
+            $errors = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $pipes = [];
+            $test::assertSame(0, proc_close($child), "the waiting child exited with an error: $errors");
+            $child = null;
+        } finally {
+            foreach ($pipes as $pipe) {
+                if (is_resource($pipe)) {
+                    fclose($pipe);
+                }
+            }
+            if (is_resource($child)) {
+                proc_terminate($child);
+                proc_close($child);
+            }
+        }
+    }
+
     public static function assertTracksGeneratedRows(TestCase $test, Db $db): void
     {
         $existing = 0;

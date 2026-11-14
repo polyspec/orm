@@ -431,17 +431,7 @@ fn within(digits: &str, lo: u32, hi: u32) -> Option<u32> {
 fn import_type(s: &str) -> Option<Type> {
     let m = KNOWN_TYPE.captures(s)?;
     if let Some(kind) = m.get(1) {
-        return Some(match kind.as_str() {
-            "i16" => Type::I16,
-            "i32" => Type::I32,
-            "i64" => Type::I64,
-            "bool" => Type::Bool,
-            "f64" => Type::F64,
-            "text" => Type::Text,
-            "bytes" => Type::Bytes,
-            "uuid" => Type::Uuid,
-            _ => Type::Date,
-        });
+        return Type::plain(kind.as_str());
     }
     if let Some(length) = m.get(2) {
         return within(length.as_str(), 1, 16383).map(|n| Type::Varchar(n as u16));

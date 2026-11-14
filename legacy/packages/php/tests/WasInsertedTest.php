@@ -25,26 +25,8 @@ final class WasInsertedTest extends TestCase
     // Requirements: INT-53.
     public function testPostgresReportsABackendWaitingForLock(): void
     {
-        WasInsertedCases::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
-            $seq = WasInsertedCases::heldEventSeq($db);
-            $child = null;
-            $pipes = [];
-            $db->transaction(function () use ($db, $dsn, $seq, &$child, &$pipes): void {
-                $child = WasInsertedCases::startLockWaiter($db, $dsn, $seq, $pipes);
-                self::assertIsResource($child, 'the waiting child did not start');
-                WasInsertedCases::awaitLockWait($pipes);
-                self::assertTrue(
-                    $db->utils()->backendWaitingForLock(),
-                    'the child backend waits for the row lock the transaction holds'
-                );
-            }, retry: 0);
-            self::assertIsResource($child);
-            $output = stream_get_contents($pipes[1]);
-            $errors = stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            self::assertSame(0, proc_close($child), "the child exited with an error: $errors");
-            self::assertSame("done\n", $output);
+        WasInsertedCases::onCase('postgres', function (\Polyspec\Orm\Db $db, string $dsn): void {
+            WasInsertedCases::assertReportsABackendWaitingForLock($this, $db, $dsn);
         });
     }
 }

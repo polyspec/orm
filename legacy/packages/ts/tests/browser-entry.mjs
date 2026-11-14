@@ -12,8 +12,8 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../../../tests/testcase.mts';
-import { isBuiltinModule, scanModule } from '../../../../tests/module-scan.mjs';
-import { resolveImports, walkModules } from '../../../../tests/module-graph.mjs';
+import { isBuiltinModule } from '../../../../tests/module-scan.mjs';
+import { walkScannedModules } from '../../../../tests/module-graph.mjs';
 
 const pkgRoot = fileURLToPath(new URL('../', import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(pkgRoot, 'package.json'), 'utf8'));
@@ -27,32 +27,27 @@ const start = resolve(pkgRoot, subpath.import);
 const BROWSER_PACKAGES = new Set(['@noble/hashes']);
 /** Every module reachable from the subpath's module, with the violations found in each. */
 function graph() {
-  const { modules, violations } = walkModules(start, file => {
-    const { imports, violations: local } = scanModule(file, pkgRoot);
-    const inspected = resolveImports(imports, (specifier, at) => {
-      if (specifier.startsWith('node:')) {
-        return { violation: `${at} imports "${specifier}"` };
+  return walkScannedModules(start, pkgRoot, (specifier, at, file) => {
+    if (specifier.startsWith('node:')) {
+      return { violation: `${at} imports "${specifier}"` };
+    }
+    let target;
+    if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
+      const parts = specifier.split('/');
+      const name = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+      if (!BROWSER_PACKAGES.has(name)) {
+        const kind = isBuiltinModule(specifier) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
+        return { violation: `${at} imports "${specifier}", ${kind}` };
       }
-      let target;
-      if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
-        const parts = specifier.split('/');
-        const name = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
-        if (!BROWSER_PACKAGES.has(name)) {
-          const kind = isBuiltinModule(specifier) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
-          return { violation: `${at} imports "${specifier}", ${kind}` };
-        }
-        target = createRequire(file).resolve(specifier);
-      } else {
-        target = resolve(dirname(file), specifier);
-      }
-      if (!target.endsWith('.js')) {
-        return { violation: `${at} imports "${specifier}", which is not a built .js module` };
-      }
-      return { target };
-    });
-    return { targets: inspected.targets, violations: [...local, ...inspected.violations] };
+      target = createRequire(file).resolve(specifier);
+    } else {
+      target = resolve(dirname(file), specifier);
+    }
+    if (!target.endsWith('.js')) {
+      return { violation: `${at} imports "${specifier}", which is not a built .js module` };
+    }
+    return { target };
   });
-  return { modules, violations };
 }
 
 // Requirements: ORE-6, ORES-53, ORES-55.

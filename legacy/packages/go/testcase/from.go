@@ -3,6 +3,7 @@ package testcase
 import (
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -20,4 +21,18 @@ func RunFrom(t testing.TB, directory, pattern string) (string, error) {
 	command.Dir = directory
 	output, err := command.CombinedOutput()
 	return string(output), err
+}
+
+// PassFromRoot runs the tests of the package that pattern selects with the repository root as their working directory
+// instead of the package directory, and fails t when they fail there or when no test ran: a package whose tests read files
+// of the checkout calls it, so those tests find the files at any depth of the working directory (T448).
+func PassFromRoot(t testing.TB, pattern string) {
+	t.Helper()
+	output, err := RunFrom(t, RepositoryRoot(), pattern)
+	if err != nil {
+		t.Fatalf("the tests %s run from the repository root: %v\n%s", pattern, err, output)
+	}
+	if !strings.Contains(output, "--- PASS") {
+		t.Fatalf("the tests %s run from the repository root ran no test\n%s", pattern, output)
+	}
 }

@@ -13,6 +13,7 @@ use super::model::{
 };
 use super::runtime::{Audit, Entity, Field, FieldDefault, ForeignKey as EntityForeignKey, Key, RuntimeModel};
 use super::{Diagnostic, Position};
+use crate::form::{object, required};
 
 /// The form of a column type (FMS-11): its kind and exactly the parameters of that kind.
 pub fn type_to_json(ty: Type) -> Value {
@@ -45,16 +46,10 @@ fn read_type(value: &Value, at: &str) -> Result<Type, String> {
         other => return Err(format!("{at}.kind {other} is no kind of a column type")),
     };
     let members = object(value, at, parameters)?;
+    if let Some(plain) = Type::plain(kind) {
+        return Ok(plain);
+    }
     Ok(match kind {
-        "i16" => Type::I16,
-        "i32" => Type::I32,
-        "i64" => Type::I64,
-        "bool" => Type::Bool,
-        "f64" => Type::F64,
-        "text" => Type::Text,
-        "bytes" => Type::Bytes,
-        "uuid" => Type::Uuid,
-        "date" => Type::Date,
         "decimal" => Type::Decimal(small(members, at, "precision")?, small(members, at, "scale")?),
         "varchar" => {
             let length = integer(members, at, "length")?;
@@ -63,19 +58,6 @@ fn read_type(value: &Value, at: &str) -> Result<Type, String> {
         "time" => Type::Time(small(members, at, "precision")?),
         _ => Type::DateTime(small(members, at, "precision")?),
     })
-}
-
-/// The members of the object `value`; a value that is no object and a member outside `allowed` are refused.
-fn object<'v>(value: &'v Value, at: &str, allowed: &[&str]) -> Result<&'v Map<String, Value>, String> {
-    let Value::Object(members) = value else { return Err(format!("{at} is no object")) };
-    match members.keys().find(|key| !allowed.contains(&key.as_str())) {
-        Some(key) => Err(format!("{at}.{key} is no member of the form")),
-        None => Ok(members),
-    }
-}
-
-fn required<'v>(members: &'v Map<String, Value>, at: &str, key: &str) -> Result<&'v Value, String> {
-    members.get(key).ok_or_else(|| format!("{at}.{key} is absent"))
 }
 
 fn text(members: &Map<String, Value>, at: &str, key: &str) -> Result<String, String> {

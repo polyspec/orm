@@ -76,6 +76,18 @@ impl Query {
 
     /// The keys of the chain name `name`; a refused name fails the query with `config` (CORE-82).
     fn parsed(&mut self, name: &str) -> Option<Vec<ChainKey>> {
+        match self.read_entity(|model, entity| parse_chain(model, entity, name))? {
+            Ok(keys) => Some(keys),
+            Err(message) => {
+                self.core.fail(message);
+                None
+            }
+        }
+    }
+
+    /// What `read` gives for the runtime model of the schema of this query and the entity of the query in it; an error
+    /// that refuses the manifest or the entity fails the query and gives None.
+    fn read_entity<T>(&mut self, read: impl FnOnce(&polyspec_orm_schema::dbspec::RuntimeModel, &polyspec_orm_schema::dbspec::Entity) -> T) -> Option<T> {
         let manifest = match self.core.entity().schema().manifest() {
             Ok(manifest) => manifest,
             Err(error) => {
@@ -90,13 +102,7 @@ impl Query {
                 return None;
             }
         };
-        match parse_chain(&manifest.model, entity, name) {
-            Ok(keys) => Some(keys),
-            Err(message) => {
-                self.core.fail(message);
-                None
-            }
-        }
+        Some(read(&manifest.model, entity))
     }
 
     fn chain(&mut self, connector: &'static str, name: &str, values: Vec<OrmValue>) {
@@ -115,15 +121,8 @@ impl Query {
     /// Adds the order of the name `spec`, such as `SeqDescAndLabelAsc` (CORE-82). A refused name is `config` at the next
     /// terminal.
     pub fn order_by(&mut self, spec: &str) {
-        let manifest = match self.core.entity().schema().manifest() {
-            Ok(manifest) => manifest,
-            Err(error) => return self.core.fail_err(error),
-        };
-        let entity = match manifest.entity(self.core.entity().name()) {
-            Ok(entity) => entity,
-            Err(error) => return self.core.fail_err(error),
-        };
-        match parse_order(entity, spec) {
+        let Some(order) = self.read_entity(|_, entity| parse_order(entity, spec)) else { return };
+        match order {
             Ok(keys) => {
                 for (column, descending) in keys {
                     self.core.order_by(&column, descending, None);
@@ -218,15 +217,8 @@ impl Query {
     /// schema, and a column of this entity, read by `split_pair` (CORE-88). A name that names no such columns is
     /// `config` at the next terminal.
     pub fn match_pair(&mut self, pair: &str) {
-        let manifest = match self.core.entity().schema().manifest() {
-            Ok(manifest) => manifest,
-            Err(error) => return self.core.fail_err(error),
-        };
-        let entity = match manifest.entity(self.core.entity().name()) {
-            Ok(entity) => entity,
-            Err(error) => return self.core.fail_err(error),
-        };
-        match split_pair(&manifest.model, None, Some(entity), pair) {
+        let Some(split) = self.read_entity(|model, entity| split_pair(model, None, Some(entity), pair)) else { return };
+        match split {
             Ok((left, right)) => self.core.add_match(&left, &right),
             Err(message) => self.core.fail(message),
         }

@@ -11,7 +11,25 @@ import { isolatedEnvironment } from '../../tests/environment.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { command } from './run.mts';
 import { endGroup, groupProcesses, runStep, signalGroup, stopGroup, processGroupOf } from './step.mts';
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+
+// recordingKill is a process.kill that records each signal in sent and then sends it with kill.
+function recordingKill(sent: (NodeJS.Signals | number | undefined)[], kill: typeof process.kill): typeof process.kill {
+  return (pid: number, signal?: NodeJS.Signals | number) => {
+    sent.push(signal);
+    return kill(pid, signal);
+  };
+}
+
+// restoreKillAndEndGroup gives process.kill back its own kill and ends the group of child with SIGKILL when the case left
+// it running, waiting for its exit, so that no process of a case outlives it.
+async function restoreKillAndEndGroup(child: ChildProcess, kill: typeof process.kill): Promise<void> {
+  process.kill = kill;
+  if (child.pid && child.exitCode === null && child.signalCode === null) {
+    kill(-child.pid, 'SIGKILL');
+    await new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
+  }
+}
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const run = command(repo);
@@ -157,11 +175,7 @@ caseTest('a SIGTERM that cannot be sent fails the cleanup and no SIGKILL follows
     await assert.rejects(endGroup(child.pid), error => error === term);
     assert.deepEqual(sent, ['SIGTERM']);
   } finally {
-    process.kill = originalKill;
-    if (child.pid && child.exitCode === null && child.signalCode === null) {
-      originalKill(-child.pid, 'SIGKILL');
-      await new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
-    }
+    await restoreKillAndEndGroup(child, originalKill);
   }
 });
 
@@ -181,10 +195,7 @@ caseTest('stopGroup asks a group to end, names what it waits for and waits for t
   try {
     await new Promise<void>(ready => child.stdout.once('data', () => ready()));
     const closed = new Promise<void>(close => child.once('close', () => close()));
-    process.kill = (pid: number, signal?: NodeJS.Signals | number) => {
-      sent.push(signal);
-      return originalKill(pid, signal);
-    };
+    process.kill = recordingKill(sent, originalKill);
     const reported: string[] = [];
     assert.ok(child.pid);
     const alive = await stopGroup(child.pid, closed, line => {
@@ -213,21 +224,14 @@ caseTest('stopGroup names a member that ignores SIGTERM and does not kill it', a
   try {
     await new Promise<void>(ready => child.stdout.once('data', () => ready()));
     assert.ok(child.pid);
-    process.kill = (pid: number, signal?: NodeJS.Signals | number) => {
-      sent.push(signal);
-      return originalKill(pid, signal);
-    };
+    process.kill = recordingKill(sent, originalKill);
     const survivors = await stopGroup(child.pid, Promise.resolve(), () => {});
     assert.equal(survivors.length, 1, survivors.join(' | '));
     assert.ok(survivors[0]?.startsWith(`${child.pid} `), survivors.join(' | '));
     assert.deepEqual(sent, ['SIGTERM']);
     assert.equal(alive(child.pid), true, 'the member is not killed');
   } finally {
-    process.kill = originalKill;
-    if (child.pid && child.exitCode === null && child.signalCode === null) {
-      originalKill(-child.pid, 'SIGKILL');
-      await new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
-    }
+    await restoreKillAndEndGroup(child, originalKill);
   }
 });
 

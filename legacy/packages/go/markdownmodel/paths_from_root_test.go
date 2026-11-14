@@ -1,7 +1,6 @@
 package markdownmodel_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
@@ -13,11 +12,5 @@ import (
 func TestPathsFromAnyDirectory(t *testing.T) {
 	testcase.Start(t)
 	const pattern = `^TestRecipeCollectionNone$`
-	output, err := testcase.RunFrom(t, testcase.RepositoryRoot(), pattern)
-	if err != nil {
-		t.Fatalf("the tests %s run from the repository root: %v\n%s", pattern, err, output)
-	}
-	if !strings.Contains(output, "--- PASS") {
-		t.Fatalf("the tests %s run from the repository root ran no test\n%s", pattern, output)
-	}
+	testcase.PassFromRoot(t, pattern)
 }

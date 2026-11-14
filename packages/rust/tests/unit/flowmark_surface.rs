@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use base64::Engine as _;
 use binding_core::Io;
+use polyspec_orm_test_support::schema_form::{no_refusal, refusals};
 use serde_json::{json, Value};
 
 use super::{canonical_literal, emit, manifest, parse_set, read_bytes, read_set, render_statements, runtime_model};
@@ -28,22 +29,6 @@ const PLAN_SCHEMA: &str = include_str!("../../../../contracts/interface/flowmark
 
 /// The names of the dialects with their values.
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
-
-/// What the form of the schema text `schema` refuses in `value`: its root form, or the form `#/$defs/<definition>`. One
-/// line for each problem, none for a value of the form.
-fn refusals(schema: &str, definition: Option<&str>, value: &Value) -> Vec<String> {
-    let schema: Value = serde_json::from_str(schema).expect("a schema of contracts/interface/flowmark is JSON");
-    let form = match definition {
-        Some(definition) => json!({"$schema": schema["$schema"], "$ref": format!("#/$defs/{definition}"), "$defs": schema["$defs"]}),
-        None => schema,
-    };
-    let validator = jsonschema::validator_for(&form).expect("the form is a JSON Schema");
-    validator.iter_errors(value).map(|error| format!("{}: {error}", error.instance_path())).collect()
-}
-
-fn no_refusal() -> Vec<String> {
-    Vec::new()
-}
 
 /// The JSON value of a text that a function of the surface returned.
 fn parsed(text: &str) -> Value {

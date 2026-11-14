@@ -12,8 +12,8 @@ import { existsSync } from 'node:fs';
 import { caseTest } from '../../../tests/testcase.mts';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isBuiltinModule, scanModule } from '../../../tests/module-scan.mjs';
-import { resolveImports, walkModules } from '../../../tests/module-graph.mjs';
+import { isBuiltinModule } from '../../../tests/module-scan.mjs';
+import { walkScannedModules } from '../../../tests/module-graph.mjs';
 
 const vector = (name, body) => caseTest(name, body);
 
@@ -25,26 +25,22 @@ const ALLOWED_BARE = '@polyspec/orm/dbspec';
 /** Every file reachable from the start, with the violations found in each, and the files reached. */
 function graph() {
   const entries = new Set();
-  const { modules: seen, violations } = walkModules(start, file => {
-    const { imports, violations: local } = scanModule(file, pkgRoot);
-    const inspected = resolveImports(imports, (specifier, at) => {
-      if (specifier.startsWith('node:')) {
-        return { violation: `${at} imports "${specifier}"` };
-      } else if (specifier.startsWith('.') || specifier.startsWith('/')) {
-        return { target: resolve(dirname(file), specifier) };
-      } else if (specifier === ALLOWED_BARE) {
-        const resolved = fileURLToPath(import.meta.resolve(ALLOWED_BARE));
-        entries.add(resolved);
-        if (resolved !== parserEntry) {
-          return { violation: `${at} resolves "${ALLOWED_BARE}" to ${resolved}, not the parser entry` };
-        }
-        return {};
-      } else {
-        const root = specifier.split('/')[0];
-        return { violation: `${at} imports "${specifier}"${isBuiltinModule(root) ? ' (a Node builtin)' : ''}; only "${ALLOWED_BARE}" is allowed` };
+  const { modules: seen, violations } = walkScannedModules(start, pkgRoot, (specifier, at, file) => {
+    if (specifier.startsWith('node:')) {
+      return { violation: `${at} imports "${specifier}"` };
+    } else if (specifier.startsWith('.') || specifier.startsWith('/')) {
+      return { target: resolve(dirname(file), specifier) };
+    } else if (specifier === ALLOWED_BARE) {
+      const resolved = fileURLToPath(import.meta.resolve(ALLOWED_BARE));
+      entries.add(resolved);
+      if (resolved !== parserEntry) {
+        return { violation: `${at} resolves "${ALLOWED_BARE}" to ${resolved}, not the parser entry` };
       }
-    });
-    return { targets: inspected.targets, violations: [...local, ...inspected.violations] };
+      return {};
+    } else {
+      const root = specifier.split('/')[0];
+      return { violation: `${at} imports "${specifier}"${isBuiltinModule(root) ? ' (a Node builtin)' : ''}; only "${ALLOWED_BARE}" is allowed` };
+    }
   });
   return { violations, seen, entries };
 }
@@ -67,14 +63,10 @@ function adapterGraph() {
   for (const { root, entries } of packages) {
     for (const entry of entries) {
       const start = resolve(root, entry);
-      const result = walkModules(start, file => {
-        const { imports, violations: local } = scanModule(file, root);
-        const resolved = resolveImports(imports, (specifier, at) => {
-          if (specifier.startsWith('@polyspec/orm')) return { violation: `${at} imports parser package "${specifier}" outside the language service` };
-          if (specifier.startsWith('.') || specifier.startsWith('/')) return { target: localTarget(file, specifier) };
-          return {};
-        });
-        return { targets: resolved.targets, violations: [...local, ...resolved.violations] };
+      const result = walkScannedModules(start, root, (specifier, at, file) => {
+        if (specifier.startsWith('@polyspec/orm')) return { violation: `${at} imports parser package "${specifier}" outside the language service` };
+        if (specifier.startsWith('.') || specifier.startsWith('/')) return { target: localTarget(file, specifier) };
+        return {};
       });
       violations.push(...result.violations);
     }

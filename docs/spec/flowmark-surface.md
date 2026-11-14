@@ -500,5 +500,5 @@ impl Db {
   raises; `config` of `dbspec.read_set` is raised for a path that is no Unicode text, which a case cannot give.
   `dbspec.read_set` and `db.execute` have no case, and `db.connect_schema` has a case of `config` alone: the result of
   `read_set` is a text that names the directory of the test, which a case cannot state, and the case form has no value
-  for a database (CORE-72, OM-1.5-3). The schema tests of FMS-81 read the schemas with `jsonschema`, a test dependency of `polyspec-orm` as of
-  `polyspec-orm-schema`. The generated bindings and the Go code of flowmark are not implemented.
+  for a database (CORE-72, OM-1.5-3). The schema tests of FMS-81 in `polyspec-orm` and `polyspec-orm-schema` read the schemas with
+  `jsonschema` through `schema_form` of the test crate `polyspec-orm-test-support`. The generated bindings and the Go code of flowmark are not implemented.

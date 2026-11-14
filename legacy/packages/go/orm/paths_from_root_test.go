@@ -100,11 +100,5 @@ var pathTests = []string{
 func TestPathsFromAnyDirectory(t *testing.T) {
 	testcase.Start(t)
 	pattern := "^(" + strings.Join(pathTests, "|") + ")$"
-	output, err := testcase.RunFrom(t, testcase.RepositoryRoot(), pattern)
-	if err != nil {
-		t.Fatalf("the tests of the checkout files run from the repository root: %v\n%s", err, output)
-	}
-	if !strings.Contains(output, "--- PASS") {
-		t.Fatalf("the tests of the checkout files run from the repository root ran no test\n%s", output)
-	}
+	testcase.PassFromRoot(t, pattern)
 }

@@ -177,6 +177,24 @@ async function removing(contexts: Context[], body: () => Promise<void>): Promise
   }
 }
 
+// assertShReads requires that sh reads each named file of the directory of a run without a syntax error, so that a
+// written file with such an error fails the case and not a container.
+function assertShReads(directory: string, names: string[]): void {
+  for (const name of names) {
+    const read = spawnSync('/bin/sh', ['-n', join(directory, name)], { encoding: 'utf8' });
+    assert.equal(read.status, 0, `sh does not read ${name}: ${read.stderr}`);
+  }
+}
+
+// withOneCheckout runs body in a new temporary directory with the stand-in bay and the first checkout of checkouts, and
+// removes the projects of that checkout when body ends, whatever it ends with.
+const withOneCheckout = (body: (dir: string, stand: StandIn, context: Context) => Promise<void>) =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], () => body(dir, stand, context));
+  });
+
 const checkouts = (dir: string, stand: StandIn): [Context, Context] => {
   const [first, second] = [join(dir, 'first'), join(dir, 'second')];
   for (const root of [first, second]) mkdirSync(root, { recursive: true });
@@ -250,57 +268,53 @@ caseTest('two checkouts start a server of the same kind at once, each as a proje
   }));
 
 caseTest('a start of MySQL has a service for each server on a tmpfs, the certificate of bay and no published port, and its run.sh prepares the servers with bay exec in the order of the native servers (BAY1, BAY4, BAY9, BAY11, BAY12.1)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      const variables = await start('mysql', context);
-      const project = only(context.root);
-      const text = compose(context.root, project);
-      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica'], 'the project of a start on the host has another service than one per server');
-      assert.deepEqual([...text.matchAll(/^ {4}image: "(.*)"$/gm)].map(match => /^docker\.io\/library\/mysql@sha256:[0-9a-f]{64}$/.test(match[1] ?? '')), [true, true], 'an image is not pinned by its digest');
-      assert.equal([...text.matchAll(/^ {4}expose: \["3306"\]$/gm)].length, 2);
-      assert.ok(!/^\s*ports:/m.test(text), 'a service publishes a port');
-      assert.equal([...text.matchAll(/^ {4}tmpfs: \["\/var\/lib\/mysql"\]$/gm)].length, 2, 'the data of a server is not on a tmpfs');
-      assert.ok(!/^\s*volumes:/m.test(text), 'a MySQL service mounts a file of the host');
-      // The healthcheck runs the readiness program of the server over TCP; start_period declares the initialization
-      // of the image, and the count of probes after it is within what bay accepts (1 to 100).
-      assert.equal([...text.matchAll(/^ {6}test: \["CMD", "mysqladmin", "ping", "--host=127\.0\.0\.1", "--protocol=TCP", "--silent"\]\n {6}interval: "1s"\n {6}timeout: "5s"\n {6}retries: 10\n {6}start_period: "600s"$/gm)].length, 2, 'a server has no healthcheck with mysqladmin ping over TCP and a start period');
-      // Each server presents the certificate that bay gives its container.
-      for (const option of ['--ssl-ca=/etc/bay/tls/ca.pem', '--ssl-cert=/etc/bay/tls/cert.pem', '--ssl-key=/etc/bay/tls/key.pem']) assert.equal(text.split(`"${option}"`).length, 3, `a server does not take ${option}`);
-      assert.ok(text.includes('"--skip-replica-start"'), 'the replica starts its replication before the primary reset its binary log');
-      // The DSNs name each server by the host name of the plan of bay, and the mismatch DSN by the address that the
-      // container of the primary resolves that name to.
-      const host = `${project}-mysql.${SUFFIX}`;
-      assert.equal(variables['ORM_TEST_MYSQL_DSN'], `mysql://root@${host}:3306/orm_test`);
-      assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], `mysql://root@${project}-mysql-replica.${SUFFIX}:3306/orm_test`);
-      assert.equal(variables['ORM_TEST_MYSQL_TLS_DSN'], `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${AUTHORITY}`);
-      assert.equal(variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'], `mysql://root@${ADDRESS}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${AUTHORITY}`);
-      const other = join(containers(context.root), project, 'tls/other-ca.pem');
-      assert.equal(variables['ORM_TEST_MYSQL_TLS_OTHER_CA_DSN'], `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${other}`);
-      assert.ok(existsSync(other), 'the second CA of the TLS cases is not issued');
-      assert.ok(!('ORM_TEST_MYSQL_SOCKET' in variables), 'the environment names a Unix socket, which bay does not publish');
-      assert.match(readFileSync(join(containers(context.root), 'mysql.env'), 'utf8'), new RegExp(`^export ORM_TEST_MYSQL_DSN='mysql://root@${host}:3306/orm_test'$`, 'm'));
-      // The script reads the plan; run.sh then asks for the images, starts without a pull, runs each step in its
-      // started server, and reads the address of the primary.
-      const ran = commands(stand);
-      assert.deepEqual(ran.slice(0, 3), ['plan --json', 'images', 'up -no-pull']);
-      assert.deepEqual(steps(stand).map(step => [step[0], step.at(-1)?.split(';')[0]]), [
-        ['mysql', 'RESET BINARY LOGS AND GTIDS'],
-        ['mysql-replica', `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1`],
-        ['mysql', 'CREATE DATABASE orm_test'],
-      ], 'the replica does not follow the primary from its reset binary log before the databases are created');
-      const [, follow, databases] = steps(stand).map(step => step.at(-1) ?? '');
-      for (const statement of ['START REPLICA', 'SET GLOBAL super_read_only = ON']) assert.ok(follow?.includes(statement), `the replica misses ${statement}: ${follow}`);
-      // The replica sets nothing that the native replica does not set (a catalog row change no longer reads partial_revokes, T426-2).
-      assert.ok(follow?.endsWith('SET GLOBAL super_read_only = ON'), `the replica sets more than the native replica does: ${follow}`);
-      assert.ok(databases?.includes('CREATE DATABASE orm_tools') && databases.includes(ORM_ACCOUNTS_SQL), `the primary has no databases and accounts of the user orm: ${databases}`);
-      assert.equal(ran.at(-1), `exec mysql getent ahostsv4 ${host}`);
-      assert.equal(ran.length, 7, `the start ran another command of bay: ${ran.join(' | ')}`);
-      // run.sh is a file of sh that names no other program of the host than bay, no timer and no JSON.
-      const script = file(context.root, project, 'run.sh');
-      assert.ok(script.startsWith('#!/bin/sh\n') && !/\bnode\b|\bjq\b|\bsleep\b|--json/.test(script), 'run.sh needs another program than sh and bay, waits by a timer, or reads JSON');
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    const variables = await start('mysql', context);
+    const project = only(context.root);
+    const text = compose(context.root, project);
+    assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica'], 'the project of a start on the host has another service than one per server');
+    assert.deepEqual([...text.matchAll(/^ {4}image: "(.*)"$/gm)].map(match => /^docker\.io\/library\/mysql@sha256:[0-9a-f]{64}$/.test(match[1] ?? '')), [true, true], 'an image is not pinned by its digest');
+    assert.equal([...text.matchAll(/^ {4}expose: \["3306"\]$/gm)].length, 2);
+    assert.ok(!/^\s*ports:/m.test(text), 'a service publishes a port');
+    assert.equal([...text.matchAll(/^ {4}tmpfs: \["\/var\/lib\/mysql"\]$/gm)].length, 2, 'the data of a server is not on a tmpfs');
+    assert.ok(!/^\s*volumes:/m.test(text), 'a MySQL service mounts a file of the host');
+    // The healthcheck runs the readiness program of the server over TCP; start_period declares the initialization
+    // of the image, and the count of probes after it is within what bay accepts (1 to 100).
+    assert.equal([...text.matchAll(/^ {6}test: \["CMD", "mysqladmin", "ping", "--host=127\.0\.0\.1", "--protocol=TCP", "--silent"\]\n {6}interval: "1s"\n {6}timeout: "5s"\n {6}retries: 10\n {6}start_period: "600s"$/gm)].length, 2, 'a server has no healthcheck with mysqladmin ping over TCP and a start period');
+    // Each server presents the certificate that bay gives its container.
+    for (const option of ['--ssl-ca=/etc/bay/tls/ca.pem', '--ssl-cert=/etc/bay/tls/cert.pem', '--ssl-key=/etc/bay/tls/key.pem']) assert.equal(text.split(`"${option}"`).length, 3, `a server does not take ${option}`);
+    assert.ok(text.includes('"--skip-replica-start"'), 'the replica starts its replication before the primary reset its binary log');
+    // The DSNs name each server by the host name of the plan of bay, and the mismatch DSN by the address that the
+    // container of the primary resolves that name to.
+    const host = `${project}-mysql.${SUFFIX}`;
+    assert.equal(variables['ORM_TEST_MYSQL_DSN'], `mysql://root@${host}:3306/orm_test`);
+    assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], `mysql://root@${project}-mysql-replica.${SUFFIX}:3306/orm_test`);
+    assert.equal(variables['ORM_TEST_MYSQL_TLS_DSN'], `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${AUTHORITY}`);
+    assert.equal(variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'], `mysql://root@${ADDRESS}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${AUTHORITY}`);
+    const other = join(containers(context.root), project, 'tls/other-ca.pem');
+    assert.equal(variables['ORM_TEST_MYSQL_TLS_OTHER_CA_DSN'], `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${other}`);
+    assert.ok(existsSync(other), 'the second CA of the TLS cases is not issued');
+    assert.ok(!('ORM_TEST_MYSQL_SOCKET' in variables), 'the environment names a Unix socket, which bay does not publish');
+    assert.match(readFileSync(join(containers(context.root), 'mysql.env'), 'utf8'), new RegExp(`^export ORM_TEST_MYSQL_DSN='mysql://root@${host}:3306/orm_test'$`, 'm'));
+    // The script reads the plan; run.sh then asks for the images, starts without a pull, runs each step in its
+    // started server, and reads the address of the primary.
+    const ran = commands(stand);
+    assert.deepEqual(ran.slice(0, 3), ['plan --json', 'images', 'up -no-pull']);
+    assert.deepEqual(steps(stand).map(step => [step[0], step.at(-1)?.split(';')[0]]), [
+      ['mysql', 'RESET BINARY LOGS AND GTIDS'],
+      ['mysql-replica', `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1`],
+      ['mysql', 'CREATE DATABASE orm_test'],
+    ], 'the replica does not follow the primary from its reset binary log before the databases are created');
+    const [, follow, databases] = steps(stand).map(step => step.at(-1) ?? '');
+    for (const statement of ['START REPLICA', 'SET GLOBAL super_read_only = ON']) assert.ok(follow?.includes(statement), `the replica misses ${statement}: ${follow}`);
+    // The replica sets nothing that the native replica does not set (a catalog row change no longer reads partial_revokes, T426-2).
+    assert.ok(follow?.endsWith('SET GLOBAL super_read_only = ON'), `the replica sets more than the native replica does: ${follow}`);
+    assert.ok(databases?.includes('CREATE DATABASE orm_tools') && databases.includes(ORM_ACCOUNTS_SQL), `the primary has no databases and accounts of the user orm: ${databases}`);
+    assert.equal(ran.at(-1), `exec mysql getent ahostsv4 ${host}`);
+    assert.equal(ran.length, 7, `the start ran another command of bay: ${ran.join(' | ')}`);
+    // run.sh is a file of sh that names no other program of the host than bay, no timer and no JSON.
+    const script = file(context.root, project, 'run.sh');
+    assert.ok(script.startsWith('#!/bin/sh\n') && !/\bnode\b|\bjq\b|\bsleep\b|--json/.test(script), 'run.sh needs another program than sh and bay, waits by a timer, or reads JSON');
   }));
 
 caseTest('the starts of PostgreSQL and MariaDB run the readiness program of their server and escape each dollar sign (BAY1)', () =>
@@ -343,122 +357,98 @@ caseTest('the starts of PostgreSQL and MariaDB run the readiness program of thei
   }));
 
 caseTest('a run on the host removes its project when its command ends, fails or gets SIGINT or SIGTERM (BAY1, BAY12.1, T444)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      const node = process.execPath;
-      const left = (when: string) => {
-        assert.deepEqual(readdirSync(stand.state), [], `a run that ${when} leaves its project`);
-        assert.deepEqual(projects(context.root), [], `a run that ${when} leaves the directory of its project`);
-        assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), `a run that ${when} writes an environment file`);
-      };
-      const ended = await run('mysql', [node, '-e', 'if (!/^mysql:\\/\\/root@orm-[0-9a-f]{12}-[0-9a-f]{8}-mysql\\.stand-in\\.test:3306\\/orm_test$/.test(process.env.ORM_TEST_MYSQL_DSN)) process.exit(9)'], context);
-      assert.deepEqual(ended, { code: 0, signal: null }, 'the command does not read the DSN of its server');
-      left('ended');
-      const failed = await run('mysql', [node, '-e', 'process.exit(3)'], context);
-      assert.deepEqual(failed, { code: 3, signal: null });
-      left('failed');
-      for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-        const signals = new EventEmitter();
-        const marker = join(dir, `running-${signal}`);
-        // The command writes a file once it runs; the test sends the signal when the directory shows the file, an
-        // event of the file system, and the run sends it on to run.sh, which ends the command and removes the project.
-        const waiting = run('mysql', [node, '-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, ''); setInterval(() => {}, 2 ** 30)`], context, { signals });
-        await appeared(marker);
-        signals.emit(signal);
-        assert.deepEqual(await waiting, { code: null, signal }, `a run that got ${signal} does not end with it`);
-        left(`got ${signal}`);
-      }
-      assert.deepEqual(verbs(stand).filter(verb => verb === 'up' || verb === 'down'), ['up', 'down', 'up', 'down', 'up', 'down', 'up', 'down'], 'a run does not remove its project with bay down');
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    const node = process.execPath;
+    const left = (when: string) => {
+      assert.deepEqual(readdirSync(stand.state), [], `a run that ${when} leaves its project`);
+      assert.deepEqual(projects(context.root), [], `a run that ${when} leaves the directory of its project`);
+      assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), `a run that ${when} writes an environment file`);
+    };
+    const ended = await run('mysql', [node, '-e', 'if (!/^mysql:\\/\\/root@orm-[0-9a-f]{12}-[0-9a-f]{8}-mysql\\.stand-in\\.test:3306\\/orm_test$/.test(process.env.ORM_TEST_MYSQL_DSN)) process.exit(9)'], context);
+    assert.deepEqual(ended, { code: 0, signal: null }, 'the command does not read the DSN of its server');
+    left('ended');
+    const failed = await run('mysql', [node, '-e', 'process.exit(3)'], context);
+    assert.deepEqual(failed, { code: 3, signal: null });
+    left('failed');
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+      const signals = new EventEmitter();
+      const marker = join(dir, `running-${signal}`);
+      // The command writes a file once it runs; the test sends the signal when the directory shows the file, an
+      // event of the file system, and the run sends it on to run.sh, which ends the command and removes the project.
+      const waiting = run('mysql', [node, '-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, ''); setInterval(() => {}, 2 ** 30)`], context, { signals });
+      await appeared(marker);
+      signals.emit(signal);
+      assert.deepEqual(await waiting, { code: null, signal }, `a run that got ${signal} does not end with it`);
+      left(`got ${signal}`);
+    }
+    assert.deepEqual(verbs(stand).filter(verb => verb === 'up' || verb === 'down'), ['up', 'down', 'up', 'down', 'up', 'down', 'up', 'down'], 'a run does not remove its project with bay down');
   }));
 
 caseTest('two runs of one kind in one checkout have a project each, and a second start of a kind is refused (BAY1)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      const node = process.execPath;
-      const both = await Promise.all([run('mysql', [node, '-e', ''], context), run('mysql', [node, '-e', ''], context)]);
-      assert.deepEqual(both, [{ code: 0, signal: null }, { code: 0, signal: null }]);
-      const ups = calls(stand).filter(call => call.args[2] === 'up').map(call => call.args[1]);
-      assert.equal(new Set(ups).size, 2, 'two runs share a project');
-      assert.deepEqual(readdirSync(stand.state), []);
-      await start('mysql', context);
-      await assert.rejects(start('mysql', context), /mysql is started in this checkout; run make orm-test-container-stop, which removes it/);
-      assert.equal(projects(context.root).length, 1, 'a refused start leaves a project');
-      await start('postgres', context);
-      assert.equal(projects(context.root).length, 2, 'two kinds do not run together');
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    const node = process.execPath;
+    const both = await Promise.all([run('mysql', [node, '-e', ''], context), run('mysql', [node, '-e', ''], context)]);
+    assert.deepEqual(both, [{ code: 0, signal: null }, { code: 0, signal: null }]);
+    const ups = calls(stand).filter(call => call.args[2] === 'up').map(call => call.args[1]);
+    assert.equal(new Set(ups).size, 2, 'two runs share a project');
+    assert.deepEqual(readdirSync(stand.state), []);
+    await start('mysql', context);
+    await assert.rejects(start('mysql', context), /mysql is started in this checkout; run make orm-test-container-stop, which removes it/);
+    assert.equal(projects(context.root).length, 1, 'a refused start leaves a project');
+    await start('postgres', context);
+    assert.equal(projects(context.root).length, 2, 'two kinds do not run together');
   }));
 
 caseTest('a start whose bay up fails prints the last lines of each service and removes its project (BAY1, T444)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      writeFileSync(stand.upFails, '');
-      await assert.rejects(start('mysql', context), /bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1/);
-      assert.deepEqual(commands(stand), ['plan --json', 'images', 'up -no-pull', 'logs -n 50 mysql', 'logs -n 50 mysql-replica', 'down']);
-      assert.deepEqual(readdirSync(stand.state), [], 'a failed start leaves its project');
-      assert.deepEqual(projects(context.root), [], 'a failed start leaves the directory of its project');
-      assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), 'a failed start leaves an environment file');
-      // A kept run keeps the output of bay up, which names the service and the cause, the last lines of each service
-      // and the failed step in report/ (BAY12.7).
-      assert.deepEqual(await run('mysql', ['true'], context, { keep: true }), { code: 1, signal: null });
-      const project = only(context.root);
-      const output = file(context.root, project, 'report/bay-up-servers.log');
-      for (const part of ['bay: service mysql stopped during healthcheck', 'the last lines of mysql\n', 'the last lines of mysql-replica\n']) assert.ok(output.includes(part), `report/bay-up-servers.log misses ${part}: ${output}`);
-      assert.equal(file(context.root, project, 'report/bay-up-servers.status'), '1\n');
-      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    writeFileSync(stand.upFails, '');
+    await assert.rejects(start('mysql', context), /bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1/);
+    assert.deepEqual(commands(stand), ['plan --json', 'images', 'up -no-pull', 'logs -n 50 mysql', 'logs -n 50 mysql-replica', 'down']);
+    assert.deepEqual(readdirSync(stand.state), [], 'a failed start leaves its project');
+    assert.deepEqual(projects(context.root), [], 'a failed start leaves the directory of its project');
+    assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), 'a failed start leaves an environment file');
+    // A kept run keeps the output of bay up, which names the service and the cause, the last lines of each service
+    // and the failed step in report/ (BAY12.7).
+    assert.deepEqual(await run('mysql', ['true'], context, { keep: true }), { code: 1, signal: null });
+    const project = only(context.root);
+    const output = file(context.root, project, 'report/bay-up-servers.log');
+    for (const part of ['bay: service mysql stopped during healthcheck', 'the last lines of mysql\n', 'the last lines of mysql-replica\n']) assert.ok(output.includes(part), `report/bay-up-servers.log misses ${part}: ${output}`);
+    assert.equal(file(context.root, project, 'report/bay-up-servers.status'), '1\n');
+    assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
   }));
 
 caseTest('a start whose step fails in a started server names the step and its status and removes its project (BAY9)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      writeFileSync(stand.execFails, '');
-      await assert.rejects(start('mysql', context), /ERROR 1045: the statement failed\n[^]*bay exec mysql mysql -uroot -e RESET BINARY LOGS AND GTIDS of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 7/);
-      assert.equal(verbs(stand).filter(verb => verb === 'exec').length, 1, 'a start runs a step after a failed one');
-      assert.equal(verbs(stand).at(-1), 'down');
-      assert.deepEqual(readdirSync(stand.state), [], 'a start with a failed step leaves its project');
-      assert.deepEqual(projects(context.root), []);
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    writeFileSync(stand.execFails, '');
+    await assert.rejects(start('mysql', context), /ERROR 1045: the statement failed\n[^]*bay exec mysql mysql -uroot -e RESET BINARY LOGS AND GTIDS of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 7/);
+    assert.equal(verbs(stand).filter(verb => verb === 'exec').length, 1, 'a start runs a step after a failed one');
+    assert.equal(verbs(stand).at(-1), 'down');
+    assert.deepEqual(readdirSync(stand.state), [], 'a start with a failed step leaves its project');
+    assert.deepEqual(projects(context.root), []);
   }));
 
 caseTest('a start pulls no image: an absent image fails naming the install target before bay up, which runs with -no-pull, and the install target pulls with bay (BAY3)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      writeFileSync(stand.absent, '');
-      await assert.rejects(start('mysql', context), /an image of orm-[0-9a-f]{12}-[0-9a-f]{8} is not on this machine; run make orm-install-container-images, which pulls the images of config\/containers\.json/);
-      assert.ok(!verbs(stand).includes('up'), 'bay up ran for an image that is not on the machine');
-      assert.deepEqual(projects(context.root), [], 'a start with an absent image leaves a directory');
-      writeFileSync(stand.calls, '');
-      pull(context);
-      assert.deepEqual(commands(stand), ['pull'], 'the install target does not pull with bay pull alone');
-      const pulled = calls(stand).find(call => call.args[2] === 'pull');
-      assert.ok(pulled && !existsSync(pulled.cwd), 'the install target leaves the directory of its Compose file');
-      assert.deepEqual(readdirSync(stand.state), [], 'the install target started a project');
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    writeFileSync(stand.absent, '');
+    await assert.rejects(start('mysql', context), /an image of orm-[0-9a-f]{12}-[0-9a-f]{8} is not on this machine; run make orm-install-container-images, which pulls the images of config\/containers\.json/);
+    assert.ok(!verbs(stand).includes('up'), 'bay up ran for an image that is not on the machine');
+    assert.deepEqual(projects(context.root), [], 'a start with an absent image leaves a directory');
+    writeFileSync(stand.calls, '');
+    pull(context);
+    assert.deepEqual(commands(stand), ['pull'], 'the install target does not pull with bay pull alone');
+    const pulled = calls(stand).find(call => call.args[2] === 'pull');
+    assert.ok(pulled && !existsSync(pulled.cwd), 'the install target leaves the directory of its Compose file');
+    assert.deepEqual(readdirSync(stand.state), [], 'the install target started a project');
   }));
 
 caseTest('a start with a missing bay, or a bay of another contract, fails naming it and what provides it, and creates nothing (BAY1, BAY5)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      const missing = join(dir, 'missing');
-      await assert.rejects(start('mysql', { ...context, bay: missing }), new RegExp(`${missing} is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine`));
-      writeFileSync(stand.schema, '2');
-      await assert.rejects(start('mysql', context), /bay version --json reports the contract schema version 2, and this script is written for 1; install a bay of that contract/);
-      assert.deepEqual(projects(context.root), [], 'a start with a missing program leaves a directory');
-      assert.deepEqual(commands(stand), [], 'a start with a bay of another contract ran a command of a project');
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    const missing = join(dir, 'missing');
+    await assert.rejects(start('mysql', { ...context, bay: missing }), new RegExp(`${missing} is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine`));
+    writeFileSync(stand.schema, '2');
+    await assert.rejects(start('mysql', context), /bay version --json reports the contract schema version 2, and this script is written for 1; install a bay of that contract/);
+    assert.deepEqual(projects(context.root), [], 'a start with a missing program leaves a directory');
+    assert.deepEqual(commands(stand), [], 'a start with a bay of another contract ran a command of a project');
   }));
 
 caseTest('a run in the runner is the job build, which installs the runner from a bundle of the commit, and the job check, which runs its command after setup prepared the servers (BAY12.2, BAY12.3, BAY12.5, BAY13)', () =>
@@ -512,10 +502,7 @@ caseTest('a run in the runner is the job build, which installs the runner from a
         assert.ok(installation.includes(part), `runner-setup.sh misses ${part}`);
       assert.match(installation, /^ {2}aarch64\) platform=linux-arm64 node_sum=[0-9a-f]{64} rustup_sum=[0-9a-f]{64} ;;$/m, 'runner-setup.sh pins no file of a processor');
       // sh reads each written file: a file with a syntax error fails here and not in a container.
-      for (const name of ['run.sh', 'runner-setup.sh', 'setup-mysql.sh', 'job-build.sh', 'job-check.sh', 'check.sh']) {
-        const read = spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)], { encoding: 'utf8' });
-        assert.equal(read.status, 0, `sh does not read ${name}: ${read.stderr}`);
-      }
+      assertShReads(join(containers(context.root), project), ['run.sh', 'runner-setup.sh', 'setup-mysql.sh', 'job-build.sh', 'job-check.sh', 'check.sh']);
       // runner-setup.sh runs in a copy of the directory of the run, as a job runs it in a directory that has no home
       // yet, with a stand-in apt-get, uname and make, the tools of a kept directory, and the git of this machine, so its
       // writes below HOME are those of a job. Each job names the same HOME below the mounted directory of the run, so
@@ -574,252 +561,229 @@ caseTest('a run in the runner is the job build, which installs the runner from a
   }));
 
 caseTest('a run with a cache keeps the downloads of its tools in the cache and its own builds in its directory, and the job that ends a run removes its working files (T478)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      committed(context);
-      // A cache is an absolute path of the machine that runs the jobs; another path and the form of the host are refused.
-      for (const cache of ['srv/cache', "/srv/a cache", '/srv/$HOME'])
-        await assert.rejects(run('mysql', ['true'], context, { runner: true, cache }), /the cache .* is no absolute path of letters, digits, \., _, - and \//);
-      await assert.rejects(run('mysql', ['true'], context, { cache: '/srv/cache' }), /a cache serves the tools of the runner; run with FORM=runner/);
-      assert.deepEqual(projects(context.root), [], 'a refused run leaves a directory');
+  withOneCheckout(async (dir, stand, context) => {
+    committed(context);
+    // A cache is an absolute path of the machine that runs the jobs; another path and the form of the host are refused.
+    for (const cache of ['srv/cache', "/srv/a cache", '/srv/$HOME'])
+      await assert.rejects(run('mysql', ['true'], context, { runner: true, cache }), /the cache .* is no absolute path of letters, digits, \., _, - and \//);
+    await assert.rejects(run('mysql', ['true'], context, { cache: '/srv/cache' }), /a cache serves the tools of the runner; run with FORM=runner/);
+    assert.deepEqual(projects(context.root), [], 'a refused run leaves a directory');
 
-      // run.sh of a run of this machine creates the directories of the cache, so the cache is a directory of the test.
-      const cache = join(dir, 'cache');
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true, build: ['make', 'test-rust-build'], cache }), { code: 0, signal: null });
-      const project = only(context.root);
-      for (const part of ['compose.build.yaml', 'compose.run.yaml']) {
-        const text = file(context.root, project, part);
-        const job = text.slice(text.indexOf(part === 'compose.build.yaml' ? '  build:\n' : '  check:\n'));
-        // The toolchains and the downloads are in the cache; the home, the clone and its target directory stay in the
-        // directory of the run. The cache is one mount, and no mount is below the directory of the run, so the removal
-        // of the working files of a run removes nothing of the cache.
-        assert.match(job, /^ {6}HOME: "\/orm-run\/home"\n {6}CARGO_HOME: "\/orm-cache\/cargo"\n {6}RUSTUP_HOME: "\/orm-cache\/rustup"\n {6}GOMODCACHE: "\/orm-cache\/go\/mod"\n {6}GOCACHE: "\/orm-cache\/go\/build"\n {6}npm_config_cache: "\/orm-cache\/npm"\n {6}COMPOSER_CACHE_DIR: "\/orm-cache\/composer"$/m, `${part}: ${job}`);
-        assert.ok(job.includes(`\n    volumes: [".:/orm-run", "${cache}:/orm-cache"]\n`), `${part}: ${job}`);
-      }
-      const services = file(context.root, project, 'compose.run.yaml');
-      assert.ok(!services.slice(0, services.indexOf('  check:\n')).includes('/orm-cache'), 'a server or a setup mounts the cache');
-      // run.sh creates each directory of the cache before it queues a job, since a mount names a directory that exists.
-      const runSh = file(context.root, project, 'run.sh');
-      assert.ok(runSh.includes(`mkdir -p ${['cargo', 'rustup', 'go/mod', 'go/build', 'npm', 'composer'].map(below => `'${cache}/${below}'`).join(' ')}`), runSh);
-      assert.deepEqual(readdirSync(cache).sort(), ['cargo', 'composer', 'go', 'npm', 'rustup'], 'run.sh did not create the directories of the cache');
-      // rustup-init leaves the default toolchain of a shared RUSTUP_HOME as it is, and the setting of cargo of the run is
-      // in the directory of the run, an ancestor of each directory where cargo runs, and not in the shared CARGO_HOME.
-      const installation = file(context.root, project, 'runner-setup.sh');
-      assert.ok(installation.includes('--default-toolchain none --no-update-default-toolchain'), installation);
-      assert.ok(installation.includes('cat > "$run/.cargo/config.toml"') && !installation.includes('$CARGO_HOME/config.toml'), installation);
-      assert.ok(existsSync(join(containers(context.root), project, 'keep')), 'a kept run has no file keep');
+    // run.sh of a run of this machine creates the directories of the cache, so the cache is a directory of the test.
+    const cache = join(dir, 'cache');
+    assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true, build: ['make', 'test-rust-build'], cache }), { code: 0, signal: null });
+    const project = only(context.root);
+    for (const part of ['compose.build.yaml', 'compose.run.yaml']) {
+      const text = file(context.root, project, part);
+      const job = text.slice(text.indexOf(part === 'compose.build.yaml' ? '  build:\n' : '  check:\n'));
+      // The toolchains and the downloads are in the cache; the home, the clone and its target directory stay in the
+      // directory of the run. The cache is one mount, and no mount is below the directory of the run, so the removal
+      // of the working files of a run removes nothing of the cache.
+      assert.match(job, /^ {6}HOME: "\/orm-run\/home"\n {6}CARGO_HOME: "\/orm-cache\/cargo"\n {6}RUSTUP_HOME: "\/orm-cache\/rustup"\n {6}GOMODCACHE: "\/orm-cache\/go\/mod"\n {6}GOCACHE: "\/orm-cache\/go\/build"\n {6}npm_config_cache: "\/orm-cache\/npm"\n {6}COMPOSER_CACHE_DIR: "\/orm-cache\/composer"$/m, `${part}: ${job}`);
+      assert.ok(job.includes(`\n    volumes: [".:/orm-run", "${cache}:/orm-cache"]\n`), `${part}: ${job}`);
+    }
+    const services = file(context.root, project, 'compose.run.yaml');
+    assert.ok(!services.slice(0, services.indexOf('  check:\n')).includes('/orm-cache'), 'a server or a setup mounts the cache');
+    // run.sh creates each directory of the cache before it queues a job, since a mount names a directory that exists.
+    const runSh = file(context.root, project, 'run.sh');
+    assert.ok(runSh.includes(`mkdir -p ${['cargo', 'rustup', 'go/mod', 'go/build', 'npm', 'composer'].map(below => `'${cache}/${below}'`).join(' ')}`), runSh);
+    assert.deepEqual(readdirSync(cache).sort(), ['cargo', 'composer', 'go', 'npm', 'rustup'], 'run.sh did not create the directories of the cache');
+    // rustup-init leaves the default toolchain of a shared RUSTUP_HOME as it is, and the setting of cargo of the run is
+    // in the directory of the run, an ancestor of each directory where cargo runs, and not in the shared CARGO_HOME.
+    const installation = file(context.root, project, 'runner-setup.sh');
+    assert.ok(installation.includes('--default-toolchain none --no-update-default-toolchain'), installation);
+    assert.ok(installation.includes('cat > "$run/.cargo/config.toml"') && !installation.includes('$CARGO_HOME/config.toml'), installation);
+    assert.ok(existsSync(join(containers(context.root), project, 'keep')), 'a kept run has no file keep');
 
-      // The job check removes the working files after its command, and the job build when it failed; a kept run keeps
-      // them. Each job runs in a copy of the directory with a stand-in of the script that it runs.
-      const ends = async (job: string, script: string, status: number, keep: boolean) => {
-        const copy = join(dir, `ends-${job}-${keep}`);
-        cpSync(join(containers(context.root), project), copy, { recursive: true });
-        if (!keep) rmSync(join(copy, 'keep'));
-        // The clone holds what the run wrote into it, the build output of cargo among it, which the end removes with the clone.
-        for (const name of ['repo/written', 'home', 'cargo/bin', 'rustup', 'node/bin']) mkdirSync(join(copy, name), { recursive: true });
-        for (const name of ['address-mysql']) writeFileSync(join(copy, name), '192.0.2.1\n');
-        writeFileSync(join(copy, 'build.sh'), 'exit 0\n');
-        writeFileSync(join(copy, script), `exit ${status}\n`);
-        writeFileSync(join(copy, job), file(context.root, project, job).replace(/^run=\/orm-run$/m, `run='${copy}'`));
-        const ended = spawnSync('/bin/sh', [join(copy, job)], { encoding: 'utf8' });
-        assert.equal(ended.status, status, `${job}: ${ended.stderr}`);
-        return ['repo', 'home', 'cargo', 'rustup', 'node'].filter(name => existsSync(join(copy, name)));
-      };
-      assert.deepEqual(await ends('job-check.sh', 'check.sh', 1, false), [], 'the job check leaves working files');
-      assert.deepEqual(await ends('job-check.sh', 'check.sh', 0, true), ['repo', 'home', 'cargo', 'rustup', 'node'], 'a kept run lost its working files');
-      assert.deepEqual(await ends('job-build.sh', 'runner-setup.sh', 4, false), [], 'a failed job build leaves working files');
-      assert.deepEqual(await ends('job-build.sh', 'runner-setup.sh', 0, false), ['repo', 'home', 'cargo', 'rustup', 'node'], 'a job build that succeeded removed what the job check reads');
-    });
+    // The job check removes the working files after its command, and the job build when it failed; a kept run keeps
+    // them. Each job runs in a copy of the directory with a stand-in of the script that it runs.
+    const ends = async (job: string, script: string, status: number, keep: boolean) => {
+      const copy = join(dir, `ends-${job}-${keep}`);
+      cpSync(join(containers(context.root), project), copy, { recursive: true });
+      if (!keep) rmSync(join(copy, 'keep'));
+      // The clone holds what the run wrote into it, the build output of cargo among it, which the end removes with the clone.
+      for (const name of ['repo/written', 'home', 'cargo/bin', 'rustup', 'node/bin']) mkdirSync(join(copy, name), { recursive: true });
+      for (const name of ['address-mysql']) writeFileSync(join(copy, name), '192.0.2.1\n');
+      writeFileSync(join(copy, 'build.sh'), 'exit 0\n');
+      writeFileSync(join(copy, script), `exit ${status}\n`);
+      writeFileSync(join(copy, job), file(context.root, project, job).replace(/^run=\/orm-run$/m, `run='${copy}'`));
+      const ended = spawnSync('/bin/sh', [join(copy, job)], { encoding: 'utf8' });
+      assert.equal(ended.status, status, `${job}: ${ended.stderr}`);
+      return ['repo', 'home', 'cargo', 'rustup', 'node'].filter(name => existsSync(join(copy, name)));
+    };
+    assert.deepEqual(await ends('job-check.sh', 'check.sh', 1, false), [], 'the job check leaves working files');
+    assert.deepEqual(await ends('job-check.sh', 'check.sh', 0, true), ['repo', 'home', 'cargo', 'rustup', 'node'], 'a kept run lost its working files');
+    assert.deepEqual(await ends('job-build.sh', 'runner-setup.sh', 4, false), [], 'a failed job build leaves working files');
+    assert.deepEqual(await ends('job-build.sh', 'runner-setup.sh', 0, false), ['repo', 'home', 'cargo', 'rustup', 'node'], 'a job build that succeeded removed what the job check reads');
   }));
 
 caseTest('a run of several kinds is one project with the servers, the steps and the variables of each kind, and sqlite names no server (T477)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      // KIND is a comma list; sqlite names no server, a list needs a kind with a server and names each kind once.
-      assert.deepEqual(kinds('mysql,postgres,sqlite'), ['mysql', 'postgres']);
-      assert.deepEqual(kinds('mariadb'), ['mariadb']);
-      for (const refused of ['sqlite', 'mysql,mysql', 'mysql,oracle', '', 'mysql,'])
-        assert.throws(() => kinds(refused), /is mysql, postgres, mariadb or sqlite|a kind with a server|more than once/, refused);
+  withOneCheckout(async (dir, stand, context) => {
+    // KIND is a comma list; sqlite names no server, a list needs a kind with a server and names each kind once.
+    assert.deepEqual(kinds('mysql,postgres,sqlite'), ['mysql', 'postgres']);
+    assert.deepEqual(kinds('mariadb'), ['mariadb']);
+    for (const refused of ['sqlite', 'mysql,mysql', 'mysql,oracle', '', 'mysql,'])
+      assert.throws(() => kinds(refused), /is mysql, postgres, mariadb or sqlite|a kind with a server|more than once/, refused);
 
-      // In the form of the host one run starts the servers of each kind, runs the steps of each kind in the container of
-      // its server, and gives its command the variables of each kind, with the address of the primary of each kind.
-      const has = ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_MYSQL_REPLICA_DSN', 'ORM_TEST_POSTGRES_DSN', 'ORM_TEST_POSTGRES_REPLICA_DSN'].map(name => `process.env.${name}`).join(' && ');
-      const mismatch = `process.env.ORM_TEST_MYSQL_TLS_MISMATCH_DSN.includes('@${ADDRESS}:3306/') && process.env.ORM_TEST_POSTGRES_TLS_MISMATCH_DSN.includes('@${ADDRESS}:5432/')`;
-      const ended = await run(['mysql', 'postgres'], [process.execPath, '-e', `process.exit(${has} && ${mismatch} ? 0 : 9)`], context, { keep: true });
-      assert.deepEqual(ended, { code: 0, signal: null }, 'the command of a run of two kinds lacks the variables of a kind');
-      const host = only(context.root);
-      assert.deepEqual([...compose(context.root, host).matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'postgres', 'postgres-replica']);
-      assert.deepEqual(steps(stand, host).map(step => step[0]), ['mysql', 'mysql-replica', 'mysql', 'postgres'], 'the steps of each kind did not run in the containers of its servers');
-      assert.ok(commands(stand).includes(`exec mysql getent ahostsv4 ${host}-mysql.${SUFFIX}`) && commands(stand).includes(`exec postgres getent ahostsv4 ${host}-postgres.${SUFFIX}`), 'the address of the primary of a kind was not read');
-      // The servers of a container take the smaller caches that the documentation states.
-      const services = compose(context.root, host);
-      assert.equal([...services.matchAll(/"--innodb-buffer-pool-size=64M"/g)].length, 2, 'a MySQL server takes another buffer pool');
-      assert.equal([...services.matchAll(/"shared_buffers=32MB"/g)].length, 2, 'a PostgreSQL server takes other shared buffers');
-      remove(context);
+    // In the form of the host one run starts the servers of each kind, runs the steps of each kind in the container of
+    // its server, and gives its command the variables of each kind, with the address of the primary of each kind.
+    const has = ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_MYSQL_REPLICA_DSN', 'ORM_TEST_POSTGRES_DSN', 'ORM_TEST_POSTGRES_REPLICA_DSN'].map(name => `process.env.${name}`).join(' && ');
+    const mismatch = `process.env.ORM_TEST_MYSQL_TLS_MISMATCH_DSN.includes('@${ADDRESS}:3306/') && process.env.ORM_TEST_POSTGRES_TLS_MISMATCH_DSN.includes('@${ADDRESS}:5432/')`;
+    const ended = await run(['mysql', 'postgres'], [process.execPath, '-e', `process.exit(${has} && ${mismatch} ? 0 : 9)`], context, { keep: true });
+    assert.deepEqual(ended, { code: 0, signal: null }, 'the command of a run of two kinds lacks the variables of a kind');
+    const host = only(context.root);
+    assert.deepEqual([...compose(context.root, host).matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'postgres', 'postgres-replica']);
+    assert.deepEqual(steps(stand, host).map(step => step[0]), ['mysql', 'mysql-replica', 'mysql', 'postgres'], 'the steps of each kind did not run in the containers of its servers');
+    assert.ok(commands(stand).includes(`exec mysql getent ahostsv4 ${host}-mysql.${SUFFIX}`) && commands(stand).includes(`exec postgres getent ahostsv4 ${host}-postgres.${SUFFIX}`), 'the address of the primary of a kind was not read');
+    // The servers of a container take the smaller caches that the documentation states.
+    const services = compose(context.root, host);
+    assert.equal([...services.matchAll(/"--innodb-buffer-pool-size=64M"/g)].length, 2, 'a MySQL server takes another buffer pool');
+    assert.equal([...services.matchAll(/"shared_buffers=32MB"/g)].length, 2, 'a PostgreSQL server takes other shared buffers');
+    remove(context);
 
-      // In the form of the runner each kind has its service setup-<kind> of the image of that kind, the job check waits
-      // for each, and job-check.sh writes the variables of each kind with the address that each setup wrote.
-      committed(context);
-      writeFileSync(stand.ups, '');
-      assert.deepEqual(await run(['mysql', 'postgres'], ['make', 'client-db-check'], context, { runner: true, keep: true }), { code: 0, signal: null });
-      const project = only(context.root);
-      const text = file(context.root, project, 'compose.run.yaml');
-      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'postgres', 'postgres-replica', 'setup-mysql', 'setup-postgres', 'check']);
-      const setupOf = (kind: string, next: string) => text.slice(text.indexOf(`  setup-${kind}:\n`), text.indexOf(`  ${next}:\n`));
-      const images = JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).images;
-      assert.ok(setupOf('mysql', 'setup-postgres').includes(`image: "${images.mysql.reference}"`) && setupOf('postgres', 'check').includes(`image: "${images.postgres.reference}"`), 'a setup does not run the client of the image of its kind');
-      assert.match(setupOf('postgres', 'check'), /^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"\n {6}postgres-replica:\n {8}condition: "service_healthy"$/m);
-      assert.match(text.slice(text.indexOf('  check:\n')), /^ {4}depends_on:\n {6}setup-mysql:\n {8}condition: "service_completed_successfully"\n {6}setup-postgres:\n {8}condition: "service_completed_successfully"$/m);
-      const jobCheck = file(context.root, project, 'job-check.sh');
-      for (const part of ['read -r address_mysql < "$run/address-mysql"', 'read -r address_postgres < "$run/address-postgres"', '@${address_mysql}:3306/', '@${address_postgres}:5432/', "export ORM_TEST_MYSQL_DSN=", "export ORM_TEST_POSTGRES_DSN="])
-        assert.ok(jobCheck.includes(part), `job-check.sh misses ${part}: ${jobCheck}`);
-      // A target that reads the environment file of the servers reads servers.env.
-      const checkSh = file(context.root, project, 'check.sh');
-      assert.ok(checkSh.includes(`export TEST_ENV="$run/servers.env" MARIADB_ENV="$run/servers.env"`), checkSh);
-      for (const name of ['run.sh', 'setup-mysql.sh', 'setup-postgres.sh', 'job-check.sh', 'check.sh']) {
-        const read = spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)], { encoding: 'utf8' });
-        assert.equal(read.status, 0, `sh does not read ${name}: ${read.stderr}`);
-      }
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'postgres', 'postgres-replica', 'setup-mysql', 'setup-postgres', 'check']]);
-      assert.equal(file(context.root, project, 'report/status'), '0\n');
-    });
+    // In the form of the runner each kind has its service setup-<kind> of the image of that kind, the job check waits
+    // for each, and job-check.sh writes the variables of each kind with the address that each setup wrote.
+    committed(context);
+    writeFileSync(stand.ups, '');
+    assert.deepEqual(await run(['mysql', 'postgres'], ['make', 'client-db-check'], context, { runner: true, keep: true }), { code: 0, signal: null });
+    const project = only(context.root);
+    const text = file(context.root, project, 'compose.run.yaml');
+    assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'postgres', 'postgres-replica', 'setup-mysql', 'setup-postgres', 'check']);
+    const setupOf = (kind: string, next: string) => text.slice(text.indexOf(`  setup-${kind}:\n`), text.indexOf(`  ${next}:\n`));
+    const images = JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).images;
+    assert.ok(setupOf('mysql', 'setup-postgres').includes(`image: "${images.mysql.reference}"`) && setupOf('postgres', 'check').includes(`image: "${images.postgres.reference}"`), 'a setup does not run the client of the image of its kind');
+    assert.match(setupOf('postgres', 'check'), /^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"\n {6}postgres-replica:\n {8}condition: "service_healthy"$/m);
+    assert.match(text.slice(text.indexOf('  check:\n')), /^ {4}depends_on:\n {6}setup-mysql:\n {8}condition: "service_completed_successfully"\n {6}setup-postgres:\n {8}condition: "service_completed_successfully"$/m);
+    const jobCheck = file(context.root, project, 'job-check.sh');
+    for (const part of ['read -r address_mysql < "$run/address-mysql"', 'read -r address_postgres < "$run/address-postgres"', '@${address_mysql}:3306/', '@${address_postgres}:5432/', "export ORM_TEST_MYSQL_DSN=", "export ORM_TEST_POSTGRES_DSN="])
+      assert.ok(jobCheck.includes(part), `job-check.sh misses ${part}: ${jobCheck}`);
+    // A target that reads the environment file of the servers reads servers.env.
+    const checkSh = file(context.root, project, 'check.sh');
+    assert.ok(checkSh.includes(`export TEST_ENV="$run/servers.env" MARIADB_ENV="$run/servers.env"`), checkSh);
+    assertShReads(join(containers(context.root), project), ['run.sh', 'setup-mysql.sh', 'setup-postgres.sh', 'job-check.sh', 'check.sh']);
+    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'postgres', 'postgres-replica', 'setup-mysql', 'setup-postgres', 'check']]);
+    assert.equal(file(context.root, project, 'report/status'), '0\n');
   }));
 
 caseTest('a run in the runner whose job check fails ends with the result of the job and names it in the report (BAY12.7, BAY13)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      committed(context);
-      writeFileSync(stand.checkFails, '');
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true }), { code: 1, signal: null });
-      const project = only(context.root);
-      assert.equal(file(context.root, project, 'report/status'), '5\n');
-      assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).exitCode, 5);
-      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ the job check of orm-[0-9a-f]{12}-[0-9a-f]{8} did not succeed: bay job wait exited with 1$/m);
-      assert.deepEqual(readdirSync(stand.state), []);
-      // An image that is absent fails the run before a job is queued, naming the install target, and leaves nothing.
-      remove(context);
-      writeFileSync(stand.absent, '');
-      writeFileSync(stand.ups, '');
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true }), { code: 1, signal: null });
-      assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job ran without its image');
-      assert.deepEqual(projects(context.root), [], 'a run without its image leaves its directory');
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    committed(context);
+    writeFileSync(stand.checkFails, '');
+    assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true }), { code: 1, signal: null });
+    const project = only(context.root);
+    assert.equal(file(context.root, project, 'report/status'), '5\n');
+    assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).exitCode, 5);
+    assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ the job check of orm-[0-9a-f]{12}-[0-9a-f]{8} did not succeed: bay job wait exited with 1$/m);
+    assert.deepEqual(readdirSync(stand.state), []);
+    // An image that is absent fails the run before a job is queued, naming the install target, and leaves nothing.
+    remove(context);
+    writeFileSync(stand.absent, '');
+    writeFileSync(stand.ups, '');
+    assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true }), { code: 1, signal: null });
+    assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job ran without its image');
+    assert.deepEqual(projects(context.root), [], 'a run without its image leaves its directory');
   }));
 
 caseTest('run.sh refuses a bay of another contract and a missing bay before it starts anything, compares no version, and records the version of its bay (BAY12.1, BAY5)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      await start('mysql', context);
-      const script = join(containers(context.root), only(context.root), 'run.sh');
-      writeFileSync(stand.calls, '');
-      writeFileSync(stand.schema, '2');
-      const other = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
-      assert.equal(other.status, 1);
-      assert.match(other.stderr, /bay version reports another contract schema version than 1, for which this file is written: .* schema 2; install a bay of that contract/);
-      const missing = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: join(dir, 'missing') }, encoding: 'utf8' });
-      assert.equal(missing.status, 1);
-      assert.match(missing.stderr, /missing is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND/);
-      writeFileSync(stand.schema, '1');
-      assert.deepEqual(commands(stand), [], 'run.sh ran a command of its project for a bay that it refuses');
-      // The bay of a machine is a tool of the machine, as make is: a run takes any version that has the contract,
-      // the build of a developer included, and leaves the line of bay version in its output and in report/.
-      writeFileSync(stand.release, 'v7.8.9-another+dirty');
-      remove(context);
-      await start('postgres', context);
-      const project = only(context.root);
-      assert.equal(file(context.root, project, 'report/bay-version'), 'bay v7.8.9-another+dirty (0000) go0 test/test schema 1\n');
-      assert.ok(!file(context.root, project, 'run.sh').includes(JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).bay.version), 'run.sh reads the release that CI installs');
-      const script2 = join(containers(context.root), project, 'run.sh');
-      // The command of bay may have several words, as sudo -n bay has on a CI runner: each word reaches bay.
-      writeFileSync(stand.calls, '');
-      const words = spawnSync('/bin/sh', [script2, 'down'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: `/usr/bin/env ORM_STAND_IN=1 ${stand.bay}` }, encoding: 'utf8' });
-      assert.equal(words.status, 0, words.stderr);
-      assert.deepEqual(commands(stand), ['down']);
-      const several = await run('mysql', [process.execPath, '-e', ''], { ...context, bay: `/usr/bin/env ORM_STAND_IN=1 ${stand.bay}` });
-      assert.deepEqual(several, { code: 0, signal: null }, 'the script does not run a command of bay with several words');
-    });
+  withOneCheckout(async (dir, stand, context) => {
+    await start('mysql', context);
+    const script = join(containers(context.root), only(context.root), 'run.sh');
+    writeFileSync(stand.calls, '');
+    writeFileSync(stand.schema, '2');
+    const other = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
+    assert.equal(other.status, 1);
+    assert.match(other.stderr, /bay version reports another contract schema version than 1, for which this file is written: .* schema 2; install a bay of that contract/);
+    const missing = spawnSync('/bin/sh', [script, 'up'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: join(dir, 'missing') }, encoding: 'utf8' });
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /missing is missing: it is the program bay, which runs the Compose project of the servers; install bay on this machine, or name the command of bay in BAY_COMMAND/);
+    writeFileSync(stand.schema, '1');
+    assert.deepEqual(commands(stand), [], 'run.sh ran a command of its project for a bay that it refuses');
+    // The bay of a machine is a tool of the machine, as make is: a run takes any version that has the contract,
+    // the build of a developer included, and leaves the line of bay version in its output and in report/.
+    writeFileSync(stand.release, 'v7.8.9-another+dirty');
+    remove(context);
+    await start('postgres', context);
+    const project = only(context.root);
+    assert.equal(file(context.root, project, 'report/bay-version'), 'bay v7.8.9-another+dirty (0000) go0 test/test schema 1\n');
+    assert.ok(!file(context.root, project, 'run.sh').includes(JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).bay.version), 'run.sh reads the release that CI installs');
+    const script2 = join(containers(context.root), project, 'run.sh');
+    // The command of bay may have several words, as sudo -n bay has on a CI runner: each word reaches bay.
+    writeFileSync(stand.calls, '');
+    const words = spawnSync('/bin/sh', [script2, 'down'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: `/usr/bin/env ORM_STAND_IN=1 ${stand.bay}` }, encoding: 'utf8' });
+    assert.equal(words.status, 0, words.stderr);
+    assert.deepEqual(commands(stand), ['down']);
+    const several = await run('mysql', [process.execPath, '-e', ''], { ...context, bay: `/usr/bin/env ORM_STAND_IN=1 ${stand.bay}` });
+    assert.deepEqual(several, { code: 0, signal: null }, 'the script does not run a command of bay with several words');
   }));
 
 caseTest('a run on another machine sends its directory once, queues and waits for each job there through ssh, brings the report back and leaves nothing there (BAY12.4, BAY12.6, BAY13, BAY13.1)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      committed(context);
-      // The stand-in ssh runs the command of its second argument on this machine with the stand-in bay as the bay of
-      // PATH, and records the host; while drop exists, it ends a command that waits for a job with 255, as ssh ends when
-      // the connection drops. The directory of the other machine is a directory of the test.
-      const ssh = join(dir, 'ssh');
-      const drop = join(dir, 'drop');
-      writeFileSync(ssh, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(join(dir, 'hosts.log'))}\ncase "$2" in *' wait '*) [ -e ${JSON.stringify(drop)} ] && exit 255 ;; esac\nPATH=${JSON.stringify(dirname(stand.bay))}:$PATH\nexport PATH\nexec /bin/sh -c "$2"\n`);
-      chmodSync(ssh, 0o755);
-      const there = join(dir, 'other machine');
-      writeFileSync(stand.checkFails, '');
-      const where = { host: 'runs@other.invalid', directory: there, pull: true, keep: true };
-      const status = remote('postgres', ['make', 'test-rust'], { ...context, ssh }, where);
-      assert.equal(status, 1, 'the run does not end with the result of its job check on the other machine');
-      assert.deepEqual([...new Set(readFileSync(join(dir, 'hosts.log'), 'utf8').trim().split('\n'))], ['runs@other.invalid']);
-      const ran = calls(stand).filter(call => call.args[0] === '-p');
-      assert.ok(ran.length > 0 && ran.every(call => call.cwd.startsWith(realpathSync(there))), 'a command of bay of a project ran in a directory of this machine');
-      // Each job is queued and waited for on the machine that runs it, which knows a job as soon as it is queued.
-      const job = ['job', 'job', 'job', 'job', 'job'];
-      assert.deepEqual(ran.map(call => call.args[call.args[2] === '-f' ? 4 : 2]), ['plan', 'pull', 'pull', 'images', ...job, 'images', ...job]);
-      assert.deepEqual(ran.filter(call => call.args[2] === 'job').map(call => call.args[3]), ['logs', 'wait', 'logs', 'show', 'logs', 'wait', 'logs', 'show']);
-      assert.ok(calls(stand).every(call => !call.args.includes('-peer')), 'a job was read through a peer');
-      const [report] = readdirSync(join(containers(context.root), 'reports'));
-      assert.ok(report, 'the report did not come back');
-      const reported = (name: string) => readFileSync(join(containers(context.root), 'reports', report, name), 'utf8');
-      assert.equal(reported('status'), '5\n');
-      assert.equal(reported('check.log'), 'the output of the command\n');
-      assert.equal(JSON.parse(reported('job-check.json')).exitCode, 5);
-      assert.deepEqual(readdirSync(there), [report], 'the kept directory is not the one directory there');
+  withOneCheckout(async (dir, stand, context) => {
+    committed(context);
+    // The stand-in ssh runs the command of its second argument on this machine with the stand-in bay as the bay of
+    // PATH, and records the host; while drop exists, it ends a command that waits for a job with 255, as ssh ends when
+    // the connection drops. The directory of the other machine is a directory of the test.
+    const ssh = join(dir, 'ssh');
+    const drop = join(dir, 'drop');
+    writeFileSync(ssh, `#!/bin/sh\nprintf '%s\\n' "$1" >> ${JSON.stringify(join(dir, 'hosts.log'))}\ncase "$2" in *' wait '*) [ -e ${JSON.stringify(drop)} ] && exit 255 ;; esac\nPATH=${JSON.stringify(dirname(stand.bay))}:$PATH\nexport PATH\nexec /bin/sh -c "$2"\n`);
+    chmodSync(ssh, 0o755);
+    const there = join(dir, 'other machine');
+    writeFileSync(stand.checkFails, '');
+    const where = { host: 'runs@other.invalid', directory: there, pull: true, keep: true };
+    const status = remote('postgres', ['make', 'test-rust'], { ...context, ssh }, where);
+    assert.equal(status, 1, 'the run does not end with the result of its job check on the other machine');
+    assert.deepEqual([...new Set(readFileSync(join(dir, 'hosts.log'), 'utf8').trim().split('\n'))], ['runs@other.invalid']);
+    const ran = calls(stand).filter(call => call.args[0] === '-p');
+    assert.ok(ran.length > 0 && ran.every(call => call.cwd.startsWith(realpathSync(there))), 'a command of bay of a project ran in a directory of this machine');
+    // Each job is queued and waited for on the machine that runs it, which knows a job as soon as it is queued.
+    const job = ['job', 'job', 'job', 'job', 'job'];
+    assert.deepEqual(ran.map(call => call.args[call.args[2] === '-f' ? 4 : 2]), ['plan', 'pull', 'pull', 'images', ...job, 'images', ...job]);
+    assert.deepEqual(ran.filter(call => call.args[2] === 'job').map(call => call.args[3]), ['logs', 'wait', 'logs', 'show', 'logs', 'wait', 'logs', 'show']);
+    assert.ok(calls(stand).every(call => !call.args.includes('-peer')), 'a job was read through a peer');
+    const [report] = readdirSync(join(containers(context.root), 'reports'));
+    assert.ok(report, 'the report did not come back');
+    const reported = (name: string) => readFileSync(join(containers(context.root), 'reports', report, name), 'utf8');
+    assert.equal(reported('status'), '5\n');
+    assert.equal(reported('check.log'), 'the output of the command\n');
+    assert.equal(JSON.parse(reported('job-check.json')).exitCode, 5);
+    assert.deepEqual(readdirSync(there), [report], 'the kept directory is not the one directory there');
 
-      // The same run started again, as after a lost connection, sends nothing and queues no job a second time.
-      writeFileSync(stand.ups, '');
-      writeFileSync(join(dir, 'hosts.log'), '');
-      assert.equal(remote('postgres', ['make', 'test-rust'], { ...context, ssh }, { ...where, pull: false, keep: false }), 1);
-      assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job of the run ran a second time');
-      assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
-      assert.deepEqual(projects(context.root), [], 'the run leaves its directory on this machine');
+    // The same run started again, as after a lost connection, sends nothing and queues no job a second time.
+    writeFileSync(stand.ups, '');
+    writeFileSync(join(dir, 'hosts.log'), '');
+    assert.equal(remote('postgres', ['make', 'test-rust'], { ...context, ssh }, { ...where, pull: false, keep: false }), 1);
+    assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job of the run ran a second time');
+    assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
+    assert.deepEqual(projects(context.root), [], 'the run leaves its directory on this machine');
 
-      // A job that has not ended is no failed job: the run queues no job check, keeps the directory there, whose files
-      // the queued job reads, and ends with 3; the same command, once the job ended, waits for it and goes on.
-      rmSync(stand.checkFails);
-      writeFileSync(stand.unended, '');
-      const command = ['make', 'test-rust', 'unended'];
-      assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 3, 'a run whose job has not ended does not end with 3');
-      assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job that has not ended ran');
-      const [kept] = readdirSync(there);
-      assert.ok(kept && existsSync(join(there, kept, 'compose.build.yaml')), 'the run removed the directory that its queued job reads');
-      assert.equal(JSON.parse(readFileSync(join(containers(context.root), 'reports', kept, 'job-build.json'), 'utf8')).state, 'queued');
-      assert.ok(!existsSync(join(there, kept, 'job-check')), 'the job check was queued after a job build that has not ended');
-      rmSync(stand.unended);
-      const queued = join(dir, 'jobs', `${readFileSync(join(there, kept, 'job-build'), 'utf8').trim()}.json`);
-      writeFileSync(queued, JSON.stringify({ ...JSON.parse(readFileSync(queued, 'utf8')), state: 'succeeded', ended: '2026-11-14T00:00:02Z', exitCode: 0 }));
-      // A wait that ends with the connection is no end of the job either.
-      writeFileSync(drop, '');
-      assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 3, 'a run whose connection dropped does not end with 3');
-      assert.deepEqual(readdirSync(there), [kept], 'the run removed its directory after a dropped connection');
-      rmSync(drop);
-      assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 0);
-      const checked = readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line) as string[]);
-      assert.ok(checked.length === 1 && checked[0]?.includes('check'), `the job check did not run once: ${JSON.stringify(checked)}`);
-      assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
+    // A job that has not ended is no failed job: the run queues no job check, keeps the directory there, whose files
+    // the queued job reads, and ends with 3; the same command, once the job ended, waits for it and goes on.
+    rmSync(stand.checkFails);
+    writeFileSync(stand.unended, '');
+    const command = ['make', 'test-rust', 'unended'];
+    assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 3, 'a run whose job has not ended does not end with 3');
+    assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job that has not ended ran');
+    const [kept] = readdirSync(there);
+    assert.ok(kept && existsSync(join(there, kept, 'compose.build.yaml')), 'the run removed the directory that its queued job reads');
+    assert.equal(JSON.parse(readFileSync(join(containers(context.root), 'reports', kept, 'job-build.json'), 'utf8')).state, 'queued');
+    assert.ok(!existsSync(join(there, kept, 'job-check')), 'the job check was queued after a job build that has not ended');
+    rmSync(stand.unended);
+    const queued = join(dir, 'jobs', `${readFileSync(join(there, kept, 'job-build'), 'utf8').trim()}.json`);
+    writeFileSync(queued, JSON.stringify({ ...JSON.parse(readFileSync(queued, 'utf8')), state: 'succeeded', ended: '2026-11-14T00:00:02Z', exitCode: 0 }));
+    // A wait that ends with the connection is no end of the job either.
+    writeFileSync(drop, '');
+    assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 3, 'a run whose connection dropped does not end with 3');
+    assert.deepEqual(readdirSync(there), [kept], 'the run removed its directory after a dropped connection');
+    rmSync(drop);
+    assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 0);
+    const checked = readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line) as string[]);
+    assert.ok(checked.length === 1 && checked[0]?.includes('check'), `the job check did not run once: ${JSON.stringify(checked)}`);
+    assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
 
-      // A run with a failed build queues no job check.
-      writeFileSync(stand.ups, '');
-      writeFileSync(stand.buildFails, '');
-      assert.equal(remote('mysql', ['make', 'test-rust'], { ...context, ssh }, { ...where, keep: false, build: ['make', 'build'] }), 1);
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the job check ran after a failed build');
-    });
+    // A run with a failed build queues no job check.
+    writeFileSync(stand.ups, '');
+    writeFileSync(stand.buildFails, '');
+    assert.equal(remote('mysql', ['make', 'test-rust'], { ...context, ssh }, { ...where, keep: false, build: ['make', 'build'] }), 1);
+    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the job check ran after a failed build');
   }));
 
 caseTest('the install target of bay takes the archive of the release that CI installs for the platform, uses it only with its sha256, and leaves bay and bayd in the tools of the checkout (BAY5)', () =>
@@ -849,38 +813,34 @@ caseTest('the install target of bay takes the archive of the release that CI ins
   }));
 
 caseTest('a run in the runner with a build command builds in the job build, before the servers start, with the jobs and the memory limits that it is given (BAY12.8, BAY13)', () =>
-  withTemporaryDirectory('orm-containers-', async dir => {
-    const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      committed(context);
-      const options = { runner: true, keep: true, build: ['make', 'test-rust-build'], jobs: 2, runnerMemory: '2600m', serverMemory: '700m' };
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, options), { code: 0, signal: null });
-      const project = only(context.root);
-      assert.ok(file(context.root, project, 'build.sh').includes(`( 'make' 'test-rust-build' )`), 'build.sh does not run the build command as it was given');
-      assert.ok(!file(context.root, project, 'build.sh').includes('servers.env'), 'the build reads the variables of servers that are not up');
-      const jobBuild = file(context.root, project, 'job-build.sh');
-      assert.ok(jobBuild.indexOf('sh "$run/runner-setup.sh"') < jobBuild.indexOf('sh "$run/build.sh"') && jobBuild.includes('at "the build command"'), jobBuild);
-      // The jobs are a setting of the cargo of the runner, and each limit is the mem_limit of its services.
-      assert.match(file(context.root, project, 'runner-setup.sh'), /^\[build\]\njobs = 2$/m);
-      const text = file(context.root, project, 'compose.run.yaml');
-      assert.deepEqual([...text.matchAll(/^ {4}mem_limit: "(.*)"$/gm)].map(match => match[1]), ['700m', '700m', '2600m']);
-      assert.match(file(context.root, project, 'compose.build.yaml'), /^services:\n {2}build:\n(?: {4}.*\n)* {4}mem_limit: "2600m"\n/);
-      for (const name of ['run.sh', 'build.sh', 'job-build.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);
+  withOneCheckout(async (dir, stand, context) => {
+    committed(context);
+    const options = { runner: true, keep: true, build: ['make', 'test-rust-build'], jobs: 2, runnerMemory: '2600m', serverMemory: '700m' };
+    assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, options), { code: 0, signal: null });
+    const project = only(context.root);
+    assert.ok(file(context.root, project, 'build.sh').includes(`( 'make' 'test-rust-build' )`), 'build.sh does not run the build command as it was given');
+    assert.ok(!file(context.root, project, 'build.sh').includes('servers.env'), 'the build reads the variables of servers that are not up');
+    const jobBuild = file(context.root, project, 'job-build.sh');
+    assert.ok(jobBuild.indexOf('sh "$run/runner-setup.sh"') < jobBuild.indexOf('sh "$run/build.sh"') && jobBuild.includes('at "the build command"'), jobBuild);
+    // The jobs are a setting of the cargo of the runner, and each limit is the mem_limit of its services.
+    assert.match(file(context.root, project, 'runner-setup.sh'), /^\[build\]\njobs = 2$/m);
+    const text = file(context.root, project, 'compose.run.yaml');
+    assert.deepEqual([...text.matchAll(/^ {4}mem_limit: "(.*)"$/gm)].map(match => match[1]), ['700m', '700m', '2600m']);
+    assert.match(file(context.root, project, 'compose.build.yaml'), /^services:\n {2}build:\n(?: {4}.*\n)* {4}mem_limit: "2600m"\n/);
+    for (const name of ['run.sh', 'build.sh', 'job-build.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);
 
-      // A build that fails ends the run with the result of its job, and the job check is not queued.
-      remove(context);
-      writeFileSync(stand.buildFails, '');
-      writeFileSync(stand.ups, '');
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, build: ['make', 'test-rust-build'] }), { code: 1, signal: null });
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the servers started after a failed build');
-      assert.deepEqual(readdirSync(stand.state), [], 'a run with a failed build leaves its project');
-      assert.deepEqual(projects(context.root), []);
-      // A value that is no count or no size is refused before anything is written.
-      await assert.rejects(run('mysql', ['true'], context, { runner: true, jobs: 0 }), /the count of cargo jobs 0 is no whole number above 0/);
-      await assert.rejects(run('mysql', ['true'], context, { runner: true, runnerMemory: 'much' }), /the memory limit much of the runner is no size such as 2600m or 3g/);
-      await assert.rejects(run('mysql', ['true'], context, { build: ['true'] }), /a build command runs in the runner; run with FORM=runner/);
-    });
+    // A build that fails ends the run with the result of its job, and the job check is not queued.
+    remove(context);
+    writeFileSync(stand.buildFails, '');
+    writeFileSync(stand.ups, '');
+    assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, build: ['make', 'test-rust-build'] }), { code: 1, signal: null });
+    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the servers started after a failed build');
+    assert.deepEqual(readdirSync(stand.state), [], 'a run with a failed build leaves its project');
+    assert.deepEqual(projects(context.root), []);
+    // A value that is no count or no size is refused before anything is written.
+    await assert.rejects(run('mysql', ['true'], context, { runner: true, jobs: 0 }), /the count of cargo jobs 0 is no whole number above 0/);
+    await assert.rejects(run('mysql', ['true'], context, { runner: true, runnerMemory: 'much' }), /the memory limit much of the runner is no size such as 2600m or 3g/);
+    await assert.rejects(run('mysql', ['true'], context, { build: ['true'] }), /a build command runs in the runner; run with FORM=runner/);
   }));
 
 caseTest('a run that is given a check through a Unix socket is refused, since the jobs of the runner run no command in the container of a server (BAY8)', () =>

@@ -316,22 +316,11 @@ mod read {
 
     use serde_json::{Map, Value};
 
+    use polyspec_orm_schema::form::{object, required};
+
     use super::{Assemble, BindSlot, Child, IfParent, KeyRef, OutCol, ParentRef, Step};
 
     type Members = Map<String, Value>;
-
-    /// The members of the object `value`; a value that is no object and a member outside `allowed` are refused.
-    fn object<'v>(value: &'v Value, at: &str, allowed: &[&str]) -> Result<&'v Members, String> {
-        let Value::Object(members) = value else { return Err(format!("{at} is no object")) };
-        match members.keys().find(|key| !allowed.contains(&key.as_str())) {
-            Some(key) => Err(format!("{at}.{key} is no member of the form")),
-            None => Ok(members),
-        }
-    }
-
-    fn required<'v>(members: &'v Members, at: &str, key: &str) -> Result<&'v Value, String> {
-        members.get(key).ok_or_else(|| format!("{at}.{key} is absent"))
-    }
 
     fn text_of(value: &Value, at: &str) -> Result<String, String> {
         value.as_str().map(str::to_owned).ok_or_else(|| format!("{at} is no text"))

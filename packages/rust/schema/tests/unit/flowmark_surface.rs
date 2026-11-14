@@ -5,6 +5,7 @@
 
 use std::collections::BTreeMap;
 
+use polyspec_orm_test_support::schema_form::{self, no_refusal};
 use polyspec_orm_testcase::OrPanic;
 use serde_json::{json, Value};
 
@@ -22,14 +23,7 @@ const CANONICAL: &str = include_str!("../../../../../tests/dbspec/canonical.json
 /// What the form `#/$defs/<definition>` of the schema refuses in `value`: one line for each problem, none for a value
 /// of the form.
 fn refusals(definition: &str, value: &Value) -> Vec<String> {
-    let schema: Value = serde_json::from_str(SCHEMA).expect("dbspec.schema.json is JSON");
-    let form = json!({"$schema": schema["$schema"], "$ref": format!("#/$defs/{definition}"), "$defs": schema["$defs"]});
-    let validator = jsonschema::validator_for(&form).expect("the form is a JSON Schema");
-    validator.iter_errors(value).map(|error| format!("{}: {error}", error.instance_path())).collect()
-}
-
-fn no_refusal() -> Vec<String> {
-    Vec::new()
+    schema_form::refusals(SCHEMA, Some(definition), value)
 }
 
 /// The documents of the bench set, the owned documents first.

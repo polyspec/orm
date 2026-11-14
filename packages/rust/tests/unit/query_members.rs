@@ -33,7 +33,7 @@ table account_key {
 ";
 const ACCOUNT_HASH: &str = "sha256:21700a328449535485eb78d219d2b73bb8cf0c5df7411089c0f2bf3e38b135dc";
 
-fn account_schema() -> Schema {
+pub(super) fn account_schema() -> Schema {
     Schema::load(ACCOUNT, "", ACCOUNT_HASH).expect("the account schema loads")
 }
 
@@ -43,7 +43,7 @@ fn int(value: i64) -> OrmValue {
 
 /// A SQLite database with the tables of the account schema, the accounts 1 to 3 and the keys 1 and 2 of account 1 and
 /// the key 3 of account 2.
-async fn account_db(scratch: &Scratch, schema: &Schema) -> Db {
+pub(super) async fn account_db(scratch: &Scratch, schema: &Schema) -> Db {
     let db = Db::connect(&format!("sqlite://{}", scratch.join("account.sqlite").display()), 1, Config::default()).await.expect("connect");
     db.utils().schema().install(schema).await.expect("install");
     let Pool::Sqlite(pool) = &db.inner.pool else { panic!("the case uses SQLite") };

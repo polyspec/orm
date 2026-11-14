@@ -3,53 +3,9 @@
 
 use serde_json::{json, Value};
 
-use super::query_members_tests::{MEMBER, MEMBER_HASH};
-use crate::db::Pool;
+use super::query_members_tests::{account_db, account_schema, MEMBER, MEMBER_HASH};
 use crate::test_support::Scratch;
 use crate::{Config, Connection, Db, Schema, StepRunner};
-
-const ACCOUNT: &str = "dbspec 1 account
-
-table account {
-  seq i64 identity
-  email varchar(64)
-  name varchar(32) null
-  revision i64
-  primary key (seq)
-  unique uq_account_email (email)
-  settings {
-    select explicit name
-  }
-}
-
-table account_key {
-  seq i64 identity
-  account_seq i64
-  label varchar(32)
-  primary key (seq)
-  index ix_account_key_account (account_seq)
-  foreign key fk_account_key_account (account_seq) references account (seq) on delete restrict on update restrict
-}
-";
-const ACCOUNT_HASH: &str = "sha256:21700a328449535485eb78d219d2b73bb8cf0c5df7411089c0f2bf3e38b135dc";
-
-fn account_schema() -> Schema {
-    Schema::load(ACCOUNT, "", ACCOUNT_HASH).expect("the account schema loads")
-}
-
-/// A SQLite database with the accounts 1 to 3, the keys 1 and 2 of account 1 and the key 3 of account 2.
-async fn account_db(scratch: &Scratch, schema: &Schema) -> Db {
-    let db = Db::connect(&format!("sqlite://{}", scratch.join("account.sqlite").display()), 1, Config::default()).await.expect("connect");
-    db.utils().schema().install(schema).await.expect("install");
-    let Pool::Sqlite(pool) = &db.inner.pool else { panic!("the case uses SQLite") };
-    for statement in [
-        "INSERT INTO account (seq, email, name, revision) VALUES (1, 'a@x', 'Ann', 0), (2, 'b@x', 'Bob', 0), (3, 'c@x', NULL, 0)",
-        "INSERT INTO account_key (seq, account_seq, label) VALUES (1, 1, 'k1'), (2, 1, 'k2'), (3, 2, 'k3')",
-    ] {
-        sqlx::query(statement).execute(pool).await.expect("insert rows");
-    }
-    db
-}
 
 /// The outcome of the step `step` that `runner` ran, as JSON.
 async fn run(runner: &mut StepRunner, step: &Value) -> Value {
