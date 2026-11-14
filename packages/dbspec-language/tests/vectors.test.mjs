@@ -1,9 +1,10 @@
-// The shared vectors of tests/dbspec through the language service: every canonical and normalize case of its recipe
-// (tests/dbspec/canonical.json, normalize.json) formats to its canonical text, every invalid case of invalid.json reports
-// its errors and is refused by format, formatting keeps the manifest and schema hashes and is idempotent, and the tokens
-// of every analyze step of those recipes and of every syntax vector equal the tokens of openDocument after the UTF-16
-// conversion. The documents of a sets case are written as a file tree with their set file and each takes its set from
-// resolveSet, so a case whose documents repeat a name runs too: resolveSet reports the repetition.
+// The shared vectors of legacy/tests/dbspec through the language service: every canonical and normalize case of its
+// recipe (legacy/tests/dbspec/canonical.json, normalize.json) formats to its canonical text, every invalid case of
+// invalid.json reports its errors and is refused by format, formatting keeps the manifest and schema hashes and is
+// idempotent, and the tokens of every analyze step of those recipes and of every syntax vector equal the tokens of
+// openDocument after the UTF-16 conversion. The documents of a sets case are written as a file tree with their set file
+// and each takes its set from resolveSet, so a case whose documents repeat a name runs too: resolveSet reports the
+// repetition.
 // Requirements: DBS-99.
 //
 // Usage: node --test packages/dbspec-language/tests/vectors.test.mjs (after the build)

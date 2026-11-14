@@ -19,7 +19,7 @@ const vector = (name, body) => caseTest(name, body);
 
 const pkgRoot = fileURLToPath(new URL('../', import.meta.url));
 const start = resolve(pkgRoot, 'dist/index.js');
-const parserEntry = resolve(pkgRoot, '../ts/dist/dbspec/entry.js');
+const parserEntry = resolve(pkgRoot, '../../legacy/packages/ts/dist/dbspec/entry.js');
 const ALLOWED_BARE = '@polyspec/orm/dbspec';
 
 /** Every file reachable from the start, with the violations found in each, and the files reached. */
