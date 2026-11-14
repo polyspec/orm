@@ -53,6 +53,23 @@ caseTest('no test harness holds a deadline, a step budget or a step guard', () =
   assert.equal(trackedAll.has('legacy/packages/go/testcase/stall.go'), false, 'the Go step guard is removed');
 });
 
+// A test that checks a lock wait or aborts a waiting statement on PostgreSQL or SQLite orders its steps by an event of the
+// database (T475): the LOG message "still waiting for" that a PostgreSQL session receives while its statement waits, the
+// statement trigger that cancels a waiting session of the test when a client statement starts, and the busy handler in which
+// a SQLite statement sleeps. Polling and timers make the result depend on the load of the machine.
+caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event, not for a poll or a timer', () => {
+  const polled = /setTimeout|usleep|time\.sleep|time\.Sleep|tokio::time::sleep|microtime|monotonic|Instant::now|WithTimeout/;
+  const waiters = ['legacy/packages/ts/tests/was-inserted.mjs', 'legacy/packages/python/tests/test_was_inserted.py', 'legacy/packages/php/tests/WasInsertedTest.php', 'legacy/packages/php-ext/tests/UtilsNativeTest.php', 'packages/rust/tests/cases/was_inserted.rs', 'legacy/packages/go/orm/write_set_test.go'];
+  for (const path of waiters) assert.doesNotMatch(text(path), polled, path);
+  const reporters = ['legacy/packages/ts/tests/lock-wait.mjs', 'legacy/packages/python/tests/was_inserted_child.py', 'legacy/packages/php/tests/was_inserted_child.php', 'packages/rust/tests/cases/was_inserted.rs', 'legacy/packages/go/orm/lock_wait_test.go'];
+  for (const path of reporters) assert.ok(trackedAll.has(path) && /still waiting for/.test(text(path)), `${path} waits for the LOG message of the waiting session`);
+  for (const path of ['legacy/packages/ts/tests/model.mjs', 'legacy/packages/ts/tests/coverage_transactions.mjs']) assert.match(text(path), /statementStarts/, `${path} aborts a PostgreSQL statement after the event of its start`);
+  const cancel = text('legacy/packages/go/orm/cancel_test.go');
+  assert.doesNotMatch(cancel, /sqliteCancelAfter|time\.AfterFunc/, 'the SQLite case of cancel_test.go cancels on no timer');
+  assert.match(cancel, /synctest\.Wait/, 'the SQLite case of cancel_test.go cancels when the statement sleeps in the busy handler');
+  assert.match(cancel, /statementStarts/, 'the PostgreSQL cases of cancel_test.go cancel after the event of the statement start');
+});
+
 caseTest('every PHPUnit test class declares its size', () => {
   // The size states the kind of a case: #[Small] computes in memory, #[Medium] runs statements on a database, #[Large] runs a
   // child process (phpunit.xml.dist); no size sets a time limit.
