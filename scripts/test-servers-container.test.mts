@@ -507,7 +507,7 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       // alone, clones the bundle and follows the first installation of the repository.
       const installation = file(context.root, project, 'runner-setup.sh');
       for (const part of ['apt-get install -y --no-install-recommends git make gcc g++ curl ca-certificates', ' lld ', 'sha256sum -c', 'https://nodejs.org/dist/v', 'https://static.rust-lang.org/rustup/archive/',
-        'rustflags = ["-C", "link-arg=-fuse-ld=lld"]', 'cat > "$CARGO_HOME/config.toml"', 'git -C "$run/repo" fetch -q "$run/repo.bundle" HEAD', 'make install\nmkdir -p'])
+        'rustflags = ["-C", "link-arg=-fuse-ld=lld"]', 'cat > "$run/.cargo/config.toml"', 'git -C "$run/repo" fetch -q "$run/repo.bundle" HEAD', 'make install\nmkdir -p'])
         assert.ok(installation.includes(part), `runner-setup.sh misses ${part}`);
       assert.match(installation, /^ {2}aarch64\) platform=linux-arm64 node_sum=[0-9a-f]{64} rustup_sum=[0-9a-f]{64} ;;$/m, 'runner-setup.sh pins no file of a processor');
       // sh reads each written file: a file with a syntax error fails here and not in a container.
@@ -569,6 +569,66 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       assert.equal(added.stdout, 'job-2\n');
       const wrong = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh'), 'add', 'another'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
       assert.equal(wrong.status, 2, 'a part that is neither build nor check is queued');
+    });
+  }));
+
+caseTest('a run with a cache keeps the downloads of its tools in the cache and its own builds in its directory, and the job that ends a run removes its working files (T478)', () =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      committed(context);
+      // A cache is an absolute path of the machine that runs the jobs; another path and the form of the host are refused.
+      for (const cache of ['srv/cache', "/srv/a cache", '/srv/$HOME'])
+        await assert.rejects(run('mysql', ['true'], context, { runner: true, cache }), /the cache .* is no absolute path of letters, digits, \., _, - and \//);
+      await assert.rejects(run('mysql', ['true'], context, { cache: '/srv/cache' }), /a cache serves the tools of the runner; run with FORM=runner/);
+      assert.deepEqual(projects(context.root), [], 'a refused run leaves a directory');
+
+      // run.sh of a run of this machine creates the directories of the cache, so the cache is a directory of the test.
+      const cache = join(dir, 'cache');
+      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true, build: ['make', 'test-rust-build'], cache }), { code: 0, signal: null });
+      const project = only(context.root);
+      for (const part of ['compose.build.yaml', 'compose.run.yaml']) {
+        const text = file(context.root, project, part);
+        const job = text.slice(text.indexOf(part === 'compose.build.yaml' ? '  build:\n' : '  check:\n'));
+        // The toolchains and the downloads are in the cache; the home, the clone and its target directory stay in the
+        // directory of the run. The cache is one mount, and no mount is below the directory of the run, so the removal
+        // of the working files of a run removes nothing of the cache.
+        assert.match(job, /^ {6}HOME: "\/orm-run\/home"\n {6}CARGO_HOME: "\/orm-cache\/cargo"\n {6}RUSTUP_HOME: "\/orm-cache\/rustup"\n {6}GOMODCACHE: "\/orm-cache\/go\/mod"\n {6}GOCACHE: "\/orm-cache\/go\/build"\n {6}npm_config_cache: "\/orm-cache\/npm"\n {6}COMPOSER_CACHE_DIR: "\/orm-cache\/composer"$/m, `${part}: ${job}`);
+        assert.ok(job.includes(`\n    volumes: [".:/orm-run", "${cache}:/orm-cache"]\n`), `${part}: ${job}`);
+      }
+      const services = file(context.root, project, 'compose.run.yaml');
+      assert.ok(!services.slice(0, services.indexOf('  check:\n')).includes('/orm-cache'), 'a server or a setup mounts the cache');
+      // run.sh creates each directory of the cache before it queues a job, since a mount names a directory that exists.
+      const runSh = file(context.root, project, 'run.sh');
+      assert.ok(runSh.includes(`mkdir -p ${['cargo', 'rustup', 'go/mod', 'go/build', 'npm', 'composer'].map(below => `'${cache}/${below}'`).join(' ')}`), runSh);
+      assert.deepEqual(readdirSync(cache).sort(), ['cargo', 'composer', 'go', 'npm', 'rustup'], 'run.sh did not create the directories of the cache');
+      // rustup-init leaves the default toolchain of a shared RUSTUP_HOME as it is, and the setting of cargo of the run is
+      // in the directory of the run, an ancestor of each directory where cargo runs, and not in the shared CARGO_HOME.
+      const installation = file(context.root, project, 'runner-setup.sh');
+      assert.ok(installation.includes('--default-toolchain none --no-update-default-toolchain'), installation);
+      assert.ok(installation.includes('cat > "$run/.cargo/config.toml"') && !installation.includes('$CARGO_HOME/config.toml'), installation);
+      assert.ok(existsSync(join(containers(context.root), project, 'keep')), 'a kept run has no file keep');
+
+      // The job check removes the working files after its command, and the job build when it failed; a kept run keeps
+      // them. Each job runs in a copy of the directory with a stand-in of the script that it runs.
+      const ends = async (job: string, script: string, status: number, keep: boolean) => {
+        const copy = join(dir, `ends-${job}-${keep}`);
+        cpSync(join(containers(context.root), project), copy, { recursive: true });
+        if (!keep) rmSync(join(copy, 'keep'));
+        for (const name of ['repo/packages/rust/target', 'home', 'cargo/bin', 'rustup', 'node/bin']) mkdirSync(join(copy, name), { recursive: true });
+        for (const name of ['address-mysql']) writeFileSync(join(copy, name), '192.0.2.1\n');
+        writeFileSync(join(copy, 'build.sh'), 'exit 0\n');
+        writeFileSync(join(copy, script), `exit ${status}\n`);
+        writeFileSync(join(copy, job), file(context.root, project, job).replace(/^run=\/orm-run$/m, `run='${copy}'`));
+        const ended = spawnSync('/bin/sh', [join(copy, job)], { encoding: 'utf8' });
+        assert.equal(ended.status, status, `${job}: ${ended.stderr}`);
+        return ['repo', 'home', 'cargo', 'rustup', 'node'].filter(name => existsSync(join(copy, name)));
+      };
+      assert.deepEqual(await ends('job-check.sh', 'check.sh', 1, false), [], 'the job check leaves working files');
+      assert.deepEqual(await ends('job-check.sh', 'check.sh', 0, true), ['repo', 'home', 'cargo', 'rustup', 'node'], 'a kept run lost its working files');
+      assert.deepEqual(await ends('job-build.sh', 'runner-setup.sh', 4, false), [], 'a failed job build leaves working files');
+      assert.deepEqual(await ends('job-build.sh', 'runner-setup.sh', 0, false), ['repo', 'home', 'cargo', 'rustup', 'node'], 'a job build that succeeded removed what the job check reads');
     });
   }));
 
