@@ -61,7 +61,7 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   const polled = /setTimeout|usleep|time\.sleep|time\.Sleep|tokio::time::sleep|microtime|monotonic|Instant::now|WithTimeout/;
   const waiters = ['legacy/packages/ts/tests/was-inserted.mjs', 'legacy/packages/python/tests/test_was_inserted.py', 'legacy/packages/php/tests/WasInsertedTest.php', 'legacy/packages/php-ext/tests/UtilsNativeTest.php', 'packages/rust/tests/cases/was_inserted.rs', 'legacy/packages/go/orm/write_set_test.go'];
   for (const path of waiters) assert.doesNotMatch(text(path), polled, path);
-  const reporters = ['legacy/packages/ts/tests/lock-wait.mjs', 'legacy/packages/python/tests/was_inserted_child.py', 'legacy/packages/php/tests/was_inserted_child.php', 'packages/rust/tests/cases/was_inserted.rs', 'legacy/packages/go/orm/lock_wait_test.go'];
+  const reporters = ['legacy/packages/ts/tests/lock-wait.mjs', 'legacy/packages/python/tests/was_inserted_child.py', 'legacy/packages/php/tests/was_inserted_child.php', 'packages/rust/tests/cases/common/lock_wait.rs', 'legacy/packages/go/orm/lock_wait_test.go'];
   for (const path of reporters) assert.ok(trackedAll.has(path) && /still waiting for/.test(text(path)), `${path} waits for the LOG message of the waiting session`);
   for (const path of ['legacy/packages/ts/tests/model.mjs', 'legacy/packages/ts/tests/coverage_transactions.mjs']) assert.match(text(path), /statementStarts/, `${path} aborts a PostgreSQL statement after the event of its start`);
   const cancel = text('legacy/packages/go/orm/cancel_test.go');
@@ -76,6 +76,13 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
     assert.match(text(path), /lockWaitEnds/, `${path} aborts a MySQL statement after the lock wait timeout of a probe`);
     assert.doesNotMatch(text(path), /setTimeout\(\(\) => \w+\.abort\(\)/, `${path} aborts on no timer`);
   }
+  // The Rust cases that drop a waiting statement or transaction drop it after the LOG message of the PostgreSQL wait or the
+  // answer of a probe, not after a timer.
+  const zone = text('packages/rust/tests/cases/zone.rs');
+  const dropping = zone.slice(zone.indexOf('async fn dropping_a_query_cancels_it()'), zone.indexOf('pub fn trials()'));
+  assert.doesNotMatch(dropping, polled, 'the dropping cases of zone.rs wait on no timer');
+  assert.doesNotMatch(dropping, /tokio::time::timeout/, 'the dropping cases of zone.rs drop on no timer');
+  assert.match(dropping, /statement_waits/, 'the dropping cases of zone.rs drop after the wait of the statement');
   // A step that ends a session whose next statement reads the error of that end does not wait for the end with a bound.
   for (const path of ['legacy/packages/ts/tests/recipe.mjs', 'legacy/packages/go/internal/recipe/database.go', 'legacy/packages/python/tests/recipe.py', 'legacy/packages/php/tests/Recipe.php', 'legacy/packages/php/tests/RollbackTest.php', 'packages/rust/programs/src/recipe.rs']) {
     assert.doesNotMatch(text(path), /pg_terminate_backend\([^)]*,/, `${path} ends a session without a bound on its end`);

@@ -10,6 +10,7 @@ use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
+use crate::lock_wait::{self, LockWaits};
 use crate::or_panic;
 use or_panic::OrPanic;
 
@@ -198,6 +199,25 @@ impl HeldRows {
     }
 }
 
+/// The lock waits of the one pool connection of `db` on PostgreSQL, which reports them; none on MySQL, MariaDB and SQLite.
+async fn waits_of(db: &Db) -> Option<LockWaits> {
+    match db.pool() {
+        Pool::Postgres(_) => Some(lock_wait::report_pool_lock_waits(db).await),
+        _ => None,
+    }
+}
+
+/// Returns when the statement of the client waits for the lock of [`HeldRows`] (T475): on PostgreSQL when the server has sent
+/// its session the LOG message of the wait, on MySQL, MariaDB and SQLite when the database has ended the wait of a probe for the
+/// same lock after one second, its own setting.
+async fn statement_waits(driver: &str, dsn: &str, waits: Option<&mut LockWaits>) {
+    match waits {
+        Some(waits) => waits.waited().await,
+        None if driver == "sqlite" => lock_wait::probe_waits(driver, dsn, "BEGIN IMMEDIATE").await,
+        None => lock_wait::probe_waits(driver, dsn, "SELECT `seq` FROM `zone_event` FOR UPDATE").await,
+    }
+}
+
 // Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
 // Requirements: CFG-6, CFG-36.
 fn statement_timeout_negative_is_unrepresentable() {
@@ -255,22 +275,25 @@ async fn dropping_a_query_cancels_it_on(drivers: &[&str]) {
         let mut row = polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
         let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
         let held = HeldRows::hold(&holder, "zone_event").await;
+        let mut waits = waits_of(&db).await;
 
         row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 3).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        let started = std::time::Instant::now();
-        let dropped = tokio::time::timeout(std::time::Duration::from_millis(300), polyspec_orm::model::update(&mut row, false)).await;
-        assert!(dropped.is_err(), "{driver}: the blocked statement finished");
-        if started.elapsed() >= std::time::Duration::from_secs(4) {
-            polyspec_orm_testcase::warning(format_args!("{driver}: dropping waited for the statement"));
+        {
+            let update = std::pin::pin!(polyspec_orm::model::update(&mut row, false));
+            // The update is polled first, so it is sent before the event that ends the select; leaving the block drops it.
+            tokio::select! {
+                biased;
+                _ = update => panic!("{driver}: the blocked statement finished"),
+                () = statement_waits(driver, database.dsn(), waits.as_mut()) => {}
+            }
         }
+        // The drop closed the connection of the statement on the spot, without the five-second close path of SQLx (INT-67).
+        assert_eq!(db.stats().in_use, 0, "{driver}: the dropped statement still holds its pool connection");
         held.release().await;
         holder.close().await;
         // The pool holds one connection, so the next statement proves the
         // cancelled one released it.
-        let count = tokio::time::timeout(std::time::Duration::from_secs(5), polyspec_orm::model::get_count(event(&db).core()))
-            .await
-            .or_panic(|elapsed| format!("{driver}: the connection did not come back in time: {elapsed}"))
-            .or_panic(|e| format!("{driver}: count after cancellation: {e}"));
+        let count = polyspec_orm::model::get_count(event(&db).core()).await.or_panic(|e| format!("{driver}: count after cancellation: {e}"));
         assert_eq!(count, 1, "{driver}: rows after cancellation");
         db.close().await;
         database.drop().await;
@@ -308,9 +331,9 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
         polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
         let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
         let held = HeldRows::hold(&holder, "zone_event").await;
-        let dropped = tokio::time::timeout(
-            std::time::Duration::from_millis(300),
-            db.transaction(
+        let mut waits = waits_of(&db).await;
+        {
+            let transaction = std::pin::pin!(db.transaction(
                 |tx: polyspec_orm::Tx| async move {
                     let mut row = event(&tx);
                     row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
@@ -322,23 +345,27 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
                     Ok::<(), polyspec_orm::Error>(())
                 },
                 polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() },
-            ),
-        )
-        .await;
-        assert!(dropped.is_err(), "{driver}: transaction future completed before it was dropped");
+            ));
+            // The transaction is polled first, so its statements are sent before the event that ends the select; leaving the
+            // block drops it.
+            tokio::select! {
+                biased;
+                _ = transaction => panic!("{driver}: transaction future completed before it was dropped"),
+                () = statement_waits(driver, database.dsn(), waits.as_mut()) => {}
+            }
+        }
+        // The drop closed the connection of the statement on the spot, without the five-second close path of SQLx (INT-67).
+        assert_eq!(db.stats().in_use, 0, "{driver}: the dropped statement still holds its pool connection");
         // The holder ends first, as in dropping_a_query_cancels_it: a SQLite transaction begins with the write lock (DIA-221),
         // which the holder has. The pool holds one connection, so the next transaction proves the dropped one released it.
         held.release().await;
         holder.close().await;
-        let next = tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            db.transaction(
-                |_tx: polyspec_orm::Tx| async { Ok::<(), polyspec_orm::Error>(()) },
-                polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() },
-            ),
+        db.transaction(
+            |_tx: polyspec_orm::Tx| async { Ok::<(), polyspec_orm::Error>(()) },
+            polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() },
         )
-        .await;
-        assert!(next.is_ok(), "{driver}: single pool connection was not released after transaction drop");
+        .await
+        .or_panic(|e| format!("{driver}: the transaction after the dropped one: {e}"));
         assert_eq!(polyspec_orm::model::get_count(event(&db).core()).await.unwrap(), 1, "{driver}: dropped transaction committed");
         db.close().await;
         database.drop().await;
