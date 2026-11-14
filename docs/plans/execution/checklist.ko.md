@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 3f185b35a6878685b515baef96de574fa5f68774bcec96e3696833f657a05117 -->
+<!-- source-sha256: 66cb708c83ef2cbc0f858f9c738e7792126ea04e9894130dda79e80a8f325f91 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1923,3 +1923,4 @@
 | T468 | `query.restore_or_create`는 `query.restore`처럼, 연결을 요구하기 전에 query가 가진 조건을 거부한다. 원인: 연결이 없고 `where`가 빈 list를 받은 query에서 `restore`는 `empty_in`을 일으키고 `restore_or_create`는 `config: the model has no connection`을 일으킨다. | `packages/rust/src/query.rs`; `contracts/interface/core.json` | `make test-rust CASES=interface_cases` | [o] |
 | T469 | 계약은 fault point `orm.internal`과, 그것을 `broken`으로 설정해 category `internal`의 kind를 일으키는 case를 가진다(binding X-1, G-5). 원인: `make bindings-check`가 `no case arms the point orm.internal as broken and raises a kind of the category internal`을 보고한다. Green: 그 finding이 없어지고, `make bindings-check`는 CK-22 finding 153개를 보고한다. | `packages/rust/interface.json`; `contracts/interface/core.json`; `packages/rust/src` | `make bindings-check BINDING=<cli>` | [o] |
 | T470 | 문서, feature 서술, 시험 주석은 코어가 가진 transaction 형식을 적는다. 원인: `contracts/features.json`(`audit_triggers`), `docs/features.md`, `docs/operations/usage.md`, `docs/operations/interface-implementation.md`, `docs/spec/interfaces.md`의 INT-72a, INT-44a, INT-46a, `packages/rust/tests/cases/audit.rs`의 주석, `packages/rust/src/testing.rs`의 주석이 코어에 더 없는 `transaction_send`와 `transaction_once`를 적는다(CORE-20, CORE-21). | `contracts/features.json`; `docs/features.md`; `docs/operations/usage.md`; `docs/operations/interface-implementation.md`; `docs/spec/interfaces.md`; `packages/rust/tests/cases/audit.rs`; `packages/rust/src/testing.rs` | `make docs-check` | [o] |
+| T471 | 추적되는 binding package는 Cargo.lock이 고정한 binding commit의 `binding scaffold`가 쓰는 것과 같고, Cargo.lock은 `polyspec-binding-core`를 그 commit에 고정한다(binding L-2, CK-19, CK-20). 원인: binding 53a23a5의 cli로 `make bindings-check`가 CK-19 finding 15개(binding package의 version, license, feature, build script)와, Cargo.lock이 49a4e973을 고정해서 생기는 CK-20 하나를 보고한다. | `packages/ts`; `packages/ts/wasm`; `packages/python`; `packages/php-ext`; `packages/go`; `Cargo.lock` | `make bindings-check BINDING=<cli>` | [ ] |
