@@ -1726,7 +1726,11 @@ orm-test-mysql-privilege-start:
 # so a lost connection ends no job, brings the report back under .runtime/containers/reports and removes the directory
 # there once every job ended; a job that has not ended, or whose end is not known, keeps the directory and ends the
 # command with 3. PULL=1 pulls the images there first. The same command at the same commit sends nothing and queues
-# nothing a second time, and waits again for a job that has not ended.
+# nothing a second time, and waits again for a job that has not ended. KIND of orm-test-container-run and
+# orm-test-container-remote is one kind or a comma list of them, such as mysql,postgres,sqlite: one project holds the
+# servers of each kind with a server, sqlite needs none, and RUN sees the variables of every kind, so a check that reads
+# several databases runs once. Each server takes a small cache, 64 MiB of InnoDB buffer pool and 32 MB of PostgreSQL
+# shared buffers, so that the servers of several kinds fit the memory of one machine beside the runner.
 #
 # BAY_COMMAND is the command of bay, the only program that these targets run for the servers and their images. bay is a
 # tool of the machine, as make is: the default is bay of PATH, and a run compares no version of it and checks its

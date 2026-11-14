@@ -7,8 +7,12 @@
 // PostgreSQL have a replica as a second service of the project.
 //
 //   node scripts/test-servers-container.mts start <mysql|postgres|mariadb>
-//   node scripts/test-servers-container.mts run <mysql|postgres|mariadb> [--runner] [--keep] -- <command> [argument...]
-//   node scripts/test-servers-container.mts remote <mysql|postgres|mariadb> <host> <directory> [--keep] [--pull] -- <command> [argument...]
+//   node scripts/test-servers-container.mts run <kinds> [--runner] [--keep] -- <command> [argument...]
+//   node scripts/test-servers-container.mts remote <kinds> <host> <directory> [--keep] [--pull] -- <command> [argument...]
+//
+// <kinds> of run and remote is one kind or a comma list of kinds, such as mysql,postgres,sqlite: the run is one project
+// with the servers, the steps and the variables of each kind (T477); sqlite names no server, since SQLite is a file of
+// each case.
 //   node scripts/test-servers-container.mts stop
 //   node scripts/test-servers-container.mts pull
 //   node scripts/test-servers-container.mts install-bay
@@ -94,6 +98,12 @@ interface Service {
   after?: string;
 }
 
+// Placed is a service of a run with the kind whose image it runs.
+type Placed = Service & { kind: Kind };
+
+// placed are the services of each kind of a run, the kinds in their order.
+const placed = (list: readonly Kind[], host: (service: string) => string): Placed[] => list.flatMap(kind => SERVERS[kind].services(host).map(service => ({ ...service, kind })));
+
 // Step is a command that prepares a started server: it runs in the container of its service after bay up returned.
 interface Step { service: string; command: string[] }
 
@@ -115,9 +125,16 @@ const postgresTls = (ca: string, host: string) => `postgres://orm@${host}:5432/o
 // A MySQL or MariaDB server presents the certificate that bay mounts in its container.
 const mysqlTlsOptions = [`--ssl-ca=${BAY_TLS}/ca.pem`, `--ssl-cert=${BAY_TLS}/cert.pem`, `--ssl-key=${BAY_TLS}/key.pem`];
 
+// SMALL_BUFFER_POOL and SMALL_SHARED_BUFFERS are the caches of a server of a container, half and a quarter of the
+// defaults of 128 MiB, so that the four servers of mysql,postgres fit with a job of the runner on a machine of 3.7 GiB whose
+// jobs have a limit of 2800 MB (CONTRIBUTING.md "The memory settings of the servers"). Each case creates its own small
+// database, and a cache only keeps pages in memory, so its size changes no result.
+const SMALL_BUFFER_POOL = ['--innodb-buffer-pool-size=64M'];
+const SMALL_SHARED_BUFFERS = ['-c', 'shared_buffers=32MB'];
+
 // The MySQL and the MariaDB server take the options of the native primary (scripts/test-servers.mts).
 const mysqlOptions = ['--secure-file-priv=NULL', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MYSQLD_BINLOG, ...MYSQLD_STORAGE];
-const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysqlOptions, `--server-id=${serverId}`, ...mysqlTlsOptions];
+const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysqlOptions, ...SMALL_BUFFER_POOL, `--server-id=${serverId}`, ...mysqlTlsOptions];
 
 // The PostgreSQL servers take the settings of postgresArguments of scripts/test-servers.mts; the primary names the replica
 // as its synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
@@ -125,7 +142,7 @@ const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysql
 // container reads, so the key is copied for the user postgres first.
 const postgresKey = `install -m 0600 -o postgres -g postgres ${BAY_TLS}/key.pem ${POSTGRES_KEY}`;
 const postgresSettings = ['-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'ssl=on', '-c', `ssl_cert_file=${BAY_TLS}/cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`,
-  ...POSTGRES_WAL.flatMap(setting => ['-c', setting])];
+  ...POSTGRES_WAL.flatMap(setting => ['-c', setting]), ...SMALL_SHARED_BUFFERS];
 
 // The temporary server that an image starts to initialize a data directory listens only on its socket, so each readiness
 // program connects over TCP on 127.0.0.1 and succeeds only for the server that the checks reach.
@@ -191,7 +208,7 @@ const SERVERS: Record<Kind, Server> = {
   mariadb: {
     // healthcheck.sh is the readiness program of the image; --connect requires a connection over TCP.
     services: () => [
-      { name: 'mariadb', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', ...mysqlOptions, '--server-id=1', ...mysqlTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' },
+      { name: 'mariadb', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', ...mysqlOptions, ...SMALL_BUFFER_POOL, '--server-id=1', ...mysqlTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' },
         health: ['healthcheck.sh', '--connect', '--innodb_initialized'] },
     ],
     steps: () => [{ service: 'mariadb', command: ['mariadb', '-uroot', '-e', DATABASES_SQL] }],
@@ -209,6 +226,23 @@ const KINDS: readonly Kind[] = ['mysql', 'postgres', 'mariadb'];
 
 function isKind(text: string | undefined): text is Kind {
   return text === 'mysql' || text === 'postgres' || text === 'mariadb';
+}
+
+// kinds reads the kinds of a run from a comma list, such as mysql,postgres,sqlite: each is mysql, postgres, mariadb or
+// sqlite and is named once, and sqlite names no server, since SQLite is a file of each case, so the list needs a kind with
+// a server. It returns the kinds with a server in the order of the list.
+export function kinds(text: string): Kind[] {
+  const named = text.split(',');
+  for (const each of named) if (!isKind(each) && each !== 'sqlite') throw new TestServerError(`test-servers-container: ${JSON.stringify(each)} of the kinds ${text} is no kind; a kind is mysql, postgres, mariadb or sqlite`, 2);
+  if (new Set(named).size !== named.length) throw new TestServerError(`test-servers-container: the kinds ${text} name a kind more than once`, 2);
+  return listed(named.filter(isKind), text);
+}
+
+// listed is a list of kinds that has a kind with a server and each kind once; text names it in the failure.
+function listed(list: readonly Kind[], text = list.join(',')): Kind[] {
+  if (list.length === 0) throw new TestServerError(`test-servers-container: the kinds ${text} name no server; a run needs a kind with a server, mysql, postgres or mariadb, and sqlite needs none`, 2);
+  if (new Set(list).size !== list.length) throw new TestServerError(`test-servers-container: the kinds ${text} name a kind more than once`, 2);
+  return [...list];
 }
 
 // field is the value of a property of a parsed JSON value, or undefined when the value is no object or has no such property.
@@ -365,7 +399,7 @@ function nodeVersion(): string {
 // with the other jobs of the machine, in the order they were queued, in a process of the agent of bay that outlives the
 // command that queued it. The part build is compose.build.yaml: the job build alone, which installs the runner and runs
 // the build command, so that the build and the servers do not hold memory at the same time. The part check is
-// compose.run.yaml: the servers, the one-shot service setup, which prepares them, and the job check, which runs the
+// compose.run.yaml: the servers, the one-shot service setup-<kind> of each kind, which prepares its servers, and the job check, which runs the
 // command of the run; bay starts the servers and setup before it runs the job, and removes them after it. Each job is the
 // runner: the Debian base image with the directory of the run at RUN_MOUNT. It keeps the trust and the certificate of
 // bay, as each service does, so its TLS DSNs name the authority that bay mounts in it. The tools of the runner keep their
@@ -380,7 +414,7 @@ function nodeVersion(): string {
 // and on the machine.
 type Part = 'servers' | 'build' | 'check';
 
-function composeFile(kind: Kind, services: readonly Service[], part: Part, limits: Limits): string {
+function composeFile(list: readonly Kind[], services: readonly Placed[], part: Part, limits: Limits): string {
   const job = (name: 'build' | 'check', after: Record<string, Yaml>) => ({
     [name]: {
       image: image('runner'),
@@ -397,7 +431,7 @@ function composeFile(kind: Kind, services: readonly Service[], part: Part, limit
   return yaml({
     services: {
       ...Object.fromEntries(servers.map(service => [service.name, {
-        image: image(kind),
+        image: image(service.kind),
         command: service.command,
         expose: [String(service.port)],
         environment: { TZ: SERVER_TIME_ZONE, ...service.environment },
@@ -408,14 +442,15 @@ function composeFile(kind: Kind, services: readonly Service[], part: Part, limit
         ...(service.after === undefined ? {} : { depends_on: { [service.after]: { condition: 'service_healthy' } } }),
         healthcheck: { test: ['CMD', ...service.health], interval: '1s', timeout: '5s', retries: 10, start_period: '600s' },
       }])),
+      // The service setup-<kind> of each kind runs the steps of that kind with the client of its image.
       ...(part === 'check' ? {
-        setup: {
+        ...Object.fromEntries(list.map(kind => [`setup-${kind}`, {
           image: image(kind),
-          command: ['sh', `${RUN_MOUNT}/setup.sh`],
+          command: ['sh', `${RUN_MOUNT}/setup-${kind}.sh`],
           volumes: [`.:${RUN_MOUNT}`],
-          depends_on: Object.fromEntries(services.map(service => [service.name, { condition: 'service_healthy' }])),
-        },
-        ...job('check', { depends_on: { setup: { condition: 'service_completed_successfully' } } }),
+          depends_on: Object.fromEntries(services.filter(service => service.kind === kind).map(service => [service.name, { condition: 'service_healthy' }])),
+        }])),
+        ...job('check', { depends_on: Object.fromEntries(list.map(kind => [`setup-${kind}`, { condition: 'service_completed_successfully' }])) }),
       } : {}),
       ...(part === 'build' ? job('build', {}) : {}),
     },
@@ -441,11 +476,11 @@ function checked(limits: Limits, extra: Extra, form: Form): void {
 const quote = (word: string) => `'${word.replaceAll("'", "'\\''")}'`;
 const words = (command: readonly string[]) => command.map(quote).join(' ');
 
-// exports are the lines of servers.env: each variable as a word of sh in single quotes, except ${address} and ${dir},
-// which the file that writes servers.env replaces.
+// exports are the lines of servers.env: each variable as a word of sh in single quotes, except ${address_<kind>}, the
+// address of the primary of a kind, and ${dir}, which the file that writes servers.env replaces.
 function exports(variables: Record<string, string>): string[] {
   return Object.entries(variables).map(([name, value]) => {
-    if (/['\n\r\\`]/.test(value) || /\$(?!\{(?:address|dir)\})/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a character that run.sh does not write: ${value}`);
+    if (/['\n\r\\`]/.test(value) || /\$(?!\{(?:address_(?:mysql|postgres|mariadb)|dir)\})/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a character that run.sh does not write: ${value}`);
     return `export ${name}='${value}'`;
   });
 }
@@ -494,8 +529,8 @@ contract() {
 }`;
 
 // head is the start of run.sh of each form: the directory, the command of bay and the functions.
-const head = (at: At, kind: Kind, form: Form, usage: string) => `#!/bin/sh
-# run.sh of the project ${at.name}: the ${kind} servers of a run in the form of the ${form}, written by
+const head = (at: At, list: readonly Kind[], form: Form, usage: string) => `#!/bin/sh
+# run.sh of the project ${at.name}: the ${list.join(', ')} servers of a run in the form of the ${form}, written by
 # scripts/test-servers-container.mts. It needs sh and bay alone. BAY_COMMAND is the command of bay, of one or more words,
 # as sudo -n bay where bay runs as root; without it, bay of PATH.
 ${usage}
@@ -522,12 +557,19 @@ ${SH_FUNCTIONS}
 // service after a failed bay up are also report/bay-up-servers.log, so a report shows the cause of a failed start. bay
 // starts the services one after another in the order of their dependencies and waits for the healthcheck of each before
 // it creates the next, so a service after the one that failed has no container, and its logs name none.
-function runFile(at: At, kind: Kind, services: readonly Service[], steps: readonly Step[], primary: string, variables: Record<string, string>, command: readonly string[] | undefined): string {
+function runFile(at: At, list: readonly Kind[], services: readonly Service[], steps: readonly Step[], host: (service: string) => string, variables: Record<string, string>, command: readonly string[] | undefined): string {
   const environment = exports(variables);
   const check = command === undefined ? ['say "this directory was written without a command; write a run with make orm-test-container-run"', 'exit 2']
     : [`at "the command of the run"`, `beside sh -c '. "$1/servers.env" && shift && exec "$@"' sh "$dir" ${words(command)}`, 'status=$?'];
   const logs = services.map(service => `    say "the last lines of the service ${service.name}:"; b logs -n 50 ${quote(service.name)} 2>&1 | tee -a "$dir/report/bay-up-servers.log" >&2`).join('\n');
-  return `${head(at, kind, 'host', `#   sh run.sh         the whole run: the servers, the command of the run, and the removal of the project
+  // The address of the primary of each kind, address_<kind>, which the variables of that kind name.
+  const addresses = list.map(kind => `  resolved=$(b exec ${quote(kind)} getent ahostsv4 ${quote(host(kind))}) || failed "$?" ${quote(`bay exec ${kind} getent ahostsv4 ${host(kind)}`)}
+  address_${kind}=\${resolved%%[!0-9.]*}
+  case "$address_${kind}" in
+    *.*.*.*) ;;
+    *) say "the host name ${host(kind)} of the plan has no IPv4 address in the container of ${kind}: $resolved"; failed 1 "the address of the primary of ${kind}" ;;
+  esac`).join('\n');
+  return `${head(at, list, 'host', `#   sh run.sh         the whole run: the servers, the command of the run, and the removal of the project
 #   sh run.sh up      start the servers and write servers.env
 #   sh run.sh down    remove the project
 #   sh run.sh pull    download the images of the project`)}
@@ -557,12 +599,7 @@ ${logs}
     failed "$status" "bay up"
   }
 ${steps.map(step => `  at ${quote(`bay exec ${step.service} ${step.command[0] ?? ''}`)}\n  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${quote(`bay exec ${step.service} ${step.command.join(' ')}`)}`).join('\n')}
-  resolved=$(b exec ${quote(kind)} getent ahostsv4 ${quote(primary)}) || failed "$?" ${quote(`bay exec ${kind} getent ahostsv4 ${primary}`)}
-  address=\${resolved%%[!0-9.]*}
-  case "$address" in
-    *.*.*.*) ;;
-    *) say "the host name ${primary} of the plan has no IPv4 address in the container of ${kind}: $resolved"; failed 1 "the address of the primary" ;;
-  esac
+${addresses}
   cat > "$dir/servers.env.tmp" <<ENVIRONMENT
 ${environment.join('\n')}
 ENVIRONMENT
@@ -605,8 +642,8 @@ esac
 // reported as a failed one, and wait <part> follows it again. The whole run adds and waits for build, and then for check when
 // build succeeded. A job queued and not ended when the whole run gets SIGINT, SIGTERM or SIGHUP is cancelled. bay
 // removes the servers after the job check, so the run removes no project; down removes what a cancelled job left.
-function jobRunFile(at: At, kind: Kind): string {
-  return `${head(at, kind, 'runner', `#   sh run.sh             the whole run: the job build and, when it succeeded, the job check
+function jobRunFile(at: At, list: readonly Kind[]): string {
+  return `${head(at, list, 'runner', `#   sh run.sh             the whole run: the job build and, when it succeeded, the job check
 #   sh run.sh add <part>  queue the job of the part, build or check, once for this directory, and print its ID
 #   sh run.sh wait <part> follow the job of the part to its end and end with its result
 #   sh run.sh down        remove the project
@@ -714,12 +751,12 @@ esac
 // in the file on purpose. A wait that ends at it leaves the job running; sh run.sh wait <part> follows it again.
 const WAIT = '24h';
 
-// serverSetupFile is setup.sh, which the one-shot service setup runs in a container of the image of the servers after
-// each server is healthy, before the job check. It runs the steps of the kind with the client of the image over TCP to
+// serverSetupFile is setup-<kind>.sh, which the one-shot service setup-<kind> runs in a container of the image of the
+// servers of the kind after each of them is healthy, before the job check. It runs the steps of the kind with the client of the image over TCP to
 // the host name of each service, which the plan names; a MariaDB client verifies the certificate of the server, so it
 // names the authority that bay mounts. It writes the IPv4 address of the primary, the first word that getent ahostsv4
-// prints for its host name, to the file address, which job-check.sh writes into servers.env. Its output is also
-// report/setup.log, and the time of each step is in report/steps.log.
+// prints for its host name, to the file address-<kind>, which job-check.sh writes into servers.env. Its output is also
+// report/setup-<kind>.log, and the time of each step is in report/steps.log.
 function serverSetupFile(kind: Kind, steps: readonly Step[], host: (service: string) => string): string {
   const tcp = (step: Step) => {
     const [program = '', ...rest] = step.command;
@@ -727,7 +764,7 @@ function serverSetupFile(kind: Kind, steps: readonly Step[], host: (service: str
     return [program, ...options, ...rest];
   };
   return `#!/bin/sh
-# setup.sh: the steps that prepare the ${kind} servers of the run, in the service setup, written by
+# setup-${kind}.sh: the steps that prepare the ${kind} servers of the run, in the service setup, written by
 # scripts/test-servers-container.mts.
 run=${RUN_MOUNT}
 mkdir -p "$run/report"
@@ -739,13 +776,13 @@ ${steps.map(step => `  at ${quote(`setup: ${tcp(step).slice(0, 3).join(' ')}`)}\
   address=\${resolved%%[!0-9.]*}
   case "$address" in
     *.*.*.*) ;;
-    *) echo "setup.sh: the host name ${host(kind)} of the plan has no IPv4 address: $resolved" >&2; exit 1 ;;
+    *) echo "setup-${kind}.sh: the host name ${host(kind)} of the plan has no IPv4 address: $resolved" >&2; exit 1 ;;
   esac
-  printf '%s\\n' "$address" > "$run/address.tmp"
-  mv "$run/address.tmp" "$run/address"
+  printf '%s\\n' "$address" > "$run/address-${kind}.tmp"
+  mv "$run/address-${kind}.tmp" "$run/address-${kind}"
 }
-{ (steps); echo "$?" > "$run/report/setup-status"; } 2>&1 | tee -a "$run/report/setup.log"
-exit "$(cat "$run/report/setup-status")"
+{ (steps); echo "$?" > "$run/report/setup-${kind}-status"; } 2>&1 | tee -a "$run/report/setup-${kind}.log"
+exit "$(cat "$run/report/setup-${kind}-status")"
 `;
 }
 
@@ -766,14 +803,14 @@ sh "$run/build.sh" || { status=$?; at "the build command exited with $status"; e
 ` : ''}`;
 }
 
-// jobCheckFile is job-check.sh, the command of the job check: it writes servers.env with the address of the primary that
-// setup.sh found, and runs check.sh.
-function jobCheckFile(variables: Record<string, string>): string {
+// jobCheckFile is job-check.sh, the command of the job check: it writes servers.env with the address of the primary of
+// each kind that its setup-<kind>.sh found, and runs check.sh.
+function jobCheckFile(list: readonly Kind[], variables: Record<string, string>): string {
   return `#!/bin/sh
 # job-check.sh: the job check of the run in the runner, written by scripts/test-servers-container.mts.
 run=${RUN_MOUNT}
 at() { printf '%s %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$run/report/steps.log"; }
-read -r address < "$run/address" || { echo "job-check.sh: setup.sh wrote no address of the primary" >&2; exit 1; }
+${list.map(kind => `read -r address_${kind} < "$run/address-${kind}" || { echo "job-check.sh: setup-${kind}.sh wrote no address of the primary of ${kind}" >&2; exit 1; }`).join('\n')}
 cat > "$run/servers.env.tmp" <<ENVIRONMENT
 ${exports(variables).join('\n')}
 ENVIRONMENT
@@ -867,8 +904,9 @@ mkdir -p "$run/report" "$run/leases"
 }
 
 // checkFile is check.sh, which runs the command of a run in the runner, in the clone, with the tools of the runner and
-// the variables of the servers. Its output is also report/check.log and its exit status report/status, which a run on
-// another machine brings back.
+// the variables of the servers, whose file is TEST_ENV and MARIADB_ENV of the command, so that a target that reads the
+// environment file of the servers reads it. Its output is also report/check.log and its exit status report/status, which
+// a run on another machine brings back.
 function checkFile(command: readonly string[]): string {
   return `#!/bin/sh
 # check.sh: the command of the run in the service runner, written by scripts/test-servers-container.mts.
@@ -876,6 +914,7 @@ run=${RUN_MOUNT}
 . "$run/runner.env"
 . "$run/servers.env"
 export ORM_RUN_REPORT="$run/report"
+export TEST_ENV="$run/servers.env" MARIADB_ENV="$run/servers.env"
 cd "$run/repo" || exit 1
 { ( ${words(command)} ); echo "$?" > "$run/report/status"; } 2>&1 | tee "$run/report/check.log"
 exit "$(cat "$run/report/status")"
@@ -898,7 +937,7 @@ exit "$(cat "$run/report/build-status")"
 }
 
 // Written is what the directory of a run was written with.
-interface Written extends At { kind: Kind; form: Form }
+interface Written extends At { kinds: readonly Kind[]; form: Form }
 
 // Plan reads the output of bay plan --json for the project of a directory whose compose.yaml is written.
 type Plan = (at: At) => string;
@@ -908,19 +947,21 @@ type Plan = (at: At) => string;
 // the standby of PostgreSQL and the steps of setup.sh name. A write that fails removes the directory. name is the
 // project; without it, the project is orm-<checkout>-<8 random hexadecimal digits>, so that the runs of a checkout do
 // not share one.
-function write(kind: Kind, context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; other: string; authority: (planned: Planned) => string }, limits: Limits = {}, extra: Extra = {}, name = `orm-${checkout(context.root)}-${randomBytes(4).toString('hex')}`): Written {
+function write(list: readonly Kind[], context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; other: string; authority: (planned: Planned) => string }, limits: Limits = {}, extra: Extra = {}, name = `orm-${checkout(context.root)}-${randomBytes(4).toString('hex')}`): Written {
   checked(limits, extra, form);
   const dirs = folders(context.root);
   mkdirSync(dirs.leases, { recursive: true });
-  const at: Written = { name, dir: join(dirs.dir, name), kind, form };
+  const at: Written = { name, dir: join(dirs.dir, name), kinds: list, form };
   mkdirSync(at.dir);
   try {
     const file = join(at.dir, 'compose.yaml');
     const part: Part = form === 'host' ? 'servers' : 'check';
-    writeFileSync(file, composeFile(kind, SERVERS[kind].services(() => 'unplanned.invalid'), part, limits));
-    const stated = planned(plan(at), kind);
+    writeFileSync(file, composeFile(list, placed(list, () => 'unplanned.invalid'), part, limits));
+    // The authority of bay is one for the services of a project; the plan names it with the primary of the first kind.
+    const [first = 'mysql'] = list;
+    const stated = planned(plan(at), first);
     const { host } = stated;
-    const services = SERVERS[kind].services(host);
+    const services = placed(list, host);
     for (const service of services) {
       if (!service.init) continue;
       const init = join(at.dir, `${service.name}-init`);
@@ -929,21 +970,23 @@ function write(kind: Kind, context: Context, form: Form, command: readonly strin
       writeFileSync(join(init, service.init.file), service.init.text);
       chmodSync(join(init, service.init.file), 0o644);
     }
-    writeFileSync(file, composeFile(kind, services, part, limits));
+    writeFileSync(file, composeFile(list, services, part, limits));
     // The second CA signs nothing: the DSN that names it fails the chain of the certificate of the server.
     issueTls(join(at.dir, 'tls'), []);
-    const variables = SERVERS[kind].variables({ host, ipv4: '${address}', authority: place.authority(stated), other: place.other, leases: place.leases });
-    const steps = SERVERS[kind].steps(host);
-    if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, kind, services, steps, host(kind), variables, command));
+    // The variables of each kind, whose mismatch DSN names the address of the primary of that kind; the kinds share the
+    // variables that they name alike, the lease folder and the query of SQLite.
+    const variables: Record<string, string> = Object.assign({}, ...list.map(kind => SERVERS[kind].variables({ host, ipv4: `\${address_${kind}}`, authority: place.authority(stated), other: place.other, leases: place.leases })));
+    const steps = list.flatMap(kind => SERVERS[kind].steps(host));
+    if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, list, services, steps, host, variables, command));
     else {
       if (command === undefined) throw new TestServerError('test-servers-container: a run in the runner needs a command');
-      writeFileSync(join(at.dir, 'run.sh'), jobRunFile(at, kind));
-      writeFileSync(join(at.dir, 'compose.run.yaml'), composeFile(kind, services, 'check', limits));
-      writeFileSync(join(at.dir, 'compose.build.yaml'), composeFile(kind, services, 'build', limits));
+      writeFileSync(join(at.dir, 'run.sh'), jobRunFile(at, list));
+      writeFileSync(join(at.dir, 'compose.run.yaml'), composeFile(list, services, 'check', limits));
+      writeFileSync(join(at.dir, 'compose.build.yaml'), composeFile(list, services, 'build', limits));
       writeFileSync(join(at.dir, 'runner-setup.sh'), setupFile(extra.jobs));
-      writeFileSync(join(at.dir, 'setup.sh'), serverSetupFile(kind, steps, host));
+      for (const kind of list) writeFileSync(join(at.dir, `setup-${kind}.sh`), serverSetupFile(kind, SERVERS[kind].steps(host), host));
       writeFileSync(join(at.dir, 'job-build.sh'), jobBuildFile(extra.build !== undefined));
-      writeFileSync(join(at.dir, 'job-check.sh'), jobCheckFile(variables));
+      writeFileSync(join(at.dir, 'job-check.sh'), jobCheckFile(list, variables));
       writeFileSync(join(at.dir, 'check.sh'), checkFile(command));
       if (extra.build !== undefined) writeFileSync(join(at.dir, 'build.sh'), buildFile(extra.build));
       bundle(context.root, join(at.dir, 'repo.bundle'));
@@ -1029,7 +1072,7 @@ export async function start(kind: Kind, context: Context, limits: Limits = {}): 
   }
   try {
     contract(context);
-    const at = write(kind, context, 'host', undefined, localPlan(context), hostPlace(leases), limits);
+    const at = write([kind], context, 'host', undefined, localPlan(context), hostPlace(leases), limits);
     const ended = await execute(context, at, 'up');
     if (ended.code !== 0) {
       // run.sh removed the project when a step failed after bay up; a part that failed before it started nothing.
@@ -1082,7 +1125,8 @@ const extraOf = (form: RunForm): Extra => ({ ...(form.build === undefined ? {} :
 // their variables, and removes the project when the command ends or fails, or when the run gets SIGINT or SIGTERM,
 // which this script sends on to sh. It then removes the directory, unless the run keeps it; a directory whose project
 // run.sh did not remove stays, so that stop finds it.
-export async function run(kind: Kind, command: readonly string[], context: Context, options: RunOptions & RunForm = {}): Promise<Ended> {
+export async function run(kind: Kind | readonly Kind[], command: readonly string[], context: Context, options: RunOptions & RunForm = {}): Promise<Ended> {
+  const list = listed(typeof kind === 'string' ? [kind] : kind);
   if (command.length === 0) throw new TestServerError('test-servers-container: run needs a command after --', 2);
   const signals = options.signals ?? process;
   let received: NodeJS.Signals | undefined;
@@ -1094,7 +1138,7 @@ export async function run(kind: Kind, command: readonly string[], context: Conte
   try {
     contract(context);
     const { leases } = folders(context.root);
-    const at = write(kind, context, options.runner ? 'runner' : 'host', command, localPlan(context), options.runner ? RUNNER_PLACE : hostPlace(leases), limitsOf(options), extraOf(options));
+    const at = write(list, context, options.runner ? 'runner' : 'host', command, localPlan(context), options.runner ? RUNNER_PLACE : hostPlace(leases), limitsOf(options), extraOf(options));
     const ended = await execute(context, at, undefined, kill => { send = kill; if (received !== undefined) kill(received); }, options.started);
     finish(at, options.keep === true);
     return received !== undefined ? { code: null, signal: received } : { code: ended.code, signal: ended.signal };
@@ -1122,10 +1166,10 @@ export interface Remote extends RunForm { host: string; directory: string; bay?:
 // digits of the sha256 of the commit of the checkout, the kind and the form of the run. The same make command at the
 // same commit names the same project, so a command started again after a lost connection finds the directory that it
 // sent and the jobs that it queued, whose keys are the project and the part, and queues no second run.
-function definition(root: string, kind: Kind, command: readonly string[], form: RunForm): string {
+function definition(root: string, list: readonly Kind[], command: readonly string[], form: RunForm): string {
   const head = spawnSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
   if (head.status !== 0) throw new TestServerError(`test-servers-container: git rev-parse HEAD in ${root} exited with ${head.status ?? head.signal}: ${head.stderr}`);
-  const named = { commit: head.stdout.trim(), kind, command, build: form.build ?? null, jobs: form.jobs ?? null, runner: form.runnerMemory ?? null, server: form.serverMemory ?? null };
+  const named = { commit: head.stdout.trim(), kind: list.join(','), command, build: form.build ?? null, jobs: form.jobs ?? null, runner: form.runnerMemory ?? null, server: form.serverMemory ?? null };
   return createHash('sha256').update(JSON.stringify(named)).digest('hex').slice(0, 8);
 }
 
@@ -1141,7 +1185,8 @@ function definition(root: string, kind: Kind, command: readonly string[], form: 
 // queued, and the directory there is removed only after each job ended and report/ came back into
 // .runtime/containers/reports/<project>, unless the run keeps it. run.sh knows no machine: only this command names the
 // host and the directory.
-export function remote(kind: Kind, command: readonly string[], context: Context, where: Remote): number {
+export function remote(kind: Kind | readonly Kind[], command: readonly string[], context: Context, where: Remote): number {
+  const list = listed(typeof kind === 'string' ? [kind] : kind);
   if (command.length === 0) throw new TestServerError('test-servers-container: remote needs a command after --', 2);
   const [ssh, tar] = [context.ssh ?? 'ssh', context.tar ?? 'tar'];
   const program = (file: string, args: string[], stdio: [number | 'ignore', number | 'pipe', 2]) => {
@@ -1171,7 +1216,7 @@ export function remote(kind: Kind, command: readonly string[], context: Context,
   const stated = program(ssh, [where.host, `${theirs} version --json`], ['ignore', 'pipe', 2]);
   if (stated.status !== 0) throw new TestServerError(`test-servers-container: ${theirs} version --json on ${where.host} exited with ${stated.status ?? stated.signal}; install bay there, or name its command in REMOTE_BAY_COMMAND`);
   contracted(stated.stdout, ` on ${where.host}`);
-  const name = `orm-${checkout(context.root)}-${definition(context.root, kind, command, where)}`;
+  const name = `orm-${checkout(context.root)}-${definition(context.root, list, command, where)}`;
   const target = `${where.directory}/${name}`;
   const local = join(folders(context.root).dir, name);
   rmSync(local, { recursive: true, force: true });
@@ -1180,7 +1225,7 @@ export function remote(kind: Kind, command: readonly string[], context: Context,
     mkdirSync(local, { recursive: true });
     console.error(`test-servers-container: ${where.host}:${target} holds the run ${name}; its jobs are queued once`);
   } else {
-    write(kind, context, 'runner', command, planning => {
+    write(list, context, 'runner', command, planning => {
       const there = `${target}.plan`;
       send(planning.dir, there);
       const printed = program(ssh, [where.host, `cd ${quote(there)} && ${theirs} -p ${quote(planning.name)} plan --json; status=$?; rm -rf ${quote(there)}; exit "$status"`], ['ignore', 'pipe', 2]);
@@ -1300,7 +1345,7 @@ if (import.meta.main) {
     if (!program) throw new TestServerError('test-servers-container: BAY_COMMAND is unset; run this through make, which names the command of bay');
     const context: Context = { root: REPOSITORY, bay: program };
     const { dir, leases } = folders(REPOSITORY);
-    const usage = new TestServerError('usage: test-servers-container.mts start <kind> [--server-memory=<size>] | run <kind> [--runner] [--keep] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | remote <kind> <host> <directory> [--keep] [--pull] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb', 2);
+    const usage = new TestServerError('usage: test-servers-container.mts start <kind> [--server-memory=<size>] | run <kinds> [--runner] [--keep] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | remote <kinds> <host> <directory> [--keep] [--pull] [--jobs=<count>] [--runner-memory=<size>] [--server-memory=<size>] -- <command> [argument...] | stop | pull | install-bay, where <kind> is mysql, postgres or mariadb and <kinds> of run and remote is one kind or a comma list of them, sqlite among them', 2);
     const separator = rest.indexOf('--');
     const [options, words] = separator < 0 ? [rest, []] : [rest.slice(0, separator), rest.slice(separator + 1)];
     const flags = options.filter(option => option.startsWith('--'));
@@ -1323,10 +1368,10 @@ if (import.meta.main) {
     if (command === 'start' && isKind(kind) && words.length === 0 && names.length === 0 && allowed('--server-memory')) {
       await start(kind, context, limitsOf(form()));
       console.log(`test-servers-container: ${kind} is started; its environment file is ${join(dir, `${kind}.env`)}`);
-    } else if (command === 'run' && isKind(kind) && words.length > 0 && names.length === 0 && allowed('--runner', '--keep', ...sizes))
-      process.exitCode = exitCode(await run(kind, words, context, { ...form(), runner: flags.includes('--runner') }));
-    else if (command === 'remote' && isKind(kind) && words.length > 0 && names.length === 2 && allowed('--keep', '--pull', ...sizes))
-      process.exitCode = remote(kind, words, context, { ...form(), host: names[0] ?? '', directory: names[1] ?? '', pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
+    } else if (command === 'run' && kind !== undefined && words.length > 0 && names.length === 0 && allowed('--runner', '--keep', ...sizes))
+      process.exitCode = exitCode(await run(kinds(kind), words, context, { ...form(), runner: flags.includes('--runner') }));
+    else if (command === 'remote' && kind !== undefined && words.length > 0 && names.length === 2 && allowed('--keep', '--pull', ...sizes))
+      process.exitCode = remote(kinds(kind), words, context, { ...form(), host: names[0] ?? '', directory: names[1] ?? '', pull: flags.includes('--pull'), ...(process.env['REMOTE_BAY_COMMAND'] ? { bay: process.env['REMOTE_BAY_COMMAND'] } : {}) });
     else if (command === 'stop' && kind === undefined) {
       mkdirSync(leases, { recursive: true });
       holdExclusiveLease(leases);
