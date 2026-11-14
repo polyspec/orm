@@ -238,7 +238,7 @@ from kit and holds as its own; this file states only the rules of orm.
   process of a test, because a machine under load runs the same work more slowly and its result must not change with that load:
   a case ends when its work ends, and a run that does not end is stopped with its run (SIGINT or SIGTERM). The TypeScript
   harness `tests/testcase.mts`, the Go harness `legacy/packages/go/testcase`, the Python harness
-  `legacy/packages/python/tests/testcase.py` and the Rust harness `packages/rust/testcase` hold no deadline, and PHPUnit enforces no time limit (`enforceTimeLimit` is false). A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
+  `legacy/packages/python/tests/testcase.py` and the Rust harness `packages/rust/testcase` hold no deadline, and PHPUnit enforces no time limit (`enforceTimeLimit` is false). A test that checks a lock wait or aborts a waiting statement orders its steps by an event of the database, such as the LOG message `still waiting for` that a PostgreSQL session with `log_lock_waits` receives while its statement waits, not by reading the lock tables on an interval or by a timer, because both make the result depend on the load; a path whose database sends no such event is an exception that is listed in its task and stays only when it is approved. A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
   `go generate`, `go vet`, `cargo build`, `cargo test --no-run`, a whole suite, a server or a tool
   run) gets detailed step logs instead of a timeout, with no deadline at all, a no-output deadline
   included, so its process and result stay observable; its success or failure comes from its
