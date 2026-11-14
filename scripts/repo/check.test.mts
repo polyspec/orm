@@ -116,6 +116,44 @@ caseTest('T493-3: query.new receives only validated immutable binding schemas (C
   ], 'restoring unreachable declarations restores exactly their missing-outcome findings');
 });
 
+caseTest('T493-4: query.value preserves the admitted descriptor error inventory (CORE-126)', () => {
+  const contract = JSON.parse(text('packages/rust/interface.json')) as Contract;
+  const queryIndex = contract.units.findIndex(unit => unit.id === 'query');
+  const query = contract.units[queryIndex];
+  const valueIndex = query?.members?.findIndex(member => member.id === 'query.value');
+  const value = valueIndex === undefined ? undefined : query?.members?.[valueIndex];
+  assert.ok(query && value && valueIndex !== undefined, 'the contract declares Query.value');
+  const path = `/units/${queryIndex}/members/${valueIndex}`;
+  const groups = JSON.parse(text('contracts/interface/core.json')) as Record<string, { id: string; raises?: { kind: string; category: string; message: string } }[]>;
+  const caseFiles = new Map<string, unknown>([['contracts/interface/core.json', groups]]);
+  const findings = (input: Contract) => checkContract(input, { caseFiles }).filter(finding => finding.check === 'CK-22' && (finding.path === path || finding.path.startsWith(`${path}/`))).map(finding => finding.message);
+  const missing = (kind: string) => `no case of query.value raises the kind ${kind} (K-1, B-4)`;
+  assert.deepEqual(findings(contract), [missing('codec_decode')], 'the real stored-row codec case is still missing; schema and entity failures are not Query.value outcomes');
+  assert.deepEqual(value.raises, ['polyspec_orm::Kind::ColumnUnknown', 'polyspec_orm::Kind::ColumnUnselected', 'polyspec_orm::Kind::CodecDecode', 'polyspec_orm::Kind::Internal']);
+  assert.equal(query.constructible, false);
+  assert.equal(query.final, true);
+  const returnedUnits = (type: unknown): string[] => typeof type === 'object' && type !== null
+    ? Object.entries(type).flatMap(([key, item]) => key === 'unit' && typeof item === 'string' ? [item] : returnedUnits(item)) : [];
+  const routes = contract.units.flatMap(unit => (unit.members ?? []).filter(member => returnedUnits(member.returns).includes('query')).map(member => member.id)).sort();
+  assert.deepEqual(routes, [
+    'query.create', 'query.get_by', 'query.new', 'query.related', 'query.related_rows', 'query.restore', 'query.restore_or_create',
+  ], 'the admitted Query-returning routes preserve the descriptor');
+  assert.deepEqual(groups['query.value']?.map(kase => ({ id: kase.id, raises: kase.raises })), [
+    { id: 'a_query_that_read_no_row', raises: { kind: 'column_unselected', category: 'value', message: 'column_unselected: clock_event.label was not loaded or assigned' } },
+    { id: 'no_column_of_the_entity', raises: { kind: 'column_unknown', category: 'value', message: 'column_unknown: clock_event.missing' } },
+  ], 'both existing direct column-error cases remain');
+  const change = contract.changes.find(row => row.id === 'query_value_validated_descriptor_errors');
+  assert.ok(change, 'the contract records the error inventory correction');
+  assert.equal(change.rule, 'CORE-126');
+  assert.equal(change.to, 'query.value');
+  assert.deepEqual(Object.keys(change.from).sort(), [...contract.targets].sort());
+  const obsolete = structuredClone(contract);
+  const oldValue = obsolete.units[queryIndex]?.members?.[valueIndex];
+  assert.ok(oldValue?.raises, 'the mutation finds Query.value errors');
+  oldValue.raises.push('polyspec_orm::Kind::SchemaInvalid', 'polyspec_orm::Kind::SchemaHashMismatch', 'polyspec_orm::Kind::EntityUnknown');
+  assert.deepEqual(findings(obsolete), ['codec_decode', 'schema_invalid', 'schema_hash_mismatch', 'entity_unknown'].map(missing), 'restoring only the obsolete declarations restores exactly their three missing outcomes');
+});
+
 // No clock ends a test case in any runtime (T473, T474): a machine under load runs the same work more slowly, and the result of
 // a case must not change with that load. No harness keeps a case class, a step budget or a step guard.
 caseTest('no test harness holds a deadline, a step budget or a step guard', () => {

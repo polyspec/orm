@@ -3158,9 +3158,6 @@
             "polyspec_orm::Kind::ColumnUnknown",
             "polyspec_orm::Kind::ColumnUnselected",
             "polyspec_orm::Kind::CodecDecode",
-            "polyspec_orm::Kind::SchemaInvalid",
-            "polyspec_orm::Kind::SchemaHashMismatch",
-            "polyspec_orm::Kind::EntityUnknown",
             "polyspec_orm::Kind::Internal"
           ],
           "wait": "none",
@@ -4784,6 +4781,20 @@
         "wasm": "entity_unknown, schema_invalid and schema_hash_mismatch declared on query.new"
       },
       "to": "query.new"
+    },
+    {
+      "id": "query_value_validated_descriptor_errors",
+      "rule": "CORE-126",
+      "reason": "Every binding Query preserves the validated schema and existing entity of its admitted factory, so schema_invalid, schema_hash_mismatch and entity_unknown are not query.value outcomes; column, codec and internal errors remain, as does native descriptor validation behavior.",
+      "symbol": "query.value",
+      "from": {
+        "php": "schema_invalid, schema_hash_mismatch and entity_unknown also declared on query.value",
+        "python": "schema_invalid, schema_hash_mismatch and entity_unknown also declared on query.value",
+        "node": "schema_invalid, schema_hash_mismatch and entity_unknown also declared on query.value",
+        "go": "schema_invalid, schema_hash_mismatch and entity_unknown also declared on query.value",
+        "wasm": "schema_invalid, schema_hash_mismatch and entity_unknown also declared on query.value"
+      },
+      "to": "query.value"
     }
   ],
   "cases": [

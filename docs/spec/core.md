@@ -315,6 +315,16 @@ implementation is eligible for removal on that evidence.
   `connect(connection)`, where the connection is a `Db` or a `Tx` (CORE-20); a terminal of a `Query` with no connection
   is `config`. The descriptor of the entity of a `Query` is shared by that `Query`, its copies and its rows and is
   dropped with the last of them (CORE-80).
+- **CORE-126** A `Query` admitted by the generated bindings keeps the validated schema and existing entity that
+  `query.new` selected (CORE-125, CORE-81). Its clones, loaded rows, related rows and the rows returned by `create`,
+  `restore` and `restore_or_create` keep that descriptor; no contract member replaces its schema or entity or imports
+  a raw row. `query.value` therefore does not declare `schema_invalid`, `schema_hash_mismatch` or `entity_unknown`:
+  those checks completed before the binding received the query. It keeps `column_unknown`, `column_unselected`,
+  `codec_decode` and `internal`. An unknown column and an unread column fail without a database; converting a stored
+  value can still fail with `codec_decode`, and inconsistent internal row state remains `internal`. Write assignments
+  of `set` do not supply a raw decoded row or replace its descriptor. This corrects the binding error inventory only;
+  native lazy schemas, manually constructed native descriptors and their validation behavior are unchanged.
+  The `codec_decode` binding case for a stored row is not implemented yet; the existing column-error cases remain.
 - **CORE-82** `where(chain, values)` adds the conditions of a chain name of DSL-36 and DSL-37, such as
   `GtServiceSeqAndIsClose`, with one value per key. The values are `orm_value` (CORE-62): `null` is the null of a
   condition, a `list` is the list of values of a key with no operator or with `Ne`, the pair of a `Between` key when

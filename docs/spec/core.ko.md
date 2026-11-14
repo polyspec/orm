@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 1a1e41f085154963c758c5f4187a9ffb0e44e508e4958053794fd2fd3d5909a5 -->
+<!-- source-sha256: 12305043a4e6dc368ccd8d504dd3f24a6fba16fb2ea505be9971e2ddd1e7817a -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -257,6 +257,15 @@
   엔티티는 `entity_unknown`이다. `Query`는 `connect(connection)` 뒤에 실행되고 그 연결은 `Db`나 `Tx`다(CORE-20).
   연결이 없는 `Query`의 terminal은 `config`다. `Query`의 엔티티 descriptor는 그 `Query`와 그 사본, 그 행이 공유하고 그 가운데
   마지막과 함께 놓인다(CORE-80).
+- **CORE-126** 생성된 binding이 받는 `Query`는 `query.new`가 고른 검증된 schema와 존재하는 entity를 유지한다
+  (CORE-125, CORE-81). 그 사본, 불러온 행, 관련 행과 `create`, `restore`, `restore_or_create`가 반환한 행도 그
+  descriptor를 유지한다. contract의 어떤 member도 그 schema나 entity를 교체하거나 raw row를 받아들이지 않는다.
+  따라서 `query.value`는 `schema_invalid`, `schema_hash_mismatch`, `entity_unknown`을 선언하지 않는다. 그 검사는
+  binding이 query를 받기 전에 끝났다. `column_unknown`, `column_unselected`, `codec_decode`, `internal`은 유지한다.
+  없는 column과 읽지 않은 column은 database 없이 실패한다. 저장된 값을 변환할 때는 여전히 `codec_decode`가 날 수
+  있고, 일관되지 않은 내부 row 상태는 `internal`이다. `set`의 쓰기 배정은 raw decoded row를 주거나 descriptor를
+  교체하지 않는다. 이는 binding 오류 목록만 정정한다. native lazy schema, 직접 만든 native descriptor와 그 검증
+  동작은 바뀌지 않는다. 저장된 행의 `codec_decode` binding case는 아직 구현하지 않았으며 기존 column 오류 case는 유지한다.
 - **CORE-82** `where(chain, values)`는 DSL-36과 DSL-37의 chain 이름(예: `GtServiceSeqAndIsClose`)의 조건을 key마다 값
   하나로 더한다. 값은 `orm_value`다(CORE-62): `null`은 조건의 null이고, `list`는 연산자가 없거나 `Ne`인 key의 값
   목록, 값이 둘일 때 `Between` key의 쌍, tuple key의 값 묶음 목록이며, `map`과 `nested:json_value`를 뺀 다른 kind는 값
