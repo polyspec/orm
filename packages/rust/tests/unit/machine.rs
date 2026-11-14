@@ -633,7 +633,7 @@ fn an_admitted_clean_return_can_complete_after_its_machine_is_dropped() {
     use std::sync::Arc;
 
     let _case = polyspec_orm_testcase::case!();
-    for admitted in [false, true] {
+    for (admitted, completes) in [(false, false), (true, true), (true, false)] {
         let scratch = Scratch::new("orm-machine-drop-clean-return");
         let (runtime, mut db) = probe_db(&scratch);
         runtime.block_on(db.pool().close());
@@ -681,14 +681,20 @@ fn an_admitted_clean_return_can_complete_after_its_machine_is_dropped() {
             drop(machine);
             assert_ended(&runtime, kept.borrow().as_ref().expect("the retained transaction"));
             assert_eq!(db.stats().in_use, 1, "the admitted return future owns the proven-clean connection");
-            gate.release.notify_one();
-            drop(runtime.block_on(ending).expect("the independent terminal future completes"));
+            if completes {
+                gate.release.notify_one();
+                drop(runtime.block_on(ending).expect("the independent terminal future completes"));
+            } else {
+                ending.abort();
+                assert!(matches!(runtime.block_on(ending), Err(error) if error.is_cancelled()), "the driver dropped its owned terminal future");
+            }
+            assert_ended(&runtime, kept.borrow().as_ref().expect("the retained transaction"));
         } else {
             drop(machine);
             drop(runtime.block_on(ending));
         }
         assert_eq!(db.stats().in_use, 0);
-        assert_eq!(db.stats().open_connections, u32::from(admitted), "only a previously admitted clean return may keep its connection");
+        assert_eq!(db.stats().open_connections, u32::from(admitted && completes), "only a completed previously admitted clean return may keep its connection");
         assert_eq!(ids(&runtime, &db), if admitted { vec![1] } else { vec![] }, "Drop does not undo an already-completed COMMIT");
         close(&runtime, &db);
     }
@@ -760,5 +766,155 @@ fn cancellation_at_rollback_preserves_terminal_ownership() {
         assert_eq!(db.stats().open_connections, connections - u32::from(terminal != 2));
         assert_eq!(ids(&runtime, &db), [] as [i64; 0]);
         close(&runtime, &db);
+    }
+}
+
+/// A test-owned line-JSON peer. It acknowledges setup statements and gates the actual terminal request before its ACK.
+/// The ACK proves transport ownership only: this peer models no storage or transaction outcome (CORE-7, PRT-64).
+struct TerminalPeer {
+    address: std::net::SocketAddr,
+    accepted: Option<std::sync::mpsc::Receiver<std::net::TcpStream>>,
+    terminal: std::sync::mpsc::Receiver<String>,
+    reply: Option<std::sync::mpsc::Sender<bool>>,
+    thread: Option<std::thread::JoinHandle<Result<(), String>>>,
+}
+
+impl TerminalPeer {
+    fn new() -> Self {
+        use std::io::{BufRead as _, Write as _};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("the peer owns its listener");
+        let address = listener.local_addr().expect("the system assigns the peer port");
+        let (accepted, connection) = std::sync::mpsc::channel();
+        let (observed, terminal) = std::sync::mpsc::channel();
+        let (reply, replies) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || -> Result<(), String> {
+            let (socket, _) = listener.accept().map_err(|error| error.to_string())?;
+            drop(listener);
+            accepted.send(socket.try_clone().map_err(|error| error.to_string())?).map_err(|error| error.to_string())?;
+            let mut writer = socket.try_clone().map_err(|error| error.to_string())?;
+            let mut reader = std::io::BufReader::new(socket);
+            loop {
+                let mut line = String::new();
+                if reader.read_line(&mut line).map_err(|error| error.to_string())? == 0 {
+                    return Err("the connection ended before its terminal request".into());
+                }
+                let request: serde_json::Value = serde_json::from_str(&line).map_err(|error| error.to_string())?;
+                let terminal = request["sql"].as_str().filter(|sql| matches!(*sql, "COMMIT" | "ROLLBACK"));
+                if let Some(sql) = terminal {
+                    if request["op"] != "statement" || request["params"] != serde_json::json!([]) {
+                        return Err(format!("malformed terminal statement: {line}"));
+                    }
+                    observed.send(sql.to_owned()).map_err(|error| error.to_string())?;
+                    if replies.recv().unwrap_or(false) {
+                        writeln!(writer, "{{\"ok\":true}}").map_err(|error| error.to_string())?;
+                    }
+                    line.clear();
+                    return match reader.read_line(&mut line) {
+                        Ok(0) => Ok(()),
+                        Ok(_) => Err(format!("an aborted connection sent another request: {line}")),
+                        Err(error) => Err(error.to_string()),
+                    };
+                }
+                let setup = match request["op"].as_str() {
+                    Some("connect") => request["corpus"] == "machine" && request["token"] == "0123456789abcdef0123456789abcdef",
+                    Some("statement") => {
+                        matches!(
+                            request["sql"].as_str(),
+                            Some("BEGIN IMMEDIATE" | r#"CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))"#)
+                        ) && request["params"] == serde_json::json!([])
+                    }
+                    _ => false,
+                };
+                if !setup {
+                    return Err(format!("unexpected setup request: {line}"));
+                }
+                writeln!(writer, "{{\"ok\":true}}").map_err(|error| error.to_string())?;
+            }
+        });
+        Self { address, accepted: Some(connection), terminal, reply: Some(reply), thread: Some(thread) }
+    }
+
+    fn dsn(&self) -> String {
+        format!("markdown://{}/machine?token=0123456789abcdef0123456789abcdef", self.address)
+    }
+
+    fn finish(&mut self) {
+        self.thread.take().expect("the peer is owned").join().expect("the peer thread did not panic").expect("the peer observed EOF");
+    }
+}
+
+impl Drop for TerminalPeer {
+    fn drop(&mut self) {
+        let Some(thread) = self.thread.take() else { return };
+        // Unblocks a peer waiting to ACK a terminal request.
+        drop(self.reply.take());
+        // Wakes accept on preparation failure. If the real connection was already accepted, the listener is closed.
+        if let Ok(wakeup) = std::net::TcpStream::connect(self.address) {
+            let _ = wakeup.shutdown(std::net::Shutdown::Both);
+        }
+        if let Some(accepted) = self.accepted.take() {
+            if let Ok(socket) = accepted.recv() {
+                let _ = socket.shutdown(std::net::Shutdown::Both);
+            }
+        }
+        let _ = thread.join();
+    }
+}
+
+// Requirements: CORE-7, PRT-64. A real terminal request is in flight before its ACK. Dropping owned I/O closes that
+// socket; retained I/O may complete but its aborted transaction cannot reuse the socket. No storage outcome is claimed.
+#[test]
+fn cancellation_of_terminal_wire_io_preserves_its_independent_ownership() {
+    let _case = polyspec_orm_testcase::case!();
+    for commit in [false, true] {
+        for completes in [false, true] {
+            let mut peer = TerminalPeer::new();
+            let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().expect("runtime");
+            let db = runtime.block_on(Db::connect(&peer.dsn(), 1, Config::default())).expect("the peer accepts the connection");
+            let kept = Rc::new(RefCell::new(None));
+            let handle = Rc::clone(&kept);
+            let mut machine = db.clone().transaction(
+                |tx: Tx| {
+                    *handle.borrow_mut() = Some(tx);
+                    if commit {
+                        Ok(passed(1))
+                    } else {
+                        Err(Failure::Raised(raised(1)))
+                    }
+                },
+                once(),
+            );
+            let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
+            let opened = runtime.block_on(opening);
+            assert!(matches!(machine.resume(Some(opened)), Step::Call));
+            machine.call();
+            let step = machine.resume(None);
+            let terminal = match step {
+                Step::Await(value) => {
+                    machine.settle(Ok(value));
+                    machine.resume(None)
+                }
+                other => other,
+            };
+            let Step::Io(terminal) = terminal else { panic!("the terminal I/O owns the connection") };
+            let terminal = runtime.spawn(terminal);
+            assert_eq!(peer.terminal.recv().expect("the peer received the terminal request"), if commit { "COMMIT" } else { "ROLLBACK" });
+            drop(machine);
+            assert_ended(&runtime, kept.borrow().as_ref().expect("the retained handle"));
+            assert_eq!(db.stats().in_use, 1, "the independently polled future owns the terminal socket until it ends");
+            if completes {
+                peer.reply.as_ref().expect("the peer is gated").send(true).expect("the terminal reply is admitted");
+                drop(runtime.block_on(terminal).expect("the retained future completes"));
+            } else {
+                terminal.abort();
+                assert!(matches!(runtime.block_on(terminal), Err(error) if error.is_cancelled()), "the driver dropped its terminal I/O");
+                peer.reply.as_ref().expect("the peer is gated").send(false).expect("the peer checks EOF without an ACK");
+            }
+            assert_ended(&runtime, kept.borrow().as_ref().expect("the retained handle"));
+            assert_eq!(db.stats().in_use, 0);
+            assert_eq!(db.stats().open_connections, 0, "a terminal result after abort never admits return to the pool");
+            peer.finish();
+            close(&runtime, &db);
+        }
     }
 }

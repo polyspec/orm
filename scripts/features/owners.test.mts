@@ -67,9 +67,15 @@ caseTest('a changed path selects the lint target of its language', async () => {
 // check (go-test-helpers).
 caseTest('a changed file selects the transaction end tests that it holds or that test it', async () => {
   for (const path of ['packages/rust/src/tx.rs'])
-    assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust'], path);
+    assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust', 'transactions/transaction-machines-rust'], path);
   for (const path of ['legacy/packages/go/orm/transaction_end_test.go', 'legacy/packages/go/orm/context_reset_test.go', 'legacy/packages/go/orm/cancelled_session_test.go'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-end-go'], path);
+});
+
+// Requirements: FCV-7, CORE-7. Machine source and its native artifact tests have one declared owning command.
+caseTest('a changed machine artifact selects its native machine verification', async () => {
+  for (const path of ['packages/rust/src/tx/machine.rs', 'packages/rust/tests/unit/machine.rs'])
+    assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-machines-rust'], path);
 });
 
 caseTest('a whole-suite command is split by package', async () => {
