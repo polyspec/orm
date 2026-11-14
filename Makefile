@@ -1730,7 +1730,10 @@ orm-test-mysql-privilege-start:
 # orm-test-container-remote is one kind or a comma list of them, such as mysql,postgres,sqlite: one project holds the
 # servers of each kind with a server, sqlite needs none, and RUN sees the variables of every kind, so a check that reads
 # several databases runs once. Each server takes a small cache, 64 MiB of InnoDB buffer pool and 32 MB of PostgreSQL
-# shared buffers, so that the servers of several kinds fit the memory of one machine beside the runner.
+# shared buffers, so that the servers of several kinds fit the memory of one machine beside the runner. CACHE=<directory>
+# of the runner form names a directory of the machine that runs the jobs, which outlives the runs, for the downloads of
+# the tools (RUSTUP_HOME, CARGO_HOME, the Go module and build caches, npm and Composer); the clone and its target
+# directory stay in the run, and the job that ends a run removes them unless KEEP=1.
 #
 # BAY_COMMAND is the command of bay, the only program that these targets run for the servers and their images. bay is a
 # tool of the machine, as make is: the default is bay of PATH, and a run compares no version of it and checks its
@@ -1763,10 +1766,10 @@ orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_BUILD = $
 orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_SOCKET_BUILD = $(value SOCKET_BUILD)
 orm-test-container-run orm-test-container-remote: export ORM_CONTAINER_SOCKET_RUN = $(value SOCKET_RUN)
 orm-test-container-run:
-	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) $(if $(CACHE),--cache=$(CACHE)) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-remote:
-	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(if $(CACHE),--cache=$(CACHE)) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)
