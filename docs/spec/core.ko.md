@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 0f09fe32b499249b54f8f16db690148d17ecb9a4e2a11c08fc6a072a4ef534f1 -->
+<!-- source-sha256: 4254af9c7bc1ec16ada0bf3d0fc01a018d3596f710ac03d27d885152463f422c -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -36,6 +36,10 @@
 
 ## 오류
 
+- **CORE-6** interface contract는 binding 경계의 I/O 실패를 나타내는 `io`를 포함하여 그 경계의 모든 error category에
+  class를 선언한다. 그 class는 PHP의 `Polyspec\Orm\OrmIoError`, Python의 `ORMIoError`, Node와 WASM의
+  `OrmIoError`이며 실패의 kind와 message를 보존한다. core의 kind 중 그 category에 속하는 것이
+  없어도 경계가 자기 실패를 낼 수 있으므로 이 연결이 필요하다.
 - **CORE-10** 코어의 오류는 닫힌 enum `polyspec_orm::Kind`의 kind 하나를 가진다. kind와 category와 뜻은
   [errors](errors.md)의 표다. kind는 카탈로그 코드의 소문자 snake 형태다(`NO_ROWS`는 `no_rows`). 코어에서는 INT-65와
   INT-89를 대체한다: 바인딩은 kind를 계약의 enum `ErrorKind`로, 모든 오류를 그 category의 클래스(CORE-11)로 내고, 어느

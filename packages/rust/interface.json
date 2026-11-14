@@ -74,6 +74,12 @@
         "node": "OrmBusyError",
         "wasm": "OrmBusyError"
       },
+      "io": {
+        "php": "Polyspec\\Orm\\OrmIoError",
+        "python": "ORMIoError",
+        "node": "OrmIoError",
+        "wasm": "OrmIoError"
+      },
       "internal": {
         "php": "Polyspec\\Orm\\OrmInternalError",
         "python": "ORMInternalError",

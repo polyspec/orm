@@ -42,6 +42,10 @@ empty. No language implementation is eligible for removal on that evidence.
 
 ## Errors
 
+- **CORE-6** The interface contract declares a class for every error category of the binding boundary, including `io`
+  for an I/O failure of that boundary. Its class is `Polyspec\Orm\OrmIoError` in PHP, `ORMIoError` in Python and
+  `OrmIoError` in Node and WASM, and preserves the failure's kind and message. The mapping is
+  required even when none of the core's kinds belongs to that category, because the boundary can raise its own failure.
 - **CORE-10** An error of the core has one kind of the closed enum `polyspec_orm::Kind`. The kinds, their categories and
   their meanings are the table of [errors](errors.md). A kind is the lower-case snake form of a code of the catalog
   (`NO_ROWS` is `no_rows`). This replaces INT-65 and INT-89 for the core: the bindings expose the kinds as the enum

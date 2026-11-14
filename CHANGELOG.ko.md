@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 497daab4faec5639c73d1f0391b0463289a0f5b1fc3ec6612adcf9b30c1d16bf -->
+<!-- source-sha256: ba6c790e88df66f42c456f1ec6f3dc13eb8b619be7024091e960e1b3504d2958 -->
 # 변경 이력
 
 ## Unreleased
 
+- interface contract는 binding 경계의 `io` error category를 `OrmIoError`(Python에서는 `ORMIoError`)에 연결한다(T493-1, CORE-6). PHP, Python, Node, WASM의 연결이 없어서 contract 검사가 CK-10 네 건을 보고했다. 회귀 시험은 binding 검사로 실제 contract를 확인한다. 생성된 runtime의 오류 동작은 아직 검증하지 않았다.
 - core 명세는 legacy 언어 구현 각각을 언제 제거할 수 있는지 정한다(T492, CORE-4, CORE-5). 전에는 legacy API와 시험을 보존하면서 제거 조건은 적지 않았다. 이제 제거하려면 해당 언어의 생성된 binding이 모든 interface contract case를 실패와 skip 없이 통과하고 legacy 시험도 그 binding으로 통과해야 한다. API 차이와 허용하는 시험 변경은 각각 규칙과 함께 contract의 `changes`에 선언한다. legacy package는 계속 릴리스 대상이 아니며, 제거 검사와 차이 목록은 아직 완료하지 않았다.
 - checklist가 행 T495를 가진다(T495): 릴리스는 `pie install`이 찾을 수 있도록 binding의 PHP 확장의 Composer 패키지 `polyspec/orm`을 담는다.
 - checklist가 T492부터 T494까지의 행을 가진다(T492, T493, T494): 명세에 적을 legacy 구현에서 생성된 binding으로의 이행, release를 막는 `binding check --release`의 168건(CK-22 153, CK-8 7, CK-10 4, CK-68 4), 실패하는 `tests/`의 Go 시험 둘인 `TestCommittedTablesAreGenerated`와 `TestLogicalContractRejectsNativeDrift`.

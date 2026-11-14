@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The interface contract maps the binding boundary's `io` error category to `OrmIoError` (`ORMIoError` in Python) (T493-1, CORE-6). The mapping was absent in PHP, Python, Node and WASM, so the contract checker reported four CK-10 findings. The regression checks the real contract through the binding checker; generated runtime error behavior remains to be verified.
 - The core specification defines when each legacy language implementation may be removed (T492, CORE-4, CORE-5). It previously preserved the legacy API and tests without stating a removal condition. Removal now requires the language's generated binding to pass every interface contract case without failure or skip and the legacy tests to pass against it, with every API difference and permitted test change declared in the contract's `changes` with its rule. The legacy packages remain outside releases; the removal checks and difference inventory are not complete.
 - The checklist holds the row T495 (T495): the release carries the Composer package `polyspec/orm` of the PHP extension of the binding, so that `pie install` finds it.
 - The checklist holds the rows T492 to T494 (T492, T493, T494): the transition of the legacy implementations to the generated bindings in the specification, the 168 findings of `binding check --release` that block the release (CK-22 153, CK-8 7, CK-10 4, CK-68 4), and the two Go tests of `tests/` that fail, `TestCommittedTablesAreGenerated` and `TestLogicalContractRejectsNativeDrift`.
