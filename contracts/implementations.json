@@ -750,6 +750,7 @@
         "legacy/packages/ts/tests/statement-runner-run.mjs",
         "legacy/packages/ts/tests/coverage_performance_report.mjs",
         "legacy/packages/ts/tests/was-inserted-child.mjs",
+        "legacy/packages/ts/tests/lock-wait.mjs",
         "legacy/packages/ts/tests/coverage_performance_gate.mjs",
         "legacy/packages/ts/tests/parse_documents.mjs",
         "legacy/packages/ts/tests/error_code.mjs",

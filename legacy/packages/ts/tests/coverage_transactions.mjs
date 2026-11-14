@@ -6,6 +6,7 @@ import { after } from 'node:test';
 import { installBench } from './bench-set.mjs';
 import { createCaseDatabase } from './case-database.mjs';
 import { runCasesOn, withCleanup } from './coverage_case.mjs';
+import { statementStarts } from './lock-wait.mjs';
 
 const tenant = 990003;
 
@@ -51,37 +52,53 @@ export const cases = {
     const { driver } = item;
     await withTenant(item, async db => {
       await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('original').create();
+      // On PostgreSQL the abort follows the event of the start of the statement (statementStarts, T475), whose trigger is
+      // installed before the holder holds the row. MySQL and MariaDB send no event when a statement starts or waits, so
+      // there the abort comes 100 ms after the statement starts, an exception of T475 that stays only when it is approved.
+      const starts = driver === 'postgres' ? await statementStarts(item.dsn, 'composite_account') : null;
+      // The holder is released before the trigger is removed, because DROP TRIGGER waits for the rows that it holds.
+      let releaseHolder = () => {};
+      let holder = null;
+      try {
+        let announceHeld;
+        const rowHeld = new Promise(resolve => { announceHeld = resolve; });
+        const holderReleased = new Promise(resolve => { releaseHolder = resolve; });
+        const rollback = new Error('release the row lock');
+        holder = db.transaction(async () => {
+          await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('held').update();
+          announceHeld();
+          await holderReleased;
+          throw rollback;
+        }).catch(error => error);
+        await rowHeld;
 
-      let announceHeld;
-      const rowHeld = new Promise(resolve => { announceHeld = resolve; });
-      let releaseHolder;
-      const holderReleased = new Promise(resolve => { releaseHolder = resolve; });
-      const rollback = new Error('release the row lock');
-      const holder = db.transaction(async () => {
-        await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('held').update();
-        announceHeld();
-        await holderReleased;
-        throw rollback;
-      }).catch(error => error);
-      await rowHeld;
+        const controller = new AbortController();
+        const signalled = db.withSignal(controller.signal);
+        let statement;
+        if (driver === 'sqlite') {
+          // SQLite executes synchronously, so the signal applies to the next statement.
+          controller.abort();
+          statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+        } else if (starts) {
+          const armed = await starts.arm();
+          statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+          await armed.started;
+          controller.abort();
+        } else {
+          statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+          setTimeout(() => controller.abort(), 100);
+        }
+        let cancellation = null;
+        try { await statement; } catch (error) { cancellation = error; }
+        assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', `${driver}: the abandoned statement is cancelled`);
 
-      const controller = new AbortController();
-      const signalled = db.withSignal(controller.signal);
-      let statement;
-      if (driver === 'sqlite') {
-        // SQLite executes synchronously, so the signal applies to the next statement.
-        controller.abort();
-        statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
-      } else {
-        statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
-        setTimeout(() => controller.abort(), 100);
+        releaseHolder();
+        assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
+      } finally {
+        releaseHolder();
+        await holder;
+        await starts?.close();
       }
-      let cancellation = null;
-      try { await statement; } catch (error) { cancellation = error; }
-      assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', `${driver}: the abandoned statement is cancelled`);
-
-      releaseHolder();
-      assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
       assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6)).getName(), 'original', `${driver}: cancellation and rollback preserve the stored row`);
       assert.equal(await exists(db, 6), true, `${driver}: the connection handle remains usable`);
     });

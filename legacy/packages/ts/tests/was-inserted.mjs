@@ -39,8 +39,8 @@ async function insertEvent(db, label) {
 
 /**
  * PostgreSQL: a second backend that waits for a row lock is reported. The transaction holds the row; a child process
- * updates the same row and blocks. The parent checks the state the database reports, bounded to ten seconds, before it
- * commits and lets the child finish.
+ * updates the same row and blocks. The child prints "waiting" when the server reports that its update waits (T475), and
+ * only then the parent reads the state once, before it commits and lets the child finish.
  */
 // Requirements: INT-53.
 caseTest('backend-waiting-for-lock/postgres-waiter', async () => {
@@ -48,6 +48,7 @@ caseTest('backend-waiting-for-lock/postgres-waiter', async () => {
     let seq = 0;
     await db.transaction(async () => { seq = await insertEvent(db, 'held'); }, { retry: 0 });
     let child;
+    let closed;
     let output = '';
     await db.transaction(async () => {
       const held = new ClockEvent().connect(db);
@@ -55,15 +56,19 @@ caseTest('backend-waiting-for-lock/postgres-waiter', async () => {
       held[CORE].setValue('label', 'parent');
       await held.update();
       child = spawn(process.execPath, [new URL('./was-inserted-child.mjs', import.meta.url).pathname, dsn, String(seq)], { stdio: ['ignore', 'pipe', 'inherit'] });
-      child.stdout.on('data', chunk => { output += chunk; });
-      let waiting = false;
-      for (let deadline = Date.now() + 10_000; !waiting && Date.now() < deadline; await new Promise(done => setTimeout(done, 20))) {
-        waiting = await db.utils().backendWaitingForLock();
-      }
-      assert.equal(waiting, true, 'the child backend waits for the row lock the transaction holds');
+      closed = new Promise(done => child.on('close', done));
+      const reported = new Promise((done, failed) => {
+        child.stdout.on('data', chunk => {
+          output += chunk;
+          if (output.startsWith('waiting\n')) done();
+        });
+        closed.then(code => failed(new Error(`the child ended with ${code} before it waited for the row lock; it printed ${JSON.stringify(output)}`)));
+      });
+      await reported;
+      assert.equal(await db.utils().backendWaitingForLock(), true, 'the child backend waits for the row lock the transaction holds');
     }, { retry: 0 });
-    const code = await new Promise(done => child.on('close', done));
+    const code = await closed;
     assert.equal(code, 0, 'the waiting child exits without error');
-    assert.equal(output, 'done\n');
+    assert.equal(output, 'waiting\ndone\n');
   });
 });

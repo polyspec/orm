@@ -1098,7 +1098,8 @@
           "shard": "other",
           "inputs": [
             "legacy/packages/ts/tests/model.mjs",
-            "legacy/packages/ts/tests/case-database.mjs"
+            "legacy/packages/ts/tests/case-database.mjs",
+            "legacy/packages/ts/tests/lock-wait.mjs"
           ]
         },
         {
@@ -2520,7 +2521,8 @@
           "command": "node legacy/packages/ts/tests/coverage_transactions.mjs",
           "shard": "other",
           "inputs": [
-            "legacy/packages/ts/tests/coverage_transactions.mjs"
+            "legacy/packages/ts/tests/coverage_transactions.mjs",
+            "legacy/packages/ts/tests/lock-wait.mjs"
           ]
         },
         {
