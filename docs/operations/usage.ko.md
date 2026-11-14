@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 32466ebc2ae7a325ca9dc6542dfe289ff1649d2c1f18886561d8aa129a94ba18 -->
+<!-- source-sha256: 1f48a36f2bf0a7b49cc38ccffe65a264ce41e94f2869c4fcb02569c3d83aa8cc -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -575,13 +575,12 @@ make orm-test-container KIND=mysql                           # config/containers
 . .runtime/containers/mysql.env                              # 그 서버의 DSN 변수. TEST_ENV를 읽는 대상은 TEST_ENV=.runtime/containers/mysql.env, MariaDB는 MARIADB_ENV를 받는다
 make orm-test-container-stop                                 # 이 checkout의 project와 데이터를 지운다. kill된 run의 project도 포함한다
 make orm-test-container-run KIND=mysql RUN='make test-rust'  # 이 run만의 서버를 띄우고 이 host에서 그 변수로 RUN을 실행하며, RUN이 끝나거나 실패하거나 SIGINT나 SIGTERM을 받으면 지운다
-make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'  # 같은 run을 commit의 clone으로 service runner 안에서 실행한다. KEEP=1은 tool과 build가 든 directory를 남긴다
-make orm-test-container-run KIND=mysql FORM=runner BUILD='<build command>' RUN='make test-rust' CARGO_BUILD_JOBS=<count> RUNNER_MEMORY=<size> SERVER_MEMORY=<size>  # server가 시작하기 전에 runner 안에서 build한다. cargo의 job 수와 memory 한도는 machine에 맞게 준다
-make orm-test-container-run KIND=mysql FORM=runner SOCKET_BUILD='<build command>' SOCKET_RUN='<check command>' RUN='make test-rust'  # runner 안에서 static program도 build하고 socket 변수와 함께 primary의 container 안에서 실행한다
-make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory>  # host에 sh와 bay만 있는 다른 machine에서 runner의 run을 실행한다. PULL=1은 그곳에서 image를 pull한다
+make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'  # 같은 run을 commit의 clone으로 runner 안의 bay job 두 개로 실행한다. machine은 job을 한 번에 하나씩 실행한다. KEEP=1은 tool과 build가 든 directory를 남긴다
+make orm-test-container-run KIND=mysql FORM=runner BUILD='<build command>' RUN='make test-rust' CARGO_BUILD_JOBS=<count> RUNNER_MEMORY=<size> SERVER_MEMORY=<size>  # server가 시작하기 전에 job build 안에서 build한다. cargo의 job 수와 memory 한도는 machine에 맞게 준다
+make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory> PEER=<peer>  # host에 sh와 bay만 있는 다른 machine에서 runner의 run을 실행한다. job은 그곳에서 실행되고 이 machine은 bay의 peer를 통해 기다린다. 다시 시작해도 아무것도 두 번 넣지 않는다. PULL=1은 그곳에서 image를 pull한다
 ```
 
-컨테이너 서버는 `bay`의 Compose project다(CONTRIBUTING.md, "컨테이너의 test database server"). start가 실패하면 먼저 그 출력을 읽는다. 출력에는 `bay up`의 출력과 각 service의 마지막 줄이 있다. `bay status`는 machine에서 도는 project를 나열한다. 이 checkout의 project 이름은 `orm-<checkout>-<run>`이고 그 file은 `.runtime/containers/<project>`에 있다. 그 directory의 file `run.sh`가 `sh`와 `bay`만으로 run을 실행한다. `sh run.sh`는 run 전체이고, `sh run.sh up`과 `sh run.sh down`은 server를 시작하고 제거한다. 다른 machine에서의 run은 report를 `.runtime/containers/reports/<project>`에 남긴다(`check.log`, `status`). `bay check -scope run`은 machine 설정에서 없는 부분을 적고 `bay install`이 그것을 적용한다. 이 repository는 `bay install`도, machine 설정을 바꾸는 command도 실행하지 않는다.
+컨테이너 서버는 `bay`의 Compose project다(CONTRIBUTING.md, "컨테이너의 test database server"). start가 실패하면 먼저 그 출력을 읽는다. 출력에는 `bay up`의 출력과 각 service의 마지막 줄이 있다. `bay status`는 machine에서 도는 project를 나열한다. 이 checkout의 project 이름은 `orm-<checkout>-<run>`이고 그 file은 `.runtime/containers/<project>`에 있다. 그 directory의 file `run.sh`가 `sh`와 `bay`만으로 run을 실행한다. `sh run.sh`는 run 전체이고, `sh run.sh up`과 `sh run.sh down`은 server를 시작하고 제거한다. runner 안의 run은 job 두 개이고, `bay job list`가 그 결과와 함께 나열한다. 다른 machine에서의 run은 report를 `.runtime/containers/reports/<project>`에 남긴다(`job-<part>.json`, `job-<part>.log`, `check.log`, `status`). `bay check -scope run`은 machine 설정에서 없는 부분을 적고 `bay install`이 그것을 적용한다. 이 repository는 `bay install`도, machine 설정을 바꾸는 command도 실행하지 않는다.
 
 예제: [`examples/thin-slice`](../../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../../examples/complex)(조인·그룹·2단 관계·집계).
 

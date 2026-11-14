@@ -1724,14 +1724,15 @@ orm-test-mysql-privilege-start:
 # runs the shell command BUILD when it is given, and only then starts the servers, so that the build and the servers do
 # not hold memory at the same time. CARGO_BUILD_JOBS is the count of the jobs of cargo in the runner, and RUNNER_MEMORY
 # and SERVER_MEMORY are the memory limits of the runner and of each server (sizes of Compose, such as 2600m); the one
-# who runs gives them for the machine, and this file holds no value of them. SOCKET_BUILD and SOCKET_RUN are a check
-# through the Unix socket of the MySQL or MariaDB primary (BAY8): the runner runs the shell command SOCKET_BUILD before the
-# servers start, which leaves a static executable for Linux below $$ORM_RUN_PROGRAMS, and bay exec runs the shell command
-# SOCKET_RUN in the container of the primary with the socket variable, after RUN; its failure fails the run. KEEP=1 keeps the directory of the run,
-# with the tools and the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
-# RUN='<command>' HOST=<ssh host> REMOTE=<directory there> runs the form of the runner on another machine, whose host
-# has sh and bay alone: it sends the directory, runs run.sh there through ssh, brings the report back under
-# .runtime/containers/reports and removes the directory there; PULL=1 pulls the images there first.
+# who runs gives them for the machine, and this file holds no value of them. The form of the runner is two jobs of bay,
+# which the machine runs one at a time with its other jobs (BAY13): the job build installs the runner and runs BUILD, and
+# the job check, queued after build succeeded, runs RUN with the servers. KEEP=1 keeps the directory of the run, with the
+# tools and the build of the runner, and sh <directory>/run.sh runs it again. make orm-test-container-remote KIND=<kind>
+# RUN='<command>' HOST=<ssh host> REMOTE=<directory there> PEER=<peer> runs the form of the runner on another machine,
+# whose host has sh and bay alone and which the bay of this machine knows as the approved peer PEER: it sends the
+# directory, queues each job there through ssh, waits for it through the peer, so a lost connection ends no job, brings
+# the report back under .runtime/containers/reports and removes the directory there; PULL=1 pulls the images there
+# first. The same command at the same commit sends nothing and queues nothing a second time.
 #
 # BAY_COMMAND is the command of bay, the only program that these targets run for the servers and their images. bay is a
 # tool of the machine, as make is: the default is bay of PATH, and a run compares no version of it and checks its
@@ -1767,7 +1768,7 @@ orm-test-container-run:
 	$(CONTAINER_SERVERS) run $(KIND) $(if $(filter runner,$(FORM)),--runner) $(if $(KEEP),--keep) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-remote:
-	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
+	$(CONTAINER_SERVERS) remote $(KIND) $(HOST) $(REMOTE) $(PEER) $(if $(KEEP),--keep) $(if $(PULL),--pull) $(CONTAINER_LIMITS) -- /bin/sh -c "$$ORM_CONTAINER_RUN"
 
 orm-test-container-stop:
 	$(MAKE) -s $(LEASE)

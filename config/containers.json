@@ -1,5 +1,5 @@
 {
-  "comment": "The images of the test database servers and of the service runner that make orm-test-container starts as a Compose project of bay (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds. make orm-install-container-images pulls them with bay pull, and no start pulls one. runner declares what runner-setup.sh installs in the runner: the packages of Debian, and the sha256 of the node tarball of mise.toml and of rustup-init for each processor that uname -m names. bay pins the release of bay that CI installs: its version, the address of its files, and the sha256 of the archive of each platform from SHA256SUMS of that release; make orm-install-bay installs it into var/tools/bay, and no run reads it.",
+  "comment": "The images of the test database servers and of the service runner that make orm-test-container starts as a Compose project of bay (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds. make orm-install-container-images pulls them with bay pull, and no start pulls one. runner declares the x-bay.timeout of each job of the runner, the longest one run of a job may take, and what runner-setup.sh installs in the runner: the packages of Debian, and the sha256 of the node tarball of mise.toml and of rustup-init for each processor that uname -m names. bay pins the release of bay that CI installs: its version, the address of its files, and the sha256 of the archive of each platform from SHA256SUMS of that release; make orm-install-bay installs it into var/tools/bay, and no run reads it.",
   "images": {
     "mysql": {
       "version": "8.4.11",
@@ -19,6 +19,7 @@
     }
   },
   "runner": {
+    "timeout": "12h",
     "packages": [
       "git",
       "make",
@@ -37,6 +38,7 @@
       "php8.4-mbstring",
       "php8.4-curl",
       "php8.4-zip",
+      "php8.4-dev",
       "composer"
     ],
     "node": {
@@ -52,13 +54,13 @@
     }
   },
   "bay": {
-    "version": "v0.0.6",
-    "release": "https://github.com/polyspec/bay/releases/download/v0.0.6",
+    "version": "v0.0.7",
+    "release": "https://github.com/polyspec/bay/releases/download/v0.0.7",
     "sha256": {
-      "darwin_amd64": "3d76a9dbb2e2642c44b00123d89b86b66e8ca33d54a5433bd7a164ec00f73211",
-      "darwin_arm64": "644921d8f2e8363a267203a3fdffe2a7da5e7d481dd6388dee14f1abc452bfe9",
-      "linux_amd64": "646b6375b99759872a3398518b4179f9629e994c9bab5063f802a8e2effb77c0",
-      "linux_arm64": "10abbf25650ced52675fec30b11f5bdac199f2adac423041a1796fd498746d67"
+      "darwin_amd64": "84163225923008e171e1bd2b223f811d0e27f9a70a688c88c51d64820305493d",
+      "darwin_arm64": "6d919245656e074e1f88bd578cfa9ea9c029412d205f312bbf9369ed7cf6d82b",
+      "linux_amd64": "209923dd30a57379268d4f2cf8d08f735ef2e8f4ed8f0f0f15d4e9012620111f",
+      "linux_arm64": "e2a22f79bb5e1c160655ac69380b492966b2a3fd38bd7580abd0d352ddf7a152"
     }
   }
 }

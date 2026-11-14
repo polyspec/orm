@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, watch, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, watch, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { dirname, join } from 'node:path';
 import { caseTest, PROCESS, withTemporaryDirectory } from '../tests/testcase.mts';
@@ -27,28 +27,47 @@ const VERSION = 'v0.0.0-stand-in+dirty';
 
 // StandIn has the path of the stand-in bay of a test, which is named bay in a directory of its own, so that a stand-in
 // ssh finds it on PATH; the directory of the projects that it holds; and the files that change what it does: while
-// upFails exists, an up of a file with a server records its project and exits with 1; while absent exists, images reports each image as missing
-// and up -no-pull fails before it records anything; while execFails exists, a step of a server exits with 7; while
-// schema exists, version reports its text as the schema version, and while release exists, its text as the version of
-// bay; while checkFails exists, the command of a run in the runner exits with 5, and while buildFails exists, its
-// build command exits with 6, and while socketFails exists, a command that bay exec gives a variable with -e, which is
-// the check through a Unix socket in the container of a server, exits with 4. ups.log has the services of each up.
-interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string; buildFails: string; socketFails: string; ups: string }
+// upFails exists, an up records its project and exits with 1, and the job check fails as its servers would; while absent
+// exists, images reports each image as missing and up -no-pull and job add fail before they record anything; while
+// execFails exists, a step of a server exits with 7; while schema exists, version reports its text as the schema
+// version, and while release exists, its text as the version of bay; while checkFails exists, the command of the job
+// check exits with 5, and while buildFails exists, the build command of the job build exits with 6. A job runs when it
+// is added, and a job added again with its key is returned and does not run. ups.log has the services of each up and
+// each job.
+interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string; buildFails: string; ups: string }
 
 function standIn(dir: string): StandIn {
   const stand: StandIn = {
     bay: join(dir, 'bin/bay'), state: join(dir, 'projects'), calls: join(dir, 'calls.log'),
-    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), socketFails: join(dir, 'socket-fails'), ups: join(dir, 'ups.log'),
+    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), ups: join(dir, 'ups.log'),
   };
   mkdirSync(stand.state, { recursive: true });
   mkdirSync(dirname(stand.bay), { recursive: true });
   writeFileSync(stand.calls, '');
   writeFileSync(stand.bay, `#!${process.execPath}
-const { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
+const { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 appendFileSync(${JSON.stringify(stand.calls)}, JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(2) }) + '\\n');
 const fail = (text, status = 1) => { console.error('bay: ' + text); process.exit(status); };
-const [option, name, command, ...rest] = process.argv.slice(2);
+let [option, name, command, ...rest] = process.argv.slice(2);
+// -f names the Compose file; without it, compose.yaml of the working directory.
+let composeFile = 'compose.yaml';
+if (command === '-f') { composeFile = rest[0]; [command, ...rest] = rest.slice(1); }
+const jobs = ${JSON.stringify(join(dir, 'jobs'))};
+const jobOf = id => JSON.parse(readFileSync(join(jobs, id + '.json'), 'utf8'));
+// bay job wait, show, logs and cancel name a job by its ID, with -peer for a job of an approved peer, and with or without
+// the project.
+if (option === 'job' || (option === '-p' && command === 'job' && rest[0] !== 'add')) {
+  if (option === '-p') name = rest[0];
+  const id = process.argv.at(-1);
+  if (!existsSync(join(jobs, id + '.json'))) fail('no job ' + id);
+  const job = jobOf(id);
+  if (name === 'wait') process.exit(job.exitCode === 0 ? 0 : 1);
+  if (name === 'show') { console.log(JSON.stringify(job, null, 2)); process.exit(0); }
+  if (name === 'logs') { console.log('the output of the job ' + id); process.exit(0); }
+  if (name === 'cancel') process.exit(0);
+  fail('unknown job command ' + name, 2);
+}
 const is = (...words) => command === words[0] && rest.join(' ') === words.slice(1).join(' ');
 if (option === 'version') {
   const schema = existsSync(${JSON.stringify(stand.schema)}) ? Number(readFileSync(${JSON.stringify(stand.schema)}, 'utf8')) : 1;
@@ -59,7 +78,7 @@ if (option === 'version') {
 if (option !== '-p' || !name) fail('the stand-in takes the project name from -p', 2);
 const project = join(${JSON.stringify(stand.state)}, name);
 const services = () => {
-  const text = readFileSync('compose.yaml', 'utf8');
+  const text = readFileSync(composeFile, 'utf8');
   if (/^name:/m.test(text)) fail('compose.yaml names a project');
   return [...text.matchAll(/^ {2}([a-z-]+):\\n(?: {4,}.*\\n)*? {4}image: "(.*)"$/gm)].map(([, service, image]) => {
     const port = Number(new RegExp('^ {2}' + service + ':\\\\n(?: {4,}.*\\\\n)*? {4}expose: \\\\["(\\\\d+)"\\\\]$', 'm').exec(text)?.[1] ?? 0);
@@ -76,30 +95,44 @@ else if (is('images')) {
   // A second up of a project adds the services that its Compose file now declares and keeps the others.
   appendFileSync(${JSON.stringify(stand.ups)}, JSON.stringify(services().map(service => service.name)) + '\\n');
   writeFileSync(project, process.cwd());
-  if (existsSync(${JSON.stringify(stand.upFails)}) && services().some(service => service.name !== 'runner')) fail('service mysql stopped during healthcheck');
+  if (existsSync(${JSON.stringify(stand.upFails)})) fail('service mysql stopped during healthcheck');
   console.log('all services accept connections');
+} else if (command === 'job' && rest[0] === 'add') {
+  // A job runs at once: the stand-in records the services that it brings up, writes what the command of the job
+  // writes, and keeps the job by its key, so a second add of the key returns it and runs nothing.
+  const key = rest[rest.indexOf('-key') + 1];
+  const service = rest.at(-1);
+  mkdirSync(jobs, { recursive: true });
+  const keyed = join(jobs, 'key-' + key);
+  if (existsSync(keyed)) { console.log(JSON.stringify(jobOf(readFileSync(keyed, 'utf8')), null, 2)); process.exit(0); }
+  if (absent) fail('an image is not in the local store');
+  appendFileSync(${JSON.stringify(stand.ups)}, JSON.stringify(services().map(each => each.name)) + '\\n');
+  mkdirSync('report', { recursive: true });
+  let exitCode = 0;
+  if (service === 'build') {
+    exitCode = existsSync(${JSON.stringify(stand.buildFails)}) ? 6 : 0;
+    writeFileSync('report/build-status', exitCode + '\\n');
+  } else if (service === 'check') {
+    if (existsSync(${JSON.stringify(stand.upFails)})) exitCode = 1;
+    else {
+      writeFileSync('address', ${JSON.stringify(ADDRESS)} + '\\n');
+      exitCode = existsSync(${JSON.stringify(stand.checkFails)}) ? 5 : 0;
+      writeFileSync('report/status', exitCode + '\\n');
+      writeFileSync('report/check.log', 'the output of the command\\n');
+    }
+  } else fail('the stand-in runs the jobs build and check, not ' + service);
+  const id = 'job-' + (readdirSync(jobs).filter(each => each.startsWith('key-')).length + 1);
+  writeFileSync(join(jobs, id + '.json'), JSON.stringify({ id, project: name, service, key, state: exitCode === 0 ? 'succeeded' : 'failed', exitCode }));
+  writeFileSync(keyed, id);
+  console.log(JSON.stringify(jobOf(id), null, 2));
 } else if (is('down')) rmSync(project, { force: true });
 else if (is('pull')) { if (services().length === 0) fail('compose.yaml has no service'); }
 else if (command === 'logs') console.log('the last lines of ' + rest.at(-1));
 else if (command === 'exec') {
   if (!existsSync(project)) fail('the project is not up');
   // getent ahostsv4 prints IPv4 addresses alone; getent hosts prints the IPv6 address of a service first.
-  if (rest[0] === '-e') { console.log('the output of the socket check'); process.exit(existsSync(${JSON.stringify(stand.socketFails)}) ? 4 : 0); }
-  else if (rest[1] === 'getent') console.log(rest[2] === 'ahostsv4' ? ${JSON.stringify(ADDRESS)} + '  STREAM ' + rest.at(-1) + '\\n' + ${JSON.stringify(ADDRESS)} + '  DGRAM' : 'fd36:4b09::62d7 ' + rest.at(-1));
-  else if (rest[0] === 'runner' && rest[1] === 'cat') console.log(rest[2].endsWith('swap.peak') ? '4096' : '3298534883');
-  else if (rest[0] === 'runner' && rest.at(-1) === '/orm-run/build.sh') {
-    const status = existsSync(${JSON.stringify(stand.buildFails)}) ? 6 : 0;
-    mkdirSync('report', { recursive: true });
-    writeFileSync('report/build-status', status + '\\n');
-    process.exit(status);
-  } else if (rest[0] === 'runner' && rest.at(-1) === '/orm-run/check.sh') {
-    // The directory of the run is /orm-run of the runner: the command of the run leaves its report there.
-    const status = existsSync(${JSON.stringify(stand.checkFails)}) ? 5 : 0;
-    mkdirSync('report', { recursive: true });
-    writeFileSync('report/status', status + '\\n');
-    writeFileSync('report/check.log', 'the output of the command\\n');
-    process.exit(status);
-  } else if (rest[0] !== 'runner' && existsSync(${JSON.stringify(stand.execFails)})) { console.error('ERROR 1045: the statement failed'); process.exit(7); }
+  if (rest[1] === 'getent') console.log(rest[2] === 'ahostsv4' ? ${JSON.stringify(ADDRESS)} + '  STREAM ' + rest.at(-1) + '\\n' + ${JSON.stringify(ADDRESS)} + '  DGRAM' : 'fd36:4b09::62d7 ' + rest.at(-1));
+  else if (existsSync(${JSON.stringify(stand.execFails)})) { console.error('ERROR 1045: the statement failed'); process.exit(7); }
 } else fail('unknown command ' + command, 2);
 `);
   chmodSync(stand.bay, 0o755);
@@ -119,8 +152,8 @@ function calls(stand: StandIn): Call[] {
   });
 }
 
-// commands are the calls of the stand-in bay for a project, each as its arguments after -p <project>.
-const commands = (stand: StandIn) => calls(stand).filter(call => call.args[0] === '-p').map(call => call.args.slice(2).join(' '));
+// commands are the calls of the stand-in bay for a project, each as its arguments after -p <project> and -f <file>.
+const commands = (stand: StandIn) => calls(stand).filter(call => call.args[0] === '-p').map(call => call.args.slice(call.args[2] === '-f' ? 4 : 2).join(' '));
 // verbs are the first argument of each of those calls.
 const verbs = (stand: StandIn) => commands(stand).map(command => command.split(' ')[0]);
 // steps are the commands that prepared a started server: each exec but the one that reads the address of the primary
@@ -361,6 +394,14 @@ caseTest('a start whose bay up fails prints the last lines of each service and r
       assert.deepEqual(readdirSync(stand.state), [], 'a failed start leaves its project');
       assert.deepEqual(projects(context.root), [], 'a failed start leaves the directory of its project');
       assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), 'a failed start leaves an environment file');
+      // A kept run keeps the output of bay up, which names the service and the cause, the last lines of each service
+      // and the failed step in report/ (BAY12.7).
+      assert.deepEqual(await run('mysql', ['true'], context, { keep: true }), { code: 1, signal: null });
+      const project = only(context.root);
+      const output = file(context.root, project, 'report/bay-up-servers.log');
+      for (const part of ['bay: service mysql stopped during healthcheck', 'the last lines of mysql\n', 'the last lines of mysql-replica\n']) assert.ok(output.includes(part), `report/bay-up-servers.log misses ${part}: ${output}`);
+      assert.equal(file(context.root, project, 'report/bay-up-servers.status'), '1\n');
+      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
     });
   }));
 
@@ -410,7 +451,7 @@ caseTest('a start with a missing bay, or a bay of another contract, fails naming
     });
   }));
 
-caseTest('a run in the runner has the service runner, installs it from a bundle of the commit, and runs its command with bay exec runner (BAY12.2, BAY12.3, BAY12.5)', PROCESS, () =>
+caseTest('a run in the runner is the job build, which installs the runner from a bundle of the commit, and the job check, which runs its command after setup prepared the servers (BAY12.2, BAY12.3, BAY12.5, BAY13)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context, plain] = checkouts(dir, stand);
@@ -427,73 +468,92 @@ caseTest('a run in the runner has the service runner, installs it from a bundle 
       const ended = await run('mysql', ['make', "CASES=a 'quoted' case", 'test-rust'], context, { runner: true, keep: true });
       assert.deepEqual(ended, { code: 0, signal: null });
       const project = only(context.root);
-      const text = compose(context.root, project);
-      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'runner']);
-      const runner = text.slice(text.indexOf('  runner:\n'));
-      assert.match(runner, /^ {4}image: "docker\.io\/library\/debian@sha256:[0-9a-f]{64}"$/m, 'the runner is not a pinned Debian image');
-      assert.match(runner, /^ {4}command: \["sleep", "infinity"\]$/m);
-      // The runner keeps the trust of bay and is not started again; it mounts the directory of the run and nothing of
-      // the checkout of the host.
-      assert.ok(!runner.includes('x-bay'), 'the runner changes the trust of bay');
-      assert.match(runner, /^ {4}restart: "no"$/m, 'the runner does not state that it is not started again');
-      assert.match(runner, /^ {4}volumes: \[".:\/orm-run"\]$/m);
-      assert.ok(!runner.includes(context.root), 'the runner mounts the checkout of the host');
-      assert.match(runner, /^ {6}CARGO_HOME: "\/orm-run\/cargo"\n {6}RUSTUP_HOME: "\/orm-run\/rustup"$/m, 'the tools of the runner are not below the directory of the run');
-      // The setup installs the pinned packages and files, links with lld through the cargo configuration of the
-      // runner alone, clones the bundle and follows the first installation of the repository.
-      const setup = file(context.root, project, 'runner-setup.sh');
+      // The part check has the servers, the one-shot service setup after each server is healthy, and the job check
+      // after setup; the part build has the job build alone, so no server holds memory during the build.
+      const text = file(context.root, project, 'compose.run.yaml');
+      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'setup', 'check']);
+      assert.deepEqual([...file(context.root, project, 'compose.build.yaml').matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['build']);
+      const setupService = text.slice(text.indexOf('  setup:\n'), text.indexOf('  check:\n'));
+      assert.match(setupService, /^ {4}command: \["sh", "\/orm-run\/setup\.sh"\]$/m);
+      assert.match(setupService, /^ {4}depends_on:\n {6}mysql:\n {8}condition: "service_healthy"\n {6}mysql-replica:\n {8}condition: "service_healthy"$/m);
+      const check = text.slice(text.indexOf('  check:\n'));
+      assert.match(check, /^ {4}image: "docker\.io\/library\/debian@sha256:[0-9a-f]{64}"$/m, 'the runner is not a pinned Debian image');
+      assert.match(check, /^ {4}command: \["sh", "\/orm-run\/job-check\.sh"\]$/m);
+      assert.match(check, /^ {4}depends_on:\n {6}setup:\n {8}condition: "service_completed_successfully"$/m);
+      assert.match(check, /^ {4}x-bay:\n {6}job: true\n {6}timeout: "12h"$/m, 'the check is no job of bay with the timeout of config/containers.json');
+      assert.match(file(context.root, project, 'compose.build.yaml'), /^ {4}command: \["sh", "\/orm-run\/job-build\.sh"\]$/m);
+      // A job mounts the directory of the run and nothing of the checkout of the host.
+      assert.match(check, /^ {4}volumes: \[".:\/orm-run"\]$/m);
+      assert.ok(!text.includes(context.root), 'a service mounts the checkout of the host');
+      assert.match(check, /^ {6}HOME: "\/orm-run\/home"\n {6}CARGO_HOME: "\/orm-run\/cargo"\n {6}RUSTUP_HOME: "\/orm-run\/rustup"$/m, 'the home and the tools of the runner are not below the directory of the run');
+      // setup prepares the servers with the client of the image over TCP, in the order of the native servers, and
+      // writes the address of the primary.
+      const setup = file(context.root, project, 'setup.sh');
+      const host = (service: string) => `${project}-${service}.${SUFFIX}`;
+      const order = [`'mysql' '-h' '${host('mysql')}' '-uroot' '-e' 'RESET BINARY LOGS AND GTIDS'`, `'mysql' '-h' '${host('mysql-replica')}' '-uroot' '-e' 'CHANGE REPLICATION SOURCE TO`, `'mysql' '-h' '${host('mysql')}' '-uroot' '-e' 'CREATE DATABASE orm_test;`, `getent ahostsv4 '${host('mysql')}'`];
+      const at = order.map(part => setup.indexOf(part));
+      assert.ok(at.every(index => index >= 0) && at.every((index, position) => position === 0 || index > (at[position - 1] ?? 0)), `setup.sh does not prepare the servers in the order of the native servers: ${setup}`);
+      assert.ok(setup.includes('> "$run/address.tmp"') && setup.includes('mv "$run/address.tmp" "$run/address"'), 'setup.sh writes no address of the primary');
+      // The installation pins its packages and files, links with lld through the cargo configuration of the runner
+      // alone, clones the bundle and follows the first installation of the repository.
+      const installation = file(context.root, project, 'runner-setup.sh');
       for (const part of ['apt-get install -y --no-install-recommends git make gcc g++ curl ca-certificates', ' lld ', 'sha256sum -c', 'https://nodejs.org/dist/v', 'https://static.rust-lang.org/rustup/archive/',
-        'rustflags = ["-C", "link-arg=-fuse-ld=lld"]', 'cat > "$CARGO_HOME/config.toml"', 'git -C "$run/repo" fetch -q "$run/repo.bundle" HEAD', 'make install-tools TOOLS=npm\nmake install-packages\nmake install-tools\nrustup toolchain install'])
-        assert.ok(setup.includes(part), `runner-setup.sh misses ${part}`);
+        'rustflags = ["-C", "link-arg=-fuse-ld=lld"]', 'cat > "$CARGO_HOME/config.toml"', 'git -C "$run/repo" fetch -q "$run/repo.bundle" HEAD', 'make install\nmkdir -p'])
+        assert.ok(installation.includes(part), `runner-setup.sh misses ${part}`);
+      assert.match(installation, /^ {2}aarch64\) platform=linux-arm64 node_sum=[0-9a-f]{64} rustup_sum=[0-9a-f]{64} ;;$/m, 'runner-setup.sh pins no file of a processor');
       // sh reads each written file: a file with a syntax error fails here and not in a container.
-      for (const name of ['run.sh', 'runner-setup.sh', 'check.sh']) {
+      for (const name of ['run.sh', 'runner-setup.sh', 'setup.sh', 'job-build.sh', 'job-check.sh', 'check.sh']) {
         const read = spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)], { encoding: 'utf8' });
         assert.equal(read.status, 0, `sh does not read ${name}: ${read.stderr}`);
       }
-      assert.match(setup, /^ {2}aarch64\) platform=linux-arm64 node_sum=[0-9a-f]{64} rustup_sum=[0-9a-f]{64} ;;$/m, 'runner-setup.sh pins no file of a processor');
       const bundled = spawnSync('git', ['bundle', 'verify', join(containers(context.root), project, 'repo.bundle')], { cwd: context.root, encoding: 'utf8' });
       assert.equal(bundled.status, 0, `repo.bundle is no bundle of the commit: ${bundled.stderr}`);
       assert.ok(file(context.root, project, 'check.sh').includes(`( 'make' 'CASES=a '\\''quoted'\\'' case' 'test-rust' )`), 'check.sh does not run the command of the run as it was given');
-      // The variables name the directory of the run by its mount and the authority by the path where bay mounts it.
-      const environment = file(context.root, project, 'servers.env');
-      assert.ok(environment.includes(`export ORM_TEST_MYSQL_TLS_DSN='mysql://root@${project}-mysql.${SUFFIX}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=/stand-in/mounted-authority.pem'`), environment);
-      assert.ok(environment.includes('ssl-ca=/orm-run/tls/other-ca.pem') && environment.includes(`export ORM_TEST_SERVERS_LEASES='/orm-run/leases'`), environment);
-      const ran = commands(stand);
-      assert.deepEqual(ran.filter(command => !command.startsWith('exec mysql')), ['plan --json', 'images', 'up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'up -no-pull', 'exec runner sh /orm-run/check.sh',
-        'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'down'], 'the runner is not installed before the servers start, or its memory is not recorded before it is removed');
-      // The installation of the runner and the servers do not hold memory at the same time: the first up has the
-      // runner alone, and the second adds the servers.
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['runner'], ['mysql', 'mysql-replica', 'runner']]);
-      // No limit and no count of jobs is a value of this repository: the one who runs gives them for the machine.
-      assert.ok(!runner.includes('mem_limit'), 'the runner has a memory limit that nobody gave');
-      assert.ok(!setup.includes('jobs ='), 'the cargo of the runner has a count of jobs that nobody gave');
-      // run.sh records the time of each step and the highest memory of the runner.
+      // job-check.sh writes the variables, which name the directory of the run by its mount, the authority by the path
+      // where bay mounts it and the mismatch DSN by the address that setup.sh wrote.
+      const jobCheck = file(context.root, project, 'job-check.sh');
+      assert.ok(jobCheck.includes(`export ORM_TEST_MYSQL_TLS_DSN='mysql://root@${host('mysql')}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=/stand-in/mounted-authority.pem'`), jobCheck);
+      assert.ok(jobCheck.includes('ssl-ca=/orm-run/tls/other-ca.pem') && jobCheck.includes(`export ORM_TEST_SERVERS_LEASES='/orm-run/leases'`) && jobCheck.includes('@${address}:3306/'), jobCheck);
+      // run.sh queues build and then check, each by its key, follows each, and records what bay records of it.
+      const followed = (id: string) => [`job logs -f -timeout 24h ${id}`, `job wait -timeout 24h ${id}`, `job show -json ${id}`, `job logs ${id}`];
+      assert.deepEqual(commands(stand).filter(command => !command.startsWith('plan')), ['images', `job add -json -key ${project}-build build`, ...followed('job-1'), 'images', `job add -json -key ${project}-check check`, ...followed('job-2')]);
+      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'setup', 'check']]);
+      assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).service, 'check');
       const stepsLog = file(context.root, project, 'report/steps.log');
-      assert.ok(stepsLog.split('\n').filter(line => line !== '').every(line => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \S/.test(line)), stepsLog);
-      for (const step of ['bay up of the runner', 'the installation of the runner', 'bay up of the servers', 'the command of the run', 'bay down']) assert.ok(stepsLog.includes(` ${step}`), `steps.log has no time of ${step}: ${stepsLog}`);
-      assert.equal(file(context.root, project, 'report/runner-memory.peak'), '3298534883\n');
-      assert.equal(file(context.root, project, 'report/runner-memory.swap.peak'), '4096\n');
-      assert.deepEqual(readdirSync(stand.state), [], 'a kept run leaves its project');
+      for (const step of ['the job build (job-1)', 'the job check (job-2)']) assert.ok(stepsLog.includes(` ${step}`), `steps.log has no time of ${step}: ${stepsLog}`);
+      assert.deepEqual(readdirSync(stand.state), [], 'a run in the runner leaves its project');
+      assert.ok(!check.includes('mem_limit'), 'the runner has a memory limit that nobody gave');
+      assert.ok(!installation.includes('jobs ='), 'the cargo of the runner has a count of jobs that nobody gave');
 
-      // The kept directory runs again with sh and the stand-in bay alone, and the status of its command is its own.
-      writeFileSync(stand.checkFails, '');
+      // The kept directory runs again with sh and the stand-in bay alone: its jobs have their keys already, so run.sh
+      // returns them and runs nothing again, and the status is that of the job.
       writeFileSync(stand.calls, '');
+      writeFileSync(stand.ups, '');
       const again = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh')], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
-      assert.equal(again.status, 5, `run.sh does not end with the status of the command of the run: ${again.stderr}`);
-      assert.deepEqual(verbs(stand).filter(verb => verb !== 'exec'), ['images', 'up', 'up', 'down']);
-      assert.equal(file(context.root, project, 'report/status'), '5\n');
+      assert.equal(again.status, 0, `run.sh does not end with the status of the job: ${again.stderr}`);
+      assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job queued again with its key ran again');
+      // A part queued alone prints the ID of its job.
+      const added = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh'), 'add', 'check'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
+      assert.equal(added.status, 0, added.stderr);
+      assert.equal(added.stdout, 'job-2\n');
+      const wrong = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh'), 'add', 'another'], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
+      assert.equal(wrong.status, 2, 'a part that is neither build nor check is queued');
+    });
+  }));
 
-      // A failed bay up of the servers leaves the output of bay, which names the service and the cause, the last
-      // lines of each service and the failed step in report/, and the run ends with the status of bay.
-      writeFileSync(stand.upFails, '');
-      const failed = spawnSync('/bin/sh', [join(containers(context.root), project, 'run.sh')], { env: { PATH: '/usr/bin:/bin', BAY_COMMAND: stand.bay }, encoding: 'utf8' });
-      assert.equal(failed.status, 1, `run.sh does not end with the status of bay up: ${failed.stderr}`);
-      const output = file(context.root, project, 'report/bay-up-servers.log');
-      for (const part of ['bay: service mysql stopped during healthcheck', 'the last lines of mysql\n', 'the last lines of mysql-replica\n']) assert.ok(output.includes(part), `report/bay-up-servers.log misses ${part}: ${output}`);
-      assert.ok(failed.stderr.includes('bay: service mysql stopped during healthcheck'), 'the output of bay up is not in the output of run.sh');
-      assert.equal(file(context.root, project, 'report/bay-up-servers.status'), '1\n');
-      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
-      assert.deepEqual(readdirSync(stand.state), [], 'a failed bay up leaves its project');
+caseTest('a run in the runner whose job check fails ends with the result of the job and names it in the report (BAY12.7, BAY13)', PROCESS, () =>
+  withTemporaryDirectory('orm-containers-', async dir => {
+    const stand = standIn(dir);
+    const [context] = checkouts(dir, stand);
+    await removing([context], async () => {
+      committed(context);
+      writeFileSync(stand.checkFails, '');
+      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true }), { code: 1, signal: null });
+      const project = only(context.root);
+      assert.equal(file(context.root, project, 'report/status'), '5\n');
+      assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).exitCode, 5);
+      assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ the job check of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
+      assert.deepEqual(readdirSync(stand.state), []);
     });
   }));
 
@@ -533,7 +593,7 @@ caseTest('run.sh refuses a bay of another contract and a missing bay before it s
     });
   }));
 
-caseTest('a run on another machine writes its directory with the plan of that machine, runs run.sh there through ssh, brings the report back and leaves nothing there (BAY12.4, BAY12.6)', PROCESS, () =>
+caseTest('a run on another machine sends its directory once, queues each job there through ssh, waits for it through the peer, brings the report back and leaves nothing there (BAY12.4, BAY12.6, BAY13)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -546,18 +606,36 @@ caseTest('a run on another machine writes its directory with the plan of that ma
       chmodSync(ssh, 0o755);
       const there = join(dir, 'other machine');
       writeFileSync(stand.checkFails, '');
-      const status = remote('postgres', ['make', 'test-rust'], { ...context, ssh }, { host: 'runs@other.invalid', directory: there, pull: true });
-      assert.equal(status, 5, 'the run does not end with the status of its command on the other machine');
+      const where = { host: 'runs@other.invalid', directory: there, peer: 'other', pull: true, keep: true };
+      const status = remote('postgres', ['make', 'test-rust'], { ...context, ssh }, where);
+      assert.equal(status, 1, 'the run does not end with the result of its job check on the other machine');
       assert.deepEqual([...new Set(readFileSync(join(dir, 'hosts.log'), 'utf8').trim().split('\n'))], ['runs@other.invalid']);
       const ran = calls(stand).filter(call => call.args[0] === '-p');
-      assert.ok(ran.length > 0 && ran.every(call => call.cwd.startsWith(realpathSync(there))), 'a command of bay ran in a directory of this machine');
-      assert.deepEqual(ran.map(call => call.args[2]).filter(verb => verb !== 'exec'), ['plan', 'pull', 'images', 'up', 'up', 'down']);
-      assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
-      assert.deepEqual(projects(context.root), [], 'the run leaves its directory on this machine');
+      assert.ok(ran.length > 0 && ran.every(call => call.cwd.startsWith(realpathSync(there))), 'a command of bay of a project ran in a directory of this machine');
+      assert.deepEqual(ran.map(call => call.args[call.args[2] === '-f' ? 4 : 2]), ['plan', 'pull', 'pull', 'images', 'job', 'images', 'job']);
+      // This machine waits for each job and reads it through the peer.
+      assert.deepEqual(calls(stand).filter(call => call.args[0] === 'job').map(call => call.args.slice(0, 3).join(' ')), ['job wait -peer', 'job show -peer', 'job logs -peer', 'job wait -peer', 'job show -peer', 'job logs -peer']);
       const [report] = readdirSync(join(containers(context.root), 'reports'));
       assert.ok(report, 'the report did not come back');
-      assert.equal(readFileSync(join(containers(context.root), 'reports', report, 'status'), 'utf8'), '5\n');
-      assert.equal(readFileSync(join(containers(context.root), 'reports', report, 'check.log'), 'utf8'), 'the output of the command\n');
+      const reported = (name: string) => readFileSync(join(containers(context.root), 'reports', report, name), 'utf8');
+      assert.equal(reported('status'), '5\n');
+      assert.equal(reported('check.log'), 'the output of the command\n');
+      assert.equal(JSON.parse(reported('job-check.json')).exitCode, 5);
+      assert.deepEqual(readdirSync(there), [report], 'the kept directory is not the one directory there');
+
+      // The same run started again, as after a lost connection, sends nothing and queues no job a second time.
+      writeFileSync(stand.ups, '');
+      writeFileSync(join(dir, 'hosts.log'), '');
+      assert.equal(remote('postgres', ['make', 'test-rust'], { ...context, ssh }, { ...where, pull: false, keep: false }), 1);
+      assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job of the run ran a second time');
+      assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
+      assert.deepEqual(projects(context.root), [], 'the run leaves its directory on this machine');
+      // A run with a failed build queues no job check; a run without a peer is refused.
+      rmSync(stand.checkFails);
+      writeFileSync(stand.buildFails, '');
+      assert.equal(remote('mysql', ['make', 'test-rust'], { ...context, ssh }, { ...where, keep: false, build: ['make', 'build'] }), 1);
+      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the job check ran after a failed build');
+      assert.throws(() => remote('mysql', ['true'], { ...context, ssh }, { ...where, peer: '' }), /remote needs the name of the machine as an approved peer of bay, PEER/);
     });
   }));
 
@@ -587,7 +665,7 @@ caseTest('the install target of bay takes the archive of the release that CI ins
     assert.throws(() => installBay({ ...context, curl }, pin({})), /config\/containers\.json pins no archive of bay for/);
   }));
 
-caseTest('a run in the runner with a build command builds before the servers start, with the jobs and the memory limits that it is given (BAY12.8)', PROCESS, () =>
+caseTest('a run in the runner with a build command builds in the job build, before the servers start, with the jobs and the memory limits that it is given (BAY12.8, BAY13)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const [context] = checkouts(dir, stand);
@@ -596,28 +674,23 @@ caseTest('a run in the runner with a build command builds before the servers sta
       const options = { runner: true, keep: true, build: ['make', 'test-rust-build'], jobs: 2, runnerMemory: '2600m', serverMemory: '700m' };
       assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, options), { code: 0, signal: null });
       const project = only(context.root);
-      // The build runs in the runner while no server is up; the second up then adds the servers.
-      const ran = commands(stand).filter(command => !command.startsWith('exec mysql'));
-      assert.deepEqual(ran.slice(2, 10), ['up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'exec runner sh /orm-run/build.sh', 'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'up -no-pull', 'exec runner sh /orm-run/check.sh']);
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['runner'], ['mysql', 'mysql-replica', 'runner']]);
       assert.ok(file(context.root, project, 'build.sh').includes(`( 'make' 'test-rust-build' )`), 'build.sh does not run the build command as it was given');
       assert.ok(!file(context.root, project, 'build.sh').includes('servers.env'), 'the build reads the variables of servers that are not up');
-      assert.equal(file(context.root, project, 'report/runner-memory.peak.build'), '3298534883\n', 'the memory of the build is not recorded');
-      assert.ok(file(context.root, project, 'report/steps.log').includes(' the build command'));
+      const jobBuild = file(context.root, project, 'job-build.sh');
+      assert.ok(jobBuild.indexOf('sh "$run/runner-setup.sh"') < jobBuild.indexOf('sh "$run/build.sh"') && jobBuild.includes('at "the build command"'), jobBuild);
       // The jobs are a setting of the cargo of the runner, and each limit is the mem_limit of its services.
       assert.match(file(context.root, project, 'runner-setup.sh'), /^\[build\]\njobs = 2$/m);
       const text = file(context.root, project, 'compose.run.yaml');
       assert.deepEqual([...text.matchAll(/^ {4}mem_limit: "(.*)"$/gm)].map(match => match[1]), ['700m', '700m', '2600m']);
-      assert.match(file(context.root, project, 'compose.build.yaml'), /^services:\n {2}runner:\n(?: {4}.*\n)* {4}mem_limit: "2600m"\n/);
-      assert.deepEqual([...file(context.root, project, 'compose.build.yaml').matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['runner']);
-      for (const name of ['run.sh', 'build.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);
+      assert.match(file(context.root, project, 'compose.build.yaml'), /^services:\n {2}build:\n(?: {4}.*\n)* {4}mem_limit: "2600m"\n/);
+      for (const name of ['run.sh', 'build.sh', 'job-build.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);
 
-      // A build that fails ends the run with its status, and no server starts.
+      // A build that fails ends the run with the result of its job, and the job check is not queued.
       remove(context);
       writeFileSync(stand.buildFails, '');
       writeFileSync(stand.ups, '');
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, build: ['make', 'test-rust-build'] }), { code: 6, signal: null });
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['runner']], 'the servers started after a failed build');
+      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, build: ['make', 'test-rust-build'] }), { code: 1, signal: null });
+      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the servers started after a failed build');
       assert.deepEqual(readdirSync(stand.state), [], 'a run with a failed build leaves its project');
       assert.deepEqual(projects(context.root), []);
       // A value that is no count or no size is refused before anything is written.
@@ -627,44 +700,12 @@ caseTest('a run in the runner with a build command builds before the servers sta
     });
   }));
 
-caseTest('a check through a Unix socket is built in the runner and runs in the container of its server with bay exec (BAY8)', PROCESS, () =>
+caseTest('a run that is given a check through a Unix socket is refused, since the jobs of the runner run no command in the container of a server (BAY8)', PROCESS, () =>
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
-    const [context] = checkouts(dir, stand);
-    await removing([context], async () => {
-      committed(context);
-      const socket = { build: ['make', 'socket-check-build'], run: ['/orm-run/programs/recipe', 'case-socket'] };
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true, socket }), { code: 0, signal: null });
-      const project = only(context.root);
-      // The runner builds the program while no server is up, into the directory of the run; the server whose socket
-      // the check uses mounts that directory read-only, and no other server does.
-      const text = file(context.root, project, 'compose.run.yaml');
-      assert.deepEqual([...text.matchAll(/^ {4}volumes: (.*)$/gm)].map(match => match[1]), ['[".:/orm-run:ro"]', '[".:/orm-run"]'], 'the directory of the run is not mounted read-only in the primary alone');
-      const setup = file(context.root, project, 'runner-setup.sh');
-      assert.ok(setup.includes(' musl-tools') && setup.includes('rustup target add "$processor-unknown-linux-musl"'), 'the runner cannot build a static executable');
-      assert.ok(file(context.root, project, 'socket-build.sh').includes(`( 'make' 'socket-check-build' )`) && file(context.root, project, 'socket-build.sh').includes('export ORM_RUN_PROGRAMS="$run/programs"'));
-      const check = file(context.root, project, 'socket-check.sh');
-      assert.ok(check.includes('. /orm-run/servers.env') && check.includes(`exec '/orm-run/programs/recipe' 'case-socket'`), check);
-      const ran = commands(stand).filter(command => !command.startsWith('exec mysql'));
-      assert.deepEqual(ran.slice(2), ['up -no-pull', 'exec runner sh /orm-run/runner-setup.sh', 'exec runner sh /orm-run/socket-build.sh', 'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak',
-        'up -no-pull', 'exec runner sh /orm-run/check.sh', 'exec -e ORM_TEST_MYSQL_SOCKET=/var/run/mysqld/mysqld.sock mysql sh /orm-run/socket-check.sh',
-        'exec runner cat /sys/fs/cgroup/memory.current', 'exec runner cat /sys/fs/cgroup/memory.peak', 'exec runner cat /sys/fs/cgroup/memory.swap.peak', 'down']);
-      assert.equal(file(context.root, project, 'report/socket.log'), 'the output of the socket check\n');
-      assert.equal(file(context.root, project, 'report/socket-status'), '0\n');
-      for (const name of ['run.sh', 'socket-build.sh', 'socket-check.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);
-
-      // A socket check that fails fails the run whose command passed, and the status of a failed command stays.
-      remove(context);
-      writeFileSync(stand.socketFails, '');
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, socket }), { code: 4, signal: null });
-      writeFileSync(stand.checkFails, '');
-      assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, socket }), { code: 5, signal: null });
-      assert.equal(commands(stand).filter(command => command.startsWith('exec -e')).length, 3, 'the socket check does not run after a failed command');
-      // MariaDB has its own variable and socket path; PostgreSQL has no socket variable, and the host has no runner.
-      writeFileSync(stand.calls, '');
-      await run('mariadb', ['true'], context, { runner: true, socket });
-      assert.ok(commands(stand).includes('exec -e ORM_TEST_MARIADB_SOCKET=/run/mysqld/mysqld.sock mariadb sh /orm-run/socket-check.sh'));
-      await assert.rejects(run('postgres', ['true'], context, { runner: true, socket }), /postgres has no check through a Unix socket: only mysql and mariadb have a socket variable/);
-      await assert.rejects(run('mysql', ['true'], context, { socket }), /a check through a Unix socket is built in the runner; run with FORM=runner/);
-    });
+    const script = join(import.meta.dirname, 'test-servers-container.mts');
+    const refused = spawnSync(process.execPath, [script, 'run', 'mysql', '--runner', '--', 'true'], { cwd: dir, env: { ...process.env, BAY_COMMAND: stand.bay, ORM_CONTAINER_SOCKET_BUILD: 'make socket-build' }, encoding: 'utf8' });
+    assert.equal(refused.status, 2, refused.stderr);
+    assert.match(refused.stderr, /a check through a Unix socket runs in the container of its server, and the jobs of bay of the runner run no command there; no run takes SOCKET_BUILD or SOCKET_RUN \(BAY8\)/);
+    assert.deepEqual(calls(stand), [], 'a refused run ran bay');
   }));
