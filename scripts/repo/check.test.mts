@@ -95,8 +95,14 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
     const source = path.endsWith('zone.rs') ? whole.slice(whole.indexOf('async fn pool_discards_ended_idle_connection'), whole.indexOf('fn statement_timeout_negative_is_unrepresentable')) : whole;
     assert.match(source, /IS_USED_LOCK/, `${path} reads once that the idle connection holds the named lock`);
     assert.match(source, /GET_LOCK\(\?, 30\)|GET_LOCK\(%s, 30\)/, `${path} waits for the end of the killed thread with GET_LOCK`);
-    assert.doesNotMatch(source, /setTimeout|time\.sleep|tokio::time::sleep|Instant::now|monotonic|time\.Now\(\)\.Add|deadline/, `${path} waits on no timer`);
+    assert.doesNotMatch(source, /setTimeout|time\.sleep|time\.Sleep|tokio::time::sleep|Instant::now|monotonic|time\.Now\(\)\.Add|deadline/, `${path} waits on no timer`);
   }
+});
+
+caseTest('the Go PostgreSQL pool checks an idle connection each time before it reuses it', () => {
+  // The pgx stdlib driver pings only a connection that has been idle for more than one second unless the connector says
+  // otherwise, so a statement within that second reached a connection that the server had ended (INT-92, T476).
+  assert.match(text('legacy/packages/go/orm/pg/pg.go'), /stdlib\.OptionShouldPing\(/, 'the connector of orm/pg asks for the ping before each reuse');
 });
 
 caseTest('every PHPUnit test class declares its size', () => {
