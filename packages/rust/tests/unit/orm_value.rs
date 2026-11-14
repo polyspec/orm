@@ -1,7 +1,7 @@
 // orm_value (CORE-62 to CORE-64): the kind that the type of a column gives its value, the value of a language that
 // enters by from_host and the description of a value that leaves by to_host.
 
-use binding_core::{Failure, Handle, HostText, HostValue, HostValues, OutValue, OutValues, Prototype, Raised, ValueKind, ValueType};
+use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Native, NativeObject, OutValue, OutValues, Prototype, Raised, ValueKind, ValueType};
 use chrono::Timelike as _;
 use indexmap::IndexMap;
 use polyspec_orm_schema::dbspec::{Field, Type};
@@ -162,6 +162,12 @@ fn from_host_reads_a_value_of_a_language() {
 }
 
 // Requirements: CORE-63. A value that is no value of a column is codec_encode, and its message names no value.
+/// A language object that a binding keeps (binding_core::Native), which a test makes without a language.
+#[derive(Debug)]
+struct Kept;
+
+impl NativeObject for Kept {}
+
 #[test]
 fn from_host_refuses_a_value_that_is_no_value_of_a_column() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -174,8 +180,8 @@ fn from_host_refuses_a_value_that_is_no_value_of_a_column() {
     assert_eq!(refusal(&mut host, HostValue::Text(HostText::CodePoints(vec![0xd800]))), message("a text that is no sequence of Unicode scalar values"));
     assert_eq!(refusal(&mut host, HostValue::Undefined), message("an undefined value"));
     assert_eq!(refusal(&mut host, HostValue::Date(Handle::new(1))), message("a date of the language"));
-    assert_eq!(refusal(&mut host, HostValue::Callable(Handle::new(1))), message("a function"));
-    let object = HostValue::Object { handle: Handle::new(1), type_name: "App\\Money".into(), json_serializable: false };
+    assert_eq!(refusal(&mut host, HostValue::Callable(Native::new(Kept))), message("a function"));
+    let object = HostValue::Object { native: Native::new(Kept), type_name: "App\\Money".into(), json_serializable: false };
     assert_eq!(refusal(&mut host, object), message("an object of the language"));
     let plain = HostValue::PlainObject { handle: Handle::new(1), len: 0, prototype: Prototype::Object };
     assert_eq!(refusal(&mut host, plain), message("an object of the language"), "the map of a language is its map type");
