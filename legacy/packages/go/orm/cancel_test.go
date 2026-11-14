@@ -2,11 +2,9 @@ package orm_test
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -24,8 +22,8 @@ import (
 // database (T475): on PostgreSQL the start of the update (statementStarts), on
 // SQLite the sleep of the update in the busy handler of its connection, which
 // synctest.Wait reports in a synctest bubble. MySQL and MariaDB send no event
-// when a statement waits, so there awaitLockWait reads the pending metadata
-// locks, an exception of T475 that stays only when it is approved. The holder
+// when a statement starts or waits, so there the cancellation follows the lock
+// wait timeout that the server returns to a probe session (lockProbe). The holder
 // keeps the lock until the statement has returned, so a statement that returns
 // CANCELED ended because of the cancellation. TestWithContextCancelsMariadb is
 // the case on MariaDB, a server of the MySQL dialect (DIA-200), which make
@@ -84,31 +82,28 @@ func cancelsWaitingUpdate(t *testing.T, driver, dsn string, db *orm.DB, s *orm.S
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	waiting := make(chan error, 1)
+	var started <-chan error
+	var probe *lockProbe
 	switch {
 	case driver == "sqlite":
 	case starts != nil:
-		started := starts.arm(t)
-		go func() {
-			waiting <- <-started
-			cancel()
-		}()
+		started = starts.arm(t)
 	default:
-		monitor := openNative(t, driver, serverSession(t, driver, dsn))
-		defer testcase.Close(t, monitor)
-		before, err := waiters(monitor, driver)
-		if err != nil {
-			t.Fatal(err)
-		}
-		go func() {
-			waiting <- awaitLockWait(ctx, monitor, driver, before)
-			cancel()
-		}()
+		probe = openLockProbe(t, driver, serverSession(t, driver, dsn))
 	}
 	got.Orm_().Connect(db.WithContext(ctx))
 	got.Orm_().Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 	updated := make(chan error, 1)
 	go func() { updated <- got.Orm_().Update(nil) }()
+	waiting := make(chan error, 1)
+	switch {
+	case started != nil:
+		waiting <- <-started
+		cancel()
+	case probe != nil:
+		waiting <- probe.waits(`SELECT 1 FROM zone_event FOR UPDATE`)
+		cancel()
+	}
 	if driver == "sqlite" {
 		// Every other goroutine of the bubble is blocked: the update sleeps in the busy handler of its connection, since
 		// the holder keeps the write lock, or it has returned, which the select reports.
@@ -141,8 +136,8 @@ func cancelsWaitingUpdate(t *testing.T, driver, dsn string, db *orm.DB, s *orm.S
 }
 
 // holdRows holds the table on another connection, so that a statement that writes or locks its rows waits. On MySQL and
-// MariaDB the connection takes LOCK TABLES ... WRITE, whose metadata lock a waiting statement lists as PENDING in
-// performance_schema.metadata_locks, which both servers keep live (lockWaiters); on PostgreSQL and SQLite it updates every
+// MariaDB the connection takes LOCK TABLES ... WRITE, whose metadata lock a statement of the table waits for, as the
+// statement of a lockProbe does until its lock_wait_timeout; on PostgreSQL and SQLite it updates every
 // row of the table in an open transaction (SQLite takes the database write lock). The returned function releases the
 // table, and a second call does nothing. It is also called when the test ends.
 func holdRows(t *testing.T, driver, dsn, table string) func() {
@@ -260,8 +255,6 @@ func withContextCancelsInsideTransaction(t *testing.T, drivers ...string) {
 				t.Fatal(err)
 			}
 			defer testcase.Close(t, waiter)
-			monitor := openNative(t, driver, serverSession(t, driver, dsn))
-			defer testcase.Close(t, monitor)
 			if err := holder.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
@@ -279,24 +272,10 @@ func withContextCancelsInsideTransaction(t *testing.T, drivers ...string) {
 					defer release()
 					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
-					// The context is cancelled once the server reports the statement
-					// waiting for the lock; a timer could fire before the statement
-					// starts, and then no statement is cancelled. The statement is a
-					// SELECT ... FOR UPDATE, which fires no trigger, and its session
-					// belongs to the client, so no database sends the test an event when
-					// it waits: awaitLockWait reads the lock tables, an exception of T475
-					// that stays only when it is approved.
-					waiting := make(chan error, 1)
-					// Sessions that wait already, such as the cancelled statement of the case before, are not this
-					// case's statement.
-					before, waitersErr := waiters(monitor, driver)
-					if waitersErr != nil {
-						t.Fatal(waitersErr)
-					}
-					go func() {
-						waiting <- awaitLockWait(ctx, monitor, driver, before)
-						cancel()
-					}()
+					// The statement is a SELECT ... FOR UPDATE of a client session, which fires no trigger and gives the
+					// test no event when it waits, so the context is cancelled after the server ends the wait of a probe
+					// session with its lock wait timeout (lockProbe, T475); a timer could fire before the statement starts.
+					probe := openLockProbe(t, driver, serverSession(t, driver, dsn))
 					start := time.Now()
 					// The transaction is opened on the connection, and the statement
 					// inside it runs on a handle carrying the caller's context.
@@ -309,15 +288,21 @@ func withContextCancelsInsideTransaction(t *testing.T, drivers ...string) {
 						return err
 					}
 					// In a nested transaction, the canceled statement runs inside a savepoint.
-					err := waiter.Transaction(func() error {
-						if nested {
-							return waiter.Transaction(read)
-						}
-						return read()
-					})
+					done := make(chan error, 1)
+					go func() {
+						done <- waiter.Transaction(func() error {
+							if nested {
+								return waiter.Transaction(read)
+							}
+							return read()
+						})
+					}()
+					waitErr := probe.waits(`SELECT 1 FROM zone_event FOR UPDATE`)
+					cancel()
+					err := <-done
 					waited := time.Since(start)
 					release()
-					if waitErr := <-waiting; waitErr != nil {
+					if waitErr != nil {
 						t.Fatal(waitErr)
 					}
 					want := orm.CodeCanceled
@@ -358,70 +343,5 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	defer testcase.Close(t, other)
 	if other.Root() == db.Root() {
 		t.Fatal("two connections report the same root")
-	}
-}
-
-// mysqlLockWaiters lists the sessions that wait for a table of the case database, one form on MySQL and MariaDB
-// (DIA-200, rule 1): the pending metadata locks of performance_schema.metadata_locks, which both servers keep live, as the
-// recipe runners read a lock holder (MariaDB has no performance_schema.data_locks, and information_schema.INNODB_TRX is
-// a cache that concurrent readers keep from refreshing).
-const mysqlLockWaiters = "SELECT DISTINCT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.LOCK_STATUS = 'PENDING'"
-
-// lockWaiters lists the sessions of the case database that wait for a lock.
-var lockWaiters = map[string]string{
-	"mysql":    mysqlLockWaiters,
-	"mariadb":  mysqlLockWaiters,
-	"postgres": "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
-}
-
-// waiters reads the sessions of the case database that wait for a lock now.
-func waiters(monitor *sql.DB, driver string) (_ []int64, err error) {
-	rows, err := monitor.Query(lockWaiters[driver])
-	if err != nil {
-		return nil, fmt.Errorf("lock wait query: %w", err)
-	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	var out []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
-}
-
-// newWaiter reports whether a session waits now that did not wait before. A statement that an earlier case
-// cancelled can still wait on the server after its connection closed, until the lock is released; counting
-// it as the statement of this case cancels this case's context before its statement starts.
-func newWaiter(before, now []int64) bool {
-	for _, id := range now {
-		if !slices.Contains(before, id) {
-			return true
-		}
-	}
-	return false
-}
-
-// awaitLockWait returns when a session of the case database that did not wait at before (from waiters) waits
-// for a lock. It returns an error when ctx ends first or no such session waits within 10 seconds.
-func awaitLockWait(ctx context.Context, monitor *sql.DB, driver string, before []int64) error {
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		now, err := waiters(monitor, driver)
-		if err != nil {
-			return err
-		}
-		if newWaiter(before, now) {
-			return nil
-		}
-		if ctx.Err() != nil {
-			return fmt.Errorf("the context ended before a statement waited for the lock: %w", ctx.Err())
-		}
-		if time.Now().After(deadline) {
-			return errors.New("no statement waited for the lock within 10s")
-		}
-		time.Sleep(20 * time.Millisecond)
 	}
 }

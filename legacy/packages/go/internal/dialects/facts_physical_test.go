@@ -13,7 +13,6 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-
 // uniqueToken returns a token that names a physical test run: the process id and
 // a random value, so that the names do not overlap with another run at the same time.
 func uniqueToken(t *testing.T) string {
@@ -70,7 +69,6 @@ func openTestServers(t *testing.T, mysqlDSN, postgresDSN, run string) *Servers {
 	})
 	return servers
 }
-
 
 // TestDialectFacts runs every probe against the databases of TEST_ENV:
 // ORM_TEST_MYSQL_DSN, ORM_TEST_POSTGRES_DSN, and a SQLite file per probe in a

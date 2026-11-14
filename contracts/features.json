@@ -2155,7 +2155,6 @@
         "legacy/packages/go/model/model_test.go",
         "legacy/packages/go/orm/transaction_flow_overlap_test.go",
         "legacy/packages/go/orm/cancel_test.go",
-        "legacy/packages/go/orm/cancel_waiter_internal_test.go",
         "legacy/packages/php/tests/QueryCancellationTest.php",
         "legacy/packages/php/tests/ModelTest.php",
         "legacy/packages/php-ext/tests/TransactionFailureNativeTest.php",
@@ -2457,7 +2456,6 @@
           "shard": "other",
           "inputs": [
             "legacy/packages/go/orm/cancel_test.go",
-            "legacy/packages/go/orm/cancel_waiter_internal_test.go",
             "legacy/packages/go/orm/goexit_test.go",
             "legacy/packages/go/orm/lock_wait_test.go"
           ]

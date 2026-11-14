@@ -6,7 +6,7 @@ import { after } from 'node:test';
 import { installBench } from './bench-set.mjs';
 import { createCaseDatabase } from './case-database.mjs';
 import { runCasesOn, withCleanup } from './coverage_case.mjs';
-import { statementStarts } from './lock-wait.mjs';
+import { lockWaitEnds, statementStarts } from './lock-wait.mjs';
 
 const tenant = 990003;
 
@@ -54,7 +54,7 @@ export const cases = {
       await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('original').create();
       // On PostgreSQL the abort follows the event of the start of the statement (statementStarts, T475), whose trigger is
       // installed before the holder holds the row. MySQL and MariaDB send no event when a statement starts or waits, so
-      // there the abort comes 100 ms after the statement starts, an exception of T475 that stays only when it is approved.
+      // there the abort follows the lock wait timeout that the server returns to a probe session (lockWaitEnds, T475).
       const starts = driver === 'postgres' ? await statementStarts(item.dsn, 'composite_account') : null;
       // The holder is released before the trigger is removed, because DROP TRIGGER waits for the rows that it holds.
       let releaseHolder = () => {};
@@ -86,7 +86,8 @@ export const cases = {
           controller.abort();
         } else {
           statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
-          setTimeout(() => controller.abort(), 100);
+          await lockWaitEnds(item.dsn, 'SELECT 1 FROM `composite_account` FOR UPDATE');
+          controller.abort();
         }
         let cancellation = null;
         try { await statement; } catch (error) { cancellation = error; }

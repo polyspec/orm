@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9fec9a94ee466ee8f4f3ac4893a7d7589b79f79e7e83c73e421e0a29c6da302b -->
+<!-- source-sha256: 8b59952d9b2c248056595a558a6c87cd196f08c5f9b7ecaf01ed92f6382965e2 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript, Go, Python, PHP, Rust recipe runner의 `session.end`와 `session.end_listener` step, 그리고 PHP `RollbackTest.php`는 `pg_terminate_backend(pid)`를 5000 ms 한도 없이 부른다(T475). 끝난 session의 다음 문장이 그 끝의 오류, 곧 57P01이나 끊긴 연결을 읽고, server의 그 답이 사건이다. 다음 문장 전에 client pool이 idle 연결의 끝을 보았어야 하는 INT-92 case는 T475가 적은 대로 PostgreSQL에서 `pg_terminate_backend(pid, 5000)`를 두고, MySQL과 MariaDB에서 `KILL` 뒤에 `information_schema.PROCESSLIST`를 읽는다.
+- MySQL과 MariaDB에서, 그리고 PostgreSQL에서 Go `TestWithContextCancelsInsideTransaction`의 `SELECT ... FOR UPDATE`에서, abort 시험은 server가 시험의 probe session에 돌려주는 lock wait timeout 뒤에 abort한다(T475). probe는 `lock_wait_timeout`과 `innodb_lock_wait_timeout`을 1로 또는 `lock_timeout`을 1 s로 두고, client 문장을 client에 넘긴 뒤에 잡힌 lock에 문장을 실행하며, abort는 그 1205나 55P03 뒤에 온다(`legacy/packages/ts/tests/lock-wait.mjs`의 `lockWaitEnds`, `legacy/packages/go/orm/lock_wait_test.go`의 `lockProbe`). 전에 `model.mjs`와 `coverage_transactions.mjs`는 문장 시작 300 ms와 100 ms 뒤에 abort했고, Go `awaitLockWait`는 `performance_schema.metadata_locks`와 `pg_stat_activity`를 20 ms마다 최대 10 s 동안 읽었다. `awaitLockWait`, 그 helper, `cancel_waiter_internal_test.go`는 없앴다. 그런 기다림의 한도는 server의 설정이고 시험은 server의 답을 읽는다(feature-coverage FCV-10, AGENTS.md).
 - Rust INT-53 시험은 기다리는 쪽의 LOG 메시지를 기다린다(T475). 기다리는 task는 자기 sqlx session에 `deadlock_timeout` 1 ms, `log_lock_waits` on, `client_min_messages` `log`를 두고 거기서 잡힌 행을 갱신한다. target `sqlx::postgres::notice`의 logger가 `still waiting for`에서 시험을 깨우고, 그 뒤에야 시험은 `backend_waiting_for_lock`을 한 번 읽는다. 전에는 20 ms마다 최대 10 s 동안 읽었다.
 - PHP INT-53 시험은 기다리는 쪽의 LOG 메시지를 기다린다(T475). `was_inserted_child.php`는 lock 기다림을 알리는 `Pdo\Pgsql` session을 열고(`deadlock_timeout` 1 ms, `log_lock_waits` on, `client_min_messages` `log`), server가 `still waiting for`를 보내면 notice callback에서 `waiting`을 출력한다. `WasInsertedTest.php`와 `UtilsNativeTest.php`는 `WasInsertedCases::awaitLockWait`로 그 줄을 읽은 뒤에야 `backendWaitingForLock`을 한 번 읽는다. 전에는 20 ms마다 최대 10 s 동안 읽었다.
 - Python INT-53 시험은 기다리는 쪽의 LOG 메시지를 기다린다(T475). `was_inserted_child.py`는 자기 session이 lock 기다림을 알리게 하고(`deadlock_timeout` 1 ms, `log_lock_waits` on, `client_min_messages` `log`), server가 `still waiting for`를 보내면 psycopg notice handler에서 `waiting`을 출력한다. `test_was_inserted.py`는 그 줄을 읽은 뒤에야 `backend_waiting_for_lock`을 한 번 읽는다. 전에는 20 ms마다 최대 10 s 동안 읽었다.

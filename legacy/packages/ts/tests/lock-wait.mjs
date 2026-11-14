@@ -1,6 +1,6 @@
 // The PostgreSQL events that order a step of a test after a lock wait or after the start of a client statement (T475). A
 // test that read the lock tables on an interval, or waited on a timer, would depend on the load of the machine.
-import { postgresClient } from './case-database.mjs';
+import { mysqlConnection, postgresClient } from './case-database.mjs';
 
 /**
  * Makes the PostgreSQL session of client report its lock waits, and returns a function that returns a promise of the next
@@ -66,4 +66,27 @@ export async function statementStarts(dsn, table) {
       }
     },
   };
+}
+
+/**
+ * Runs statement, which needs a lock that another session holds, on a MySQL or MariaDB session of the test whose lock waits
+ * the server ends after one second by its own setting (lock_wait_timeout, innodb_lock_wait_timeout), and returns when the
+ * server ends the wait with 1205. A statement of a client session gives the test no event when it starts to wait for a lock,
+ * so a test that aborts such a statement runs this probe after it has handed the statement to the client: the error is the
+ * response of the server that the lock is held and that a statement waits for it, and the second of the probe's wait, which
+ * the server bounds, lets the statement that started before the probe reach its own wait (T475).
+ */
+export async function lockWaitEnds(dsn, statement) {
+  const connection = await mysqlConnection(dsn);
+  try {
+    await connection.query('SET SESSION lock_wait_timeout = 1');
+    await connection.query('SET SESSION innodb_lock_wait_timeout = 1');
+    try {
+      await connection.query(statement);
+    } catch (error) {
+      if (error.errno === 1205) return;
+      throw error;
+    }
+    throw new Error(`${statement} took its lock, so no session held it`);
+  } finally { await connection.end(); }
 }

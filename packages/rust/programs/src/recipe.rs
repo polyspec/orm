@@ -5795,7 +5795,7 @@ mod database {
                 .fetch_one(&pool)
                 .await;
         let ended = match pid {
-            Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(&pool).await.map(|_| ()).map_err(|e| e.to_string()),
+            Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1)").bind(pid).execute(&pool).await.map(|_| ()).map_err(|e| e.to_string()),
             Err(error) => Err(format!("the listener session of {channel}: {error}")),
         };
         pool.close().await;
@@ -5877,7 +5877,7 @@ mod database {
             Pool::Postgres(pool) => {
                 let query = format!("SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1");
                 match sqlx::query_scalar::<_, i32>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
-                    Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.map(|_| ()),
+                    Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1)").bind(pid).execute(pool).await.map(|_| ()),
                     Err(error) => Err(error),
                 }
             }

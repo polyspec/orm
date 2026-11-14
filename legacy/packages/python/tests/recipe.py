@@ -3347,7 +3347,7 @@ def _op_session_end_listener(step: dict, context: dict) -> dict:
     native_query(
         context["database"],
         session,
-        [f"SELECT pg_terminate_backend({int(rows[0]['pid'])}, 5000)"],
+        [f"SELECT pg_terminate_backend({int(rows[0]['pid'])})"],
     )
     return {}
 
@@ -3393,7 +3393,7 @@ def _op_session_end(step: dict, context: dict) -> dict:
         database,
         session,
         [
-            f"SELECT pg_terminate_backend({session_id}, 5000)"
+            f"SELECT pg_terminate_backend({session_id})"
             if database == "postgres"
             else f"KILL {session_id}"
         ],

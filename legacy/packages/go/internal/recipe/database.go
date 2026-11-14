@@ -1702,7 +1702,7 @@ func endSession(table string, c *databaseContext) error {
 		if err := raw.QueryRow(fmt.Sprintf(`SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '%s' AND l.pid <> pg_backend_pid() LIMIT 1`, table)).Scan(&id); err != nil {
 			return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
 		}
-		_, err := raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
+		_, err := raw.Exec(`SELECT pg_terminate_backend($1)`, id)
 		return err
 	}
 	// The session is the one, other than this one, whose transaction holds the table: a metadata lock of the transaction, which
@@ -1822,7 +1822,7 @@ func listenOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err := raw.QueryRow(`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = $1 LIMIT 1`, `LISTEN "`+s.k("channel").Channel+`"`).Scan(&id); err != nil {
 			return outcome{}, fmt.Errorf("the listener session of %s: %w", s.Channel, err)
 		}
-		_, err = raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
+		_, err = raw.Exec(`SELECT pg_terminate_backend($1)`, id)
 		return outcome{fields: map[string]any{}}, err
 	}
 	listener, err := boundAPI[*recipeListener](s.k("ref").Ref, c)

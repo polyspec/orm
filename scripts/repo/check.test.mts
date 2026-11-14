@@ -68,6 +68,18 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   assert.doesNotMatch(cancel, /sqliteCancelAfter|time\.AfterFunc/, 'the SQLite case of cancel_test.go cancels on no timer');
   assert.match(cancel, /synctest\.Wait/, 'the SQLite case of cancel_test.go cancels when the statement sleeps in the busy handler');
   assert.match(cancel, /statementStarts/, 'the PostgreSQL cases of cancel_test.go cancel after the event of the statement start');
+  // On MySQL and MariaDB, and for a PostgreSQL SELECT ... FOR UPDATE, the abort follows the lock wait timeout that the server
+  // returns to a probe session by its own setting, not a timer and not a read of the lock tables.
+  assert.doesNotMatch(cancel, /awaitLockWait|metadata_locks|pg_stat_activity/, 'cancel_test.go reads no lock table');
+  assert.match(cancel, /openLockProbe/, 'cancel_test.go cancels after the lock wait timeout of a probe');
+  for (const path of ['legacy/packages/ts/tests/model.mjs', 'legacy/packages/ts/tests/coverage_transactions.mjs']) {
+    assert.match(text(path), /lockWaitEnds/, `${path} aborts a MySQL statement after the lock wait timeout of a probe`);
+    assert.doesNotMatch(text(path), /setTimeout\(\(\) => \w+\.abort\(\)/, `${path} aborts on no timer`);
+  }
+  // A step that ends a session whose next statement reads the error of that end does not wait for the end with a bound.
+  for (const path of ['legacy/packages/ts/tests/recipe.mjs', 'legacy/packages/go/internal/recipe/database.go', 'legacy/packages/python/tests/recipe.py', 'legacy/packages/php/tests/Recipe.php', 'legacy/packages/php/tests/RollbackTest.php', 'packages/rust/programs/src/recipe.rs']) {
+    assert.doesNotMatch(text(path), /pg_terminate_backend\([^)]*,/, `${path} ends a session without a bound on its end`);
+  }
 });
 
 caseTest('every PHPUnit test class declares its size', () => {

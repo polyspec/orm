@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 547bb7b5b55d207a356b129945742c2d07e5956ebea9f4c468c03d483309db64 -->
+<!-- source-sha256: ea241e9e47225d323b93413917ab68176af12438f9b4c2961068f0cb7ee2f2f2 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -205,7 +205,7 @@
   않는다. 부하가 큰 machine은 같은 일을 더 느리게 실행하며, 그 결과가 부하에 따라 바뀌면 안 되기 때문이다. case는 그 일이 끝날 때
   끝나고, 끝나지 않는 실행은 그 실행과 함께(SIGINT나 SIGTERM) 멈춘다. TypeScript harness `tests/testcase.mts`, Go harness
   `legacy/packages/go/testcase`, Python harness `legacy/packages/python/tests/testcase.py`, Rust harness
-  `packages/rust/testcase`에는 기한이 없고, PHPUnit은 시간 제한을 강제하지 않는다(`enforceTimeLimit`는 false). lock 기다림을 확인하거나 기다리는 문장을 abort하는 시험은 그 순서를 database의 사건으로 정한다. 예를 들어 `log_lock_waits`를 둔 PostgreSQL session은 문장이 기다리는 동안 LOG 메시지 `still waiting for`를 받는다. lock 표를 간격을 두고 읽거나 timer를 쓰면 결과가 부하에 달리므로 그렇게 하지 않는다. database가 그런 사건을 보내지 않는 경로는 예외로서 그 task에 적고, 승인될 때만 남는다. 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
+  `packages/rust/testcase`에는 기한이 없고, PHPUnit은 시간 제한을 강제하지 않는다(`enforceTimeLimit`는 false). lock 기다림을 확인하거나, 기다리는 문장을 abort하거나, session의 끝을 기다리는 시험은 그 순서를 database server의 응답으로 정한다. 기다림의 한도는 server의 설정(`lock_timeout`, `lock_wait_timeout`, `innodb_lock_wait_timeout`, `log_lock_waits`와 함께 둔 `deadlock_timeout`)이고, 시험은 server의 답(55P03, 1205, 57P01, LOG 메시지 `still waiting for`)을 사건으로 읽는다. lock 표를 간격을 두고 읽거나 client의 timer를 쓰지 않는다. client의 timer는 경주를 남기고, server의 답은 일어난 일을 알리기 때문이다. server가 그런 답을 주지 않는 경로는 예외로서 그 task에 적고, 승인될 때만 남는다. 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
   `cargo test --no-run`, 전체 suite, server나 도구 실행)은 타임아웃 대신 상세 단계 로그를 두고,
   출력 없음 기한을 포함해 어떤 기한도 없이 과정과 결과를 관측할 수 있게 한다. 그 성공과 실패는
   시계가 아니라 관측한 결과와 오류로 판정한다. 테스트가 자기 계산에 두는 시간 제한은 그 계산을 실행한 thread나 process의 CPU 시간을

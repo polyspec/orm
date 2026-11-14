@@ -2,12 +2,14 @@ package orm_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -140,4 +142,57 @@ func (s *startEvent) close(t *testing.T) {
 	if err := s.owner.Close(ctx); err != nil {
 		t.Errorf("close the owner of %s: %v", s.name, err)
 	}
+}
+
+// lockProbe is a session of the test whose lock waits the server ends after one second, by its own setting:
+// lock_wait_timeout and innodb_lock_wait_timeout on MySQL and MariaDB, lock_timeout on PostgreSQL. A statement of a client
+// session gives the test no event when it starts to wait for a lock, so a test that cancels such a statement runs the probe
+// after it has handed the statement to the client: the error of the probe (1205, 55P03) is the response of the server that
+// the lock is held and that a statement waits for it, and the second of the probe's wait, which the server bounds, lets the
+// statement that started before the probe reach its own wait (T475).
+type lockProbe struct {
+	conn *sql.Conn
+}
+
+// openLockProbe opens the probe on dsn; it is closed when the test ends.
+func openLockProbe(t *testing.T, driver, dsn string) *lockProbe {
+	t.Helper()
+	raw := openNative(t, driver, dsn)
+	conn, err := raw.Conn(context.Background())
+	if err != nil {
+		t.Fatal(errors.Join(err, raw.Close()))
+	}
+	t.Cleanup(func() {
+		if err := errors.Join(conn.Close(), raw.Close()); err != nil {
+			t.Errorf("close the lock probe: %v", err)
+		}
+	})
+	settings := []string{"SET lock_timeout = '1s'"}
+	if mysqlFamily(driver) {
+		settings = []string{"SET SESSION lock_wait_timeout = 1", "SET SESSION innodb_lock_wait_timeout = 1"}
+	}
+	for _, setting := range settings {
+		if _, err := conn.ExecContext(context.Background(), setting); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return &lockProbe{conn: conn}
+}
+
+// waits runs statement, which needs a lock that another session holds, and returns nil when the server ends its wait with
+// the lock wait timeout of the probe's setting: 1205 on MySQL and MariaDB, 55P03 on PostgreSQL. It may run on another
+// goroutine than the test.
+func (p *lockProbe) waits(statement string) error {
+	_, err := p.conn.ExecContext(context.Background(), statement)
+	var mysqlErr *mysql.MySQLError
+	var pgErr *pgconn.PgError
+	switch {
+	case err == nil:
+		return fmt.Errorf("%s took its lock, so no session held it", statement)
+	case errors.As(err, &mysqlErr) && mysqlErr.Number == 1205:
+		return nil
+	case errors.As(err, &pgErr) && pgErr.Code == "55P03":
+		return nil
+	}
+	return fmt.Errorf("%s: %w", statement, err)
 }

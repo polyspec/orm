@@ -236,10 +236,6 @@
           "reason": "test: the go/packages scan of the Go generator: hand-written files of the model package, pattern spelling, build tags and the generated relation getter text"
         },
         {
-          "glob": "legacy/packages/go/orm/cancel_waiter_internal_test.go",
-          "reason": "harness: tests newWaiter, the lock-wait helper that the cancellation tests use to time a cancel"
-        },
-        {
           "glob": "legacy/packages/go/orm/collection_key_internal_test.go",
           "reason": "test: the private fetchKey and keyName of a model, which reject a key callback of the wrong type; the key column behaviour of a collection is the interfaces.md collection key unit (T326-7)"
         },

@@ -1103,7 +1103,7 @@ const OPS = {
     const session = connectDsn('case-server', context.database, context.dsn);
     const [rows] = await nativeQuery(context.database, session, [`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = 'LISTEN "${s.channel}"' LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the listener session of ${s.channel}: ${rows.length} rows`);
-    await nativeQuery(context.database, session, [`SELECT pg_terminate_backend(${Number(rows[0].pid)}, 5000)`]);
+    await nativeQuery(context.database, session, [`SELECT pg_terminate_backend(${Number(rows[0].pid)})`]);
     return {};
   },
   'wait.start'(s, context) {
@@ -1129,7 +1129,7 @@ const OPS = {
       : `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '${s.table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
     const id = Number(Object.values(rows[0])[0]);
-    await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
+    await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id})` : `KILL ${id}`]);
     return {};
   },
   // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the

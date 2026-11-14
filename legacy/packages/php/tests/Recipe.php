@@ -3676,7 +3676,7 @@ final class Recipe
                 $find->execute(['LISTEN "' . $s['channel'] . '"']);
                 $pid = $find->fetchColumn();
                 Assert::assertNotFalse($pid, "the listener session of {$s['channel']}");
-                $pdo->exec('SELECT pg_terminate_backend(' . (int) $pid . ', 5000)');
+                $pdo->exec('SELECT pg_terminate_backend(' . (int) $pid . ')');
                 return [];
             case 'wait.start':
                 self::$waitStart = hrtime(true);
@@ -3712,7 +3712,7 @@ final class Recipe
                         . 't.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1')
                     ->fetchColumn();
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
-                $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
+                $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ')' : 'KILL ' . (int) $id);
                 return [];
             case 'dbspec.introspect':
                 return RecipeIntrospect::step($s, $context);

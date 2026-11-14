@@ -17,7 +17,7 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 import { caseTest, withTemporaryDirectory } from '../../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 import { mysqlConnection, onSqliteConnections, postgresClient, withCaseDatabase } from './case-database.mjs';
-import { statementStarts } from './lock-wait.mjs';
+import { lockWaitEnds, statementStarts } from './lock-wait.mjs';
 
 let failures = 0;
 let current = '';
@@ -332,8 +332,8 @@ export const cancellation = installed(async (db, dsn, dialect) => {
   // for the lock until the signal aborts. SQLite waits for a lock in its busy handler, which
   // an abort does not interrupt, so SQLite checks only the signal aborted before. On PostgreSQL the
   // abort follows the event of the start of the statement (statementStarts, T475). MySQL and MariaDB
-  // send no event when a statement starts or waits, so there the abort comes 300 ms after the
-  // statement starts, an exception of T475 that stays only when it is approved.
+  // send no event when a statement starts or waits, so there the abort follows the lock wait timeout
+  // that the server returns to a probe session (lockWaitEnds, T475).
   if (dialect !== 'sqlite') {
     const starts = dialect === 'postgres' ? await statementStarts(dsn, 'author') : null;
     try {
@@ -342,14 +342,14 @@ export const cancellation = installed(async (db, dsn, dialect) => {
         const row = fixture.authors[0];
         const running = new AbortController();
         const armed = starts ? await starts.arm() : null;
-        const timer = starts ? null : setTimeout(() => running.abort(), 300);
         const statement = code(row.connect(db.withSignal(running.signal)).setName('changed').update());
-        if (armed) { await armed.started; running.abort(); }
+        if (armed) await armed.started;
+        else await lockWaitEnds(dsn, 'SELECT `seq` FROM `author` FOR UPDATE');
+        running.abort();
         // The statement returns CANCELED after the abort while the other connection still holds the row:
         // it ended because of the signal, not because the lock was released or its wait timed out.
         check(await statement === 'CANCELED', 'a statement cancelled while it runs');
         check(running.signal.aborted, 'the cancelled statement returned only after the abort');
-        if (timer) clearTimeout(timer);
       } finally { await release(); }
     } finally { await starts?.close(); }
   }
