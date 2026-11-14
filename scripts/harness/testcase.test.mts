@@ -94,7 +94,8 @@ native.finish();
 console.log('cases passed', await registered, 'finish', runner.finish());
 `, ['--test', '--test-reporter=tap']);
   assert.equal(code, 0, stdout);
-  inOrder(stdout, ['ok - fixture/long-case', 'runCase passed true', 'ok - fixture/long-section']);
+  // The tap reporter writes the console lines of the fixture as comments.
+  inOrder(stdout, ['# ok - fixture/long-case', '# runCase passed true', '# ok - fixture/long-section']);
   assert.match(stdout, /ok \d+ - fixture\/long-native/);
   assert.match(stdout, /cases passed true finish 0/);
   assert.doesNotMatch(stdout, /deadline|Bail out!/);
