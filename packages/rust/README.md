@@ -61,14 +61,14 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 | Register a set on a connection without reading the database | `db.utils().schema().register(&model::SCHEMA)` |
 | Install schema objects | `db.utils().schema().install(&model::SCHEMA)` |
 | Add the missing tables and columns of an installed set | `db.utils().schema().add_tables_and_columns(&model::SCHEMA)` |
-| Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
-| Run a callback with a `Send` future | `db.transaction_send(callback).await` |
-| Preserve a one-time callback's own error | `db.transaction_once(callback).await`, with `.audit(values)` for an audited write; returns `TransactionOnceError::Callback(error)` after rollback |
-| Bound the statements of a PostgreSQL transaction | `db.transaction(callback).timeout_ms(milliseconds).await` |
-| Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
+| Run a callback in a transaction | `db.transaction(callback, TransactionOptions::default()).await`; the callback takes the handle `Tx`, and a model runs in the transaction after `connect(&tx)` |
+| Run with isolation or read-only access | `db.transaction(callback, TransactionOptions { isolation: Some(Isolation::…), read_only: Some(true), ..Default::default() }).await` |
+| Run a callback in a savepoint of a transaction | `tx.savepoint(callback).await`; it takes no options |
+| Bound the statements of a PostgreSQL transaction | `TransactionOptions { timeout_ms: Some(milliseconds), ..Default::default() }` |
+| Set a deadlock retry count, including zero | `TransactionOptions { retry: Some(count), ..Default::default() }` |
 | Cancel a statement or transaction callback | Drop its future |
 | Encrypt model columns | Declare the `aes` codec stage and the `aes_version` setting in the schema, and pass `Config::aes_key` or `Config::aes_keys` with `Config::aes_version` |
-| Record audited writes | Declare the `audit` setting in the schema, give `Config::audit_source` once at connect, and pass the values of the unit of work with `.audit([("action", …)])` on `transaction`, `transaction_send` or `transaction_once` ([usage](../../docs/operations/usage.md#audited-writes)) |
+| Record audited writes | Declare the `audit` setting in the schema, give `Config::audit_source` once at connect, and pass the values of the unit of work in `audit` of the `TransactionOptions` of `transaction` ([usage](../../docs/operations/usage.md#audited-writes)) |
 
 For Rust connections, `aes_version` must be positive. Every declared key version must be positive
 and have a nonempty key. If `aes_keys` is present, it must contain the current version; an
@@ -79,19 +79,15 @@ leave both key fields empty.
 A positive `timeout_ms` bounds every statement of the transaction on PostgreSQL: the transaction
 sends `SET LOCAL statement_timeout = <ms>` after its `BEGIN`, the server cancels a statement that
 runs longer, and the statement returns `CANCELED`. On MySQL and SQLite the transaction fails with
-`CAPABILITY_UNSUPPORTED` before it begins and the callback does not run. `timeout_ms(0)` sets no
+`CAPABILITY_UNSUPPORTED` before it begins and the callback does not run. A `timeout_ms` of 0 sets no
 bound. Each transaction retains its own connection; a later transaction can use the connection
 after a cancelled statement.
 
-Nested `transaction_send` calls borrow the erased callback directly when using
-a savepoint, without requiring a reference to its Box allocation. Owner tests
-must preserve Send futures and nested commit/rollback on all three databases.
-Fixtures are connection-local temporary tables, removed on close.
-
-`transaction_once` accepts a callback that may run only once and does not retry it. A nested call
-uses a savepoint. Database setup and commit failures return `TransactionOnceError::Orm`; a failed
-callback returns its original error after rollback. If rollback also fails, the error contains
-both the callback and rollback failures. This call has no `timeout_ms` option.
+A callback that succeeds commits. A callback that fails or panics rolls back, and its failure is returned unchanged, a
+panic as `INTERNAL`; when the rollback fails too, the result is `ROLLBACK_FAILED`, which holds both failures. A failure of
+the kind `DEADLOCK` runs the whole callback again, `retry` times at most (3 when the options state none). A savepoint
+whose callback fails is rolled back to and released, and the failure is returned unchanged
+([core](../../docs/spec/core.md) CORE-20 to CORE-26).
 
 ## Row values
 
