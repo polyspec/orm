@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: f11a16f77169419cd725e405714402ec031b05e171ab3b37ac6c92150ddda5ab -->
+<!-- source-sha256: ce739d66ae0fba1cee72a707b9f19b87ef839c671250323583f44c8ce10450df -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1924,3 +1924,4 @@
 | T469 | 계약은 fault point `orm.internal`과, 그것을 `broken`으로 설정해 category `internal`의 kind를 일으키는 case를 가진다(binding X-1, G-5). 원인: `make bindings-check`가 `no case arms the point orm.internal as broken and raises a kind of the category internal`을 보고한다. Green: 그 finding이 없어지고, `make bindings-check`는 CK-22 finding 153개를 보고한다. | `packages/rust/interface.json`; `contracts/interface/core.json`; `packages/rust/src` | `make bindings-check BINDING=<cli>` | [o] |
 | T470 | 문서, feature 서술, 시험 주석은 코어가 가진 transaction 형식을 적는다. 원인: `contracts/features.json`(`audit_triggers`), `docs/features.md`, `docs/operations/usage.md`, `docs/operations/interface-implementation.md`, `docs/spec/interfaces.md`의 INT-72a, INT-44a, INT-46a, `packages/rust/tests/cases/audit.rs`의 주석, `packages/rust/src/testing.rs`의 주석이 코어에 더 없는 `transaction_send`와 `transaction_once`를 적는다(CORE-20, CORE-21). | `contracts/features.json`; `docs/features.md`; `docs/operations/usage.md`; `docs/operations/interface-implementation.md`; `docs/spec/interfaces.md`; `packages/rust/tests/cases/audit.rs`; `packages/rust/src/testing.rs` | `make docs-check` | [o] |
 | T471 | 추적되는 binding package는 Cargo.lock이 고정한 binding commit의 `binding scaffold`가 쓰는 것과 같고, Cargo.lock은 `polyspec-binding-core`를 그 commit에 고정한다(binding L-2, CK-19, CK-20). 원인: binding 53a23a5의 cli로 `make bindings-check`가 CK-19 finding 15개(binding package의 version, license, feature, build script)와, Cargo.lock이 49a4e973을 고정해서 생기는 CK-20 하나를 보고한다. Green: CK-19와 CK-20의 finding이 없다. 검사는 CK-22 153개, CK-8 7개, CK-10 4개, CK-68 4개를 보고한다. | `packages/ts`; `packages/ts/wasm`; `packages/python`; `packages/php-ext`; `packages/go`; `Cargo.lock` | `make bindings-check BINDING=<cli>` | [o] |
+| T472 | 의미가 바뀐 명세 문장은 새 식별자를 가지고, 옛 식별자는 은퇴한다. 시험은 새 식별자를 인용한다. 원인: T470이 INT-44a, INT-46a, INT-72a의 의미를 그 식별자 그대로 바꿔서, 그것을 인용한 기록이 새 의미를 인용한 것으로 읽힌다. | `docs/spec/interfaces.md`; `docs/spec/feature-coverage.md`; `packages/rust/tests/cases/audit.rs`; `packages/rust/tests/cases/rollback.rs`; `AGENTS.md` | `make docs-check` | [o] |

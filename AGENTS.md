@@ -84,6 +84,8 @@ from kit and holds as its own; this file states only the rules of orm.
   worktree's target directory goes with the worktree when it is removed; check free disk before a
   worktree build.
   Enforced by: `make rust-check`
+- Own: A rule identifier of a specification keeps its statement only while the meaning of the statement stays. A change of meaning marks the old identifier as retired, with the identifier that replaces it, and states the new meaning under a new identifier, because a record that cites the old identifier must not read as citing the new meaning; a test cites the new identifier.
+  Enforced by: none, whether a change keeps the meaning of a statement is judged by review.
 - Refines P24: `docs/plans/execution/checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make docs-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make docs-check` fails on any other with its file, line and column.
   Enforced by: `make docs-check`
 - Own: A received instruction is triaged first: finish the item in progress unless the instruction is explicit and urgent, then place the new work by priority before starting it.

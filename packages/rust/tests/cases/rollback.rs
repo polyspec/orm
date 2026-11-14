@@ -117,21 +117,21 @@ async fn bounded(driver: &str, case: &str) {
 }
 
 #[tokio::main(flavor = "current_thread")]
-// Requirements: INT-72a.
+// Requirements: INT-190.
 async fn transaction_forms_rollback_fault_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "transaction_forms_rollback_fault").await;
 }
 
 #[tokio::main(flavor = "current_thread")]
-// Requirements: INT-72a.
+// Requirements: INT-190.
 async fn transaction_forms_rollback_fault_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "transaction_forms_rollback_fault").await;
 }
 
 #[tokio::main(flavor = "current_thread")]
-// Requirements: INT-72a.
+// Requirements: INT-190.
 async fn transaction_forms_rollback_fault_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "transaction_forms_rollback_fault").await;

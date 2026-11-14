@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 5dde45e167128a52fb3366d7b91f8a2b3d0c6bdee9b2a5454a502212ad76b6ea -->
+<!-- source-sha256: ab94f0b71b45a1d84c120385b59db5c9a1eec54bf39585de78f19c7e39f34832 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -73,6 +73,8 @@
   lease는 여전히 한 checkout의 실행들의 build 순서를 정한다. worktree를 지우면 그 target directory도 함께
   지워진다. worktree에서 build하기 전에 남은 disk를 확인한다.
   Enforced by: `make rust-check`
+- Own: 명세의 규칙 식별자는 문장의 의미가 그대로인 동안만 그 문장을 가진다. 의미가 바뀌면 옛 식별자를 그것을 대신하는 식별자와 함께 은퇴로 표시하고, 새 의미는 새 식별자로 적는다. 옛 식별자를 인용한 기록이 새 의미를 인용한 것으로 읽혀서는 안 되기 때문이다. 시험은 새 식별자를 인용한다.
+  Enforced by: none, 변경이 문장의 의미를 유지하는지는 review가 판단한다.
 - Refines P24: `docs/plans/execution/checklist.md`가 유일한 작업 목록이다. 한국어 문서의 항목 ID와 상태는 같다. 항목 상태를 변경하기 전에 `make docs-check`를 실행한다. 체크리스트에는 항목만 둔다: 상태 표시는 항목이나 하위 항목 맨 앞의 상태로만 쓰고 범례, 제목, 항목의 글에는 쓰지 않으며, `make docs-check`는 그 밖의 표시를 file, 줄, 열과 함께 실패로 본다.
   Enforced by: `make docs-check`
 - Own: 받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은 우선순위에 따라 배치한 뒤 시작한다.
