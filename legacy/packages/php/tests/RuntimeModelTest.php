@@ -44,6 +44,21 @@ final class RuntimeModelTest extends TestCase
         return 'no error';
     }
 
+    /**
+     * A document keeps the codec stage name that it wrote, json or ordered_json, in its manifest, and each column of
+     * its runtime model holds the stage that the name means (DBS-185).
+     */
+    public function testACodecStageNameKeepsItsTextAndHoldsItsMeaning(): void
+    {
+        $text = "dbspec 1 shop\n\ntable t {\n  id i64 identity\n  doc text\n  packed bytes\n  primary key (id)\n"
+            . "  settings {\n    codec doc json\n    codec packed ordered_json gz\n  }\n}\n";
+        $model = RuntimeModel::build(RuntimeModel::loadSet($text, ''));
+        self::assertSame($text, $model->manifestText);
+        $entity = $model->entity('t') ?? [];
+        self::assertSame(['ordered_json'], RuntimeModel::column($entity, 'doc')['codec'] ?? null);
+        self::assertSame(['ordered_json', 'gz'], RuntimeModel::column($entity, 'packed')['codec'] ?? null);
+    }
+
     public function testASetterReturnsItsModel(): void
     {
         $author = new Author();
