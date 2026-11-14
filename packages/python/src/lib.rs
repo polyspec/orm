@@ -3,9 +3,7 @@
 //!
 //! The source is generated into `generated/lib.rs` by `make bindings`; this file only includes it, because an included
 //! file cannot hold the crate's attributes.
-#![allow(
-    clippy::too_many_arguments,
-    reason = "T-4: a record parameter is one argument per field"
-)]
+// T-4: a record parameter is one argument per field
+#![allow(clippy::too_many_arguments, reason = "T-4")]
 
 include!(concat!(env!("CARGO_MANIFEST_DIR"), "/generated/lib.rs"));

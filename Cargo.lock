@@ -1673,6 +1673,7 @@ dependencies = [
  "napi-sys",
  "nohash-hasher",
  "rustc-hash",
+ "tokio",
 ]
 
 [[package]]
@@ -2009,7 +2010,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 [[package]]
 name = "polyspec-binding-core"
 version = "0.0.1"
-source = "git+https://github.com/polyspec/binding.git?branch=v1%2Frust-core#49a4e973be04e1a593eff33fc7ad9531daa04b2b"
+source = "git+https://github.com/polyspec/binding.git?branch=v1%2Frust-core#53a23a5099aa83ff73ca346b617ba47aaa2814ad"
 dependencies = [
  "indexmap",
  "libc",
@@ -2148,7 +2149,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-go"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-binding-core",
  "polyspec-json",
@@ -2157,7 +2158,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-node"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "napi",
  "napi-build",
@@ -2169,7 +2170,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-php-ext"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "ext-php-rs",
  "polyspec-binding-core",
@@ -2179,7 +2180,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-python"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-binding-core",
  "polyspec-json",
@@ -2265,13 +2266,14 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-wasm"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "js-sys",
  "polyspec-binding-core",
  "polyspec-json",
  "polyspec-orm",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -3660,6 +3662,17 @@ dependencies = [
  "rustversion",
  "wasm-bindgen-macro",
  "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-futures"
+version = "0.4.80"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e14e0327cb5368ad60ccb22d04a9827a693c95a926d8d125e9fa39e0baec501"
+dependencies = [
+ "js-sys",
+ "tokio",
+ "wasm-bindgen",
 ]
 
 [[package]]

@@ -4,9 +4,14 @@
   "type": "php-ext",
   "license": "MIT",
   "require": {
-    "php": ">=8.4"
+    "php": ">=8.4",
+    "ext-polyspec_json": "*",
+    "polyspec/json": "*"
   },
   "php-ext": {
-    "extension-name": "polyspec_orm"
+    "extension-name": "polyspec_orm",
+    "download-url-method": [
+      "pre-packaged-binary"
+    ]
   }
 }

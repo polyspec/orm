@@ -1,8 +1,9 @@
 {
   "name": "@polyspec/orm",
-  "version": "0.0.31",
+  "version": "0.0.33",
   "description": "The orm library of polyspec for Node and the browser",
   "license": "MIT",
+  "type": "module",
   "main": "./generated/index.cjs",
   "types": "./generated/index.d.ts",
   "exports": {
@@ -29,9 +30,15 @@
     "wasm/generated/*.d.ts",
     "wasm/generated/*.wasm"
   ],
-  "optionalDependencies": {
-    "@polyspec/orm-linux-x64-gnu": "0.0.31",
-    "@polyspec/orm-linux-arm64-gnu": "0.0.31",
-    "@polyspec/orm-darwin-arm64": "0.0.31"
+  "napi": {
+    "binaryName": "orm",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-apple-darwin"
+    ]
+  },
+  "dependencies": {
+    "@polyspec/json": "*"
   }
 }
