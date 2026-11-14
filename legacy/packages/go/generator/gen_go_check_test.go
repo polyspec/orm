@@ -35,7 +35,7 @@ func requireCheck(t *testing.T, want ...string) {
 // file without writing, while hand-written files are not compared.
 // Requirements: DBS-175, DBS-182.
 func TestGoGenerationCheckReportsDifferences(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, _ := generatedScannedModule(t)
 	requireCheck(t)
 	write("model/notes.go", "package model\n\nconst Notes = 1\n")
@@ -51,7 +51,7 @@ func TestGoGenerationCheckReportsDifferences(t *testing.T) {
 // TestGoGenerationCheckKeepsOutputOnGenerationError checks that a check whose
 // generation fails reports the failure and writes nothing.
 func TestGoGenerationCheckKeepsOutputOnGenerationError(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, m := generatedScannedModule(t)
 	write("example/bad.go", `package example
 

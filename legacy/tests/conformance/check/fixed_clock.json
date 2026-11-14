@@ -46,7 +46,7 @@
               ],
               "error": null,
               "kind": "select",
-              "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label`, `a`.`at0` AS `a__at0`, `a`.`at3` AS `a__at3`, `a`.`at6` AS `a__at6` FROM `clock_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+              "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label`, `a`.`at0` AS `a__at0`, `a`.`at3` AS `a__at3`, `a`.`at6` AS `a__at6` FROM `clock_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0",
               "tables": [
                 "clock_cell"
               ],

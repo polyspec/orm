@@ -17,7 +17,7 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, promisify } from 'node:util';
 import { after, before } from 'node:test';
-import { DATABASE, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { OrmError } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
@@ -145,7 +145,7 @@ before(async t => {
 // Each case is one test named by its id. A later case reads the corpus state that the cases before it made, so after
 // a failure the later cases fail because of the case that stopped them.
 for (const c of all) {
-  caseTest(c.id, DATABASE, async () => {
+  caseTest(c.id, async () => {
     if (stopped !== undefined) throw new Error(`not run: ${stopped} failed, and this case reads the corpus state it leaves`);
     let db;
     try {

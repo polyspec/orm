@@ -2,13 +2,12 @@ package testcasestart
 
 import (
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
 func TestStarted(t *testing.T) {
-	testcase.Start(t, time.Minute)
+	testcase.Start(t)
 }
 
 func TestGrouped(t *testing.T) {
@@ -16,7 +15,7 @@ func TestGrouped(t *testing.T) {
 	t.Run("a", func(t *testing.T) { testcase.Of(t) })
 }
 
-func TestBare(t *testing.T) { // want `TestBare does not start its case with legacy/packages/go/testcase, so it runs without a deadline or RUN line`
+func TestBare(t *testing.T) { // want `TestBare does not start its case with legacy/packages/go/testcase, so it runs without a RUN line`
 	t.Log("no case")
 }
 
@@ -26,7 +25,7 @@ func FuzzBare(f *testing.F) { // want `FuzzBare does not start its case with leg
 
 // Go source that a generator test writes is a string, not a test of this file.
 func TestGenerated(t *testing.T) {
-	testcase.Start(t, time.Minute)
+	testcase.Start(t)
 	_ = `package model
 func TestInside(t *testing.T) { _ = 1 }
 `
@@ -49,5 +48,5 @@ func (suite) TestMethod(t *testing.T) {}
 
 // A start in a comment starts no case.
 func TestCommented(t *testing.T) { // want `TestCommented does not start its case`
-	// testcase.Start(t, time.Minute)
+	// testcase.Start(t)
 }

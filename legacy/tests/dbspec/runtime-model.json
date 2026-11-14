@@ -6,7 +6,8 @@
     "DBS-111",
     "DBS-112",
     "DBS-100",
-    "DBS-103"
+    "DBS-103",
+    "DBS-185"
   ],
   "cases": [
     {
@@ -270,6 +271,58 @@
                     },
                     "updated_at": {
                       "default": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "a-codec-stage-name-keeps-its-text-and-holds-its-meaning",
+      "requirements": [
+        "DBS-185"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.runtime_model",
+          "documents": [
+            "runtime-model-codec-names.dbs"
+          ],
+          "expect": {
+            "none": {
+              "entities": [
+                "t"
+              ],
+              "manifest_text": [
+                "dbspec 1 shop",
+                "",
+                "table t {",
+                "  id i64 identity",
+                "  doc text",
+                "  packed bytes",
+                "  primary key (id)",
+                "  settings {",
+                "    codec doc json",
+                "    codec packed ordered_json gz",
+                "  }",
+                "}"
+              ],
+              "models": {
+                "t": {
+                  "fields": {
+                    "doc": {
+                      "codec": [
+                        "ordered_json"
+                      ]
+                    },
+                    "packed": {
+                      "codec": [
+                        "ordered_json",
+                        "gz"
+                      ]
                     }
                   }
                 }

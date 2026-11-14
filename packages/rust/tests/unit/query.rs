@@ -33,7 +33,7 @@ async fn clock_db(scratch: &Scratch, schema: &Schema) -> Db {
 // Requirements: CORE-80. A text that is no manifest and a text that does not hash to its hash are refused at the load.
 #[test]
 fn schema_load_refuses_a_text_that_is_no_manifest_of_its_hash() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_eq!(clock().hash(), CLOCK_HASH);
     let error = Schema::load("not a manifest", "", CLOCK_HASH).err().expect("a text that is no manifest");
     assert_eq!(error.kind(), Kind::SchemaInvalid, "{error}");
@@ -47,7 +47,7 @@ fn schema_load_refuses_a_text_that_is_no_manifest_of_its_hash() {
 // it is registered on, and its memory is returned when the last of them is dropped; the process keeps none.
 #[tokio::test]
 async fn the_memory_of_a_loaded_schema_returns_with_its_last_owner() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-schema-memory");
     let schema = clock();
     let text = schema.text_owners().expect("a loaded schema owns its text");
@@ -84,7 +84,7 @@ async fn the_memory_of_a_loaded_schema_returns_with_its_last_owner() {
 // Requirements: CORE-81. The entity is chosen by its name, and a name that the schema does not have is entity_unknown.
 #[test]
 fn query_new_takes_an_entity_of_the_schema() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let schema = clock();
     assert_eq!(Query::new(&schema, "clock_event").expect("an entity of the schema").entity(), "clock_event");
     let error = Query::new(&schema, "clock_tick").err().expect("no entity of the schema");
@@ -95,7 +95,7 @@ fn query_new_takes_an_entity_of_the_schema() {
 // Requirements: CORE-81. A terminal of a query with no connection is config.
 #[tokio::test]
 async fn a_terminal_without_a_connection_is_config() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let query = Query::new(&clock(), "clock_event").expect("query");
     let error = query.get_count().await.expect_err("no connection");
     assert_eq!(error.to_string(), "config: the model has no connection; connect it to a Db or to the Tx of a transaction");
@@ -105,7 +105,7 @@ async fn a_terminal_without_a_connection_is_config() {
 // of values other than the number of keys are config at the next terminal.
 #[tokio::test]
 async fn a_chain_that_the_entity_does_not_have_is_config_at_the_terminal() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let schema = clock();
     for (chain, args, message) in [
         ("Missing", vec![int(1)], "config: Missing is not a column of clock_event"),
@@ -128,7 +128,7 @@ async fn a_chain_that_the_entity_does_not_have_is_config_at_the_terminal() {
 // values of its columns.
 #[tokio::test]
 async fn where_and_order_by_select_and_order_the_rows() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-rows");
     let schema = clock();
     let db = clock_db(&scratch, &schema).await;
@@ -155,7 +155,7 @@ async fn where_and_order_by_select_and_order_the_rows() {
 // Requirements: CORE-83. A terminal with a chain adds its conditions with and, and does not change the query.
 #[tokio::test]
 async fn a_terminal_with_a_chain_leaves_the_query_unchanged() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-by");
     let schema = clock();
     let db = clock_db(&scratch, &schema).await;
@@ -175,7 +175,7 @@ async fn a_terminal_with_a_chain_leaves_the_query_unchanged() {
 // read is column_unselected.
 #[tokio::test]
 async fn value_names_a_column_that_the_row_read() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-value");
     let schema = clock();
     let db = clock_db(&scratch, &schema).await;
@@ -193,7 +193,7 @@ async fn value_names_a_column_that_the_row_read() {
 // Requirements: CORE-81, CORE-20. A query that is connected to the Tx of a transaction runs in that transaction.
 #[tokio::test]
 async fn a_query_runs_in_the_transaction_it_is_connected_to() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-query-tx");
     let schema = clock();
     let db = clock_db(&scratch, &schema).await;

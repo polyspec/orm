@@ -4,7 +4,7 @@
 // use of tsc is a file of its own.
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { PROCESS, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { tscDiagnostics } from './tsc-diagnostics.mjs';
 
 const source = fileURLToPath(new URL('../src/index.js', import.meta.url));
@@ -26,7 +26,7 @@ const diagnostics = uses => tscDiagnostics('orm-refusal-types-', 'use', uses.map
   `import { Author, User, Db } from ${JSON.stringify(source)};\ndeclare const db: Db;\nconst author = () => new Author().connect(db);\nexport const refs = [author, User];\n${use}\n`));
 
 // Requirements: DSL-10, DSL-19, DSL-47, DSL-67, DSL-96, DSL-98, DSL-123, PRT-14.
-caseTest('tsc accepts each chain of the errors vector as a promise and refuses it as rows', PROCESS, async () => {
+caseTest('tsc accepts each chain of the errors vector as a promise and refuses it as rows', async () => {
   const uses = chains.flatMap(chain => [
     `export const rows: Promise<unknown> = ${chain.source};`,
     `export const rows: Author[] = ${chain.source};`,

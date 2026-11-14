@@ -347,7 +347,7 @@ mod tests {
 
     #[test]
     fn precision_follows_the_native_type_and_dialect_default() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(precision("datetime(6)", "mysql"), Ok(6));
         assert_eq!(precision("datetime", "mysql"), Ok(0));
         assert_eq!(precision("time(3) without time zone", "postgres"), Ok(3));
@@ -359,7 +359,7 @@ mod tests {
 
     #[test]
     fn temporal_text_follows_the_dbspec_forms() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         use crate::tool_db::is_temporal;
         for (kind, text) in
             [("date", "0001-01-01"), ("date", "9999-12-31"), ("time", "23:59:59.999999"), ("time", "00:00:00"), ("datetime", "2026-01-02 03:04:05.1")]
@@ -382,7 +382,7 @@ mod tests {
 
     #[test]
     fn a_sqlite_text_is_checked_for_its_form_before_its_digits() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         use crate::tool_db::sqlite_temporal;
         for (kind, text, rule) in [
             ("date", "2026-1-02", value::SQLITE_DATE_FORM),
@@ -404,7 +404,7 @@ mod tests {
 
     #[test]
     fn a_sqlite_dbspec_column_takes_the_fraction_digits_of_its_check() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let cell = |text: &str| GridCell::Text(text.to_owned());
         assert_eq!(sqlite_dbspec_cell("datetime", &mut cell("2026-01-02 03:04:05"), None), Ok(GridCell::DateTime("2026-01-02 03:04:05".into())));
         assert_eq!(sqlite_dbspec_cell("datetime", &mut cell("2026-01-02 03:04:05.000"), None), Err(value::SQLITE_FRACTION));
@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn fraction_keeps_exactly_p_digits_and_rejects_dropped_digits() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(fraction("2026-01-02 03:04:05.120000", 3), Ok("2026-01-02 03:04:05.120".into()));
         assert_eq!(fraction("03:04:05.000000", 0), Ok("03:04:05".into()));
         assert_eq!(fraction("03:04:05.123456", 6), Ok("03:04:05.123456".into()));
@@ -427,7 +427,7 @@ mod tests {
 
     #[test]
     fn a_described_refusal_names_the_position_of_its_column() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(refused(value::BOOLEAN, 1).message(), "catalog_value: column 2: a boolean column holds a value that is not a boolean");
         assert_eq!(
             refused(value::FRACTION_PAST_PRECISION, 0).message(),

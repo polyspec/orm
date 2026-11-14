@@ -713,7 +713,7 @@ mod declared_boolean_tests {
 
     #[test]
     fn selected_boolean_groups_keep_their_declared_type() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!();
         let child = Assemble { columns: vec![OutCol { index: 2, name: "child_flag".into(), typ: "bool".into(), ..Default::default() }], ..Default::default() };
         let assemble = Assemble {
             columns: vec![
@@ -741,7 +741,7 @@ mod native_cell_bytes_tests {
     // Requirements: INT-142.
     #[tokio::test]
     async fn sqlite_driver_row_bytes_remain_exact() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.unwrap();
         let row = sqlx::query("SELECT X'007F80FF41' AS payload").fetch_one(&mut connection).await.unwrap();
         let decoded = read_row(&DriverRow::Sqlite(row), 1, Zone).unwrap();

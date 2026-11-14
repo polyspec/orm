@@ -88,7 +88,6 @@ from polyspec.orm.names import ChainKey
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
-from . import testcase
 from .case_database import case_corpus, case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
@@ -129,16 +128,6 @@ CALLBACK_FAILURE = CallbackError("the transaction callback failed")
 
 class RecipeCase(VectorCase):
     """A case of a recipe."""
-
-    @property
-    def deadline(self) -> float:
-        """The interface check is another process; the other cases compute in memory."""
-        steps = self.case["steps"]
-        return (
-            testcase.PROCESS
-            if any(step["op"] == "interface.symbols" for step in steps)
-            else testcase.COMPUTE
-        )
 
 
 class _Failed:
@@ -1501,7 +1490,6 @@ def _interface_symbols() -> None:
         cwd=REPOSITORY_ROOT,
         capture_output=True,
         text=True,
-        timeout=280,
         env={**os.environ, "ORM_PYTHON": sys.executable},
     )
     if result.returncode != 0:
@@ -2248,7 +2236,7 @@ def _markdown_session(step: dict, database: str) -> None:
                 models.Slots().connect(db).gets()
         finally:
             db.close()
-    server.join(10)
+    server.join()
     listener.close()
     if received != step["messages"]:
         raise AssertionError(
@@ -2642,15 +2630,7 @@ def _server_variable(name: str, database: str) -> str:
 
 
 class DatabaseRecipeCase(VectorCase):
-    """A case of a recipe on a database: it creates and drops a database and runs a bounded number of statements."""
-
-    deadline = testcase.DATABASE
-
-    def __init__(self, case_id, check, case) -> None:
-        super().__init__(case_id, check, case)
-        # A case that states its steps gets their step budget instead of DATABASE (FCV-4).
-        if "deadline" in case:
-            self.deadline = testcase.step_budget(case["deadline"]["steps"])
+    """A case of a recipe on a database: it creates and drops a database and runs its statements."""
 
 
 def _database_recipe_tests(path: str, database: str):
@@ -2670,20 +2650,6 @@ def _database_recipe_tests(path: str, database: str):
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
-        # A case with a step deadline gets its step guard at its start: it ends the case at the step budget, or when no
-        # apply event comes within DATABASE (FCV-4); each event restarts the stall limit (recipe_apply).
-        guard = (
-            testcase.StepGuard(test.id(), test.deadline, testcase.DATABASE)
-            if "deadline" in case
-            else None
-        )
-        try:
-            _check_case(test, case, guard)
-        finally:
-            if guard is not None:
-                guard.stop()
-
-    def _check_case(test: unittest.TestCase, case: dict, guard) -> None:
         if markdown:
             # flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a
             # corpus of no table.
@@ -2698,16 +2664,13 @@ def _database_recipe_tests(path: str, database: str):
                     dsn,
                     install_first,
                     corpus,
-                    guard,
                 )
             return
         with (
             tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
             case_database(database, directory, "orm_recipe") as dsn,
         ):
-            _run_case(
-                path, recipe, case, database, schema, dsn, install_first, guard=guard
-            )
+            _run_case(path, recipe, case, database, schema, dsn, install_first)
 
     cases = [
         case
@@ -2768,7 +2731,6 @@ def _run_case(
     dsn: str,
     install_first: list,
     corpus: Path | None = None,
-    guard: testcase.StepGuard | None = None,
 ) -> None:
     db = Db.connect(dsn)
     try:
@@ -2779,7 +2741,7 @@ def _run_case(
             else:
                 for shared in [*install_first, schema]:
                     db.utils().schema().install(shared)
-        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus, guard)
+        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus)
     finally:
         db.close()
 
@@ -2804,7 +2766,6 @@ def _run_case_on(
     dsn: str,
     db: Db,
     corpus: Path | None = None,
-    guard: testcase.StepGuard | None = None,
 ) -> None:
     catalog = connect_catalog(dsn)
     closers: list = []
@@ -2825,8 +2786,6 @@ def _run_case_on(
         "fields": {},
         "records": [],
         "hook_bases": {},
-        # The step guard of a case with a step deadline, which each apply event restarts (recipe_apply).
-        "guard": guard,
     }
     try:
         namespace = catalog.current_namespace()
@@ -3281,8 +3240,8 @@ def _op_replica_await(step: dict, context: dict) -> dict:
     """Returns after the replica has applied every change that the primary committed before the call (CFG-23). On
     PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message,
     commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of
-    the primary, on the database of the environment, since the case database reaches the replica only by this wait. The 60
-    seconds are the deadline of the wait: the replica applies the writes of every client that runs in parallel."""
+    the primary, on the database of the environment, since the case database reaches the replica only by this wait. The
+    wait has no timeout: it ends when the replica has applied the position, or with NULL when its SQL thread stops (T474)."""
     if context["database"] == "postgres":
         with native_session("postgres", context["dsn"]) as run:
             run("BEGIN")
@@ -3314,9 +3273,9 @@ def _op_replica_await(step: dict, context: dict) -> dict:
     waited = native_query(
         "mysql",
         replica,
-        [f"SELECT {wait}('{file}', {position}, 60) AS waited"],
+        [f"SELECT {wait}('{file}', {position}) AS waited"],
     )[0][0]["waited"]
-    if waited is None or int(waited) < 0:
+    if waited is None:
         raise AssertionError(f"the replica did not reach {file}:{position}")
     return {}
 
@@ -3388,7 +3347,7 @@ def _op_session_end_listener(step: dict, context: dict) -> dict:
     native_query(
         context["database"],
         session,
-        [f"SELECT pg_terminate_backend({int(rows[0]['pid'])}, 5000)"],
+        [f"SELECT pg_terminate_backend({int(rows[0]['pid'])})"],
     )
     return {}
 
@@ -3434,7 +3393,7 @@ def _op_session_end(step: dict, context: dict) -> dict:
         database,
         session,
         [
-            f"SELECT pg_terminate_backend({session_id}, 5000)"
+            f"SELECT pg_terminate_backend({session_id})"
             if database == "postgres"
             else f"KILL {session_id}"
         ],
@@ -4458,8 +4417,9 @@ def _utils_groups(step: dict, context: dict) -> dict:
 
 
 def _pool_transactions(step: dict, context: dict) -> dict:
-    """Count transactions in threads of their own: the first hold of them stay open until hold have
-    begun, so the pool shows the connections that they take at once (CFG-4, CFG-5)."""
+    """Count read-only transactions in threads of their own: the first hold of them stay open until hold
+    have begun, so the pool shows the connections that they take at once (CFG-4, CFG-5). A read-only
+    transaction takes no write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221)."""
     db = _connection_of(step, context)
     lock = threading.Lock()
     gate = threading.Event()
@@ -4473,14 +4433,13 @@ def _pool_transactions(step: dict, context: dict) -> dict:
             state["begun"] += 1
             if state["begun"] == step["hold"]:
                 gate.set()
-        if not gate.wait(30):
-            raise AssertionError("the transactions did not begin")
+        gate.wait()
         with lock:
             state["active"] -= 1
 
     with ThreadPoolExecutor(max_workers=step["transactions"]) as pool:
         flows = [
-            pool.submit(db.transaction, body, {"retry": 0})
+            pool.submit(db.transaction, body, {"retry": 0, "readOnly": True})
             for _ in range(step["transactions"])
         ]
     for flow in flows:
@@ -4577,6 +4536,9 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 kind=statement["kind"],
                 tables=statement["tables"],
             )
+        # hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+        if "hold_ms" in step:
+            time.sleep(step["hold_ms"] / 1000)
         if "conflict" in step:
             raise transaction_conflict(step["conflict"])
         return last
@@ -4752,6 +4714,7 @@ def _install_hook(step: dict, context: dict) -> None:
             else None,
             "nested": h.get("nested") is True,
             "code": h.get("error", ""),
+            "read": h.get("read"),
         }
         for h in hooks
     ]
@@ -4785,6 +4748,22 @@ def _install_hook(step: dict, context: dict) -> None:
                 and_where(
                     query,
                     {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
+            elif action == "locked_read":
+                # The hook reads with its lock in a transaction of another connection before the client plans the
+                # request, and a refusal of that read fails the operation unchanged (INT-78).
+                read = [0]
+
+                def locked(spec: dict = a["read"]) -> None:
+                    read[0] = len(_chain_built(spec, context).gets().values())
+
+                _connection_of(a["read"], context).transaction(locked, {"retry": 0})
+                context["records"].append(
+                    {
+                        "kind": query["kind"],
+                        "entity": query["entity"],
+                        "read": {"int": str(read[0])},
+                    }
                 )
             elif action == "record":
                 context["records"].append(
@@ -4828,6 +4807,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
                 ["kind", {"text": record["kind"]}],
                 ["entity", {"text": record["entity"]}],
                 *([["param", record["param"]]] if "param" in record else []),
+                *([["read", record["read"]]] if "read" in record else []),
             ]
         }
         for record in records

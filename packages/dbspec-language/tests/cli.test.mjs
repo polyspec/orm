@@ -10,11 +10,11 @@ import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, PROCESS } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { codePointIndex, parserLines, repo } from './helpers.mjs';
 
 // Each case runs node as a child process (PROCESS).
-const vector = (name, body) => caseTest(name, PROCESS, body);
+const vector = (name, body) => caseTest(name, body);
 
 const bin = fileURLToPath(new URL('../bin/dbspec-fmt.mjs', import.meta.url));
 const editor = fileURLToPath(new URL('tests/editor/', repo));

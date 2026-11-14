@@ -12,7 +12,7 @@ use std::error::Error as _;
 
 #[test]
 fn a_driver_value_of_another_host_form_is_refused_at_its_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // The temporal value of a plain read takes only a temporal cell: an integer is no host form of a time column.
     let error = at_column(temporal_val(GridCell::Integer(7)).expect_err("an integer is no temporal value"), 2);
     let refusal = refusal_of(&error).expect("a refusal");
@@ -24,7 +24,7 @@ fn a_driver_value_of_another_host_form_is_refused_at_its_column() {
 
 #[test]
 fn a_driver_failure_names_no_column_and_keeps_its_cause() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // A failure of the driver's own decode, as sqlx reports a try_get that fails.
     let failure = sqlx::Error::ColumnDecode { index: "1".into(), source: "invalid length 3 for a uuid".into() };
     let error = at_column(failure, 1);
@@ -44,7 +44,7 @@ fn a_driver_failure_names_no_column_and_keeps_its_cause() {
 
 #[test]
 fn a_library_failure_keeps_its_cause() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // A PostgreSQL uuid of three bytes: the binary value is not of the length of its type.
     let failure = render(&Form::Scalar(2950), &[1, 2, 3]).expect_err("a uuid holds 16 bytes");
     let error = at_column(failure, 0);
@@ -56,7 +56,7 @@ fn a_library_failure_keeps_its_cause() {
 
 #[test]
 fn a_refusal_takes_the_position_of_its_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let error = at_column(value::refuse(value::MYSQL_TIMESTAMP), 4);
     assert_eq!(catalog_query_error(error).message(), "catalog_value: column 5: MySQL TIMESTAMP follows a time zone");
     assert_eq!(ValueRefusal::new(value::TIME_OF_DAY, 1).to_string(), "grid_temporal_value: column 1: time outside 00:00:00 to 23:59:59.999999");
@@ -64,14 +64,14 @@ fn a_refusal_takes_the_position_of_its_column() {
 
 #[test]
 fn the_tool_limit_errors_keep_their_catalog_codes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let limit = catalog_query_error(sqlx::Error::Decode("TOOL_QUERY_LIMIT: invalid or exceeded result budget".into()));
     assert!(limit.message().starts_with("catalog_limit:"), "{limit}");
 }
 
 #[test]
 fn an_oid_is_a_text_cell_and_a_type_of_no_named_form_is_no_cell_of_its_own() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     use sqlx::postgres::{types::PgInterval, Postgres};
     use sqlx::Type;
     // INT-185: an oid is written by its output function as a text cell, not as an integer.
@@ -100,7 +100,7 @@ fn numeric_bytes(weight: i16, sign: u16, scale: u16, digits: &[u16]) -> Vec<u8> 
 
 #[test]
 fn a_numeric_is_written_at_its_display_scale() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_eq!(numeric(&numeric_bytes(1, 0, 2, &[1, 2345, 6700])).unwrap(), "12345.67");
     assert_eq!(numeric(&numeric_bytes(0, 0x4000, 0, &[5])).unwrap(), "-5");
     assert_eq!(numeric(&numeric_bytes(-1, 0, 4, &[1])).unwrap(), "0.0001");
@@ -116,7 +116,7 @@ fn a_numeric_is_written_at_its_display_scale() {
 
 #[test]
 fn the_text_types_are_written_as_their_output_function_writes_them() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let uuid = [0xa0, 0xee, 0xbc, 0x99, 0x9c, 0x0b, 0x4e, 0xf8, 0xbb, 0x6d, 0x6b, 0xb9, 0xbd, 0x38, 0x0a, 0x11];
     assert_eq!(render(&Form::Scalar(2950), &uuid).unwrap(), "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
     assert_eq!(render(&Form::Scalar(3802), b"\x01{\"a\": 2}").unwrap(), "{\"a\": 2}");
@@ -138,7 +138,7 @@ fn network_bytes(family: u8, bits: u8, cidr: bool, address: &[u8]) -> Vec<u8> {
 
 #[test]
 fn a_network_address_is_written_as_inet_net_ntop_writes_it() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let inet = |bytes: &[u8]| render(&Form::Scalar(869), bytes).unwrap();
     let cidr = |bytes: &[u8]| render(&Form::Scalar(650), bytes).unwrap();
     assert_eq!(inet(&network_bytes(2, 24, false, &[192, 168, 0, 1])), "192.168.0.1/24");
@@ -158,7 +158,7 @@ fn a_network_address_is_written_as_inet_net_ntop_writes_it() {
 
 #[test]
 fn a_text_search_value_is_written_as_its_output_function_writes_it() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // tsvector: two lexemes, the second at positions 1 with weight A and 2.
     let mut vector = vec![0, 0, 0, 2];
     vector.extend(b"a\0");
@@ -217,7 +217,7 @@ fn int4_array(lower: i32, elements: &[Option<i32>]) -> Vec<u8> {
 
 #[test]
 fn a_container_is_written_with_the_quotes_of_its_output_function() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let int4s = Form::Array(Box::new(Form::Scalar(23)));
     assert_eq!(render(&int4s, &int4_array(1, &[Some(1), Some(2)])).unwrap(), "{1,2}");
     assert_eq!(render(&int4s, &int4_array(1, &[Some(1), None])).unwrap(), "{1,NULL}");
@@ -267,7 +267,7 @@ fn a_container_is_written_with_the_quotes_of_its_output_function() {
 
 #[test]
 fn only_the_type_kind_failure_of_the_sqlx_resolver_starts_the_multirange_describe() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // sqlx-postgres 0.9 fails to decode `pg_type.typtype` of a multirange as this column decode error (INT-185).
     let kind = sqlx::Error::ColumnDecode { index: "\"typtype\"".into(), source: "unknown type code 109".into() };
     assert!(is_unknown_type_kind(&kind));

@@ -24,7 +24,7 @@ export function runFixture(script: string, files: Record<string, string>, env: R
     }
     const fixtureEnv = Object.fromEntries(Object.entries(env).map(([key, value]) => [key, value.replaceAll('{dir}', dir)]));
     fixtureEnv.GOMODCACHE ??= path.join(dir, 'mod');
-    return spawnSync(process.execPath, [path.join(dir, script)], { cwd: dir, encoding: 'utf8', env: isolatedEnvironment(fixtureEnv), timeout: 60_000 });
+    return spawnSync(process.execPath, [path.join(dir, script)], { cwd: dir, encoding: 'utf8', env: isolatedEnvironment(fixtureEnv) });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

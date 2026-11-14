@@ -13,11 +13,19 @@ pub mod collection;
 pub mod core;
 pub mod db;
 pub mod dbspec;
+pub mod dbspec_json;
 pub mod decimal;
 mod driver;
 pub mod engine;
 mod error;
 pub mod events;
+/// The fault injection points of the crate (binding design G-5, X-1; docs/spec/core.md CORE-121), which `faults` of the
+/// interface contract names. A point does nothing unless the feature `fault-test` is on.
+pub mod fault {
+    /// A column of the rows of a step that the plan does not project: the kind `internal`, which no input reaches.
+    #[doc(hidden)]
+    pub const INTERNAL: &str = "orm.internal";
+}
 pub mod ir;
 mod kind;
 pub mod listen;
@@ -50,13 +58,14 @@ pub use chrono;
 pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
 pub use core::Core;
 pub use db::{
-    AuditSource, Config, Db, DbStats, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION, DEFAULT_BLIND_INDEX_KEY,
+    AuditSource, Config, Db, DbStats, HookFuture, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION, DEFAULT_BLIND_INDEX_KEY,
     DEFAULT_PLAN_CACHE_SIZE, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS, DEFAULT_POOL_IDLE_SIZE, DEFAULT_POOL_LIFETIME_MS, DEFAULT_STATEMENT_CACHE_SIZE,
     DEFAULT_STATEMENT_TIMEOUT_MS,
 };
 pub use engine::Dialect;
 pub use error::{CallbackFailure, Error};
 pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};
+pub use ir::VERSION as IR_VERSION;
 pub use kind::Kind;
 pub use model::{AnyModel, Entity, EntityRef, LoadedEntity, Model};
 pub use orm_value::{JsonValue, OrmValue};
@@ -341,7 +350,7 @@ mod sqlite_code_tests {
     // Requirements: PLN-24.
     #[test]
     fn sqlite_locked_is_driver_not_deadlock() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(sqlite_extended_code(6, "database table is locked"), Kind::Driver);
         assert_eq!(sqlite_extended_code(262, "database table is locked"), Kind::Driver);
     }
@@ -351,7 +360,7 @@ mod sqlite_code_tests {
     // checks the generator against its table; the recipe case sqlite_extended_code_names tests the messages.
     #[test]
     fn result_code_names_match_the_table() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let manifest = std::env::var("CARGO_MANIFEST_DIR").expect("cargo test sets CARGO_MANIFEST_DIR");
         let yaml = std::fs::read_to_string(format!("{manifest}/../../docs/spec/sqlite-result-codes.yaml")).expect("docs/spec/sqlite-result-codes.yaml");
         let mut listed = std::collections::HashMap::new();

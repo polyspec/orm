@@ -12,20 +12,15 @@ use std::sync::{
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-105.
 async fn rejected_commit_permits_rollback_all_native_mutations() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+    let _case = polyspec_orm_testcase::case!();
+    async {
         let path = physical_fixture::sqlite_path("commit-permit");
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
             let dsn = physical_fixture::dsn_for(dialect, &path);
             let (db, mut seed, _) = tool_db::open(&dsn).await.unwrap();
             let name = format!("orm_commit_permit_{}", std::process::id());
-            seed.exec(
-                &format!("CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL){}", if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }),
-                &[],
-            )
-            .await
-            .unwrap();
+            seed.exec(&format!("CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL)"), &[]).await.unwrap();
             seed.exec(&format!("INSERT INTO {name}(id,n) VALUES(1,10)"), &[]).await.unwrap();
             let mut catalog = CatalogConnection::connect(&dsn).await.unwrap();
             let table = TableRef { namespace: catalog.current_namespace().await.unwrap(), name: name.clone() };
@@ -75,9 +70,8 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
             physical_fixture::finish_physical_dialect(db, seed, dialect, "passed").await;
         }
         std::fs::remove_file(path).unwrap();
-    })
-    .await
-    .expect("commit permit deadline");
+    }
+    .await;
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

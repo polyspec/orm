@@ -1,6 +1,5 @@
 import unittest
 
-from .testcase import COMPUTE
 from polyspec.orm.dbspec.apply import DbspecApplyError, _Applier
 
 
@@ -65,7 +64,6 @@ def failing_session(error, locked=False):
 
 
 class SqliteLockResultTest(unittest.TestCase):
-    deadline = COMPUTE
 
     def assert_restored(self, connection, locked=False):
         self.assertEqual(

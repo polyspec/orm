@@ -1,6 +1,6 @@
 [package]
 name = "polyspec-orm-tests"
-version = "0.0.31"
+version = "0.0.33"
 edition = "2021"
 rust-version = "1.99.0"
 publish = false
@@ -58,7 +58,7 @@ polyspec-orm-case-database = { path = "../case-database" }
 polyspec-orm-build = { path = "../build", features = ["live-db"] }
 # The binaries of the examples, the benchmark client and the integration program import the shared helpers from it.
 polyspec-orm-test-support = { path = "../test-support" }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 # The native baseline of the performance gate reads a DECIMAL and a NUMERIC price through sqlx as its 128-bit decimal.
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "rust_decimal"] }
 # The dbspec.read_set op creates the symbolic links of its tree; the crate holds the platform calls (Rust std has none that is cross-platform).

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { readRecord, summarize, type CheckRecord } from './record.mts';
 import { expandNeeds, NEEDS, SETUP_NEEDS } from './ci-setup.mts';
 import type { StepRecord } from './report.mts';
@@ -38,7 +38,7 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string');
 }
 
-caseTest('the check runner accepts component target names and rejects malformed names', COMPUTE, () => {
+caseTest('the check runner accepts component target names and rejects malformed names', () => {
   const declaration = /^CHECK_TARGETS\s*=\s*(.+)$/m.exec(readFileSync(join(repo, 'Makefile'), 'utf8'));
   assert.ok(declaration?.[1], 'Makefile declares CHECK_TARGETS');
   const checkTargets = declaration[1].trim().split(/\s+/);
@@ -54,7 +54,7 @@ caseTest('the check runner accepts component target names and rejects malformed 
 });
 
 // The dialect facts are go tests of go-test-check (T334-3-6-3), so that target declares their MySQL privilege fixture.
-caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup need', COMPUTE, () => {
+caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup need', () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
   const target = inputs.targets['go-test-check'];
@@ -70,7 +70,7 @@ caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup
 
 // client-pooler-check runs every client lane of scripts/client-db-test.mts, so its php-extension lane builds the extension with
 // the tools of make orm-install-php-extension-tools, as client-db-php-extension-check does (T272).
-caseTest('the client pooler check declares the PHP extension tools that its extension lane builds with', COMPUTE, () => {
+caseTest('the client pooler check declares the PHP extension tools that its extension lane builds with', () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
   for (const name of ['client-pooler-php-extension-check', 'client-db-php-extension-check']) {
@@ -82,7 +82,7 @@ caseTest('the client pooler check declares the PHP extension tools that its exte
 
 // The feature verification targets run the verification commands of the changed features, the TypeScript interface check among
 // them, which reads declarations with the TypeScript of make orm-install-interfaces-typescript (T278).
-caseTest('the feature verification targets declare the TypeScript extractor need', COMPUTE, () => {
+caseTest('the feature verification targets declare the TypeScript extractor need', () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
   for (const name of ['feature-verify-rust', 'feature-verify-other']) {
@@ -92,7 +92,7 @@ caseTest('the feature verification targets declare the TypeScript extractor need
   }
 });
 
-caseTest('the suite targets and the comparison declare every client and fixture setup need', COMPUTE, () => {
+caseTest('the suite targets and the comparison declare every client and fixture setup need', () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
   // A suite runs the test files of its runtime on the servers of a run and on flowmark (scripts/suite-test.mts).
@@ -269,7 +269,7 @@ function recipe(target: string): string[] {
 // or a GROUP outside GitHub Actions stops make before any command (G5.111). `make -n check-run` runs with only the variables the case provides
 // as its environment (tests/environment.mts), so even when a CI group's job runs this case, that GROUP and GITHUB_ACTIONS do not reach it
 // (G5.119).
-caseTest('make orm-check delegates to ci-targets and make check-run starts the runner', COMPUTE, () => {
+caseTest('make orm-check delegates to ci-targets and make check-run starts the runner', () => {
   const ormCheck = recipe('orm-check');
   assert.deepEqual(ormCheck, ['$(MAKE) ci-targets TARGETS=check-run']);
   const run = recipe('check-run');
@@ -292,14 +292,14 @@ caseTest('make orm-check delegates to ci-targets and make check-run starts the r
 // Actions started, so a local run never reads a CI identity as set and never sets one: the case passes the value of its own process
 // to make. runner-check runs this file in the static CI group (CI_TARGETS_static), so the case runs in CI.
 if (process.env.GITHUB_ACTIONS === 'true') {
-  caseTest('make check-run accepts a CI group on GitHub Actions', COMPUTE, () => {
+  caseTest('make check-run accepts a CI group on GitHub Actions', () => {
     const result = spawnSync('make', ['-n', '--no-print-directory', 'check-run', 'GROUP=static'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ GITHUB_ACTIONS: process.env.GITHUB_ACTIONS ?? '' }) });
     assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
     assert.match(result.stdout, /node scripts\/check\/run\.mts /, result.stdout);
   });
 }
 
-caseTest('a run records its setup steps and its targets', PROCESS, () => {
+caseTest('a run records its setup steps and its targets', () => {
   const c = checkout(scope);
   try {
     const result = c.run();
@@ -315,7 +315,7 @@ caseTest('a run records its setup steps and its targets', PROCESS, () => {
 });
 
 // A failed target prints its ::error line when it ends, on GitHub Actions, so the failure is visible before the next target starts (B1-3).
-caseTest('a failed target prints its ::error line on GitHub Actions before the next target starts', PROCESS, () => {
+caseTest('a failed target prints its ::error line on GitHub Actions before the next target starts', () => {
   const c = checkout(scope);
   try {
     const result = c.run('', { GITHUB_ACTIONS: 'true', STUB_TRACE: '1' });
@@ -329,7 +329,7 @@ caseTest('a failed target prints its ::error line on GitHub Actions before the n
   }
 });
 
-caseTest('a killed run stays recorded as incomplete', PROCESS, () => {
+caseTest('a killed run stays recorded as incomplete', () => {
   const c = checkout(scope);
   try {
     const result = c.run('a');
@@ -344,7 +344,7 @@ caseTest('a killed run stays recorded as incomplete', PROCESS, () => {
 
 // The list case checks that the record of a forcibly terminated run separates failed targets from unfinished targets. `a` passes and `b`
 // fails, and `c` ends the runner.
-caseTest('a killed run records failed and unfinished targets apart', PROCESS, () => {
+caseTest('a killed run records failed and unfinished targets apart', () => {
   const c = checkout(scope);
   try {
     const result = c.run('c');
@@ -357,7 +357,7 @@ caseTest('a killed run records failed and unfinished targets apart', PROCESS, ()
   }
 });
 
-caseTest('summarize separates failed from unfinished targets', COMPUTE, () => {
+caseTest('summarize separates failed from unfinished targets', () => {
   const record = summarize({ id: 'summary', tree: '', commit: '', clean: true, started: '', ended: null, result: 'running', failed: [], incomplete: [], setup: [], targets: [{ name: 'a', status: 'passed' }, { name: 'b', status: 'failed' }, { name: 'c', status: 'running' }, { name: 'd', status: 'pending' }] });
   assert.deepEqual([record.failed, record.incomplete], [['b'], ['c', 'd']]);
 });
@@ -366,7 +366,7 @@ caseTest('summarize separates failed from unfinished targets', COMPUTE, () => {
 // failure line as the reason, while b and d, which do not need it, run. b fails, and the report contains its exact command and output, and the failed case's
 // expected and actual values, the unfinished case and its last step, and the run directory b left (only the end of files over LIMIT_BYTES),
 // and the run exits with 1. The CI summary step writes the summary of the same run id to GITHUB_STEP_SUMMARY.
-caseTest('a failed setup step blocks only the targets that need it, and the report explains every failure', PROCESS, async ({ step }) => {
+caseTest('a failed setup step blocks only the targets that need it, and the report explains every failure', async ({ step }) => {
   const c = checkout(scope);
   try {
     const stepSummary = join(c.root, '..', 'step-summary.md');
@@ -414,7 +414,7 @@ caseTest('a failed setup step blocks only the targets that need it, and the repo
 
 // The crash case (G5.38-1) is a run in which the runner dies at target c. The summary step writes that the runner did not finish, and the report
 // directory holds the records up to that point and the target logs.
-caseTest('the summary step reports a runner that did not finish, with the partial record', PROCESS, async () => {
+caseTest('the summary step reports a runner that did not finish, with the partial record', async () => {
   const c = checkout(scope);
   try {
     const stepSummary = join(c.root, '..', 'step-summary.md');
@@ -441,7 +441,7 @@ caseTest('the summary step reports a runner that did not finish, with the partia
 
 // The make -k case puts the real definition of repo-check into a temporary Makefile, with $(NODE) pointing at a node that fails in the first part, and runs the runner's
 // command `make -k repo-check`. The second part runs, and make ends with a failure.
-caseTest('the parts of a target after a failed part still run under make -k', PROCESS, async () => {
+caseTest('the parts of a target after a failed part still run under make -k', async () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'parts-')));
   try {
     const lines = readFileSync(resolve(repo, 'Makefile'), 'utf8').split('\n');
@@ -485,7 +485,7 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
 
 // The report case (G5.38-4) checks that the CI summary step puts the record and the test server logs into that run's report. The upload
 // step uploads only that report directory, so this is the artifact. Logs larger than 1 MiB keep only their end, and the data directory is not included.
-caseTest('the summary step keeps the record and the server logs in the report of the run', PROCESS, async () => {
+caseTest('the summary step keeps the record and the server logs in the report of the run', async () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'failing', ORM_CHECK_RUN_ID: '555-1' }).status, 1);
@@ -508,7 +508,7 @@ caseTest('the summary step keeps the record and the server logs in the report of
 
 // The report-write case (G5.43-1) is a run in which target b deletes the report directory during the run. The runner does not die and runs to the end
 // and records `report write failed` in b's record, and exits with 1.
-caseTest('a report write that fails is recorded and does not stop the runner', PROCESS, () => {
+caseTest('a report write that fails is recorded and does not stop the runner', () => {
   const c = checkout(scope);
   try {
     const result = c.run('', { STUB_SUITE: 'lost', ORM_CHECK_RUN_ID: '7-1', STUB_REPORT_RUN: 'ci_7_1' });
@@ -529,7 +529,7 @@ caseTest('a report write that fails is recorded and does not stop the runner', P
 
 // The crash case (G5.43-1) is a run in which target b throws an error not handled outside the runner. The runner records that error as `runner
 // error: <stack>`, records the run as crashed, and exits with 1.
-caseTest('an unhandled error of the runner is recorded as the reason of a crashed run', PROCESS, async () => {
+caseTest('an unhandled error of the runner is recorded as the reason of a crashed run', async () => {
   const c = checkout(scope);
   try {
     const result = c.run('', { STUB_SUITE: 'throws', ORM_CHECK_RUN_ID: '8-1' });
@@ -547,7 +547,7 @@ caseTest('an unhandled error of the runner is recorded as the reason of a crashe
 
 // The report-location case (G5.43-2) is a run in which removing the database deletes the whole received directory, as databases.mts drop does. The report
 // is outside that directory, so environment.txt and the logs of all steps remain, and there are no write failures.
-caseTest('removing the run databases leaves the report of the run', PROCESS, () => {
+caseTest('removing the run databases leaves the report of the run', () => {
   const c = checkout(scope);
   try {
     writeFileSync(join(c.root, 'pass-b'), '');
@@ -566,7 +566,7 @@ caseTest('removing the run databases leaves the report of the run', PROCESS, () 
 
 // The log-size case (G5.43-2) is a run in which target b prints 3 MiB. Even during the run, the log keeps only the first 1 MiB and the last 256 KiB,
 // and has the head (the command), the last line, and the number of bytes omitted.
-caseTest('a target log keeps its head and its tail within the size limit', PROCESS, () => {
+caseTest('a target log keeps its head and its tail within the size limit', () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'verbose', ORM_CHECK_RUN_ID: '10-1' }).status, 0);
@@ -585,7 +585,7 @@ caseTest('a target log keeps its head and its tail within the size limit', PROCE
 // The first-failure-line case (G5.43-3) reads the end of the client-db-check output from the CI run of G5.41-1 (scripts/check/fixtures/client-db-check-lanes.txt,
 // as it appears in the job log with the runner's STEP prefix removed). The failure and error lines with lane prefixes, in the order they appeared, become the first failure line
 // and PASS and STEP lines are not included.
-caseTest('the first failure lines of a target are its failure and error lines', COMPUTE, async () => {
+caseTest('the first failure lines of a target are its failure and error lines', async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
   for (const line of readFileSync(resolve(repo, 'scripts/check/fixtures/client-db-check-lanes.txt'), 'utf8').split('\n').filter(Boolean)) found.line(line);
@@ -606,7 +606,7 @@ caseTest('the first failure lines of a target are its failure and error lines', 
 // The reported-error case (G5.57) is the feature-check line from the CI run of G5.53. The Go testcase records a failure as `stress_test.go:80: ...`
 // and then writes only `FAIL <case> ...: the errors reported above`. The report line before it becomes the first failure line before the FAIL line, so even if the log
 // shrinks its middle, the reason remains. Lines of cases that passed earlier are not included.
-caseTest('a FAIL that points at the errors reported above keeps those errors as first failure lines', COMPUTE, async () => {
+caseTest('a FAIL that points at the errors reported above keeps those errors as first failure lines', async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
   const step = 'STEP features/performance_gate/preempted-timing elapsed=1m15.37s: ';
@@ -629,7 +629,7 @@ caseTest('a FAIL that points at the errors reported above keeps those errors as 
 // The passed-case case (G5.71) is the feature-unit-check line from a CI run. A coverage test's case shows the sample output
 // that deliberately fails (`FAIL sample/...`) and ends with PASS. That line is not a target failure, so it is left out of the first failure line,
 // and the real failure after it becomes the first failure line.
-caseTest('the failure lines of a case that passed are not the first failure lines of the target', COMPUTE, async () => {
+caseTest('the failure lines of a case that passed are not the first failure lines of the target', async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
   const sample = Array.from({ length: 25 }, (_, i) => `FAIL sample/owner/typescript/none run ${i} elapsed=31ms: unexpected test output: {"success":true}`);
@@ -647,7 +647,7 @@ caseTest('the failure lines of a case that passed are not the first failure line
 
 // The warning case (G5.73) checks that `WARNING` lines, where a performance measurement exceeded the reference value, are collected as warnings rather than failures, and that the summary
 // records them separately.
-caseTest('a WARNING line is kept as a warning, not a failure, and the summary lists it', COMPUTE, async () => {
+caseTest('a WARNING line is kept as a warning, not a failure, and the summary lists it', async () => {
   const { failureLine, failures, summary } = await import('./report.mts');
   const found = failures();
   const warned = 'dbspec_stress median parse CPU of 401.000 ms is 11.50 times the reference CPU of 34.870 ms, above the reference ratio 11.0 (docs/spec/dbspec.md, Verification); machine Linux aarch64, PHP 8.5.4';
@@ -661,7 +661,7 @@ caseTest('a WARNING line is kept as a warning, not a failure, and the summary li
 
 // The space case (G5.43-4) is a run in which target b fails because /tmp exceeds its quota (EDQUOT). The report records space at the start and at each step
 // and b's first failure line states that it failed for lack of space, along with the free space of `/` and `/tmp` at that moment.
-caseTest('a target that runs out of space says so with the free space of / and /tmp', PROCESS, () => {
+caseTest('a target that runs out of space says so with the free space of / and /tmp', () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'space', ORM_CHECK_RUN_ID: '11-1' }).status, 1);
@@ -681,7 +681,7 @@ caseTest('a target that runs out of space says so with the free space of / and /
 // The case-name case (G5.44-2) is the client-db-check output from the CI run of G5.43-4. The case name in the TypeScript lane
 // `driver-error/...` contains an error word, but that step line only created and removed a database, so it is not the first failure line; the first failure
 // line is the Rust lane's failure.
-caseTest('a case name that holds an error word does not make its step lines failures', COMPUTE, async () => {
+caseTest('a case name that holds an error word does not make its step lines failures', async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
   for (const line of [
@@ -709,7 +709,7 @@ caseTest('a case name that holds an error word does not make its step lines fail
 
 // The disk I/O error case (G5.44-2) is target b, which fails with a SQLite disk I/O error. If /tmp has 0 bytes free at that moment, the first failure line
 // records the lack of space and the largest deleted-but-open file; if space remains, the error alone is not recorded as lack of space.
-caseTest('a disk I/O error is out of space only while a file system has no free space', PROCESS, () => {
+caseTest('a disk I/O error is out of space only while a file system has no free space', () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'diskio-full', ORM_CHECK_RUN_ID: '12-1' }).status, 1);
@@ -727,7 +727,7 @@ caseTest('a disk I/O error is out of space only while a file system has no free 
 
 // The npm case (G5.44-3) is target b, which fails and points only to a debug log outside the report, as npm does. The report moves that log into targets/b/,
 // and its first failure line is the error line of that log.
-caseTest('a failed npm command keeps its debug log and its error lines in the report', PROCESS, () => {
+caseTest('a failed npm command keeps its debug log and its error lines in the report', () => {
   const c = checkout(scope);
   try {
     const debug = join(c.root, '..', '2026-10-05T11_42_43_213Z-debug-0.log');
@@ -746,7 +746,7 @@ caseTest('a failed npm command keeps its debug log and its error lines in the re
 // The CI-setup case (G5.52) is a run in which the CI setup step rust fails. The runner records setup phase ci/rust as failed, and records a
 // target that needs rust, a, along with that step, as not-run; b and c run. Even if it fails, a step the targets do not need (rust-cache)
 // is not recorded.
-caseTest('a failed CI setup step marks the targets that need it not-run and runs every other target', PROCESS, () => {
+caseTest('a failed CI setup step marks the targets that need it not-run and runs every other target', () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'cisetup', ORM_CHECK_RUN_ID: '14-1' }).status, 1);
@@ -766,7 +766,7 @@ caseTest('a failed CI setup step marks the targets that need it not-run and runs
 
 // The databases setup-need case (G5.127) is a run in which the setup step that databases/create requires (server-programs) is not prepared. The runner
 // neither reads the server nor creates a database; it records targets declaring databases as not-run with that step, and runs the other targets.
-caseTest('a run without the setup step that databases/create needs records the database targets as not-run', PROCESS, () => {
+caseTest('a run without the setup step that databases/create needs records the database targets as not-run', () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'server-programs', ORM_CHECK_RUN_ID: '17-1-stress' }).status, 1);
@@ -784,7 +784,7 @@ caseTest('a run without the setup step that databases/create needs records the d
   }
 });
 
-caseTest('a failed Go lease module install marks database targets not-run', PROCESS, () => {
+caseTest('a failed Go lease module install marks database targets not-run', () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'go-lease', ORM_CHECK_RUN_ID: '17-2-go-lease' }).status, 1);
@@ -807,7 +807,7 @@ caseTest('a failed Go lease module install marks database targets not-run', PROC
 // The CI group case (G5.111) is a run of a job in which group-needs skipped a setup step. If no target in this run declares the need of the skipped step,
 // that step is not recorded as a setup phase, and since no target needs a database, the servers and databases phases are also
 // absent, and all targets run and pass. A target that needs the skipped rust is not-run, with that step and its reason.
-caseTest('a CI group job ignores the setup steps it skipped for needs of no target and starts no databases without a database target', PROCESS, () => {
+caseTest('a CI group job ignores the setup steps it skipped for needs of no target and starts no databases without a database target', () => {
   const c = checkout(scope);
   try {
     const result = c.run('', { STUB_SUITE: 'group', ORM_CHECK_RUN_ID: '15-1-static' });
@@ -823,7 +823,7 @@ caseTest('a CI group job ignores the setup steps it skipped for needs of no targ
   }
 });
 
-caseTest('a CI group job records a target not-run when it needs a setup step that the job skipped', PROCESS, () => {
+caseTest('a CI group job records a target not-run when it needs a setup step that the job skipped', () => {
   const c = checkout(scope);
   try {
     assert.equal(c.run('', { STUB_SUITE: 'group-rust', ORM_CHECK_RUN_ID: '16-1-static' }).status, 1);
@@ -840,7 +840,7 @@ caseTest('a CI group job records a target not-run when it needs a setup step tha
 
 // A target that contracts/check-inputs.json does not declare has no needs to read (T288): the runner refuses it before any step,
 // naming it, instead of running it as a target that needs nothing.
-caseTest('a run refuses an undeclared target before any step', PROCESS, async () => {
+caseTest('a run refuses an undeclared target before any step', async () => {
   const { runChecks } = await import('./run.mts');
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'run-')));
   try {
@@ -861,7 +861,7 @@ caseTest('a run refuses an undeclared target before any step', PROCESS, async ()
 // The no-server run case (G5.67) runs the runner without servers, as make docs-ci does in the docs workflow. Server and database
 // steps are absent, targets that need a database are not-run, the other targets run, and the summary and target logs remain in that run's
 // report.
-caseTest('a run without servers runs the targets that need no database and reports them', PROCESS, async () => {
+caseTest('a run without servers runs the targets that need no database and reports them', async () => {
   const { runChecks } = await import('./run.mts');
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'run-')));
   try {

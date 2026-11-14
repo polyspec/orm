@@ -13,7 +13,7 @@ import (
 
 // MySQL reports a failed CHECK as 3819; its 4025 is ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE, a DRIVER error (DIA-201).
 func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	err := mapDriverErr(&mysql.MySQLError{Number: 3819, SQLState: [5]byte{'H', 'Y', '0', '0', '0'}, Message: "check constraint violated"}, serverMySQL)
 	if got := ErrorCode(err); got != CodeConstraint || !IsConstraint(err) {
 		t.Fatalf("mapped MySQL check error 3819 = %q, want %q: %v", got, CodeConstraint, err)
@@ -26,7 +26,7 @@ func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
 
 // MariaDB numbers its errors above 1999 otherwise than MySQL (DIA-201): each number maps by the table of its server.
 func TestMapDriverErrKeysTheNumberByServer(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, c := range []struct {
 		number uint16
 		state  string
@@ -56,7 +56,7 @@ func TestMapDriverErrKeysTheNumberByServer(t *testing.T) {
 }
 
 func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	err := mapMySQLErr(&mysql.MySQLError{Number: 3572, Message: "lock not available"})
 	if got := ErrorCode(err); got != CodeLockNotAvailable {
 		t.Fatalf("mapped MySQL lock error code = %q, want %q: %v", got, CodeLockNotAvailable, err)
@@ -67,7 +67,7 @@ func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
 }
 
 func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, number := range []uint16{1290, 1792} {
 		err := mapMySQLErr(&mysql.MySQLError{Number: number, Message: "read-only"})
 		if got := ErrorCode(err); got != CodeReadOnly {
@@ -77,7 +77,7 @@ func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 }
 
 func TestMapDriverErrorContextKeepsCanceledCode(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	mapped := mapCanceledDriverError()
 	if ErrorCode(mapped) != CodeCanceled {
 		t.Fatalf("mapped code = %q, want %s: %v", ErrorCode(mapped), CodeCanceled, mapped)
@@ -87,7 +87,7 @@ func TestMapDriverErrorContextKeepsCanceledCode(t *testing.T) {
 // TestErrorClassification checks that each classification reports exactly its code, also through a wrapped error,
 // and that no classification reports nil or an error without a code.
 func TestErrorClassification(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	classes := map[string]func(error) bool{
 		CodeDeadlock:         IsDeadlock,
 		CodeLockNotAvailable: IsLockNotAvailable,

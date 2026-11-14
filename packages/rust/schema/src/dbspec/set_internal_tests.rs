@@ -3,7 +3,7 @@ use super::*;
 // Checks nested JSON scanner mechanics directly; public set-reader diagnostics remain in dbspec-set-files.
 #[test]
 fn nested_json_rules() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let path = Path::new("dbspec-set.json");
     for (text, rule) in [
         (r#"{"schema": 1, "documents": ["a.dbs"], "x": [1e400]}"#, RULE_SET_KEY),
@@ -31,7 +31,7 @@ fn nested_json_rules() {
 // Checks only the private normal-form helper; public set-path behavior is covered by shared set-file cases.
 #[test]
 fn normal_form_cases() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for (written, external) in [
         ("shop.dbs", false),
         ("a/b.dbs", false),
@@ -64,7 +64,7 @@ fn normal_form_cases() {
 #[cfg(unix)]
 #[test]
 fn root_of_prefix() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for (prefix, root) in [("", "."), ("/", "/"), ("a/", "a"), ("a//", "a"), ("/a/b/", "/a/b")] {
         assert_eq!(platform::root(OsStr::new(prefix)), OsString::from(root), "{prefix:?}");
     }
@@ -75,7 +75,7 @@ fn root_of_prefix() {
 // Checks the private number reader; public schema diagnostics are covered by shared set-file cases.
 #[test]
 fn schema_values() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for raw in ["1", "1.0", "1e0", "10e-1", "1.0000000000000000001"] {
         assert!(schema_is_one(raw), "{raw}");
     }
@@ -88,7 +88,7 @@ fn schema_values() {
 // it is not JSON.
 #[test]
 fn deep_text_is_judged_without_recursion() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let path = Path::new("dbspec-set.json");
     let depth = 100_000;
     let valid = format!("{{\"x\": {}{}}}", "[".repeat(depth), "]".repeat(depth));

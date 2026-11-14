@@ -14,7 +14,7 @@ import (
 // its goroutine instead of returning, which is what t.Fatal does: the
 // transaction rolls back and the connection serves the next statement.
 func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	db := connectSchemaDB(t, "sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), s)

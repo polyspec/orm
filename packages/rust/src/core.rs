@@ -419,33 +419,29 @@ impl Core {
 
     /// Appends the conditions of a chain. Each key receives one argument.
     pub fn chain(&mut self, conn: &'static str, keys: &[ChainKey], args: Vec<Arg>) {
-        if keys.len() != args.len() {
-            self.fail(format!("the condition expects {} values", keys.len()));
-            return;
-        }
-        for (i, (key, arg)) in keys.iter().zip(args).enumerate() {
-            let c = if i == 0 { conn } else { key.conn };
-            let parsed = Key { op: key.op, column: key.column, columns: key.columns.iter().map(|c| (*c).to_owned()).collect(), compare: key.compare };
-            match predicate(parsed, arg, keys.len() == 1) {
-                Ok(p) => self.add(c, CondKind::Pred(p)),
-                Err(e) => {
-                    self.fail_err(e);
-                    return;
-                }
-            }
-        }
+        let keys = keys.iter().map(|key| {
+            (key.conn, Key { op: key.op, column: key.column, columns: key.columns.iter().map(|c| (*c).to_owned()).collect(), compare: key.compare })
+        });
+        self.chain_keys(conn, keys.collect(), args);
     }
 
     /// Appends the conditions of a chain name that `parse_chain` read (CORE-82). Each key receives one argument.
     pub(crate) fn chain_parsed(&mut self, conn: &'static str, keys: &[polyspec_orm_schema::chain::ChainKey], args: Vec<Arg>) {
+        let keys = keys.iter().map(|key| (key.conn, Key { op: key.op, column: &key.column, columns: key.columns.clone(), compare: &key.compare }));
+        self.chain_keys(conn, keys.collect(), args);
+    }
+
+    /// Appends one condition per key, each with its connector and its argument; the first key takes `conn`. A count of
+    /// arguments other than the count of keys, and a key that refuses its argument, fail the builder.
+    fn chain_keys(&mut self, conn: &'static str, keys: Vec<(&'static str, Key<'_>)>, args: Vec<Arg>) {
         if keys.len() != args.len() {
             self.fail(format!("the condition expects {} values", keys.len()));
             return;
         }
-        for (i, (key, arg)) in keys.iter().zip(args).enumerate() {
-            let c = if i == 0 { conn } else { key.conn };
-            let parsed = Key { op: key.op, column: &key.column, columns: key.columns.clone(), compare: &key.compare };
-            match predicate(parsed, arg, keys.len() == 1) {
+        let single = keys.len() == 1;
+        for (i, ((key_conn, key), arg)) in keys.into_iter().zip(args).enumerate() {
+            let c = if i == 0 { conn } else { key_conn };
+            match predicate(key, arg, single) {
                 Ok(p) => self.add(c, CondKind::Pred(p)),
                 Err(e) => {
                     self.fail_err(e);

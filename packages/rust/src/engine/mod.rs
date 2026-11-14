@@ -2,13 +2,15 @@
 //! and schema DDL.
 
 pub(crate) mod dialect;
+mod json;
 mod params;
 mod planner;
 pub(crate) mod validate;
 
-pub use dialect::Dialect;
+pub use dialect::{value_function_unit, Dialect};
+// The test entry point writes the parameter uses of a request (testing::param_uses).
 #[cfg(feature = "test-faults")]
-pub(crate) use params::param_uses;
+pub(crate) use json::param_uses_json;
 
 use crate::ir;
 use crate::plan::Plan;
@@ -59,7 +61,7 @@ mod tests {
     // Explicit and default projections read the AES version column once, visibly when selected and hidden otherwise.
     #[test]
     fn paginate_plan_places_count_before_relation_steps() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let (set, manifest) = bench_fixture();
         let relation = |rel: &str, entity: &str, left: &str, right: &str, relations: Vec<ir::Relation>| ir::Relation {
             rel: rel.into(),
@@ -105,7 +107,7 @@ mod tests {
     // A relation links all components of the foreign key in key order, and a malformed key list is rejected.
     #[test]
     fn composite_relation_keys() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let (set, manifest) = bench_fixture();
         let request = |keys: &[(&str, &str)]| ir::Request {
             ir_version: 1,
@@ -148,7 +150,7 @@ mod tests {
     // (postgres.identity.by_default_not_advanced), so all three dialects reject it.
     #[test]
     fn key_columns_are_not_written() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let (_, manifest) = bench_fixture();
         let assign = |column: &str, p: usize| ir::Assign { column: column.into(), p: Some(p), ..Default::default() };
         let by_seq = |p: usize| {
@@ -199,7 +201,7 @@ mod tests {
     // fractional digits (for multi-row inserts, per row). MySQL leaves it to the database default.
     #[test]
     fn sqlite_insert_binds_the_clock_for_default_now() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let text = include_str!("../../../../contracts/fixtures/clock.dbs");
         let document = crate::dbspec::parse(text, &Default::default()).map(|parsed| parsed.document).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
@@ -244,7 +246,7 @@ mod tests {
 
     #[test]
     fn paged_reads_bind_root_limit_values_in_dialect_order() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let m = restore_manifest();
         let request = ir::Request {
             ir_version: 1,
@@ -255,7 +257,7 @@ mod tests {
             ..Default::default()
         };
         for (dialect, sql, params) in [
-            (Dialect::MySql, "LIMIT ?, ?", vec![0, 1]),
+            (Dialect::MySql, "LIMIT ? OFFSET ?", vec![1, 0]),
             (Dialect::Postgres, "LIMIT $1 OFFSET $2", vec![1, 0]),
             (Dialect::Sqlite, "LIMIT ? OFFSET ?", vec![1, 0]),
         ] {
@@ -306,7 +308,7 @@ mod tests {
     // column back to NULL in one update. It changes only the deleted row, and for an audit table it also writes the audit column.
     #[test]
     fn restore_plans_guarded_update() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let m = restore_manifest();
         let cases = [
             (
@@ -379,7 +381,7 @@ mod tests {
     // delete, an audit column assignment, and a restore on a table without soft_delete are IR_INVALID.
     #[test]
     fn restore_rejects_other_requests() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let m = restore_manifest();
         let mut group = restore_request(&m, "tag", &[]);
         group.n_params = 1;

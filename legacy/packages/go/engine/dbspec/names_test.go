@@ -19,7 +19,7 @@ import (
 // files, so a name built from a case field is checked by its literal parts
 // only.
 func TestSubtestNamesAreFlat(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	files, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)

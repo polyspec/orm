@@ -78,26 +78,26 @@ func checkRefused(t *testing.T, driver string) {
 }
 
 func TestTriggerRefusedSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	triggerRefused(t, "sqlite")
 }
 func TestTriggerRefusedMySQL(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	triggerRefused(t, "mysql")
 }
 func TestTriggerRefusedPostgres(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	triggerRefused(t, "postgres")
 }
 func TestCheckRefusedSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	checkRefused(t, "sqlite")
 }
 func TestCheckRefusedMySQL(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	checkRefused(t, "mysql")
 }
 func TestCheckRefusedPostgres(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	checkRefused(t, "postgres")
 }

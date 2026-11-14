@@ -20,13 +20,13 @@ fn assert_dsn_required_for_all(value: Option<&str>) {
 
 #[test]
 fn benchmarks_fail_when_dsn_is_unset() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     assert_dsn_required_for_all(None);
 }
 
 #[test]
 fn benchmarks_fail_when_dsn_is_empty() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     assert_dsn_required_for_all(Some(""));
 }
 
@@ -46,7 +46,7 @@ fn run_with_args(program: &str, args: &[&str]) -> (Option<i32>, String) {
 
 #[test]
 fn benchmarks_require_the_iterations_argument() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     for program in &[
         polyspec_orm_testcase::program("native"),
         polyspec_orm_testcase::program("driver_compare"),
@@ -62,7 +62,7 @@ fn benchmarks_require_the_iterations_argument() {
 
 #[test]
 fn benchmarks_reject_an_invalid_iterations_argument() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     for (program, minimum) in [
         (polyspec_orm_testcase::program("native"), 3),
         (polyspec_orm_testcase::program("driver_compare"), 10),

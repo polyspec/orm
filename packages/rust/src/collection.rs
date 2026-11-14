@@ -450,7 +450,7 @@ mod group_tests {
     // them (FCV-2). Requirements: INT-68, INT-90.
     #[test]
     fn driver_cell_forms() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         for invalid in [
             Val::Str("three".into()),
             Val::Str("-1".into()),

@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: aedae43e89c8a8bf6e89eda184f994a23e06a40750b1ac97130492115b784669 -->
+<!-- source-sha256: ea241e9e47225d323b93413917ab68176af12438f9b4c2961068f0cb7ee2f2f2 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -73,6 +73,8 @@
   lease는 여전히 한 checkout의 실행들의 build 순서를 정한다. worktree를 지우면 그 target directory도 함께
   지워진다. worktree에서 build하기 전에 남은 disk를 확인한다.
   Enforced by: `make rust-check`
+- Own: 명세의 규칙 식별자는 문장의 의미가 그대로인 동안만 그 문장을 가진다. 의미가 바뀌면 옛 식별자를 그것을 대신하는 식별자와 함께 은퇴로 표시하고, 새 의미는 새 식별자로 적는다. 옛 식별자를 인용한 기록이 새 의미를 인용한 것으로 읽혀서는 안 되기 때문이다. 시험은 새 식별자를 인용한다.
+  Enforced by: none, 변경이 문장의 의미를 유지하는지는 review가 판단한다.
 - Refines P24: `docs/plans/execution/checklist.md`가 유일한 작업 목록이다. 한국어 문서의 항목 ID와 상태는 같다. 항목 상태를 변경하기 전에 `make docs-check`를 실행한다. 체크리스트에는 항목만 둔다: 상태 표시는 항목이나 하위 항목 맨 앞의 상태로만 쓰고 범례, 제목, 항목의 글에는 쓰지 않으며, `make docs-check`는 그 밖의 표시를 file, 줄, 열과 함께 실패로 본다.
   Enforced by: `make docs-check`
 - Own: 받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은 우선순위에 따라 배치한 뒤 시작한다.
@@ -99,7 +101,9 @@
 - Own: test 단계는 아무것도 남기지 않는다. check runner와 `make feature-owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
   자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
   process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든
-  runner는 그 뒤 남은 것을 지우고 process를 끝낸다. code는 실패를 포함한 모든 경로에서 자기 임시 file을 지운다.
+  runner는 그 뒤 남은 entry를 지우고 process에 끝내기를 요청한다: group에 SIGTERM을 전달하고, 기다리는 group과 process를
+  출력하고, 단계 출력의 close를 시간 한도 없이 기다린다. SIGKILL은 전달하지 않고, 그 뒤에도 살아 있는 process를
+  적는다(docs/spec/feature-coverage.md FCV-18). code는 실패를 포함한 모든 경로에서 자기 임시 file을 지운다.
   Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make go-vet-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
@@ -117,7 +121,7 @@
 - Own: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
-  실패하고, 기한은 멈추지 않는 case를 끝낼 뿐이다. `make repo-check`(Go는 `make go-vet-check`)는 측정한 시간이 한도를
+  실패하고 시계로 실패하지 않는다. `make repo-check`(Go는 `make go-vet-check`)는 측정한 시간이 한도를
   넘었다고 실패하는 test를 거부한다. 경고를 없애려고 기준값을 올리지 않는다. 바꾸려면 CI runner에서 얻은 같은 종류의 새 증거가 필요하다.
   Enforced by: `make repo-check`
 - Own: 검사는 결과가 시간에 따라 달라지는 registry 조회를 하지 않는다: 최신 version 조회, version 범위의 해석, 오래된
@@ -197,14 +201,16 @@
   Enforced by: `make repo-check`
 - Own: 항목을 진행하는 동안에는 바뀐 것의 unit test만 실행하고, 수정할
   때마다 테스트를 기계적으로 다시 실행하지 않는다. 짧은 검증 단위인 모든 테스트 case는 자신의
-  실행·완료·성공·실패와 경과 시간을 출력하고 자기 타임아웃을 가지며, 전체 일괄 타임아웃은 쓰지
-  않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
+  실행·완료·성공·실패와 경과 시간을 출력한다. 어떤 시계도 테스트 case나 테스트의 process를 끝내지
+  않는다. 부하가 큰 machine은 같은 일을 더 느리게 실행하며, 그 결과가 부하에 따라 바뀌면 안 되기 때문이다. case는 그 일이 끝날 때
+  끝나고, 끝나지 않는 실행은 그 실행과 함께(SIGINT나 SIGTERM) 멈춘다. TypeScript harness `tests/testcase.mts`, Go harness
+  `legacy/packages/go/testcase`, Python harness `legacy/packages/python/tests/testcase.py`, Rust harness
+  `packages/rust/testcase`에는 기한이 없고, PHPUnit은 시간 제한을 강제하지 않는다(`enforceTimeLimit`는 false). lock 기다림을 확인하거나, 기다리는 문장을 abort하거나, session의 끝을 기다리는 시험은 그 순서를 database server의 응답으로 정한다. 기다림의 한도는 server의 설정(`lock_timeout`, `lock_wait_timeout`, `innodb_lock_wait_timeout`, `log_lock_waits`와 함께 둔 `deadlock_timeout`)이고, 시험은 server의 답(55P03, 1205, 57P01, LOG 메시지 `still waiting for`)을 사건으로 읽는다. lock 표를 간격을 두고 읽거나 client의 timer를 쓰지 않는다. client의 timer는 경주를 남기고, server의 답은 일어난 일을 알리기 때문이다. server가 그런 답을 주지 않는 경로는 예외로서 그 task에 적고, 승인될 때만 남는다. 전체 일괄 타임아웃은 쓰지 않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
   `cargo test --no-run`, 전체 suite, server나 도구 실행)은 타임아웃 대신 상세 단계 로그를 두고,
   출력 없음 기한을 포함해 어떤 기한도 없이 과정과 결과를 관측할 수 있게 한다. 그 성공과 실패는
   시계가 아니라 관측한 결과와 오류로 판정한다. 테스트가 자기 계산에 두는 시간 제한은 그 계산을 실행한 thread나 process의 CPU 시간을
   잰다. 공유 machine에서 wall-clock 시간은 다른 process가 processor를 쓰는 시간도 담기 때문이다.
-  멈춘 case를 끊는 timer, database나 다른 process가 하는 일의 제한, 시간 동작 자체를 확인하는
-  테스트는 wall-clock 시간을 잰다.
+  database나 다른 process가 하는 일의 제한과 시간 동작 자체를 확인하는 테스트는 wall-clock 시간을 잰다.
   Enforced by: none, 이 규칙은 에이전트의 작업을 다스리며 어떤 도구도 실행한 test를 보지 않는다
 - Own: 완료 결과 없이 미완료 항목 수를 늘리기 전에 진행 중인 작업을 완료한다. 지속 적용할 개발 규칙은 이 파일에 두고 구체 산출물과 증거는 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부한다.
   Enforced by: `make docs-check`
@@ -224,11 +230,11 @@
   Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: 소유 client는 `packages/<runtime>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
   Enforced by: `make feature-unit-check`
-- Own: 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 선언된 기한에는 타이머를 사용할 수 있다. 이 저장소가 만드는 것에 심볼릭 링크를 쓰지 않고 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
+- Own: 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 시간 동작을 확인하는 테스트는 타이머를 사용할 수 있다. 이 저장소가 만드는 것에 심볼릭 링크를 쓰지 않고 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
   Enforced by: none, polling, timer, symbolic link를 검사하는 도구가 없다
 - Own: 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
   Enforced by: none, code가 경로를 해석하는 방식을 읽는 검사가 없다
-- Own: 하나의 `0.0.31` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
+- Own: 하나의 `0.0.33` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
   Enforced by: none, kit K812 이후 version을 읽는 검사가 없다. package manager가 그것을 해석한다
 - Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 여섯 dbspec 구현은 동일한 허용·거부 스키마 사례를 실행한다.
   Enforced by: `make conformance-check`

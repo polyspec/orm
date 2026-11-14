@@ -17,7 +17,7 @@ import (
 // TestCatalogPagePreparedColumnsDifferFromTheDescriptor holds what no server can answer (INT-121): a statement names its
 // columns in the select list, and a server answers with those names.
 func TestCatalogPagePreparedColumnsDifferFromTheDescriptor(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	columns := []CatalogColumn{{Name: "id", NativeType: "INTEGER"}}
 	if err := catalogSameNames([]string{"renamed"}, columns); ErrorCode(err) != catalogCodePageChanged {
 		t.Fatalf("prepared column name mismatch error = %v, want %s", err, catalogCodePageChanged)
@@ -31,7 +31,8 @@ func TestCatalogPagePreparedColumnsDifferFromTheDescriptor(t *testing.T) {
 }
 
 // catalogAnswerDriver is a driver whose connection answers the catalog queries with fixed rows, as the fake drivers of the
-// other runtimes do: a statement succeeds, and a query answers the rows of the first prefix that it starts with.
+// other runtimes do: a statement succeeds, and a query answers the rows of the first prefix that it starts with. Its connection
+// is a pointer, as a connection of a real driver is, and answers the connection id that a MySQL session reads (CFG-35).
 type catalogAnswerDriver struct{ answers []catalogAnswer }
 
 // catalogAnswer is the result of the queries that start with prefix: its column names, native types and rows.
@@ -42,7 +43,10 @@ type catalogAnswer struct {
 	rows   [][]driver.Value
 }
 
-func (d catalogAnswerDriver) Open(string) (driver.Conn, error) { return catalogAnswerConn(d), nil }
+func (d catalogAnswerDriver) Open(string) (driver.Conn, error) {
+	conn := catalogAnswerConn(d)
+	return &conn, nil
+}
 
 type catalogAnswerConn catalogAnswerDriver
 
@@ -59,6 +63,9 @@ func (c catalogAnswerConn) ExecContext(context.Context, string, []driver.NamedVa
 }
 
 func (c catalogAnswerConn) QueryContext(_ context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
+	if query == "SELECT CONNECTION_ID()" {
+		return &catalogAnswerRows{answer: catalogAnswer{names: []string{"CONNECTION_ID()"}, types: []string{"BIGINT"}, rows: [][]driver.Value{{int64(1)}}}}, nil
+	}
 	for _, answer := range c.answers {
 		if strings.HasPrefix(query, answer.prefix) {
 			return &catalogAnswerRows{answer: answer}, nil
@@ -111,7 +118,7 @@ func catalogAnswering(t *testing.T, text string) *CatalogConnection {
 // TestCatalogMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid holds a quoted MariaDB default that is not one whole
 // literal, which no server writes, so the recipes cannot hold it (FCV-2).
 func TestCatalogMariadbDefaultThatIsNotOneLiteralIsMetadataInvalid(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, text := range []string{"'a' 'b'", "'unterminated", "'a'x"} {
 		_, err := catalogAnswering(t, text).DescribeTable(context.Background(), CatalogTableRef{Namespace: "app", Name: "defaults"})
 		want := "TABLE_METADATA_INVALID: column \"broken\": default " + text + " is not one string literal"

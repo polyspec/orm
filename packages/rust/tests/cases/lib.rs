@@ -20,6 +20,8 @@ pub mod clock_test_support;
 pub mod code_catalog;
 pub mod collection_identity;
 pub mod compiler_fixtures;
+#[path = "common/lock_wait.rs"]
+pub mod lock_wait;
 pub mod mysql_tls;
 #[path = "common/or_panic.rs"]
 pub mod or_panic;

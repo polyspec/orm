@@ -25,7 +25,7 @@ mod internal_tests {
 
     #[test]
     fn scalar_subquery_missing_column_is_internal() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let (at, input, _) = case("planner_scalar_column_subquery");
         let manifest = schema(&at);
         let mut request = request(&input, &manifest.manifest_hash);
@@ -41,7 +41,7 @@ mod internal_tests {
 
     #[test]
     fn column_function_metadata_planner_rejects_missing_post_validation_field() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let (at, input, _) = case("planner_column_function_date");
         let manifest = schema(&at);
         let mut request = request(&input, &manifest.manifest_hash);

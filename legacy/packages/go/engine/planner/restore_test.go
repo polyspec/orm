@@ -109,7 +109,7 @@ func compileRestore(m *runtimemodel.Model, d dialect.Dialect, r *ir.Request) (*p
 // back to NULL under an eq condition on one primary or unique key.
 // It changes only deleted rows, and for an audit table it also writes the audit columns.
 func TestRestorePlansGuardedUpdate(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m := testModel(t, restoreDocument)
 	for _, tc := range []struct {
 		name    string
@@ -171,7 +171,7 @@ func TestRestorePlansGuardedUpdate(t *testing.T) {
 // that a restore with a where joined by or, a key outside the key, a soft delete, an audit column assignment, and a restore of a table without soft_delete
 // are all IR_INVALID.
 func TestRestoreRejectsOtherRequests(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m := testModel(t, restoreDocument)
 	set := func(r *ir.Request, change func(*ir.Request)) *ir.Request { change(r); return r }
 	for name, r := range map[string]*ir.Request{

@@ -262,9 +262,6 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	events, kinds, ran := 0, map[string]int{}, false
 	handler := func(ev dbspec.ApplyEvent) error {
-		if c.progress != nil {
-			c.progress()
-		}
 		events++
 		kinds[ev.Kind]++
 		if s.k("on").On == nil || s.k("on").On.Event != ev.Kind || (ran && !s.k("on").On.Every) {

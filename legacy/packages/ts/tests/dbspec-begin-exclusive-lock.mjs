@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { readPlanCases } from '../../../../tests/dbspec/vectors.mts';
 import { DbspecApplyError, applyPlans, parsePlan } from '../dist/dbspec/index.js';
 
@@ -80,12 +80,12 @@ async function checkCode(code, locked) {
 }
 
 // Requirements: PLN-89, PLN-90.
-caseTest('dbspec/begin-exclusive/primary-and-extended-lock-codes', COMPUTE, async () => {
+caseTest('dbspec/begin-exclusive/primary-and-extended-lock-codes', async () => {
   for (const code of [5, 6, 261, 517, 773, 262, 518]) await checkCode(code, true);
 });
 
 // Requirements: PLN-89, PLN-90.
-caseTest('dbspec/begin-exclusive/non-lock-errors-preserve-identity', COMPUTE, async () => {
+caseTest('dbspec/begin-exclusive/non-lock-errors-preserve-identity', async () => {
   for (const code of [10, 8, 14, 23, 1]) await checkCode(code, false);
   for (const cause of [new Error('database is locked'), Object.assign(new Error('missing code'), { errcode: null })]) {
     const sqlite = failingSqlite(cause);

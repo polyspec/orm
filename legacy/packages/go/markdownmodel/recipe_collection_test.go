@@ -11,6 +11,6 @@ import (
 // identity of a collection key of every type.
 // Requirements: INT-11, INT-63, PRT-35.
 func TestRecipeCollectionNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/collection/collection.json"), recipe.None)
 }

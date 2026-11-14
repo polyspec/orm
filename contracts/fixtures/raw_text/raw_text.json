@@ -71,6 +71,7 @@
     },
     {
       "id": "text_not_utf8_through_a_statement_reads_back",
+      "databases_differ": "A text that is not UTF-8 is refused by MySQL and PostgreSQL and stored as its bytes by SQLite (DIA-220).",
       "requirements": [
         "PRT-67",
         "INT-150"

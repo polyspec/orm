@@ -4,7 +4,7 @@ use std::sync::{atomic::Ordering, Arc, Mutex};
 /// A mutation that answers within one poll runs to its end before a test that only stops polling it can probe
 /// anything; a probe that runs inside the Locked publisher sees the mutation at Locked, whatever the scheduling.
 fn a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // 0: before Locked, 1: at Locked, 2: finished.
     let stage = Arc::new(std::sync::atomic::AtomicU8::new(0));
     let seen = Arc::new(Mutex::new(None));

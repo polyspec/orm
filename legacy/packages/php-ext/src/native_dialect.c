@@ -297,9 +297,6 @@ ZEND_METHOD(Polyspec_Orm_Dialect, limit)
         Z_PARAM_LONG(offset)
         Z_PARAM_LONG(count)
     ZEND_PARSE_PARAMETERS_END();
-    if (dialect_is(ZEND_THIS, "mysql")) {
-        RETURN_STR(zend_strpprintf(0, " LIMIT " ZEND_LONG_FMT ", " ZEND_LONG_FMT, offset, count));
-    }
     RETURN_STR(zend_strpprintf(0, " LIMIT " ZEND_LONG_FMT " OFFSET " ZEND_LONG_FMT, count, offset));
 }
 
@@ -310,7 +307,6 @@ ZEND_METHOD(Polyspec_Orm_Dialect, limitParams)
         Z_PARAM_STR(offset)
         Z_PARAM_STR(count)
     ZEND_PARSE_PARAMETERS_END();
-    if (dialect_is(ZEND_THIS, "mysql")) RETURN_STR(zend_strpprintf(0, " LIMIT %s, %s", ZSTR_VAL(offset), ZSTR_VAL(count)));
     RETURN_STR(zend_strpprintf(0, " LIMIT %s OFFSET %s", ZSTR_VAL(count), ZSTR_VAL(offset)));
 }
 
@@ -483,8 +479,10 @@ ZEND_METHOD(Polyspec_Orm_Dialect, fulltext)
     } ZEND_HASH_FOREACH_END();
     smart_str_0(&expressions);
 
+    /* The boolean mode binds the value through the transform fulltext_text, which refuses a value with no term as
+     * MySQL does (DIA-6). */
     zval tag;
-    ZVAL_EMPTY_STRING(&tag);
+    ZVAL_STRING(&tag, boolean ? "fulltext_text" : "");
     zend_string *placeholder = dialect_call_text(value, 1, &tag);
     zval_ptr_dtor(&tag);
     if (placeholder == NULL) {

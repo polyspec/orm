@@ -15,7 +15,7 @@ import (
 
 // Requirements: DBS-104, DBS-111, DBS-120, SCH-2.
 func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	manifest := sampleModel(t)
 	out := filepath.Join(t.TempDir(), "model")
 	if err := Generate(Options{Model: manifest, OutputDir: out}); err != nil {
@@ -44,7 +44,7 @@ func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 }
 
 func TestGenerateUsesRequestedGoPackageName(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	manifest := sampleModel(t)
 	out := t.TempDir()
 	if err := Generate(Options{Model: manifest, OutputDir: out, PackageName: "storage"}); err != nil {
@@ -103,7 +103,7 @@ func repositoryRoot(t *testing.T) string {
 // and generates a model for every table in that set.
 // Requirements: SCH-1.
 func TestGenerateBenchDocumentSet(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	setPath := filepath.Join(repositoryRoot(t), "contracts", "fixtures", "bench", "dbspec-set.json")
 	manifest, err := runtimemodel.LoadSetFile(setPath)
 	if err != nil {

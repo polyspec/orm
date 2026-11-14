@@ -15,7 +15,7 @@ import (
 // TestWatchExit checks that the wait of WatchExit returns when the process ends, that Alive reports the process
 // while it runs and not after it ended, and that a process already gone gives ESRCH.
 func TestWatchExit(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	// cat runs until its standard input closes, so the test decides when the process ends.
 	child := exec.Command("cat")
 	stdin, err := child.StdinPipe()
@@ -53,7 +53,7 @@ func TestWatchExit(t *testing.T) {
 // TestWatchDir checks that the wait of WatchDir returns when an entry of the directory is created, and that the
 // watch closes.
 func TestWatchDir(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	dir := t.TempDir()
 	next, closeWatch, err := WatchDir(dir)
 	if err != nil {

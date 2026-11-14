@@ -22,7 +22,11 @@ export class SchemaError extends Error {
   }
 }
 
-const ajv = new Ajv2020({ strict: true, allErrors: true, verbose: true });
+// discriminator: a oneOf that names the member which selects its alternative (`discriminator.propertyName`) is validated
+// against that alternative alone. Without it every alternative reports its errors for a refused value: the step form of a
+// recipe is a oneOf of every op, so one refused step made 1085 errors and a recipe with 346 refused codes 687008, an
+// error with a message of 72 M characters that no reporter prints.
+const ajv = new Ajv2020({ strict: true, allErrors: true, verbose: true, discriminator: true });
 
 // errorLine is one ajv error: the JSON Pointer of the value (`/` for the whole document), the message and its params, and
 // the value when it is not an object or array.

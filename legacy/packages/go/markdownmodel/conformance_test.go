@@ -70,7 +70,7 @@ func conformanceCodecPayload(value orm.StyledValue) (any, error) {
 // points to, which must be the build pinned by flowmark.version;
 // if it is missing or a different build, the test fails (it is not skipped).
 func TestMarkdownConformance(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	bin := pinnedFlowmark(t)
 	cases := loadCases(t)
 	funcs := conformanceCases()
@@ -96,7 +96,7 @@ func TestMarkdownConformance(t *testing.T) {
 	s := serve(t, bin)
 	for _, c := range cases {
 		ok := t.Run(c.ID, func(t *testing.T) {
-			testcase.Start(t, testcase.Database)
+			testcase.Start(t)
 			got, err := funcs[c.ID](s)
 			checkCaseResult(t, c.ID, got, err, c.Expect)
 		})

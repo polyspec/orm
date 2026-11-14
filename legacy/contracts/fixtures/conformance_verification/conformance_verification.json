@@ -6170,6 +6170,7 @@
  "cases": [
   {
    "id": "conditions_connectors",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-11",
     "DSL-12",
@@ -6335,7 +6336,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? OR `a`.`read_count` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? OR `a`.`read_count` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -6352,10 +6353,10 @@
                "int": "6"
               },
               {
-               "int": "0"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "0"
               }
              ]
             }
@@ -6531,6 +6532,7 @@
   },
   {
    "id": "conditions_group",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-15",
     "DSL-16",
@@ -6705,7 +6707,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND (`a`.`is_display` = ? OR (`a`.`is_close` = ? AND `a`.`read_count` > ?)) ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND (`a`.`is_display` = ? OR (`a`.`is_close` = ? AND `a`.`read_count` > ?)) ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -6725,10 +6727,10 @@
                "int": "500"
               },
               {
-               "int": "0"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "0"
               }
              ]
             }
@@ -6910,6 +6912,7 @@
   },
   {
    "id": "conditions_leading_group",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-15",
     "DSL-18"
@@ -7076,7 +7079,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE (`a`.`is_display` = ? OR `a`.`is_close` = ?) AND `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE (`a`.`is_display` = ? OR `a`.`is_close` = ?) AND `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -7093,10 +7096,10 @@
                "int": "7"
               },
               {
-               "int": "0"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "0"
               }
              ]
             }
@@ -7272,6 +7275,7 @@
   },
   {
    "id": "conditions_leading_prefix",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-11"
    ],
@@ -7358,7 +7362,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` > ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` > ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -7372,10 +7376,10 @@
                "int": "990"
               },
               {
-               "int": "0"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "0"
               }
              ]
             }
@@ -7545,6 +7549,7 @@
   },
   {
    "id": "conditions_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "DIA-37",
     "DSL-29",
@@ -9556,6 +9561,7 @@
   },
   {
    "id": "terminal_by",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-36",
     "DSL-58",
@@ -9764,7 +9770,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -9812,7 +9818,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -9860,7 +9866,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -9874,10 +9880,10 @@
                "bool": false
               },
               {
-               "int": "0"
+               "int": "2"
               },
               {
-               "int": "2"
+               "int": "0"
               }
              ]
             }
@@ -10383,6 +10389,7 @@
   },
   {
    "id": "terminal_reuse",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-60",
     "DSL-57",
@@ -10568,7 +10575,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -10579,10 +10586,10 @@
                "int": "7"
               },
               {
-               "int": "0"
+               "int": "2"
               },
               {
-               "int": "2"
+               "int": "0"
               }
              ]
             }
@@ -10992,6 +10999,7 @@
   },
   {
    "id": "expression_forms",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-16",
     "DSL-22",
@@ -11265,7 +11273,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE NOT (`a`.`is_display` = ?) AND `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE NOT (`a`.`is_display` = ?) AND `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -11279,10 +11287,10 @@
                "int": "7"
               },
               {
-               "int": "0"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "0"
               }
              ]
             }
@@ -11713,6 +11721,7 @@
   },
   {
    "id": "columns",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a date part is read with each dialect's own function (DIA-14).",
    "requirements": [
     "DSL-72",
     "DSL-73",
@@ -11857,7 +11866,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -11905,7 +11914,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, YEAR(`a`.`start_dt`) AS `a__start_year` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, YEAR(`a`.`start_dt`) AS `a__start_year` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -11953,7 +11962,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -12305,6 +12314,7 @@
   },
   {
    "id": "joins",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-90",
     "DSL-91",
@@ -12619,7 +12629,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `service_model`.`seq` AS `service_model__seq`, `service_model`.`name` AS `service_model__name` FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` AND `service_model`.`seq` > ? WHERE `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`service_model`.`name` = ?)) ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `service_model`.`seq` AS `service_model__seq`, `service_model`.`name` AS `service_model__name` FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` AND `service_model`.`seq` > ? WHERE `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`service_model`.`name` = ?)) ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -12639,10 +12649,10 @@
                "text": "service-7"
               },
               {
-               "int": "0"
+               "int": "2"
               },
               {
-               "int": "2"
+               "int": "0"
               }
              ]
             }
@@ -12736,7 +12746,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`, `module`.`seq` AS `module__seq`, `module`.`service_seq` AS `module__service_seq`, `module`.`name` AS `module__name` FROM `author` AS `a` LEFT JOIN `service_region` AS `module` ON `a`.`service_region_seq` = `module`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`, `module`.`seq` AS `module__seq`, `module`.`service_seq` AS `module__service_seq`, `module`.`name` AS `module__name` FROM `author` AS `a` LEFT JOIN `service_region` AS `module` ON `a`.`service_region_seq` = `module`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -12747,10 +12757,10 @@
                "int": "7"
               },
               {
-               "int": "0"
+               "int": "1"
               },
               {
-               "int": "1"
+               "int": "0"
               }
              ]
             }
@@ -13157,6 +13167,7 @@
   },
   {
    "id": "relations",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DIA-37",
     "DSL-79",
@@ -13728,7 +13739,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`is_close` AS `a__is_close` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`is_close` AS `a__is_close` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -13739,10 +13750,10 @@
                "int": "7"
               },
               {
-               "int": "0"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "0"
               }
              ]
             }
@@ -14809,6 +14820,7 @@
   },
   {
    "id": "collection_connect_reaches_every_model",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
    "requirements": [
     "INT-85",
     "INT-37",
@@ -15210,6 +15222,7 @@
   },
   {
    "id": "relation_empty",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-79",
     "DSL-81"
@@ -15517,6 +15530,7 @@
   },
   {
    "id": "external_read",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-79",
     "DSL-53",
@@ -16177,6 +16191,7 @@
   },
   {
    "id": "subqueries",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); on SQLite an integer sum is summed in parts, since SQLite refuses a sum past the i64 range (DIA-218, PRT-84).",
    "requirements": [
     "DSL-53",
     "DSL-74"
@@ -16567,6 +16582,7 @@
   },
   {
    "id": "aggregates",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); on SQLite an integer sum is summed in parts, since SQLite refuses a sum past the i64 range (DIA-218, PRT-84).",
    "requirements": [
     "DSL-61",
     "DSL-62",
@@ -16922,7 +16938,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -16933,10 +16949,10 @@
                "int": "7"
               },
               {
-               "int": "8"
+               "int": "4"
               },
               {
-               "int": "4"
+               "int": "8"
               }
              ]
             }
@@ -17532,6 +17548,7 @@
   },
   {
    "id": "lookahead_page",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-164",
     "PRT-2",
@@ -18376,7 +18393,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -18387,10 +18404,10 @@
                "int": "7"
               },
               {
-               "int": "4"
+               "int": "5"
               },
               {
-               "int": "5"
+               "int": "4"
               }
              ]
             }
@@ -18430,7 +18447,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`service_seq`, `a`.`is_close` ORDER BY `a`.`service_seq` ASC, `a`.`is_close` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`service_seq`, `a`.`is_close` ORDER BY `a`.`service_seq` ASC, `a`.`is_close` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -18438,10 +18455,10 @@
             {
              "array": [
               {
-               "int": "3"
+               "int": "4"
               },
               {
-               "int": "4"
+               "int": "3"
               }
              ]
             }
@@ -18789,7 +18806,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -18800,10 +18817,10 @@
                "int": "7"
               },
               {
-               "int": "0"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "0"
               }
              ]
             }
@@ -19850,7 +19867,143 @@
    ]
   },
   {
+   "id": "page_without_an_order_is_ordered_by_its_primary_key",
+   "requirements": [
+    "INT-64",
+    "PRT-38",
+    "DSL-67"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "page": true,
+     "limit": {
+      "offset": 0,
+      "count": 4
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 1,
+        "per_page": 4
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 1,
+        "per_page": 4
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         6,
+         106,
+         206,
+         306
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 1,
+        "per_page": 4
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "columns": [],
+     "page": true,
+     "limit": {
+      "offset": 4,
+      "count": 4
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 2,
+        "per_page": 4
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 2,
+        "per_page": 4
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         406,
+         506,
+         606,
+         706
+        ],
+        "total": 40,
+        "pages": 10,
+        "page": 2,
+        "per_page": 4
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "empty_reads",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); on SQLite an integer sum is summed in parts, since SQLite refuses a sum past the i64 range (DIA-218, PRT-84).",
    "requirements": [
     "DSL-56",
     "DSL-57",
@@ -20171,7 +20324,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -20219,7 +20372,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -20363,7 +20516,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -20374,10 +20527,10 @@
                "int": "-1"
               },
               {
-               "int": "0"
+               "int": "10"
               },
               {
-               "int": "10"
+               "int": "0"
               }
              ]
             }
@@ -21897,6 +22050,7 @@
   },
   {
    "id": "audit_lazy",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a rolled-back insert leaves a gap in the key on MySQL and PostgreSQL, where SQLite gives the key again (DIA-63).",
    "requirements": [
     "DBS-85"
    ],
@@ -23957,6 +24111,7 @@
   },
   {
    "id": "functions",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the ORM functions and the relative time are each dialect's own expressions, and the clock binds of PostgreSQL and SQLite sit at their own positions (DIA-14, PRT-33).",
    "requirements": [
     "DIA-14",
     "DIA-37",
@@ -25198,6 +25353,7 @@
   },
   {
    "id": "get_query",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "DSL-65",
     "DSL-68"
@@ -25270,10 +25426,10 @@
          7,
          "%x%",
          "10c36b6f723022c32febbe6c40428e4e18c900f5d4602e43ea5d2ab06d934e71",
-         0,
-         5
+         5,
+         0
         ],
-        "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') AND `a`.`email_blind_index` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+        "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') AND `a`.`email_blind_index` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
        }
       },
       "postgres": {
@@ -25327,6 +25483,7 @@
   },
   {
    "id": "aes_values",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "COD-6",
     "COD-15"
@@ -25429,7 +25586,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -25733,6 +25890,7 @@
   },
   {
    "id": "write_cycle",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221), and the clock binds of PostgreSQL and SQLite, which MySQL writes with CURRENT_TIMESTAMP, sit at their own positions (PRT-33).",
    "requirements": [
     "DSL-100",
     "DSL-102",
@@ -26221,7 +26379,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -26326,7 +26484,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -26422,7 +26580,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -27456,6 +27614,7 @@
   },
   {
    "id": "required_columns",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-100"
    ],
@@ -28113,6 +28272,7 @@
   },
   {
    "id": "creates_and_save",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "DIA-11",
     "DIA-37",
@@ -30740,6 +30900,7 @@
   },
   {
    "id": "creates_batch",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
    "requirements": [
     "DSL-104"
    ],
@@ -33059,6 +33220,7 @@
   },
   {
    "id": "creates_batch_too_large",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-104"
    ],
@@ -33305,6 +33467,7 @@
   },
   {
    "id": "transactions",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a row lock is each dialect's own: FOR UPDATE, an advisory lock, and the lock row of INT-49 on SQLite (DIA-209).",
    "requirements": [
     "DSL-10",
     "DSL-118",
@@ -35222,6 +35385,7 @@
   },
   {
    "id": "restore",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-38"
    ],
@@ -35566,7 +35730,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -35665,7 +35829,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -35764,7 +35928,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -35860,7 +36024,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -37150,6 +37314,7 @@
   },
   {
    "id": "restore_or_create",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-39",
     "DSL-119"
@@ -37535,7 +37700,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -39080,6 +39245,7 @@
   },
   {
    "id": "restore_or_create_connected",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "INT-39",
     "DSL-119"
@@ -39505,7 +39671,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -41850,6 +42016,7 @@
   },
   {
    "id": "joins_soft_deleted",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-90"
    ],
@@ -43408,6 +43575,7 @@
   },
   {
    "id": "relative_time_out_of_range",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the ORM functions and the relative time are each dialect's own expressions, and the clock binds of PostgreSQL and SQLite sit at their own positions (DIA-14, PRT-33).",
    "requirements": [
     "DSL-143"
    ],
@@ -44985,6 +45153,7 @@
   },
   {
    "id": "hex_malformed",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "COD-41",
     "COD-42"
@@ -45065,7 +45234,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label`, `a`.`value` AS `a__value` FROM `hex_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label`, `a`.`value` AS `a__value` FROM `hex_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -45113,7 +45282,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label`, `a`.`value` AS `a__value` FROM `hex_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label`, `a`.`value` AS `a__value` FROM `hex_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -45369,6 +45538,7 @@
   },
   {
    "id": "datetime_p0_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -46159,6 +46329,7 @@
   },
   {
    "id": "time_p3_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -46949,6 +47120,7 @@
   },
   {
    "id": "date_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -47755,6 +47927,7 @@
   },
   {
    "id": "date_null",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "PRT-67"
    ],
@@ -48536,6 +48709,7 @@
   },
   {
    "id": "upsert_one_key",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "DSL-105",
     "PRT-6"
@@ -49970,6 +50144,7 @@
   },
   {
    "id": "uuid_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a uuid is PostgreSQL's own type and 16 bytes elsewhere (DIA-27).",
    "requirements": [
     "DIA-27"
    ],
@@ -50747,6 +50922,7 @@
   },
   {
    "id": "ip_hex_roundtrip",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "COD-3"
    ],
@@ -51524,6 +51700,7 @@
   },
   {
    "id": "affected_counts",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "DSL-105"
    ],
@@ -51866,7 +52043,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label` FROM `upsert_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label` FROM `upsert_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -53174,6 +53351,7 @@
   },
   {
    "id": "uuid_stored_in_16_bytes",
+   "databases_differ": "A uuid column holds 16 bytes in each server's own type, uuid on PostgreSQL, binary(16) on MySQL and a BLOB on SQLite, which the server's catalog and byte functions read (DIA-27, DIA-48, DIA-224).",
    "requirements": [
     "DIA-27",
     "DIA-48"
@@ -54563,6 +54741,7 @@
   },
   {
    "id": "contains_null",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "DSL-29",
     "DSL-48"
@@ -54802,6 +54981,7 @@
   },
   {
    "id": "null_into_not_null",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221).",
    "requirements": [
     "PRT-67"
    ],
@@ -55121,6 +55301,7 @@
   },
   {
    "id": "order_nulls",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); NULLS FIRST or LAST on PostgreSQL, where MySQL and SQLite order a NULL first ascending by themselves (DIA-13).",
    "requirements": [
     "DSL-99",
     "DSL-86"
@@ -56631,6 +56812,7 @@
   },
   {
    "id": "scalar_column_subquery",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); NULLS FIRST or LAST on PostgreSQL, where MySQL and SQLite order a NULL first ascending by themselves (DIA-13).",
    "requirements": [
     "DSL-74"
    ],
@@ -56844,7 +57026,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` AND `s1`.`seq` < ? ORDER BY `s1`.`price` ASC, `s1`.`seq` ASC LIMIT 0, 1) AS `a__read_total` FROM `user` AS `a` WHERE `a`.`seq` = ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` AND `s1`.`seq` < ? ORDER BY `s1`.`price` ASC, `s1`.`seq` ASC LIMIT 1 OFFSET 0) AS `a__read_total` FROM `user` AS `a` WHERE `a`.`seq` = ?"
             }
            ],
            [
@@ -56898,7 +57080,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` AND `s1`.`seq` < ? ORDER BY `s1`.`price` DESC, `s1`.`seq` ASC LIMIT 0, 1) AS `a__read_total` FROM `user` AS `a` WHERE `a`.`seq` = ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` AND `s1`.`seq` < ? ORDER BY `s1`.`price` DESC, `s1`.`seq` ASC LIMIT 1 OFFSET 0) AS `a__read_total` FROM `user` AS `a` WHERE `a`.`seq` = ?"
             }
            ],
            [
@@ -57184,6 +57366,7 @@
   },
   {
    "id": "relations_flatten",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-84",
     "DSL-85",
@@ -57724,7 +57907,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`is_close` AS `a__is_close` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`is_close` AS `a__is_close` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -57735,10 +57918,10 @@
                "int": "7"
               },
               {
-               "int": "0"
+               "int": "8"
               },
               {
-               "int": "8"
+               "int": "0"
               }
              ]
             }
@@ -58483,6 +58666,7 @@
   },
   {
    "id": "added_sum_fractional",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which cannot, makes the table again (DIA-222).",
    "requirements": [
     "INT-160",
     "DIA-218",
@@ -58935,6 +59119,7 @@
   },
   {
    "id": "added_text_not_exact",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which cannot, makes the table again (DIA-222).",
    "requirements": [
     "INT-160"
    ],
@@ -59406,6 +59591,7 @@
   },
   {
    "id": "added_text_not_a_time",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite, which cannot, makes the table again (DIA-222).",
    "requirements": [
     "INT-160"
    ],
@@ -61109,6 +61295,7 @@
   },
   {
    "id": "core_writes",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PLN-12",
     "PLN-27",
@@ -61786,6 +61973,7 @@
   },
   {
    "id": "core_in_list_padding",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "CPX-4"
    ],
@@ -62960,6 +63148,7 @@
   },
   {
    "id": "core_projected_reads",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PRT-2",
     "PRT-34"
@@ -63491,7 +63680,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -63502,10 +63691,10 @@
                "int": "6"
               },
               {
-               "int": "0"
+               "int": "1"
               },
               {
-               "int": "1"
+               "int": "0"
               }
              ]
             }
@@ -63545,7 +63734,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -63559,10 +63748,10 @@
                "bool": false
               },
               {
-               "int": "0"
+               "int": "100"
               },
               {
-               "int": "100"
+               "int": "0"
               }
              ]
             }
@@ -63840,6 +64029,7 @@
   },
   {
    "id": "page_statement_does_not_hold_its_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PRT-78"
    ],
@@ -63950,7 +64140,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -63961,10 +64151,10 @@
                "int": "6"
               },
               {
-               "int": "0"
+               "int": "2"
               },
               {
-               "int": "2"
+               "int": "0"
               }
              ]
             }
@@ -64004,7 +64194,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -64015,10 +64205,10 @@
                "int": "6"
               },
               {
-               "int": "1"
+               "int": "2"
               },
               {
-               "int": "2"
+               "int": "1"
               }
              ]
             }
@@ -64290,6 +64480,7 @@
   },
   {
    "id": "value_function_parameter_indexes",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the ORM functions and the relative time are each dialect's own expressions, and the clock binds of PostgreSQL and SQLite sit at their own positions (DIA-14, PRT-33).",
    "requirements": [
     "PRT-77"
    ],
@@ -64600,6 +64791,7 @@
   },
   {
    "id": "now_defaults",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the clock is bound by the client on PostgreSQL and SQLite and is SQLite text of a fixed form (PRT-33, DIA-24).",
    "requirements": [
     "PRT-33"
    ],
@@ -64793,7 +64985,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -65576,6 +65768,7 @@
   },
   {
    "id": "contains_ascii_fold",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains folds ASCII letters with each dialect's own expression (PRT-25).",
    "requirements": [
     "PRT-25"
    ],
@@ -68523,6 +68716,7 @@
   },
   {
    "id": "contains_binary_code_point",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); contains_binary compares code points with LIKE on MySQL and PostgreSQL and with instr on SQLite, whose LIKE folds ASCII case (PRT-25).",
    "requirements": [
     "PRT-25",
     "DSL-30"
@@ -71423,6 +71617,7 @@
   },
   {
    "id": "delete_recursive",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-111"
    ],
@@ -71814,7 +72009,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -72182,7 +72377,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -73578,6 +73773,7 @@
   },
   {
    "id": "relation_row_lock",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); SQLite has no row lock clause and locks the file (DIA-209).",
    "requirements": [
     "PRT-8",
     "DSL-123"
@@ -74321,6 +74517,7 @@
   },
   {
    "id": "expect_revision",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); the clock is bound by the client on PostgreSQL and SQLite, where MySQL writes CURRENT_TIMESTAMP (PRT-33, DIA-18).",
    "requirements": [
     "DSL-108",
     "DSL-114"
@@ -74668,7 +74865,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -74773,7 +74970,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -74878,7 +75075,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -76438,6 +76635,7 @@
   },
   {
    "id": "column_pairs",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "PRT-20",
     "PRT-22"
@@ -76990,7 +77188,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -76998,10 +77196,10 @@
             {
              "array": [
               {
-               "int": "0"
+               "int": "2"
               },
               {
-               "int": "2"
+               "int": "0"
               }
              ]
             }
@@ -77688,6 +77886,7 @@
   },
   {
    "id": "aes_status",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "INT-60",
     "INT-75"
@@ -77992,6 +78191,7 @@
   },
   {
    "id": "delete_lock",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "DSL-87",
     "DSL-111"
@@ -82819,6 +83019,7 @@
   },
   {
    "id": "invalid_stored_cells_mysql",
+   "databases_differ": "The invalid cells that a column can hold are the server's own, written with its own statements (COD-1, DIA-38).",
    "only": [
     "mysql"
    ],
@@ -82936,6 +83137,7 @@
   },
   {
    "id": "invalid_stored_cells_postgres",
+   "databases_differ": "The invalid cells that a column can hold are the server's own, written with its own statements (COD-1, DIA-38).",
    "only": [
     "postgres"
    ],
@@ -83014,6 +83216,7 @@
   },
   {
    "id": "invalid_stored_cells_sqlite",
+   "databases_differ": "The invalid cells that a column can hold are the server's own, written with its own statements (COD-1, DIA-38).",
    "only": [
     "sqlite"
    ],
@@ -83584,6 +83787,7 @@
   },
   {
    "id": "invalid_stored_dates_sqlite",
+   "databases_differ": "Only SQLite stores a date as text, which can hold a text that is not a date (COD-61, DIA-52).",
    "requirements": [
     "COD-1",
     "COD-61"
@@ -83698,6 +83902,7 @@
   },
   {
    "id": "driver_bytes_cells_are_exact",
+   "databases_differ": "A bytes literal is X'…' on MySQL and SQLite and an escaped bytea on PostgreSQL (DIA-47).",
    "requirements": [
     "PRT-69",
     "INT-5",
@@ -84000,6 +84205,7 @@
   },
   {
    "id": "slot_value_forms_roundtrip",
+   "databases_differ": "MySQL stores no infinity and refuses it, where PostgreSQL and SQLite store it and every client refuses to read it as a finite f64 (DIA-42).",
    "requirements": [
     "PRT-67",
     "PRT-69",
@@ -84371,11 +84577,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `ratio` FROM `typed_value` WHERE `seq` = 1",
-        "postgres": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT ratio FROM typed_value WHERE seq = 1"
       }
      ],
      "expect": {
@@ -84435,11 +84637,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `ratio` FROM `typed_value` WHERE `seq` = 1",
-        "postgres": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"ratio\" FROM \"typed_value\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT ratio FROM typed_value WHERE seq = 1"
       }
      ],
      "expect": {
@@ -84590,11 +84788,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `payload` FROM `typed_value` WHERE `seq` = 1",
-        "postgres": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT payload FROM typed_value WHERE seq = 1"
       }
      ],
      "expect": {
@@ -84721,11 +84915,7 @@
        "tables": [
         "typed_value"
        ],
-       "sql": {
-        "mysql": "SELECT `payload` FROM `typed_value` WHERE `seq` = 2",
-        "postgres": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 2",
-        "sqlite": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 2"
-       }
+       "sql": "SELECT payload FROM typed_value WHERE seq = 2"
       }
      ],
      "expect": {
@@ -84774,6 +84964,7 @@
   },
   {
    "id": "core_decimal_values",
+   "databases_differ": "SQLite has no decimal storage and returns the text of a number without its scale (DIA-41).",
    "requirements": [
     "DIA-25",
     "COD-2"
@@ -85352,11 +85543,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -85614,11 +85801,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -85690,11 +85873,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "UPDATE `author` SET `json_setting` = '' WHERE `seq` = 1",
-        "postgres": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1",
-        "sqlite": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1"
-       }
+       "sql": "UPDATE author SET json_setting = '' WHERE seq = 1"
       }
      ]
     },
@@ -85732,6 +85911,7 @@
   },
   {
    "id": "plan_cache_reads_each_request_with_its_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
    "requirements": [
     "CPX-4"
    ],
@@ -86235,7 +86415,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`seq` <= ? ORDER BY `s1`.`seq` DESC LIMIT 0, 1) AS `a__a_low`, (SELECT `s2`.`name` FROM `author` AS `s2` WHERE `s2`.`seq` <= ? ORDER BY `s2`.`seq` DESC LIMIT 0, 1) AS `a__z_low`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq` FROM `user` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`seq` = `service_member_model`.`user_seq` AND `service_member_model`.`service_seq` = ? WHERE `a`.`seq` <= ? AND (`service_member_model`.`seq` >= ?) ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`seq` <= ? ORDER BY `s1`.`seq` DESC LIMIT 1 OFFSET 0) AS `a__a_low`, (SELECT `s2`.`name` FROM `author` AS `s2` WHERE `s2`.`seq` <= ? ORDER BY `s2`.`seq` DESC LIMIT 1 OFFSET 0) AS `a__z_low`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq` FROM `user` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`seq` = `service_member_model`.`user_seq` AND `service_member_model`.`service_seq` = ? WHERE `a`.`seq` <= ? AND (`service_member_model`.`seq` >= ?) ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -86258,10 +86438,10 @@
                "int": "100"
               },
               {
-               "int": "1"
+               "int": "3"
               },
               {
-               "int": "3"
+               "int": "1"
               }
              ]
             }
@@ -86358,7 +86538,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`seq` <= ? ORDER BY `s1`.`seq` DESC LIMIT 0, 1) AS `a__a_low`, (SELECT `s2`.`name` FROM `author` AS `s2` WHERE `s2`.`seq` <= ? ORDER BY `s2`.`seq` DESC LIMIT 0, 1) AS `a__z_low`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq` FROM `user` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`seq` = `service_member_model`.`user_seq` AND `service_member_model`.`service_seq` = ? WHERE `a`.`seq` <= ? AND (`service_member_model`.`seq` >= ?) ORDER BY `a`.`seq` ASC LIMIT ?, ?"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`seq` <= ? ORDER BY `s1`.`seq` DESC LIMIT 1 OFFSET 0) AS `a__a_low`, (SELECT `s2`.`name` FROM `author` AS `s2` WHERE `s2`.`seq` <= ? ORDER BY `s2`.`seq` DESC LIMIT 1 OFFSET 0) AS `a__z_low`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq` FROM `user` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`seq` = `service_member_model`.`user_seq` AND `service_member_model`.`service_seq` = ? WHERE `a`.`seq` <= ? AND (`service_member_model`.`seq` >= ?) ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?"
             }
            ],
            [
@@ -86381,10 +86561,10 @@
                "int": "1"
               },
               {
-               "int": "1"
+               "int": "2"
               },
               {
-               "int": "2"
+               "int": "1"
               }
              ]
             }
@@ -86989,6 +87169,7 @@
   },
   {
    "id": "plan_cache_writes_each_request_with_its_values",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); an upsert is ON DUPLICATE KEY UPDATE on MySQL and ON CONFLICT on PostgreSQL and SQLite (DIA-8, DIA-11).",
    "requirements": [
     "CPX-4"
    ],
@@ -87888,7 +88069,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -87990,7 +88171,7 @@
            [
             "sql",
             {
-             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
             }
            ],
            [
@@ -90483,6 +90664,133 @@
   },
   {
    "id": "aggregate_of_a_stored_nan_or_infinity_is_codec_decode",
+   "databases_differ": "MySQL stores no infinity, where PostgreSQL and SQLite store one, each in its own literal (DIA-42, DIA-216).",
+   "requirements": [
+    "DSL-66",
+    "DIA-216",
+    "COD-1"
+   ],
+   "only": [
+    "postgres",
+    "sqlite"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.5"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "1"
+      },
+      "ratio": {
+       "float": "1.5"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "aggregate"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "postgres": "UPDATE typed_value SET ratio = 'Infinity' WHERE seq = 2",
+        "sqlite": "UPDATE typed_value SET ratio = 9e999 WHERE seq = 2"
+       }
+      }
+     ]
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "in": {
+        "array": [
+         {
+          "int": "2"
+         }
+        ]
+       }
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "ratio"
+     },
+     "expect": {
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "aggregate_of_a_stored_nan_is_codec_decode",
+   "databases_differ": "Only PostgreSQL stores a NaN in a float column; MySQL stores no NaN and SQLite stores it as NULL (DIA-42, DIA-216).",
    "requirements": [
     "DSL-66",
     "DIA-216",
@@ -90569,13 +90877,6 @@
         "typed_value"
        ],
        "sql": "UPDATE typed_value SET ratio = 'NaN' WHERE seq = 1"
-      },
-      {
-       "kind": "update",
-       "tables": [
-        "typed_value"
-       ],
-       "sql": "UPDATE typed_value SET ratio = 'Infinity' WHERE seq = 2"
       }
      ]
     },
@@ -90596,31 +90897,6 @@
      },
      "aggregate": {
       "agg": "avg",
-      "column": "ratio"
-     },
-     "expect": {
-      "postgres": {
-       "error": "CODEC_DECODE"
-      }
-     }
-    },
-    {
-     "op": "model.query",
-     "connection": "db",
-     "model": "TypedValue",
-     "where": {
-      "seq": {
-       "in": {
-        "array": [
-         {
-          "int": "2"
-         }
-        ]
-       }
-      }
-     },
-     "aggregate": {
-      "agg": "sum",
       "column": "ratio"
      },
      "expect": {
@@ -91608,6 +91884,7 @@
   },
   {
    "id": "decimal_text_reads_as_the_nearest_f64",
+   "databases_differ": "Each server changes the type of a column in its own statement, and SQLite makes the table again with a column of no affinity, the only one that keeps a decimal text as text (DIA-222, DIA-41).",
    "requirements": [
     "COD-1",
     "INT-141"
@@ -91741,21 +92018,19 @@
     },
     {
      "op": "sql.exec",
+     "only": [
+      "sqlite"
+     ],
      "reason": "SQLite keeps a text only in a column with no type affinity",
-     "sql": {
-      "mysql": "SELECT 1",
-      "postgres": "SELECT 1",
-      "sqlite": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, ratio)"
-     }
+     "sql": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, ratio)"
     },
     {
      "op": "sql.exec",
+     "only": [
+      "sqlite"
+     ],
      "reason": "the rows again in the table made again",
-     "sql": {
-      "mysql": "SELECT 1",
-      "postgres": "SELECT 1",
-      "sqlite": "INSERT INTO typed_value (seq) VALUES (1), (2), (3), (4)"
-     }
+     "sql": "INSERT INTO typed_value (seq) VALUES (1), (2), (3), (4)"
     },
     {
      "op": "sql.exec",
@@ -91981,6 +92256,7 @@
   },
   {
    "id": "decimal_text_past_28_digits_reads_exactly",
+   "databases_differ": "Only MySQL and PostgreSQL have a decimal type of more than 28 digits; SQLite has no decimal storage (DIA-41, DIA-219).",
    "requirements": [
     "DIA-25",
     "COD-1",
@@ -92005,8 +92281,7 @@
        "tables": [],
        "sql": {
         "mysql": "SELECT CAST('1234567890123456789012345678901.123456789' AS DECIMAL(40,9)), CAST('-0.000000000000000000000000000001' AS DECIMAL(40,30))",
-        "postgres": "SELECT CAST('1234567890123456789012345678901.123456789' AS NUMERIC(40,9)), CAST('-0.000000000000000000000000000001' AS NUMERIC(40,30))",
-        "sqlite": "SELECT 1"
+        "postgres": "SELECT CAST('1234567890123456789012345678901.123456789' AS NUMERIC(40,9)), CAST('-0.000000000000000000000000000001' AS NUMERIC(40,30))"
        }
       }
      ],
@@ -92168,11 +92443,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92442,11 +92713,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92623,11 +92890,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92736,11 +92999,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92831,11 +93090,7 @@
        "tables": [
         "load_probe"
        ],
-       "sql": {
-        "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
-        "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
-        "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-       }
+       "sql": "SELECT seq, label FROM load_probe ORDER BY seq"
       }
      ],
      "expect": {
@@ -92860,6 +93115,7 @@
   },
   {
    "id": "styled_column_states_at_the_setter_and_getter",
+   "databases_differ": "The column or table json_value is a reserved word of MySQL, so the statement quotes it in each dialect's form, a backquote on MySQL and a double quote on PostgreSQL and SQLite (DIA-1); its other identifiers are written without quotes.",
    "requirements": [
     "COD-20",
     "COD-32",
@@ -98158,6 +98414,7 @@
   },
   {
    "id": "clock_microseconds",
+   "databases_differ": "The clock is a timestamp read with each server's own functions on MySQL and PostgreSQL and UTC text of a fixed form on SQLite (DIA-18, DIA-24).",
    "requirements": [
     "DIA-18"
    ],
@@ -98423,6 +98680,7 @@
   },
   {
    "id": "clock_soft_delete_microseconds",
+   "databases_differ": "The clock is a timestamp read with each server's own functions on MySQL and PostgreSQL and UTC text of a fixed form on SQLite (DIA-18, DIA-24).",
    "requirements": [
     "DIA-18"
    ],
@@ -100334,6 +100592,7 @@
   },
   {
    "id": "temporal_stored_text",
+   "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221); a temporal value is MySQL's and PostgreSQL's own type and SQLite's UTC text, read back with each dialect's format (DIA-24).",
    "requirements": [
     "DIA-24",
     "PRT-67"
@@ -100821,6 +101080,7 @@
   },
   {
    "id": "text_not_utf8_refused",
+   "databases_differ": "MySQL and PostgreSQL refuse a text that is not UTF-8, where SQLite stores its bytes and every client refuses to read it (DIA-220, COD-69).",
    "requirements": [
     "COD-69"
    ],

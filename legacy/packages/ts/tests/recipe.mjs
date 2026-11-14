@@ -37,7 +37,7 @@ import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession } from './coverage_case.mjs';
 import { readStep } from './recipe_reads.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
-import { caseTest, COMPUTE, DATABASE, PROCESS, stepBudget, stepGuard } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
@@ -50,25 +50,9 @@ function reportCase(id, database) {
   appendFileSync(path, database === NONE ? `CASE ${id} PASS\n` : `CASE ${id} [${database}] PASS\n`);
 }
 
-// caseDeadline is the deadline of a database case: DATABASE, or the step budget of the steps that its deadline states (FCV-4).
-function caseDeadline(recipeCase) {
-  return recipeCase.deadline === undefined ? DATABASE : stepBudget(recipeCase.deadline.steps);
-}
-
-// guarded runs work with the step guard of a case with a step deadline, armed at the start of the case: the guard ends the case at
-// its step budget, or when no apply event comes within DATABASE (FCV-4). A case without a step deadline gets none.
-async function guarded(recipeCase, work) {
-  const guard = recipeCase.deadline === undefined ? undefined : stepGuard(caseDeadline(recipeCase), DATABASE);
-  try {
-    return await work(guard);
-  } finally {
-    guard?.stop();
-  }
-}
-
 // registerRecipeCase registers one case of a recipe with node:test.
-function registerRecipeCase(recipeCase, database, deadline, body) {
-  return caseTest(recipeCase.id, deadline, async context => {
+function registerRecipeCase(recipeCase, database, body) {
+  return caseTest(recipeCase.id, async context => {
     await body(context);
     reportCase(recipeCase.id, database);
   });
@@ -94,9 +78,7 @@ export function runRecipe(path, database) {
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    // The interface check is another process, which may build its extractor; the other cases compute in memory.
-    const deadline = recipeCase.steps.some(step => step.op === 'interface.symbols') ? PROCESS : COMPUTE;
-    registerRecipeCase(recipeCase, database, deadline, async () => {
+    registerRecipeCase(recipeCase, database, async () => {
       const bound = new Map();
       for (const [index, rawStep] of recipeCase.steps.entries()) {
         const reads = readStep(rawStep, database);
@@ -625,12 +607,12 @@ async function databaseRecipe(path, database) {
     if (markdown) {
       // flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a corpus of no table.
       const setPath = fixture !== NONE_FIXTURE && recipeCase.install !== false ? resolve(root, fixture) : null;
-      registerRecipeCase(recipeCase, database, caseDeadline(recipeCase), ({ step }) =>
-        guarded(recipeCase, guard => withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }))));
+      registerRecipeCase(recipeCase, database, ({ step }) =>
+        withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
       continue;
     }
-    registerRecipeCase(recipeCase, database, caseDeadline(recipeCase), ({ step }) =>
-      guarded(recipeCase, guard => withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }))));
+    registerRecipeCase(recipeCase, database, ({ step }) =>
+      withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
 }
 
@@ -688,34 +670,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
   }
 }
 
-// endCaseSessions ends, on the server, every other session on the database of dsn: the catalog, the model connections, the
-// native ones of sql.exec and the dbspec sessions of a case. A case that its step guard ended stops its running statement so, and
-// its cleanup does not wait for that statement (FCV-4), as Go cancels the context of the statement and Python and Rust end the
-// case. A corpus and SQLite run their statements in this process, so none is running when the guard ends the case.
-async function endCaseSessions(database, dsn) {
-  if (dialectOfDatabase(database) === 'mysql') {
-    const session = await nativeSession(database, dsn);
-    try {
-      const sessions = await session.query('SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()');
-      for (const { ID } of sessions) {
-        // A session that ended after the list was read is no thread any more (ER_NO_SUCH_THREAD).
-        await session.query(`KILL ${Number(ID)}`).catch(error => { if (error?.code !== 'ER_NO_SUCH_THREAD') throw error; });
-      }
-    } finally {
-      await session.close();
-    }
-  } else if (database === 'postgres') {
-    await nativeQuery(database, dsn, ['SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()']);
-  }
-}
-
-async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step, guard }) {
-  // The sessions of a case that its step guard ended are ended at that event. Such a case has failed with the text of its guard,
-  // so a failure to end them is a line of that case, which keeps the text of the guard as its failure.
-  let ending;
-  guard?.ended.then(() => {
-    ending = endCaseSessions(database, caseDatabase.dsn).then(() => undefined, error => error);
-  });
+async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
   try {
     // A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
@@ -727,11 +682,9 @@ async function runCase({ name, recipe, recipeCase, database, schema, installFirs
       for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
       step('schema installed');
     }
-    await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db, guard });
+    await runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db });
   } finally {
     await db.close();
-    const unended = await ending;
-    if (unended !== undefined) step(`the sessions of the case could not be ended: ${unended.message}`);
   }
 }
 
@@ -748,7 +701,7 @@ async function runCaseSteps({ name, recipeCase, database, context, step }) {
   }
 }
 
-async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db, guard }) {
+async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatabase, step, db }) {
   const closers = [];
   const catalog = await connectCatalog(caseDatabase.dsn);
   let context;
@@ -756,7 +709,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path, guard };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -1088,8 +1041,8 @@ const OPS = {
   // Returns after the replica has applied every change that the primary committed before the call (CFG-23). On PostgreSQL a
   // transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
   // standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
-  // database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the
-  // deadline of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+  // database of the environment, since the case database reaches the replica only by this wait. The wait has no timeout: it
+  // ends when the replica has applied the position, or with NULL when its SQL thread stops (T474).
   async 'replica.await'(s, context) {
     if (context.database === 'postgres') {
       const [, , [{ mode }]] = await nativeQuery('postgres', context.dsn, [
@@ -1108,8 +1061,8 @@ const OPS = {
     const mariadb = context.database === 'mariadb';
     const [[status]] = await nativeQuery('mysql', context.dsn, [mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS']);
     const wait = mariadb ? 'MASTER_POS_WAIT' : 'SOURCE_POS_WAIT';
-    const [[row]] = await nativeQuery('mysql', replica, [`SELECT ${wait}('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
-    if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
+    const [[row]] = await nativeQuery('mysql', replica, [`SELECT ${wait}('${status.File}', ${Number(status.Position)}) AS waited`]);
+    if (row.waited === null) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     return {};
   },
   // The file of the case database becomes one that the process may only read (CFG-24); a corpus, its directories.
@@ -1150,7 +1103,7 @@ const OPS = {
     const session = connectDsn('case-server', context.database, context.dsn);
     const [rows] = await nativeQuery(context.database, session, [`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = 'LISTEN "${s.channel}"' LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the listener session of ${s.channel}: ${rows.length} rows`);
-    await nativeQuery(context.database, session, [`SELECT pg_terminate_backend(${Number(rows[0].pid)}, 5000)`]);
+    await nativeQuery(context.database, session, [`SELECT pg_terminate_backend(${Number(rows[0].pid)})`]);
     return {};
   },
   'wait.start'(s, context) {
@@ -1176,7 +1129,7 @@ const OPS = {
       : `SELECT t.PROCESSLIST_ID FROM performance_schema.metadata_locks m JOIN performance_schema.threads t ON t.THREAD_ID = m.OWNER_THREAD_ID WHERE m.OBJECT_TYPE = 'TABLE' AND m.OBJECT_SCHEMA = DATABASE() AND m.OBJECT_NAME = '${s.table}' AND m.LOCK_DURATION = 'TRANSACTION' AND m.LOCK_STATUS = 'GRANTED' AND t.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1`]);
     if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
     const id = Number(Object.values(rows[0])[0]);
-    await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
+    await nativeQuery(dialectOf(context), session, [postgres ? `SELECT pg_terminate_backend(${id})` : `KILL ${id}`]);
     return {};
   },
   // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
@@ -1250,12 +1203,12 @@ const OPS = {
   'hook.records'(_, context) {
     const counts = {};
     for (const record of context.records) counts[record.entity] = (counts[record.entity] ?? 0) + 1;
-    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }], ...(record.param === undefined ? [] : [['param', record.param]])] }));
+    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }], ...(record.param === undefined ? [] : [['param', record.param]]), ...(record.read === undefined ? [] : [['read', record.read]])] }));
     return { value: { array: list }, counts };
   },
 };
 
-// The ops of the dbspec apply API (FCV-4); a command of a large plan is bounded by the deadline of its case.
+// The ops of the dbspec apply API (FCV-4).
 const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runStep: (s, context) => runStep(s, context) });
 
 async function runStep(rawStep, context) {
@@ -1275,10 +1228,7 @@ async function runStep(rawStep, context) {
   const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[dialectKey(context.database, rawStep.expect)], context));
   let actual;
   try {
-    // An op is bounded by the deadline of its case alone, as in every runtime: the step guard of a case with a step deadline, and
-    // otherwise the case deadline (caseTest).
-    const work = Promise.resolve().then(() => op(s, context));
-    actual = await (context.guard === undefined ? work : Promise.race([work, context.guard.ended.then(error => { throw error; })]));
+    actual = await op(s, context);
   } catch (error) {
     const code = error === callbackError ? 'CALLBACK' : error?.code;
     if (expected?.error === undefined || typeof code !== 'string') throw error;
@@ -2398,8 +2348,9 @@ const TABLE_OPS = {
   },
   // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
   async 'pool.transactions'(s, context) {
-    // Count transactions at once: the first hold of them stay open until hold have begun, so the pool shows the
-    // connections that they take at once (CFG-4, CFG-5).
+    // Count read-only transactions at once: the first hold of them stay open until hold have begun, so the pool shows the
+    // connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no write lock, so SQLite and a flowmark
+    // corpus hold them at once too (DIA-221).
     const db = connectionOf(s, context);
     let [active, peak, open, begun] = [0, 0, 0, 0];
     let release;
@@ -2412,7 +2363,7 @@ const TABLE_OPS = {
       if (begun === s.hold) release();
       await gate;
       active -= 1;
-    }, { retry: 0 })));
+    }, { retry: 0, readOnly: true })));
     return { json: { peak, open } };
   },
   'utils.stats'(s, context) {
@@ -2468,9 +2419,11 @@ function installHook(s, context) {
     value: a.value === undefined ? undefined : native(databaseValue(stepArgument(a.value, context), context)),
     nested: a.nested === true,
     code: a.error,
+    read: a.read,
   }));
   context.records = [];
-  const hooked = base.withRequestHook((query, addParam, params) => {
+  // The hook is asynchronous: the client awaits it before it plans the request (INT-78).
+  const hooked = base.withRequestHook(async (query, addParam, params) => {
     for (const a of actions) {
       if (!kindMatches(a.kinds, query.kind)) continue;
       switch (a.action) {
@@ -2493,6 +2446,14 @@ function installHook(s, context) {
         case 'invalid_param':
           andWhere(query, { column: a.column, op: 'eq', p: query.n_params + 5 });
           break;
+        case 'locked_read': {
+          // The hook reads with its lock in a transaction of another connection before the client plans the request, and a
+          // refusal of that read fails the operation unchanged.
+          let read;
+          await connectionOf(a.read, context).transaction(async () => { read = (await chainBuilt(a.read, context).gets()).values().length; }, { retry: 0 });
+          context.records.push({ kind: query.kind, entity: query.entity, read: { int: String(read) } });
+          break;
+        }
         case 'record':
           context.records.push({ kind: query.kind, entity: query.entity });
           break;
@@ -2607,6 +2568,8 @@ Object.assign(OPS, {
       for (const statement of s.statements) {
         last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
       }
+      // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+      if (s.hold_ms !== undefined) await new Promise(resolve => { setTimeout(resolve, s.hold_ms); });
       if (s.conflict !== undefined) throw transactionConflict(s.conflict);
       return last;
     });
@@ -3209,7 +3172,7 @@ async function checkIntrospectSqlite(step, database) {
 // INT-18, INT-19, INT-57, INT-61, INT-64). A check that exits other than 0 rejects with its output.
 async function checkInterfaceSymbols() {
   await new Promise((done, fail) => {
-    execFile('node', ['tests/interfaces/check/main.mts', '-language', 'typescript'], { cwd: root, maxBuffer: 16 * 1024 * 1024, timeout: 280_000 }, (error, stdout, stderr) => {
+    execFile('node', ['tests/interfaces/check/main.mts', '-language', 'typescript'], { cwd: root, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) fail(new Error(`interface check failed (${error.code ?? error.signal}): ${stdout}${stderr}`, { cause: error }));
       else done();
     });

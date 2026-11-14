@@ -519,19 +519,8 @@
           "want": "2"
         },
         {
-          "query": "SELECT change || ' ' || name || ' ' || coalesce(previous_audit_seq, 0) FROM service_history WHERE audit_seq = 2",
-          "want": "update b 1",
-          "dialects": [
-            "postgres",
-            "sqlite"
-          ]
-        },
-        {
-          "query": "SELECT concat(`change`, ' ', name, ' ', coalesce(previous_audit_seq, 0)) FROM service_history WHERE audit_seq = 2",
-          "want": "update b 1",
-          "dialects": [
-            "mysql"
-          ]
+          "query": "SELECT count(*) FROM service_history WHERE service_history.change = 'update' AND name = 'b' AND coalesce(previous_audit_seq, 0) = 1 AND audit_seq = 2",
+          "want": "1"
         }
       ]
     },
@@ -749,49 +738,16 @@
           "want": "3"
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE change = 'insert' AND previous_audit_seq IS NULL AND title = 'a' AND audit_seq = 1 AND deleted_at IS NULL",
-          "want": "1",
-          "dialects": [
-            "postgres",
-            "sqlite"
-          ]
+          "query": "SELECT count(*) FROM card_history WHERE card_history.change = 'insert' AND previous_audit_seq IS NULL AND title = 'a' AND audit_seq = 1 AND deleted_at IS NULL",
+          "want": "1"
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE `change` = 'insert' AND previous_audit_seq IS NULL AND title = 'a' AND audit_seq = 1 AND deleted_at IS NULL",
-          "want": "1",
-          "dialects": [
-            "mysql"
-          ]
+          "query": "SELECT count(*) FROM card_history WHERE card_history.change = 'update' AND previous_audit_seq = 1 AND title = 'b' AND audit_seq = 2 AND deleted_at IS NULL",
+          "want": "1"
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE change = 'update' AND previous_audit_seq = 1 AND title = 'b' AND audit_seq = 2 AND deleted_at IS NULL",
-          "want": "1",
-          "dialects": [
-            "postgres",
-            "sqlite"
-          ]
-        },
-        {
-          "query": "SELECT count(*) FROM card_history WHERE `change` = 'update' AND previous_audit_seq = 1 AND title = 'b' AND audit_seq = 2 AND deleted_at IS NULL",
-          "want": "1",
-          "dialects": [
-            "mysql"
-          ]
-        },
-        {
-          "query": "SELECT count(*) FROM card_history WHERE change = 'update' AND previous_audit_seq = 2 AND title = 'b' AND audit_seq = 3 AND deleted_at IS NOT NULL",
-          "want": "1",
-          "dialects": [
-            "postgres",
-            "sqlite"
-          ]
-        },
-        {
-          "query": "SELECT count(*) FROM card_history WHERE `change` = 'update' AND previous_audit_seq = 2 AND title = 'b' AND audit_seq = 3 AND deleted_at IS NOT NULL",
-          "want": "1",
-          "dialects": [
-            "mysql"
-          ]
+          "query": "SELECT count(*) FROM card_history WHERE card_history.change = 'update' AND previous_audit_seq = 2 AND title = 'b' AND audit_seq = 3 AND deleted_at IS NOT NULL",
+          "want": "1"
         },
         {
           "sql": "INSERT INTO tag (label, color, audit_seq) VALUES ('x', 'red', 1)"
@@ -898,30 +854,10 @@
       },
       "behavior": [
         {
-          "sql": "INSERT INTO service_module_board_post () VALUES ()",
-          "dialects": [
-            "mysql"
-          ]
+          "sql": "INSERT INTO service_module_board_post (service_module_board_post_seq) VALUES (1)"
         },
         {
-          "sql": "INSERT INTO service_module_board_post DEFAULT VALUES",
-          "dialects": [
-            "postgres",
-            "sqlite"
-          ]
-        },
-        {
-          "sql": "INSERT INTO audit () VALUES ()",
-          "dialects": [
-            "mysql"
-          ]
-        },
-        {
-          "sql": "INSERT INTO audit DEFAULT VALUES",
-          "dialects": [
-            "postgres",
-            "sqlite"
-          ]
+          "sql": "INSERT INTO audit (seq) VALUES (1)"
         },
         {
           "sql": "INSERT INTO service_module_board_comment (service_module_board_post_seq, audit_seq) VALUES (1, 1)"

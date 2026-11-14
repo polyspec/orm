@@ -253,13 +253,17 @@ func dbspecIntrospectRefusal(s step) (any, error) {
 	})
 }
 
-// introspectFailureStep introspects the empty case database with the catalog queries of another dialect: their failure is
-// the error of the call (DIA-133).
+// introspectFailureStep introspects the empty case database with the catalog queries of another dialect, which catalog_of
+// names for every database or per database: their failure is the error of the call (DIA-133).
 func introspectFailureStep(s databaseStep, c *databaseContext) error {
+	other, err := databaseText(s.k("catalog_of").CatalogOf, c)
+	if err != nil {
+		return err
+	}
 	raw := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, raw)
-	if _, _, err := dbspec.Introspect(c.ctx, raw, dbspec.Dialect(s.k("catalog_of").CatalogOf), dbspec.Server(s.k("catalog_of").CatalogOf), "introspected"); err == nil {
-		return fmt.Errorf("the %s catalog queries did not fail on %s", s.k("catalog_of").CatalogOf, c.database)
+	if _, _, err := dbspec.Introspect(c.ctx, raw, dbspec.Dialect(other), dbspec.Server(other), "introspected"); err == nil {
+		return fmt.Errorf("the %s catalog queries did not fail on %s", other, c.database)
 	}
 	return nil
 }

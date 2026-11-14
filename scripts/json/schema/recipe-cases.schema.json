@@ -14,11 +14,6 @@
         "properties": {
           "id": { "type": "string" },
           "only": { "type": "array", "items": { "type": "string" } },
-          "deadline": {
-            "type": "object",
-            "required": ["steps"],
-            "properties": { "steps": { "type": "integer", "minimum": 1 } }
-          },
           "steps": {
             "type": "array",
             "items": {

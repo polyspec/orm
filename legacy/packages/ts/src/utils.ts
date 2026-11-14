@@ -366,8 +366,12 @@ export class SchemaUtils {
 export class PrivilegeUtils {
   public constructor(private readonly u: Utils) {}
 
-  private table(table: string): string {
+  /** Refuses a dialect other than PostgreSQL, after the arguments of the call are checked, so that an invalid argument is the same CONFIG on every database (INT-59, DIA-225). */
+  private supported(): void {
     if (this.u.db.driver !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'table privileges are supported only by postgres');
+  }
+
+  private table(table: string): string {
     const parts = table.split('.');
     if (parts.length !== 2 || !parts.every(validKey)) throw config('a qualified table name is required');
     return parts.map(part => quote('postgres', part)).join('.');
@@ -381,6 +385,7 @@ export class PrivilegeUtils {
   public async grantTable(table: string, role: string): Promise<void> {
     const qualified = this.table(table);
     const r = this.role(role);
+    this.supported();
     await this.u.run(async frame => {
       await frame.statement('utility', [table], `GRANT USAGE ON SCHEMA ${qualified.slice(0, qualified.indexOf('.'))} TO ${r}`);
       await frame.statement('utility', [table], `GRANT SELECT, INSERT, UPDATE, DELETE ON ${qualified} TO ${r}`);
@@ -393,11 +398,13 @@ export class PrivilegeUtils {
     // A privilege is an SQL keyword: ASCII case does not matter, and nothing else is changed (INT-59).
     const upper = privilege.replace(/[a-z]/g, letter => letter.toUpperCase());
     if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'].includes(upper)) throw config(`unsupported table privilege ${messageQuote(privilege)}`);
+    this.supported();
     await this.u.run(async frame => { await frame.statement('utility', [table], `REVOKE ${upper} ON ${qualified} FROM ${r}`); });
   }
 
   public async inspectTable(table: string): Promise<TablePrivileges> {
     const qualified = this.table(table);
+    this.supported();
     const row = (await this.u.read('utility', [table], `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, [qualified]))[0];
     if (row === undefined) throw new OrmError(codes.INTERNAL, `the privileges of ${table} returned no row`);
     return { insert: row[0] === true, select: row[1] === true, update: row[2] === true, delete: row[3] === true, truncate: row[4] === true };

@@ -470,7 +470,7 @@ const checkNode = (tree: Tree, words: string[], cwd: string, report: Report) => 
 };
 
 // Output paths, which a recipe writes, are not test names.
-const PATH_WORD = /^(\.\/|\/)?((?:packages|tests|examples|benchmarks|scripts)\/[^\s:=,'"`]*\.(?:php|phpt|mjs|mts|cjs|ts|py|rs|go|sh))$/;
+const PATH_WORD = /^(\.\/|\/)?((?:legacy|packages|tests|examples|benchmarks|scripts)\/[^\s:=,'"`]*\.(?:php|phpt|mjs|mts|cjs|ts|py|rs|go|sh))$/;
 
 const checkPaths = (tree: Tree, words: string[], cwd: string, report: Report) => {
   for (const word of words) {
@@ -518,7 +518,7 @@ export const checkCommand = (tree: Tree, command: string, targets?: Set<string>)
 
 export type Makefile = { variables: Map<string, string>; recipes: Map<string, string[]>; targets: Set<string>; patterns: string[] };
 
-const REPLACED_WITH_ARGUMENTS = new Set(['strip', 'addprefix', 'addsuffix', 'patsubst', 'foreach', 'sort', 'filter', 'filter-out', 'wildcard', 'notdir', 'dir', 'basename', 'firstword', 'lastword', 'word', 'words']);
+const REPLACED_WITH_ARGUMENTS = new Set(['strip', 'addprefix', 'addsuffix', 'patsubst', 'sort', 'filter', 'filter-out', 'wildcard', 'notdir', 'dir', 'basename', 'firstword', 'lastword', 'word', 'words']);
 
 // expand evaluates the make references of a recipe line: a variable, $(if), $(call), $(subst) and the text of the other functions; what it cannot know,
 // such as $(shell), stays a reference, which the checks read as unknown.
@@ -584,6 +584,11 @@ export const expand = (text: string, variables: Map<string, string>, overrides: 
     } else if (name === 'subst') {
       const [from = '', to = '', ...rest] = splitArguments();
       out += expand(rest.join(','), variables, overrides, depth + 1).replaceAll(from, to);
+    } else if (name === 'foreach') {
+      // $(foreach name,list,text) is text once for each word of list, with $(name) as that word.
+      const [variable = '', list = '', ...text] = splitArguments();
+      out += expand(list, variables, overrides, depth + 1).trim().split(/\s+/).filter(word => word !== '')
+        .map(word => expand(text.join(','), variables, new Map([...overrides, [variable.trim(), word]]), depth + 1)).join(' ');
     } else if (name === 'abspath' || name === 'realpath') {
       out += expand(body, variables, overrides, depth + 1).trim().split(/\s+/).map(path => `/${path.replace(/^\/+/, '')}`).join(' ');
     } else if (name === 'shell') {

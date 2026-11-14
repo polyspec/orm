@@ -6,6 +6,7 @@ import { after } from 'node:test';
 import { installBench } from './bench-set.mjs';
 import { createCaseDatabase } from './case-database.mjs';
 import { runCasesOn, withCleanup } from './coverage_case.mjs';
+import { lockWaitEnds, statementStarts } from './lock-wait.mjs';
 
 const tenant = 990003;
 
@@ -51,37 +52,54 @@ export const cases = {
     const { driver } = item;
     await withTenant(item, async db => {
       await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('original').create();
+      // On PostgreSQL the abort follows the event of the start of the statement (statementStarts, T475), whose trigger is
+      // installed before the holder holds the row. MySQL and MariaDB send no event when a statement starts or waits, so
+      // there the abort follows the lock wait timeout that the server returns to a probe session (lockWaitEnds, T475).
+      const starts = driver === 'postgres' ? await statementStarts(item.dsn, 'composite_account') : null;
+      // The holder is released before the trigger is removed, because DROP TRIGGER waits for the rows that it holds.
+      let releaseHolder = () => {};
+      let holder = null;
+      try {
+        let announceHeld;
+        const rowHeld = new Promise(resolve => { announceHeld = resolve; });
+        const holderReleased = new Promise(resolve => { releaseHolder = resolve; });
+        const rollback = new Error('release the row lock');
+        holder = db.transaction(async () => {
+          await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('held').update();
+          announceHeld();
+          await holderReleased;
+          throw rollback;
+        }).catch(error => error);
+        await rowHeld;
 
-      let announceHeld;
-      const rowHeld = new Promise(resolve => { announceHeld = resolve; });
-      let releaseHolder;
-      const holderReleased = new Promise(resolve => { releaseHolder = resolve; });
-      const rollback = new Error('release the row lock');
-      const holder = db.transaction(async () => {
-        await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('held').update();
-        announceHeld();
-        await holderReleased;
-        throw rollback;
-      }).catch(error => error);
-      await rowHeld;
+        const controller = new AbortController();
+        const signalled = db.withSignal(controller.signal);
+        let statement;
+        if (driver === 'sqlite') {
+          // SQLite executes synchronously, so the signal applies to the next statement.
+          controller.abort();
+          statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+        } else if (starts) {
+          const armed = await starts.arm();
+          statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+          await armed.started;
+          controller.abort();
+        } else {
+          statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+          await lockWaitEnds(item.dsn, 'SELECT 1 FROM `composite_account` FOR UPDATE');
+          controller.abort();
+        }
+        let cancellation = null;
+        try { await statement; } catch (error) { cancellation = error; }
+        assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', `${driver}: the abandoned statement is cancelled`);
 
-      const controller = new AbortController();
-      const signalled = db.withSignal(controller.signal);
-      let statement;
-      if (driver === 'sqlite') {
-        // SQLite executes synchronously, so the signal applies to the next statement.
-        controller.abort();
-        statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
-      } else {
-        statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
-        setTimeout(() => controller.abort(), 100);
+        releaseHolder();
+        assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
+      } finally {
+        releaseHolder();
+        await holder;
+        await starts?.close();
       }
-      let cancellation = null;
-      try { await statement; } catch (error) { cancellation = error; }
-      assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', `${driver}: the abandoned statement is cancelled`);
-
-      releaseHolder();
-      assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
       assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6)).getName(), 'original', `${driver}: cancellation and rollback preserve the stored row`);
       assert.equal(await exists(db, 6), true, `${driver}: the connection handle remains usable`);
     });
@@ -89,24 +107,18 @@ export const cases = {
 };
 
 /**
- * Runs the cases on a case database of dialect (mysql or mariadb, the two servers of the MySQL dialect, DIA-200) with the
- * bench set installed, which is dropped when the file ends: the entries coverage_transactions-mysql.test.mjs and
- * coverage_transactions-mariadb.test.mjs.
+ * Runs the cases on a case database of dialect with the bench set installed, which is dropped when the file ends: this file
+ * runs them on SQLite and PostgreSQL, and the entries coverage_transactions-mysql.test.mjs and
+ * coverage_transactions-mariadb.test.mjs on the two servers of the MySQL dialect (DIA-200).
  */
-export async function runOnCaseDatabase(dialect) {
+export async function runOnCaseDatabase(dialect, file = `coverage_transactions-${dialect}.test.mjs`) {
   const database = await createCaseDatabase(dialect, text => console.log(text));
   after(() => database.drop(text => console.log(text)));
   const db = await connect(database.dsn);
   try { await installBench(db); } finally { await db.close(); }
-  await runCasesOn(dialect, `coverage_transactions-${dialect}.test.mjs`, cases, 300_000, database.dsn);
+  await runCasesOn(dialect, file, cases, database.dsn);
 }
 
-// The cases write composite_account of the bench database of SQLite and PostgreSQL, which a recipe case database does not
-// hold; the servers of the MySQL dialect run them in their entries (runOnCaseDatabase).
 if (import.meta.main) {
-  for (const [database, name] of [['sqlite', 'BENCH_SQLITE_DSN'], ['postgres', 'BENCH_POSTGRES_DSN']]) {
-    const dsn = process.env[name];
-    if (!dsn) throw new Error(`${name} is required; run this test through make run-databases, which creates the bench databases`);
-    await runCasesOn(database, 'coverage_transactions.mjs', cases, 300_000, dsn);
-  }
+  for (const dialect of ['sqlite', 'postgres']) await runOnCaseDatabase(dialect, 'coverage_transactions.mjs');
 }

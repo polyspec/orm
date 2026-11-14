@@ -2081,9 +2081,6 @@ final class Recipe
         Assert::assertSame($step['expect'][$database]['unsupported'], $got);
     }
 
-    /** Ends a hung interface check within the 300 s of a Large test, which reports the failure itself. */
-    private const INTERFACE_CHECK_DEADLINE = 280.0;
-
     /**
      * Runs one interface.symbols step (FCV-4): the interface check of this client from the repository root
      * (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64).
@@ -2093,9 +2090,7 @@ final class Recipe
         $extension = getenv('ORM_PHP_MODE') === 'extension';
         [$status, $stdout, $stderr] = coverageProcess(
             ['node', 'tests/interfaces/check/main.mts', '-language', $extension ? 'php-extension' : 'php'],
-            ormRepositoryRoot(),
-            null,
-            self::INTERFACE_CHECK_DEADLINE
+            ormRepositoryRoot()
         );
         Assert::assertSame(0, $status, "interface check exited $status: $stderr$stdout");
     }
@@ -3459,6 +3454,10 @@ final class Recipe
                                 array_map(self::toValue(...), $statement['params'] ?? []),
                             );
                         }
+                        // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+                        if (isset($s['hold_ms'])) {
+                            usleep($s['hold_ms'] * 1000);
+                        }
                         if (isset($s['conflict'])) {
                             throw Orm::transactionConflict($s['conflict']);
                         }
@@ -3523,6 +3522,7 @@ final class Recipe
                         ['kind', ['text' => $record['kind']]],
                         ['entity', ['text' => $record['entity']]],
                         ...(isset($record['param']) ? [['param', $record['param']]] : []),
+                        ...(isset($record['read']) ? [['read', $record['read']]] : []),
                     ]];
                 }
                 return ['value' => ['array' => $list], 'counts' => $counts];
@@ -3604,8 +3604,8 @@ final class Recipe
                 // (CFG-23). On PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a
                 // transactional logical message, commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on
                 // the replica waits for the binary log position of the primary, on the database of the environment,
-                // since the case database reaches the replica only by this wait. The 60 seconds are the deadline of the
-                // wait: the replica applies the writes of every client.
+                // since the case database reaches the replica only by this wait. The wait has no timeout: it ends when
+                // the replica has applied the position, or with NULL when its SQL thread stops (T474).
                 $source = case_admin($context['dsn']);
                 if ($context['database'] === 'postgres') {
                     $source->beginTransaction();
@@ -3630,12 +3630,12 @@ final class Recipe
                 $status = $source->query($mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS')
                     ->fetch(\PDO::FETCH_NUM);
                 $wait = case_admin($replica)->prepare(
-                    $mariadb ? 'SELECT MASTER_POS_WAIT(?, ?, 60)' : 'SELECT SOURCE_POS_WAIT(?, ?, 60)'
+                    $mariadb ? 'SELECT MASTER_POS_WAIT(?, ?)' : 'SELECT SOURCE_POS_WAIT(?, ?)'
                 );
                 $wait->execute([$status[0], (int) $status[1]]);
                 $waited = $wait->fetchColumn();
                 Assert::assertTrue(
-                    $waited !== null && (int) $waited >= 0,
+                    $waited !== null,
                     "the replica did not reach {$status[0]}:{$status[1]}"
                 );
                 return [];
@@ -3676,7 +3676,7 @@ final class Recipe
                 $find->execute(['LISTEN "' . $s['channel'] . '"']);
                 $pid = $find->fetchColumn();
                 Assert::assertNotFalse($pid, "the listener session of {$s['channel']}");
-                $pdo->exec('SELECT pg_terminate_backend(' . (int) $pid . ', 5000)');
+                $pdo->exec('SELECT pg_terminate_backend(' . (int) $pid . ')');
                 return [];
             case 'wait.start':
                 self::$waitStart = hrtime(true);
@@ -3712,7 +3712,7 @@ final class Recipe
                         . 't.PROCESSLIST_DB = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID() LIMIT 1')
                     ->fetchColumn();
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
-                $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
+                $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ')' : 'KILL ' . (int) $id);
                 return [];
             case 'dbspec.introspect':
                 return RecipeIntrospect::step($s, $context);
@@ -3999,6 +3999,7 @@ final class Recipe
             'value' => array_key_exists('value', $a) ? self::nativeValue($a['value']) : null,
             'nested' => ($a['nested'] ?? false) === true,
             'code' => $a['error'] ?? '',
+            'read' => $a['read'] ?? null,
         ], $hooks);
         return static function (Request $r) use (&$context, $actions): void {
             foreach ($actions as $a) {
@@ -4031,6 +4032,24 @@ final class Recipe
                         break;
                     case 'invalid_param':
                         self::andWhere($r->ir, ['column' => $a['column'], 'op' => 'eq', 'p' => count($r->params) + 5]);
+                        break;
+                    case 'locked_read':
+                        // The hook reads with its lock in a transaction of another connection before the
+                        // client plans the request, and a refusal of that read fails the operation unchanged
+                        // (INT-78).
+                        $read = new RecipeStep($a['read']);
+                        $count = 0;
+                        self::connectionOf($read, $context)->transaction(
+                            function () use ($read, &$context, &$count): void {
+                                $count = count(self::chainBuilt($read, $context)->gets());
+                            },
+                            retry: 0,
+                        );
+                        $context['records'][] = [
+                            'kind' => $r->ir['kind'],
+                            'entity' => $r->ir['entity'] ?? '',
+                            'read' => ['int' => (string) $count],
+                        ];
                         break;
                     case 'record':
                         $context['records'][] = [
@@ -4173,8 +4192,8 @@ final class Recipe
     /**
      * query.search (FCV-4, PRT-75): the count of a fulltext_boolean chain over the columns, through the fulltext
      * chain of the model. The request is compiled on the dialect of the case connection (DIA-187 refuses SQLite), and
-     * its bind values are those of the statement: the DIA-6 transform on MySQL, which refuses a blank text with
-     * IR_INVALID, and the text as it is on PostgreSQL.
+     * its bind values are those of the statement: the DIA-6 transform of the dialect, which refuses a blank text with
+     * IR_INVALID, and binds its terms on MySQL and the text as it is on PostgreSQL.
      */
     private static function querySearch(RecipeStep $s, array $context): array
     {

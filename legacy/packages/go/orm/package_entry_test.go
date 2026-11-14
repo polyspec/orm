@@ -21,7 +21,7 @@ import (
 // imports a generated package fails here, as it fails in every consumer of the release.
 // Requirements: INT-138.
 func TestExternalModuleCanImportClient(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	if orm.IsDeadlock(nil) {
 		t.Fatal("nil error reported as a deadlock")
 	}

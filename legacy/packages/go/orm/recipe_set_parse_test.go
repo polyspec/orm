@@ -10,6 +10,6 @@ import (
 // TestRecipeSetParseNone runs the document set parse cases recipe, tests/dbspec/set-parse.json, without a database (FCV-3).
 // Requirements: DBS-2, DBS-28, DBS-29, DBS-30, DBS-31, DBS-156, DBS-168, DBS-171.
 func TestRecipeSetParseNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/set-parse.json"), recipe.None)
 }

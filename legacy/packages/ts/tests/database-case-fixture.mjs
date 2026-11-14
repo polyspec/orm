@@ -10,5 +10,5 @@ export async function loadDatabaseCaseFixture(filename, modelName, { modelFactor
   if (typeof model !== 'function') throw new Error(`${filename} does not provide model ${modelName}`);
   const state = { failures: 0, current: '' };
   const { check, raised } = createCaseAssertions(() => state.current, () => { state.failures++; }, undefined, report);
-  return { text, model, deadline: 30_000, state, check, raised };
+  return { text, model, state, check, raised };
 }

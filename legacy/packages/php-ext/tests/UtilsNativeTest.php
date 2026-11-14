@@ -44,45 +44,8 @@ final class UtilsNativeTest extends TestCase
         self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('wasInserted')->isInternal());
         self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('backendWaitingForLock')->isInternal());
 
-        WasInsertedCases::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
-            $seq = WasInsertedCases::heldEventSeq($db);
-
-            $child = null;
-            $pipes = [];
-            try {
-                $db->transaction(function () use ($db, $dsn, $seq, &$child, &$pipes): void {
-                    $child = WasInsertedCases::startLockWaiter($db, $dsn, $seq, $pipes);
-                    self::assertIsResource($child, 'the waiting child did not start');
-                    $waiting = false;
-                    $deadline = microtime(true) + 10;
-                    while (!$waiting && microtime(true) < $deadline) {
-                        $waiting = $db->utils()->backendWaitingForLock();
-                        if (!$waiting) {
-                            usleep(20_000);
-                        }
-                    }
-                    self::assertTrue($waiting, 'the child backend waits for the row lock the native transaction holds');
-                }, retry: 0);
-
-                self::assertIsResource($child);
-                self::assertSame("done\n", stream_get_contents($pipes[1]));
-                $errors = stream_get_contents($pipes[2]);
-                fclose($pipes[1]);
-                fclose($pipes[2]);
-                $pipes = [];
-                self::assertSame(0, proc_close($child), "the waiting child exited with an error: $errors");
-                $child = null;
-            } finally {
-                foreach ($pipes as $pipe) {
-                    if (is_resource($pipe)) {
-                        fclose($pipe);
-                    }
-                }
-                if (is_resource($child)) {
-                    proc_terminate($child);
-                    proc_close($child);
-                }
-            }
+        WasInsertedCases::onCase('postgres', function (\Polyspec\Orm\Db $db, string $dsn): void {
+            WasInsertedCases::assertReportsABackendWaitingForLock($this, $db, $dsn);
         });
     }
 

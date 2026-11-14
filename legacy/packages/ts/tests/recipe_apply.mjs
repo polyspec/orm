@@ -143,7 +143,6 @@ async function command(s, context, runStep) {
   let events = 0;
   let ran = false;
   const handler = async event => {
-    context.guard?.progress();
     events++;
     kinds.set(event.kind, (kinds.get(event.kind) ?? 0) + 1);
     const on = s.on;
@@ -196,8 +195,6 @@ export function applyOps({ sql, runStep }) {
       if (s.through === 'pooler') session = await openPostgres(relatedDsn(required('ORM_TEST_PGBOUNCER_DSN'), target.name));
       else session = await direct(context, target);
       context.closers.push(() => session.close());
-      // A step guard that ends the case ends its sessions at once, which ends the statement that it waited for (FCV-4).
-      context.guard?.ended.then(() => session.destroy());
       return { bind: session };
     },
     'dbspec.exec': async (s, context) => {
@@ -212,7 +209,6 @@ export function applyOps({ sql, runStep }) {
     },
     'dbspec.other_database': (s, context) => withCaseDatabase(context.database, context.step, async other => {
       const session = await direct(context, { name: other.name, path: other.path, dsn: other.dsn });
-      context.guard?.ended.then(() => session.destroy());
       try {
         context.bound.set(s.as, session);
         for (const nested of s.steps) await runStep(nested, context);

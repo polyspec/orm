@@ -8,7 +8,7 @@ fn datetime() -> NaiveDateTime {
 
 #[test]
 fn temporal_arguments_become_canonical_text_before_binding() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let expected_datetime = Param::Str("2026-09-11 00:00:00.000000".into());
     let expected_date = Param::Str("2026-09-11".into());
 

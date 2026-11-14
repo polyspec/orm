@@ -238,7 +238,7 @@ mod tests {
     // cargo reruns the build script when the set file or any listed document changes.
     #[test]
     fn rerun_inputs_name_the_set_file_and_every_document() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let file = |p: &str| dbspec::SetFile { path: PathBuf::from(p), bytes: Vec::new() };
         let files = dbspec::Set { documents: vec![file("a/shop.dbs"), file("a/billing/invoices.dbs")], external: vec![file("a/../core/core.dbs")] };
         let inputs = set_inputs(Path::new("a/dbspec-set.json"), &files);

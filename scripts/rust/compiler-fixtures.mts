@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { PROCESS, runCase } from '../../tests/testcase.mts';
+import { runCase } from '../../tests/testcase.mts';
 import { readJsonFile } from '../json/schema.mts';
 
 type Fixture = {
@@ -75,7 +75,7 @@ for (const id of requestedCases) if (!known.has(id)) throw new Error(`unknown Ru
 const selected = new Set(requestedCases);
 const selectedFixtures = fixtures.filter(fixture => selected.has(fixture.id));
 
-// check compiles the consumer of one case with cargo check. It rejects with the deadline's reason when the deadline aborts it, and stops cargo then.
+// check compiles the consumer of one case with cargo check. It rejects with the reason of the signal when the run is stopped, and stops cargo then.
 function check(id: string, source: string, aborted: AbortSignal): Promise<{ status: number | null; signal: NodeJS.Signals | null; messages: CompilerMessage[] }> {
   return new Promise((resolveRun, rejectRun) => {
     const stdio: ['ignore', 'pipe', 'pipe'] = ['ignore', 'pipe', 'pipe'];
@@ -167,14 +167,13 @@ function assertResult(fixture: Fixture, result: Awaited<ReturnType<typeof check>
 
 // The run holds the exclusive lease of the Rust test runner, so examples is this script's own scratch directory: a
 // leftover of an interrupted run is overwritten, and the directory is removed at the end whether it existed or not.
-// The caller takes the lease before this process starts, so each case's PROCESS deadline covers only its own compile under the lease;
-// the time spent waiting for another run's lease is outside it (tests/cargo-test.mts gives its build no deadline for the same reason).
+// The caller takes the lease before this process starts; no clock ends a case, which ends when its compile ends (T473).
 try {
   await mkdir(examples, { recursive: true });
   let failed = 0;
   for (const fixture of selectedFixtures) {
     const source = join(examples, `${fixture.id}.rs`);
-    const passed = await runCase(fixture.id, PROCESS, async ({ signal, step }) => {
+    const passed = await runCase(fixture.id, async ({ signal, step }) => {
       step(`compiler-fixture: running ${fixture.id}`);
       try {
         await writeFile(source, fixture.source);

@@ -580,7 +580,7 @@ final class ModelNativeTest extends TestCase
         self::assertSame('"a"."b"', $postgres->quote('a.b'));
         self::assertSame('"a__b"', $sqlite->quote('a.b'));
         self::assertSame('$3', $postgres->placeholder(3));
-        self::assertSame(' LIMIT 2, 8', $mysql->limit(2, 8));
+        self::assertSame(' LIMIT 8 OFFSET 2', $mysql->limit(2, 8));
         self::assertSame(' FORCE INDEX (`ix`)', $mysql->forceIndex('ix'));
         self::assertSame('CURRENT_TIMESTAMP(3)', $mysql->now(3));
         self::assertSame('CURRENT_TIMESTAMP', $sqlite->now(3));
@@ -626,7 +626,7 @@ final class ModelNativeTest extends TestCase
         self::assertFalse(\Polyspec\Orm\Dialect::isValueFunction('day_of_week'));
 
         self::assertSame('?', $mysql->placeholder(3));
-        self::assertSame(' LIMIT 2, 8', $mysql->limitParams('2', '8'));
+        self::assertSame(' LIMIT 8 OFFSET 2', $mysql->limitParams('2', '8'));
         self::assertSame(' LIMIT 8 OFFSET 2', $postgres->limit(2, 8));
         self::assertSame(' LIMIT :count OFFSET :offset', $postgres->limitParams(':offset', ':count'));
         self::assertSame('`a``b`', $mysql->quote('a`b'));

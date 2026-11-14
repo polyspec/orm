@@ -10,7 +10,7 @@ import (
 // TestRelatedAsReportsMismatch checks that when reading a relation result as T, it tells apart the stored value,
 // nil for an absent related row, and an INTERNAL error of another type.
 func TestRelatedAsReportsMismatch(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	c := &Core{row: &rowState{}}
 	owner := &GroupRows{}
 	c.row.setRelated("owner", owner, false, false)

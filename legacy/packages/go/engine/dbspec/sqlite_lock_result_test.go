@@ -25,7 +25,7 @@ func (releaseBusy) Error() string { return "release read: database is locked" }
 func (releaseBusy) Code() int     { return 5 }
 
 func TestSqliteLockResult(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	tests := []struct {
 		code int
 		want bool
@@ -156,7 +156,7 @@ func (r *sqliteLockRows) Next(dest []driver.Value) error {
 
 // Requirements: PLN-89, PLN-90.
 func TestSqliteSessionClassifiesBeginErrorAndRestoresState(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, test := range []struct {
 		code       int
 		wantLocked bool

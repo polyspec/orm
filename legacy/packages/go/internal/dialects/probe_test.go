@@ -16,7 +16,7 @@ import (
 // TestProbeIDs verifies that probe IDs are unique, well formed and name the
 // database each probe runs on.
 func TestProbeIDs(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	begin := time.Now()
 	probes := All()
 	if err := Validate(probes); err != nil {
@@ -37,7 +37,7 @@ func TestProbeIDs(t *testing.T) {
 
 // TestMySQLPrivilegeProbeFixture keeps server routing independent of the probe ID format.
 func TestMySQLPrivilegeProbeFixture(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	// The MySQL probe and its MariaDB twin, which runs on the MariaDB privilege probe server.
 	want := []string{"mysql.trigger.binlog_privilege_1419", "mariadb.trigger.binlog_privilege_1419"}
 	var selected []string
@@ -61,7 +61,7 @@ var citedProbe = regexp.MustCompile("`((?:mysql|mariadb|postgres|sqlite)\\.[a-z0
 // vector of tests/dbspec/ddl.json runs, so a probed fact has its rule and a
 // rule cites only probes that run.
 func TestProbeCitations(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	known := map[string]bool{}
 	probes := All()
 	for _, p := range probes {
@@ -106,7 +106,7 @@ func TestProbeCitations(t *testing.T) {
 // it when the referenced row comes first, PostgreSQL accepts it, and portable
 // code deletes the referencing rows first.
 func TestRestrictRowOrder(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	rules := map[string]string{
 		"dialects.md":    "One `DELETE` that removes a referenced row and a row referencing it is refused by MySQL and SQLite when the referenced row comes first in their row order and accepted by PostgreSQL; portable code deletes the referencing rows first.",
 		"dialects.ko.md": "하나의 `DELETE`가 참조되는 행과 그 행을 참조하는 행을 함께 지우면, MySQL과 SQLite는 참조되는 행이 행 순서에서 먼저 나올 때 거부하고 PostgreSQL은 받아들인다; 이식 가능한 코드는 참조하는 행을 먼저 지운다.",
@@ -135,7 +135,7 @@ func readDBSpecFile(t *testing.T, name string) []byte {
 // TestImplementationsAreDeclared checks that contracts/implementations.json
 // declares the implementations that the physical tests and the contract tests run.
 func TestImplementationsAreDeclared(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if len(testcase.Implementations(repoRoot)) == 0 {
 		t.Fatal("contracts/implementations.json declares no implementation")
 	}

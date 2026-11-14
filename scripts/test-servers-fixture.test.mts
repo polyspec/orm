@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { caseTest, COMPUTE } from '../tests/testcase.mts';
+import { caseTest } from '../tests/testcase.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 
-caseTest('removes its temporary root and restores process.kill after success and failure', COMPUTE, () => {
+caseTest('removes its temporary root and restores process.kill after success and failure', () => {
   const originalKill = Object.getOwnPropertyDescriptor(process, 'kill');
   assert.ok(originalKill);
   let successRoot = '';

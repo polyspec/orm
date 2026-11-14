@@ -3,7 +3,6 @@ package dbspec
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
@@ -12,7 +11,7 @@ import (
 // literal forms of TestCanonicalForms and the invalid literals of
 // TestRuleDiagnostics. A text or bytes column has no literal.
 func TestCanonicalLiteral(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	cases := []struct {
 		id   string
 		typ  Type
@@ -88,7 +87,7 @@ func TestCanonicalLiteral(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, c.id, 5*time.Second, func() error {
+			runTimed(t, c.id, func() error {
 				got, ok := CanonicalLiteral(c.typ, c.text)
 				if got != c.want || ok != c.ok {
 					return fmt.Errorf("CanonicalLiteral(%s, %q) = (%q, %t), want (%q, %t)", c.typ, c.text, got, ok, c.want, c.ok)

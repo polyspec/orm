@@ -13,7 +13,7 @@ import { spawn } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { DATABASE, PROCESS, runCase, runGroup, stepLines, type CaseBody } from '../tests/testcase.mts';
+import { runCase, runGroup, stepLines, type CaseBody } from '../tests/testcase.mts';
 
 import { errorCode } from '../tests/errors.mts';
 import mysqlDriver from 'mysql2/promise';
@@ -153,8 +153,8 @@ function leftovers(before: string[], after: string[]): string[] {
 }
 
 let failed = false;
-async function check(name: string, deadline: number, body: CaseBody): Promise<boolean> {
-  if (!(await runCase(name, deadline, body))) failed = true;
+async function check(name: string, body: CaseBody): Promise<boolean> {
+  if (!(await runCase(name, body))) failed = true;
   return !failed;
 }
 
@@ -164,14 +164,14 @@ type Snapshot = Traces & { mysql: string; postgres: string };
 let before: Snapshot | undefined;
 let created = false;
 try {
-  await check('case-database/leftover', DATABASE, async ({ step }) => {
+  await check('case-database/leftover', async ({ step }) => {
     await mysql([`CREATE TABLE \`${leftover}\` (id int PRIMARY KEY)`]);
     created = true;
     await mysql([`INSERT INTO \`${leftover}\` (id) VALUES (1)`]);
     await postgres([`CREATE TABLE "${leftover}" (id int PRIMARY KEY)`, `INSERT INTO "${leftover}" (id) VALUES (1)`]);
     step(`table ${leftover} with one row in the shared MySQL database and PostgreSQL public schema`);
   });
-  if (!failed) await check('case-database/before', PROCESS, async ({ step }) => {
+  if (!failed) await check('case-database/before', async ({ step }) => {
     before = { mysql: await digest('mysql', mysqlDsn), postgres: await digest('postgres', postgresDsn), ...await traces() };
     step(`shared state mysql ${before.mysql} postgres ${before.postgres}`);
     step(`traces ${JSON.stringify({ mysqlDatabases: before.mysqlDatabases, postgresDatabases: before.postgresDatabases, postgresSchemas: before.postgresSchemas, files: before.files })}`);
@@ -179,7 +179,7 @@ try {
   for (const [name, program, args] of failed ? [] : commands) {
     if (!(await runGroup(`case-database/${name}`, ({ step }) => execute(program, args, step)))) failed = true;
   }
-  if (before) await check('case-database/after', PROCESS, async ({ step }) => {
+  if (before) await check('case-database/after', async ({ step }) => {
     const after = { mysql: await digest('mysql', mysqlDsn), postgres: await digest('postgres', postgresDsn), ...await traces() };
     step(`shared state mysql ${after.mysql} postgres ${after.postgres}`);
     const earlier = before;
@@ -194,7 +194,7 @@ try {
     step('the shared databases, the PostgreSQL schemas, the orm_case_ databases and the orm-case- files are unchanged');
   });
 } finally {
-  if (created) await check('case-database/remove-leftover', DATABASE, async ({ step }) => {
+  if (created) await check('case-database/remove-leftover', async ({ step }) => {
     await mysql([`DROP TABLE \`${leftover}\``]);
     await postgres([`DROP TABLE IF EXISTS "${leftover}"`]);
     step(`table ${leftover} dropped`);

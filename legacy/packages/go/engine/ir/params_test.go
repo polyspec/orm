@@ -55,7 +55,7 @@ func usesOf(uses [][]ParamUse) [][]paramUseOf {
 func p(i int) *int { return &i }
 
 func TestParamUses(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m, invalid := runtimemodel.Load(paramUsesDocument)
 	if invalid != nil {
 		t.Fatal(invalid)
@@ -134,7 +134,7 @@ func TestParamUses(t *testing.T) {
 }
 
 func TestParamUsesColumnFunctionMissingPostValidationFieldIsInternal(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m, err := runtimemodel.Load(paramUsesDocument)
 	if err != nil {
 		t.Fatal(err)

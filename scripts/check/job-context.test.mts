@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { cleanupContext, prepareContext, type ContextCommand, type ContextCommandResult } from './job-context.mts';
 
 const repo = resolve(import.meta.dirname, '../..');
@@ -64,7 +64,7 @@ function assertTornDown(f: ReturnType<typeof fixture>, calls: string[]): void {
   assert.equal(existsSync(f.directory), false);
 }
 
-caseTest('the job context prepares owned resources and exports only its run paths', COMPUTE, () => {
+caseTest('the job context prepares owned resources and exports only its run paths', () => {
   const f = fixture();
   try {
     const calls: string[] = [];
@@ -82,7 +82,7 @@ caseTest('the job context prepares owned resources and exports only its run path
   } finally { f.dispose(); }
 });
 
-caseTest('the job context refuses a database setup that wrote no decimal environment', COMPUTE, () => {
+caseTest('the job context refuses a database setup that wrote no decimal environment', () => {
   const f = fixture();
   try {
     assert.throws(() => prepareContext('php-ext', f.root, f.env, stub(f.root, [], false, false)), /decimal-env was not written by the database setup/);
@@ -90,7 +90,7 @@ caseTest('the job context refuses a database setup that wrote no decimal environ
   } finally { f.dispose(); }
 });
 
-caseTest('the job context cleanup drops fixtures, stops its servers, and removes its owned directory', COMPUTE, () => {
+caseTest('the job context cleanup drops fixtures, stops its servers, and removes its owned directory', () => {
   const f = fixture();
   try {
     const calls: string[] = [];
@@ -104,7 +104,7 @@ caseTest('the job context cleanup drops fixtures, stops its servers, and removes
   } finally { f.dispose(); }
 });
 
-caseTest('the job context cleanup continues after database setup fails', COMPUTE, () => {
+caseTest('the job context cleanup continues after database setup fails', () => {
   const f = fixture();
   try {
     const calls: string[] = [];
@@ -116,7 +116,7 @@ caseTest('the job context cleanup continues after database setup fails', COMPUTE
   } finally { f.dispose(); }
 });
 
-caseTest('the job context cleanup stops partially started servers after preparation fails', COMPUTE, () => {
+caseTest('the job context cleanup stops partially started servers after preparation fails', () => {
   const f = fixture();
   try {
     const calls: string[] = [];
@@ -128,7 +128,7 @@ caseTest('the job context cleanup stops partially started servers after preparat
   } finally { f.dispose(); }
 });
 
-caseTest('the job context cleanup reports a database drop failure after stopping servers', COMPUTE, () => {
+caseTest('the job context cleanup reports a database drop failure after stopping servers', () => {
   const f = fixture();
   try {
     const calls: string[] = [];
@@ -138,7 +138,7 @@ caseTest('the job context cleanup reports a database drop failure after stopping
   } finally { f.dispose(); }
 });
 
-caseTest('the job context retains its files when server teardown fails', COMPUTE, () => {
+caseTest('the job context retains its files when server teardown fails', () => {
   const f = fixture();
   try {
     const calls: string[] = [];
@@ -156,7 +156,7 @@ caseTest('the job context retains its files when server teardown fails', COMPUTE
   } finally { f.dispose(); }
 });
 
-caseTest('the job context reports when its database environment disappears before cleanup', COMPUTE, () => {
+caseTest('the job context reports when its database environment disappears before cleanup', () => {
   const f = fixture();
   try {
     const calls: string[] = [];
@@ -167,7 +167,7 @@ caseTest('the job context reports when its database environment disappears befor
   } finally { f.dispose(); }
 });
 
-caseTest('the job context refuses a server environment it did not create', COMPUTE, () => {
+caseTest('the job context refuses a server environment it did not create', () => {
   const f = fixture();
   try {
     mkdirSync(join(f.root, '.runtime/servers'), { recursive: true });
@@ -178,7 +178,7 @@ caseTest('the job context refuses a server environment it did not create', COMPU
   } finally { f.dispose(); }
 });
 
-caseTest('the Kit jobs declare the context and setup targets that own their native prerequisites', COMPUTE, () => {
+caseTest('the Kit jobs declare the context and setup targets that own their native prerequisites', () => {
   const config: unknown = JSON.parse(readFileSync(join(repo, 'config/ci.json'), 'utf8'));
   assert.ok(isRecord(config));
   assert.ok(isRecord(config.contexts));

@@ -12,7 +12,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { COMPUTE, PROCESS, runCase, runLong, type Step } from '../../testcase.mts';
+import { runCase, runLong, type Step } from '../../testcase.mts';
 import { checkNativeSurfaces, checkOwners, checkOwnersAs, checkProhibitedSymbols, checkRecords, checkRules } from './contract.mts';
 import { diagram } from './diagram.mts';
 import { buildGo, buildRust, checkCallsInRoots, extract, type Tools } from './extract.mts';
@@ -20,12 +20,6 @@ import { byteOrder } from './json.mts';
 import { allRules, checkErrorLabels, readErrorCatalog, readManifest, validateManifest, type Extension, type Manifest, type Owner, type Rule } from './manifest.mts';
 import { parserMutations } from './mutations.mts';
 import { apiProblems, readImplementationNames } from './api.mts';
-
-// Case deadline of the interface check.
-// MANIFEST: an in-memory computation that reads and compares the manifest, error catalog, component diagram, and dbspec documents.
-const MANIFEST = COMPUTE;
-// LANGUAGE: reads one language's native declarations with the extractor process, and with --self-test re-runs the extractor for each source mutation.
-const LANGUAGE = PROCESS;
 
 const LANGUAGES = ['go', 'php', 'rust', 'typescript', 'python'];
 const BOOLEANS = new Set(['self-test', 'generate']);
@@ -185,7 +179,7 @@ async function main(argv: string[]): Promise<number> {
   const root = resolve(values.root);
   let m: Manifest = {};
   let order: string[] | undefined;
-  const manifestPassed = await runCase('interfaces/manifest', MANIFEST, async () => {
+  const manifestPassed = await runCase('interfaces/manifest', async () => {
     m = readManifest(join(root, 'contracts/interfaces.json'));
     validateManifest(m);
     const codes = readErrorCatalog(root);
@@ -204,7 +198,7 @@ async function main(argv: string[]): Promise<number> {
   });
   if (!manifestPassed) return 1;
   // The error catalog of every implementation is read here, before the check of each client.
-  const apiPassed = await runCase('interfaces/error-catalogs', MANIFEST, () => {
+  const apiPassed = await runCase('interfaces/error-catalogs', () => {
     const problems = apiProblems(root, readImplementationNames(root), readErrorCatalog(root));
     if (problems.length > 0) throw new Error(problems.join('\n'));
   });
@@ -221,7 +215,7 @@ async function main(argv: string[]): Promise<number> {
     let failed = !apiPassed;
     for (const lang of languages) {
       const options: Options = { root, lang, tools, manifest: m, order, selfTest };
-      if (!(await runCase(`interfaces/${lang}`, LANGUAGE, ({ signal, step }) => checkLanguage(options, signal, step)))) failed = true;
+      if (!(await runCase(`interfaces/${lang}`, ({ signal, step }) => checkLanguage(options, signal, step)))) failed = true;
     }
     for (const name of extensions ?? Object.keys(m.extensions ?? {}).sort(byteOrder)) {
       const e = m.extensions?.[name];
@@ -230,7 +224,7 @@ async function main(argv: string[]): Promise<number> {
         failed = true;
         continue;
       }
-      if (!(await runCase(`interfaces/${name}`, LANGUAGE, ({ signal, step }) => checkExtension(root, name, e, m, order, signal, step)))) failed = true;
+      if (!(await runCase(`interfaces/${name}`, ({ signal, step }) => checkExtension(root, name, e, m, order, signal, step)))) failed = true;
     }
     return failed ? 1 : 0;
   } finally {

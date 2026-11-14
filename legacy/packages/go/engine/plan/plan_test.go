@@ -9,7 +9,7 @@ import (
 )
 
 func TestRelationKeysUseOrderedReferences(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	raw := `{"step":1,"keys":[{"column":"tenant_id","index":2},{"column":"account_id","index":3}]}`
 	var ref ParentRef
 	if err := json.Unmarshal([]byte(raw), &ref); err != nil {

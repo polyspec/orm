@@ -63,7 +63,7 @@ func compile(t *testing.T, e *Engine, irBody string) *plan.Plan {
 }
 
 func TestSelectAll(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author",
 	 "where":{"items":[`+selectAllItems+`,
@@ -75,7 +75,7 @@ func TestSelectAll(t *testing.T) {
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
 		// MySQL also does not decode hex in SQL: the executor reads it correctly with HostDecode (docs/spec/codec.md).
 		"`a`.`aes_hex_email` AS `a__aes_hex_email`",
-		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND " + dialect.MySQL{}.Like("`a`.`name`", "?") + " ORDER BY `a`.`seq` DESC LIMIT 0, 100",
+		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND " + dialect.MySQL{}.Like("`a`.`name`", "?") + " ORDER BY `a`.`seq` DESC LIMIT 100 OFFSET 0",
 	}
 	for _, w := range wantParts {
 		if !strings.Contains(sql, w) {
@@ -115,10 +115,10 @@ func TestSelectAll(t *testing.T) {
 }
 
 func TestRowLock(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author","lock":"update","limit":{"offset":0,"count":1}`)
-	if !strings.HasSuffix(p.Steps[0].SQL, " LIMIT 0, 1 FOR UPDATE") {
+	if !strings.HasSuffix(p.Steps[0].SQL, " LIMIT 1 OFFSET 0 FOR UPDATE") {
 		t.Fatalf("mysql row lock: %s", p.Steps[0].SQL)
 	}
 
@@ -147,7 +147,7 @@ func TestRowLock(t *testing.T) {
 }
 
 func TestJoinAndPlacement(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"count","entity":"author",
 	 "joins":[{"rel":"service_region","kind":"left","left":"service_region_seq","right":"seq","query":{"entity":"service_region",
@@ -167,7 +167,7 @@ func TestJoinAndPlacement(t *testing.T) {
 }
 
 func TestWrites(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"insert","entity":"author","set":[
 	  {"column":"name","p":0},{"column":"aes_hex_email","p":1},{"column":"user_seq","p":2},
@@ -193,13 +193,13 @@ func TestWrites(t *testing.T) {
 		t.Errorf("delete: %s", p.Steps[0].SQL)
 	}
 	p = compile(t, e, `"kind":"paginate","entity":"author","where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":2}}]},"order":[{"column":"seq","desc":true}],"limit":{"offset":20,"count":20}`)
-	if len(p.Steps) != 2 || p.Steps[1].Role != "count" || !strings.HasPrefix(p.Steps[1].SQL, "SELECT COUNT(*)") || !strings.HasSuffix(p.Steps[0].SQL, "LIMIT 20, 20") {
+	if len(p.Steps) != 2 || p.Steps[1].Role != "count" || !strings.HasPrefix(p.Steps[1].SQL, "SELECT COUNT(*)") || !strings.HasSuffix(p.Steps[0].SQL, "LIMIT 20 OFFSET 20") {
 		t.Errorf("paginate: %+v", p.Steps)
 	}
 }
 
 func TestUpsertAndCascade(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"insert","entity":"author","set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_region_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":3},{"column":"end_dt","p":3}],
 	  "on_duplicate":[{"column":"name","p":1},{"column":"read_count","plus_p":4}]`)
@@ -236,7 +236,7 @@ func TestUpsertAndCascade(t *testing.T) {
 }
 
 func TestAggregates(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	cases := map[string]string{
 		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":0`: "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
@@ -268,7 +268,7 @@ func testEngineFor(t *testing.T, dialect string) *Engine {
 }
 
 func TestPostgresAndSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	pg := testEngineFor(t, "postgres")
 	p := compile(t, pg, `"kind":"all","entity":"author","columns":{"mode":"none"},"n_params":3,
 	 "where":{"items":[{"pred":{"column":"name","op":"contains","p":0}},{"pred":{"conn":"and","column":"name","op":"contains_binary","p":1}},{"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":2}}]},
@@ -325,7 +325,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 // Joins nest by relation name and aliases are path-derived, so two levels of the
 // same target stay distinct and each keeps its own projection namespace.
 func TestJoinAliasNamespaces(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"none","add":["name"]},"n_params":1,
 	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
@@ -369,7 +369,7 @@ func TestJoinAliasNamespaces(t *testing.T) {
 }
 
 func TestCompileErrors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	h := e.M.ManifestHash
 	cases := map[string]string{
@@ -400,7 +400,7 @@ func TestCompileErrors(t *testing.T) {
 }
 
 func TestRelations(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	// root author → one user (if_parent, flatten) ; join service → many modules (key_by, limit_per_parent, nested one service)
 	p := compile(t, e, `"kind":"all","entity":"author",
@@ -418,7 +418,7 @@ func TestRelations(t *testing.T) {
 	}
 	main := p.Steps[0]
 	// mode none = PK + FK; is_close is added because the user relation's if_parent needs it
-	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`is_close` AS `a__is_close`, `service`.`seq` AS `service__seq`, `service`.`name` AS `service__name` FROM `author` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 20"; main.SQL != want {
+	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`is_close` AS `a__is_close`, `service`.`seq` AS `service__seq`, `service`.`name` AS `service__name` FROM `author` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 20 OFFSET 0"; main.SQL != want {
 		t.Errorf("main:\n got  %s\n want %s", main.SQL, want)
 	}
 	// step 1: user rows for the authors (parent index 1 = user_seq), only for closed authors
@@ -479,7 +479,7 @@ func TestRelations(t *testing.T) {
 // and joins composite_membership from composite_account on (tenant_id, account_id),
 // and that it rejects a wrong key list.
 func TestCompositeRelationKeys(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"composite_account","relations":[{"rel":"memberships","kind":"many","keys":[{"left":"tenant_id","right":"tenant_id"},{"left":"account_id","right":"account_id"}],"query":{"entity":"composite_membership"}}]`)
 	if len(p.Steps) != 2 || p.Steps[1].Parent == nil || len(p.Steps[1].Parent.Keys) != 2 {
@@ -515,7 +515,7 @@ func TestCompositeRelationKeys(t *testing.T) {
 // TestLoad checks that Load builds the dialect's engine from manifest text, the same engine as New of the model
 // that text describes, and that malformed manifest text is SCHEMA_INVALID.
 func TestLoad(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	m := benchModel(t)
 	e, err := Load(m.ManifestText, "", "postgres")
 	if err != nil {

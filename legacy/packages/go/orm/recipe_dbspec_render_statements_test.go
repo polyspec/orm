@@ -12,6 +12,6 @@ import (
 // Requirements: DIA-113, DIA-114, DIA-115, DIA-116, DIA-117, DIA-118, DIA-119, DIA-120, DIA-121, DIA-122, DIA-123, DIA-124.
 // Requirements: DIA-125, DIA-126, DIA-127, DIA-128, DIA-129, DIA-130, DIA-131, DIA-132.
 func TestRecipeDbspecRenderStatementsNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/render-statements.json"), recipe.None)
 }

@@ -85,7 +85,7 @@ func logResult(t *testing.T, name string, start time.Time) {
 // the result is the joined error of the stop and the cleanup failure, not a stop by itself.
 // Requirements: PLN-97.
 func TestApplyStopWithCleanupFailureReturnsJoin(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	start := time.Now()
 	t.Log("RUN apply/stop-join deadline=20s")
 	now, plans, ctx := applyTestSetup(t)
@@ -101,13 +101,13 @@ func TestApplyStopWithCleanupFailureReturnsJoin(t *testing.T) {
 	logResult(t, "apply/stop-join", start)
 }
 
-// applyTestSetup returns the clock, the plans, and a context of 20 seconds for an
-// apply test; the context is cancelled when the test ends.
+// applyTestSetup returns the clock, the plans, and a context for an apply test; the context is cancelled when the test
+// ends, and no clock ends it (T474).
 func applyTestSetup(t *testing.T) (func() time.Time, []*Plan, context.Context) {
 	t.Helper()
 	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
 	plans := applyTestPlans(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	return now, plans, ctx
 }

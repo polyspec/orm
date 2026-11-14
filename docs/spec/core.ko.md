@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 69bbc53b19f184638427821de3b6df3ff0d595aab2166fb19dd997a605326675 -->
+<!-- source-sha256: be89d64e86a156e1811a4c2d9de7837b13c8729ddfd07ebca6ad48cfc1e047e3 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -19,10 +19,27 @@
 - **CORE-3** 오류를 기대하는 공유 recipe case와 공유 vector는 그 kind를 코어가 쓰는 대로 소문자로(`no_rows`), 기대
   메시지는 `<kind>: <text>`로 적고, Rust 실행기는 둘을 그대로 비교한다. 실행기 자신이 알리는 case의 언어 코드 실패는 kind가
   아닌 실행기의 코드(`callback`, `step`, `subscriber`)를 가진다. 언어 구현은 카탈로그 코드를 대문자로 유지하고 CORE-1의
-  고정 사본을 읽는다.
+  고정 사본을 읽는다. 공유 case와 그 고정 사본은 schema 하나, `scripts/features/schema/recipe.schema.json`을 이름하므로,
+  그 schema의 오류 코드는 소문자 kind이거나 대문자 코드이고, 그 case 형식은 `supersedes`를 이름한다(CORE-2). 공유 case를
+  `contracts/interfaces.json`의 state contract와 비교하는 검사는, state contract가 언어 구현이 돌려주는 코드를 적으므로,
+  대문자 코드와 그 kind를 같은 오류로 본다(CORE-10).
+- **CORE-4** `legacy/packages/`의 언어 구현은 그 언어의 생성된 binding이 `packages/rust/interface.json`의 모든
+  contract case를 실패와 skip 없이 통과하고, 언어 구현의 시험이 contract의 `changes`에 선언된 것 밖의 변경 없이
+  그 binding으로 통과한 뒤에만 제거한다. 제거는 그 언어 구현의 변경 하나로 한다. 다른 언어 binding의 통과는 그
+  제거를 허용하지 않는다. 이 두 검사는 contract의 동작과 contract가 의도적으로 대체하지 않는 릴리스 API를 모두 보존한다.
+- **CORE-5** 제거 전에 언어 구현의 API와 `packages/rust/interface.json`의 차이 각각은 그 차이를 정의하는 규칙과
+  함께 contract의 `changes` 항목이다. binding으로 실행하는 데 필요한 시험 변경은 그런 항목이 허용할 때만 가능하다.
+  따라서 명세로 정한 API 변경 없이 실패하는 legacy 시험을 제거하거나 약화해서 CORE-4를 만족시킬 수 없다.
+
+언어 구현은 아직 CORE-1에 따라 core와 공존한다. CORE-4의 제거 조건은 검증하지 않았으며, CORE-5가 요구하는 차이
+목록은 아직 채우지 않았다. interface contract의 `changes`는 비어 있다. 이 증거로 제거할 수 있는 언어 구현은 없다.
 
 ## 오류
 
+- **CORE-6** interface contract는 binding 경계의 I/O 실패를 나타내는 `io`를 포함하여 그 경계의 모든 error category에
+  class를 선언한다. 그 class는 PHP의 `Polyspec\Orm\OrmIoError`, Python의 `ORMIoError`, Node와 WASM의
+  `OrmIoError`이며 실패의 kind와 message를 보존한다. core의 kind 중 그 category에 속하는 것이
+  없어도 경계가 자기 실패를 낼 수 있으므로 이 연결이 필요하다.
 - **CORE-10** 코어의 오류는 닫힌 enum `polyspec_orm::Kind`의 kind 하나를 가진다. kind와 category와 뜻은
   [errors](errors.md)의 표다. kind는 카탈로그 코드의 소문자 snake 형태다(`NO_ROWS`는 `no_rows`). 코어에서는 INT-65와
   INT-89를 대체한다: 바인딩은 kind를 계약의 enum `ErrorKind`로, 모든 오류를 그 category의 클래스(CORE-11)로 내고, 어느
@@ -131,7 +148,7 @@
   slot 바이트를 잠금 없이 읽는 `legacy/packages/php/src/native/sqlite_cancel.c`; 같은 class의 두 번째 구현인
   `legacy/packages/php-ext/src/native_classes.c`의 native class; `statePath`와 `registerCancelQuery`를 호출하고 slot을 가진
   `legacy/packages/php-ext/src/db.c`; 파일의 바이트를 비교하는 `legacy/packages/php-ext/tests/QueryCancellationNativeTest.php`.
-  구현되지 않았다: CORE-41~CORE-43과 CORE-106~CORE-109의 규칙을 따르는 코드는 없고, legacy client는 자기 형식을 쓴다.
+  구현되지 않았다: CORE-41~CORE-43과 CORE-106~CORE-109는 구현이 없고, legacy client는 자기 형식을 쓴다.
 
 - **CORE-45** `Db::with_cancel(cancel)`은 취소 `cancel`을 가진 같은 pool의 handle을 돌려준다. 호출된 handle의 어떤
   것도 바꾸지 않는다. 그 handle에 연결된 모델, 그 handle이 시작한 트랜잭션, 그 트랜잭션의 `Tx`는 같은 취소를 가진다.
@@ -164,7 +181,7 @@
   열 값의 kind는 값이 아니라 열의 타입이 정한다: `i16`과 `i32`는 `int`, `i64`는 `int64`, `f64`는 `float`, `bool`은
   `bool`, `bytes`는 `bytes`이고, `decimal`, `varchar`, `text`, `uuid`, `date`, `time`, `datetime`은 `text`이며
   `datetime(p)`는 소수 자리가 정확히 p개다(PRT-69). SQL NULL은 `null`이다. stage `json` 뒤의 열은
-  `nested:json_value`다(CORE-61). 다른 style stage 뒤의 열은 공통 값 모델의 값이며 kind는 `null`, `bool`, `int64`,
+  `nested:json_value`다(CORE-122). 다른 style stage 뒤의 열은 공통 값 모델의 값이며 kind는 `null`, `bool`, `int64`,
   `float`, `text`, `list`, `map`이다: 소수부와 지수가 없고 `i64`에 들어가는 수는 `int64`, `i64`나 유한한 `f64`에
   들어가는 그 밖의 수는 `float`이고, 어느 쪽에도 들어가지 않는 수는 `codec_decode`다.
 - **CORE-63** 언어의 값은 함수 `from_host` 하나로 코어에 들어오며, 이 함수는 값만 읽는다: null은 `null`, boolean은
@@ -181,10 +198,15 @@
   `json_value`의 `out` 표의 kind로 기술한다: `null`, `bool`, 수 텍스트를 가진 `number`, `text`, `list`, member 순서의
   `map`이다. 짝 없는 surrogate를 가진 JSON 문자열에는 `text`가 없으므로, 그런 문자열을 가진 JSON 값은 그 열의 값을
   읽을 때 `codec_decode`이고 메시지는 `the JSON value holds a string that is no sequence of Unicode scalar values`다.
-- **CORE-61** JSON 값을 member 순서·숫자 텍스트·빈 container와 함께 저장하는 codec stage(COD-9, COD-16)는 코어에서
+- **CORE-61** 폐기되었고 CORE-122가 대체한다: 문서의 canonical form은 더 이상 stage `ordered_json`을 `json`으로 쓰지
+  않는다.
+- **CORE-122** JSON 값을 member 순서·숫자 텍스트·빈 container와 함께 저장하는 codec stage(COD-9, COD-16)는 코어에서
   `json`이다. 언어 구현은 그것을 쓰던 라이브러리 이름을 따라 `ordered_json`이라 부르지만 코어는 그 이름의 라이브러리에
   의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓴다. 코어는 `ordered_json`을 같은 encoding의 stage
-  `json`으로 읽으므로, 언어 구현이 읽는 문서를 코어도 읽고, 그 canonical form은 `json`을 쓴다. 그런 값의
+  `json`으로 읽으므로, 언어 구현이 읽는 문서를 코어도 읽는다. 문서는 쓰인 stage 이름을 지킨다. 문서가
+  `ordered_json`이라 쓴 곳에서 그 canonical 텍스트, manifest 텍스트, schema 텍스트는 `ordered_json`을 쓴다. 문서의
+  hash는 parser가 읽는 별칭 때문에 바뀌면 안 되고, 릴리스된 생성기는 이름을 쓰인 대로 쓰므로, 한 문서는 코어와
+  릴리스에서 같은 manifest hash를 갖는다. 문서의 runtime model은 두 이름 모두에 대해 stage `json`을 갖는다. 그런 값의
   공유 case 값 wrapper는 코어를 나가는 값(CORE-60)과 같이 `json_value`이고(FCV-4), 그 stage를 시험하는 case의 id도
   `json`으로 그것을 부른다. CORE-1의 고정 사본은 언어 구현을 위해 옛 이름을 지킨다.
 
@@ -216,7 +238,7 @@
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `join`, `leftJoin`, 묶음
   (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`, `getsPage`,
-  `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
+  `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
   `uint`여서 음수 값은 형식이 없다. `count`가 0이면 다음 terminal에서 `config`이고 메시지는 `limit requires a
@@ -292,8 +314,12 @@
   돌려준다. 그 key는 planner가 배정한 값이 가진 primary key와 unique key 가운데에서 고른다. 그 key의 행이 지워지지
   않았으면 그 행을 돌려주고 아무것도 쓰지 않으며, 그 key의 행이 없으면 `no_rows`다. `restore_or_create`는 한 transaction 안에서 그 key의 soft-delete된 행을 복원하거나, 그 key를 가진
   행이 없으면 배정한 행을 넣고, 그 행을 돌려준다. 그 key의 행이 지워지지 않았으면 `row_not_deleted`이고 아무것도 쓰지
-  않는다. 둘 다 행을 돌려줄 때 배정을 비운다. `Db` step은 이 둘을 terminal `restore`와 `restore_or_create`로 받고 결과는
+  않는다. 둘 다 연결을 요구하기 전에 빈 list의 `empty_in` 같은 query의 조건을 거부한다. 둘 다 행을 돌려줄 때 배정을 비운다. `Db` step은 이 둘을 terminal `restore`와 `restore_or_create`로 받고 결과는
   `{"row": <row>}`다(CORE-92). `soft_delete`가 없는 엔티티는 `ir_invalid`다.
+- **CORE-120** `Query`의 행의 `to_array()`는 map을 돌려준다. key는 행이 읽은 엔티티 열의 이름이고 순서는 schema의 순서이며,
+  값은 `value(column)`이 돌려주는 `orm_value`다(CORE-62). 행이 읽지 않은 열은 key가 없다. 그래서 읽지 않은 열과 값이 null인
+  열을 구별한다. relation 결과는 이 map의 key가 아니고 `related`와 `related_rows`가 돌려준다(CORE-88). 행을 읽지 않은
+  `Query`는 빈 map을 돌려준다.
 
 ## 상태 기계
 
@@ -354,7 +380,7 @@ build된다. 계약에는 세 멤버의 case가 없다. 셋 다 데이터베이�
 - **CORE-70** 코어의 인터페이스 계약은 `packages/rust/interface.json`이다. 계약은 코어가 가지고 있고 시그니처의 모든
   타입이 계약의 타입인 unit과 member만 선언한다. 값 alias `orm_value`(CORE-62)와 그것을 받거나 돌려주는 `Query`의
   member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. CORE-85~CORE-91의 `Query` member와 CORE-92, CORE-93의
-  class `StepRunner`를 선언한다. `StepRunner`는 연결이 필요하므로 그 member는 case가 없다(CORE-72). 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
+  class `StepRunner`를 선언한다. `StepRunner`는 연결이 필요하므로 그 member는 case가 없다(CORE-72). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다), `Tx::execute`(plan step),
   `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Config`의 field
   `audit_source`(함수), `TransactionOptions`의 field `audit`, `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
@@ -362,10 +388,21 @@ build된다. 계약에는 세 멤버의 case가 없다. 셋 다 데이터베이�
   타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다.
 - **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
   형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
-  전체(CORE-12)를 적는다. method의 case가 가진 `after`는 그 receiver에 대한 호출의 목록이고 각 호출은
-  `{call, args, result}`다. receiver가 없는 member의 case는 `after`를 이름하지 않는다: class result는 그 method의 case가
-  관찰하며, 그 case의 receiver가 그 result를 만든다. 코어는 그 모든 group을 계약이 이름하는 함수로 실행하고, 시험이 부를 수 없는 member를
+  전체(CORE-12)를 적는다. `after`의 호출은 method를 부른 뒤의 receiver를 관찰하고, 각각 `{call, args, result}`다.
+  receiver가 없는 member는 `after`를 적지 않는다. 그 member가 돌려준 인스턴스는 그것을 receiver로 만드는 method의
+  case가 관찰한다(binding G-5). 코어는 그 모든 group을 계약이 이름하는 함수로 실행하고, 시험이 부를 수 없는 member를
   이름하는 group은 실패한다.
 - **CORE-72** 데이터베이스가 필요한 case는 구현되지 않았다: SQLite DSN은 절대 경로를 담고(CFG-11) 서버 DSN은 실행이
   주는데, case 형식에는 그 어느 쪽의 값도 없다. `contracts/interface/core.json`은 문장을 보내지 않는 case만 담고,
   데이터베이스가 필요한 member는 코어의 시험이 시험한다.
+- **CORE-121** 코어는 어떤 입력도 닿지 않는 category `internal`의 분기에 fault injection point를 두어, 계약의 case가
+  그 point를 설정하고 그 분기가 일으키는 오류의 kind, category, message를 확인하게 한다(binding G-5, X-1). point는
+  module `polyspec_orm::fault`의 상수를 받는 `binding_core::fault::point!`다. point는 코어의 feature `fault-test`가
+  켜진 빌드에서, case가 설정한 호출에서만 발동한다. 그래서 그 feature가 없는 빌드와 case가 설정하지 않은 호출은
+  point를 통해 그 분기를 타지 않는다. 계약의 `faults`가 point를 적는다: `orm.internal`은 상수
+  `polyspec_orm::fault::INTERNAL`이고 `broken`으로 주입되며, planner에서 step이 읽는 행의 열 하나를 projection되지
+  않은 것으로 다뤄 `internal`을 일으킨다. `runtime_model.compile`의 case
+  `a_column_that_the_plan_does_not_project_is_internal`이 그것을 설정한다. 코어의 case runner는 생성된 binding 시험처럼
+  case의 fault를 그 member의 호출에 대해 설정하고, 그 호출의 poll마다 설정을 설치하며, fault가 발동하지 않은 case를
+  실패시킨다. 코어는 feature `fault-test`를 켠 자신을 dev-dependency로 가지므로, flag 없는 코어의 `cargo test`가 그
+  point를 설정한다(binding CK-65).

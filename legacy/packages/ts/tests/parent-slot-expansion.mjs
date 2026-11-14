@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { query } from '../dist/database.js';
 import { CompositeAccount, Engine } from '../dist/index.js';
 
 // Requirements: DSL-153.
-caseTest('parent-slot-expansion/preserves-bare-dollar', COMPUTE, async () => {
+caseTest('parent-slot-expansion/preserves-bare-dollar', async () => {
   const engine = new Engine(CompositeAccount.entity.model, 'postgres');
   const request = {
     ir_version: 1,

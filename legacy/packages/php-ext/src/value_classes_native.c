@@ -327,7 +327,7 @@ ZEND_METHOD(Polyspec_Orm_Transform, param)
         db_throw_orm("CODEC_ENCODE", "%s requires a UTF-8 text", ZSTR_VAL(kind));
         RETURN_THROWS();
     }
-    if (zend_string_equals_literal(kind, "fulltext_boolean")) {
+    if (zend_string_equals_literal(kind, "fulltext_boolean") || zend_string_equals_literal(kind, "fulltext_text")) {
         zend_string *term = transform_fulltext_boolean(Z_STR_P(value));
         if (term == NULL) RETURN_THROWS();
         bool empty = ZSTR_LEN(term) == 0;

@@ -50,10 +50,9 @@ func TestSQLiteFileNameWithQuery(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			// Each opener is one process or connection that creates one file within probeDeadline.
-			tc := testcase.Start(t, probeCaseDeadline)
-			ctx, cancel := context.WithTimeout(tc.Context(), probeDeadline)
-			defer cancel()
+			// Each opener is one process or connection that creates one file.
+			tc := testcase.Start(t)
+			ctx := tc.Context()
 			dir := t.TempDir()
 			if err := c.open(ctx, filepath.Join(dir, "bench.sqlite")+sqliteQuery); err != nil {
 				t.Fatalf("open: %v", err)

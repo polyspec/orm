@@ -8,10 +8,8 @@ import assert from 'node:assert/strict';
 import { containsWordRune, WORD_RANGES } from '../dist/dbspec/unicode_word.js';
 
 const LAST_CODE_POINT = 0x10ffff;
-// TIMEOUT is the deadline (ms) of one case. A binary search over every code point and one bitmap.
-const TIMEOUT = 60000;
 
-caseTest('every code point is classified by the ranges of the table', TIMEOUT, () => {
+caseTest('every code point is classified by the ranges of the table', () => {
   // listed[cp] is 1 exactly when cp lies in one of the table's ranges.
   const listed = new Uint8Array(LAST_CODE_POINT + 1);
   for (const [lo, hi] of WORD_RANGES) listed.fill(1, lo, hi + 1);

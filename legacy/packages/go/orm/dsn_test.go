@@ -8,7 +8,7 @@ import (
 
 // Requirements: CFG-1, CFG-2, CFG-10, CFG-12, CFG-19, CFG-20, CFG-37.
 func TestParseDSN(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	tests := []struct {
 		name, input, driver, native, zone string
 	}{
@@ -34,7 +34,7 @@ func TestParseDSN(t *testing.T) {
 // the values that the client sets, never the query of the DSN.
 // Requirements: CFG-19, CFG-20, CFG-37.
 func TestParseDSNHandsTheDriverNoQuery(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, input := range []string{
 		"mysql://orm@127.0.0.1:3306/orm_example?charset=utf8mb4",
 		"mysql://orm@127.0.0.1:3306/orm_example?parseTime=false",
@@ -55,7 +55,7 @@ func TestParseDSNHandsTheDriverNoQuery(t *testing.T) {
 // TestDriverFromDSN checks that DriverFromDSN names the database of each DSN scheme and refuses a DSN that is no URI.
 // Requirements: CFG-40.
 func TestDriverFromDSN(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for input, want := range map[string]string{
 		"mysql://orm@127.0.0.1:3306/orm_example":    "mysql",
 		"postgres://orm@127.0.0.1:5432/orm_example": "postgres",

@@ -87,7 +87,7 @@ func vectorValue(t *testing.T, raw json.RawMessage) any {
 // type of its slot (docs/spec/protocol.md §5 "Parameters").
 // Requirements: PRT-67, DIA-31.
 func TestBindVectors(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	v := readBindVectors(t)
 	if v.Zone != "+00:00" || len(v.Bind) == 0 {
 		t.Fatalf("zone %q, %d bind cases; this runner checks in UTC", v.Zone, len(v.Bind))

@@ -10,7 +10,7 @@ import (
 
 // Requirements: INT-98a.
 func TestDecodeSelectedRowRejectsInvalidRuntimeScalars(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, tc := range []struct {
 		name  string
 		type_ string

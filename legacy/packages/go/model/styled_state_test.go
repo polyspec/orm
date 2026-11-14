@@ -13,7 +13,7 @@ import (
 // Requirements: DBS-116, COD-17, COD-20.
 func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 	// The test of COD-17, COD-20 (docs/spec).
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	row := model.Author()
 	for _, invalid := range []any{nil, orm.StyledValue{}} {
 		if _, err := row.Orm_().Entity().Assign(row, "json_setting", invalid); orm.ErrorCode(err) != orm.CodeCodecDecode {
@@ -68,7 +68,7 @@ func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 }
 
 func TestStyledStatesAcrossDatabases(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		id := readColumn(t, f.authors[0].GetSeq)

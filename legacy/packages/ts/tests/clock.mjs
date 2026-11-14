@@ -6,7 +6,6 @@ import { wallMicros } from '../dist/clock.js';
 import { caseTest } from '../../../../tests/testcase.mts';
 import { createFailureCheck } from './check-state.mjs';
 
-const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 
 const check = createFailureCheck(() => 'clock_wall_micros_order', () => { failures++; });
@@ -49,7 +48,7 @@ function clockWallMicrosOrder() {
   }
 }
 
-caseTest('clock/clock_wall_micros_order', CASE_DEADLINE_MS, async () => {
+caseTest('clock/clock_wall_micros_order', async () => {
   clockWallMicrosOrder();
   if (failures > 0) throw new Error(`${failures} check(s) failed; each FAIL line above names one`);
 });

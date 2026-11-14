@@ -20,7 +20,7 @@ import (
 // reuses the same session and reads its state.
 // Requirements: CFG-39.
 func TestCancelledTransactionClearsSessionState(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	m, err := runtimemodel.LoadFiles(filepath.Join(testcase.LegacyRoot(), "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)

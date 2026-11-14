@@ -8,7 +8,7 @@ import (
 )
 
 func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	keys := mustAESKeyring(t, map[int32]string{1: "old", 2: "new"}, 2)
 	row := map[string]any{"aes_key_version": int32(1), "aes_hex_email": "not-hex"}
 	if _, err := RotateAESRow(row, "aes_key_version", []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}}, 2, keys); err == nil {
@@ -21,7 +21,7 @@ func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
 
 // Requirements: COD-55 (FCV-2: a rotation row without a selected column, an input that no recipe value can hold, stays native). The keyring constructor refuses an empty key and an undeclared current version with CONFIG.
 func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	keys := mustAESKeyring(t, map[int32]string{1: "old", 2: "new"}, 2)
 	cols := []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}}
 	row := func(version any) map[string]any {
@@ -71,7 +71,7 @@ func assertAESRowDecodeIsInternal(t *testing.T, step *plan.Step, si *scanInfo, w
 // Requirements: COD-56.
 // FCV-2: the case builds a read plan without its version column, an input that no recipe value can hold; it stays native.
 func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	step := &plan.Step{Assemble: &plan.Assemble{Entity: "user", Columns: []plan.OutCol{{Index: 0, Name: "aes_hex_email", Type: "string"}}}}
 	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}, asm: step.Assemble}}}
 	assertAESRowDecodeIsInternal(t, step, si, "plan without a version column")
@@ -80,7 +80,7 @@ func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 // Requirements: COD-48.
 // FCV-2: the case builds a selected row without its version cell, an input that no recipe value can hold; it stays native.
 func TestAESReadRowWithoutVersionCellIsInternal(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	step, si := aesReadStep()
 	assertAESRowDecodeIsInternal(t, step, si, "selected AES row without its version cell")
 }
@@ -108,7 +108,7 @@ func mustAESKeyring(t *testing.T, keys map[int32]string, current int32) AESKeyri
 // HostDecodeVersioned is an API of Go alone (FCV-2).
 // Requirements: COD-6.
 func TestHostAESDecodesByStoredVersion(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	oldValue, err := HostEncode("old@example.test", []string{"aes"}, "old-key")
 	if err != nil {
 		t.Fatal(err)

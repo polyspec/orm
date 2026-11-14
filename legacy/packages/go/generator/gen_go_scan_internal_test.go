@@ -18,7 +18,7 @@ import (
 // hand-written files of the output package, such as its tests, are scanned
 // like every other package named by the scan patterns.
 func TestGoGenerationScansHandWrittenFilesOfTheModelPackage(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("model/doc.go", "// Package model holds the generated models.\npackage model\n")
 	write("model/price_test.go", `package model
@@ -36,7 +36,7 @@ func TestPrice(t *testing.T) { _ = Product().GtPrice(1) }
 // TestGoRelationGetterReportsMismatch checks that a generated relation getter does not discard a type
 // assertion failure but returns it together with an error through orm.RelatedAs.
 func TestGoRelationGetterReportsMismatch(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("example/example.go", scanLoadHeader+`		Relation(model.Brand().MatchBrandSeqWithSeq().AliasOwner()).
 		Relations(model.Brand().MatchBrandSeqWithSeq())
@@ -66,7 +66,7 @@ func Owner(p *model.ProductModel) (*model.BrandModel, error) { return p.GetOwner
 // give the same model files however the scan patterns and the output
 // directory are written: relative, absolute, or with a trailing slash.
 func TestGoGenerationScanPathSpelling(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("src/src.go", `package src
 
@@ -128,7 +128,7 @@ func Named() *model.BrandModel { return model.Brand().GtMinPrice(2) }
 // a build-tag configuration only for the package whose ignored file needs it;
 // the type information of the other packages comes from the default load.
 func TestScanLoadsTaggedConfigurationsOnlyForTheirPackages(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("tagged/tagged.go", `package tagged
 

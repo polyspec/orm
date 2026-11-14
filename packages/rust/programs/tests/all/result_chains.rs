@@ -16,7 +16,7 @@ fn wrapped() -> Result<Option<Author>, std::io::Error> {
 
 // Requirements: COD-20, COD-25.
 fn generated_model_result_chains_preserve_assigned_values() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for row in [mapped().expect("error mapping"), wrapped().expect("success mapping").expect("model")] {
         let StyledValue::Value(value) = row.get_jsons_tags().expect("assigned field") else {
             panic!("assigned field is SQL NULL");

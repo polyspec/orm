@@ -5,7 +5,6 @@
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -21,7 +20,6 @@ CHILD = Path(__file__).resolve().parent / "was_inserted_child.py"
 
 
 class WasInsertedTest(unittest.TestCase):
-    deadline = testcase.DATABASE
 
     @classmethod
     def setUpClass(cls):
@@ -70,19 +68,20 @@ class WasInsertedTest(unittest.TestCase):
                     stderr=subprocess.PIPE,
                     text=True,
                 )
-                waiting = False
-                deadline = time.monotonic() + 10
-                while not waiting and time.monotonic() < deadline:
-                    waiting = utils.backend_waiting_for_lock()
-                    time.sleep(0.02)
+                # The child prints "waiting" when the server reports that its update waits (T475); only then the
+                # parent reads the state once.
+                line = child.stdout.readline()
+                self.assertEqual(
+                    line, "waiting\n", "the child reports the wait of its update"
+                )
                 self.assertTrue(
-                    waiting,
+                    utils.backend_waiting_for_lock(),
                     "the child backend waits for the row lock the transaction holds",
                 )
                 return child
 
             child = db.transaction(parent, {"retry": 0})
-            out, err = child.communicate(timeout=60)
+            out, err = child.communicate()
             self.assertEqual(child.returncode, 0, f"the waiting child failed: {err}")
             self.assertEqual(out, "done\n")
 

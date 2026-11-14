@@ -11,7 +11,6 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest } from '../testcase.mts';
 
-const TIMEOUT = 600000;
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'scripts', 'install-cli.mts');
 const fixtures = join(root, 'tests', 'editor');
@@ -29,7 +28,7 @@ function links(directory: string) {
 const run = (args: string[], input?: string) => spawnSync(process.execPath, args, { input, encoding: 'utf8' });
 
 // Requirements: ORES-78.
-caseTest('orm-install-cli installs dbspec-fmt without a link, and uninstall removes it', TIMEOUT, () => {
+caseTest('orm-install-cli installs dbspec-fmt without a link, and uninstall removes it', () => {
   const prefix = realpathSync(mkdtempSync(join(tmpdir(), 'dbspec-fmt-prefix-')));
   try {
     const installed = run([script, 'install', '--prefix', prefix]);

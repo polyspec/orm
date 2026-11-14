@@ -84,6 +84,8 @@ from kit and holds as its own; this file states only the rules of orm.
   worktree's target directory goes with the worktree when it is removed; check free disk before a
   worktree build.
   Enforced by: `make rust-check`
+- Own: A rule identifier of a specification keeps its statement only while the meaning of the statement stays. A change of meaning marks the old identifier as retired, with the identifier that replaces it, and states the new meaning under a new identifier, because a record that cites the old identifier must not read as citing the new meaning; a test cites the new identifier.
+  Enforced by: none, whether a change keeps the meaning of a statement is judged by review.
 - Refines P24: `docs/plans/execution/checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make docs-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make docs-check` fails on any other with its file, line and column.
   Enforced by: `make docs-check`
 - Own: A received instruction is triaged first: finish the item in progress unless the instruction is explicit and urgent, then place the new work by priority before starting it.
@@ -115,7 +117,9 @@ from kit and holds as its own; this file states only the rules of orm.
   temporary directory of its own (`TMPDIR`) and in a process group of its own; a passed step that
   leaves an entry in that directory, a run directory under `.runtime/run`, or a process in its
   group fails and names what it left, and a failed step's leftovers go into the report. Either way
-  the runner then removes them and ends the processes. Code removes its own temporary files on
+  the runner then removes the entries and asks the processes to end: it sends SIGTERM to the group, prints the group and
+  the processes that it waits for, and waits with no time limit for the close of the output of the step; it sends no
+  SIGKILL, and it names a process that is still alive after that (docs/spec/feature-coverage.md FCV-18). Code removes its own temporary files on
   every path, failure included: a Go `main` ends with `os.Exit(run())` and calls no `os.Exit` after
   a `defer` (`make go-vet-check`), and a Rust test holds its temporary directory in a value that
   removes it on drop. A process that starts a session of its own leaves the group and is not seen,
@@ -137,7 +141,7 @@ from kit and holds as its own; this file states only the rules of orm.
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record
   and the summary and writes as a GitHub `::warning::` annotation; the test still passes. A test fails only on
-  correctness, and a deadline only ends a case that does not stop. `make repo-check` (and `make go-vet-check` for Go) refuses a
+  correctness, never on a clock. `make repo-check` (and `make go-vet-check` for Go) refuses a
   test that fails on a measured time above a bound. A reference value is never raised to remove a warning; a change needs new evidence of
   the same kind from the CI runner.
   Enforced by: `make repo-check`
@@ -230,15 +234,18 @@ from kit and holds as its own; this file states only the rules of orm.
   Enforced by: `make repo-check`
 - Own: During an item run only the unit tests of what changed; never rerun
   tests mechanically after each fix. Every test case, a short verification unit, reports its own
-  running, completion, success or failure with its elapsed time and has its own timeout; a
-  whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
+  running, completion, success or failure with its elapsed time. No clock ends a test case or a
+  process of a test, because a machine under load runs the same work more slowly and its result must not change with that load:
+  a case ends when its work ends, and a run that does not end is stopped with its run (SIGINT or SIGTERM). The TypeScript
+  harness `tests/testcase.mts`, the Go harness `legacy/packages/go/testcase`, the Python harness
+  `legacy/packages/python/tests/testcase.py` and the Rust harness `packages/rust/testcase` hold no deadline, and PHPUnit enforces no time limit (`enforceTimeLimit` is false). A test that checks a lock wait, aborts a waiting statement or waits for the end of a session orders its steps by a response of the database server: the limit of a wait is a setting of the server (`lock_timeout`, `lock_wait_timeout`, `innodb_lock_wait_timeout`, `deadlock_timeout` with `log_lock_waits`), and the test reads the answer of the server (55P03, 1205, 57P01, the LOG message `still waiting for`) as the event, not a read of the lock tables on an interval and not a timer of the client, because a timer of the client leaves a race and the answer of the server reports what happened; a path for which the server gives no such answer is an exception that is listed in its task and stays only when it is approved. A whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
   `go generate`, `go vet`, `cargo build`, `cargo test --no-run`, a whole suite, a server or a tool
   run) gets detailed step logs instead of a timeout, with no deadline at all, a no-output deadline
   included, so its process and result stay observable; its success or failure comes from its
   observed result and errors, never from a clock. A time limit on a test's own computation measures the CPU time of the thread or
   process that runs it, because wall-clock time on a shared machine includes the time other
-  processes hold the processors; a timer that stops a stuck case, a limit on work that a database
-  or another process does, and a test of timing behavior measure wall-clock time.
+  processes hold the processors; a limit on work that a database or another process does, and a test of timing
+  behavior, measure wall-clock time.
   Enforced by: none, the rule governs the work of an agent; no tool sees which tests run
 - Own: Complete work in progress before increasing the number of unfinished items without completed results. Keep persistent development rules in this file and concrete deliverables with their evidence in the checklist. The checklist checker rejects unnumbered policy and status prose.
   Enforced by: `make docs-check`
@@ -258,11 +265,11 @@ from kit and holds as its own; this file states only the rules of orm.
   Enforced by: `make feature-unit-check`, `make feature-verify-other`
 - Own: An owning client executes its own behavior cases from tests located under `packages/<runtime>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
   Enforced by: `make feature-unit-check`
-- Own: Use an event instead of polling or a timer to observe it. A declared deadline may use a timer. Do not use symbolic links in what this repository creates, and do not use alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
+- Own: Use an event instead of polling or a timer to observe it. A test of timing behavior may use a timer. Do not use symbolic links in what this repository creates, and do not use alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
   Enforced by: none, no check reads the code for polling, timers or symbolic links
 - Own: A path is resolved declaratively, by a name in a tracked file, or by discovery, by a discovery rule that a document or a script states, never as a relative path.
   Enforced by: none, no check reads how the code resolves its paths
-- Own: Develop one `0.0.31` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
+- Own: Develop one `0.0.33` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
   Enforced by: none, no check reads the versions since kit K812; the package managers resolve them
 - Own: Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. Every dbspec implementation (Go, PHP, the PHP-extension, TypeScript, Python, and Rust) executes the same accepted and rejected schema cases.
   Enforced by: `make conformance-check`

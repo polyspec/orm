@@ -14,7 +14,7 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writ
 import { tmpdir } from 'node:os';
 import { createRequire, findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
-import { COMPUTE, caseTest, runLong, stepLines } from '../../../../tests/testcase.mts';
+import { caseTest, runLong, stepLines } from '../../../../tests/testcase.mts';
 
 const client = new URL('..', import.meta.url).pathname;
 // Node finds the client's dependencies by package name in the client's package.json.
@@ -54,21 +54,21 @@ function declarationFiles(directory) {
 }
 
 let failed = 0;
-const check = (name, deadline, body) => caseTest(name, deadline, body);
+const check = (name, body) => caseTest(name, body);
 
-await check('package-declarations/listener-uses-no-driver-types', COMPUTE, () => {
+await check('package-declarations/listener-uses-no-driver-types', () => {
   const declaration = readFileSync(join(client, 'dist', 'listen.d.ts'), 'utf8');
   assert.doesNotMatch(declaration, driverModules, 'the PostgreSQL listener declaration imports a driver module');
 });
 
-await check('package-declarations/no-driver-imports', COMPUTE, async () => {
+await check('package-declarations/no-driver-imports', async () => {
   const offending = declarationFiles(join(client, 'dist')).filter(file => driverModules.test(readFileSync(file, 'utf8')));
   assert.deepEqual(offending.map(file => file.slice(client.length)), [], 'declaration files that import a driver module');
 });
 
 // The scanner of orm-gen parses sources with oxc-parser; the compiler is a build tool of the package and never one of
 // its runtime dependencies, so an install of the package carries no TypeScript compiler.
-await check('package-declarations/no-compiler-dependency', COMPUTE, async () => {
+await check('package-declarations/no-compiler-dependency', async () => {
   const declared = JSON.parse(readFileSync(clientPackage, 'utf8'));
   assert.equal(declared.dependencies?.typescript, undefined, 'dependencies of packages/ts/package.json name typescript');
 });
@@ -120,7 +120,7 @@ try {
     });
   } else failed++;
   // INT-93: the published declarations type-check in a project with none of the driver types installed.
-  await check('package-declarations/type-check-without-driver-types', COMPUTE, () => {
+  await check('package-declarations/type-check-without-driver-types', () => {
     assert.ok(tsc, 'tsc of the project did not run');
     assert.equal(tsc.code, 0, `tsc of the project failed:\n${tsc.output}`);
   });

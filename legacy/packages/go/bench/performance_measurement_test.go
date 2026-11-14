@@ -24,21 +24,21 @@ import (
 // TestPerformanceMeasurementMysql measures the hot path on the seeded bench database of mysql; a missing DSN fails by its name.
 // Requirements: PERF-1.
 func TestPerformanceMeasurementMysql(t *testing.T) {
-	testcase.Start(t, gateDeadline)
+	testcase.Start(t)
 	measureHotPath(t, "mysql")
 }
 
 // TestPerformanceMeasurementPostgres measures the hot path on the seeded bench database of postgres; a missing DSN fails by its name.
 // Requirements: PERF-1.
 func TestPerformanceMeasurementPostgres(t *testing.T) {
-	testcase.Start(t, gateDeadline)
+	testcase.Start(t)
 	measureHotPath(t, "postgres")
 }
 
 // TestPerformanceMeasurementSQLite measures the hot path on the seeded bench database of sqlite; a missing DSN fails by its name.
 // Requirements: PERF-1.
 func TestPerformanceMeasurementSQLite(t *testing.T) {
-	testcase.Start(t, gateDeadline)
+	testcase.Start(t)
 	measureHotPath(t, "sqlite")
 }
 

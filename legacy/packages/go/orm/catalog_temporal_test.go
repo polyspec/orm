@@ -31,7 +31,7 @@ func catalogTemporalValues() []CatalogAssignment {
 }
 
 func TestCatalogWriteRefusesTimeValueForTemporalColumn(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "temporal", catalogTemporalDDL)
 	ctx := context.Background()
 	values := catalogTemporalValues()
@@ -93,7 +93,7 @@ func catalogDescribedTestValue(value any, driverType string, column CatalogColum
 // tinyint(1), on SQLite BOOLEAN and on PostgreSQL boolean; a value of any other column is left as it is, and any value
 // other than 0 or 1 of a boolean column fails with INT-182.
 func TestCatalogDescribedBool(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	cases := []struct {
 		name       string
 		dialect    string
@@ -136,7 +136,7 @@ func TestCatalogDescribedBool(t *testing.T) {
 }
 
 func TestCatalogDescribedTemporalText(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	stamp := time.Date(2026, time.January, 2, 3, 4, 5, 123000000, time.UTC)
 	date := time.Date(2024, time.February, 29, 0, 0, 0, 0, time.UTC)
 	for _, test := range []struct {

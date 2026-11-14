@@ -87,18 +87,14 @@ impl Dialect {
         }
     }
 
+    /// The paged read of every dialect, `LIMIT count OFFSET offset` (DIA-3).
     pub fn limit(self, offset: u32, count: u32) -> String {
-        match self {
-            Dialect::MySql => format!(" LIMIT {offset}, {count}"),
-            _ => format!(" LIMIT {count} OFFSET {offset}"),
-        }
+        format!(" LIMIT {count} OFFSET {offset}")
     }
 
+    /// The paged read of every dialect with bound placeholders, `LIMIT count OFFSET offset` (DIA-3).
     pub fn limit_params(self, offset: &str, count: &str) -> String {
-        match self {
-            Dialect::MySql => format!(" LIMIT {offset}, {count}"),
-            _ => format!(" LIMIT {count} OFFSET {offset}"),
-        }
+        format!(" LIMIT {count} OFFSET {offset}")
     }
 
     pub fn force_index(self, name: &str) -> String {
@@ -209,7 +205,7 @@ impl Dialect {
             Dialect::Postgres => {
                 let doc = format!("to_tsvector('simple', {})", cols.iter().map(|c| format!("coalesce({c}, '')")).collect::<Vec<_>>().join(" || ' ' || "));
                 let query = if boolean { "websearch_to_tsquery" } else { "plainto_tsquery" };
-                Some(format!("{doc} @@ {query}('simple', {})", value("")))
+                Some(format!("{doc} @@ {query}('simple', {})", value(if boolean { "fulltext_text" } else { "" })))
             }
             Dialect::Sqlite => None,
         }

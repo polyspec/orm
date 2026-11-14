@@ -180,7 +180,7 @@
             "type": "i64"
            }
           ],
-          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`name` = ? AND `a`.`seq` IN (?, ?) ORDER BY `a`.`seq` DESC LIMIT 0, 3",
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`name` = ? AND `a`.`seq` IN (?, ?) ORDER BY `a`.`seq` DESC LIMIT 3 OFFSET 0",
           "tables": [
            "user"
           ]
@@ -8290,7 +8290,7 @@
          {
           "role": "main",
           "slots": [],
-          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` ORDER BY `s1`.`description` ASC, `s1`.`seq` ASC LIMIT 0, 1) AS `a__first_author` FROM `user` AS `a`",
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` ORDER BY `s1`.`description` ASC, `s1`.`seq` ASC LIMIT 1 OFFSET 0) AS `a__first_author` FROM `user` AS `a`",
           "tables": [
            "author",
            "user"
@@ -9073,7 +9073,7 @@
          {
           "role": "main",
           "slots": [],
-          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq` FROM `service_region` AS `a` FORCE INDEX (`ix_service_region_service`) LIMIT 0, 1",
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq` FROM `service_region` AS `a` FORCE INDEX (`ix_service_region_service`) LIMIT 1 OFFSET 0",
           "tables": [
            "service_region"
           ]
@@ -12950,16 +12950,16 @@
            },
            {
             "from": "param",
-            "param": 1,
+            "param": 2,
             "type": "i64"
            },
            {
             "from": "param",
-            "param": 2,
+            "param": 1,
             "type": "i64"
            }
           ],
-          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?",
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?",
           "tables": [
            "product"
           ]
@@ -13070,6 +13070,227 @@
            }
           ],
           "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "count",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN (?)",
+          "tables": [
+           "product_review"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_page_without_an_order_orders_by_the_primary_key",
+   "requirements": [
+    "DSL-67",
+    "PRT-38",
+    "INT-64"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/complex_query/complex_query.dbs",
+     "input": {
+      "entity": "product",
+      "ir_version": 1,
+      "kind": "paginate",
+      "limit": {
+       "count_p": 2,
+       "offset_p": 1
+      },
+      "n_params": 3,
+      "relations": [
+       {
+        "keys": [
+         {
+          "left": "seq",
+          "right": "product_seq"
+         }
+        ],
+        "kind": "many",
+        "query": {
+         "entity": "product_review"
+        },
+        "rel": "reviews"
+       }
+      ],
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "service_seq",
+          "op": "eq",
+          "p": 0
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT ? OFFSET ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "count",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM `product` AS `a` WHERE `a`.`service_seq` = ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`product_seq` AS `a__product_seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`is_close` AS `a__is_close`, `a`.`content` AS `a__content` FROM `product_review` AS `a` WHERE `a`.`product_seq` IN (?)",
+          "tables": [
+           "product_review"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" ASC LIMIT $2 OFFSET $3",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "count",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN ($1)",
+          "tables": [
+           "product_review"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" ASC LIMIT ? OFFSET ?",
           "tables": [
            "product"
           ]

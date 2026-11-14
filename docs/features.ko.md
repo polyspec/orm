@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 61b9e8081b9f39147a9a0db65bfbafc10d706c8eb21172f323cfe80abfd3cace -->
+<!-- source-sha256: 6c2c581417071de6f626c10ce55406d13b95deddfd63a9b61cbe4afe3bb8ab04 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -43,7 +43,7 @@
 - `authenticated_encryption`: 인증과 버전이 있는 AES 값과 blind index를 인코딩하고, 섞인 key version을 읽으며, 테이블의 모든 암호화 컬럼을 배치로 회전한다.
 - `parameter_chunking`: 관계 key 목록을 크기 등급으로 채우고, 관계 key와 큰 root IN 목록을 driver bind 한도에서 나누어 결과를 합치며, 병합이 결과를 바꾸는 root 모양은 거부한다.
 - `constraints_and_relations`: CHECK 제약, index, 내부·외부 foreign key, 외부 문서 관계 조회, soft delete, 변경 불가 테이블과 관계 삭제 동작을 planner와 migration 시스템에서 유지한다. 변경 불가 쓰기가 거부되면 행과 driver 원인을 보존한다.
-- `audit_triggers`: 테이블의 audit 설정은 audit column과, 그 column의 선언한 restrict foreign key의 대상인 audit 기록 테이블을 정하고, 삽입·갱신된 모든 행을 선언한 history 테이블에 복사하는 행 trigger를 설치한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 연결 설정은 현재 요청의 audit 값을 돌려주는 audit source를 받고, audit 값을 가진 트랜잭션은 이를 한 번 불러 callback 전에 그 값과 트랜잭션의 값으로 감사 대상 테이블이 references로 정한 테이블에 audit 기록 하나를 삽입한다. 트랜잭션 안의 모든 감사 대상 insert, update, soft delete, restore는 그 기록의 key를 쓰며, 이는 모든 트랜잭션 진입점에서 같다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 Rust transaction, transaction_send, transaction_once다. 중첩 트랜잭션은 바깥 audit을 유지한다.
+- `audit_triggers`: 테이블의 audit 설정은 audit column과, 그 column의 선언한 restrict foreign key의 대상인 audit 기록 테이블을 정하고, 삽입·갱신된 모든 행을 선언한 history 테이블에 복사하는 행 trigger를 설치한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 연결 설정은 현재 요청의 audit 값을 돌려주는 audit source를 받고, audit 값을 가진 트랜잭션은 이를 한 번 불러 callback 전에 그 값과 트랜잭션의 값으로 감사 대상 테이블이 references로 정한 테이블에 audit 기록 하나를 삽입한다. 트랜잭션 안의 모든 감사 대상 insert, update, soft delete, restore는 그 기록의 key를 쓰며, 이는 모든 트랜잭션 진입점에서 같다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 옵션이 audit 값을 담는 Rust `Db::transaction`이다. 중첩 트랜잭션은 바깥 audit을 유지한다.
 - `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
 - `performance_gate`: recipe performance_gate는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 조회의 행, bind, projection을 고정한다. `make feature-performance-check`는 두 조회를 각 database의 `BENCH_<DATABASE>_DSN`에서 한 번에 측정 하나씩, 두 번 native로 측정하고, 각 비율을 contracts/performance-references.json의 고정 기준값과 비교한다. 기준값은 깨끗한 checkout의 통과한 check run 하나에서 기록했다. 기준값을 넘는 측정은 진단용이며 correctness를 실패시키지 않는다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.
 - `conformance_verification`: 여섯 클라이언트(Go, PHP, PHP extension, Rust, TypeScript, Python)가 MySQL, PostgreSQL, SQLite에서 같은 conformance vector를 실행한다. 각 사례는 자기 database에서 한 번 실행하고 checker가 그 결과 줄을 읽는다.

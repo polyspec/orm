@@ -500,7 +500,7 @@ mod page_parameter_tests {
 
     #[test]
     fn paged_values_require_nonnegative_offset_and_positive_count() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert!(validate_page_params(&request(), &[Param::I64(0), Param::I64(1)]).is_ok());
         for (params, code) in [
             (vec![Param::Null, Param::I64(1)], crate::Kind::CodecEncode),
@@ -556,7 +556,7 @@ mod plan_cache_tests {
     // Requirements: CPX-4.
     #[test]
     fn in_list_keys_are_bounded_by_bucket() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let mut keys = HashSet::new();
         for n in 1..=300usize {
             let list: Vec<Param> = (0..n as i64).map(Param::I64).collect();
@@ -572,7 +572,7 @@ mod plan_cache_tests {
     // Requirements: PRT-78; T236.
     #[test]
     fn paged_requests_share_one_root_limit_shape() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let mut expected_key = None;
         for page in 0..300u32 {
             let mut core = crate::core::Core::new(&PROBE);
@@ -593,7 +593,7 @@ mod plan_cache_tests {
 
     #[test]
     fn paged_page_params_follow_sorted_subquery_names_before_the_root_page() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let mut core = crate::core::Core::new(&PROBE);
         core.add_column_sub(
             "z_sub",

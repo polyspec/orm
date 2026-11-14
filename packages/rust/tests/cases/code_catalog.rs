@@ -41,5 +41,5 @@ fn matches_errors_yaml() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    vec![polyspec_orm_testcase::trial("code_catalog::matches_errors_yaml".to_owned(), polyspec_orm_testcase::COMPUTE, matches_errors_yaml)]
+    vec![polyspec_orm_testcase::trial("code_catalog::matches_errors_yaml".to_owned(), matches_errors_yaml)]
 }

@@ -117,7 +117,7 @@ class RollbackTest extends TestCase
             'the id of the Db is not the id of the other session'
         );
         if ($driver === 'postgres') {
-            $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([$id]);
+            $pdo->prepare('SELECT pg_terminate_backend(?)')->execute([$id]);
         } else {
             $pdo->exec('KILL ' . $id);
         }

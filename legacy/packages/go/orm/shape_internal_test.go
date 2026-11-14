@@ -16,7 +16,7 @@ import (
 // and requires each mutation to change the shape key and to differ from every
 // other mutation. A field added to the IR that shapeKey does not walk fails here.
 func TestShapeCoversEveryField(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	base := shapeKey(&ir.Request{})
 	seen := map[uint64]string{}
 	jsons := map[string]string{}

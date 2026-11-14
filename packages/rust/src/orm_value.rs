@@ -28,7 +28,7 @@ pub enum OrmValue {
     /// A text; the canonical text of a date, a time or a date-time; the exact text of a decimal.
     Text(String),
     Bytes(Vec<u8>),
-    /// The value of a column after the stage `json` (CORE-61). No string of it holds an unpaired surrogate (CORE-64).
+    /// The value of a column after the stage `json` (CORE-122). No string of it holds an unpaired surrogate (CORE-64).
     Json(JsonValue),
     List(Vec<OrmValue>),
     Map(IndexMap<String, OrmValue>),
@@ -411,6 +411,68 @@ impl OutValues for Children<'_> {
             (Part::List(_) | Part::JsonList(_), _) => defect(what, map, index),
         }
     }
+}
+
+/// The parameter of a value of a codec function (docs/spec/flowmark-surface.md FMS-50): a text, bytes or null. Another
+/// kind is `codec_encode`.
+fn codec_value(value: OrmValue) -> Result<Param> {
+    match value {
+        OrmValue::Null => Ok(Param::Null),
+        OrmValue::Text(text) => Ok(Param::Str(text)),
+        OrmValue::Bytes(bytes) => Ok(Param::Bytes(bytes)),
+        _ => Err(Error::new(Kind::CodecEncode, "the value of a codec function is a text, bytes or null")),
+    }
+}
+
+/// The cell of a codec function (FMS-50): a text, bytes or null. Another kind is `codec_decode`.
+fn codec_cell(cell: OrmValue) -> Result<Val> {
+    match cell {
+        OrmValue::Null => Ok(Val::Null),
+        OrmValue::Text(text) => Ok(Val::Str(text)),
+        OrmValue::Bytes(bytes) => Ok(Val::Bytes(bytes)),
+        _ => Err(Error::new(Kind::CodecDecode, "the cell of a codec function is a text, bytes or null")),
+    }
+}
+
+/// The value that a codec function decoded: the value of the stage `json` is a JSON value, the value of another value
+/// stage has the kinds of CORE-62, and a cell without a value stage is its text or its bytes.
+fn decoded(value: Val) -> Result<OrmValue> {
+    Ok(match value {
+        Val::Null => OrmValue::Null,
+        Val::Str(text) => OrmValue::Text(text),
+        Val::Bytes(bytes) => OrmValue::Bytes(bytes),
+        Val::Ordered(value) => OrmValue::Json(JsonValue::new(value)?),
+        Val::Json(value) => styled(value)?,
+        Val::I64(_) | Val::F64(_) | Val::Bool(_) | Val::Date(_) | Val::DateTime(_) => {
+            return Err(Error::internal("a codec function decoded a value that no codec stage gives"));
+        }
+    })
+}
+
+/// Decodes the stored cell `cell` through the codec stages `stages`, in write order, as `codec::decode` does (FMS-50).
+pub fn decode(stages: &[String], cell: OrmValue) -> Result<OrmValue> {
+    decoded(crate::codec::decode(stages, &codec_cell(cell)?)?)
+}
+
+/// Applies the host stages `aes`, `hex` and `ip` of `stages` to `value` in write order with the AES key `key`, as
+/// `codec::host_encode` does (FMS-50): the result is a text after `hex` and bytes otherwise, and null stays null.
+pub fn host_encode(value: OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
+    match crate::codec::host_encode(&codec_value(value)?, stages, key)? {
+        Param::Null => Ok(OrmValue::Null),
+        Param::Str(text) => Ok(OrmValue::Text(text)),
+        Param::Bytes(bytes) => Ok(OrmValue::Bytes(bytes)),
+        _ => Err(Error::internal("a host stage wrote a value that is neither a text nor bytes")),
+    }
+}
+
+/// Undoes the host stages `stages` on the cell `cell` with the AES key `key`, as `codec::host_decode` does (FMS-50).
+pub fn host_decode(cell: OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
+    decoded(crate::codec::host_decode(&codec_cell(cell)?, stages, key)?)
+}
+
+/// The blind index of `value` with the key `key`, as `codec::blind_index` does (FMS-50).
+pub fn blind_index(value: OrmValue, key: &str) -> Result<String> {
+    crate::codec::blind_index(&codec_value(value)?, key)
 }
 
 #[cfg(test)]

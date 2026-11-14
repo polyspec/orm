@@ -5,7 +5,7 @@ import { after } from 'node:test';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { commentsByFile, familyOf, hangulComments } from './check.mts';
 
 const KO = '한글';
@@ -57,7 +57,7 @@ const { dir, placed, byFile } = await commentFixtures(cases);
 after(() => rm(dir, { recursive: true, force: true }));
 
 placed.forEach(({ name, lines, path }) => {
-  caseTest(name, COMPUTE, () => {
+  caseTest(name, () => {
     // A case whose file the tokenizer did not read is a defect, not an empty result.
     const comments = byFile.get(path);
     if (comments === undefined) throw new Error(`${path} was not read by its tokenizer`);
@@ -65,12 +65,12 @@ placed.forEach(({ name, lines, path }) => {
   });
 });
 
-caseTest('a file without comment syntax has no family', COMPUTE, () => {
+caseTest('a file without comment syntax has no family', () => {
   assert.equal(familyOf('docs/a.md'), undefined);
   assert.equal(familyOf('config/a.json'), undefined);
 });
 
-caseTest('commentsByFile splits block comments and removes fixtures after tokenizer failure', COMPUTE, async () => {
+caseTest('commentsByFile splits block comments and removes fixtures after tokenizer failure', async () => {
   const rel = join('block', 'a.go');
   await mkdir(dirname(join(dir, rel)), { recursive: true });
   await writeFile(join(dir, rel), 'x\n// one\n/* two\nthree */\n');

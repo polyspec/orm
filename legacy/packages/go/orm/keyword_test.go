@@ -41,7 +41,7 @@ table order {
 // TestSQLKeywordNames creates, reads, groups, updates, and deletes rows of a
 // table whose table and column names are SQL keywords.
 func TestSQLKeywordNames(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	s := documentSchema(t, keywordSchema)
 	eachDatabase(t, []string{"sqlite", "mysql", "postgres"}, s, 1, func(t *testing.T, driver, dsn string, db *orm.DB) {
 		ent := keywordEntity(s)

@@ -26,7 +26,7 @@ const FIXED_CLOCK = 'tests/conformance/check/fixed_clock.json';
 type Step = { op: string; expect?: Record<string, Json>; steps?: Step[]; only?: string[]; sql?: string };
 type Case = { id: string; steps: Step[] };
 type Recipe = { cases: Case[]; seed?: { after?: { sql?: string } } };
-type Output = { result: Json; statements: Json[] };
+export type Output = { result: Json; statements: Json[] };
 export type Sequence = { id: string; expected?: Json; statements?: string[] };
 
 const isObject = (value: Json | undefined): value is { [key: string]: Json } => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -153,13 +153,20 @@ const RESULT_SHAPES: Record<string, (steps: Json[]) => Json> = {
   ...shapes,
   // The last expect of the case is the count that shows the connection still works after the refusals.
   errors: steps => steps.filter(step => typeof step === 'string'),
-  transactions: ([first, second, count = noStep(), rows, local = noStep(), left = noStep()]) => [first === 'CALLBACK', count, size(rows), local, second === 'CALLBACK', left],
+  // A callback that failed is the code `callback` of the runner, which is no kind (CORE-3).
+  transactions: ([first, second, count = noStep(), rows, local = noStep(), left = noStep()]) => [first === 'callback', count, size(rows), local, second === 'callback', left],
 };
 
 /** The case whose counts come from the seed of the recipe: its result compares in shape, and a number need only be a number. */
 const SEED_SHAPES: Record<string, (steps: Json[]) => Json> = {
   terminal_reuse: terminalReuse,
 };
+
+/**
+ * The kind of a code of the catalog: its lower-case form (CORE-10). A state contract states the code that the language
+ * implementations return, in capitals, and a shared recipe case states the kind (CORE-3), so the two name one error.
+ */
+const kindOfCode = (code: string): string | undefined => (/^[A-Z][A-Z0-9_]*$/.test(code) ? code.toLowerCase() : undefined);
 
 const isNumber = (value: Json): boolean => typeof value === 'number' || (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value));
 
@@ -179,6 +186,7 @@ function resultDifferences(stated: Json, built: Json, loose: boolean, path = '$'
     const names = new Set([...Object.keys(stated), ...Object.keys(built)]);
     return [...names].flatMap(name => resultDifferences(member(stated, name), member(built, name), loose, `${path}.${name}`));
   }
+  if (typeof stated === 'string' && kindOfCode(stated) === built) return [];
   return JSON.stringify(stated) === JSON.stringify(built) ? [] : [`${path}: ${JSON.stringify(stated)} in the contract, ${JSON.stringify(built)} in the case`];
 }
 
@@ -222,14 +230,17 @@ function resultValueDifferences(name: string, result: Json, recipeCase: Case, da
   for (const leaf of leaves(result).filter(item => !MASKED.has(item))) {
     const message = /^"([A-Z][A-Z0-9_]*): (.*)"$/.exec(leaf);
     if (message !== null) {
-      if (!have.has(JSON.stringify(message[1]))) out.push(`the code of the message ${leaf} of the contract is in no expect of the case`);
+      if (!have.has(JSON.stringify(kindOfCode(message[1] ?? '')))) out.push(`the code of the message ${leaf} of the contract is in no expect of the case`);
       const body = message[2] ?? '';
       if (!suffixes.some(suffix => body.endsWith(suffix))) out.push(`the message ${leaf} of the contract has no message_suffix in the case`);
       continue;
     }
-    const count = have.get(leaf) ?? 0;
+    // A code of the catalog is found by its kind, which the case states.
+    const code = /^"([A-Z][A-Z0-9_]*)"$/.exec(leaf);
+    const stated = code === null ? leaf : JSON.stringify(kindOfCode(code[1] ?? ''));
+    const count = have.get(stated) ?? 0;
     if (count === 0) out.push(`the result value ${leaf} of the contract is in no expect of the case`);
-    else have.set(leaf, count - 1);
+    else have.set(stated, count - 1);
   }
   return out;
 }
@@ -311,15 +322,52 @@ export function expectations(mode: string, database: string): Map<string, Output
       out.set(id, expectedOfCase(recipeCase, database));
     }
   } else if (mode === 'fixed-clock') {
-    const file = record(parseJsonValue(readFileSync(join(root, FIXED_CLOCK), 'utf8'), FIXED_CLOCK));
-    for (const item of list(file.cases)) {
-      const { id, expect } = record(item);
-      const held = record(expect)[database];
-      if (held === undefined) throw new Error(`${FIXED_CLOCK} case ${text(id)} has no expect for ${database}`);
-      out.set(text(id), output(held));
-    }
+    return fixedClockExpectations(parseJsonValue(readFileSync(join(root, FIXED_CLOCK), 'utf8'), FIXED_CLOCK), database);
   } else throw new Error(`unknown mode ${JSON.stringify(mode)}`);
   return out;
+}
+
+/** The databases whose expects a fixed-clock case states. */
+const FIXED_CLOCK_DATABASES = ['mysql', 'postgres', 'sqlite'];
+
+/**
+ * The expectations of the fixed-clock file `file` on one database. A file with no case, a case id that is empty or
+ * repeated, and a case whose expects are not exactly those of mysql, postgres and sqlite are errors: a vector name is
+ * nonempty and unique, and every database states the same names (AGENTS.md, the conformance rule).
+ */
+export function fixedClockExpectations(file: Json, database: string): Map<string, Output> {
+  const out = new Map<string, Output>();
+  for (const item of list(record(file).cases)) {
+    const { id, expect } = record(item);
+    const name = text(id);
+    if (name === '') throw new Error(`${FIXED_CLOCK} holds a case with an empty id`);
+    if (out.has(name)) throw new Error(`${FIXED_CLOCK} holds the case ${name} twice`);
+    const expects = record(expect);
+    const databases = Object.keys(expects).sort();
+    if (JSON.stringify(databases) !== JSON.stringify(FIXED_CLOCK_DATABASES)) {
+      throw new Error(`${FIXED_CLOCK} case ${name} states the expects of ${databases.join(', ') || 'no database'}, not exactly those of ${FIXED_CLOCK_DATABASES.join(', ')}`);
+    }
+    const held = expects[database];
+    if (held === undefined) throw new Error(`${FIXED_CLOCK} case ${name} has no expect for ${database}`);
+    out.set(name, output(held));
+  }
+  if (out.size === 0) throw new Error(`${FIXED_CLOCK} holds no case`);
+  return out;
+}
+
+/**
+ * Compares the outputs of a runner with the expectations of its selection. An empty selection, an output that the
+ * selection does not name and a selected vector without an output are errors (AGENTS.md, the conformance rule).
+ */
+export function compareOutputs(label: string, outputs: { [key: string]: Json }, want: Map<string, Output>): void {
+  if (want.size === 0) throw new Error(`${label}: the selection names no vector`);
+  const extra = Object.keys(outputs).filter(name => !want.has(name));
+  if (extra.length > 0) throw new Error(`${label}: the runner gave the output ${extra.join(', ')}, which the selection does not name`);
+  for (const [name, expected] of want) {
+    const got = outputs[name];
+    if (got === undefined) throw new Error(`${label}: the runner gave no output for ${name}`);
+    compareOutput(`${label}/${name}`, output(got), expected);
+  }
 }
 
 /** The statement of the recipe that moves the PostgreSQL identity sequences past its seed, for a body that creates rows on that seed. */
@@ -362,12 +410,7 @@ async function main(args: string[]): Promise<void> {
       await client.connect();
       try { await client.query(sequenceStatement()); } finally { await client.end(); }
     }
-    const outputs = runner(language, dsn, [...want.keys()]);
-    for (const [name, expected] of want) {
-      const got = outputs[name];
-      if (got === undefined) throw new Error(`the ${language} runner gave no output for ${name}`);
-      compareOutput(`${language}/${database}/${name}`, output(got), expected);
-    }
+    compareOutputs(`${language}/${database}`, runner(language, dsn, [...want.keys()]), want);
   });
   console.log(`ok - ${mode ?? ''} ${language} ${database}: ${[...want.keys()].join(', ')}`);
 }

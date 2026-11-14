@@ -1,6 +1,6 @@
 [package]
 name = "polyspec-orm-test-support"
-version = "0.0.31"
+version = "0.0.33"
 edition = "2021"
 rust-version = "1.99.0"
 publish = false
@@ -14,6 +14,9 @@ polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 serde_json = "1"
+# The tests of the JSON forms read a value against its JSON Schema (schema_form); the schemas name no remote or file
+# reference, so the resolvers and TLS of the default features are left out.
+jsonschema = { version = "=0.58.6", default-features = false }
 
 [lints]
 workspace = true

@@ -396,6 +396,7 @@
     },
     {
       "id": "creates_runs_rows_in_batches_one_row",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
       "requirements": [
         "DSL-57",
         "PLN-44",
@@ -637,6 +638,7 @@
     },
     {
       "id": "creates_runs_rows_in_batches_exact_batches",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
       "requirements": [
         "DSL-57",
         "PLN-44",
@@ -981,6 +983,7 @@
     },
     {
       "id": "creates_runs_rows_in_batches_last_batch_smaller",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
       "requirements": [
         "DSL-57",
         "PLN-44",
@@ -1384,6 +1387,7 @@
     },
     {
       "id": "creates_runs_rows_in_batches_batch_over_rows",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
       "requirements": [
         "DSL-57",
         "PLN-44",
@@ -1669,6 +1673,7 @@
     },
     {
       "id": "creates_runs_rows_in_batches_batch_of_one",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the statement that begins a transaction, START TRANSACTION on MySQL, BEGIN on PostgreSQL and BEGIN IMMEDIATE for a SQLite write (DIA-221); the lock row table that a SQLite transaction makes for its row locks (INT-49).",
       "requirements": [
         "DSL-57",
         "PLN-44",

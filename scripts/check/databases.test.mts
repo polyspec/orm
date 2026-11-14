@@ -5,7 +5,7 @@ import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { purgeBinlogs } from './databases.mts';
 
 // The fake answers the statements of purgeBinlogs: the primary's position, the replica's wait, and the replica's status.
@@ -18,7 +18,7 @@ esac
 exit 0
 `;
 
-caseTest('the drop refusal names the last error of the replica', COMPUTE, () => {
+caseTest('the drop refusal names the last error of the replica', () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'drop-replica-')));
   try {
     const bin = join(dir, 'bin');

@@ -5,11 +5,13 @@ const koreanNumberWords: Record<string, number> = {
   '두': 2, '세': 3, '네': 4, '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10,
 };
 const englishNumber = '(?:two|three|four|five|six|seven|eight|nine|ten|\\d+)';
+// A number that ends an identifier, such as the 109 of CORE-109 or the 812 of K812, counts nothing: a count starts a word of
+// its own, so no letter, digit or hyphen stands before it.
 const countedEnglish = new RegExp(
-  `\\b(${englishNumber})\\b(?:[ \\t]+[\\w-]+){0,2}?[ \\t]+(clients?|implementations?|runners?|planners|outputs?)\\b|\\b(${englishNumber})-(clients?)\\b`,
+  `(?<![\\w-])(${englishNumber})\\b(?:[ \\t]+[\\w-]+){0,2}?[ \\t]+(clients?|implementations?|runners?|planners|outputs?)\\b|(?<![\\w-])(${englishNumber})-(clients?)\\b`,
   'gi',
 );
-const countedKorean = /(?<![가-힣])(두|세|네|다섯|여섯|일곱|여덟|아홉|열|\d+)[ \t]*(?:개[ \t]*)?(클라이언트|구현|러너|플래너)/g;
+const countedKorean = /(?<![가-힣\w-])(두|세|네|다섯|여섯|일곱|여덟|아홉|열|\d+)[ \t]*(?:개[ \t]*)?(클라이언트|구현|러너|플래너)/g;
 
 export type ClientAlias = { client: string; alias: string };
 

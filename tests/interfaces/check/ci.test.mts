@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { caseTest, COMPUTE } from '../../testcase.mts';
+import { caseTest } from '../../testcase.mts';
 import { jobTargets } from '../../../scripts/repo/ci.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
@@ -49,7 +49,7 @@ function validateGeneratedCI(workflow: string, makefile: string, features: strin
   if (!features.includes(INTERFACE_COMMAND)) throw new Error(`contracts/features.json must verify ${INTERFACE_COMMAND}`);
 }
 
-caseTest('CI requires the generated checks', COMPUTE, () => {
+caseTest('CI requires the generated checks', () => {
   const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
   const workflow = read('.github/workflows/ci.yml'), makefile = read('Makefile'), features = read('contracts/features.json');
   validateGeneratedCI(workflow, makefile, features);

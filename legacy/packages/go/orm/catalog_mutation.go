@@ -474,67 +474,10 @@ func columnNames(metadata CatalogTableMetadata) []string {
 	return names
 }
 
-// mysqlPartialRevokesOff refuses a MySQL row change on a server with partial revokes, before the change locks anything: such a
-// server may hide a trigger from the account (INT-119). The statement lists the setting when it is not OFF; MariaDB has no
-// partial revokes and lists no row, the one form that both servers answer with the same result (DIA-207).
-func (s *catalogSession) mysqlPartialRevokesOff() error {
-	partial, err := s.queryRaw(catalogPartialRevokesSQL, nil, 1, 4096)
-	if err != nil {
-		return err
-	}
-	if len(partial.rows) != 0 {
-		return catalogErr(catalogCodeRowUnsupport, "%s", "MySQL partial-revoke visibility requires verification")
-	}
-	return nil
-}
-
-// catalogPartialRevokesSQL lists partial_revokes when a server enables it (DIA-207).
-const catalogPartialRevokesSQL = "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'"
-
-// mysqlSafety refuses a MySQL row change unless the account and the table are verified: the account holds TRIGGER on the table,
-// the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).
+// mysqlSafety refuses a MySQL row change on a table whose engine is not InnoDB, as only InnoDB rolls a failed verification
+// back (INT-106). A trigger of the table needs no check: the verification of the written row sees what it changed (INT-110).
 func (s *catalogSession) mysqlSafety(metadata CatalogTableMetadata) error {
 	unsupported := func(reason string) error { return catalogErr(catalogCodeRowUnsupport, "%s", reason) }
-	account, err := s.queryRaw("SELECT CURRENT_USER()", nil, 1, 4096)
-	if err != nil {
-		return err
-	}
-	accountRows, err := catalogConvert(account, account.types)
-	if err != nil {
-		return err
-	}
-	if len(accountRows) != 1 {
-		return unsupported("unverifiable MySQL account")
-	}
-	text, ok := accountRows[0][0].(string)
-	at := strings.LastIndexByte(text, '@')
-	if !ok || at < 0 {
-		return unsupported("unverifiable MySQL account")
-	}
-	grantee := "'" + text[:at] + "'@'" + text[at+1:] + "'"
-
-	grants, err := s.queryRaw(
-		"SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' "+
-			"UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' "+
-			"UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
-		[]any{grantee, grantee, metadata.Table.Namespace, grantee, metadata.Table.Namespace, metadata.Table.Name}, 16, 4096)
-	if err != nil {
-		return err
-	}
-	grantRows, err := catalogConvert(grants, grants.types)
-	if err != nil {
-		return err
-	}
-	trigger := false
-	for _, row := range grantRows {
-		if len(row) == 1 && row[0] == "TRIGGER" {
-			trigger = true
-		}
-	}
-	if !trigger {
-		return unsupported("MySQL trigger visibility is unverified")
-	}
-
 	engine, err := s.queryRaw("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",
 		[]any{metadata.Table.Namespace, metadata.Table.Name}, 2, 4096)
 	if err != nil {
@@ -549,15 +492,6 @@ func (s *catalogSession) mysqlSafety(metadata CatalogTableMetadata) error {
 	}
 	if name, ok := engineRows[0][0].(string); !ok || !strings.EqualFold(name, "InnoDB") {
 		return unsupported("MySQL requires InnoDB")
-	}
-
-	triggers, err := s.queryRaw("SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1",
-		[]any{metadata.Table.Namespace, metadata.Table.Name}, 1, 4096)
-	if err != nil {
-		return err
-	}
-	if len(triggers.rows) != 0 {
-		return unsupported("MySQL triggers require effect verification")
 	}
 	return nil
 }

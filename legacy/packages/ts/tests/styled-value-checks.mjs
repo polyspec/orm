@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { Author, CodecError, OrmError, StyledValue, connect } from '../dist/index.js';
 import { installBench } from './bench-set.mjs';
-import { COMPUTE, DATABASE, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 /** The orm code of what f throws or rejects with, or null when it completes. */
 async function code(f) {
@@ -21,7 +21,7 @@ async function code(f) {
   }
 }
 
-caseTest('styled value checks: a setter refuses what JSON would change', COMPUTE, async () => {
+caseTest('styled value checks: a setter refuses what JSON would change', async () => {
   const wrong = [];
   const sparse = [1, 2, 3];
   delete sparse[1];
@@ -41,7 +41,7 @@ caseTest('styled value checks: a setter refuses what JSON would change', COMPUTE
   if (wrong.length > 0) throw new Error(wrong.join('\n'));
 });
 
-caseTest('styled value checks: a changed input fails the JSON output and is read unchecked', COMPUTE, async () => {
+caseTest('styled value checks: a changed input fails the JSON output and is read unchecked', async () => {
   const wrong = [];
   for (const [name, change, text] of [
     ['an undefined member', input => { input.a = undefined; }, 'a value that JSON has no form for'],
@@ -68,7 +68,7 @@ caseTest('styled value checks: a changed input fails the JSON output and is read
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-styled-checks-'));
 after(() => rm(work, { recursive: true, force: true }));
 
-caseTest('styled value checks: a changed input fails when it is read for encoding', DATABASE, async () => {
+caseTest('styled value checks: a changed input fails when it is read for encoding', async () => {
   const db = await connect(`sqlite://${join(work, 'encode.sqlite')}`);
   try {
     await installBench(db);

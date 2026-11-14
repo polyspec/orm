@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdtemp, rm } from 'node:fs/promises';
-import { DATABASE, caseTest } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { Db } from '../dist/database.js';
+import { onSqliteConnections } from './case-database.mjs';
 
 async function withDatabase(name, run) {
   const directory = await mkdtemp(join(tmpdir(), 'orm-transaction-failure-'));
@@ -18,20 +19,21 @@ async function withDatabase(name, run) {
 }
 
 // Requirements: INT-72.
-caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () => {
+caseTest('transaction-failure/rollback-primary-and-cleanup', async () => {
   await withDatabase('rollback.sqlite', async db => {
-    const state = db.pool.state;
-    const statement = state.statement.bind(state);
-    state.statement = sql => {
-      const prepared = statement(sql);
-      if (sql !== 'ROLLBACK') return prepared;
-      return {
-        run: (...values) => {
-          prepared.run(...values);
-          throw new Error('rollback rejected by the test driver');
-        },
+    onSqliteConnections(db, state => {
+      const statement = state.statement.bind(state);
+      state.statement = sql => {
+        const prepared = statement(sql);
+        if (sql !== 'ROLLBACK') return prepared;
+        return {
+          run: (...values) => {
+            prepared.run(...values);
+            throw new Error('rollback rejected by the test driver');
+          },
+        };
       };
-    };
+    });
     const callback = new Error('transaction callback failed');
     await assert.rejects(db.transaction(async () => { throw callback; }, { retry: 0 }), error => {
       assert.equal(error.code, 'ROLLBACK');
@@ -43,7 +45,7 @@ caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () 
 });
 
 // Requirements: DIA-181, PLN-17.
-caseTest('transaction-failure/savepoint-end-attempts-both', DATABASE, async () => {
+caseTest('transaction-failure/savepoint-end-attempts-both', async () => {
   const scenarios = [
     { name: 'rollback-only', rejected: ['ROLLBACK TO SAVEPOINT '], count: 1 },
     { name: 'release-only', rejected: ['RELEASE SAVEPOINT '], count: 1 },

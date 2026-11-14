@@ -225,7 +225,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex",
- "syn 3.0.5",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -795,7 +795,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1512,9 +1512,9 @@ checksum = "32f454fd6831a29c0e827ed075bca2a15be201bd57f4168f0fd1041124eab17e"
 
 [[package]]
 name = "libc"
-version = "0.2.189"
+version = "0.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "libloading"
@@ -1673,6 +1673,7 @@ dependencies = [
  "napi-sys",
  "nohash-hasher",
  "rustc-hash",
+ "tokio",
 ]
 
 [[package]]
@@ -2008,18 +2009,20 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "polyspec-binding-core"
-version = "0.0.1"
-source = "git+https://github.com/polyspec/binding.git?branch=v1%2Frust-core#49a4e973be04e1a593eff33fc7ad9531daa04b2b"
+version = "0.0.4"
+source = "git+https://github.com/polyspec/binding.git?tag=v0.0.4#13d4820f3f876378b3631c41f5e15dc6677a189a"
 dependencies = [
  "indexmap",
+ "libc",
+ "serde_json",
  "tokio",
  "tokio-util",
 ]
 
 [[package]]
 name = "polyspec-json"
-version = "0.0.25"
-source = "git+https://github.com/polyspec/json.git?branch=v1%2Frust-core#60f6a15bafc0c3c9bcbae1060370a2db686fc4c8"
+version = "0.0.27"
+source = "git+https://github.com/polyspec/json.git?tag=v0.0.27#e658bf429368622a305a60c4be4535c4050bdb34"
 dependencies = [
  "polyspec-binding-core",
  "ryu-js",
@@ -2029,7 +2032,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
@@ -2063,7 +2066,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-build"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "bigdecimal",
  "futures-util",
@@ -2071,6 +2074,7 @@ dependencies = [
  "polyspec-orm-build",
  "polyspec-orm-case-clock",
  "polyspec-orm-schema",
+ "polyspec-orm-test-support",
  "polyspec-orm-testcase",
  "proc-macro2",
  "regex",
@@ -2086,7 +2090,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-build-cases"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "chrono",
  "futures-util",
@@ -2105,7 +2109,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-clock"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-orm-testcase",
  "rustix",
@@ -2113,7 +2117,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-database"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-orm",
  "polyspec-orm-testcase",
@@ -2124,7 +2128,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-cases"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "chrono",
  "futures-util",
@@ -2144,7 +2148,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-go"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-binding-core",
  "polyspec-json",
@@ -2153,7 +2157,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-node"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "napi",
  "napi-build",
@@ -2165,7 +2169,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-php-ext"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "ext-php-rs",
  "polyspec-binding-core",
@@ -2175,7 +2179,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-python"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-binding-core",
  "polyspec-json",
@@ -2185,7 +2189,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-schema"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "jsonschema",
  "polyspec-orm-case-clock",
@@ -2200,7 +2204,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-schema-cases"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "jsonschema",
  "polyspec-orm-case-clock",
@@ -2212,8 +2216,9 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-test-support"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
+ "jsonschema",
  "polyspec-orm",
  "polyspec-orm-case-clock",
  "polyspec-orm-testcase",
@@ -2223,7 +2228,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "libtest-mimic",
  "tokio",
@@ -2231,7 +2236,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase-cases"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "polyspec-orm-testcase",
  "tokio",
@@ -2239,7 +2244,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-tests"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "chrono",
  "cpu-time",
@@ -2261,13 +2266,14 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-wasm"
-version = "0.0.31"
+version = "0.0.33"
 dependencies = [
  "js-sys",
  "polyspec-binding-core",
  "polyspec-json",
  "polyspec-orm",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -2653,7 +2659,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2816,9 +2822,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.151"
+version = "1.0.154"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
+checksum = "e7e9cc8b1b85264074fbcc02a88680c4096b1e47df8f739dceb03bf482f04bd6"
 dependencies = [
  "itoa",
  "memchr",
@@ -3242,7 +3248,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3659,6 +3665,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-bindgen-futures"
+version = "0.4.80"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e14e0327cb5368ad60ccb22d04a9827a693c95a926d8d125e9fa39e0baec501"
+dependencies = [
+ "js-sys",
+ "tokio",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "wasm-bindgen-macro"
 version = "0.2.130"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3744,7 +3761,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

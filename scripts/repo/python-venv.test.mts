@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { caseTest, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 
 const root = resolve(import.meta.dirname, '..', '..');
 
@@ -23,7 +23,7 @@ function make(args: string[], { path = process.env['PATH'] ?? '' }: { path?: str
   return spawnSync('make', args, { cwd: root, encoding: 'utf8', env: isolatedEnvironment({ PATH: path }) });
 }
 
-caseTest('python-venv-check refuses a venv of another release and names both releases and the fix', PROCESS, async () => {
+caseTest('python-venv-check refuses a venv of another release and names both releases and the fix', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-venv-'));
   try {
     const venv = await stubVenv(dir, '3.9.6');
@@ -36,7 +36,7 @@ caseTest('python-venv-check refuses a venv of another release and names both rel
   }
 });
 
-caseTest('python-venv-check accepts a venv of the release that mise.toml declares', PROCESS, async () => {
+caseTest('python-venv-check accepts a venv of the release that mise.toml declares', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-venv-'));
   try {
     const venv = await stubVenv(dir, '3.14.8');
@@ -47,7 +47,7 @@ caseTest('python-venv-check accepts a venv of the release that mise.toml declare
   }
 });
 
-caseTest('orm-install-python builds its venv with the pinned interpreter, never the python3 of PATH', PROCESS, async () => {
+caseTest('orm-install-python builds its venv with the pinned interpreter, never the python3 of PATH', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-venv-'));
   try {
     const bin = join(dir, 'bin');

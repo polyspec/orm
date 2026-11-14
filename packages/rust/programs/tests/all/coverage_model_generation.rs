@@ -22,7 +22,7 @@ fn generate(out: &Path) -> (String, String, String) {
 // Requirements: INT-100.
 // Requirements: SCH-1.
 fn coverage_model_generation_check() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // The generator includes the output directory as a canonical path, so the paths compared are also made canonical.
     let temp = std::fs::canonicalize(std::env::temp_dir()).expect("canonical temp dir");
     let out = temp.join(format!("orm-rust-model-generation-{}", std::process::id()));

@@ -119,10 +119,7 @@ fn trials_of(entry: &str, path: &str, database: &str, ids: Option<&[&str]>) -> V
             let case = case.clone();
             let (path, database, dir) = (path.to_owned(), database.to_owned(), dir.clone());
             let id = case["id"].as_str().unwrap_or_default().to_owned();
-            // The interface check is another process, which may build its extractor; the other cases compute in memory.
-            let is_process = case["steps"].as_array().is_some_and(|steps| steps.iter().any(|step| step["op"] == "interface.symbols"));
-            let deadline = if is_process { polyspec_orm_testcase::PROCESS } else { polyspec_orm_testcase::COMPUTE };
-            polyspec_orm_testcase::trial(format!("{entry}::{id}"), deadline, move || {
+            polyspec_orm_testcase::trial(format!("{entry}::{id}"), move || {
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
@@ -962,16 +959,11 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
     }
 }
 
-/// The deadline of a hung interface check, wall-clock time, since another process does the work: it takes 15 s measured, and 1 to 2
-/// minutes when the build cache is empty. A check past it is killed.
-const INTERFACE_CHECK_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
-
 /// The interface.symbols op (FCV-4): the interface check of the Rust client from the repository root, three levels above `dir`, the
 /// directory of the recipe (INT-17, INT-18, INT-19, INT-57, INT-61, INT-64). The check exits 0 when it holds.
 fn interface_symbols(dir: &Path) -> Result<(), String> {
     use std::io::Read as _;
     use std::process::{Command, Stdio};
-    let started = std::time::Instant::now();
     let mut child = Command::new("node")
         .args(["tests/interfaces/check/main.mts", "-language", "rust"])
         .current_dir(dir.join("../../.."))
@@ -989,23 +981,15 @@ fn interface_symbols(dir: &Path) -> Result<(), String> {
         std::thread::spawn(move || {
             let mut text = String::new();
             let read = pipe.read_to_string(&mut text).map(|_| text);
-            // The receiver is gone only after the deadline, and that failure is already reported.
-            if closed.send(read).is_err() {
-                eprintln!("interface check output arrived after the deadline");
-            }
+            // The receiver reads both pipes to their end, so it is there for each send.
+            closed.send(read).expect("the interface check reads the output of its pipes");
         });
     }
     drop(closed);
     let mut output = String::new();
-    for _ in 0..2 {
-        match events.recv_timeout(INTERFACE_CHECK_DEADLINE.saturating_sub(started.elapsed())) {
-            Ok(read) => output.push_str(&read.map_err(|error| format!("interface check output: {error}"))?),
-            Err(_) => {
-                let killed = child.kill();
-                let waited = child.wait();
-                return Err(format!("interface check not finished within {INTERFACE_CHECK_DEADLINE:?} (kill: {killed:?}, wait: {waited:?})"));
-            }
-        }
+    // No clock ends the check (T474): its output pipes close when it ends.
+    for read in events.iter().take(2) {
+        output.push_str(&read.map_err(|error| format!("interface check output: {error}"))?);
     }
     let status = child.wait().map_err(|error| format!("interface check: {error}"))?;
     if status.success() {
@@ -3335,23 +3319,8 @@ mod database {
                 }
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
-                // A case that states its steps gets their step budget instead of DATABASE: its step guard ends it at that budget,
-                // or when no apply event comes within DATABASE (FCV-4); each event restarts the stall limit (recipe_apply::progressed).
-                let steps = case["deadline"]["steps"].as_u64().map(|steps| usize::try_from(steps).expect("the step count fits usize"));
-                let deadline = steps.map_or(polyspec_orm_testcase::DATABASE, polyspec_orm_testcase::step_budget);
-                polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), deadline, move || async move {
-                    let work = run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), &*models);
-                    if steps.is_some() {
-                        let guard = std::sync::Arc::new(polyspec_orm_testcase::StepGuard::new(deadline, polyspec_orm_testcase::DATABASE));
-                        crate::recipe_apply::guard_case(Some(std::sync::Arc::clone(&guard)));
-                        let ran = guard.run(work).await;
-                        crate::recipe_apply::guard_case(None);
-                        if let Err(limit) = ran {
-                            panic!("recipe {path}, case {id}, database {database}: {limit}");
-                        }
-                    } else {
-                        work.await;
-                    }
+                polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), move || async move {
+                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), &*models).await;
                     super::report_case(&id, &database);
                 })
             })
@@ -4408,6 +4377,10 @@ mod database {
                         for (kind, tables, sql, params) in &statements {
                             last = frame.run(kind, tables, sql, params).await?;
                         }
+                        // hold_ms keeps the frame, and so its connection, after the statements (CFG-5).
+                        if let Some(hold) = crate::recipe_reads::read(step, "hold_ms")["hold_ms"].as_u64() {
+                            tokio::time::sleep(std::time::Duration::from_millis(hold)).await;
+                        }
                         if let Some(message) = crate::recipe_reads::read(step, "conflict")["conflict"].as_str() {
                             return Err(polyspec_orm::transaction_conflict(message));
                         }
@@ -4702,8 +4675,8 @@ mod database {
             }
             // dbspec.ddl_behavior (FCV-4, DIA-113): the statements of a case of the vectors file and its behavior steps.
             // dbspec.introspect (FCV-4, DIA-133, DIA-198): the rendered documents on the case database, then the public introspect.
-            "dbspec.introspect" if crate::recipe_reads::read(step, "catalog_of")["catalog_of"].is_string() => {
-                introspect_failure_step(step, &context.dsn).await.map_err(fault)?;
+            "dbspec.introspect" if !crate::recipe_reads::read(step, "catalog_of")["catalog_of"].is_null() => {
+                introspect_failure_step(step, context.database, &context.dsn).await.map_err(fault)?;
                 Output::fields(json!({ "failed": true }))
             }
             "dbspec.introspect" => Output::fields(introspect_step(step, context.database, &context.dsn, context.dir).await.map_err(fault)?),
@@ -5680,13 +5653,16 @@ mod database {
         Ok(dbspec::manifest(&[&combined]).map_err(|e| format!("{e:?}"))?.schema_text)
     }
 
-    /// The empty case database with the catalog queries of another dialect: their failure is the error of the call (DIA-133).
-    /// The only case runs on SQLite, and on a corpus, with the queries of MySQL.
-    async fn introspect_failure_step(step: &Value, dsn: &str) -> Result<(), String> {
+    /// The empty case database with the catalog queries of another dialect, which catalog_of names for every database or per
+    /// database: their failure is the error of the call (DIA-133).
+    async fn introspect_failure_step(step: &Value, database: &str, dsn: &str) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _};
-        let (dialect, server) = match crate::recipe_reads::read(step, "catalog_of")["catalog_of"].as_str() {
+        let other = &crate::recipe_reads::read(step, "catalog_of")["catalog_of"];
+        let other = other.as_str().or_else(|| other[dialect_key(database, other)].as_str());
+        let (dialect, server) = match other {
             Some("mysql") => (dbspec::Dialect::MySql, Server::MySql),
             Some("postgres") => (dbspec::Dialect::Postgres, Server::Postgres),
+            Some("sqlite") => (dbspec::Dialect::Sqlite, Server::Sqlite),
             other => return Err(format!("catalog_of {other:?} has no introspection failure case")),
         };
         let failed =
@@ -5819,7 +5795,7 @@ mod database {
                 .fetch_one(&pool)
                 .await;
         let ended = match pid {
-            Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(&pool).await.map(|_| ()).map_err(|e| e.to_string()),
+            Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1)").bind(pid).execute(&pool).await.map(|_| ()).map_err(|e| e.to_string()),
             Err(error) => Err(format!("the listener session of {channel}: {error}")),
         };
         pool.close().await;
@@ -5830,8 +5806,8 @@ mod database {
     /// transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
     /// standby has applied it; the case connection opens on the server DSN, since a raw SQLx connection sends a startup parameter
     /// that PgBouncer rejects. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
-    /// database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
-    /// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+    /// database of the environment, since the case database reaches the replica only by this wait. The wait has no timeout: it
+    /// ends when the replica has applied the position, or with NULL when its SQL thread stops (T474).
     async fn await_replica(context: &Context<'_>) -> Result<(), String> {
         let session = case_session_dsn(context)?;
         let source = Db::connect(&session, 1, Config::default()).await.map_err(|e| e.to_string())?;
@@ -5872,15 +5848,15 @@ mod database {
         let file: String = sqlx::Row::get(&row, 0);
         let position: u64 = sqlx::Row::get(&row, 1);
         let target = sqlx::MySqlPool::connect(&replica).await.map_err(|e| format!("replica wait connection: {e}"))?;
-        let waited: Result<Option<i64>, _> = sqlx::query_scalar(if mariadb { "SELECT MASTER_POS_WAIT(?, ?, 60)" } else { "SELECT SOURCE_POS_WAIT(?, ?, 60)" })
+        let waited: Result<Option<i64>, _> = sqlx::query_scalar(if mariadb { "SELECT MASTER_POS_WAIT(?, ?)" } else { "SELECT SOURCE_POS_WAIT(?, ?)" })
             .bind(&file)
             .bind(position)
             .fetch_one(&target)
             .await;
         target.close().await;
         match waited.map_err(|e| format!("replica wait: {e}"))? {
-            Some(n) if n >= 0 => Ok(()),
-            other => Err(format!("the replica did not reach {file}:{position}: {other:?}")),
+            Some(_) => Ok(()),
+            None => Err(format!("the replica did not reach {file}:{position}: its SQL thread stopped")),
         }
     }
 
@@ -5901,7 +5877,7 @@ mod database {
             Pool::Postgres(pool) => {
                 let query = format!("SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1");
                 match sqlx::query_scalar::<_, i32>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
-                    Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.map(|_| ()),
+                    Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1)").bind(pid).execute(pool).await.map(|_| ()),
                     Err(error) => Err(error),
                 }
             }
@@ -6182,9 +6158,9 @@ mod tables {
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 9] = ["one", "all", "count", "group_count", "sum", "avg", "paginate", "lookahead_paginate", "group_lookahead_paginate"];
 
-    /// A request that a record action of the installed hook saw: its kind, its table and the wrapper of the bound value of a
-    /// record_param action (hook.records).
-    type Record = (String, String, Option<Value>);
+    /// A request that a record action of the installed hook saw: its kind, its table, the wrapper of the bound value of a
+    /// record_param action and the row count of a locked_read action (hook.records).
+    type Record = (String, String, Option<Value>, Option<Value>);
 
     /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -7041,10 +7017,13 @@ mod tables {
             let records = self.records.lock().expect("the records").clone();
             let mut counts = Map::new();
             let mut list = Vec::new();
-            for (kind, entity, param) in &records {
+            for (kind, entity, param, read) in &records {
                 let mut members = vec![json!(["kind", { "text": kind }]), json!(["entity", { "text": entity }])];
                 if let Some(param) = param {
                     members.push(json!(["param", param]));
+                }
+                if let Some(read) = read {
+                    members.push(json!(["read", read]));
                 }
                 list.push(json!({ "object": members }));
                 let n = counts.get(entity).and_then(Value::as_u64).map_or(1, |n| n + 1);
@@ -7517,9 +7496,20 @@ mod tables {
                         Some(base) => base.clone(),
                         None => db,
                     };
+                    for action in actions.iter().filter(|action| action.action == "locked_read") {
+                        let name = action.read["connection"].as_str().unwrap_or_default();
+                        if !self.handles.contains_key(name) {
+                            return Err(format!("hook.install: the read of locked_read names connection {name:?}, which model.connect did not bind").into());
+                        }
+                    }
                     let records = self.records.clone();
                     records.lock().expect("the records").clear();
-                    let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
+                    let (actions, handles) = (Arc::new(actions), Arc::new(self.handles.clone()));
+                    // The hook is a future that the client awaits before it plans the request (INT-78).
+                    let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| {
+                        let (actions, records, handles) = (actions.clone(), records.clone(), handles.clone());
+                        Box::pin(async move { run_hook(&actions, &records, &handles, request, params).await })
+                    });
                     // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
                     let target = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or(connection);
                     self.bases.insert(target.to_owned(), base);
@@ -7622,9 +7612,10 @@ mod tables {
                 }
                 // The groups that the value of utils() holds (INT-134): each is a value of its own type, read through its call.
                 "pool.transactions" => {
-                    // Count transactions at once: the first hold of them stay open until hold have begun, so the pool
-                    // shows the connections that they take at once (CFG-4, CFG-5). A transaction future is not Send, so
-                    // the tasks run on a LocalSet.
+                    // Count read-only transactions at once: the first hold of them stay open until hold have begun, so the
+                    // pool shows the connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no
+                    // write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221). A transaction future is
+                    // not Send, so the tasks run on a LocalSet.
                     use std::sync::atomic::{AtomicU32, Ordering};
                     use std::sync::Arc;
                     let count = crate::recipe_reads::read(step, "transactions")["transactions"].as_u64().unwrap_or(0);
@@ -7653,7 +7644,7 @@ mod tables {
                                     active.fetch_sub(1, Ordering::SeqCst);
                                     Ok(())
                                 },
-                                TransactionOptions::default(),
+                                TransactionOptions { read_only: Some(true), ..Default::default() },
                             )
                             .await
                         }));
@@ -7819,6 +7810,8 @@ mod tables {
         value: Option<Param>,
         nested: bool,
         code: String,
+        /// The model read of a locked_read action.
+        read: Value,
     }
 
     fn hook_actions(raw: &Value) -> Result<Vec<HookAction>, String> {
@@ -7839,6 +7832,7 @@ mod tables {
                 value,
                 nested: hook["nested"].as_bool() == Some(true),
                 code: hook["error"].as_str().map(str::to_owned).unwrap_or_default(),
+                read: hook["read"].clone(),
             });
         }
         Ok(out)
@@ -7882,8 +7876,37 @@ mod tables {
         }
     }
 
+    /// The error of a hook action that the recipe states wrongly.
+    fn hook_step(message: String) -> OrmError {
+        crate::recipe_error::runner_error("step", message)
+    }
+
+    /// The hook reads with its lock in a transaction of another connection before the client plans the request, and a
+    /// refusal of that read fails the operation unchanged (INT-78); it returns the number of rows read.
+    async fn locked_read(read: &Value, handles: &HashMap<String, Db>) -> polyspec_orm::Result<usize> {
+        let name = read["connection"].as_str().unwrap_or_default();
+        let db = handles.get(name).ok_or_else(|| hook_step(format!("locked_read names connection {name:?}, which model.connect did not bind")))?;
+        let model = read["model"].as_str().ok_or_else(|| hook_step("locked_read names no model".into()))?;
+        db.transaction(
+            |tx: Tx| async move {
+                let mut core = core_of(model).map_err(hook_step)?;
+                core.connect(&tx);
+                Build { db: Some(Connection::from(&tx)), handles: handles.clone(), ..Build::default() }.query(&mut core, read, true).map_err(hook_step)?;
+                Ok(gets(&TableRow::from_core(core)).await?.models().count())
+            },
+            TransactionOptions { retry: Some(0), ..Default::default() },
+        )
+        .await
+    }
+
     /// Runs the actions of the installed hook on one request, in order.
-    fn run_hook(actions: &[HookAction], records: &Mutex<Vec<Record>>, request: &mut Request, params: &mut RequestParams) -> polyspec_orm::Result<()> {
+    async fn run_hook(
+        actions: &[HookAction],
+        records: &Mutex<Vec<Record>>,
+        handles: &HashMap<String, Db>,
+        request: &mut Request,
+        params: &mut RequestParams,
+    ) -> polyspec_orm::Result<()> {
         for action in actions {
             if !kind_matches(&action.kinds, &request.kind) {
                 continue;
@@ -7915,11 +7938,20 @@ mod tables {
                     let p = request.n_params + 5;
                     and_where(&mut request.query, equal_pred(&action.column, p));
                 }
-                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None)),
+                ("locked_read", _) => {
+                    let read = locked_read(&action.read, handles).await?;
+                    records.lock().expect("the records").push((
+                        request.kind.clone(),
+                        request.query.entity.clone(),
+                        None,
+                        Some(json!({ "int": read.to_string() })),
+                    ));
+                }
+                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None, None)),
                 ("record_param", _) => {
                     for assignment in request.set.iter().filter(|assignment| assignment.column == action.column) {
                         let param = assignment.p.and_then(|p| params.get(p)).map(super::statement::bind_wrapper);
-                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
+                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param, None));
                     }
                 }
                 ("fail", _) => return Err(crate::recipe_error::error_of_code(&action.code, format!("request hook refused {}", request.kind))),

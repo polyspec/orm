@@ -5,7 +5,7 @@
 /// as its DISABLED mode (CFG-16, CFG-44); what sqlx holds of a mode is a driver option that no public call returns.
 // Requirements: CFG-16, CFG-18, CFG-44.
 fn tls_mode_reaches_sqlx_as_verify_identity() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let dir = std::env::temp_dir().join(format!("orm-rust-mysql-tls-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("create the CA directory");
     let ca = dir.join("ca.pem");

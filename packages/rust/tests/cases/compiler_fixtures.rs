@@ -34,8 +34,8 @@ pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     let path = polyspec_orm_testcase::manifest_dir().join("../testing/compiler-fixtures/cases.json");
     let fixtures: Vec<Fixture> = serde_json::from_slice(&fs::read(path).expect("compiler-fixtures/cases.json")).expect("compiler-fixtures/cases.json");
     assert!(!fixtures.is_empty(), "compiler-fixtures/cases.json has no case");
-    // Each case takes the exclusive lease of the cargo target before its compile, and waits for it when another run holds it. That wait has
-    // no deadline: the case's deadline is set by scripts/rust/compiler-fixtures.mts (PROCESS), which starts under the lease and covers the compile only.
+    // Each case takes the exclusive lease of the cargo target before its compile, and waits for it when another run holds it. No clock
+    // ends the wait or the compile (T474).
     let trials: Vec<Trial> = fixtures
         .into_iter()
         .map(|fixture| {

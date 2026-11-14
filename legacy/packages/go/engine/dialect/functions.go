@@ -227,7 +227,8 @@ func (MySQL) Fulltext(cols []string, value func(string) string, boolean bool) (s
 	return "MATCH (" + strings.Join(cols, ", ") + ") AGAINST (" + value("") + " IN NATURAL LANGUAGE MODE)", true
 }
 
-// Fulltext renders a simple-configuration tsvector match of the columns; the boolean mode uses websearch_to_tsquery (DIA-6).
+// Fulltext renders a simple-configuration tsvector match of the columns; the boolean mode uses websearch_to_tsquery and binds
+// the value through the transform fulltext_text, which refuses a value with no term as MySQL does (DIA-6).
 func (Postgres) Fulltext(cols []string, value func(string) string, boolean bool) (string, bool) {
 	parts := make([]string, len(cols))
 	for i, col := range cols {
@@ -235,7 +236,7 @@ func (Postgres) Fulltext(cols []string, value func(string) string, boolean bool)
 	}
 	doc := "to_tsvector('simple', " + strings.Join(parts, " || ' ' || ") + ")"
 	if boolean {
-		return doc + " @@ websearch_to_tsquery('simple', " + value("") + ")", true
+		return doc + " @@ websearch_to_tsquery('simple', " + value("fulltext_text") + ")", true
 	}
 	return doc + " @@ plainto_tsquery('simple', " + value("") + ")", true
 }

@@ -162,7 +162,7 @@ var inputs = map[string]map[string]string{
 	"DbspecExportedDocument": {"go": "d*Document", "php": "Polyspec\\Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument", "python": "document:DbspecDocument"},
 	"DbspecMermaidSource":    {"go": "text,namestring", "php": "string$text,string$name", "rust": "text:&str,name:&str", "typescript": "text:string,name:string", "python": "text:str,name:str"},
 	"CompiledStatement":      {"go": "st*plan.Step,params[]any", "php": "array$step,array$params", "rust": "step:&Step,params:&[Param]", "typescript": "step:PlanStep,params:readonlyunknown[]", "python": "step:dict,params:list"},
-	"RequestHook":            {"go": "hookRequestHook", "php": "Closure$hook", "rust": "hook:implFn(&mutcrate::ir::Request,&mutRequestParams)->Result<()>+Send+Sync+'static", "typescript": "hook:RequestHook", "python": "hook:RequestHook"},
+	"RequestHook":            {"go": "hookRequestHook", "php": "Closure$hook", "rust": "hook:implfor<'a>Fn(&'amutcrate::ir::Request,&'amutRequestParams)->HookFuture<'a>+Send+Sync+'static", "typescript": "hook:RequestHook", "python": "hook:RequestHook"},
 	"StatementSubscriber":    {"go": "fnSubscriber", "php": "Closure$subscriber", "rust": "subscriber:F", "typescript": "subscriber:(event:StatementEvent)=>void", "python": "subscriber:Callable[[StatementEvent],None]"},
 	"CollectionKey":          {"go": "keyany", "php": "Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool$key", "rust": "key:implInto<Key>", "typescript": "key:Key", "python": "key:Key"},
 	"CollectionConnection":   {"go": "db*DB", "php": "Polyspec\\Orm\\Db$db", "rust": "db:&crate::Db", "typescript": "db:Db", "python": "db:Db"},

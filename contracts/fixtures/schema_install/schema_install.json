@@ -122,6 +122,7 @@
     },
     {
       "id": "install_partial",
+      "databases_differ": "The catalog that lists the tables is each server's own, information_schema on MySQL and PostgreSQL and sqlite_master on SQLite (DIA-224).",
       "requirements": [
         "DBS-108",
         "SCH-10"
@@ -215,6 +216,7 @@
     },
     {
       "id": "install_transaction",
+      "databases_differ": "MySQL commits the open transaction at each DDL statement, so an install inside a transaction is refused there and runs on PostgreSQL and SQLite (DIA-109); a schema is a database on MySQL, the public namespace on PostgreSQL and a table name prefix on SQLite (DIA-224).",
       "requirements": [
         "DBS-108",
         "INT-55",
@@ -547,6 +549,7 @@
     },
     {
       "id": "install_external_drift",
+      "databases_differ": "The catalog that lists the tables is each server's own, information_schema on MySQL and PostgreSQL and sqlite_master on SQLite (DIA-224).",
       "requirements": [
         "DBS-107",
         "DBS-108",
@@ -644,6 +647,7 @@
     },
     {
       "id": "external_member_before_its_core",
+      "databases_differ": "The catalog that lists the tables is each server's own, information_schema on MySQL and PostgreSQL and sqlite_master on SQLite (DIA-224).",
       "requirements": [
         "DBS-107",
         "DBS-108",
@@ -769,6 +773,7 @@
     },
     {
       "id": "external_member_after_its_core",
+      "databases_differ": "The catalog that lists the tables is each server's own, information_schema on MySQL and PostgreSQL and sqlite_master on SQLite (DIA-224).",
       "requirements": [
         "DBS-107",
         "DBS-108",
@@ -2349,6 +2354,7 @@
     },
     {
       "id": "add_tables_transaction",
+      "databases_differ": "MySQL commits the open transaction at each DDL statement, so a schema change inside a transaction is refused there and runs on PostgreSQL and SQLite (DIA-109).",
       "requirements": [
         "SCH-8"
       ],
@@ -2864,6 +2870,7 @@
     },
     {
       "id": "schema_empty",
+      "databases_differ": "What counts as content is each server's own: a PostgreSQL schema or sequence and a SQLite table outside the orm__ tables (INT-58).",
       "requirements": [
         "INT-58"
       ],
@@ -3099,6 +3106,7 @@
     },
     {
       "id": "schema_exists_and_installed",
+      "databases_differ": "A schema is a database on MySQL, the public namespace on PostgreSQL and a table name prefix on SQLite (DIA-224).",
       "requirements": [
         "INT-57"
       ],
@@ -3310,6 +3318,7 @@
     },
     {
       "id": "schema_exists_literal_underscore",
+      "databases_differ": "A schema is a database on MySQL and a namespace on PostgreSQL, while on SQLite it is a table name prefix, which the table of the case makes (DIA-224).",
       "requirements": [
         "INT-57"
       ],
@@ -3527,6 +3536,7 @@
     },
     {
       "id": "schema_inspection_reads_the_active_transaction",
+      "databases_differ": "MySQL commits the open transaction at each DDL statement, so an install inside a transaction is refused there (DIA-109); a schema is a database on MySQL, the public namespace on PostgreSQL and a table name prefix on SQLite (DIA-224).",
       "requirements": [
         "INT-57",
         "INT-58"
@@ -3721,6 +3731,7 @@
     },
     {
       "id": "install_renders_triggers",
+      "databases_differ": "The catalog that lists the triggers is each server's own, information_schema on MySQL and PostgreSQL and sqlite_master on SQLite (DIA-224).",
       "requirements": [
         "DBS-108",
         "SCH-7"
@@ -3872,6 +3883,7 @@
     },
     {
       "id": "install_differs",
+      "databases_differ": "A column added outside dbspec has a declared type that SQLite does not keep, so SQLite introspection, which reads a type from the renderer CHECK, reports it as a column without a dbspec type, where MySQL and PostgreSQL read its type and plan its drop (DIA-38, DIA-133); the added column is quoted as each server quotes an identifier (DIA-1).",
       "requirements": [
         "DBS-108"
       ],
@@ -3936,6 +3948,7 @@
     },
     {
       "id": "install_renamed_column",
+      "databases_differ": "A column added outside dbspec has a declared type that SQLite does not keep, so SQLite introspection, which reads a type from the renderer CHECK, reports it as a column without a dbspec type, where MySQL and PostgreSQL read its type and plan its drop (DIA-38, DIA-133); the added column is quoted as each server quotes an identifier (DIA-1).",
       "requirements": [
         "DBS-108",
         "SCH-7",
@@ -4031,6 +4044,7 @@
     },
     {
       "id": "install_unsupported_column_without_check",
+      "databases_differ": "A column added outside dbspec has a declared type that SQLite does not keep, so SQLite introspection, which reads a type from the renderer CHECK, reports it as a column without a dbspec type, where MySQL and PostgreSQL read its type and plan its drop (DIA-38, DIA-133); the added column is quoted as each server quotes an identifier (DIA-1).",
       "requirements": [
         "DBS-108",
         "SCH-7",

@@ -34,7 +34,7 @@ function extract(fixtureRoot: string, signal: AbortSignal): Record<string, Symbo
   return parsed;
 }
 
-caseTest('the TypeScript extractor records public constructor signatures without losing class symbols or fields', 15_000, ({ signal }) => {
+caseTest('the TypeScript extractor records public constructor signatures without losing class symbols or fields', ({ signal }) => {
   assert.ok(readFileSync(fixture, 'utf8').includes('export class DefaultAccessConstructor'), 'constructor fixture is missing its primary vector');
   const symbols = extract(fixtureRoot, signal);
   const get = (name: string): SymbolEntry => {
@@ -81,7 +81,7 @@ caseTest('the TypeScript extractor records public constructor signatures without
   }
 });
 
-caseTest('the TypeScript extractor records public object union aliases as IR records', 15_000, ({ signal }) => {
+caseTest('the TypeScript extractor records public object union aliases as IR records', ({ signal }) => {
   const temporary = mkdtempSync(join(tmpdir(), 'typescript-record-alias-'));
   try {
     writeFileSync(join(temporary, 'limit.ts'), [

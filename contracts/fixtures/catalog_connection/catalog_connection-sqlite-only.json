@@ -76,6 +76,7 @@
   "cases": [
     {
       "id": "sqlite_temporal_checks",
+      "databases_differ": "SQLite has no date and time types: a temporal column holds the text that its renderer CHECK fixes (DIA-24, DIA-127), so only SQLite holds a temporal cell that no type checks, which the catalog refuses with GRID_TEMPORAL_VALUE.",
       "requirements": [
         "INT-103",
         "INT-165",

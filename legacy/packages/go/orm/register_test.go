@@ -63,7 +63,7 @@ func onEachRegisterDatabase(t *testing.T, check func(t *testing.T, db *DB, schem
 // engine (docs/spec/schema.md SCH-17).
 // Requirements: SCH-17, SCH-11.
 func TestRegisterReusesEnginePerHash(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	onEachRegisterDatabase(t, func(t *testing.T, db *DB, schema, other *Schema) {
 		for _, s := range []*Schema{schema, other, schema, other} {
 			if err := db.Utils().Schema().Register(s); err != nil {

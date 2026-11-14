@@ -25,7 +25,7 @@ fn assert_parent_slot_invalid(step: &Step, numbered: bool) {
 
 #[test]
 fn declared_mysql_text_decodes_utf8_bytes_without_coercing_byte_columns() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let assemble = Assemble {
         columns: vec![
             OutCol { index: 0, name: "label".into(), typ: "varchar".into(), ..OutCol::default() },
@@ -44,35 +44,35 @@ fn declared_mysql_text_decodes_utf8_bytes_without_coercing_byte_columns() {
 
 #[test]
 fn parent_expansion_rejects_missing_numbered_slot() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let step = relation_step("SELECT $1", &[], 1);
     assert_parent_slot_invalid(&step, true);
 }
 
 #[test]
 fn parent_expansion_rejects_missing_positional_slot() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let step = relation_step("SELECT ?", &["param"], 1);
     assert_parent_slot_invalid(&step, false);
 }
 
 #[test]
 fn parent_expansion_rejects_duplicate_numbered_slots() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let step = relation_step("SELECT $1, $2", &["parent", "parent"], 1);
     assert_parent_slot_invalid(&step, true);
 }
 
 #[test]
 fn parent_expansion_rejects_duplicate_positional_slots() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let step = relation_step("SELECT ?, ?", &["parent", "parent"], 1);
     assert_parent_slot_invalid(&step, false);
 }
 
 #[test]
 fn parent_expansion_keeps_single_value_and_composite_padding_order() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let single = relation_step("SELECT $1", &["parent"], 1);
     let (sql, values) = statement(&single, vec![Param::I64(7)], true).expect("one parent slot is valid");
     assert_eq!(sql, "SELECT $1");
@@ -92,7 +92,7 @@ fn parent_expansion_keeps_single_value_and_composite_padding_order() {
 
 #[tokio::test]
 async fn sqlite_bind_accepts_every_parameter_variant() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.unwrap();
         let date = NaiveDate::from_ymd_opt(2026, 10, 24).unwrap();

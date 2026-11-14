@@ -1,7 +1,7 @@
 // orm_value (CORE-62 to CORE-64): the kind that the type of a column gives its value, the value of a language that
 // enters by from_host and the description of a value that leaves by to_host.
 
-use binding_core::{Failure, Handle, HostText, HostValue, HostValues, OutValue, OutValues, Prototype, Raised, ValueKind, ValueType};
+use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Native, NativeObject, OutValue, OutValues, Prototype, Raised, ValueKind, ValueType};
 use chrono::Timelike as _;
 use indexmap::IndexMap;
 use polyspec_orm_schema::dbspec::{Field, Type};
@@ -85,7 +85,7 @@ fn refusal(host: &mut Host, value: HostValue) -> String {
 // Requirements: CORE-60, CORE-62. The type of a column decides the kind of its value, whatever the size of the value.
 #[test]
 fn the_type_of_a_column_decides_the_kind_of_its_value() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let of = |ty: Type, cell: Val| OrmValue::of_column(&column(ty), cell).expect("a value of the column");
     assert_eq!(of(Type::I64, Val::I64(7)), OrmValue::Int64(7), "a small integer of a 64-bit column is int64");
     assert_eq!(of(Type::I32, Val::I64(7)), OrmValue::Int(7));
@@ -105,11 +105,11 @@ fn the_type_of_a_column_decides_the_kind_of_its_value() {
     assert_eq!(error.kind(), Kind::Internal, "{error}");
 }
 
-// Requirements: CORE-61, CORE-62, CORE-64. A column after the stage json is a JSON value, a column after another style
+// Requirements: CORE-122, CORE-62, CORE-64. A column after the stage json is a JSON value, a column after another style
 // stage is its value in the kinds of orm_value, and a JSON string with an unpaired surrogate is codec_decode.
 #[test]
 fn a_styled_column_is_a_json_value_or_a_value_of_the_common_model() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let json = polyspec_json::Value::number("1.50").expect("a number");
     let value = OrmValue::of_column(&column(Type::Text), Val::Ordered(json.clone())).expect("a JSON value");
     assert_eq!(value, OrmValue::Json(JsonValue::new(json).expect("a JSON value")));
@@ -130,7 +130,7 @@ fn a_styled_column_is_a_json_value_or_a_value_of_the_common_model() {
 // number type is int or float, a text that is bytes is text or bytes, and a PHP array is a list or a map.
 #[test]
 fn from_host_reads_a_value_of_a_language() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut host = Host::default();
     let mut take = |value: HostValue| taken(&mut host, value);
     assert_eq!(take(HostValue::Null), OrmValue::Null);
@@ -162,9 +162,15 @@ fn from_host_reads_a_value_of_a_language() {
 }
 
 // Requirements: CORE-63. A value that is no value of a column is codec_encode, and its message names no value.
+/// A language object that a binding keeps (binding_core::Native), which a test makes without a language.
+#[derive(Debug)]
+struct Kept;
+
+impl NativeObject for Kept {}
+
 #[test]
 fn from_host_refuses_a_value_that_is_no_value_of_a_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut host = Host::default();
     let message = |what: &str| format!("codec_encode: the value is no value of a column: {what}");
     assert_eq!(refusal(&mut host, HostValue::Number("9223372036854775808".into())), message("an integer outside i64"));
@@ -174,8 +180,8 @@ fn from_host_refuses_a_value_that_is_no_value_of_a_column() {
     assert_eq!(refusal(&mut host, HostValue::Text(HostText::CodePoints(vec![0xd800]))), message("a text that is no sequence of Unicode scalar values"));
     assert_eq!(refusal(&mut host, HostValue::Undefined), message("an undefined value"));
     assert_eq!(refusal(&mut host, HostValue::Date(Handle::new(1))), message("a date of the language"));
-    assert_eq!(refusal(&mut host, HostValue::Callable(Handle::new(1))), message("a function"));
-    let object = HostValue::Object { handle: Handle::new(1), type_name: "App\\Money".into(), json_serializable: false };
+    assert_eq!(refusal(&mut host, HostValue::Callable(Native::new(Kept))), message("a function"));
+    let object = HostValue::Object { native: Native::new(Kept), type_name: "App\\Money".into(), json_serializable: false };
     assert_eq!(refusal(&mut host, object), message("an object of the language"));
     let plain = HostValue::PlainObject { handle: Handle::new(1), len: 0, prototype: Prototype::Object };
     assert_eq!(refusal(&mut host, plain), message("an object of the language"), "the map of a language is its map type");
@@ -201,7 +207,7 @@ fn from_host_refuses_a_value_that_is_no_value_of_a_column() {
 // is nested in the kinds of json_value, a number as its text and an object in member order.
 #[test]
 fn to_host_describes_a_value_one_level_at_a_time() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_eq!(to_host(&OrmValue::Int(7)).0.kind(), ValueKind::Int);
     assert_eq!(to_host(&OrmValue::Int64(7)).0, OutValue::Int64(7));
     assert_eq!(to_host(&OrmValue::Text("t".into())).0, OutValue::Text("t".into()));
@@ -239,7 +245,7 @@ fn to_host_describes_a_value_one_level_at_a_time() {
 // a Between key or the value groups of a tuple key; any other value is codec_encode.
 #[test]
 fn a_condition_takes_a_value_by_its_operator() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     use crate::args::Value;
     use crate::core::Arg;
     use crate::value::Param;

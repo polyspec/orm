@@ -316,7 +316,12 @@ func entityOf(t *dbspec.Table) *Entity {
 		}
 	}
 	for _, codec := range s.Codecs {
-		e.fields[codec.Column].Codec = slices.Clone(codec.Stages)
+		// A field holds the stage that each name means (DBS-185).
+		stages := make([]string, len(codec.Stages))
+		for i, stage := range codec.Stages {
+			stages[i] = dbspec.CodecStageMeaning(stage)
+		}
+		e.fields[codec.Column].Codec = stages
 	}
 	for _, b := range s.BlindIndexes {
 		e.fields[b.AESColumn].BlindIndex = b.IndexColumn

@@ -2,7 +2,7 @@
 // generated model that its model name names, through the connection that model.connect bound. A model or a column without
 // an entry here fails the case by name, so no recipe passes on a call that the helper does not make.
 import { lastAffected } from '../dist/testing.js';
-import { Author, CompositeAccount, CompositeMembership, CORE, Db, Engine, fulltextBoolean, NoteReader, RankedTask, SharedNote, User } from '../dist/index.js';
+import { Author, CompositeAccount, CompositeMembership, CORE, Db, Engine, fulltextBoolean, NoteReader, RankedTask, SharedNote, transformParam, User } from '../dist/index.js';
 
 // The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 const BENCH_KEYS = { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' };
@@ -323,14 +323,14 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       const built = author[CORE].build('count');
       const plan = new Engine(Author.entity.model, ({ markdown: 'sqlite', mariadb: 'mysql' })[context.database] ?? context.database).compile(built.finish());
       // The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
-      // fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
-      const boolean = plan.steps[0].bind_slots[0]?.transform === 'fulltext_boolean';
-      const value = boolean ? fulltextBoolean(s.text) : s.text;
-      if (boolean && value === '') {
+      // fulltext_boolean on MySQL and fulltext_text, which binds the text as it is, on PostgreSQL). Both refuse a text
+      // with no term.
+      const transform = plan.steps[0].bind_slots[0]?.transform ?? '';
+      if (transform !== '' && fulltextBoolean(s.text) === '') {
         await author.getCount();
         throw new Error('query.search ran a blank text without a bind-check error');
       }
-      return { sql: plan.steps[0].sql, params: [{ text: value }] };
+      return { sql: plan.steps[0].sql, params: [{ text: transform === '' ? s.text : transformParam(transform, s.text) }] };
     },
     // query.search_chain (FCV-4): the statement of the generated fulltext method of the mode, through getQuery.
     async 'query.search_chain'(s, context) {

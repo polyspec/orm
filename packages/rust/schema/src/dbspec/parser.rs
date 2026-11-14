@@ -50,8 +50,19 @@ pub(crate) fn reserved(text: &str) -> bool {
 const COLUMN: &str = "a column name";
 
 pub(crate) const CODEC_STAGES: [&str; 8] = ["json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"];
-/// The name of the codec stage `json` in the language implementations, which the core reads as `json` (CORE-61).
+/// The name of the codec stage `json` in the language implementations, which the core reads as `json` (CORE-122).
 const LEGACY_JSON_STAGE: &str = "ordered_json";
+
+/// The stage that a codec stage name means: `ordered_json` means `json`, with the same encoding, and any other name
+/// means itself (CORE-122). A document keeps the name that it was written with, so its canonical text, its manifest
+/// text and their hashes are those of the document as written.
+pub(crate) fn codec_stage_meaning(stage: &str) -> &str {
+    if stage == LEGACY_JSON_STAGE {
+        "json"
+    } else {
+        stage
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct Diag {
@@ -388,7 +399,7 @@ mod cursor_tests {
 
     #[test]
     fn parser_cursor_keeps_declaration_tokens_in_order() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let parsed = parse("dbspec 1 shop\n\ntable cafe {\n  id i64\n}\n").expect("valid document parses");
         assert_eq!(parsed.document.tables[0].name.text, "cafe");
         assert_eq!(parsed.document.tables[0].columns[0].name.text, "id");
@@ -1430,17 +1441,13 @@ impl Parser {
                 while cursor.peek().is_some() {
                     stages.push(self.word(&mut cursor, codec_stage, "a codec stage")?);
                 }
-                // ordered_json is the name of the stage json in the language implementations, with the same encoding
-                // (CORE-61), so the core reads it as json and its canonical form writes json.
-                for stage in &mut stages {
-                    if stage.text == LEGACY_JSON_STAGE {
-                        stage.text = String::from("json");
-                    }
-                }
+                // ordered_json is the name of the stage json in the language implementations, with the same encoding:
+                // the core reads it as json and keeps the name as written (CORE-122).
                 for (index, stage) in stages.iter().enumerate() {
-                    if !CODEC_STAGES.contains(&stage.text.as_str()) {
+                    let meaning = codec_stage_meaning(&stage.text);
+                    if !CODEC_STAGES.contains(&meaning) {
                         self.report(err(stage.pos, "setting", format!("codec stage {} is unknown", go_quote(&stage.text))));
-                    } else if stage.text == "json" && index > 0 {
+                    } else if meaning == "json" && index > 0 {
                         self.report(err(stage.pos, "setting", "json is the first codec stage"));
                     }
                 }

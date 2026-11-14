@@ -30,7 +30,7 @@ func auditConfig(actor string) orm.Config { return orm.Config{AuditSource: audit
 // that every runtime has is the recipe contracts/fixtures/audit_triggers/audit_triggers.json.
 // Requirements: CFG-8a.
 func TestAuditSourceReceivesTheTransactionContext(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	dsn := newDatabase(t, "sqlite")
 	s := fixtureSchema(t, "audit")
 	db := auditDB(t, dsn, s)

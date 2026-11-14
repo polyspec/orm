@@ -7,6 +7,7 @@ import { quote, quoteBytes } from './message.js';
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, ParseError, type Value } from '@polyspec/ordered-json';
 import { checkHostEscape, checkTimezone, decodedPath, dsnParameter, dsnPragmas, observed, type DriverColumn, type DsnParameters, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type PoolBounds, type PoolStats, type RowSink, type StatementDone } from './driver.js';
+import { ConnectionPool } from './pool.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
 
@@ -186,82 +187,6 @@ class MarkdownSession {
   }
 }
 
-/** The session pool of a markdown connection. Open sessions never exceed bounds.size, and idle sessions are kept up to bounds.idleSize. */
-class MarkdownPool {
-  private idle: MarkdownSession[] = [];
-  private open = 0;
-  private inUse = 0;
-  private closed = false;
-  private waiters: Array<() => void> = [];
-
-  public constructor(private readonly dsn: MarkdownDsn, private readonly bounds: PoolBounds) {}
-
-  /** Hands out an idle session or connects a new one. If bounds.size sessions are in use, waits until one comes back. */
-  public async acquire(signal: AbortSignal | undefined): Promise<MarkdownSession> {
-    while (!this.closed && this.inUse >= this.bounds.size) await this.wait(signal);
-    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
-    for (let s = this.idle.pop(); s !== undefined; s = this.idle.pop()) {
-      if (s.broken || (this.bounds.lifetimeMs > 0 && performance.now() - s.created >= this.bounds.lifetimeMs)) {
-        s.close();
-        this.open--;
-        continue;
-      }
-      this.inUse++;
-      return s;
-    }
-    this.open++;
-    this.inUse++;
-    try {
-      return await dialStatements(this.dsn, signal);
-    } catch (error) {
-      this.open--;
-      this.inUse--;
-      this.wakeOne();
-      throw error;
-    }
-  }
-
-  private wait(signal: AbortSignal | undefined): Promise<void> {
-    if (signal?.aborted) return Promise.reject(canceled());
-    return new Promise((resolve, reject) => {
-      const waiter = () => { signal?.removeEventListener('abort', abort); resolve(); };
-      const abort = () => { this.waiters = this.waiters.filter(w => w !== waiter); reject(canceled()); };
-      this.waiters.push(waiter);
-      signal?.addEventListener('abort', abort, { once: true });
-    });
-  }
-
-  private wakeOne(): void {
-    this.waiters.shift()?.();
-  }
-
-  /** Returns a session to the pool. A broken session and a session of a closed pool are closed. */
-  public release(s: MarkdownSession): void {
-    this.inUse--;
-    if (s.broken || this.closed || this.idle.length >= this.bounds.idleSize) {
-      s.close();
-      this.open--;
-    } else this.idle.push(s);
-    this.wakeOne();
-  }
-
-  public close(): void {
-    this.closed = true;
-    for (const s of this.idle) {
-      s.close();
-      this.open--;
-    }
-    this.idle = [];
-    const waiters = this.waiters;
-    this.waiters = [];
-    for (const wake of waiters) wake();
-  }
-
-  public stats(): PoolStats {
-    return { maxOpenConnections: this.bounds.size, openConnections: this.open, inUse: this.inUse, idle: this.idle.length };
-  }
-}
-
 /** The wire form of a column of a statement answer. */
 interface AnswerColumn { name: string; type: string; }
 
@@ -435,7 +360,7 @@ class MarkdownPoolDriver implements DriverPool {
   public readonly name = 'sqlite' as const;
   // A flowmark server answers SQL in SQLite's dialect, as its server (DIA-185, DIA-203).
   public readonly server = 'sqlite' as const;
-  public constructor(private readonly pool: MarkdownPool) {}
+  public constructor(private readonly pool: ConnectionPool<MarkdownSession>) {}
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     const s = await this.pool.acquire(signal);
     try {
@@ -458,7 +383,7 @@ class MarkdownPoolDriver implements DriverPool {
 class MarkdownDriverSession implements DriverSession {
   public readonly name = 'sqlite' as const;
   private released = false;
-  public constructor(private readonly s: MarkdownSession, private readonly pool: MarkdownPool) {}
+  public constructor(private readonly s: MarkdownSession, private readonly pool: ConnectionPool<MarkdownSession>) {}
   public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     return observed(this.name, sql, done, 'statement', () => execute(this.s, sql, params, signal));
   }
@@ -478,5 +403,5 @@ class MarkdownDriverSession implements DriverSession {
 
 /** Opens the driver pool of a markdown DSN. */
 export function openMarkdown(dsn: MarkdownDsn, bounds: PoolBounds): DriverPool {
-  return new MarkdownPoolDriver(new MarkdownPool(dsn, bounds));
+  return new MarkdownPoolDriver(new ConnectionPool(bounds, signal => dialStatements(dsn, signal), canceled));
 }

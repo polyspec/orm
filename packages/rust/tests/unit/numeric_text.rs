@@ -15,7 +15,7 @@ fn numeric(digits: &[u16], weight: i16, sign: u16, dscale: u16) -> Vec<u8> {
 // Requirements: DIA-219.
 #[test]
 fn a_binary_numeric_is_its_exact_decimal_text() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // 1234567890123456789012345678901.123456789: 31 whole digits and 9 fraction digits, past 28 digits.
     let long = numeric(&[123, 4567, 8901, 2345, 6789, 123, 4567, 8901, 1234, 5678, 9000], 7, 0x0000, 9);
     assert_eq!(numeric_binary_text(&long).as_deref(), Some("1234567890123456789012345678901.123456789"));
@@ -38,7 +38,7 @@ fn a_binary_numeric_is_its_exact_decimal_text() {
 // Requirements: DIA-219.
 #[test]
 fn a_malformed_binary_numeric_has_no_text() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     // A header shorter than its eight bytes, a digit count that the bytes do not hold, a digit of 10000 or more and a
     // sign that is none of the four.
     assert_eq!(numeric_binary_text(&[0, 1, 0, 0]), None);
@@ -52,7 +52,7 @@ fn a_malformed_binary_numeric_has_no_text() {
 // Requirements: DIA-219.
 #[test]
 fn a_numeric_text_binds_as_its_exact_binary_numeric() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     use super::{NUMERIC_INVALID as INVALID, NUMERIC_OUT_OF_RANGE as RANGE};
     // Each text and what PostgreSQL 17 makes of it: the text it writes for the numeric it reads, or the SQLSTATE of its
     // refusal. The binary form the encoder gives reads back as that text.

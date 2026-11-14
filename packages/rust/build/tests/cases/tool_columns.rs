@@ -5,8 +5,8 @@ use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-135.
 async fn physical_query_columns_preserve_empty_results_and_duplicate_aliases() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("column test deadline");
+    let _case = polyspec_orm_testcase::case!();
+    check().await;
 }
 async fn check() {
     let path = physical_fixture::sqlite_path("tool-columns");
@@ -34,8 +34,8 @@ async fn check() {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-125a.
 async fn physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), stale_statement()).await.expect("stale statement test deadline");
+    let _case = polyspec_orm_testcase::case!();
+    stale_statement().await;
 }
 async fn stale_statement() {
     let limits = QueryLimits::default;

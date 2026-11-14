@@ -14,9 +14,10 @@ import {
   ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { DATABASE, caseTest, withTemporaryDirectory } from '../../../../tests/testcase.mts';
+import { caseTest, withTemporaryDirectory } from '../../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
-import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
+import { mysqlConnection, onSqliteConnections, postgresClient, withCaseDatabase } from './case-database.mjs';
+import { lockWaitEnds, statementStarts } from './lock-wait.mjs';
 
 let failures = 0;
 let current = '';
@@ -41,7 +42,7 @@ function dsnOf(dialect) {
  * execute() of tests/testcase.mts.
  */
 export function modelCase(name, dialects, body) {
-  caseTest(name, DATABASE * dialects.length, async ({ step }) => {
+  caseTest(name, async ({ step }) => {
     const before = failures;
     for (const dialect of dialects) {
       current = `${dialect}/${name}`;
@@ -295,12 +296,12 @@ async function insertParts(db) {
 const cases = { conditions, columnsAndSubqueries, writes, styledStates, insertParts };
 
 /**
- * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a
- * busy_timeout. A failure of the body or of the database drop fails the dialect of the case.
+ * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN states no
+ * busy_timeout, so the connection waits for a lock as long as CFG-12 sets. A failure of the body or of the database drop
+ * fails the dialect of the case.
  */
 function inCaseDatabase(dialect, step, body) {
-  return withCaseDatabase(dialect, step, database =>
-    body(dialect === 'sqlite' ? `${database.dsn}?_pragma=busy_timeout(5000)` : database.dsn, database));
+  return withCaseDatabase(dialect, step, database => body(database.dsn, database));
 }
 
 /** Runs fn(db, dsn) on a new case database of the dialect with the schema installed. */
@@ -329,19 +330,28 @@ export const cancellation = installed(async (db, dsn, dialect) => {
   check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
   // The running statement is an update of a row that another connection holds, so it waits
   // for the lock until the signal aborts. SQLite waits for a lock in its busy handler, which
-  // an abort does not interrupt, so SQLite checks only the signal aborted before.
+  // an abort does not interrupt, so SQLite checks only the signal aborted before. On PostgreSQL the
+  // abort follows the event of the start of the statement (statementStarts, T475). MySQL and MariaDB
+  // send no event when a statement starts or waits, so there the abort follows the lock wait timeout
+  // that the server returns to a probe session (lockWaitEnds, T475).
   if (dialect !== 'sqlite') {
-    const release = await holdRows(dialect, dsn, 'author');
+    const starts = dialect === 'postgres' ? await statementStarts(dsn, 'author') : null;
     try {
-      const row = fixture.authors[0];
-      const running = new AbortController();
-      const timer = setTimeout(() => running.abort(), 300);
-      // The statement returns CANCELED after the abort while the other connection still holds the row:
-      // it ended because of the signal, not because the lock was released or its wait timed out.
-      check(await code(row.connect(db.withSignal(running.signal)).setName('changed').update()) === 'CANCELED', 'a statement cancelled while it runs');
-      check(running.signal.aborted, 'the cancelled statement returned only after the abort');
-      clearTimeout(timer);
-    } finally { await release(); }
+      const release = await holdRows(dialect, dsn, 'author');
+      try {
+        const row = fixture.authors[0];
+        const running = new AbortController();
+        const armed = starts ? await starts.arm() : null;
+        const statement = code(row.connect(db.withSignal(running.signal)).setName('changed').update());
+        if (armed) await armed.started;
+        else await lockWaitEnds(dsn, 'SELECT `seq` FROM `author` FOR UPDATE');
+        running.abort();
+        // The statement returns CANCELED after the abort while the other connection still holds the row:
+        // it ended because of the signal, not because the lock was released or its wait timed out.
+        check(await statement === 'CANCELED', 'a statement cancelled while it runs');
+        check(running.signal.aborted, 'the cancelled statement returned only after the abort');
+      } finally { await release(); }
+    } finally { await starts?.close(); }
   }
   check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
 });
@@ -437,18 +447,20 @@ programCase('failedEndDiscards', ['mysql'], async () => {
 programCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
   const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
   try {
-    const state = db.pool.state;
-    const native = state.db;
-    const statement = state.statement.bind(state);
+    const natives = [];
     let rejects = () => false;
     let rejectRollback = false;
     // ROLLBACK returns the failure after actually running.
-    state.statement = sql => {
-      if (rejects(sql)) throw new Error('statement rejected by the test driver');
-      const prepared = statement(sql);
-      if (!rejectRollback || sql !== 'ROLLBACK') return prepared;
-      return { run: (...values) => { prepared.run(...values); throw new Error('rollback rejected by the test driver'); } };
-    };
+    onSqliteConnections(db, state => {
+      natives.push(state.db);
+      const statement = state.statement.bind(state);
+      state.statement = sql => {
+        if (rejects(sql)) throw new Error('statement rejected by the test driver');
+        const prepared = statement(sql);
+        if (!rejectRollback || sql !== 'ROLLBACK') return prepared;
+        return { run: (...values) => { prepared.run(...values); throw new Error('rollback rejected by the test driver'); } };
+      };
+    });
     rejectRollback = true;
     const rolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { retry: 0 }));
     checkBoth('rollback', rolledBack, 'callback failed', 'rollback rejected by the test driver');
@@ -461,7 +473,8 @@ programCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-m
     check(committed.includes('statement rejected by the test driver'), `commit reports the failed mode reset: ${committed}`);
     const modeRolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { readOnly: true, retry: 0 }));
     checkBoth('mode reset', modeRolledBack, 'callback failed', 'statement rejected by the test driver');
-    check(!native.isTransaction, 'the failed mode reset still rolls the transaction back');
+    // A connection whose session failed to end is closed by the pool; every other one is outside a transaction.
+    check(natives.length > 0 && natives.every(native => !native.isOpen || !native.isTransaction), 'the failed mode reset still rolls the transaction back');
   } finally {
     await db.close();
   }

@@ -208,16 +208,12 @@
           "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
         },
         {
-          "glob": "legacy/packages/go/testcase/stall_test.go",
-          "reason": "harness: tests testcase step-budget and stalled-case cancellation primitives used to run tests; it does not exercise an ORM contract"
-        },
-        {
           "glob": "legacy/packages/go/testcase/testdata/fixture/fixture_test.go",
-          "reason": "harness: supplies testdata child-process fixtures whose deliberate pass, failure, skip, group and deadline outcomes are inspected by the testcase harness tests"
+          "reason": "harness: supplies testdata child-process fixtures whose deliberate pass, failure, skip and group outcomes are inspected by the testcase harness tests"
         },
         {
           "glob": "legacy/packages/go/testcase/testcase_test.go",
-          "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
+          "reason": "harness: tests testcase output formatting, runner and group primitives and that no clock ends a case; its subject is the Go test harness rather than an ORM client behavior"
         },
         {
           "glob": "legacy/packages/go/engine/dbspec/literal_test.go",
@@ -238,10 +234,6 @@
         {
           "glob": "legacy/packages/go/generator/gen_go_scan_internal_test.go",
           "reason": "test: the go/packages scan of the Go generator: hand-written files of the model package, pattern spelling, build tags and the generated relation getter text"
-        },
-        {
-          "glob": "legacy/packages/go/orm/cancel_waiter_internal_test.go",
-          "reason": "harness: tests newWaiter, the lock-wait helper that the cancellation tests use to time a cancel"
         },
         {
           "glob": "legacy/packages/go/orm/collection_key_internal_test.go",
@@ -286,6 +278,46 @@
         {
           "glob": "legacy/packages/go/orm/catalog_temporal_test.go",
           "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
+        },
+        {
+          "glob": "legacy/packages/go/bindmessages/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/engine/dbspec/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/engine/ir/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/engine/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/generator/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/markdownmodel/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/orm/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/orm/sqlite/paths_from_root_test.go",
+          "reason": "harness: runs the tests of the package that read files of the checkout with the repository root as their working directory (T448); it tests where the Go tests find those files, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/internal/recipe/root_test.go",
+          "reason": "harness: the interface check of a recipe step of the Go runner starts at the repository root, whatever the working directory is (T448); it tests the recipe runner, not a behaviour of the contract"
+        },
+        {
+          "glob": "legacy/packages/go/testcase/root_test.go",
+          "reason": "harness: RepositoryRoot and LegacyRoot of the Go test harness find the checkout by go.work (T447); it tests the harness, not a behaviour of the contract"
         }
       ]
     },
@@ -401,7 +433,8 @@
         "legacy/packages/php/tests/CatalogPdoCases.php",
         "legacy/packages/php/tests/RecipeKeys.php",
         "legacy/packages/php/tests/dbspec_cases.php",
-        "legacy/packages/php/tests/RecipeGenerator.php"
+        "legacy/packages/php/tests/RecipeGenerator.php",
+        "legacy/packages/php/tests/repository_root.php"
       ],
       "internal": [
         {
@@ -713,6 +746,7 @@
         "legacy/packages/ts/tests/statement-runner-run.mjs",
         "legacy/packages/ts/tests/coverage_performance_report.mjs",
         "legacy/packages/ts/tests/was-inserted-child.mjs",
+        "legacy/packages/ts/tests/lock-wait.mjs",
         "legacy/packages/ts/tests/coverage_performance_gate.mjs",
         "legacy/packages/ts/tests/parse_documents.mjs",
         "legacy/packages/ts/tests/error_code.mjs",
@@ -826,7 +860,7 @@
         },
         {
           "glob": "legacy/packages/ts/tests/coverage-case-unit.mjs",
-          "reason": "harness: exercises the TypeScript coverage-case runner, including selected-case order, duplicate rejection, deadlines, database selection, and cleanup; it does not run ORM client behavior"
+          "reason": "harness: exercises the TypeScript coverage-case runner, including selected-case order, duplicate rejection, database selection, and cleanup; it does not run ORM client behavior"
         },
         {
           "glob": "legacy/packages/ts/tests/error_code.test.mjs",
@@ -977,7 +1011,7 @@
         },
         {
           "glob": "legacy/packages/python/tests/test_testcase.py",
-          "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
+          "reason": "harness: tests Python testcase discovery and reporting and that no clock ends a case; it does not exercise ORM client behavior"
         },
         {
           "glob": "legacy/packages/python/tests/test_recipe_send_listener.py",
@@ -1052,6 +1086,7 @@
         "packages/rust/tests/cases/common/typed_model.rs",
         "packages/rust/programs/tests/all/common/result_code.rs",
         "packages/rust/tests/cases/common/clock_test_support.rs",
+        "packages/rust/tests/cases/common/lock_wait.rs",
         "packages/rust/programs/src/lib.rs",
         "packages/rust/programs/src/recipe.rs",
         "packages/rust/programs/src/recipe_apply.rs",
@@ -1071,7 +1106,8 @@
         "packages/rust/testcase/tests/cases/lib.rs",
         "packages/rust/build/tests/cases/common/table_column.rs",
         "packages/rust/tests/cases/common/result_code.rs",
-        "packages/rust/schema/tests/cases/common/or_panic.rs"
+        "packages/rust/schema/tests/cases/common/or_panic.rs",
+        "packages/rust/programs/src/recipe_error.rs"
       ],
       "internal": [
         {
@@ -1124,7 +1160,7 @@
         },
         {
           "glob": "packages/rust/testcase/tests/cases/form.rs",
-          "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and deadline results; it tests the Rust test harness"
+          "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and that no clock ends a case; it tests the Rust test harness"
         },
         {
           "glob": "packages/rust/build/src/tests/build_environment.rs",
@@ -1249,6 +1285,42 @@
         {
           "glob": "packages/rust/testcase/src/groups.rs",
           "reason": "harness: checks how the runner of the Rust test program reads its command line; it tests the Rust test harness"
+        },
+        {
+          "glob": "packages/rust/schema/tests/unit/flowmark_surface.rs",
+          "reason": "test: the JSON forms of the dbspec values and the literal of a text (docs/spec/flowmark-surface.md FMS-10 to FMS-16, FMS-26, FMS-81), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/flowmark_surface.rs",
+          "reason": "test: the JSON surface of the core over requests, plans, models, documents and cells (docs/spec/flowmark-surface.md FMS-20 to FMS-50, FMS-81), which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/query.rs",
+          "reason": "test: Query and a schema loaded at run time (docs/spec/core.md CORE-80 to CORE-83), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/query_members.rs",
+          "reason": "test: the members of Query that read, relate and write a row by the name of its entity (docs/spec/core.md CORE-85 to CORE-91, CORE-94, CORE-120), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/query_step.rs",
+          "reason": "test: the Db step and its transaction steps, a query held as JSON (docs/spec/core.md CORE-92 to CORE-94), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/orm_value.rs",
+          "reason": "test: orm_value, the value of a column as the contract passes it (docs/spec/core.md CORE-60, CORE-62 to CORE-64), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/interface_cases.rs",
+          "reason": "test: the cases of the interface contract of the core (docs/spec/core.md CORE-70 to CORE-72), which the core runs by the functions that the contract names; a contract that no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/tests/unit/cancel.rs",
+          "reason": "test: the cancellation that a handle of the core carries (docs/spec/core.md CORE-45, CORE-46), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
+          "glob": "packages/rust/src/error.rs",
+          "reason": "test: the message of an error of the core and the two errors that a failed rollback keeps (docs/spec/core.md CORE-12, CORE-25), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
         }
       ]
     }

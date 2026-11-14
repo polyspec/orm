@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 23c283a7dbf9408d421362ad99ca0f89f2e59c62173090716beb12ff016fd5ec -->
+<!-- source-sha256: 7dd95f66912c2124f939579d8a37ebdf2cabf17f3c4e914b9290bca0a4b4329e -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
@@ -318,7 +318,7 @@ let row = master.transaction(async || Author::new().set_name("x")./*…*/.create
 `audit` setting([audit](../spec/dbspec.ko.md#audit))이 있는 테이블은 작업 단위를 audit 기록 테이블, 곧 setting이 `references`로 정한 테이블에 기록하는 트랜잭션 안에서만 쓴다. 두 곳이 기록의 값을 준다:
 
 - 연결 설정은 프로세스마다 한 번 `auditSource`를 받는다([설정](../spec/config.ko.md)). 현재 요청의 audit 값, 곧 계정과 요청 id처럼 audit 기록 테이블의 컬럼 이름에서 값으로 가는 map을 돌려주는 함수다. ORM은 자기 audit 값을 쓰지 않는다.
-- 트랜잭션의 `audit` 옵션은 이 변경의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `transaction`, `transaction_send`, `transaction_once`의 `.audit(pairs)`, TypeScript `{ audit: {...} }`). 빈 map은 source의 값만 기록한다.
+- 트랜잭션의 `audit` 옵션은 이 변경의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `Db::transaction`의 `TransactionOptions`의 `audit`, TypeScript `{ audit: {...} }`). 빈 map은 source의 값만 기록한다.
 
 ```go
 master, err := model.Connect(dsn, orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error) {
@@ -521,14 +521,15 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 |---|---|---|
 | Go | `h := db.WithRequestHook(hook)` | `orm.RequestHook`인 `func(r *ir.Request, addParam func(value any) int, params []any) error`이며 `r`을 직접 고치고 사본인 `params`에서 bind된 값을 읽는다. `ir`은 `github.com/polyspec/orm/legacy/packages/go/engine/ir`이다 |
 | PHP | `$h = $db->withRequestHook($hook)` | `\Closure(Polyspec\Orm\Request $r): void`이며 `$r->ir`을 직접 고치고 `$r->param($value)`로 매개변수를 더하며 `$r->params`에서 bind된 값을 읽는다 |
-| Rust | `let h = db.with_request_hook(hook);` | `Fn(&mut polyspec_orm::ir::Request, &mut polyspec_orm::RequestParams) -> polyspec_orm::Result<()>`이며 request를 직접 고치고 `params.add(value)`로 매개변수를 더하며 `params.get(index)`로 bind된 값을 읽는다 |
-| TypeScript | `const h = db.withRequestHook(hook)` | `RequestHook`인 `(request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request`이며 plan할 request를 돌려주고 고정된 사본인 `params`에서 bind된 값을 읽는다 |
+| Rust | `let h = db.with_request_hook(hook);` | `for<'a> Fn(&'a mut polyspec_orm::ir::Request, &'a mut polyspec_orm::RequestParams) -> polyspec_orm::HookFuture<'a>`이며 client가 그 future를 기다린다. future 안에서 request를 직접 고치고 `params.add(value)`로 매개변수를 더하며 `params.get(index)`로 bind된 값을 읽는다. 예: `\|r, p\| Box::pin(async move { ...; Ok(()) })` |
+| TypeScript | `const h = db.withRequestHook(hook)` | `RequestHook`인 `(request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request \| Promise<Request>`이며 plan할 request나 client가 기다리는 그 promise를 돌려주고 고정된 사본인 `params`에서 bind된 값을 읽는다 |
 | Python | `h = db.with_request_hook(hook)` | `RequestHook`인 `Callable[[IRRequest, Callable[[object], int], tuple], IRRequest]`이며 plan할 request를 돌려주고 tuple에서 bind된 값을 읽는다. `IRRequest`는 `polyspec.orm.ir`의 것이다 |
 
 - handle은 연결의 모든 것을 공유한다: pool(PHP에서는 PDO 연결), plan cache와 statement cache, statement event subscriber, 활성 transaction이다. handle은 자기가 나온 handle의 다른 속성(Go context, TypeScript signal)을 지키며, 그 handle에서 `WithContext`나 `withSignal`로 만든 handle도 hook을 지킨다. handle은 hook 하나를 가진다: hook이 있는 handle의 `withRequestHook`은 새 hook을 가진 handle을 돌려준다. `Root()`(Go)와 `root()`(Python, TypeScript)는 연결을 돌려준다.
 - client는 handle을 거쳐 실행되는 model 종단의 request마다 hook을 한 번 부른다: `one`과 `all` 읽기, `count`, `group_count`, `sum`, `avg`, `paginate`(page statement와 count statement에 한 번), 행 하나나 `rows`의 `insert`, `update`, `delete`, soft delete, `restore`, `on_duplicate`가 있는 insert, `getQuery`다. client가 model을 위해 만드는 request에도 부른다: 재귀 delete의 자식 delete와, handle에서 시작한 audit 값이 있는 transaction의 audit 기록 insert다. 자식이 자기 연결을 가진 relation은 그 연결을 거친다. `execute`, schema utility와 다른 utility는 request를 보내지 않으므로 hook을 부르지 않는다.
 - hook은 model이 만든 request, 그것이 bind한 매개변수(읽기 전용이라 hook이 호출자가 준 값을 확인할 수 있다), 매개변수를 더하는 수단을 받는다: `addParam(value)`는 value를 request 매개변수 끝에 더하고 그 index를 돌려준다. hook은 protocol이 허용하는 어떤 방식으로든 request를 바꿀 수 있다. 예를 들어 root, join, relation의 `where`에 predicate를, `set`에 assignment와 `rows`의 각 항목에 매개변수 하나를, `on_duplicate`에 항목을 더한다. client는 그 뒤 `n_params`를 매개변수 수로 쓰고 request를 다른 request처럼 plan한다. planner가 request를 검증하므로 매개변수 밖의 index는 `IR_INVALID`로, 모르는 column은 `COLUMN_UNKNOWN`으로 statement 전에 실패한다. plan cache는 값이 아니라 request로 key를 정하므로, hook이 같은 모양으로 바꾼 두 request는 hook이 더한 값과 관계없이 plan 하나를 함께 쓴다.
-- hook의 오류(PHP, Python, TypeScript는 throw, Go와 Rust는 반환)는 바뀌지 않은 채 statement 전에 operation을 실패시킨다.
+- client는 hook이 돌아온 뒤에 request를 plan하며, TypeScript와 Rust에서는 hook의 promise나 future를 기다린다(INT-78). 그래서 hook은 client가 request를 plan하기 전에 다른 연결(두 번째 `Db`)로 문을 실행할 수 있다. 예를 들어 트랜잭션 안에서 request가 쓸 행을 읽는다. Go, PHP, Python에서 hook은 이것을 다른 동기 호출처럼 한다.
+- hook의 오류(PHP, Python, TypeScript는 throw, Go와 Rust는 반환, 또는 promise의 거부나 future의 오류)는 바뀌지 않은 채 statement 전에 operation을 실패시킨다.
 - model은 자기가 연결된 handle을 거친다. transaction 안에서 연결이 없는 model은 transaction을 시작한 handle을 거친다. hook이 있는 handle로 읽거나 만든 행은 그 handle을 지키므로, 그 뒤의 `update`, `delete`, `restore`도 hook을 지난다. hook이 있는 handle에서 시작한 transaction은 callback의 model에 hook을 지키며, 그 안에서 연결의 다른 handle에 연결한 model은 그 handle의 hook으로 실행된다.
 - 만든 행은 호출자가 지정한 값을 가진다. hook이 지정한 값은 써지지만 행으로 다시 읽히지 않는다.
 - hook이 없는 handle은 model이 만든 request를 복사하거나 부르는 일 없이 그대로 plan한다.
@@ -568,11 +569,21 @@ go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generat
 npm run typescript:test                                  # TypeScript client
 make test-rust                                           # Rust client
 make conformance-check                                   # the native conformance bodies
-make orm-test-container KIND=mysql                           # config/containers.json의 이미지로 Apple container 안에 MySQL primary와 그 replica를 띄운다
+make orm-install-bay                                         # CI용: config/containers.json이 고정한 bay의 release를 var/tools/bay에 설치한다. machine은 바꾸지 않는다. run은 PATH의 bay를 쓴다
+make orm-install-bay-machine                                 # bay install과 bay check -scope run: bay의 machine 설정이며 필요한 권한을 요청한다
+make orm-install-container-images                            # config/containers.json의 이미지를 bay pull로 pull한다. 이미지를 download하는 유일한 target이다
+make orm-test-container KIND=mysql                           # config/containers.json의 이미지로 MySQL primary와 그 replica를 bay의 Compose project로 띄운다. bay와 이 machine의 이미지가 필요하다
 . .runtime/containers/mysql.env                              # 그 서버의 DSN 변수. TEST_ENV를 읽는 대상은 TEST_ENV=.runtime/containers/mysql.env, MariaDB는 MARIADB_ENV를 받는다
-make orm-test-container-stop                                 # 이 checkout의 컨테이너와 데이터를 지운다
-make orm-test-container-run KIND=mysql RUN='make test-rust'  # 이 run만의 서버를 띄우고 그 변수로 RUN을 실행하며, RUN이 끝나거나 실패하거나 SIGINT나 SIGTERM을 받으면 지운다
+make orm-test-container-stop                                 # 이 checkout의 project와 데이터를 지운다. kill된 run의 project도 포함한다
+make orm-test-container-run KIND=mysql RUN='make test-rust'  # 이 run만의 서버를 띄우고 이 host에서 그 변수로 RUN을 실행하며, RUN이 끝나거나 실패하거나 SIGINT나 SIGTERM을 받으면 지운다
+make orm-test-container-run KIND=mysql FORM=runner RUN='make test-rust'  # 같은 run을 commit의 clone으로 runner 안의 bay job 두 개로 실행한다. machine은 job을 한 번에 하나씩 실행한다. KEEP=1은 tool과 build가 든 directory를 남긴다
+make orm-test-container-run KIND=mysql FORM=runner BUILD='<build command>' RUN='make test-rust' CARGO_BUILD_JOBS=<count> RUNNER_MEMORY=<size> SERVER_MEMORY=<size>  # server가 시작하기 전에 job build 안에서 build한다. cargo의 job 수와 memory 한도는 machine에 맞게 준다
+make orm-test-container-remote KIND=mysql,postgres,sqlite RUN='make client-db-check' HOST=<ssh host> REMOTE=<directory>  # 한 run의 여러 kind: 각 kind의 server와, servers.env 하나에 든 각 kind의 변수
+make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory> CACHE=/srv/polyspec/gate/cache  # tool의 download(rustup, cargo의 CARGO_HOME, Go module과 build cache, npm, Composer)를 run보다 오래 남는 그곳의 directory에 둔다. clone과 target directory는 run에 남는다
+make orm-test-container-remote KIND=mysql RUN='make test-rust' HOST=<ssh host> REMOTE=<directory>  # host에 sh와 bay만 있는 다른 machine에서 runner의 run을 실행한다. job은 그곳에서 실행되고 ssh를 통해 그곳에서 기다린다. 끝나지 않은 job은 그곳의 directory를 남기고 3으로 끝난다. 다시 시작해도 아무것도 두 번 넣지 않고 다시 기다린다. PULL=1은 그곳에서 image를 pull한다
 ```
+
+컨테이너 서버는 `bay`의 Compose project다(CONTRIBUTING.md, "컨테이너의 test database server"). start가 실패하면 먼저 그 출력을 읽는다. 출력에는 `bay up`의 출력과 각 service의 마지막 줄이 있다. `bay status`는 machine에서 도는 project를 나열한다. 이 checkout의 project 이름은 `orm-<checkout>-<run>`이고 그 file은 `.runtime/containers/<project>`에 있다. 그 directory의 file `run.sh`가 `sh`와 `bay`만으로 run을 실행한다. `sh run.sh`는 run 전체이고, `sh run.sh up`과 `sh run.sh down`은 server를 시작하고 제거한다. runner 안의 run은 job 두 개이고, `bay job list`가 그 결과와 함께 나열한다. 다른 machine에서의 run은 report를 `.runtime/containers/reports/<project>`에 남긴다(`job-<part>.json`, `job-<part>.log`, `check.log`, `status`). `bay check -scope run`은 machine 설정에서 없는 부분을 적고 `bay install`이 그것을 적용한다. 이 repository는 `bay install`도, machine 설정을 바꾸는 command도 실행하지 않는다.
 
 예제: [`examples/thin-slice`](../../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../../examples/complex)(조인·그룹·2단 관계·집계).
 

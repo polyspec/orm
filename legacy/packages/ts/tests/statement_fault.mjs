@@ -26,8 +26,6 @@ if (fixture.schema !== 1 || typeof code !== 'string' || code === '' || typeof me
   throw new Error('contracts/fixtures/statement_fault.json is not a schema 1 fixture with a code, a message and cases');
 }
 
-// A case's deadline. A case builds a case database, installs the fixture and runs a few statements.
-const CASE_DEADLINE_MS = 30_000;
 const DRIVERS = ['sqlite', 'mysql', 'postgres'];
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
   if (!process.env[env]) throw new Error(`${env} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
@@ -97,7 +95,7 @@ if (failures > 0) process.exitCode = 1;
 for (const name of fixture.cases) {
   const run = cases[name];
   if (run === undefined) continue;
-  caseTest(name, CASE_DEADLINE_MS * DRIVERS.length, async ({ step }) => {
+  caseTest(name, async ({ step }) => {
     const before = failures;
     current = name;
     for (const driver of DRIVERS) {

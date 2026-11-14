@@ -6,8 +6,8 @@ fn metadata() -> TableMetadata {
 
 #[tokio::test]
 async fn rust_duplicate_insert_assignment_budget_uses_the_shared_limit() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+    let _case = polyspec_orm_testcase::case!();
+    async {
         let metadata = metadata();
         let accepted = [("id".into(), P::I(1)), ("name".into(), P::S("ok".into()))];
         assert!(validate(&metadata, &accepted, "sqlite").is_ok());
@@ -18,7 +18,6 @@ async fn rust_duplicate_insert_assignment_budget_uses_the_shared_limit() {
             Err(error) => error,
         };
         assert!(error.message().starts_with("ROW_INSERT_LIMIT: assignment budget exceeded"));
-    })
-    .await
-    .expect("insert assignment budget deadline");
+    }
+    .await;
 }

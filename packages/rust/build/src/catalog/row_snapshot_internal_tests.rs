@@ -48,7 +48,7 @@ fn fixture_with_payload(value: GridCell) -> TablePage {
 
 #[test]
 fn primary_key_parameters_follow_declared_key_order() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut page = fixture();
     page.metadata.columns.push(super::super::TableColumnMetadata {
         name: "slug".into(),
@@ -67,7 +67,7 @@ fn primary_key_parameters_follow_declared_key_order() {
 
 #[test]
 fn row_snapshot_uses_shared_decimal_syntax_validation() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let page = fixture();
     for value in ["0", "-0", "100.23000", "-12345678901234567890.00001"] {
         assert!(row(&page.metadata, &[GridCell::Decimal(value.into())]).is_ok(), "{value}");
@@ -79,7 +79,7 @@ fn row_snapshot_uses_shared_decimal_syntax_validation() {
 
 #[test]
 fn row_snapshot_descriptor_and_update_preserve_cause_message() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let mut page = fixture();
     page.metadata.table.name.clear();
     let error = RowSnapshot::from_page(&page, 0).expect_err("empty table name must fail");
@@ -114,7 +114,7 @@ fn row_snapshot_descriptor_and_update_preserve_cause_message() {
 
 #[test]
 fn row_snapshot_revision_preserves_writer_cause_message() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let page = fixture_with_payload(GridCell::Text("x".repeat(8 * 1024 * 1024 + 1)));
     let error = RowSnapshot::from_page(&page, 0).expect_err("oversized row must fail");
     assert!(error.message().contains("row_snapshot_limit: original row encoding exceeds its budget: row snapshot budget exceeded"), "{error}");
@@ -122,7 +122,7 @@ fn row_snapshot_revision_preserves_writer_cause_message() {
 
 #[test]
 fn row_baseline_tells_a_boolean_from_an_integer() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let original = fixture_with_payload(GridCell::Boolean(false));
     let changed = fixture_with_payload(GridCell::Integer(0));
     let snapshot = RowSnapshot::from_page(&original, 0).unwrap();

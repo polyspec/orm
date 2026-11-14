@@ -1,14 +1,15 @@
-// Shared helpers of the language service tests: the vectors of tests/dbspec, the line model of the parser and the
-// UTF-16 offsets of a code point index. They are test code only; the service never imports them.
+// Shared helpers of the language service tests: the vectors of legacy/tests/dbspec, the vectors of the TypeScript runtime
+// of legacy/packages/ts with which the service parses, the line model of the parser and the UTF-16 offsets of a code point
+// index. They are test code only; the service never imports them.
 import { readFileSync } from 'node:fs';
 import { join } from '../../../tests/dbspec/join.mjs';
 
 /** The repository root. */
 export const repo = new URL('../../../', import.meta.url);
 
-/** A vector file of tests/dbspec, parsed. */
+/** A vector file of legacy/tests/dbspec, parsed. */
 export function vectorsFile(name) {
-  return JSON.parse(readFileSync(new URL(`tests/dbspec/${name}`, repo), 'utf8'));
+  return JSON.parse(readFileSync(new URL(`legacy/tests/dbspec/${name}`, repo), 'utf8'));
 }
 
 export { join };

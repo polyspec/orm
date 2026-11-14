@@ -8,7 +8,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from polyspec.orm import Db
 from polyspec.orm.aes import AesKeyring
-from polyspec.orm.bind_check import fulltext_boolean
+from polyspec.orm.bind_check import fulltext_boolean, transform_param
 from polyspec.orm.engine import Engine
 from polyspec.orm.names import ChainKey
 from polyspec.orm.testing import last_affected
@@ -670,15 +670,16 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         )
         plan = Engine(author.core.ent.model.runtime, dialect).compile(built.finish())
         # The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
-        # fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
+        # fulltext_boolean on MySQL and fulltext_text, which binds the text as it is, on PostgreSQL). Both refuse a text
+        # with no term.
         slots = plan["steps"][0]["bind_slots"]
-        boolean = bool(slots) and slots[0]["transform"] == "fulltext_boolean"
-        value = fulltext_boolean(step["text"]) if boolean else step["text"]
-        if boolean and value == "":
+        transform = slots[0].get("transform", "") if slots else ""
+        if transform and fulltext_boolean(step["text"]) == "":
             author.get_count()
             raise AssertionError(
                 "query.search ran a blank text without a bind-check error"
             )
+        value = transform_param(transform, step["text"]) if transform else step["text"]
         return {"sql": plan["steps"][0]["sql"], "params": [{"text": value}]}
 
     def query_search_chain(step, context):

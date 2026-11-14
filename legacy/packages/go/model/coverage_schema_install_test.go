@@ -14,7 +14,7 @@ import (
 // generated Go model alone holds, is tested here.
 // Requirements: SCH-16, SCH-7, DBS-108, PLN-44, INT-55.
 func TestCoverageSchemaInstallExisting(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	each(t, func(t *testing.T, db *orm.DB) {
 		seed(t, db)
 		before := must(model.Author().Connect(db).GetCount())

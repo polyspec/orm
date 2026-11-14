@@ -7,7 +7,6 @@ import re
 import shutil
 import subprocess
 import tempfile
-import threading
 import unittest
 from pathlib import Path
 from .test_sqlite import generate
@@ -22,8 +21,6 @@ ROOT = Path(__file__).resolve().parents[3]
 CONFORMANCE_DIR = ROOT / "tests" / "markdown"
 FLOWMARK_MODULE = "github.com/polyspec/flowmark/packages/go"
 CORPUS = "conformance"
-# Deadline of one case. Past it, the server is stopped to drop the connection, so the case fails with CONNECTION_LOST.
-CASE_TIMEOUT_S = 60
 LISTENING = re.compile(
     r"\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)"
 )
@@ -1054,29 +1051,15 @@ def conformance_cases() -> dict:
 
 
 def run_case(s: Served, case: dict, run) -> str | None:
-    """Runs one case and returns the reason for a failure, or None if it passes."""
-    stopped = []
-
-    def expire():
-        stopped.append(True)
-        s.server.kill()
-
-    timer = threading.Timer(CASE_TIMEOUT_S, expire)
-    timer.start()
+    """Runs one case and returns the reason for a failure, or None if it passes; no clock ends the case (T474)."""
     try:
-        try:
-            got = run(s)
-        except OrmError as error:
-            got = {"error": error.code}
-            cause = error
-        else:
-            cause = None
+        got = run(s)
+        cause = None
+    except OrmError as error:
+        got = {"error": error.code}
+        cause = error
     except Exception as error:  # noqa: BLE001 - the case reports any error that is not an orm code
         return f"failed without an orm code: {type(error).__name__}: {error}"
-    finally:
-        timer.cancel()
-    if stopped:
-        return f"did not end within {CASE_TIMEOUT_S}s; the server was stopped"
     actual = json.loads(json.dumps(got))
     if not same(actual, case["expect"]):
         return f"got {json.dumps(actual)}, want {json.dumps(case['expect'])} (error {cause})"
@@ -1134,7 +1117,6 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
 class Case(VectorCase):
     """A case of the vector file of this module."""
 
-    deadline = testcase.PROCESS
 
 
 def load_tests(

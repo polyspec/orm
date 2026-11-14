@@ -19,7 +19,7 @@ const splitPlanAllocationLimit = 128 << 20
 // before it is planned: the count of 70300 values on SQLite returns the matching rows and allocates less than
 // splitPlanAllocationLimit, so no plan holds a bind slot per value of the list.
 func TestSplitRootInCountPlansNoStatementOverTheBindLimit(t *testing.T) {
-	tc := testcase.Start(t, testcase.Database)
+	tc := testcase.Start(t)
 	s := documentSchema(t, keywordSchema)
 	db := connectInstalled(t, "sqlite://"+filepath.Join(t.TempDir(), "split-plan.sqlite"), s)
 	defer testcase.Close(t, db)

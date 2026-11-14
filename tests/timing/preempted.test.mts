@@ -20,9 +20,6 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 // a ratio similar to a shared machine with a load average of 90.
 const RUN_MS = 10;
 const STOP_MS = 90;
-// TIMEOUT is the deadline for one case. The child process gets only one tenth of the wall-clock time as CPU, so
-// a test that finishes in 1 minute without stopping takes up to 10 minutes.
-const TIMEOUT = 600_000;
 
 // TOOLCHAIN is the toolchain setting exported by the Makefile of make timing-check: cargo, go, npm and Composer use this value to use the same
 // toolchain, target directory and offline execution.
@@ -93,28 +90,28 @@ async function passesPreempted(step: { (text: string): void; (text: string): voi
 
 const stressDocument = () => declared('DBSPEC_STRESS_DOCUMENT');
 
-caseTest('go: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
+caseTest('go: the stress test passes while preempted', async ({ step }) => {
   await passesPreempted(step, declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}legacy/packages/go/engine/dbspec`);
 });
 
-caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
+caseTest('rust: the stress test passes while preempted', async ({ step }) => {
   await passesPreempted(step, declared('TIMING_RUST_STRESS'), [stressDocument()]);
 });
 
-caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', TIMEOUT, async ({ step }) => {
+caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', async ({ step }) => {
   // The vector tests of polyspec-orm-schema are the groups dbspec_model and dbspec_runtime of the one Rust test program (T375).
   const groups = ['dbspec_model::', 'dbspec_runtime::'];
   await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-tests', '--test', 'all', '--', ...groups], `${root}packages/rust`);
 });
 
 for (const test of ['DbspecRulesTest', 'DbspecRenderStatementsRecipeTest', 'DbspecMermaidRecipeTest', 'DbspecPlanTest', 'DbspecStressTest']) {
-  caseTest(`php: ${test} passes while preempted`, TIMEOUT, async ({ step }) => {
+  caseTest(`php: ${test} passes while preempted`, async ({ step }) => {
     // The database cases (group database) need the DSNs of the test servers, which this isolated child does not receive; they run in their own
     // database target, so this case excludes them and checks the parse and render code only.
     await passesPreempted(step, 'php', ['vendor-php/bin/phpunit', '--configuration', 'legacy/packages/php/phpunit.xml.dist', '--exclude-group', 'database', `legacy/packages/php/tests/${test}.php`]);
   });
 }
 
-caseTest('typescript: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
+caseTest('typescript: the stress test passes while preempted', async ({ step }) => {
   await passesPreempted(step, process.execPath, ['--test', 'legacy/packages/ts/tests/dbspec-stress.mjs']);
 });

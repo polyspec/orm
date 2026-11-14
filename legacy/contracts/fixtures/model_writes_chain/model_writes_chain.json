@@ -176,11 +176,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `json_setting` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT json_setting FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -332,11 +328,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `json_setting` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT json_setting FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -501,11 +493,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `json_setting` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT json_setting FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -747,11 +735,7 @@
        "tables": [
         "author"
        ],
-       "sql": {
-        "mysql": "SELECT `base64_extra` FROM `author` WHERE `seq` = 1",
-        "postgres": "SELECT \"base64_extra\" FROM \"author\" WHERE \"seq\" = 1",
-        "sqlite": "SELECT \"base64_extra\" FROM \"author\" WHERE \"seq\" = 1"
-       }
+       "sql": "SELECT base64_extra FROM author WHERE seq = 1"
       }
      ],
      "expect": {
@@ -1245,6 +1229,7 @@
   },
   {
    "id": "creates_over_the_sqlite_bind_limit_is_refused",
+   "databases_differ": "The bind limit of a statement is 999 on SQLite and 65535 on MySQL and PostgreSQL (PRT-41), so these rows exceed it on SQLite alone; the case creates_batch_too_large of conformance_verification refuses a batch on every database.",
    "requirements": [
     "DSL-104",
     "PRT-41"
@@ -1302,6 +1287,7 @@
   },
   {
    "id": "creates_keeps_the_rows_in_order_across_batches",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-104",
     "INT-35",
@@ -2064,6 +2050,7 @@
   },
   {
    "id": "creates_rolls_back_every_batch_when_a_later_one_fails",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
    "requirements": [
     "DSL-104",
     "INT-35",
@@ -2847,6 +2834,7 @@
   },
   {
    "id": "ordered_json_keeps_its_text_in_the_model_json_output",
+   "databases_differ": "The stored text holds a backslash, which a MySQL string literal doubles, since MySQL reads a backslash as an escape (DIA-123).",
    "requirements": [
     "COD-16",
     "COD-26"

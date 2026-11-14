@@ -7,7 +7,7 @@ import (
 )
 
 func TestRequestRejectsUnspecifiedStructure(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	e := testEngine(t)
 	for _, body := range []string{
 		`"controller_data":{},"entity":"author"`,

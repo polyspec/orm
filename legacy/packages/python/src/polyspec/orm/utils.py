@@ -380,12 +380,16 @@ class PrivilegeUtils:
     def __init__(self, utils: Utils):
         self.utils = utils
 
-    def _table(self, table: str) -> str:
+    def _supported(self) -> None:
+        """Refuses a dialect other than PostgreSQL, after the arguments of the call are checked, so that an invalid
+        argument is the same CONFIG on every database (INT-59, DIA-225)."""
         if self.utils.db.sql_driver != "postgres":
             raise OrmError(
                 codes.CAPABILITY_UNSUPPORTED,
                 "table privileges are supported only by postgres",
             )
+
+    def _table(self, table: str) -> str:
         parts = table.split(".")
         if len(parts) != 2 or not all(valid_key(part) for part in parts):
             raise OrmError(codes.CONFIG, "a qualified table name is required")
@@ -401,6 +405,7 @@ class PrivilegeUtils:
         """Grants the role the usage of the table's schema and SELECT, INSERT, UPDATE and DELETE on it."""
         qualified = self._table(table)
         r = self._role(role)
+        self._supported()
         schema = qualified[: qualified.index(".")]
 
         def body() -> None:
@@ -427,6 +432,7 @@ class PrivilegeUtils:
             raise OrmError(
                 codes.CONFIG, f"unsupported table privilege {goq(privilege)}"
             )
+        self._supported()
         self.utils._run(
             lambda: _frame_of(self.utils.db).run(
                 f"REVOKE {upper} ON {qualified} FROM {r}",
@@ -439,6 +445,7 @@ class PrivilegeUtils:
     def inspect_table(self, table: str) -> TablePrivileges:
         """The privileges of the current user on the table, read with one statement."""
         qualified = self._table(table)
+        self._supported()
         row = self.utils._read(
             "utility",
             [table],

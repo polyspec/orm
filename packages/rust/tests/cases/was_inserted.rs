@@ -3,18 +3,16 @@
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use crate::clock_test_support;
+use crate::lock_wait::LockWaits;
 use clock_test_support::{connected, ClockEvent, OrPanic, CLOCK_SCHEMA};
 
-use std::time::Duration;
-
+use polyspec_orm::db::Pool;
 use polyspec_orm::{Db, Model, Param, TransactionOptions, Tx, Val};
 
 fn once() -> TransactionOptions {
     TransactionOptions { retry: Some(0), ..Default::default() }
 }
 use polyspec_orm_case_database::CaseDatabase;
-
-const CASE_DEADLINE: Duration = Duration::from_secs(60);
 
 /// Inserts one clock event with label in the transaction of `tx` and returns its identity key.
 async fn insert_event(tx: &Tx, label: &str) -> i64 {
@@ -28,8 +26,9 @@ async fn insert_event(tx: &Tx, label: &str) -> i64 {
 }
 
 /// PostgreSQL: a second backend that waits for a row lock is reported. The transaction holds the row, and a task on a second
-/// connection, started after the row is held, updates the same row and blocks until the transaction ends. The check is bounded
-/// to ten seconds.
+/// connection, started after the row is held, updates the same row and blocks until the transaction ends. The session of the
+/// task reports its lock waits: with deadlock_timeout 1 ms, log_lock_waits on and client_min_messages log, the server sends it
+/// the LOG message "still waiting for" while the update waits, and only then the transaction reads the state once (T475).
 async fn postgres_waiter(dsn: &str, db: &Db) {
     let utils = db.utils();
     let seq = db.transaction_async(|tx: Tx| async move { Ok(insert_event(&tx, "held").await) }, once()).await.or_panic(|e| format!("postgres: {e}"));
@@ -41,22 +40,26 @@ async fn postgres_waiter(dsn: &str, db: &Db) {
                 row.core_mut().set("seq", Param::from(seq));
                 row.core_mut().set("label", Param::from("parent"));
                 polyspec_orm::model::update(&mut row, false).await?;
-                let owned = dsn.to_owned();
-                let waiter = tokio::spawn(async move {
-                    let other = Db::connect_schema(&owned, &CLOCK_SCHEMA, 1, polyspec_orm::Config::default()).await?;
-                    let mut row = connected::<ClockEvent>(&other);
-                    row.core_mut().set("seq", Param::from(seq));
-                    row.core_mut().set("label", Param::from("waiter"));
-                    let result = polyspec_orm::model::update(&mut row, false).await;
+                let other = Db::connect_schema(dsn, &CLOCK_SCHEMA, 1, polyspec_orm::Config::default()).await?;
+                let Pool::Postgres(pool) = other.pool() else { panic!("postgres: the waiter is not a PostgreSQL connection") };
+                let mut conn = pool.acquire().await.or_panic(|e| format!("postgres: acquire the waiter: {e}"));
+                let mut waits = LockWaits::report(&mut conn).await;
+                let mut waiter = tokio::spawn(async move {
+                    let result = sqlx::query("UPDATE clock_event SET label = 'waiter' WHERE seq = $1")
+                        .bind(seq)
+                        .execute(&mut *conn)
+                        .await
+                        .map(|_| ())
+                        .map_err(|e| e.to_string());
+                    drop(conn);
                     other.close_async().await;
                     result
                 });
-                let deadline = std::time::Instant::now() + Duration::from_secs(10);
-                let mut waiting = false;
-                while !waiting && std::time::Instant::now() < deadline {
-                    waiting = utils.backend_waiting_for_lock().await?;
-                    tokio::time::sleep(Duration::from_millis(20)).await;
+                tokio::select! {
+                    () = waits.waited() => {}
+                    ended = &mut waiter => panic!("postgres: the waiting update ended before it waited for the row lock: {ended:?}"),
                 }
+                let waiting = utils.backend_waiting_for_lock().await?;
                 Ok((waiting, waiter))
             },
             once(),
@@ -64,7 +67,7 @@ async fn postgres_waiter(dsn: &str, db: &Db) {
         .await
         .or_panic(|e| format!("postgres: {e}"));
     assert!(waiting, "postgres: the waiting backend is reported while the transaction holds the row");
-    waiter.await.expect("the waiter ends").or_panic(|e| format!("postgres: the waiting update: {e}"));
+    waiter.await.expect("the waiter ends").unwrap_or_else(|e| panic!("postgres: the waiting update: {e}"));
 }
 
 async fn bounded(driver: &str) {
@@ -79,8 +82,8 @@ async fn bounded(driver: &str) {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-53.
 async fn was_inserted_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(CASE_DEADLINE, bounded("postgres")).await.expect("postgres: the case ends");
+    let _case = polyspec_orm_testcase::case!();
+    bounded("postgres").await;
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

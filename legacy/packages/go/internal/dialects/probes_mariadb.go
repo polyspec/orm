@@ -42,11 +42,6 @@ func mariadbFacts() []Probe {
 		p("env.server", "the server is MariaDB 11.8 in strict mode with lower_case_table_names=1", mysqlFamilyServer(func(version string) bool {
 			return strings.HasPrefix(version, "11.8.") && strings.Contains(version, "-MariaDB")
 		})),
-		p("session.partial_revokes_listed", "MariaDB has no partial_revokes (1193), and SHOW GLOBAL VARIABLES lists no row of it", func(e *Env) {
-			e.Fails("SELECT @@GLOBAL.partial_revokes", "1193")
-			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes'", "")
-			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", "")
-		}),
 		p("check.drop_constraint_shared_name", "a CHECK cannot share its name with a foreign key or a unique key of its table (1826), so DROP CONSTRAINT names one constraint", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)")
 			e.Fails("CREATE TABLE c (id int PRIMARY KEY, pid int, a int, CONSTRAINT x FOREIGN KEY (pid) REFERENCES p (id), CONSTRAINT x CHECK (a > 0))", "1826")

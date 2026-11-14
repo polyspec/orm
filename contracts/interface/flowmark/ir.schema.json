@@ -1,0 +1,733 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contracts/interface/flowmark IR values",
+  "description": "The JSON forms of the IR values of docs/spec/flowmark-surface.md (FMS-30 to FMS-36). The root is one request as the serde form of polyspec_orm::ir::Request writes it (packages/rust/src/ir.rs): a member that the form leaves out when it is false, empty or absent is not required, and the members of the query of the request are members of the request object itself. The other forms are #/$defs/param_uses and #/$defs/restore_parts. The file names no other file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ir_version",
+    "manifest_hash",
+    "kind",
+    "entity",
+    "n_params"
+  ],
+  "properties": {
+    "ir_version": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "manifest_hash": {
+      "type": "string"
+    },
+    "kind": {
+      "description": "One of the kinds of docs/spec/protocol.md section 1; the validation refuses another text, the form does not.",
+      "type": "string"
+    },
+    "entity": {
+      "type": "string"
+    },
+    "columns": {
+      "$ref": "#/$defs/columns"
+    },
+    "on": {
+      "$ref": "#/$defs/group"
+    },
+    "where": {
+      "$ref": "#/$defs/group"
+    },
+    "joins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/join"
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relation"
+      }
+    },
+    "order": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/order"
+      }
+    },
+    "group_by": {
+      "$ref": "#/$defs/texts"
+    },
+    "limit": {
+      "$ref": "#/$defs/limit"
+    },
+    "force_index": {
+      "type": "string"
+    },
+    "lock": {
+      "type": "string"
+    },
+    "key_by": {
+      "type": "string"
+    },
+    "flatten": {
+      "type": "boolean"
+    },
+    "limit_per_parent": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "if_parent": {
+      "$ref": "#/$defs/if_parent"
+    },
+    "no_cascade_delete": {
+      "type": "boolean"
+    },
+    "load": {
+      "type": "boolean"
+    },
+    "set": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/assign"
+      }
+    },
+    "on_duplicate": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/assign"
+      }
+    },
+    "rows": {
+      "description": "The parameters of each further row of an insert, in the order of the columns of `set`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/indexes"
+      }
+    },
+    "optimistic": {
+      "$ref": "#/$defs/optimist"
+    },
+    "agg": {
+      "type": "string"
+    },
+    "n_params": {
+      "$ref": "#/$defs/index"
+    }
+  },
+  "$defs": {
+    "index": {
+      "description": "The index of a parameter in the parameter list of the request.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "indexes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/index"
+      }
+    },
+    "texts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "query": {
+      "description": "polyspec_orm::ir::Query: the query of a subquery, a join or a relation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity"
+      ],
+      "properties": {
+        "entity": {
+          "type": "string"
+        },
+        "columns": {
+          "$ref": "#/$defs/columns"
+        },
+        "on": {
+          "$ref": "#/$defs/group"
+        },
+        "where": {
+          "$ref": "#/$defs/group"
+        },
+        "joins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/join"
+          }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/relation"
+          }
+        },
+        "order": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/order"
+          }
+        },
+        "group_by": {
+          "$ref": "#/$defs/texts"
+        },
+        "limit": {
+          "$ref": "#/$defs/limit"
+        },
+        "force_index": {
+          "type": "string"
+        },
+        "lock": {
+          "type": "string"
+        },
+        "key_by": {
+          "type": "string"
+        },
+        "flatten": {
+          "type": "boolean"
+        },
+        "limit_per_parent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "if_parent": {
+          "$ref": "#/$defs/if_parent"
+        },
+        "no_cascade_delete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "columns": {
+      "description": "polyspec_orm::ir::Columns.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "add": {
+          "$ref": "#/$defs/texts"
+        },
+        "remove": {
+          "$ref": "#/$defs/texts"
+        },
+        "fn": {
+          "description": "The column function of each output name.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/col_func"
+          }
+        },
+        "sub": {
+          "description": "The scalar subquery of each output name.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/sub"
+          }
+        }
+      }
+    },
+    "func": {
+      "description": "polyspec_orm::ir::Func: a function and the parameters of its arguments.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "ps": {
+          "$ref": "#/$defs/indexes"
+        }
+      }
+    },
+    "col_func": {
+      "description": "polyspec_orm::ir::ColFunc.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column",
+        "fn"
+      ],
+      "properties": {
+        "column": {
+          "type": "string"
+        },
+        "fn": {
+          "$ref": "#/$defs/func"
+        }
+      }
+    },
+    "sub": {
+      "description": "polyspec_orm::ir::Sub.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query"
+      ],
+      "properties": {
+        "query": {
+          "$ref": "#/$defs/query"
+        },
+        "column": {
+          "type": "string"
+        },
+        "agg": {
+          "type": "string"
+        }
+      }
+    },
+    "join": {
+      "description": "polyspec_orm::ir::Join.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rel",
+        "kind",
+        "query"
+      ],
+      "properties": {
+        "rel": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "query": {
+          "$ref": "#/$defs/query"
+        },
+        "left": {
+          "type": "string"
+        },
+        "right": {
+          "type": "string"
+        }
+      }
+    },
+    "relation": {
+      "description": "polyspec_orm::ir::Relation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rel",
+        "query"
+      ],
+      "properties": {
+        "rel": {
+          "type": "string"
+        },
+        "query": {
+          "$ref": "#/$defs/query"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key_pair"
+          }
+        }
+      }
+    },
+    "key_pair": {
+      "description": "polyspec_orm::ir::KeyPair: the parent column `left` equals the child column `right`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left",
+        "right"
+      ],
+      "properties": {
+        "left": {
+          "type": "string"
+        },
+        "right": {
+          "type": "string"
+        }
+      }
+    },
+    "group": {
+      "description": "polyspec_orm::ir::Group.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "conn": {
+          "type": "string"
+        },
+        "not": {
+          "type": "boolean"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      }
+    },
+    "item": {
+      "description": "polyspec_orm::ir::Item: an object of exactly one member.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pred"
+          ],
+          "properties": {
+            "pred": {
+              "$ref": "#/$defs/pred"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "group"
+          ],
+          "properties": {
+            "group": {
+              "$ref": "#/$defs/group"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "joined"
+          ],
+          "properties": {
+            "joined": {
+              "$ref": "#/$defs/joined_ref"
+            }
+          }
+        }
+      ]
+    },
+    "joined_ref": {
+      "description": "polyspec_orm::ir::JoinedRef.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "join"
+      ],
+      "properties": {
+        "conn": {
+          "type": "string"
+        },
+        "join": {
+          "type": "string"
+        }
+      }
+    },
+    "pred": {
+      "description": "polyspec_orm::ir::Pred.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "conn": {
+          "type": "string"
+        },
+        "column": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string"
+        },
+        "p": {
+          "$ref": "#/$defs/index"
+        },
+        "ps": {
+          "$ref": "#/$defs/indexes"
+        },
+        "ref": {
+          "$ref": "#/$defs/col_ref"
+        },
+        "fn": {
+          "$ref": "#/$defs/func"
+        },
+        "value": {
+          "$ref": "#/$defs/func"
+        },
+        "cols": {
+          "$ref": "#/$defs/texts"
+        },
+        "sub": {
+          "$ref": "#/$defs/sub"
+        }
+      }
+    },
+    "col_ref": {
+      "description": "polyspec_orm::ir::ColRef.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "column"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "column": {
+          "type": "string"
+        }
+      }
+    },
+    "order": {
+      "description": "polyspec_orm::ir::Order.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "boolean"
+        },
+        "random": {
+          "type": "boolean"
+        },
+        "fn": {
+          "$ref": "#/$defs/func"
+        }
+      }
+    },
+    "limit": {
+      "description": "polyspec_orm::ir::Limit: the literal pair, or the pair of the parameters of the offset and of the count.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "offset",
+            "count"
+          ],
+          "properties": {
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "offset_p",
+            "count_p"
+          ],
+          "properties": {
+            "offset_p": {
+              "$ref": "#/$defs/index"
+            },
+            "count_p": {
+              "$ref": "#/$defs/index"
+            }
+          }
+        }
+      ]
+    },
+    "if_parent": {
+      "description": "polyspec_orm::ir::IfParent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column",
+        "p"
+      ],
+      "properties": {
+        "column": {
+          "type": "string"
+        },
+        "p": {
+          "$ref": "#/$defs/index"
+        }
+      }
+    },
+    "assign": {
+      "description": "polyspec_orm::ir::Assign.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column"
+      ],
+      "properties": {
+        "column": {
+          "type": "string"
+        },
+        "p": {
+          "$ref": "#/$defs/index"
+        },
+        "null": {
+          "type": "boolean"
+        },
+        "plus_p": {
+          "$ref": "#/$defs/index"
+        },
+        "minus_p": {
+          "$ref": "#/$defs/index"
+        }
+      }
+    },
+    "optimist": {
+      "description": "polyspec_orm::ir::Optimist.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column",
+        "p"
+      ],
+      "properties": {
+        "column": {
+          "type": "string"
+        },
+        "p": {
+          "$ref": "#/$defs/index"
+        }
+      }
+    },
+    "type_name": {
+      "description": "The name of a dbspec type without its parameters.",
+      "enum": [
+        "i16",
+        "i32",
+        "i64",
+        "bool",
+        "decimal",
+        "f64",
+        "varchar",
+        "text",
+        "bytes",
+        "uuid",
+        "date",
+        "time",
+        "datetime"
+      ]
+    },
+    "param_use": {
+      "description": "One slot that a parameter fills, as polyspec_orm::testing::param_uses writes it (packages/rust/src/testing.rs): the type of the slot alone, or the column that the parameter is compared with or assigned to, with its sizes.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/type_name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "column",
+            "length",
+            "null",
+            "precision",
+            "scale"
+          ],
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/type_name"
+            },
+            "column": {
+              "type": "string"
+            },
+            "length": {
+              "description": "The n of a varchar(n) column, and 0 for another type.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            },
+            "null": {
+              "description": "True for a column that takes NULL.",
+              "type": "boolean"
+            },
+            "precision": {
+              "description": "The p of a decimal(p,s), time(p) or datetime(p) column, and 0 for another type.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "scale": {
+              "description": "The s of a decimal(p,s) column, and 0 for another type.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "assign": {
+              "description": "Present for the assignment of the column (set, rows, on_duplicate).",
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "param_uses": {
+      "description": "The result of runtime_model.param_uses (FMS-33): for each parameter of the request, in the order of the parameters, its slots.",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/param_use"
+        }
+      }
+    },
+    "restore_parts": {
+      "description": "The result of runtime_model.restore_key (FMS-34): the parts of the statement of a restore request (RestoreParts of packages/rust/src/engine/validate.rs).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "where",
+        "set",
+        "soft_delete"
+      ],
+      "properties": {
+        "key": {
+          "description": "The columns of the primary key, or of the unique key, that the request gives values.",
+          "$ref": "#/$defs/texts"
+        },
+        "where": {
+          "description": "The where of the request with an eq condition for each set value of a key column.",
+          "$ref": "#/$defs/group"
+        },
+        "set": {
+          "description": "The set values of the columns outside the key.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assign"
+          }
+        },
+        "soft_delete": {
+          "description": "The soft delete column that the restore clears.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

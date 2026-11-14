@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cloneFile } from '../clone-file.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 
 // stubCargo writes the fake cargo of a case, which prints one compiler message for each binary and runs as the test lease.
 // script is the shell body of the test binary named by its argument.
@@ -27,7 +27,7 @@ function stubCargo(base: string, names: readonly string[], script: (name: string
 }
 
 // A run copies each of its test binaries, about 26 GB in all, so a copy that writes the bytes fills the disk. APFS has clones; node's COPYFILE_FICLONE does not make one there.
-caseTest('a copied file keeps its bytes and mode and writes almost nothing on APFS', COMPUTE, () => {
+caseTest('a copied file keeps its bytes and mode and writes almost nothing on APFS', () => {
   const base = mkdtempSync(join(tmpdir(), 'orm-clone-'));
   try {
     const size = 256 * 1024 * 1024;
@@ -44,7 +44,7 @@ caseTest('a copied file keeps its bytes and mode and writes almost nothing on AP
   }
 });
 
-caseTest('cargo-test splits options, name filters and test binary arguments', COMPUTE, () => {
+caseTest('cargo-test splits options, name filters and test binary arguments', () => {
   assert.deepEqual(split(['cargo', '+1.98.1', 'test', '--locked', '--features', 'a,b', '--test', 'x', 'codec', '--', '--nocapture']),
     { cargo: ['cargo', '+1.98.1'], options: ['--locked', '--features', 'a,b', '--test', 'x'], filters: ['codec'], binaryArgs: ['--nocapture'] });
   assert.deepEqual(split(['cargo', 'test', '--manifest-path', 'c/Cargo.toml', '--lib', '--', 'catalog::', 'tool_db::']),
@@ -54,7 +54,7 @@ caseTest('cargo-test splits options, name filters and test binary arguments', CO
   assert.throws(() => split(['cargo', 'build']), /not a cargo test command/);
 });
 
-caseTest('cargo-test reads the test binaries and their package directories from cargo messages', COMPUTE, () => {
+caseTest('cargo-test reads the test binaries and their package directories from cargo messages', () => {
   const lines = [
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: '/t/debug/deps/zone-1', manifest_path: '/r/packages/rust/Cargo.toml', target: { name: 'zone' } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/integration', manifest_path: '/r/x/Cargo.toml', target: { name: 'integration' } }),
@@ -65,7 +65,7 @@ caseTest('cargo-test reads the test binaries and their package directories from 
   assert.deepEqual(executables(lines.join('\n')), [{ executable: '/t/debug/deps/zone-1', manifestDir: '/r/packages/rust', target: 'zone' }]);
 });
 
-caseTest('cargo-test reads the package programs and names their variables', COMPUTE, () => {
+caseTest('cargo-test reads the package programs and names their variables', () => {
   const lines = [
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/native', target: { name: 'native', kind: ['bin'] } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/driver-compare', target: { name: 'driver-compare', kind: ['bin'] } }),
@@ -79,7 +79,7 @@ caseTest('cargo-test reads the package programs and names their variables', COMP
 
 // The case that keeps going after a failure (G5.38-3) runs cargo-test.mts with a fake cargo and a lease. cargo reports three test binaries,
 // the second binary fails but the third still runs; at the end it reports the failed binary and its exit code, and exits with that code.
-caseTest('cargo-test runs every test binary after a failed one and names the failures', PROCESS, () => {
+caseTest('cargo-test runs every test binary after a failed one and names the failures', () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-test-')));
   try {
     const log = join(base, 'ran.log');
@@ -98,7 +98,7 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
 // built it: when checkout b is built into a target that a built, and b's sources have older mtimes than a's,
 // cargo sees a's binary as fresh and runs a's code ("from a") in b too. When b builds into its own target
 // directory, it runs b's code ("from b"). So each checkout builds into its own target directory.
-caseTest('cargo reuses what another checkout built into a shared target, and a target of its own builds this checkout', PROCESS, () => {
+caseTest('cargo reuses what another checkout built into a shared target, and a target of its own builds this checkout', () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-target-')));
   try {
     const old = new Date('2026-01-01T00:00:00Z');
@@ -131,7 +131,7 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
 
 // The target directory guard case (G5.46) checks that when CARGO_TARGET_DIR on the command line points outside this checkout, make stops without running anything,
 // states the reason, and accepts a directory inside this checkout.
-caseTest('make refuses a Rust target directory outside its checkout', PROCESS, () => {
+caseTest('make refuses a Rust target directory outside its checkout', () => {
   const repo = fileURLToPath(new URL('../..', import.meta.url));
   const make = (target?: string) => spawnSync('make', ['-n', '--no-print-directory', 'repo-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment() });
   const other = make(join(tmpdir(), 'another-checkout', 'packages', 'rust', 'target'));
@@ -144,7 +144,7 @@ caseTest('make refuses a Rust target directory outside its checkout', PROCESS, (
 // The empty selection case (G5.54) checks whether a run in which the test name filter selects no test in any test binary counts as a failure.
 // cargo-test counts the tests each binary selects with `--list`, and if the sum is 0 it fails without running the binary. A filter with a misspelled name
 // would otherwise let every binary end with 0 without running anything.
-caseTest('cargo-test fails when the name filters select no test in any test binary', PROCESS, () => {
+caseTest('cargo-test fails when the name filters select no test in any test binary', () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-empty-')));
   try {
     const log = join(base, 'ran.log');
@@ -167,7 +167,7 @@ caseTest('cargo-test fails when the name filters select no test in any test bina
 // that ends by a signal never runs its finally, and no runner removes its folder, a copy of every test binary it ran. The next
 // cargo-test removes such a folder once its process has exited; it keeps the folder of a running process, the folder of a
 // step, which the check runner reports and removes, and any other name.
-caseTest('cargo-test removes the folder of a direct run whose process has exited and keeps the others', COMPUTE, () => {
+caseTest('cargo-test removes the folder of a direct run whose process has exited and keeps the others', () => {
   const runs = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-runs-')));
   try {
     // A process that has exited and been reaped: spawnSync returns after the wait.

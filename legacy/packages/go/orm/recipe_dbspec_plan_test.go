@@ -12,7 +12,7 @@ import (
 // PLN-58, PLN-59, PLN-60, PLN-61, PLN-62, PLN-63, PLN-64, PLN-65, PLN-66, PLN-67, PLN-68, PLN-69, PLN-70, PLN-71, PLN-72,
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88.
 func TestRecipeDbspecPlanInvalid(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-invalid.json"), recipe.None)
 }
 
@@ -21,7 +21,7 @@ func TestRecipeDbspecPlanInvalid(t *testing.T) {
 // PLN-58, PLN-59, PLN-60, PLN-61, PLN-62, PLN-63, PLN-64, PLN-65, PLN-66, PLN-67, PLN-68, PLN-69, PLN-70, PLN-71, PLN-72,
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88.
 func TestRecipeDbspecPlanChains(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-chains.json"), recipe.None)
 }
 
@@ -30,7 +30,7 @@ func TestRecipeDbspecPlanChains(t *testing.T) {
 // PLN-58, PLN-59, PLN-60, PLN-61, PLN-62, PLN-63, PLN-64, PLN-65, PLN-66, PLN-67, PLN-68, PLN-69, PLN-70, PLN-71, PLN-72,
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88, DBS-109.
 func TestRecipeDbspecPlanParse(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-parse.json"), recipe.None)
 }
 
@@ -39,13 +39,13 @@ func TestRecipeDbspecPlanParse(t *testing.T) {
 // PLN-58, PLN-59, PLN-60, PLN-61, PLN-62, PLN-63, PLN-64, PLN-65, PLN-66, PLN-67, PLN-68, PLN-69, PLN-70, PLN-71, PLN-72,
 // PLN-84, PLN-85, PLN-86, PLN-87, PLN-88.
 func TestRecipeDbspecPlanComparisons(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-comparisons.json"), recipe.None)
 }
 
 // TestRecipeDbspecAddTablesSteps runs the add tables steps recipe, tests/dbspec/add-tables-steps.json, without a database (FCV-3).
 // Requirements: INT-56, SCH-8.
 func TestRecipeDbspecAddTablesSteps(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/add-tables-steps.json"), recipe.None)
 }

@@ -8,6 +8,7 @@
   "cases": [
     {
       "id": "types-and-defaults",
+      "databases_differ": "SQLite stores a decimal as its integer scaled by 10^S and refuses a value out of its scale or precision (DIA-25), and a time and a datetime as text with exactly p fraction digits (DIA-24); PostgreSQL accepts the time 24:00:00 as the next day, which MySQL and SQLite refuse (DIA-53).",
       "requirements": [
         "DIA-113"
       ],
@@ -34,6 +35,7 @@
     },
     {
       "id": "checks-in-dialect-form",
+      "databases_differ": "SQLite stores a decimal as its integer scaled by 10^S (DIA-25), and a MySQL string literal doubles a backslash, which it reads as an escape (DIA-123).",
       "requirements": [
         "DIA-113"
       ],

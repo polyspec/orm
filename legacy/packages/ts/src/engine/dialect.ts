@@ -178,7 +178,7 @@ const mysql: Dialect = {
   quote: ident => quoteWith('`', ident),
   placeholder: () => '?',
   like: (col, ph) => `${asciiLower(col)} LIKE ${asciiLower(ph)}`,
-  limit: (offset, count) => ` LIMIT ${offset}, ${count}`,
+  limit: (offset, count) => ` LIMIT ${count} OFFSET ${offset}`,
   forceIndex: name => ` FORCE INDEX (${quoteWith('`', name)})`,
   insertReturningId: false,
   upsert: (_, assigns) => ` ON DUPLICATE KEY UPDATE ${assigns}`,
@@ -290,7 +290,7 @@ const postgres: Dialect = {
     });
   },
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
-  fulltext: (cols, value, boolean) => `to_tsvector('simple', ${cols.map(c => `coalesce(${c}, '')`).join(" || ' ' || ")}) @@ ${boolean ? 'websearch_to_tsquery' : 'plainto_tsquery'}('simple', ${value('')})`,
+  fulltext: (cols, value, boolean) => `to_tsvector('simple', ${cols.map(c => `coalesce(${c}, '')`).join(" || ' ' || ")}) @@ ${boolean ? 'websearch_to_tsquery' : 'plainto_tsquery'}('simple', ${value(boolean ? 'fulltext_text' : '')})`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'random()',
   nullsOrder: desc => (desc ? ' NULLS LAST' : ' NULLS FIRST'),

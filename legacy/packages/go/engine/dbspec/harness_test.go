@@ -29,16 +29,20 @@ func asFixture[T any](v any) T {
 	return t
 }
 
-// runTimed runs work under its own deadline and records its start, result, and elapsed time. work runs
-// in its own goroutine and reports failure by returning an error, so the deadline holds even if work is stuck.
-func runTimed(t *testing.T, name string, deadline time.Duration, work func() error) {
+// runTimed runs work and records its start, result, and elapsed time; no clock ends it (T474). work reports failure by
+// returning an error, and a panic of work is its error.
+func runTimed(t *testing.T, name string, work func() error) {
 	t.Helper()
 	started := time.Now()
-	t.Logf("RUN %s deadline=%s", name, deadline)
-	ok, err := testcase.Bounded(deadline, work)
-	if !ok {
-		t.Fatalf("FAIL %s: deadline %s exceeded", name, deadline)
-	}
+	t.Logf("RUN %s", name)
+	err := func() (err error) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err = fmt.Errorf("panic: %v", recovered)
+			}
+		}()
+		return work()
+	}()
 	elapsed := time.Since(started)
 	if err != nil {
 		t.Errorf("FAIL %s elapsed=%s: %v", name, elapsed, err)
@@ -58,9 +62,9 @@ func failingCaseNames(t *testing.T) []string {
 // TestCaseHarnessReportsOnlyFailure checks that a failed case prints only FAIL lines and not PASS lines,
 // by running TestFailingCaseFixture as a subprocess.
 func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	names := failingCaseNames(t)
-	runTimed(t, "harness-only-failure", 2*time.Minute, func() error {
+	runTimed(t, "harness-only-failure", func() error {
 		command := exec.Command("go", "test", "-run", "^TestFailingCaseFixture$", "-count=1", "-v", "./testdata/fixture")
 		output, err := command.CombinedOutput()
 		var exit *exec.ExitError
@@ -89,7 +93,7 @@ func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
 // TestLegacyRootFromAnyDirectory checks that the root that the tests of this package read their vectors from does not
 // depend on the depth of the working directory: run from the repository root, it is still the legacy directory (T447).
 func TestLegacyRootFromAnyDirectory(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	want := testcase.LegacyRoot()
 	t.Chdir(testcase.RepositoryRoot())
 	if got := legacyRoot(t); got != want {
@@ -101,10 +105,10 @@ func TestLegacyRootFromAnyDirectory(t *testing.T) {
 // repository root instead of its package directory: it must still read plan-cases.json and report its one failing
 // case, so the fixture finds the legacy directory at any depth of the working directory (T447).
 func TestFixtureFindsTheRootFromAnyDirectory(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	names := failingCaseNames(t)
 	binary := filepath.Join(t.TempDir(), "fixture.test")
-	runTimed(t, "fixture-from-root", 2*time.Minute, func() error {
+	runTimed(t, "fixture-from-root", func() error {
 		if output, err := exec.Command("go", "test", "-c", "-o", binary, "./testdata/fixture").CombinedOutput(); err != nil {
 			return fmt.Errorf("build the fixture: %w\n%s", err, output)
 		}

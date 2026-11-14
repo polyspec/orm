@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE, DATABASE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -73,11 +73,7 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
       rows: columns.map(column => [column.name, column.nativeType, Number(column.nullable), Number(column.generated),
         keyOrdinals.get(column.name) ?? 0, Number(column.automaticKey), column.defaultExpression, Number(column.expressionDefault)]),
     };
-    if (sql === "SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'") return { names: ['Variable_name', 'Value'], rows: [] };
-    if (sql === 'SELECT CURRENT_USER()') return { names: ['CURRENT_USER()'], rows: [['orm@localhost']] };
-    if (sql.includes('information_schema.USER_PRIVILEGES')) return { names: ['PRIVILEGE_TYPE'], rows: [['TRIGGER']] };
     if (sql.startsWith('SELECT ENGINE')) return { names: ['ENGINE'], rows: [['InnoDB']] };
-    if (sql.startsWith('SELECT TRIGGER_NAME')) return { names: ['TRIGGER_NAME'], rows: [] };
     if (sql.startsWith('SELECT ' + columns.map(column => `\`${column.name}\``).join(','))) {
       if (expressionDefault) {
         locatorReads++;
@@ -207,7 +203,7 @@ async function assertLiteralDefaultCompositeKeyInsert(fixture, checkQueries) {
 }
 
 // Requirements: SCH-6a.
-caseTest('catalog page columns retain descriptor names and order', COMPUTE, async () => {
+caseTest('catalog page columns retain descriptor names and order', async () => {
   await withSqliteCatalog('orm-catalog-page-column-descriptors-', `
     CREATE TABLE account (seq INTEGER NOT NULL, name TEXT NOT NULL, PRIMARY KEY (seq));
   `, async catalog => {
@@ -217,7 +213,7 @@ caseTest('catalog page columns retain descriptor names and order', COMPUTE, asyn
 });
 
 // Requirements: INT-111.
-caseTest('rejects byte capacity updates before changing the row', COMPUTE, async () => {
+caseTest('rejects byte capacity updates before changing the row', async () => {
   await withSqliteCatalog('orm-catalog-update-byte-capacity-', `
     CREATE TABLE account (id INTEGER NOT NULL PRIMARY KEY, payload VARBINARY(3) NOT NULL);
     INSERT INTO account (id, payload) VALUES (1, X'010203');
@@ -241,7 +237,7 @@ caseTest('rejects byte capacity updates before changing the row', COMPUTE, async
   });
 });
 
-caseTest('rejects over-capacity text updates before changing the row', COMPUTE, async () => {
+caseTest('rejects over-capacity text updates before changing the row', async () => {
   await withSqliteCatalog('orm-catalog-update-capacity-', `
     CREATE TABLE account (id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(3) NOT NULL CHECK(length(name) <= 3));
     INSERT INTO account (id, name) VALUES (1, 'old');
@@ -260,7 +256,7 @@ caseTest('rejects over-capacity text updates before changing the row', COMPUTE, 
   });
 });
 
-caseTest('locks, validates and returns the descriptor of an unchanged original row', DATABASE, async () => {
+caseTest('locks, validates and returns the descriptor of an unchanged original row', async () => {
   const calls = [];
   const session = {
     async lookup(descriptor, keys, lock) {
@@ -288,7 +284,7 @@ caseTest('locks, validates and returns the descriptor of an unchanged original r
   ]);
 });
 
-caseTest('rejects a changed descriptor before applying MySQL safety', DATABASE, async () => {
+caseTest('rejects a changed descriptor before applying MySQL safety', async () => {
   let safetyCalled = false;
   const session = {
     async lookup() { return [[1, 'original']]; },
@@ -306,7 +302,7 @@ caseTest('rejects a changed descriptor before applying MySQL safety', DATABASE, 
 });
 
 // Requirements: DBS-113, INT-34.
-caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key', DATABASE, async () => {
+caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key', async () => {
   await assertLiteralDefaultCompositeKeyInsert(mysqlCatalogFixture, queries => {
     assert.ok(queries.some(([, sql]) => sql.includes('`seq`=DEFAULT(`seq`)')));
     assert.equal(queries.some(([, sql]) => sql.includes('SELECT MAX(') || sql.includes('LAST_INSERT_ID()')), false);
@@ -316,7 +312,7 @@ caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key',
 // Native (FCV-2): only a fake driver observes the statements of the catalog on MySQL, whose table with a trigger is refused and which
 // publishes no statement event; the row the insert returns is the recipe case generated_key_lifecycle.
 // Requirements: INT-123b.
-caseTest('uses the MySQL statement insertId for an omitted automatic key', DATABASE, async () => {
+caseTest('uses the MySQL statement insertId for an omitted automatic key', async () => {
   const { catalog, metadata, queries } = mysqlCatalogFixture({ autoKey: true });
   try {
     await catalog.insertRow(metadata, [{ name: 'payload', value: 'generated' }]);
@@ -327,7 +323,7 @@ caseTest('uses the MySQL statement insertId for an omitted automatic key', DATAB
   }
 });
 
-caseTest('uses a bounded MySQL input locator for an expression-default key', DATABASE, async () => {
+caseTest('uses a bounded MySQL input locator for an expression-default key', async () => {
   const { catalog, metadata, queries, stored } = mysqlCatalogFixture({ expressionDefault: true });
   try {
     const result = await catalog.insertRow(metadata, [
@@ -344,7 +340,7 @@ caseTest('uses a bounded MySQL input locator for an expression-default key', DAT
   }
 });
 
-caseTest('rejects an already-matching MySQL expression locator before inserting', DATABASE, async () => {
+caseTest('rejects an already-matching MySQL expression locator before inserting', async () => {
   const existing = ['earlier-key', 1, null];
   const { catalog, metadata, queries } = mysqlCatalogFixture({ expressionDefault: true, priorRows: [existing] });
   try {
@@ -358,7 +354,7 @@ caseTest('rejects an already-matching MySQL expression locator before inserting'
   }
 });
 
-caseTest('reports an ambiguous MySQL expression locator result without changing strategy', DATABASE, async () => {
+caseTest('reports an ambiguous MySQL expression locator result without changing strategy', async () => {
   const { catalog, metadata, queries } = mysqlCatalogFixture({ expressionDefault: true, postRows: [['first-key', 1, null], ['second-key', 1, null]] });
   try {
     await assertAmbiguousInsert(catalog, metadata, [
@@ -372,7 +368,7 @@ caseTest('reports an ambiguous MySQL expression locator result without changing 
   }
 });
 
-caseTest('inserts an omitted literal-default component of a composite SQLite key', DATABASE, async () => {
+caseTest('inserts an omitted literal-default component of a composite SQLite key', async () => {
   await withSqliteCatalog('orm-catalog-literal-key-', "CREATE TABLE generated_record (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))", async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['tenant', 'seq']);
@@ -386,7 +382,7 @@ caseTest('inserts an omitted literal-default component of a composite SQLite key
   });
 });
 
-caseTest('inserts an omitted volatile expression-default SQLite key without reevaluating it', DATABASE, async () => {
+caseTest('inserts an omitted volatile expression-default SQLite key without reevaluating it', async () => {
   await withSqliteCatalog('orm-catalog-expression-key-', 'CREATE TABLE generated_record (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), n INTEGER NOT NULL UNIQUE, label TEXT)', async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['seq']);
@@ -406,7 +402,7 @@ caseTest('inserts an omitted volatile expression-default SQLite key without reev
 });
 
 // Requirements: INT-118, PRT-79. The SQLite connection executes catalog work normally; only its COMMIT response is faulted.
-caseTest('catalog/insert/indeterminate-commit-preserves-driver-cause', DATABASE, async () => {
+caseTest('catalog/insert/indeterminate-commit-preserves-driver-cause', async () => {
   const failure = Object.assign(new Error('commit response lost by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
   const commits = [];
   await withSqliteCatalog(
@@ -426,7 +422,7 @@ caseTest('catalog/insert/indeterminate-commit-preserves-driver-cause', DATABASE,
 });
 
 // Requirements: INT-118, PRT-79.
-caseTest('catalog/insert/indeterminate-commit-preserves-rollback-failure', DATABASE, async () => {
+caseTest('catalog/insert/indeterminate-commit-preserves-rollback-failure', async () => {
   const failure = Object.assign(new Error('commit response lost by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
   const rollbackFailure = Object.assign(new Error('rollback refused by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
   const commits = [];
@@ -470,7 +466,7 @@ function describedDefaultsCatalog(server, columns) {
 
 // Requirements: DIA-205. A MariaDB default that opens a quote but is not one whole string literal is a metadata error; no
 // server writes one, so the recipes cannot hold it (FCV-2).
-caseTest('catalog/describe/mariadb-default-not-one-literal', COMPUTE, async () => {
+caseTest('catalog/describe/mariadb-default-not-one-literal', async () => {
   for (const text of ["'a' 'b'", "'unterminated", "'a'x"]) {
     const catalog = describedDefaultsCatalog('mariadb', [['id', null, 0], ['broken', text, 0]]);
     await assert.rejects(catalog.describeTable({ namespace: 'app', name: 'defaults' }), error => error instanceof OrmError && error.code === 'TABLE_METADATA_INVALID' && error.message === `TABLE_METADATA_INVALID: column "broken": default ${text} is not one string literal`, text);

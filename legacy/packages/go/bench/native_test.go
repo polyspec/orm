@@ -172,8 +172,8 @@ func open(tb testing.TB) *sql.DB {
 }
 
 const (
-	pkSQL      = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
-	list100SQL = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+	pkSQL      = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 1 OFFSET 0"
+	list100SQL = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT ? OFFSET ?"
 )
 
 func pkGet(ctx context.Context, db *sql.DB, seq int64) (_ *author, err error) {
@@ -193,7 +193,7 @@ func pkGet(ctx context.Context, db *sql.DB, seq int64) (_ *author, err error) {
 }
 
 func list100(ctx context.Context, db *sql.DB, serviceSeq int64) (_ []author, err error) {
-	rows, err := prep(db, list100SQL).QueryContext(ctx, serviceSeq, 0, 0, 100)
+	rows, err := prep(db, list100SQL).QueryContext(ctx, serviceSeq, 0, 100, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func relation4(ctx context.Context, db *sql.DB, serviceSeq int64) (map[int64][]a
 	}
 	out := make(map[int64][]author, len(parents))
 	for step := 0; step < 3; step++ {
-		rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`user_seq` IN ("+sb.String()+") AND `a`.`is_close` = 0 ORDER BY `a`.`seq` DESC LIMIT 0, 200").QueryContext(ctx, keys...)
+		rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`user_seq` IN ("+sb.String()+") AND `a`.`is_close` = 0 ORDER BY `a`.`seq` DESC LIMIT 200 OFFSET 0").QueryContext(ctx, keys...)
 		if err != nil {
 			return nil, err
 		}

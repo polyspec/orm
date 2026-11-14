@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from legacy.packages.python.tests.testcase import COMPUTE, main
+from legacy.packages.python.tests.testcase import main
 from polyspec.orm.dbspec.introspect_catalog import Catalog
 from polyspec.orm.dbspec.mermaid import import_mermaid
 
@@ -10,7 +10,6 @@ DIAGRAM = "erDiagram\n    account {\n        i64 id PK\n    }\n"
 
 
 class MermaidErrorBoundaryTest(unittest.TestCase):
-    deadline = COMPUTE
 
     def test_unexpected_catalog_error_keeps_identity(self):
         cause = RuntimeError("unexpected catalog failure")

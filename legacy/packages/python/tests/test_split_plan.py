@@ -17,7 +17,6 @@ SPLIT_COUNT_PEAK_LIMIT = 64 * 1024 * 1024
 
 
 class SplitPlanTest(unittest.TestCase):
-    deadline = testcase.DATABASE
 
     def test_split_root_in_count_plans_no_statement_over_the_bind_limit(self):
         with tempfile.TemporaryDirectory(prefix="orm-split-plan-") as directory:

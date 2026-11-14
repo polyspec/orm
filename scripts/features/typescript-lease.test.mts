@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { readFeatures } from './manifest.mts';
 import { runCommand, typescriptLease, typescriptLeaseProgram } from './typescript-lease.mts';
 
@@ -10,7 +10,7 @@ const root = resolve(new URL('../..', import.meta.url).pathname);
 
 // The lease of each command: a build of the TypeScript output is exclusive, a command that reads legacy/packages/ts is shared, and any
 // other command holds no TypeScript lease.
-caseTest('a TypeScript build is exclusive and a reader of legacy/packages/ts is shared', COMPUTE, () => {
+caseTest('a TypeScript build is exclusive and a reader of legacy/packages/ts is shared', () => {
   assert.equal(typescriptLease({ command: 'npm run typescript:build' }), 'exclusive');
   assert.equal(typescriptLease({ command: 'make dbspec-ts-check' }), 'exclusive');
   assert.equal(typescriptLease({ command: 'node legacy/packages/ts/tests/dsn_connection-sqlite.test.mjs' }), 'shared');
@@ -19,7 +19,7 @@ caseTest('a TypeScript build is exclusive and a reader of legacy/packages/ts is 
 });
 
 // The manifest case reads every verify command of contracts/features.json and checks that the one that reads legacy/packages/ts holds the shared lease.
-caseTest('the markdown session TypeScript command of the manifest holds the shared lease', COMPUTE, () => {
+caseTest('the markdown session TypeScript command of the manifest holds the shared lease', () => {
   const manifest = readFeatures(root);
   const check = (manifest.features ?? []).flatMap(feature => feature.verification ?? []).find(item => item.id === 'markdown-session-typescript');
   assert.ok(check, 'the manifest declares markdown-session-typescript');
@@ -54,12 +54,12 @@ async function readerSeesBuild(): Promise<number> {
   }
 }
 
-caseTest('a reader of the TypeScript output never overlaps a build when both run under their leases', PROCESS, async () => {
+caseTest('a reader of the TypeScript output never overlaps a build when both run under their leases', async () => {
   assert.equal(await readerSeesBuild(), 0);
 });
 
 // check.mts must run each verify command through runCommand with its declared lease, so the fix cannot be bypassed.
-caseTest('check.mts runs every verify command under typescriptLease(check)', COMPUTE, () => {
+caseTest('check.mts runs every verify command under typescriptLease(check)', () => {
   const source = readFileSync(resolve(root, 'scripts/features/check.mts'), 'utf8');
   assert.match(source, /execute\(check\.command, resolve\(root, check\.cwd \?\? '\.'\), step, typescriptLease\(check\)\)/);
   assert.match(source, /runCommand\(command, cwd, process\.env, lease,/);

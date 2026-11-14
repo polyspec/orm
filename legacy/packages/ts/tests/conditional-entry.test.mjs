@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest } from '../../../../tests/testcase.mts';
 import { checkConditionalEntry } from './conditional-entry.mjs';
 
-caseTest('runs a package import in isolated children with the condition enabled only in the second', 1000, () => {
+caseTest('runs a package import in isolated children with the condition enabled only in the second', () => {
   const calls = [];
   const result = checkConditionalEntry('@polyspec/orm/testing', 'orm-test', '/package', (program, args, options) => {
     calls.push({ program, args, options });

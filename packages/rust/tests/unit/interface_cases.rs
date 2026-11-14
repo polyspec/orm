@@ -5,12 +5,15 @@
 // given as {kind, value} (binding GN-13) and enters through from_host, as it enters from a language.
 
 use std::collections::BTreeMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use binding_core::{Failure, Handle, HostText, HostValue, HostValues, Raised};
 use serde_json::{Map, Value};
 
 use crate::or_panic::OrPanic as _;
-use crate::{AesKeyring, Config, Db, Error, OrmValue, Query, Schema};
+use crate::{AesKeyring, Config, Db, Error, Manifest, OrmValue, Query, Schema};
 
 const CONTRACT: &str = include_str!("../../interface.json");
 const CASES: &str = include_str!("../../../../contracts/interface/core.json");
@@ -21,6 +24,7 @@ enum Instance {
     Keyring(AesKeyring),
     Schema(Schema),
     Query(Box<Query>),
+    Model(Box<Manifest>),
 }
 
 /// What a member returned: a value in its case form, or an instance.
@@ -45,6 +49,27 @@ fn uint(args: &Map<String, Value>, name: &str, member: &str) -> u32 {
 fn int(value: &Value, what: &str) -> i32 {
     let n = value.as_i64().unwrap_or_else(|| panic!("{what} is no integer"));
     i32::try_from(n).or_panic(|error| format!("{what} {n} does not fit i32: {error}"))
+}
+
+/// A list of texts.
+fn texts(args: &Map<String, Value>, name: &str, member: &str) -> Vec<String> {
+    let items = field(args, name, member).as_array().unwrap_or_else(|| panic!("{member}: {name} is no list"));
+    items.iter().map(|item| item.as_str().unwrap_or_else(|| panic!("{member}: {name} holds an item that is no text")).to_owned()).collect()
+}
+
+/// Bytes, given as `{hex}`.
+fn bytes(args: &Map<String, Value>, name: &str, member: &str) -> Vec<u8> {
+    let hex = field(args, name, member).get("hex").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: {name} is no {{hex}}"));
+    assert!(hex.len().is_multiple_of(2) && hex.is_ascii(), "{member}: {name} is pairs of digits");
+    (0..hex.len())
+        .step_by(2)
+        .map(|at| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{member}: {name} holds no byte at {at}: {error}")))
+        .collect()
+}
+
+/// A text that a member may not return: `null` for none.
+fn optional_text(text: Option<impl Into<String>>) -> Value {
+    text.map_or(Value::Null, |text| Value::from(text.into()))
 }
 
 /// A keyed map with the key kind `int` and text values: a list of `[{"int": n}, text]`.
@@ -145,7 +170,7 @@ fn host_value(host: &mut CaseHost, case: &Value, what: &str) -> HostValue {
         "text" => host_text(given().as_str().unwrap_or_else(|| panic!("{what}: the value of a text is no text"))),
         "bytes" => {
             let hex = given().get("hex").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: the value of bytes is {{hex}}"));
-            assert!(hex.len() % 2 == 0 && hex.is_ascii(), "{what}: hex is pairs of digits");
+            assert!(hex.len().is_multiple_of(2) && hex.is_ascii(), "{what}: hex is pairs of digits");
             let byte = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).or_panic(|error| format!("{what}: hex holds no byte at {at}: {error}"));
             HostValue::Bytes((0..hex.len()).step_by(2).map(byte).collect())
         }
@@ -334,12 +359,64 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("db.connect", None) => Returned::Instance(Instance::Db(
             Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
         )),
+        ("db.connect_schema", None) => {
+            let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
+                panic!("{member}: schema is no instance of schema")
+            };
+            Returned::Instance(Instance::Db(
+                Db::connect_schema(&text(args, "dsn", member), &schema, uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
+            ))
+        }
         ("aes_keyring.constructor", None) => Returned::Instance(Instance::Keyring(AesKeyring::new(
             keyed_texts(field(args, "keys", member), member),
             int(field(args, "current", member), member),
         )?)),
         ("aes_keyring.current", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.current())),
         ("aes_keyring.versions", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.versions())),
+        ("orm.value_function_unit", None) => Returned::Value(optional_text(crate::engine::value_function_unit(&text(args, "name", member)))),
+        ("dbspec.read_bytes", None) => Returned::Value(Value::from(crate::dbspec_json::read_bytes(&text(args, "name", member), &bytes(args, "bytes", member)))),
+        ("dbspec.parse_set", None) => {
+            Returned::Value(Value::from(crate::dbspec_json::parse_set(&texts(args, "owned", member), &texts(args, "external", member))?))
+        }
+        ("dbspec.manifest", None) => Returned::Value(Value::from(crate::dbspec_json::manifest(&text(args, "documents", member))?)),
+        ("dbspec.emit", None) => Returned::Value(Value::from(crate::dbspec_json::emit(&text(args, "document", member))?)),
+        ("dbspec.render_statements", None) => {
+            Returned::Value(Value::from(crate::dbspec_json::render_statements(&text(args, "documents", member), &text(args, "dialect", member))?))
+        }
+        ("dbspec.canonical_literal", None) => {
+            Returned::Value(optional_text(crate::dbspec_json::canonical_literal(&text(args, "column_type", member), &text(args, "literal", member))?))
+        }
+        ("dbspec.runtime_model", None) => Returned::Value(Value::from(crate::dbspec_json::runtime_model(&text(args, "documents", member))?)),
+        ("runtime_model.load", None) => Returned::Instance(Instance::Model(Box::new(Manifest::from_json(&text(args, "model", member))?))),
+        ("runtime_model.validate", Some(Instance::Model(model))) => {
+            model.validate(&text(args, "request", member))?;
+            Returned::Value(Value::Null)
+        }
+        ("runtime_model.param_uses", Some(Instance::Model(model))) => Returned::Value(Value::from(model.param_uses(&text(args, "request", member))?)),
+        ("runtime_model.restore_key", Some(Instance::Model(model))) => Returned::Value(Value::from(model.restore_key(&text(args, "request", member))?)),
+        ("runtime_model.compile", Some(Instance::Model(model))) => {
+            Returned::Value(Value::from(model.compile(&text(args, "request", member), &text(args, "dialect", member))?))
+        }
+        ("runtime_model.operator_allowed", Some(Instance::Model(model))) => Returned::Value(Value::from(model.operator_allowed(
+            &text(args, "entity", member),
+            &text(args, "column", member),
+            &text(args, "operator", member),
+        )?)),
+        ("codec.decode", None) => {
+            let cell = orm_value(field(args, "cell", member), member)?;
+            Returned::Value(case_value(&crate::orm_value::decode(&texts(args, "stages", member), cell)?, member))
+        }
+        ("codec.host_encode", None) => {
+            let value = orm_value(field(args, "value", member), member)?;
+            Returned::Value(case_value(&crate::orm_value::host_encode(value, &texts(args, "stages", member), &text(args, "key", member))?, member))
+        }
+        ("codec.host_decode", None) => {
+            let cell = orm_value(field(args, "cell", member), member)?;
+            Returned::Value(case_value(&crate::orm_value::host_decode(cell, &texts(args, "stages", member), &text(args, "key", member))?, member))
+        }
+        ("codec.blind_index", None) => {
+            Returned::Value(Value::from(crate::orm_value::blind_index(orm_value(field(args, "value", member), member)?, &text(args, "key", member))?))
+        }
         (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
         (other, None) => panic!("the case runner calls no member {other} without a receiver"),
     })
@@ -366,10 +443,29 @@ async fn instance(value: &Value, what: &str) -> Instance {
     out
 }
 
+/// The call of a member under the arming of its case: the arming is installed on the thread around each poll of the
+/// call, as the generated entry point of a member installs it (binding G-5, GN-8a), so a point that the call reaches
+/// after an await reads it too.
+struct Faulted<F> {
+    armed: binding_core::fault::Armed,
+    call: Pin<Box<F>>,
+}
+
+impl<F: Future> Future for Faulted<F> {
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<F::Output> {
+        let this = self.get_mut();
+        this.armed.run(|| this.call.as_mut().poll(context))
+    }
+}
+
 /// The keys of a case that are no parameter of its member (binding G-5).
 const RESERVED: [&str; 8] = ["id", "note", "rule", "raises", "result", "receiver", "after", "faults"];
 
-async fn run_case(member: &str, case: &Value) {
+/// Runs one case of `member` and adds to `failures` each difference between what the case states and what the member did:
+/// the test runs every case to its end and then names every case that failed (HR-86 of the checks, CORE-71).
+async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
     let fields = case.as_object().unwrap_or_else(|| panic!("{member}: a case is an object"));
     let id = fields.get("id").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: a case has an id"));
     let what = format!("{member} {id}");
@@ -380,27 +476,53 @@ async fn run_case(member: &str, case: &Value) {
         Some(value) => Some(instance(value, &what).await),
         None => None,
     };
-    let outcome = call(member, receiver.as_mut(), &args).await;
+    let outcome = match fields.get("faults") {
+        Some(faults) => {
+            // The faults of a case are armed for the call of its member alone, as a generated binding test arms them
+            // (binding G-5, X-1, CORE-121): the receiver is made before the arming, and a fault that did not fire fails.
+            let id = binding_core::fault::arm(member, &faults.to_string()).or_panic(|error| format!("{what}: {error}"));
+            let armed = binding_core::fault::take(member);
+            let outcome = Faulted { armed, call: Box::pin(call(member, receiver.as_mut(), &args)) }.await;
+            let left = binding_core::fault::left(id).or_panic(|error| format!("{what}: {error}"));
+            if !left.is_empty() {
+                failures.push(format!("{what}: the faults of {} did not fire", left.join(", ")));
+            }
+            outcome
+        }
+        None => call(member, receiver.as_mut(), &args).await,
+    };
     let mut result = None;
     match (outcome, fields.get("raises")) {
         (Err(error), Some(raises)) => {
-            assert_eq!(raises.get("kind").and_then(Value::as_str), Some(error.kind().as_str()), "{what}: kind of {error}");
-            assert_eq!(raises.get("category").and_then(Value::as_str), Some(error.category().as_str()), "{what}: category of {error}");
-            assert_eq!(raises.get("message").and_then(Value::as_str), Some(error.to_string().as_str()), "{what}: message");
+            let raised = serde_json::json!({"kind": error.kind().as_str(), "category": error.category().as_str(), "message": error.to_string()});
+            if raises != &raised {
+                failures.push(format!("{what}: the case expects {raises}, and the member raised {raised}"));
+            }
+            return;
         }
-        (Err(error), None) => panic!("{what}: failed with {error}"),
-        (Ok(_), Some(raises)) => panic!("{what}: succeeded, and the case expects {raises}"),
+        (Err(error), None) => {
+            failures.push(format!("{what}: failed with {error} ({})", error.kind().as_str()));
+            return;
+        }
+        (Ok(_), Some(raises)) => {
+            failures.push(format!("{what}: succeeded, and the case expects {raises}"));
+            return;
+        }
         (Ok(Returned::Value(value)), None) => {
             let expected = fields.get("result").unwrap_or_else(|| panic!("{what}: the case states no result"));
-            assert_eq!(&value, expected, "{what}: result");
+            if &value != expected {
+                failures.push(format!("{what}: the case expects the result {expected}, and the member returned {value}"));
+            }
         }
         (Ok(Returned::Instance(instance)), None) => {
             assert!(fields.get("result").is_none(), "{what}: a class result is observed by the cases of its methods, not by result");
             result = Some(instance);
         }
     }
-    // An after step is a call on the receiver of the case (binding CK-22): {call, args, result} and no other key.
+    // The calls of after observe the receiver of a method after its call (binding G-5, GN-6ae): a member without a
+    // receiver names none, and the instance that it returns is observed by the cases of its methods, whose receiver it makes.
     let after = fields.get("after").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
+    assert!(after.is_empty() || receiver.is_some(), "{what}: the member has no receiver, so the case names no after");
     let empty = Map::new();
     for step in after {
         let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an after step names call"));
@@ -408,7 +530,7 @@ async fn run_case(member: &str, case: &Value) {
             assert!(["call", "args", "result"].contains(&key.as_str()), "{what}: an after step has no key {key}");
         }
         let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {name} is no object")));
-        let target = receiver.as_mut().unwrap_or_else(|| panic!("{what}: {member} has no receiver, so the case names no after"));
+        let target = receiver.as_mut().unwrap_or_else(|| panic!("{what}: the case has no receiver to observe"));
         match call(name, Some(target), args).await {
             Ok(Returned::Value(value)) => assert_eq!(Some(&value), step.get("result"), "{what}: after {name}"),
             Ok(Returned::Instance(_)) => panic!("{what}: after {name} returns an instance"),
@@ -446,13 +568,14 @@ fn run_alias_case(case: &Value) {
 // Requirements: CORE-62, CORE-63, CORE-70, CORE-71, CORE-72.
 #[tokio::test]
 async fn the_core_passes_the_cases_of_its_contract() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let contract: Value = serde_json::from_str(CONTRACT).expect("packages/rust/interface.json is JSON");
     let cases: Value = serde_json::from_str(CASES).expect("contracts/interface/core.json is JSON");
     let rows = contract["cases"].as_array().expect("the contract has cases");
     assert!(!rows.is_empty(), "the contract names no cases");
     let mut ran = 0usize;
     let mut members = 0usize;
+    let mut failures = Vec::new();
     for row in rows {
         assert_eq!(row["file"].as_str(), Some("contracts/interface/core.json"), "{row}: the case file that this test reads");
         let name = row["group"].as_str().expect("a row of cases names its group");
@@ -462,7 +585,7 @@ async fn the_core_passes_the_cases_of_its_contract() {
             (Some(member), None) => {
                 members += 1;
                 for case in group {
-                    run_case(member, case).await;
+                    run_case(member, case, &mut failures).await;
                     ran += 1;
                 }
             }
@@ -476,4 +599,46 @@ async fn the_core_passes_the_cases_of_its_contract() {
         }
     }
     polyspec_orm_testcase::step(format_args!("ran {ran} cases of {members} members and the alias orm_value"));
+    assert!(failures.is_empty(), "{} of {ran} cases failed:\n{}", failures.len(), failures.join("\n"));
+}
+
+/// The kinds of `raises` that no case of the case form can raise, each with its reason.
+const KINDS_WITHOUT_A_CASE: [(&str, &str, &str); 1] =
+    [("dbspec.read_set", "config", "the member raises it for a path that is no Unicode text, and a case gives a path as a text")];
+
+// Requirements: FMS-7, CORE-71. Each member of the units `dbspec`, `runtime_model` and `codec`, which read no
+// database, has a case that raises each kind of its `raises` (binding CK-22). A kind of the category internal needs no
+// case, because no input raises it.
+#[test]
+fn a_member_of_the_json_surface_has_a_case_of_each_kind_that_it_raises() {
+    let _case = polyspec_orm_testcase::case!();
+    let contract: Value = serde_json::from_str(CONTRACT).expect("packages/rust/interface.json is JSON");
+    let cases: Value = serde_json::from_str(CASES).expect("contracts/interface/core.json is JSON");
+    let mut missing = Vec::new();
+    let mut read = 0usize;
+    for unit in contract["units"].as_array().expect("the contract has units") {
+        if !["dbspec", "runtime_model", "codec"].contains(&unit["id"].as_str().expect("a unit has an id")) {
+            continue;
+        }
+        for member in unit["members"].as_array().expect("a unit of the JSON surface has members") {
+            let id = member["id"].as_str().expect("a member has an id");
+            let group = cases[id].as_array().map_or(&[][..], Vec::as_slice);
+            for path in member["raises"].as_array().expect("a member states its raises") {
+                let path = path.as_str().expect("a row of raises is the path of a kind");
+                let kind = crate::Kind::ALL
+                    .into_iter()
+                    .find(|kind| path == format!("polyspec_orm::Kind::{kind:?}"))
+                    .unwrap_or_else(|| panic!("{id}: {path} is no kind of the core"));
+                read += 1;
+                if kind.category().as_str() == "internal" || KINDS_WITHOUT_A_CASE.iter().any(|(member, name, _)| *member == id && *name == kind.as_str()) {
+                    continue;
+                }
+                if !group.iter().any(|case| case["raises"]["kind"].as_str() == Some(kind.as_str())) {
+                    missing.push(format!("{id}: no case raises {}", kind.as_str()));
+                }
+            }
+        }
+    }
+    assert!(read > 0, "the units of the JSON surface state no kind");
+    assert!(missing.is_empty(), "{} kinds have no case:\n{}", missing.len(), missing.join("\n"));
 }

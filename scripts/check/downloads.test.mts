@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { composerMissing, missingDownloads, npmMissing, offlineMakeErrors } from './downloads.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -14,7 +14,7 @@ const write = (path: string, value: unknown) => {
   writeFileSync(path, typeof value === 'string' ? value : JSON.stringify(value));
 };
 
-caseTest('the npm and Composer packages of a lock file must be present, whatever their version', COMPUTE, () => {
+caseTest('the npm and Composer packages of a lock file must be present, whatever their version', () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-downloads-'));
   try {
     write(join(root, 'package-lock.json'), { packages: { '': {}, 'node_modules/a': { version: '1.0.0' }, 'node_modules/b': { version: '2.0.0', optional: true }, 'node_modules/c': { version: '3.0.0' } } });
@@ -30,7 +30,7 @@ caseTest('the npm and Composer packages of a lock file must be present, whatever
   }
 });
 
-caseTest('a Go module that is not downloaded names make install, never a retry online', PROCESS, () => {
+caseTest('a Go module that is not downloaded names make install, never a retry online', () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-downloads-'));
   try {
     write(join(root, 'go.work'), 'go 1.27.2\n');
@@ -53,7 +53,7 @@ caseTest('a Go module that is not downloaded names make install, never a retry o
   }
 });
 
-caseTest('the Makefile runs every check offline and downloads only in the install targets', COMPUTE, () => {
+caseTest('the Makefile runs every check offline and downloads only in the install targets', () => {
   assert.deepEqual(offlineMakeErrors(readFileSync(join(repo, 'Makefile'), 'utf8')), []);
   const exports = 'export CARGO_NET_OFFLINE := true\nexport GOPROXY := off\nexport npm_config_offline := true\nexport COMPOSER_DISABLE_NETWORK := 1\nONLINE := env -u CARGO_NET_OFFLINE\n';
   assert.deepEqual(offlineMakeErrors(`${exports}install-x:\n\t$(ONLINE) npm ci\nrust-fetch: lease-tool\n\tcargo fetch --locked\nbuild:\n\t$(ONLINE) go build ./...\n`), [

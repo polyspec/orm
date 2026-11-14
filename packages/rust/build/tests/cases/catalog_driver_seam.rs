@@ -16,7 +16,7 @@ use std::sync::{atomic::AtomicBool, Arc, Mutex};
 // A quoted MariaDB default that is not one whole literal, which no server writes, so the recipes cannot hold it (FCV-2).
 // Requirements: DIA-205.
 async fn a_mariadb_default_that_is_not_one_literal_is_metadata_invalid() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let dsn = physical_fixture::dsn_for("mysql", &physical_fixture::sqlite_path("mariadb-default"));
     for text in ["'a' 'b'", "'unterminated", "'a'x"] {
         let answers = Script::new()
@@ -55,7 +55,7 @@ async fn a_mariadb_default_that_is_not_one_literal_is_metadata_invalid() {
 // A commit that ends with no acknowledgement leaves the outcome unknown, keeps the cause of the driver and is not retried.
 // Requirements: INT-118, PRT-79.
 async fn an_insert_whose_commit_is_unacknowledged_is_indeterminate_with_its_cause() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let path = physical_fixture::sqlite_path("commit-cause");
     let dsn = physical_fixture::dsn_for("sqlite", &path);
     let (db, mut seed, _) = tool_db::open(&dsn).await.unwrap();

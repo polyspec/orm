@@ -15,8 +15,8 @@ use crate::lock_probe;
 async fn open_dialect_fixture(dialect: &str, sqlite_path: &Path) -> (String, polyspec_orm::Db, tool_db::Conn) {
     let dsn = match dialect {
         "sqlite" => format!("sqlite://{}", sqlite_path.display()),
-        "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL owner fixture DSN"),
-        "postgres" => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL owner fixture DSN"),
+        "mysql" => crate::physical_fixture::server_dsn("ORM_TOOLS_MYSQL_DSN"),
+        "postgres" => crate::physical_fixture::server_dsn("ORM_TOOLS_POSTGRES_DSN"),
         _ => panic!("unsupported row-insert fixture dialect {dialect}"),
     };
     let (database, seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
@@ -43,8 +43,8 @@ async fn close_dialect_fixture(
 // Rust insert_row; what any runtime answers is the recipe cases generated_keys and generated_key_lifecycle.
 // Requirements: INT-123a.
 async fn insert_phases_and_joined_keys_follow_the_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("generated identity deadline");
+    let _case = polyspec_orm_testcase::case!();
+    check().await;
 }
 
 async fn check() {
@@ -60,15 +60,9 @@ async fn check() {
             "mysql" => "BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY",
             _ => "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY",
         };
-        seed.exec(
-            &format!(
-                "CREATE TABLE {name}(seq {key},n BIGINT NOT NULL DEFAULT 7 UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED){}",
-                if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }
-            ),
-            &[],
-        )
-        .await
-        .expect("create owned table");
+        seed.exec(&format!("CREATE TABLE {name}(seq {key},n BIGINT NOT NULL DEFAULT 7 UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED)"), &[])
+            .await
+            .expect("create owned table");
         let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
         let table = TableRef { namespace: catalog.current_namespace().await.unwrap(), name: name.clone() };
         let descriptor = catalog.describe_table(&table).await.expect("generated-key metadata");

@@ -422,6 +422,21 @@ export function ownWorkflows(workflows: Record<string, string>, ownedPaths: stri
 // returning one error. declared is the content of .github/runner (one runner label and a line end), and workflows is {path: text}.
 // All jobs run on the same Linux runner. A job that calls a reusable workflow (uses) has no runs-on: GitHub refuses one there,
 // and the jobs of the called workflow run on the runners it declares; ci-pipeline.yml, in the form of kit, is such a workflow.
+// The one exception is the job platform of assets.yml, which builds the binding asset of each platform on the runner of that
+// platform (binding GN-19a): an asset is linked and loaded only on its platform, because no tool of the release compiles for
+// another one. It runs on ${{ matrix.runner }}, and its matrix lists each runner of PLATFORM_RUNNERS once.
+export const PLATFORM_RUNNERS = ['macos-15', 'ubuntu-26.04', 'ubuntu-26.04-arm'];
+const PLATFORM_JOB = { path: '.github/workflows/assets.yml', job: 'platform', runsOn: '${{ matrix.runner }}' };
+
+// platformRunners returns the sorted runners of the matrix include of a job, or null when the matrix lists none.
+function platformRunners(job: Record<string, unknown>): string[] | null {
+  const strategy = job['strategy'];
+  const matrix = typeof strategy === 'object' && strategy !== null ? (strategy as Record<string, unknown>)['matrix'] : undefined;
+  const include = typeof matrix === 'object' && matrix !== null ? (matrix as Record<string, unknown>)['include'] : undefined;
+  if (!Array.isArray(include)) return null;
+  return include.map(entry => (typeof entry === 'object' && entry !== null ? String((entry as Record<string, unknown>)['runner']) : '')).sort();
+}
+
 export function runnerErrors(declared: string, workflows: Record<string, string>): string[] {
   const runner = declared.trim();
   if (!/^[a-z0-9][a-z0-9.-]*$/.test(runner) || declared !== `${runner}\n`)
@@ -434,6 +449,12 @@ export function runnerErrors(declared: string, workflows: Record<string, string>
     for (const job of readWorkflow(workflow, path).jobs) {
       if ('uses' in job.value) continue;
       const label = job.value['runs-on'];
+      if (path === PLATFORM_JOB.path && job.id === PLATFORM_JOB.job && label === PLATFORM_JOB.runsOn) {
+        const runners = platformRunners(job.value);
+        if (!isDeepStrictEqual(runners, PLATFORM_RUNNERS))
+          errors.push(`${path} job ${job.id} runs on the runners ${JSON.stringify(runners)} of its matrix; the binding assets are built on ${PLATFORM_RUNNERS.join(', ')}`);
+        continue;
+      }
       if (label === undefined) errors.push(`${path} job ${job.id} declares no runs-on`);
       else if (label !== runner) errors.push(`${path} job ${job.id} runs on ${typeof label === 'string' ? label : JSON.stringify(label)}; .github/runner declares ${runner}`);
     }

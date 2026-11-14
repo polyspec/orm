@@ -76,11 +76,22 @@ function schemaName(database, dsn) {
 }
 
 // catalogQueryFailure introspects the empty case database with the catalog queries of another dialect: their failure is the
-// error of the call (DIA-133). The connection answers query as the driver of that dialect does, so that what fails is the SQL.
+// error of the call (DIA-133). The connection answers as the driver of that dialect does, query for MySQL and PostgreSQL and
+// exec and prepare for SQLite, so that what fails is the SQL; a bound value, which the session would not send, is refused.
 async function catalogQueryFailure(dialect, database, dsn) {
   const session = await nativeSession(database, dsn);
   try {
-    const answering = { query: async statement => [await session.query(statement.sql ?? statement)] };
+    const unbound = (sql, values) => {
+      if (values.length > 0) throw new TypeError(`the ${dialect} catalog query binds values, which this connection does not send: ${sql}`);
+      return session.query(sql);
+    };
+    const answering =
+      dialect === 'sqlite'
+        ? {
+            exec: async sql => void (await unbound(sql, [])),
+            prepare: sql => ({ setReturnArrays() {}, all: (...values) => unbound(sql, values), run: (...values) => unbound(sql, values) }),
+          }
+        : { query: async (statement, values = []) => [await unbound(statement.sql ?? statement.text ?? statement, statement.values ?? values)] };
     const failure = await introspectDbspec(answering, dialect, dialect, 'introspected').then(() => null, error => error);
     if (failure === null) throw new Error(`the ${dialect} catalog queries did not fail on ${database}`);
     if (failure instanceof TypeError) throw failure;
@@ -117,7 +128,12 @@ export async function introspectStep(step, context) {
   // MariaDB runs SQL in MySQL's (DIA-200).
   const native = context.database;
   const database = sqlDialect(native);
-  if (step.catalog_of !== undefined) return catalogQueryFailure(step.catalog_of, native, dsn);
+  // The other dialect, for every database or per database.
+  if (step.catalog_of !== undefined) {
+    const other = typeof step.catalog_of === 'string' ? step.catalog_of : step.catalog_of[database];
+    if (other === undefined) throw new Error(`catalog_of has no entry for ${database}`);
+    return catalogQueryFailure(other, native, dsn);
+  }
   const { texts, vector } = sourceOf(step, dir);
   const documents = parseSet(texts);
   const rendered = renderDbspec(documents, database);

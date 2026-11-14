@@ -8,7 +8,7 @@ import (
 )
 
 func TestGroupColumnDeclarationRejectsMissingAndDuplicateCount(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, columns := range [][]plan.OutCol{
 		{{Name: "is_close"}},
 		{{Name: "row_count"}, {Name: "row_count"}},
@@ -26,7 +26,7 @@ func TestGroupColumnDeclarationRejectsMissingAndDuplicateCount(t *testing.T) {
 // answer of a listener holds none of them, since its count is a JSON number and its row a JSON object (PRT-69), so the collection
 // recipe cannot write them (FCV-2). Requirements: INT-68, INT-90.
 func TestGroupRowDriverCellForms(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, count := range []any{"three", "-1", "00", "+1", "", "9007199254740992", float64(1.5), float64(-1), float64(9007199254740992)} {
 		if _, err := newGroupRow([]groupValue{{name: "row_count", value: count}}); ErrorCode(err) != CodeCodecDecode {
 			t.Errorf("invalid row_count %#v error = %v, want %s", count, err, CodeCodecDecode)

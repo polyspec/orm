@@ -30,6 +30,8 @@
     "typescript:test": "node tests/run-long.mts typescript-build -- npm run typescript:build && node legacy/packages/ts/tests/code-catalog.mjs && node legacy/packages/ts/tests/bin-mode.mjs && node legacy/packages/ts/tests/idle-connection-end.mjs && node legacy/packages/ts/tests/engine.mjs && node legacy/packages/ts/tests/generate.mjs && node legacy/packages/ts/tests/generate-scan.mjs && node legacy/packages/ts/tests/chain-types.mjs && node legacy/packages/ts/tests/transaction-flow.mjs && node legacy/packages/ts/tests/styled-value-checks.mjs && node legacy/packages/ts/tests/codec-none.test.mjs && node legacy/packages/ts/tests/collection_identity.mjs && node legacy/packages/ts/tests/dbspec-rules.mjs && node legacy/packages/ts/tests/package-declarations.mjs && node legacy/packages/ts/tests/request_hook.mjs && node scripts/typescript/sqlite-test.mts"
   },
   "devDependencies": {
+    "@napi-rs/cli": "3.10.12",
+    "@polyspec/binding": "https://github.com/polyspec/binding/releases/download/v0.0.4/polyspec-binding-0.0.4.tgz",
     "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.105/polyspec-kit-0.0.105.tgz",
     "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.25/polyspec-ordered-json-0.0.25.tgz",
     "@types/mdast": "4.0.4",

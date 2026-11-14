@@ -3,7 +3,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { docs, root, files } from './lib.mts';
 import { tablesIn } from './tables.mts';
-import { COMPUTE, sections } from '../../tests/testcase.mts';
+import { sections } from '../../tests/testcase.mts';
 import { kitCopies, kitOwnedPaths } from '../repo/kit-copies.mts';
 import { readJsonFile } from '../json/schema.mts';
 import { readImplementations } from '../json/formats.mts';
@@ -14,7 +14,7 @@ import { countMismatches, declaredClientAliases, incompleteClientSets } from './
 
 // rules check is one case that reads the documentation files and checks pairs and style.
 const log = sections();
-log.begin('docs-rules', COMPUTE);
+log.begin('docs-rules');
 
 /** contracts/rules.json, the shape its schema (schema/rules.schema.json) declares. */
 type RuleRegistry = { version: 1; rules: { id: string; source: string; checker: string; failure: string; forbidden_ko?: string[]; forbidden_en?: string[] }[] };

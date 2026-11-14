@@ -11,6 +11,6 @@ import (
 // compiles.
 // Requirements: PRT-43, PRT-53, PRT-58.
 func TestRollbackFaultEntry(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	checkOrmtestFile(t, "fault_ormtest.go")
 }

@@ -8,18 +8,16 @@ import { execFileSync } from 'node:child_process';
 import { isolatedEnvironment } from '../environment.mts';
 import { caseTest } from '../testcase.mts';
 
-const TIMEOUT = 120_000;
-
 // dryRun returns the commands that make would run for a target, without running them.
 const dryRun = (target: string): string => execFileSync('make', ['-n', target], { encoding: 'utf8', env: isolatedEnvironment() });
 
-caseTest('docs-check expands to no site build, so a land runs no docs:build', TIMEOUT, () => {
+caseTest('docs-check expands to no site build, so a land runs no docs:build', () => {
   const commands = dryRun('docs-check');
   assert.ok(!commands.includes('docs:check'), `docs-check still runs the site build:\n${commands}`);
   assert.ok(!commands.includes('docs:build'), `docs-check still runs docs:build:\n${commands}`);
 });
 
-caseTest('docs-site-check expands to the site build and the checks that read the built site', TIMEOUT, () => {
+caseTest('docs-site-check expands to the site build and the checks that read the built site', () => {
   const commands = dryRun('docs-site-check');
   assert.ok(commands.includes('docs:check'), `docs-site-check does not run the site build:\n${commands}`);
 });

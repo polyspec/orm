@@ -13,9 +13,18 @@ var codecStages = map[string]bool{
 	"aes": true, "gz": true, "ip": true,
 }
 
-// jsonStage is the name of the stage ordered_json in the core (DBS-69), which the
+// jsonStage is the name of the stage ordered_json in the core (DBS-185), which the
 // reader takes as ordered_json.
 const jsonStage = "json"
+
+// CodecStageMeaning is the stage that a codec stage name means: json means ordered_json, with the same encoding,
+// and any other name means itself (DBS-185). A document keeps the name that it was written with.
+func CodecStageMeaning(stage string) string {
+	if stage == jsonStage {
+		return "ordered_json"
+	}
+	return stage
+}
 
 func isInteger(t Type) bool {
 	return t.Kind == TypeI16 || t.Kind == TypeI32 || t.Kind == TypeI64
@@ -232,12 +241,13 @@ func (v *validator) codec(t *tableNode, s *settingNode) {
 	stages := s.args[1:]
 	known := true
 	for i, stage := range stages {
-		_, ok := codecStages[stage.text]
+		meaning := CodecStageMeaning(stage.text)
+		_, ok := codecStages[meaning]
 		switch {
 		case !ok:
 			v.add(RuleSetting, stage, "codec stage %q is unknown", stage.text)
 			known = false
-		case stage.text == "ordered_json" && i > 0:
+		case meaning == "ordered_json" && i > 0:
 			v.add(RuleSetting, stage, "ordered_json is the first codec stage")
 		}
 	}
@@ -245,7 +255,7 @@ func (v *validator) codec(t *tableNode, s *settingNode) {
 	if c == nil || !c.typ.valid || !known {
 		return
 	}
-	if codecStages[stages[len(stages)-1].text] {
+	if codecStages[CodecStageMeaning(stages[len(stages)-1].text)] {
 		if c.typ.typ.Kind != TypeBytes {
 			v.add(RuleSetting, s.args[0], "the last codec stage %s stores bytes and needs a bytes column, not %s", stages[len(stages)-1].text, c.typ.typ)
 		}

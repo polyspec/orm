@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { DATABASE, caseTest, withTemporaryDirectory } from '../../testcase.mts';
+import { caseTest, withTemporaryDirectory } from '../../testcase.mts';
 import { readCounters } from './counters.mts';
 import { sqliteDatabase } from './database.mts';
 import { snapshotDatabase } from './state.mts';
@@ -16,7 +16,7 @@ const open = (directory: string, name: string): { sqlite: DatabaseSync; db: Retu
   return { sqlite, db: sqliteDatabase(sqlite) };
 };
 
-caseTest('TestSnapshotIncludesRowsAndSequenceState', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+caseTest('TestSnapshotIncludesRowsAndSequenceState', () => withTemporaryDirectory('orm-state-test-', async temp => {
   const { sqlite, db } = open(temp, 'state.sqlite');
   try {
     sqlite.exec('CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT)');
@@ -30,7 +30,7 @@ caseTest('TestSnapshotIncludesRowsAndSequenceState', DATABASE, () => withTempora
   }
 }));
 
-caseTest('TestSQLiteStateWithoutAutoIncrement', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+caseTest('TestSQLiteStateWithoutAutoIncrement', () => withTemporaryDirectory('orm-state-test-', async temp => {
   const { sqlite, db } = open(temp, 'plain.sqlite');
   sqlite.exec('CREATE TABLE state (value INTEGER NOT NULL)');
   const tables = sqlite.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'").get();
@@ -45,7 +45,7 @@ caseTest('TestSQLiteStateWithoutAutoIncrement', DATABASE, () => withTemporaryDir
 
 // TestSnapshotIgnoresTheRowLockTable checks that orm__row_lock, which the SQLite client creates before the first transaction, and its rows do not
 // change the state. Even when that table exists, the test leaves nothing in the database.
-caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+caseTest('TestSnapshotIgnoresTheRowLockTable', () => withTemporaryDirectory('orm-state-test-', async temp => {
   const { sqlite, db } = open(temp, 'lock.sqlite');
   try {
     sqlite.exec('CREATE TABLE items (id INTEGER PRIMARY KEY, value TEXT)');
@@ -59,7 +59,7 @@ caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, () => withTemporaryDire
 }));
 
 // TestStateCommandPrintsTheDigest checks the command the database state checks read (scripts/physical.mts).
-caseTest('TestStateCommandPrintsTheDigest', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+caseTest('TestStateCommandPrintsTheDigest', () => withTemporaryDirectory('orm-state-test-', async temp => {
   const { sqlite, db } = open(temp, 'command.sqlite');
   try {
     sqlite.exec('CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT)');

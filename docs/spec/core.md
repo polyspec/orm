@@ -22,10 +22,30 @@ the core that differ from the rules that the language implementations of `legacy
   case (`no_rows`), and an expected message as `<kind>: <text>`; the Rust runners compare both as they are. A failure of
   the language code of a case that the runner itself reports has a code of the runner that is no kind (`callback`,
   `step`, `subscriber`). The language implementations keep the codes of the catalog in capitals and read the fixed copies
-  of CORE-1.
+  of CORE-1. The shared cases and their fixed copies name one schema, `scripts/features/schema/recipe.schema.json`, so an
+  error code of that schema is a kind in lower case or a code in capitals, and its case form names `supersedes` (CORE-2).
+  A check that compares a shared case with a state contract of `contracts/interfaces.json`, which states the code that the
+  language implementations return, takes a code in capitals and its kind as one error (CORE-10).
+- **CORE-4** A language implementation of `legacy/packages/` is removed only after the generated binding of that language
+  passes every contract case of `packages/rust/interface.json` with no failure and no skip, and the tests of the language
+  implementation pass against that binding with no change except those declared in the contract's `changes`. Removal is
+  one change for that language implementation; a passing binding of another language does not permit it. These two checks
+  preserve both the contract behavior and the released API that the contract does not deliberately replace.
+- **CORE-5** Before removal, every difference between a language implementation's API and
+  `packages/rust/interface.json` is an entry of that contract's `changes`, with the rule that defines the difference.
+  A test change needed to run against the binding is permitted only by such an entry, so a failing legacy test cannot be
+  removed or weakened to satisfy CORE-4 without a specified API change.
+
+The language implementations still coexist with the core under CORE-1. The removal conditions of CORE-4 have not been
+verified, and the inventory of differences required by CORE-5 is not populated: the interface contract's `changes` is
+empty. No language implementation is eligible for removal on that evidence.
 
 ## Errors
 
+- **CORE-6** The interface contract declares a class for every error category of the binding boundary, including `io`
+  for an I/O failure of that boundary. Its class is `Polyspec\Orm\OrmIoError` in PHP, `ORMIoError` in Python and
+  `OrmIoError` in Node and WASM, and preserves the failure's kind and message. The mapping is
+  required even when none of the core's kinds belongs to that category, because the boundary can raise its own failure.
 - **CORE-10** An error of the core has one kind of the closed enum `polyspec_orm::Kind`. The kinds, their categories and
   their meanings are the table of [errors](errors.md). A kind is the lower-case snake form of a code of the catalog
   (`NO_ROWS` is `no_rows`). This replaces INT-65 and INT-89 for the core: the bindings expose the kinds as the enum
@@ -168,8 +188,8 @@ the core that differ from the rules that the language implementations of `legacy
   flags byte and the slot byte without a lock; the native class of `legacy/packages/php-ext/src/native_classes.c`, a
   second implementation of the same class; `legacy/packages/php-ext/src/db.c`, which calls `statePath` and
   `registerCancelQuery` and holds the slot; and `legacy/packages/php-ext/tests/QueryCancellationNativeTest.php`, which
-  compares the bytes of the file. Not implemented: no code follows the rules from CORE-41 to CORE-43 and from CORE-106
-  to CORE-109, and the legacy clients write their own format.
+  compares the bytes of the file. Not implemented: CORE-41 to CORE-43 and CORE-106 to CORE-109 have no implementation,
+  and the legacy clients write their own format.
 
 - **CORE-45** `Db::with_cancel(cancel)` returns a handle of the same pool that carries the cancellation `cancel`; it
   changes nothing of the handle it is called on. A model that is connected to the handle, a transaction that the handle
@@ -208,7 +228,7 @@ the core that differ from the rules that the language implementations of `legacy
   text keys, and `nested:json_value`. The type of a column decides the kind of its value, and the value does not:
   `i16` and `i32` are `int`, `i64` is `int64`, `f64` is `float`, `bool` is `bool`, `bytes` is `bytes`, and `decimal`,
   `varchar`, `text`, `uuid`, `date`, `time` and `datetime` are `text`, a `datetime(p)` with exactly p fraction digits
-  (PRT-69); SQL NULL is `null`. A column after the stage `json` is `nested:json_value` (CORE-61). A column after
+  (PRT-69); SQL NULL is `null`. A column after the stage `json` is `nested:json_value` (CORE-122). A column after
   another style stage is its value of the common value model in the kinds `null`, `bool`, `int64`, `float`, `text`,
   `list` and `map`: a number with no fraction and no exponent that fits `i64` is `int64`, any other number that fits
   `i64` or a finite `f64` is `float`, and a number that fits neither is `codec_decode`.
@@ -229,11 +249,17 @@ the core that differ from the rules that the language implementations of `legacy
   the number text, `text`, `list` and `map` in member order. A JSON string that holds an unpaired surrogate has no
   `text`, so a JSON value that holds one is `codec_decode` with the message `the JSON value holds a string that is no
   sequence of Unicode scalar values` when the value of its column is read.
-- **CORE-61** The codec stage that stores a JSON value with its member order, number text and empty containers (COD-9,
+- **CORE-61** Retired, replaced by CORE-122: the canonical form of a document no longer writes `json` for the stage
+  `ordered_json`.
+- **CORE-122** The codec stage that stores a JSON value with its member order, number text and empty containers (COD-9,
   COD-16) is `json` in the core. The language implementations name it `ordered_json` after the library that wrote it,
   and the core depends on no library of that name (CORE-1), so a dbspec document of the core writes `json`. The core
   reads `ordered_json` as the stage `json`, with the same encoding, so a document that the language implementations
-  read is read by the core too, and its canonical form writes `json`. The value wrapper of a shared case for such a value is `json_value`
+  read is read by the core too. A document keeps the stage name that it was written with: its canonical text, its
+  manifest text and its schema text write `ordered_json` where the document wrote `ordered_json`, because the hash of a
+  document must not change with an alias that a parser reads, and the released generators write the name as written,
+  so a document has one manifest hash in the core and in a release. The runtime model of the document holds the stage
+  `json` for either name. The value wrapper of a shared case for such a value is `json_value`
   (FCV-4), as the value that leaves the core is (CORE-60), and a case that tests the stage names it `json` in its id; the
   fixed copies of CORE-1 keep the old names for the language implementations.
 
@@ -270,7 +296,7 @@ the core that differ from the rules that the language implementations of `legacy
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
   groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
-  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, `toArray`, and an added column of a function or of a subquery
+  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
 - **CORE-85** `limit(offset, count)` reads at most `count` rows after the first `offset` rows of the order (DSL-99).
@@ -353,9 +379,15 @@ the core that differ from the rules that the language implementations of `legacy
   row; a row of that key that is not deleted is returned and nothing is written, and with no row of that key it is
   `no_rows`. `restore_or_create` restores the soft-deleted row of that
   key or, when no row holds the key, inserts the row of the assignments, in one transaction, and returns the row; a row
-  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both clear the assignments when they return a row. The `Db` step
+  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both refuse a condition of the query, such
+  as `empty_in` of an empty list, before they ask for a connection. Both clear the assignments when they return a row. The `Db` step
   takes them as the terminals `restore` and `restore_or_create`, whose result is `{"row": <row>}` (CORE-92). An entity
   without `soft_delete` is `ir_invalid`.
+- **CORE-120** `to_array()` of a row of a `Query` returns a map whose keys are the names of the columns of the entity that
+  the row read, in the order of the schema, and whose values are the `orm_value` that `value(column)` returns (CORE-62).
+  A column that the row did not read has no key, so a column that was not read and a column whose value is null are
+  told apart. A relation result is no key of the map; `related` and `related_rows` return it (CORE-88). A `Query` that
+  read no row returns the empty map.
 
 ## State machines
 
@@ -422,7 +454,8 @@ needs a database (CORE-72); the tests of the core drive each machine step by ste
   when the core has it and every type of its signature is a type of the contract. The value alias `orm_value`
   (CORE-62) and the members of `Query` that take or return it are declared: `where`, `value`, `get_by` and
   `get_count_by`. The members of `Query` of CORE-85 to CORE-91 and the class `StepRunner` of CORE-92 and CORE-93 are
-  declared; `StepRunner` needs a connection, so its members have no case (CORE-72). Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
+  declared; `StepRunner` needs a connection, so its members have no case (CORE-72). The units and members of
+  [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Tx::execute` (a plan step), `Db::subscribe` (an
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), the field `audit_source`
   of `Config` (a function), the field `audit` of `TransactionOptions`, `Key`, `GroupRow`, `GroupRows` and `Statement`
@@ -431,10 +464,23 @@ needs a database (CORE-72); the tests of the core drive each machine step by ste
   `gets`, `gets_by`) are not declared either.
 - **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
   names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
-  instance value, and a failure states its kind, its category and its whole message (CORE-12). The `after` of a case of
-  a method is a list of calls on its receiver, each `{call, args, result}`, and a case of a member without a receiver
-  names none: a class result is observed by the cases of its methods, whose receiver makes it. The core runs every such
+  instance value, and a failure states its kind, its category and its whole message (CORE-12). The calls of `after`
+  observe the receiver of a method after its call, each as `{call, args, result}`; a member without a receiver names no
+  `after`, and the instance that it returns is observed by the cases of its methods, whose receiver it makes (binding
+  G-5). The core runs every such
   group by the functions that the contract names, and a group that names a member that the test cannot call fails.
 - **CORE-72** A case that needs a database is not implemented: a SQLite DSN holds an absolute path (CFG-11) and a
   server DSN is given by the run, and the case form has no value for either. `contracts/interface/core.json` holds only
   cases that send no statement, and the members that need a database are tested by the tests of the core.
+- **CORE-121** The core holds a fault injection point at a branch of the category `internal` that no input reaches, so
+  that a case of the contract arms the point and checks the kind, the category and the message of the error that the
+  branch raises (binding G-5, X-1). A point is `binding_core::fault::point!` with a constant of the module
+  `polyspec_orm::fault`; it fires only in a build with the feature `fault-test` of the core and only for a call that a
+  case armed, so a build without the feature, and a call that no case armed, never take the branch through the point.
+  `faults` of the contract lists the points: `orm.internal` is the constant `polyspec_orm::fault::INTERNAL`, injected
+  as `broken`, in the planner, where it treats a column of the rows of a step as not projected, which raises
+  `internal`. The case `a_column_that_the_plan_does_not_project_is_internal` of `runtime_model.compile` arms it. The case
+  runner of the core arms the faults of a case for the call of its member, as a generated binding test does, installs
+  the arming around each poll of that call, and fails a case whose fault did not fire. The core is its own
+  dev-dependency with the feature `fault-test`, so `cargo test` of the core without flags arms its points (binding
+  CK-65).

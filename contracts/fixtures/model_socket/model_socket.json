@@ -8,6 +8,7 @@
   "cases": [
     {
       "id": "socket_update_finds_its_row",
+      "databases_differ": "The socket parameter and the found-rows count of an update are MySQL's (CFG-10, CFG-19).",
       "only": [
         "mysql"
       ],

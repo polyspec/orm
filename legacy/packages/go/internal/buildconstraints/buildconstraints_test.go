@@ -160,7 +160,7 @@ func offending(base string, directories, allowed []string) ([]string, error) {
 // TestOffendingFindsATagThatLeavesATestOut holds the rule on fixtures: a tag is accepted only as a platform
 // constraint or a tag of every go test run, in any position of the expression and in either comment form.
 func TestOffendingFindsATagThatLeavesATestOut(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, test := range []struct {
 		name, source string
 		want         string
@@ -199,7 +199,7 @@ func TestOffendingFindsATagThatLeavesATestOut(t *testing.T) {
 
 // TestGoTestTagsAreReadFromTheRunner holds that the allowed tags come from tests/go-test.mts.
 func TestGoTestTagsAreReadFromTheRunner(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	if tags := goTestTags(t, repositoryRoot(t)); !slices.Contains(tags, "ormtest") {
 		t.Fatalf("GO_TEST_TAGS = %v, want it to hold the entry-point tag ormtest", tags)
 	}
@@ -207,7 +207,7 @@ func TestGoTestTagsAreReadFromTheRunner(t *testing.T) {
 
 // TestNoBuildTagLeavesATestOut reads every Go file of the modules of go.work.
 func TestNoBuildTagLeavesATestOut(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	root := repositoryRoot(t)
 	found, err := offending(root, moduleDirectories(t, root), goTestTags(t, root))
 	if err != nil {
@@ -222,7 +222,7 @@ func TestNoBuildTagLeavesATestOut(t *testing.T) {
 // does not depend on the depth of the working directory: run from the legacy directory, it is still the repository
 // root (T447).
 func TestRepositoryRootFromAnyDirectory(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	want := testcase.RepositoryRoot()
 	t.Chdir(testcase.LegacyRoot())
 	if got := repositoryRoot(t); got != want {

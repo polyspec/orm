@@ -673,6 +673,21 @@ impl Conn {
         })
     }
 
+    /// The MySQL connection id of the connection, read with the text protocol: through ProxySQL, a `SELECT CONNECTION_ID()` that
+    /// the client sends as text is the one that ProxySQL answers itself, with the id of its own session, which its KILL QUERY names;
+    /// a prepared one reaches the server and answers the thread id of the server, which names another ProxySQL session (CFG-35).
+    /// Other connections have none.
+    pub(crate) async fn mysql_connection_id(&mut self) -> Result<Option<u64>, sqlx::Error> {
+        use sqlx::Row;
+        match self {
+            Conn::MySql(c) => {
+                let row = sqlx::raw_sql(AssertSqlSafe("SELECT CONNECTION_ID()")).fetch_one(&mut **c).await?;
+                Ok(Some(row.try_get::<u64, _>(0)?))
+            }
+            _ => Ok(None),
+        }
+    }
+
     /// Runs a query and returns its rows.
     pub async fn query(&mut self, sql: &str, params: &[P]) -> Result<Rows, sqlx::Error> {
         self.query_bounded(sql, params, QueryLimits::default()).await

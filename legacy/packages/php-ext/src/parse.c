@@ -35,6 +35,13 @@ zend_long dbs_rule_rank(str rule)
 static const char *const simple_types[] = {"i16", "i32", "i64", "bool", "f64", "text", "bytes", "uuid", "date", NULL};
 static const char *const text_stages[] = {"hex", "base64", "ordered_json", "yaml", "serialize", NULL};
 static const char *const codec_stages[] = {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip", NULL};
+
+/* codec_stage_meaning is the stage that a codec stage name means: json, the name of the stage ordered_json in the core,
+ * means ordered_json, with the same encoding, and any other name means itself (DBS-185). A document keeps the name that
+ * it was written with, so its canonical text and its manifest hash are those of the document as written. */
+static str codec_stage_meaning(str stage) {
+    return str_eqc(stage, "json") ? SL("ordered_json") : stage;
+}
 static const char *const fk_actions[] = {"restrict", "cascade", "set_null", NULL};
 
 static int parameterized(str name)
@@ -1969,11 +1976,8 @@ static void settings_line(parser *p)
     }
     if (str_eqc(keyword, "codec")) {
         for (size_t i = 1; i < args.n; i++) {
-            /* json and ordered_json name one stage (DBS-69): the stage json is read as ordered_json. */
-            if (str_eqc(args.v[i].text, "json")) {
-                args.v[i].text = SL("ordered_json");
-            }
-            if (dbspec_str_in_list(args.v[i].text, codec_stages)) {
+            /* json and ordered_json name one stage: the reader keeps the name as written (DBS-185). */
+            if (dbspec_str_in_list(codec_stage_meaning(args.v[i].text), codec_stages)) {
                 mark_token(p, &args.v[i], "keyword");
             }
         }
@@ -2601,17 +2605,18 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             bool known = true;
             for (size_t k = 1; k < a->n; k++) {
                 token *stage = &a->v[k];
-                if (!dbspec_str_in_list(stage->text, codec_stages)) {
+                str meaning = codec_stage_meaning(stage->text);
+                if (!dbspec_str_in_list(meaning, codec_stages)) {
                     error(p, "setting", line, stage->column, fmt("codec stage %S is unknown", dbs_quote(stage->text)));
                     known = false;
-                } else if (str_eqc(stage->text, "ordered_json") && k > 1) {
+                } else if (str_eqc(meaning, "ordered_json") && k > 1) {
                     error(p, "setting", line, stage->column, SL("ordered_json is the first codec stage"));
                 }
             }
             column *d = setting_column(p, kind, line, &a->v[0]);
             if (d != NULL && known) {
                 str last = a->v[a->n - 1].text;
-                bool text = dbspec_str_in_list(last, text_stages);
+                bool text = dbspec_str_in_list(codec_stage_meaning(last), text_stages);
                 str type = d->type->name;
                 if (text ? !str_eqc(type, "varchar") && !str_eqc(type, "text") : !str_eqc(type, "bytes")) {
                     error(p, "setting", line, a->v[0].column, text

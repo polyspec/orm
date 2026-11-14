@@ -30,8 +30,8 @@ fn fixture() -> TablePage {
 // Runtime-unique (FCV-14): GridCell::Decimal and the Debug form are Rust's own, and no
 // primary key of a database selects two rows, so only this direct call of check_current holds an ambiguous identity.
 async fn row_baseline_rejects_what_only_the_rust_forms_hold() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+    let _case = polyspec_orm_testcase::case!();
+    async {
         let mut malformed = fixture();
         malformed.result.rows[0][0] = GridCell::Decimal("1e3".into());
         assert!(RowSnapshot::from_page(&malformed, 0).is_err());
@@ -45,9 +45,8 @@ async fn row_baseline_rejects_what_only_the_rust_forms_hold() {
         huge.result.rows[0][1] = GridCell::Text("private".repeat(2 * 1024 * 1024));
         let error = RowSnapshot::from_page(&huge, 0).unwrap_err();
         assert!(error.message().starts_with("row_snapshot_limit") && !error.message().contains("private"));
-    })
-    .await
-    .expect("row snapshot validation deadline");
+    }
+    .await;
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

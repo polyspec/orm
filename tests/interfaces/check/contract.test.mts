@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { errorCode } from '../../errors.mts';
-import { caseTest, COMPUTE, PROCESS } from '../../testcase.mts';
+import { caseTest } from '../../testcase.mts';
 import { checkProhibitedSymbols, checkRecords, checkRules, differences } from './contract.mts';
 import { checkCallsInRoots, extract } from './extract.mts';
 import { mark, readManifest, type ContractRecord, type Manifest, type Symbols } from './manifest.mts';
@@ -35,7 +35,7 @@ function withTemp<T>(body: (dir: string) => T): T {
   }
 }
 
-caseTest('a common record rejects recaptured native drift for every runtime', COMPUTE, () => {
+caseTest('a common record rejects recaptured native drift for every runtime', () => {
   const languages = ['go', 'php', 'rust', 'typescript', 'python'] as const;
   for (const lang of languages) {
     const query = `${lang}::Query`, group = `${lang}::Group`;
@@ -66,7 +66,7 @@ caseTest('a common record rejects recaptured native drift for every runtime', CO
   }
 });
 
-caseTest('prohibited symbols use the name forms of each language', COMPUTE, () => {
+caseTest('prohibited symbols use the name forms of each language', () => {
   for (const [runtime, symbols] of [
     ['go', { 'Query.MultiStatement': 'func(bool) Query' }],
     ['php', { 'Query::multi_statement': 'public function multi_statement(bool): Query' }],
@@ -81,7 +81,7 @@ caseTest('prohibited symbols use the name forms of each language', COMPUTE, () =
 });
 
 // Requirements: PLN-2, PLN-3.
-caseTest('common syntax rejects cross-language signature drift and unlisted declarations', COMPUTE, () => {
+caseTest('common syntax rejects cross-language signature drift and unlisted declarations', () => {
   const spellings: Record<string, string> = {
     go: 'func Connect(value *Db) *Model',
     php: 'public function connect(Db $value): Model',
@@ -114,7 +114,7 @@ caseTest('common syntax rejects cross-language signature drift and unlisted decl
     'an added generated syntax absent from the reviewed declaration inventory passed');
 });
 
-caseTest('attempted multi_statement calls fail the interface validation', COMPUTE, () => {
+caseTest('attempted multi_statement calls fail the interface validation', () => {
   for (const [runtime, syntax, suffix, call, safe] of [
     ['go', 'go', '.go', 'query.MultiStatement(true)', 'query.Gets()'],
     ['php', 'php', '.php', '$query->multi_statement(true)', '$query->gets()'],
@@ -135,7 +135,7 @@ caseTest('attempted multi_statement calls fail the interface validation', COMPUT
   assert.equal(manifest.extensions?.['php-extension']?.syntax, 'php', 'the extension scan reuses the PHP syntax adapter');
 });
 
-caseTest('PHP relative types resolve to their classes', PROCESS, async ({ signal }) => {
+caseTest('PHP relative types resolve to their classes', async ({ signal }) => {
   requirePhp();
   const source = `<?php
 namespace Fixture;
@@ -181,7 +181,7 @@ class Row extends Base {
   }
 });
 
-caseTest('a PHP record source mutation changes the extracted wire', PROCESS, async ({ signal }) => {
+caseTest('a PHP record source mutation changes the extracted wire', async ({ signal }) => {
   requirePhp();
   const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
   try {
@@ -208,14 +208,14 @@ caseTest('a PHP record source mutation changes the extracted wire', PROCESS, asy
 });
 
 // Requirements: PAR-3.
-caseTest('the PHP records match the common contract', PROCESS, async ({ signal }) => {
+caseTest('the PHP records match the common contract', async ({ signal }) => {
   requirePhp();
   const manifest = readManifest(join(root, 'contracts/interfaces.json'));
   const got = await extract(signal, root, 'php', manifest.languages?.['php']?.roots ?? [], {}, root);
   assert.deepEqual(checkRecords('php', got, manifest.records ?? []), [], 'PHP record contract differs');
 });
 
-caseTest('PHP extension extraction does not load the client autoloader', PROCESS, async ({ signal }) => {
+caseTest('PHP extension extraction does not load the client autoloader', async ({ signal }) => {
   requirePhp();
   const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
   try {
@@ -235,7 +235,7 @@ caseTest('PHP extension extraction does not load the client autoloader', PROCESS
 
 // Checks that it accepts the stub of the PHP extension (php-extension), and rejects a stub that differs from the common contract and an adapter the extension does not list.
 // Each case copies the stub into a temporary root and changes it there.
-caseTest('the extension declarations are checked against the contract', PROCESS, async ({ signal }) => {
+caseTest('the extension declarations are checked against the contract', async ({ signal }) => {
   requirePhp();
   const m = readManifest(join(root, 'contracts/interfaces.json'));
   const e = m.extensions?.['php-extension'];

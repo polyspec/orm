@@ -16,7 +16,7 @@ import (
 // TestGoGenerationStagesBesideItsOutput checks that generation stages files
 // beside its output without changing the existing output before replacement.
 func TestGoGenerationStagesBesideItsOutput(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, manifest := generatedScannedModule(t)
 	before := snapshotDir(t, "model")
 	write("example/more.go", moreCalls)
@@ -72,7 +72,7 @@ func TestGoGenerationStagesBesideItsOutput(t *testing.T) {
 // TestGoGenerationCleansMissingOutputParentsOnFailure checks nested output
 // support and removes directories created only for a failed generation.
 func TestGoGenerationCleansMissingOutputParentsOnFailure(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	scannedModule(t)
 	out := filepath.Join("created", "nested", "model")
 	manifest := namesManifest(t, namesDiagram)
@@ -105,7 +105,7 @@ func TestGoGenerationCleansMissingOutputParentsOnFailure(t *testing.T) {
 // does not converge within its round limit leaves the previous output
 // byte-identical.
 func TestGoGenerationKeepsOutputWhenScanDoesNotConverge(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	limit := scanRounds
@@ -117,7 +117,7 @@ func TestGoGenerationKeepsOutputWhenScanDoesNotConverge(t *testing.T) {
 // TestGoGenerationKeepsOutputWhenScanCannotLoad checks that a scan that cannot
 // load the scanned packages leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputWhenScanCannotLoad(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	gomod, err := os.ReadFile("go.mod")
@@ -132,7 +132,7 @@ func TestGoGenerationKeepsOutputWhenScanCannotLoad(t *testing.T) {
 // that names no directory is a scan failure that leaves the previous output
 // byte-identical.
 func TestGoGenerationKeepsOutputWhenAScanPatternFails(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	requireUnchanged(t, m, "directory not found", "./...", "./missing")
@@ -142,7 +142,7 @@ func TestGoGenerationKeepsOutputWhenAScanPatternFails(t *testing.T) {
 // replaces every generated file, removes generated files of an earlier schema,
 // keeps hand-written files, and leaves no temporary directory.
 func TestGoGenerationReplacesOutputAfterConvergence(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, m := generatedScannedModule(t)
 	doc := snapshotDir(t, "model")["doc.go"]
 	write("model/removed.go", generatedHeader+"\npackage model\n\nconst Removed = 1\n")
@@ -182,7 +182,7 @@ func TestGoGenerationReplacesOutputAfterConvergence(t *testing.T) {
 // scanned-source compile error unrelated to the models is a distinct outcome and that
 // the output directory holds the complete generated models.
 func TestGoGenerationReportsScannedSourceErrorsWithCompleteOutput(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	write("example/unrelated.go", "package example\n\nvar _ = missingName\n")

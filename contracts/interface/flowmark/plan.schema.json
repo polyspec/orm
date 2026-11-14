@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contracts/interface/flowmark plan values",
+  "description": "The JSON forms of the plan values of docs/spec/flowmark-surface.md (FMS-40 to FMS-43). The root is one plan in the form of docs/spec/protocol.md section 2, whose members are those of legacy/packages/go/engine/plan/plan.go: a member that the form leaves out when it is zero, false, empty or absent is not required, and a list is never null. #/$defs/step is the argument `step` of db.execute. The file names no other file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_hash",
+    "kind",
+    "steps"
+  ],
+  "properties": {
+    "manifest_hash": {
+      "type": "string"
+    },
+    "kind": {
+      "description": "The kind of the request of the plan.",
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    }
+  },
+  "$defs": {
+    "index": {
+      "description": "A position in a list, from 0: a parameter of the request, a cell of a row or a step of the plan.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "texts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "step": {
+      "description": "One statement of a plan (polyspec_orm::plan::Step without `plan_id`, which is no member of the form).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "sql",
+        "tables",
+        "bind_slots"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/index"
+        },
+        "role": {
+          "enum": [
+            "main",
+            "count",
+            "relation"
+          ]
+        },
+        "sql": {
+          "type": "string"
+        },
+        "tables": {
+          "description": "The tables that the statement names, sorted and without duplicates (PRT-31).",
+          "$ref": "#/$defs/texts"
+        },
+        "lock": {
+          "type": "string"
+        },
+        "bind_slots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bind_slot"
+          }
+        },
+        "assemble": {
+          "$ref": "#/$defs/assemble"
+        },
+        "parent": {
+          "$ref": "#/$defs/parent_ref"
+        }
+      }
+    },
+    "key_ref": {
+      "description": "One component of a row key (polyspec_orm::plan::KeyRef).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column",
+        "index"
+      ],
+      "properties": {
+        "column": {
+          "type": "string"
+        },
+        "index": {
+          "$ref": "#/$defs/index"
+        }
+      }
+    },
+    "key_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/key_ref"
+      }
+    },
+    "parent_ref": {
+      "description": "Where the key values of a relation step come from (polyspec_orm::plan::ParentRef).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "keys"
+      ],
+      "properties": {
+        "step": {
+          "$ref": "#/$defs/index"
+        },
+        "keys": {
+          "$ref": "#/$defs/key_refs"
+        },
+        "if_parent": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "column",
+            "index",
+            "param"
+          ],
+          "properties": {
+            "column": {
+              "type": "string"
+            },
+            "index": {
+              "$ref": "#/$defs/index"
+            },
+            "param": {
+              "$ref": "#/$defs/index"
+            }
+          }
+        }
+      }
+    },
+    "bind_slot": {
+      "description": "Where the value of one placeholder comes from (polyspec_orm::plan::BindSlot, PRT-32).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "param"
+      ],
+      "properties": {
+        "from": {
+          "enum": [
+            "param",
+            "config",
+            "parent",
+            "now",
+            "audit"
+          ]
+        },
+        "param": {
+          "description": "The parameter of the request that a `param` slot reads, and 0 for another slot.",
+          "$ref": "#/$defs/index"
+        },
+        "transform": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "step": {
+          "$ref": "#/$defs/index"
+        },
+        "column": {
+          "type": "string"
+        },
+        "host_styles": {
+          "description": "The style stages that the executor applies to the value before it sends it, in write order.",
+          "$ref": "#/$defs/texts"
+        },
+        "col_type": {
+          "description": "The dbspec type of the value that the placeholder takes.",
+          "type": "string"
+        },
+        "key_types": {
+          "description": "The dbspec types of the key values that a `parent` slot expands, in key column order.",
+          "$ref": "#/$defs/texts"
+        },
+        "precision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "not_null": {
+          "type": "boolean"
+        }
+      }
+    },
+    "assemble": {
+      "description": "How the cells of a row become the row of an entity (polyspec_orm::plan::Assemble).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity",
+        "alias",
+        "columns",
+        "key"
+      ],
+      "properties": {
+        "entity": {
+          "type": "string"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/out_col"
+          }
+        },
+        "aes_version": {
+          "description": "The position in `columns` of the column that holds the key version.",
+          "$ref": "#/$defs/index"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/child"
+          }
+        },
+        "key": {
+          "$ref": "#/$defs/key_refs"
+        }
+      }
+    },
+    "out_col": {
+      "description": "One output column (polyspec_orm::plan::OutCol, whose field `typ` is the member `type`).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "name",
+        "type"
+      ],
+      "properties": {
+        "index": {
+          "$ref": "#/$defs/index"
+        },
+        "name": {
+          "type": "string"
+        },
+        "column": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "styles": {
+          "$ref": "#/$defs/texts"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "sum_of": {
+          "type": "string"
+        },
+        "precision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "scale": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "sum_parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/index"
+          }
+        },
+        "non_integer": {
+          "$ref": "#/$defs/index"
+        }
+      }
+    },
+    "child": {
+      "description": "A joined entity of the same row, or the rows of a relation step (polyspec_orm::plan::Child).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rel",
+        "kind"
+      ],
+      "properties": {
+        "rel": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "join",
+            "one",
+            "many"
+          ]
+        },
+        "step": {
+          "$ref": "#/$defs/index"
+        },
+        "parent_keys": {
+          "$ref": "#/$defs/key_refs"
+        },
+        "child_keys": {
+          "$ref": "#/$defs/key_refs"
+        },
+        "key": {
+          "$ref": "#/$defs/key_refs"
+        },
+        "flatten": {
+          "type": "boolean"
+        },
+        "cascade": {
+          "type": "boolean"
+        },
+        "assemble": {
+          "$ref": "#/$defs/assemble"
+        }
+      }
+    }
+  }
+}

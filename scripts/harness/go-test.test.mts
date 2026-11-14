@@ -8,10 +8,10 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { buildArguments, GO_TEST_TAGS, packages, testEvents, withTestTags } from '../../tests/go-test.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { execFailure } from '../../tests/errors.mts';
 
-caseTest('the build step keeps packages and build flags and runs no test', COMPUTE, () => {
+caseTest('the build step keeps packages and build flags and runs no test', () => {
   assert.deepEqual(buildArguments(['-v', '-timeout', '0', '-tags', 'physical', './legacy/packages/go/internal/dialects', '-run', '^(TestA|TestB)$', '-count=1']),
     ['-tags', 'physical', './legacy/packages/go/internal/dialects', '-run', '^$', '-count=1']);
   assert.deepEqual(buildArguments(['-v', '-timeout=0', '-count', '1', '-race', './legacy/packages/go/...', '-run=X']), ['-race', './legacy/packages/go/...', '-run', '^$', '-count=1']);
@@ -22,7 +22,7 @@ caseTest('the build step keeps packages and build flags and runs no test', COMPU
 // Every go test of the repository builds the test entry point (protocol §3), whose file and tests carry the tag ormtest:
 // a run without it would leave rollback_fault_entry_test.go and statement_fault_test.go out unseen. The tags of a run are merged
 // with GO_TEST_TAGS, in either flag form, and a run with no tags gets them alone.
-caseTest('every go test run carries the test entry point tag', COMPUTE, () => {
+caseTest('every go test run carries the test entry point tag', () => {
   assert.deepEqual(GO_TEST_TAGS, ['ormtest']);
   assert.deepEqual(withTestTags(['-v', './legacy/packages/go/...']), ['-tags', 'ormtest', '-v', './legacy/packages/go/...']);
   assert.deepEqual(withTestTags(['-tags', 'physical', './legacy/packages/go/orm']), ['-tags', 'physical,ormtest', './legacy/packages/go/orm']);
@@ -34,7 +34,7 @@ caseTest('every go test run carries the test entry point tag', COMPUTE, () => {
 // waits 1.5 s between compiler lines and ends with 0 (with FAKE_GO_FAIL it ends with 2, along with an error line), and in the run
 // phase it emits the test output of go test -json. The build phase reports the go output lines and `ok - <case>`, and after that
 // the run phase follows. A failed build reports the error line, `not ok` and its reason, and does not start the run phase.
-caseTest('a slow but healthy go test build runs to its end without a deadline', PROCESS, async () => {
+caseTest('a slow but healthy go test build runs to its end without a deadline', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-go-test-'));
   try {
     await writeFile(join(dir, 'go'), `#!/bin/sh
@@ -76,7 +76,7 @@ esac
 
 // The empty selection case (G5.54) checks whether a run in which `-run` selects no test counts as a failure. A `-run` with a misspelled name
 // makes go test end with 0 without running any test, so it passes without testing anything. It runs with the real go test of a temporary module.
-caseTest('a go test run whose -run selects no test fails', PROCESS, async () => {
+caseTest('a go test run whose -run selects no test fails', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-go-empty-'));
   try {
     await writeFile(join(dir, 'go.mod'), 'module example.com/empty\n\ngo 1.21\n');
@@ -103,7 +103,7 @@ caseTest('a go test run whose -run selects no test fails', PROCESS, async () => 
 
 // The event count case (G5.54) checks whether the number of selected tests is counted from test2json's `run` events, not from the human-readable `=== RUN` lines.
 // If Output has `=== RUN` but there is no run event, it is not counted; a run event is counted even without Output. Output is passed along as it is.
-caseTest('the selected tests are counted from the run events of test2json', COMPUTE, () => {
+caseTest('the selected tests are counted from the run events of test2json', () => {
   const written: string[] = [];
   const events = testEvents((text: string) => written.push(text));
   events.write('{"Action":"output","Output":"=== RUN   TestText\\n"}\n{"Action":"run","Pack');

@@ -98,7 +98,6 @@ def fresh_db(dialect: str):
 
 
 class StatementFaultTest(unittest.TestCase):
-    deadline = testcase.DATABASE
 
     def each_dialect(self, case: str, body):
         """Runs the case in a new database for each dialect. A case passes only if it passes in every dialect (testcase.py).

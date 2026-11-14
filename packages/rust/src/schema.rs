@@ -232,7 +232,7 @@ mod tests {
     // Requirements: DBS-104, SCH-15.
     #[test]
     fn manifest_hash_mismatch_is_reported() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         let (text, hash) = rollback_manifest();
         assert_eq!(Manifest::load(&text, &hash).expect("matching manifest").manifest_hash, hash);
         let edited = text.replace("label varchar(32)", "label varchar(64)");

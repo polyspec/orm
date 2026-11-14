@@ -1,0 +1,1487 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contracts/interface/flowmark dbspec values",
+  "description": "The JSON forms of the dbspec values of docs/spec/flowmark-surface.md (FMS-10 to FMS-27). The root is one document (FMS-10). The other forms are the definitions that the rules name by their pointer: #/$defs/type, #/$defs/documents, #/$defs/set_result, #/$defs/bytes_result, #/$defs/parse_set_result, #/$defs/manifest_result, #/$defs/statements_result, #/$defs/runtime_model_result and #/$defs/runtime_model. The file names no other file.",
+  "$ref": "#/$defs/document",
+  "$defs": {
+    "name": {
+      "description": "A name of a document: a document, table, column, key, index, check, entity or stage name.",
+      "type": "string",
+      "minLength": 1
+    },
+    "names": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/name"
+      }
+    },
+    "comments": {
+      "description": "Whole comment lines, each from its # to the end of its line, in source order. An absent member is no line.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "line": {
+      "description": "A line of a text, from 1.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "column_number": {
+      "description": "A column of a line in Unicode code points, from 1.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "document": {
+      "description": "One dbspec document (polyspec_orm_schema::dbspec::Document). It holds no position of a token.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "external",
+        "uses",
+        "tables"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "external": {
+          "description": "True for a document that the set uses and does not own. The document text does not hold it.",
+          "type": "boolean"
+        },
+        "uses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/use"
+          }
+        },
+        "tables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/table"
+          }
+        },
+        "diagrams": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/diagram"
+          }
+        },
+        "trailing": {
+          "description": "The comment lines after the last line of the document.",
+          "$ref": "#/$defs/comments"
+        }
+      }
+    },
+    "documents": {
+      "description": "The documents of one set, the argument `documents` of a member.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/document"
+      }
+    },
+    "use": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "tables"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "document": {
+          "$ref": "#/$defs/name"
+        },
+        "tables": {
+          "$ref": "#/$defs/names"
+        }
+      }
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "columns",
+        "uniques",
+        "indexes",
+        "foreign_keys",
+        "checks"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/column"
+          }
+        },
+        "primary_key": {
+          "description": "The primary key. A table without one has no member.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "columns"
+          ],
+          "properties": {
+            "comments": {
+              "$ref": "#/$defs/comments"
+            },
+            "columns": {
+              "$ref": "#/$defs/names"
+            }
+          }
+        },
+        "uniques": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/unique"
+          }
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/index"
+          }
+        },
+        "foreign_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/foreign_key"
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "settings": {
+          "$ref": "#/$defs/settings"
+        },
+        "closing": {
+          "description": "The comment lines before the closing brace of the table.",
+          "$ref": "#/$defs/comments"
+        }
+      }
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "nullable",
+        "identity"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "type": {
+          "$ref": "#/$defs/type"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "identity": {
+          "type": "boolean"
+        },
+        "default": {
+          "$ref": "#/$defs/default"
+        }
+      }
+    },
+    "type": {
+      "description": "A column type (polyspec_orm_schema::dbspec::Type). A kind has exactly its own parameters, whose bounds here are those of the Rust type; the rules of docs/spec/dbspec.md narrow them.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "i16",
+                "i32",
+                "i64",
+                "bool",
+                "f64",
+                "text",
+                "bytes",
+                "uuid",
+                "date"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "precision",
+            "scale"
+          ],
+          "properties": {
+            "kind": {
+              "const": "decimal"
+            },
+            "precision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "scale": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "length"
+          ],
+          "properties": {
+            "kind": {
+              "const": "varchar"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "precision"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "time",
+                "datetime"
+              ]
+            },
+            "precision": {
+              "description": "The fraction digits of a second.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          }
+        }
+      ]
+    },
+    "default": {
+      "description": "The default of a column (polyspec_orm_schema::dbspec::model::DefaultValue): `default now`, or a literal in its canonical text, such as 1.00 or 'pending'.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "now"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ],
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "unique": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "columns"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "columns": {
+          "$ref": "#/$defs/names"
+        }
+      }
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "columns"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "desc"
+            ],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/name"
+              },
+              "desc": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "action": {
+      "description": "A foreign key action (polyspec_orm_schema::dbspec::model::Action).",
+      "enum": [
+        "restrict",
+        "cascade",
+        "set_null"
+      ]
+    },
+    "foreign_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "columns",
+        "table",
+        "references",
+        "on_delete",
+        "on_update"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "columns": {
+          "$ref": "#/$defs/names"
+        },
+        "table": {
+          "$ref": "#/$defs/name"
+        },
+        "references": {
+          "$ref": "#/$defs/names"
+        },
+        "on_delete": {
+          "$ref": "#/$defs/action"
+        },
+        "on_update": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "expr"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "expr": {
+          "$ref": "#/$defs/expr"
+        }
+      }
+    },
+    "expr": {
+      "description": "A check predicate (polyspec_orm_schema::dbspec::model::Expr). The tree holds no parentheses.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "left",
+            "right"
+          ],
+          "properties": {
+            "kind": {
+              "const": "logic"
+            },
+            "op": {
+              "enum": [
+                "and",
+                "or"
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/expr"
+            },
+            "right": {
+              "$ref": "#/$defs/expr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "left",
+            "right"
+          ],
+          "properties": {
+            "kind": {
+              "const": "compare"
+            },
+            "op": {
+              "enum": [
+                "=",
+                "<>",
+                "<",
+                "<=",
+                ">",
+                ">="
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/operand"
+            },
+            "right": {
+              "$ref": "#/$defs/operand"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "column",
+            "negated",
+            "list"
+          ],
+          "properties": {
+            "kind": {
+              "const": "in"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "negated": {
+              "type": "boolean"
+            },
+            "list": {
+              "description": "The literals in their canonical text, in source order.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "column",
+            "negated"
+          ],
+          "properties": {
+            "kind": {
+              "const": "is_null"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "negated": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "operand": {
+      "description": "One side of a comparison (polyspec_orm_schema::dbspec::model::Operand): a column of the table, or a literal in the canonical text of the column that it meets.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ],
+          "properties": {
+            "kind": {
+              "const": "column"
+            },
+            "name": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ],
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "column_setting": {
+      "description": "A setting that names one column.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "column"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "column": {
+          "$ref": "#/$defs/name"
+        }
+      }
+    },
+    "settings": {
+      "description": "The settings block of a table. A member is a variant of polyspec_orm_schema::dbspec::model::Setting in snake case; an absent member is an absent setting.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "closing": {
+          "description": "The comment lines before the closing brace of the block.",
+          "$ref": "#/$defs/comments"
+        },
+        "entity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "comments": {
+              "$ref": "#/$defs/comments"
+            },
+            "name": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        "updated": {
+          "$ref": "#/$defs/column_setting"
+        },
+        "soft_delete": {
+          "$ref": "#/$defs/column_setting"
+        },
+        "select_explicit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "columns"
+          ],
+          "properties": {
+            "comments": {
+              "$ref": "#/$defs/comments"
+            },
+            "columns": {
+              "$ref": "#/$defs/names"
+            }
+          }
+        },
+        "codec": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "column",
+              "stages"
+            ],
+            "properties": {
+              "comments": {
+                "$ref": "#/$defs/comments"
+              },
+              "column": {
+                "$ref": "#/$defs/name"
+              },
+              "stages": {
+                "description": "The codec stages in write order.",
+                "$ref": "#/$defs/names"
+              }
+            }
+          }
+        },
+        "aes_version": {
+          "$ref": "#/$defs/column_setting"
+        },
+        "blind_index": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "column",
+              "index"
+            ],
+            "properties": {
+              "comments": {
+                "$ref": "#/$defs/comments"
+              },
+              "column": {
+                "description": "The AES column.",
+                "$ref": "#/$defs/name"
+              },
+              "index": {
+                "description": "The column that holds the blind index of the AES column.",
+                "$ref": "#/$defs/name"
+              }
+            }
+          }
+        },
+        "navigation": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "foreign_key",
+              "child",
+              "parent"
+            ],
+            "properties": {
+              "comments": {
+                "$ref": "#/$defs/comments"
+              },
+              "foreign_key": {
+                "$ref": "#/$defs/name"
+              },
+              "child": {
+                "$ref": "#/$defs/name"
+              },
+              "parent": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          }
+        },
+        "markdown": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/column_setting"
+          }
+        },
+        "store": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "comments": {
+              "$ref": "#/$defs/comments"
+            },
+            "kind": {
+              "enum": [
+                "files",
+                "document",
+                "block"
+              ]
+            },
+            "foreign": {
+              "description": "The foreign key of the parent row, of the kind block.",
+              "$ref": "#/$defs/name"
+            },
+            "shape": {
+              "description": "The shape of the kinds document and block.",
+              "enum": [
+                "list",
+                "table"
+              ]
+            },
+            "shard": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "column",
+                "period"
+              ],
+              "properties": {
+                "column": {
+                  "$ref": "#/$defs/name"
+                },
+                "period": {
+                  "enum": [
+                    "year",
+                    "month",
+                    "day"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "title": {
+          "$ref": "#/$defs/column_setting"
+        },
+        "body": {
+          "$ref": "#/$defs/column_setting"
+        },
+        "order": {
+          "$ref": "#/$defs/column_setting"
+        },
+        "task_marker": {
+          "$ref": "#/$defs/column_setting"
+        },
+        "immutable": {
+          "description": "The member is present on an immutable table.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "comments": {
+              "$ref": "#/$defs/comments"
+            }
+          }
+        },
+        "audit": {
+          "$ref": "#/$defs/audit"
+        }
+      }
+    },
+    "audit": {
+      "description": "The audit setting (the variant Audit of polyspec_orm_schema::dbspec::model::Setting). It holds `exclude`, `include` or neither.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "into",
+        "column",
+        "references",
+        "action",
+        "previous"
+      ],
+      "not": {
+        "type": "object",
+        "required": [
+          "exclude",
+          "include"
+        ],
+        "properties": {
+          "exclude": true,
+          "include": true
+        }
+      },
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "into": {
+          "description": "The history table.",
+          "$ref": "#/$defs/name"
+        },
+        "column": {
+          "description": "The column that holds the primary key of the audit record table.",
+          "$ref": "#/$defs/name"
+        },
+        "references": {
+          "description": "The audit record table.",
+          "$ref": "#/$defs/name"
+        },
+        "action": {
+          "$ref": "#/$defs/name"
+        },
+        "previous": {
+          "$ref": "#/$defs/name"
+        },
+        "tables": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "table",
+            "record",
+            "name"
+          ],
+          "properties": {
+            "table": {
+              "$ref": "#/$defs/name"
+            },
+            "record": {
+              "$ref": "#/$defs/name"
+            },
+            "name": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        "exclude": {
+          "$ref": "#/$defs/names"
+        },
+        "include": {
+          "$ref": "#/$defs/names"
+        }
+      }
+    },
+    "diagram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "placements"
+      ],
+      "properties": {
+        "comments": {
+          "$ref": "#/$defs/comments"
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "placements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "table",
+              "x",
+              "y"
+            ],
+            "properties": {
+              "comments": {
+                "$ref": "#/$defs/comments"
+              },
+              "table": {
+                "$ref": "#/$defs/name"
+              },
+              "x": {
+                "type": "integer",
+                "minimum": -2147483648,
+                "maximum": 2147483647
+              },
+              "y": {
+                "type": "integer",
+                "minimum": -2147483648,
+                "maximum": 2147483647
+              }
+            }
+          }
+        },
+        "closing": {
+          "$ref": "#/$defs/comments"
+        }
+      }
+    },
+    "diagnostic": {
+      "description": "One diagnostic (polyspec_orm_schema::dbspec::Diagnostic): the rule of docs/spec/dbspec.md that the text breaks, the place of the token and a message.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule",
+        "line",
+        "column",
+        "message"
+      ],
+      "properties": {
+        "rule": {
+          "type": "string"
+        },
+        "line": {
+          "$ref": "#/$defs/line"
+        },
+        "column": {
+          "$ref": "#/$defs/column_number"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    },
+    "diagnostics_result": {
+      "description": "The result of a member for an invalid text or set.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diagnostics"
+      ],
+      "properties": {
+        "diagnostics": {
+          "$ref": "#/$defs/diagnostics"
+        }
+      }
+    },
+    "position": {
+      "description": "The declaration of one name (polyspec_orm_schema::dbspec::Position): its kind, the path of the names that hold it with its own name, and the place of its name token or, for a setting and the primary key, of its keyword.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "line",
+        "column"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "document",
+            "use",
+            "use_table",
+            "table",
+            "column",
+            "constraint",
+            "setting",
+            "diagram",
+            "diagram_entry"
+          ]
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "line": {
+          "$ref": "#/$defs/line"
+        },
+        "column": {
+          "$ref": "#/$defs/column_number"
+        }
+      }
+    },
+    "set_file": {
+      "description": "One listed file of a set (polyspec_orm_schema::dbspec::SetFile).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes"
+      ],
+      "properties": {
+        "path": {
+          "description": "The joined path: the prefix of the set file followed by the written path.",
+          "type": "string"
+        },
+        "bytes": {
+          "description": "The bytes of the file in base64 with padding (RFC 4648 section 4).",
+          "type": "string",
+          "contentEncoding": "base64"
+        }
+      }
+    },
+    "set_result": {
+      "description": "The result of dbspec.read_set (FMS-20): the files of the set (polyspec_orm_schema::dbspec::Set), or every error (polyspec_orm_schema::dbspec::SetError).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "documents",
+            "external"
+          ],
+          "properties": {
+            "documents": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/set_file"
+              }
+            },
+            "external": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/set_file"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "errors"
+          ],
+          "properties": {
+            "errors": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "rule",
+                  "path",
+                  "message"
+                ],
+                "properties": {
+                  "rule": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "bytes_result": {
+      "description": "The result of dbspec.read_bytes (FMS-21): the text of the bytes, or the diagnostic of the signature or of the encoding.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/diagnostics_result"
+        }
+      ]
+    },
+    "parse_set_result": {
+      "description": "The result of dbspec.parse_set (FMS-22): one item for each text (polyspec_orm_schema::dbspec::SetDocument), the owned texts first, each list in the order of its argument.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "external",
+          "positions",
+          "diagnostics"
+        ],
+        "properties": {
+          "name": {
+            "description": "The name of the header. A text whose header fails has no member.",
+            "$ref": "#/$defs/name"
+          },
+          "external": {
+            "type": "boolean"
+          },
+          "document": {
+            "description": "The document. A text with a diagnostic has no member.",
+            "$ref": "#/$defs/document"
+          },
+          "positions": {
+            "description": "The declarations in source order, by line and then by column.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/position"
+            }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/diagnostic"
+            }
+          }
+        }
+      }
+    },
+    "manifest": {
+      "description": "The manifest of a set (polyspec_orm_schema::dbspec::Manifest).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_text",
+        "external_text",
+        "schema_text",
+        "manifest_hash",
+        "schema_hash"
+      ],
+      "properties": {
+        "manifest_text": {
+          "type": "string"
+        },
+        "external_text": {
+          "type": "string"
+        },
+        "schema_text": {
+          "type": "string"
+        },
+        "manifest_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "schema_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "hash": {
+      "description": "`sha256:` and the lower-case hexadecimal SHA-256 of a text.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "manifest_result": {
+      "description": "The result of dbspec.manifest (FMS-23).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "manifest"
+          ],
+          "properties": {
+            "manifest": {
+              "$ref": "#/$defs/manifest"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/diagnostics_result"
+        }
+      ]
+    },
+    "statements_result": {
+      "description": "The result of dbspec.render_statements (FMS-25): the statements in the order of the renderer, each with the table that it creates or changes (polyspec_orm_schema::dbspec::RenderedStatement).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "statements"
+          ],
+          "properties": {
+            "statements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sql",
+                  "table"
+                ],
+                "properties": {
+                  "sql": {
+                    "type": "string"
+                  },
+                  "table": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/diagnostics_result"
+        }
+      ]
+    },
+    "runtime_model_result": {
+      "description": "The result of dbspec.runtime_model (FMS-27).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model"
+          ],
+          "properties": {
+            "model": {
+              "$ref": "#/$defs/runtime_model"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/diagnostics_result"
+        }
+      ]
+    },
+    "runtime_model": {
+      "description": "The runtime model of a set with the manifest hash that its requests name (polyspec_orm::Manifest): the entities in the order of the set, the documents in name order and the tables in document order.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_hash",
+        "entities"
+      ],
+      "properties": {
+        "manifest_hash": {
+          "type": "string"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entity"
+          }
+        }
+      }
+    },
+    "entity": {
+      "description": "One table as the ORM reads it (polyspec_orm_schema::dbspec::Entity). A member of a setting that the table does not have is absent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "table",
+        "fields",
+        "primary_key",
+        "uniques",
+        "indexes",
+        "foreign_keys",
+        "immutable",
+        "external"
+      ],
+      "properties": {
+        "name": {
+          "description": "The `entity` setting, or the table name.",
+          "$ref": "#/$defs/name"
+        },
+        "table": {
+          "$ref": "#/$defs/name"
+        },
+        "fields": {
+          "description": "One field for each column, in column order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "primary_key": {
+          "$ref": "#/$defs/names"
+        },
+        "identity": {
+          "$ref": "#/$defs/name"
+        },
+        "uniques": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key"
+          }
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key"
+          }
+        },
+        "foreign_keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "columns",
+              "table",
+              "references"
+            ],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/name"
+              },
+              "columns": {
+                "$ref": "#/$defs/names"
+              },
+              "table": {
+                "$ref": "#/$defs/name"
+              },
+              "references": {
+                "$ref": "#/$defs/names"
+              }
+            }
+          }
+        },
+        "updated": {
+          "$ref": "#/$defs/name"
+        },
+        "soft_delete": {
+          "$ref": "#/$defs/name"
+        },
+        "aes_version": {
+          "$ref": "#/$defs/name"
+        },
+        "audit": {
+          "description": "The part of the audit setting that the executor reads (polyspec_orm_schema::dbspec::Audit).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "history",
+            "column",
+            "record",
+            "action",
+            "previous"
+          ],
+          "properties": {
+            "history": {
+              "$ref": "#/$defs/name"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "record": {
+              "$ref": "#/$defs/name"
+            },
+            "action": {
+              "$ref": "#/$defs/name"
+            },
+            "previous": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        "immutable": {
+          "type": "boolean"
+        },
+        "external": {
+          "description": "True for a used table of an external document: every write of it fails with `config`.",
+          "type": "boolean"
+        }
+      }
+    },
+    "key": {
+      "description": "A named unique key or index and its columns (polyspec_orm_schema::dbspec::Key).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "columns"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "columns": {
+          "$ref": "#/$defs/names"
+        }
+      }
+    },
+    "field": {
+      "description": "One column as the ORM reads it (polyspec_orm_schema::dbspec::Field).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "nullable",
+        "identity",
+        "primary_key",
+        "foreign_key",
+        "select_explicit",
+        "codec"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "type": {
+          "$ref": "#/$defs/type"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "identity": {
+          "type": "boolean"
+        },
+        "primary_key": {
+          "type": "boolean"
+        },
+        "foreign_key": {
+          "description": "True for a column of a foreign key.",
+          "type": "boolean"
+        },
+        "default": {
+          "$ref": "#/$defs/default"
+        },
+        "select_explicit": {
+          "type": "boolean"
+        },
+        "codec": {
+          "description": "The codec stages in write order.",
+          "$ref": "#/$defs/names"
+        },
+        "blind_index": {
+          "description": "The column that holds the blind index of this AES column.",
+          "$ref": "#/$defs/name"
+        }
+      }
+    }
+  }
+}

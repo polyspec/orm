@@ -68,7 +68,7 @@ async fn count(db: &Db) -> i64 {
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-42.
 async fn writers_in_several_processes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!();
     if let Ok(dsn) = std::env::var(WRITER_DSN) {
         let name = std::env::var(WRITER_NAME).unwrap();
         let failures = run_writers(&open(&dsn, 4).await, &format!("{name}-c"), 20).await;

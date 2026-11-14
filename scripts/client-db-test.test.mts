@@ -2,7 +2,7 @@
 // repeated member name case of model_writes and its declaration on every owner (T343-2).
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { caseTest, COMPUTE } from '../tests/testcase.mts';
+import { caseTest } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
 import { GO_LANE_PACKAGES, GO_LANE_SKIP, poolerRecipeCommands, poolerRecipeTests, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readTree } from './features/recipe-runners.mts';
@@ -13,13 +13,13 @@ import { readFeatures, type CoverageOwner, type Language, type NativeCommand } f
 const root = resolve(import.meta.dirname, '..');
 const repeatedMemberCase = 'json_keeps_a_repeated_member_name';
 
-caseTest('the pooler lane caps the Rust test threads at the backend count per pool', COMPUTE, () => {
+caseTest('the pooler lane caps the Rust test threads at the backend count per pool', () => {
   assert.deepEqual(rustPoolerThreadArguments(4, 4), ['--test-threads=1']);
   assert.deepEqual(rustPoolerThreadArguments(8, 4), ['--test-threads=2']);
   assert.deepEqual(rustPoolerThreadArguments(2, 4), ['--test-threads=1']);
 });
 
-caseTest('every lane without a whole run runs every recipe test with a server through the poolers (T343-12)', COMPUTE, () => {
+caseTest('every lane without a whole run runs every recipe test with a server through the poolers (T343-12)', () => {
   const names = readNamesTree(root);
   const { bindings } = readTree();
   const phpText = (file: string) => phpScope(names, [file]).text;
@@ -41,7 +41,7 @@ caseTest('every lane without a whole run runs every recipe test with a server th
   assert.deepEqual(php?.args.slice(3, 5), ['--filter', '/::test(?:Mysql|Postgres)(?: |$)/']);
 });
 
-caseTest('a recipe test runs through the poolers only when it runs a recipe of contracts/fixtures on a server', COMPUTE, () => {
+caseTest('a recipe test runs through the poolers only when it runs a recipe of contracts/fixtures on a server', () => {
   const binding = (implementation: string, test: string, recipe = 'contracts/fixtures/a/a.json') => ({ implementation, test, recipes: [recipe] });
   const bindings = [
     binding('typescript', 'legacy/packages/ts/tests/a-mysql.test.mjs'), binding('typescript', 'legacy/packages/ts/tests/a-sqlite.test.mjs'),
@@ -55,11 +55,11 @@ caseTest('a recipe test runs through the poolers only when it runs a recipe of c
   assert.deepEqual(poolerRecipeTests('php', bindings, text), ['legacy/packages/php/tests/ARecipeTest.php']);
 });
 
-caseTest('the Rust pool size of the integration program is read from its declaration', COMPUTE, () => {
+caseTest('the Rust pool size of the integration program is read from its declaration', () => {
   assert.equal(rustTargetPoolSize(root), 4);
 });
 
-caseTest('model_writes declares the repeated member name case on every owner (T343-2)', COMPUTE, () => {
+caseTest('model_writes declares the repeated member name case on every owner (T343-2)', () => {
   const manifest = readFeatures(root);
   const feature = manifest.features.find(item => item.id === 'model_writes');
   assert.ok(feature, 'model_writes is in contracts/features.json');
@@ -84,7 +84,7 @@ caseTest('model_writes declares the repeated member name case on every owner (T3
   }
 });
 
-caseTest('the Go lane leaves the measurements of PERF-1 to perf-check, which reads the bench DSNs', COMPUTE, () => {
+caseTest('the Go lane leaves the measurements of PERF-1 to perf-check, which reads the bench DSNs', () => {
   const skip = new RegExp(GO_LANE_SKIP);
   for (const test of ['TestPerformanceMeasurementMysql', 'TestPerformanceMeasurementPostgres', 'TestPerformanceMeasurementSQLite']) {
     assert.ok(skip.test(test), test);
@@ -93,7 +93,7 @@ caseTest('the Go lane leaves the measurements of PERF-1 to perf-check, which rea
 });
 
 // A case that needs what another target passes (the server of FLOWMARK) stays out of the Rust lane (T334-3-28).
-caseTest('the Rust lane skips the cases that markdown-conformance-check owns', COMPUTE, () => {
+caseTest('the Rust lane skips the cases that markdown-conformance-check owns', () => {
   const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
   assert.ok(skipped.includes('markdown_conformance::insert_one'), 'a markdown conformance case');
 });
@@ -101,7 +101,7 @@ caseTest('the Rust lane skips the cases that markdown-conformance-check owns', C
 // The packages of go-test-check, which builds and exports what their cross-runtime tests need (T334-3-27).
 const goTestCheckRoots = ['legacy/packages/go/cmd', 'legacy/packages/go/procevent', 'legacy/packages/go/internal'];
 
-caseTest('the Go lane runs every package of legacy/packages/go that go-test-check does not run (T334-3-27)', COMPUTE, () => {
+caseTest('the Go lane runs every package of legacy/packages/go that go-test-check does not run (T334-3-27)', () => {
   const packages = new Set(readdirSync(resolve(root, 'legacy/packages/go'), { recursive: true, withFileTypes: true })
     .filter(entry => entry.isFile() && entry.name.endsWith('.go'))
     .map(entry => relative(root, dirname(resolve(entry.parentPath, entry.name))))
@@ -110,7 +110,7 @@ caseTest('the Go lane runs every package of legacy/packages/go that go-test-chec
   assert.deepEqual([...GO_LANE_PACKAGES].sort(), expected);
 });
 
-caseTest('the Go lane leaves the markdown conformance test to the target that passes its server (T334-3-27)', COMPUTE, () => {
+caseTest('the Go lane leaves the markdown conformance test to the target that passes its server (T334-3-27)', () => {
   const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
   assert.match(makefile, /^\tFLOWMARK=\$\(FLOWMARK\) \$\(GO_TEST\) \.\/packages\/go\/markdownmodel -run '\^TestMarkdownConformance\$\$' -count=1$/m);
   const skip = new RegExp(GO_LANE_SKIP);
@@ -118,7 +118,7 @@ caseTest('the Go lane leaves the markdown conformance test to the target that pa
   assert.ok(!skip.test('TestMarkdownConformanceHelper'), 'a skip names the whole test');
 });
 
-caseTest('the Rust lane runs the recipe programs in its workspace run and leaves out only what another target owns', COMPUTE, () => {
+caseTest('the Rust lane runs the recipe programs in its workspace run and leaves out only what another target owns', () => {
   const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
   for (const database of ['mysql', 'postgres', 'sqlite']) {
     assert.ok(skipped.includes(`coverage_performance_gate::coverage_hot_path_gate_${database}`), `the measurement of ${database}`);
@@ -129,7 +129,7 @@ caseTest('the Rust lane runs the recipe programs in its workspace run and leaves
 
 // The entries of mariadb need the MariaDB servers, which a runner of the MySQL servers cannot hold; mariadb-recipes-check
 // runs them (DIA-200, FCV-3).
-caseTest('the Go lane leaves the entries of mariadb to mariadb-recipes-check/go', COMPUTE, () => {
+caseTest('the Go lane leaves the entries of mariadb to mariadb-recipes-check/go', () => {
   const skip = new RegExp(GO_LANE_SKIP);
   assert.ok(skip.test('TestRecipeAesRotationMariadb'), 'a Go recipe entry of mariadb');
   assert.ok(skip.test('TestWithContextCancelsMariadb'), 'a Go entry of mariadb');

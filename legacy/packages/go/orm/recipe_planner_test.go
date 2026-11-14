@@ -13,6 +13,6 @@ import (
 // DIA-8, DIA-9, DIA-12, DIA-13, DIA-18, DIA-22, DIA-23, DIA-24, DIA-27, DIA-31, DIA-35, COD-43, PRT-7, PRT-19, PRT-37,
 // PRT-67, PRT-78, DSL-95.
 func TestRecipePlannerCompileNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/planner/compile.json"), recipe.None)
 }

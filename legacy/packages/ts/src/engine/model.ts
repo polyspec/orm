@@ -2,7 +2,7 @@
 // Generated code holds the manifest text and manifestHash, and the runtime
 // parses the text once to get the entities, fields, keys, codec stages and settings.
 import { dbspecManifest, parseDbspecSet } from '../dbspec/index.js';
-import type { DbspecCodecStage, DbspecDocument, DbspecTable, DbspecType } from '../dbspec/model.js';
+import { codecStageMeaning, type DbspecCodecStage, type DbspecDocument, type DbspecTable, type DbspecType } from '../dbspec/model.js';
 import { OrmError } from '../runtime_error.js';
 import * as codes from '../codes.js';
 
@@ -139,7 +139,8 @@ function entityOfTable(t: DbspecTable): Entity {
       case 'soft_delete': softDelete = s.column; break;
       case 'aes_version': aesVersion = s.column; break;
       case 'select_explicit': for (const c of s.columns) explicit.add(c); break;
-      case 'codec': stages.set(s.column, s.stages); break;
+      // A field holds the stage that each name means (DBS-185).
+      case 'codec': stages.set(s.column, s.stages.map(codecStageMeaning)); break;
       case 'blind_index': blind.set(s.column, s.indexColumn); break;
       case 'audit': auditColumn = s.column; auditRecord = s.references; break;
       case 'navigation': case 'immutable': break;

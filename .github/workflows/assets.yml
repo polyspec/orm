@@ -1,0 +1,138 @@
+# The assets of each platform of the bindings (binding GN-19a, GN-19i). The workflow ci calls it for the commit of its run, and
+# the workflow release calls it for the tree of the tag that it releases, with release true, which runs the release check of
+# binding before a job builds (make release-binding-check, GN-19g). Every recipe that builds an asset is in packages/release.mk,
+# which binding release-recipes writes and Git ignores, so each job first runs make release-recipes.
+#
+# The job platform runs on the runner of its platform, ubuntu-26.04, ubuntu-26.04-arm or macos-15, the one exception to the
+# runner of .github/runner (runnerErrors of scripts/repo/ci.mts): the asset of a platform is linked and loaded only on that
+# platform, because no tool of the release compiles for another platform. Each job builds the static library of the Go module
+# (with the musl library of its arch on Linux), the abi3 wheel, the PHP extension for each PHP minor of phpExtension.minors
+# of config/toolchain.json and the npm platform package of its platform, and the job npm the npm package itself with the
+# wasm-bindgen of mise.toml. Each uploads var/release/assets as an artifact, which the workflow release downloads. Each run
+# step is one make target and runs also after a failed one, so one run names every asset that does not build. No step or
+# job has timeout-minutes.
+name: assets
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: The tag whose tree the jobs build; empty builds the commit of the calling run
+        required: false
+        type: string
+        default: ''
+      release:
+        description: Whether each job runs the release check of binding before it builds
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64-gnu
+            runner: ubuntu-26.04
+          - platform: linux-arm64-gnu
+            runner: ubuntu-26.04-arm
+          - platform: darwin-arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    steps:
+      # The whole history, whose commit time release-wheel reads to date the files of the wheel.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+      # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
+      - uses: ./.github/actions/kit-bootstrap
+      # rustup installs the toolchain of rust-toolchain.toml with its component llvm-tools and its targets, then the crates
+      # of every Cargo.lock, which binding reads offline.
+      - name: Rust toolchain and crates
+        if: ${{ !cancelled() }}
+        run: make orm-install-rust
+      # The uv and the Python of mise.toml, with which uv builds the wheel.
+      - name: Install uv and Python
+        if: ${{ !cancelled() }}
+        run: make install-tools TOOLS="uv python"
+      - name: Write the release recipes
+        if: ${{ !cancelled() }}
+        run: make release-recipes
+      - name: Run the release check of binding
+        if: ${{ !cancelled() && inputs.release }}
+        run: make release-binding-check
+      - name: Build the static library of the Go module
+        if: ${{ !cancelled() }}
+        run: make release-go-static
+      - name: Build the wheel
+        if: ${{ !cancelled() }}
+        run: make release-wheel
+      # The LLVM of config/toolchain.json, whose libclang and clang the bindgen of ext-php-rs uses.
+      - name: Install the LLVM of config/toolchain.json
+        if: ${{ !cancelled() }}
+        run: make install-llvm
+      # Each PHP minor of phpExtension.minors of config/toolchain.json with its php-config, which the build of the extension
+      # reads; make release-php-ext PHP=php resolves php on PATH, and each minor builds in a target folder of its own
+      # (extensionMinorErrors of scripts/repo/toolchains.mts). The build runs no Composer, so setup-php installs no tool.
+      - uses: shivammathur/setup-php@v2
+        if: ${{ !cancelled() }}
+        with:
+          php-version: '8.4'
+          tools: none
+          coverage: none
+      - name: Build the PHP extension for PHP 8.4
+        if: ${{ !cancelled() }}
+        run: make release-php-ext PHP=php
+      - uses: shivammathur/setup-php@v2
+        if: ${{ !cancelled() }}
+        with:
+          php-version: '8.5'
+          tools: none
+          coverage: none
+      - name: Build the PHP extension for PHP 8.5
+        if: ${{ !cancelled() }}
+        run: make release-php-ext PHP=php
+      - name: Build the npm platform package
+        if: ${{ !cancelled() }}
+        run: make release-npm-platform
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: assets-${{ matrix.platform }}
+          path: var/release/assets/
+          if-no-files-found: error
+
+  npm:
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+      - uses: ./.github/actions/kit-bootstrap
+      - name: Rust toolchain and crates
+        if: ${{ !cancelled() }}
+        run: make orm-install-rust
+      - name: Write the release recipes
+        if: ${{ !cancelled() }}
+        run: make release-recipes
+      - name: Install the wasm-bindgen of mise.toml
+        if: ${{ !cancelled() }}
+        run: make install-wasm-bindgen
+      - name: Run the release check of binding
+        if: ${{ !cancelled() && inputs.release }}
+        run: make release-binding-check
+      - name: Pack the npm package
+        if: ${{ !cancelled() }}
+        run: make release-npm
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: assets-npm
+          path: var/release/assets/
+          if-no-files-found: error

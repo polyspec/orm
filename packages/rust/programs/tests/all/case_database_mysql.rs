@@ -3,7 +3,7 @@
 
 #[tokio::main(flavor = "current_thread")]
 async fn drop_leaves_the_next_admin_session_with_foreign_key_checks() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     assert_eq!(polyspec_orm_case_database::next_admin_checks("mysql").await, 1, "the next admin session has the foreign_key_checks of the drop");
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 func TestUnsupportedKeyIsAnError(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, value := range []any{nil, []byte(nil), struct{ Name string }{"a"}, uint64(math.MaxUint64), math.NaN()} {
 		if _, err := KeyOf(value); err == nil {
 			t.Errorf("unsupported key %T %v was accepted", value, value)
@@ -20,7 +20,7 @@ func TestUnsupportedKeyIsAnError(t *testing.T) {
 }
 
 func TestScalarComparisonPreservesTypesAndRejectsInvalidValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, pair := range [][2]any{{true, int64(1)}, {"1", int64(1)}, {[]byte("a"), "a"}} {
 		match, err := SameScalar(pair[0], pair[1])
 		if err != nil || match {
@@ -36,7 +36,7 @@ func TestScalarComparisonPreservesTypesAndRejectsInvalidValues(t *testing.T) {
 }
 
 func TestKeyValuesPreserveTheirTypes(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	// The other key types are the recipe collection; a float key is a Go key alone (INT-11).
 	for _, value := range []any{float64(1.25)} {
 		key, err := KeyOf(value)
@@ -57,7 +57,7 @@ func TestKeyValuesPreserveTheirTypes(t *testing.T) {
 }
 
 func TestSelectedByteKeyPreservesByteType(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	values := []any{"\xff\x00"}
 	step := &plan.Step{Assemble: &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Name: "payload", Type: "bytes"}}}}
 	if err := decodeSelectedRow(values, &scanInfo{}, step, AESKeyring{}, false); err != nil {
@@ -77,7 +77,7 @@ func TestSelectedByteKeyPreservesByteType(t *testing.T) {
 }
 
 func TestJoinedByteColumnsAndInvalidValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	child := &plan.Assemble{Columns: []plan.OutCol{{Index: 1, Name: "child_bytes", Type: "bytes"}}}
 	root := &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Name: "id", Type: "i64"}}, Children: []*plan.Child{{Kind: "join", Assemble: child}}}
 	values := []any{int64(1), "\x00\xff"}
@@ -94,7 +94,7 @@ func TestJoinedByteColumnsAndInvalidValues(t *testing.T) {
 }
 
 func TestCollectionLookupRejectsUnsupportedKey(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	collection := NewCollection[*rejectingModel]()
 	value := struct{ ID int }{1}
 	if _, err := collection.Get(value); err == nil {
@@ -109,7 +109,7 @@ func TestCollectionLookupRejectsUnsupportedKey(t *testing.T) {
 }
 
 func TestModelCollectionKeyRejectsMissingColumn(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	core := NewCore(&Entity{Value: func(Model, string) (any, bool) { return nil, false }})
 	core.keyName = "absent"
 	if _, err := core.collectionKey(&Core{self: &rejectingModel{}, row: &rowState{}}, nil, nil); err == nil {
@@ -118,7 +118,7 @@ func TestModelCollectionKeyRejectsMissingColumn(t *testing.T) {
 }
 
 func TestRelationKeyCollectionPropagatesInvalidValue(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	ref := &plan.ParentRef{Keys: []plan.KeyRef{{Index: 0}}}
 	if _, err := parentValues(ref, [][]any{{struct{ ID int }{1}}}, nil); err == nil {
 		t.Fatal("relation parent accepted unsupported key")
@@ -137,7 +137,7 @@ func TestRelationKeyCollectionPropagatesInvalidValue(t *testing.T) {
 }
 
 func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	const count = 1000
 	params, indexes := indexedParams(count)
 	params[1] = struct{ ID int }{1}
@@ -149,7 +149,7 @@ func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 }
 
 func TestSplitQueryRetainsDistinctTypedValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	const count = 1000
 	params, indexes := indexedParams(count)
 	params[0], params[1], params[2], params[3] = true, int64(1), []byte("x"), "x"
@@ -175,7 +175,7 @@ func TestSplitQueryRetainsDistinctTypedValues(t *testing.T) {
 // TestExpandInKeepsBareDollar checks that expanding a parent slot renumbers only the $n placeholders: a '$' that does not
 // start a number is text and is written as it is (docs/spec/dsl.md DSL-153), so the literal keeps its '$' and gains no number.
 func TestExpandInKeepsBareDollar(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	st := &plan.Step{
 		SQL:       "SELECT $1, '$' AS sign, id FROM items WHERE key IN ($2)",
 		BindSlots: []plan.BindSlot{{From: "param"}, {From: "parent"}},

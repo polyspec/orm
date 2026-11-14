@@ -312,7 +312,7 @@
     },
     "scripts/test-servers-container.mts": {
       "kind": "policy",
-      "reason": "starts and stops one database server of the checks of this repository in an Apple container from an image pinned by its digest, with the settings of the native primary of scripts/test-servers.mts; it runs the container program"
+      "reason": "writes the directory of a run of the database servers of one kind of the checks of this repository, a Compose project of bay from images pinned by their digests with the settings of the native primary of scripts/test-servers.mts, and the sh file that executes it; it runs bay, sh, git, ssh and tar"
     },
     "scripts/test-servers-mysql.mts": {
       "kind": "policy",
@@ -406,6 +406,7 @@
       "kind": "policy",
       "reason": "the copy of a built test binary of this repository, by a clone where the file system has one; no ecosystem tool names it for this copy"
     },
+    "scripts/features/recipe-branches.mts": {"kind": "policy", "reason": "the rule of this repository that a branch of a recipe on a database states its reason (FCV-16); no ecosystem tool knows the recipe format"},
     "scripts/features/recipe-keys.mts": {
       "kind": "policy",
       "reason": "generates the key table of the recipe format of this repository from its schema, which every runner reads (FCV-2 to FCV-4)"

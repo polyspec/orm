@@ -96,6 +96,23 @@ impl Type {
         }
     }
 
+    /// The type of a kind that takes no parameter, such as `i64` or `uuid`, by its name; None for every other name, such
+    /// as `varchar`, whose type needs its parameters. The JSON form and the Mermaid import read a kind by it.
+    pub fn plain(kind: &str) -> Option<Type> {
+        Some(match kind {
+            "i16" => Type::I16,
+            "i32" => Type::I32,
+            "i64" => Type::I64,
+            "bool" => Type::Bool,
+            "f64" => Type::F64,
+            "text" => Type::Text,
+            "bytes" => Type::Bytes,
+            "uuid" => Type::Uuid,
+            "date" => Type::Date,
+            _ => return None,
+        })
+    }
+
     /// The type name without its parameters: `decimal(13,2)` is `decimal`.
     pub fn name(&self) -> &'static str {
         match self {

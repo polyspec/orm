@@ -191,7 +191,8 @@
       "before": [
         {
           "dialects": [
-            "mysql"
+            "mysql",
+            "sqlite"
           ],
           "sql": "INSERT INTO flags (active, ref, at) VALUES (TRUE, X'00000000000000000000000000000001', '10:00:00')"
         },
@@ -200,12 +201,6 @@
             "postgres"
           ],
           "sql": "INSERT INTO flags (active, ref, at) VALUES (TRUE, '00000000-0000-0000-0000-000000000001', '10:00:00')"
-        },
-        {
-          "dialects": [
-            "sqlite"
-          ],
-          "sql": "INSERT INTO flags (active, ref, at) VALUES (1, X'00000000000000000000000000000001', '10:00:00')"
         }
       ],
       "after": [
@@ -214,18 +209,10 @@
           "want": "1"
         },
         {
-          "dialects": [
-            "mysql",
-            "sqlite"
-          ],
           "fails": true,
-          "sql": "INSERT INTO switches (enabled, ref) VALUES (1, 'not-a-uuid-of-16-bytes')"
+          "sql": "INSERT INTO switches (enabled, ref) VALUES (TRUE, 'not-a-uuid-of-16-bytes')"
         },
         {
-          "dialects": [
-            "mysql",
-            "sqlite"
-          ],
           "fails": true,
           "sql": "INSERT INTO switches (enabled, at) VALUES (2, '10:00:00')"
         }

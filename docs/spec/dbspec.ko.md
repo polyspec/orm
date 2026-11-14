@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 5f079ad58061f27c392dfec69d1ca3da541e933908d456fb0db4bd3953b311bd -->
+<!-- source-sha256: 381638b82eca6f62a3302a3bd8a7544f67d34b47a81d0f96783e68676530db4d -->
 # dbspec
 
 [English](dbspec.md)
@@ -234,7 +234,9 @@ predicate는 다음 중 하나다.
 - **DBS-66** `updated <column>`: executor가 자신이 계획하는 모든 `UPDATE`에서 `datetime` column에 UTC statement 시각을 넣는다. database에는 아무것도 렌더링하지 않는다. raw SQL은 기록되지 않는다 (Hash: manifest)
 - **DBS-67** `soft_delete <column>`: 읽기는 root, 각 join child(`ON` 조건), 각 relation, 각 subquery에서 nullable `datetime` column이 null이 아닌 row를 제외한다. `update`와 삭제는 `WHERE`의 `<column> IS NULL`로 그 column이 null인 row에만 맞는다. 삭제는 그 column에 UTC statement 시각을 넣고, `restore`는 primary key나 unique key 값이 지정한 row 하나에서 그 column을 비운다([restore](protocol.ko.md#_1-5-restore)) (Hash: manifest)
 - **DBS-68** `select explicit <column> ...`: column을 기본 select 집합에서 뺀다. 선택하지 않은 column을 읽으면 `COLUMN_UNSELECTED`로 실패한다 (Hash: manifest)
-- **DBS-69** `codec <column> <stage> ...`: 쓸 때 stage 순서로 encode하고 읽을 때 역순으로 decode한다: `json` (legacy `ordered_json`), `aes`, `hex`, `gz`, `base64`, `serialize`, `yaml`, `ip` ([codecs](codec.md)). `json`과 `ordered_json`은 encoding이 같은 한 stage의 이름이다: 코어는 `ordered_json`을 `json`으로 읽고 `json`으로 쓰며(CORE-61), 언어 구현은 `json`을 `ordered_json`으로 읽고 `ordered_json`으로 쓰므로, 각자 상대의 문서를 읽는다 (Hash: manifest)
+- **DBS-69** 폐기되었고 DBS-184가 대체하며, DBS-185가 그것을 다시 대체한다: 코어는 더 이상 stage `ordered_json`을 `json`으로 쓰지 않는다.
+- **DBS-184** 폐기되었고 DBS-185가 대체한다: 언어 구현은 더 이상 stage `json`을 `ordered_json`으로 쓰지 않는다.
+- **DBS-185** `codec <column> <stage> ...`: 쓸 때 stage 순서로 encode하고 읽을 때 역순으로 decode한다: `json` (legacy `ordered_json`), `aes`, `hex`, `gz`, `base64`, `serialize`, `yaml`, `ip` ([codecs](codec.md)). `json`과 `ordered_json`은 encoding이 같은 한 stage의 이름이다: 코어는 `ordered_json`을 `json`으로 읽고 문서가 쓴 이름으로 써서 문서의 manifest hash가 별칭에 따라 달라지지 않으며(CORE-122), 언어 구현은 `json`을 `ordered_json`으로 읽고 문서가 쓴 이름으로 쓰므로, 각자 상대의 문서를 읽고, 한 문서는 두 이름 중 어느 것을 쓰든 코어와 언어 구현에서 같은 manifest hash를 갖는다 (Hash: manifest)
 - **DBS-70** `aes_version <column>`: row의 AES key version을 저장하는 non-null 정수 column. `aes`를 쓰는 column이 있으면 필요하다 (Hash: manifest)
 - **DBS-71** `blind_index <aes column> <index column>`: executor가 AES column 평문의 HMAC을 index column에 쓰고 같음 조건에 쓴다 (Hash: manifest)
 - **DBS-72** `navigation <foreign key> <child name> <parent name>`: 도구가 foreign key에 보여 주는 관계 이름(자식 쪽, 부모 쪽). 생성 코드는 match method로 join하며 이 이름을 읽지 않는다 (Hash: manifest)

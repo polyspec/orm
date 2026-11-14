@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 
 import { checkJson, parseJsonValue, readJsonFile, refusedPaths, type Json } from '../json/schema.mts';
 import { executeCoverage, languages, recipeCaseIds, selectFeatures, type Manifest, type Owner } from './coverage.mts';
@@ -72,14 +72,14 @@ function change(recipe: Recipe, path: Key[], value?: Json): Recipe {
   return copy;
 }
 
-caseTest('the recipe fixtures with and without a database are valid', COMPUTE, () => {
+caseTest('the recipe fixtures with and without a database are valid', () => {
   for (const name of ['database.json', 'without-database.json']) {
     assert.deepEqual(refused(read(resolve(fixtures, name)), name), [], name);
   }
 });
 
 // B2-2a: a database op (model.connect, sql.exec) needs the three databases, so a recipe without a fixture cannot hold one.
-caseTest('a recipe without a fixture refuses a database op', COMPUTE, () => {
+caseTest('a recipe without a fixture refuses a database op', () => {
   const recipe = read(resolve(fixtures, 'without-database.json'));
   const withOp = structuredClone(recipe);
   const cases = withOp.cases;
@@ -92,7 +92,7 @@ caseTest('a recipe without a fixture refuses a database op', COMPUTE, () => {
   assert.notDeepEqual(refused(withOp, 'without-database + sql.exec'), [], 'a recipe without a fixture accepted sql.exec');
 });
 
-caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
+caseTest('the recipe schema refuses each break of the format', () => {
   const database = read(resolve(fixtures, 'database.json'));
   const none = read(resolve(fixtures, 'without-database.json'));
   const decode = 2;
@@ -107,7 +107,6 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
     ['a step that compares its result without expect', change(database, ['cases', 0, 'steps', decode, 'expect'])],
     ['model.connect with expect', change(database, ['cases', 0, 'steps', 0, 'expect'], at(database, ['cases', 0, 'steps', decode, 'expect']))],
     ['sql.exec without its reason', change(database, ['cases', 0, 'steps', 1, 'reason'])],
-    ['SQL for two of the three databases', change(database, ['cases', 0, 'steps', 1, 'sql', 'sqlite'])],
     ['an int as a JSON number', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: 1 })],
     ['an int that is not a decimal', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: '1e3' })],
     ['a value with two wrappers', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: '1', text: '1' })],
@@ -142,11 +141,18 @@ function expectFaults(recipe: Json): string[] {
     for (const step of steps) {
       if (step === null || typeof step !== 'object' || Array.isArray(step)) continue;
       const only = Array.isArray(step.only) ? step.only.map(String) : inherited;
-      for (const key of ['expect', 'expect_unnamed']) {
-        const expect = step[key];
-        if (expect === null || typeof expect !== 'object' || Array.isArray(expect) || expect === undefined) continue;
+      // An expect and a statement by database name exactly the databases that run the step, so that no entry stands in for a
+      // database that does not run it (T426).
+      const maps: [string, Json | undefined][] = [['expect', step.expect], ['expect_unnamed', step.expect_unnamed], ['sql', step.sql]];
+      if (Array.isArray(step.statements)) {
+        step.statements.forEach((statement, index) => {
+          if (statement !== null && typeof statement === 'object' && !Array.isArray(statement)) maps.push([`statements/${index}/sql`, statement.sql]);
+        });
+      }
+      for (const [key, map] of maps) {
+        if (map === null || typeof map !== 'object' || Array.isArray(map) || map === undefined) continue;
         const servers = (names: string[]) => names.filter(name => name !== 'markdown' && name !== 'mariadb').sort().join(',');
-        const named = Object.keys(expect);
+        const named = Object.keys(map);
         const want = servers(only);
         if (servers(named) !== want || (named.includes('markdown') && !only.includes('sqlite')) || (named.includes('mariadb') && !only.includes('mysql'))) {
           faults.push(`${where} ${label(step.op)} ${key} names ${[...named].sort().join(',')}, want ${want}`);
@@ -163,7 +169,7 @@ function expectFaults(recipe: Json): string[] {
   return faults;
 }
 
-caseTest('an expect names exactly the databases that run its step', COMPUTE, () => {
+caseTest('an expect and a statement by database name exactly the databases that run their step', () => {
   const database = read(resolve(fixtures, 'database.json'));
   const decode = 2;
   const expect = at(database, ['cases', 0, 'steps', decode, 'expect']);
@@ -174,6 +180,8 @@ caseTest('an expect names exactly the databases that run its step', COMPUTE, () 
   assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'an expect without one database');
   assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'only'], ['postgres'])), [], 'a case with only whose expect names the others');
   assert.notDeepEqual(expectFaults(change(change(database, ['cases', 0, 'steps', decode, 'only'], ['postgres']), ['cases', 0, 'steps', decode, 'expect', 'postgres'])), [], 'a step with only whose expect leaves it out');
+  assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', 1, 'sql', 'sqlite'])), [], 'SQL for two of the three databases that run the step');
+  assert.notDeepEqual(expectFaults(change(database, ['cases', 0, 'steps', 1, 'only'], ['mysql'])), [], 'SQL for a database that does not run the step');
   assert.deepEqual(recipeFiles.flatMap(file => expectFaults(jsonFile(file)).map(fault => `${file}: ${fault}`)), []);
 });
 
@@ -182,14 +190,14 @@ for (const file of recipeFiles) {
   const value: unknown = JSON.parse(readFileSync(resolve(root, file), 'utf8'));
   const named = value !== null && typeof value === 'object' && '$schema' in value ? value.$schema : undefined;
   if (typeof named !== 'string') continue;
-  caseTest(`the recipe ${file} names the recipe schema and is valid against it`, COMPUTE, () => {
+  caseTest(`the recipe ${file} names the recipe schema and is valid against it`, () => {
     assert.equal(resolve(root, dirname(file), named), schema, `${file} names another recipe schema`);
     assert.deepEqual(refused(value, file), [], file);
   });
 }
 
 // Requirements: FCV-12.
-caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
+caseTest('the recipe is the list of the cases of its owners', () => {
   const differences: string[] = [];
   // The manifest holds no copy of what the recipe lists: a copy goes stale when a lane adds a case to the recipe.
   const written = readJsonFile<Manifest>(resolve(root, 'contracts/features.json'), FEATURES_SCHEMA);
@@ -240,7 +248,7 @@ async function outcome(manifest: Manifest, root: string): Promise<{ errors: stri
   const context = process.env.NODE_TEST_CONTEXT;
   delete process.env.NODE_TEST_CONTEXT;
   try {
-    const errors = await executeCoverage(manifest, root, 5000);
+    const errors = await executeCoverage(manifest, root);
     return { errors, text: [...errors, ...lines].join('\n') };
   } finally {
     console.log = log;
@@ -249,7 +257,7 @@ async function outcome(manifest: Manifest, root: string): Promise<{ errors: stri
 }
 
 // Requirements: FCV-12.
-caseTest('a recipe owner runs once and is read from the results its runner writes', 20000, async () => {
+caseTest('a recipe owner runs once and is read from the results its runner writes', async () => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'orm-recipe-owner-')));
   const entry = 'legacy/packages/ts/tests/entry.mjs';
   const recipe = 'contracts/fixtures/sample/sample.json';
@@ -283,7 +291,7 @@ caseTest('a recipe owner runs once and is read from the results its runner write
 });
 
 // Requirements: FCV-12.
-caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe elsewhere is refused', 20000, async () => {
+caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe elsewhere is refused', async () => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'orm-recipe-place-')));
   const entry = 'legacy/packages/ts/tests/entry.mjs';
   try {
@@ -302,7 +310,7 @@ caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe 
 });
 
 // Requirements: FCV-3, FCV-12.
-caseTest('the cases of a recipe on a database leave out a case that names only other databases', COMPUTE, () => {
+caseTest('the cases of a recipe on a database leave out a case that names only other databases', () => {
   const text = JSON.stringify({ cases: [{ id: 'all' }, { id: 'lite', only: ['sqlite'] }] });
   assert.deepEqual(recipeCaseIds(text, 'sqlite'), ['all', 'lite']);
   assert.deepEqual(recipeCaseIds(text, 'mysql'), ['all']);
@@ -311,7 +319,7 @@ caseTest('the cases of a recipe on a database leave out a case that names only o
 // tests/dbspec/introspect.json is the vector file of the recipe dbspec_introspect, not a suite of its own: each of its cases
 // is a case of that recipe, so that a new vector cannot stay unrun.
 // Requirements: FCV-2, DIA-133.
-caseTest('the recipe dbspec_introspect names every case of tests/dbspec/introspect.json', COMPUTE, () => {
+caseTest('the recipe dbspec_introspect names every case of tests/dbspec/introspect.json', () => {
   const vectors = items(jsonFile('tests/dbspec/introspect.json'), ['cases']).map(vector => label(at(vector, ['id'])));
   const named = items(jsonFile('contracts/fixtures/dbspec_introspect/dbspec_introspect.json'), ['cases']).flatMap(entry =>
     items(entry, ['steps']).filter(step => step !== null && typeof step === 'object' && !Array.isArray(step) && step.vectors === '../../../tests/dbspec/introspect.json').map(step => label(at(step, ['case']))));

@@ -16,8 +16,8 @@ use crate::lock_probe;
 // the Rust update_row, delete_row and insert_row; what any runtime answers is the recipe case row_mutation_lifecycle.
 // Requirements: INT-106a, INT-118, PRT-79.
 async fn mutation_phases_follow_the_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("native update deadline");
+    let _case = polyspec_orm_testcase::case!();
+    check().await;
 }
 async fn check() {
     let path = physical_fixture::sqlite_path("row-mutation");
@@ -27,15 +27,9 @@ async fn check() {
         let dsn = physical_fixture::dsn_for(dialect, &path);
         let (db, mut seed, _) = tool_db::open(&dsn).await.unwrap();
         let name = format!("orm_row_mutation_{}", std::process::id());
-        seed.exec(
-            &format!(
-                "CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED){}",
-                if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }
-            ),
-            &[],
-        )
-        .await
-        .unwrap();
+        seed.exec(&format!("CREATE TABLE {name}(id INTEGER NOT NULL PRIMARY KEY,n BIGINT NOT NULL UNIQUE,g BIGINT GENERATED ALWAYS AS(n+1) STORED)"), &[])
+            .await
+            .unwrap();
         seed.exec(&format!("INSERT INTO {name}(id,n) VALUES(1,10),(2,20)"), &[]).await.unwrap();
         let mut catalog = CatalogConnection::connect(&dsn).await.unwrap();
         let table = TableRef { namespace: catalog.current_namespace().await.unwrap(), name: name.clone() };

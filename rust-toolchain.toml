@@ -3,5 +3,10 @@
 # rustup toolchain install. make repo-check fails on another toolchain.
 [toolchain]
 channel = "1.99.0"
-components = ["clippy", "rustfmt"]
+# clippy and rustfmt are the lint and the form of the crates. llvm-tools holds llvm-strip, llvm-size and llvm-nm, which the
+# release recipes of packages/release.mk read from the toolchain of the checkout, never from PATH (binding GN-19b, GN-19f).
+components = ["clippy", "rustfmt", "llvm-tools"]
+# wasm32-unknown-unknown is the target of the WASM crate of packages/ts/wasm (make release-npm), and the musl targets of the two
+# Linux arches are those of the Go static libraries that make release-go-static builds on a Linux host (binding GN-19b, GN-19h).
+targets = ["wasm32-unknown-unknown", "x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"]
 profile = "minimal"

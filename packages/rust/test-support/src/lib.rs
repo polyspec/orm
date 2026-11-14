@@ -4,12 +4,14 @@
 pub mod bench_dsn;
 pub mod bench_stats;
 pub mod catalog_code;
+pub mod fixture_dsn;
 pub mod mermaid_skeleton;
 pub mod model_connect;
 pub mod model_core_methods;
 pub mod model_row;
 pub mod rollback_probe;
 pub mod schema_coverage_case;
+pub mod schema_form;
 pub mod statement_record;
 pub mod table_exists;
 pub mod temp_directory;

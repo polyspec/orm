@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, PROCESS } from '../tests/testcase.mts';
+import { caseTest } from '../tests/testcase.mts';
 
 const script = new URL('./publish-output.mts', import.meta.url).pathname;
 const WORKERS = 16;
@@ -21,7 +21,7 @@ function publish(output: string): Promise<{ code: number | null; stderr: string 
   });
 }
 
-caseTest('a fast command that writes its standard output is published under parallel load', PROCESS, async () => {
+caseTest('a fast command that writes its standard output is published under parallel load', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'orm-publish-output-'));
   try {
     const failures: string[] = [];

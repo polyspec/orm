@@ -90,7 +90,7 @@ func serviceCount(t *testing.T, db *orm.DB) int64 {
 // TestSQLiteWritersInSeveralProcesses (requirement CFG-42) runs 3 processes with 4 connections
 // each; every connection commits 20 read-then-write transactions on one file.
 func TestSQLiteWritersInSeveralProcesses(t *testing.T) {
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	if dsn := os.Getenv(writerEnv); dsn != "" {
 		for _, err := range runWriters(openSQLite(t, dsn, 4, false), os.Getenv(writerNameEnv)+"-c", 20) {
 			if err != nil {

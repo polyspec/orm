@@ -113,7 +113,7 @@ func statementEmptyArgumentRefused(t *testing.T, db *orm.DB, model func() *orm.C
 // If the two lists differ, a fixture case does not run, or a test that runs
 // no fixture case remains.
 func TestStatementFaultCases(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	f := loadStatementFault(t)
 	named := make([]string, 0, len(statementFaultCases))
 	for name := range statementFaultCases {
@@ -133,14 +133,14 @@ func TestStatementFaultCases(t *testing.T) {
 }
 
 func TestStatementFaultSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	statementFault(t, "sqlite")
 }
 func TestStatementFaultMySQL(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	statementFault(t, "mysql")
 }
 func TestStatementFaultPostgres(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	statementFault(t, "postgres")
 }

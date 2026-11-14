@@ -194,11 +194,11 @@ def transform_param(kind: str, value):
         return f"{escaped}%"
     if kind == "like_ends":
         return f"%{escaped}"
-    if kind == "fulltext_boolean":
+    if kind in ("fulltext_boolean", "fulltext_text"):
         out = fulltext_boolean(value)
         if out == "":
             raise OrmError(codes.IR_INVALID, "fulltext search text has no term")
-        return out
+        return value if kind == "fulltext_text" else out
     return value
 
 

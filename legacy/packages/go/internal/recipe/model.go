@@ -1164,13 +1164,14 @@ func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{}, fmt.Errorf("query.search compiled %d statements, want 1", len(compiled.Steps))
 	}
 	// The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
-	// fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
-	boolean := len(compiled.Steps[0].BindSlots) > 0 && compiled.Steps[0].BindSlots[0].Transform == "fulltext_boolean"
-	value := s.k("text").Text
-	if boolean {
-		value = plan.FulltextBoolean(s.k("text").Text)
+	// fulltext_boolean on MySQL and fulltext_text, which binds the text as it is, on PostgreSQL). Both refuse a text with
+	// no term.
+	transform := ""
+	if len(compiled.Steps[0].BindSlots) > 0 {
+		transform = compiled.Steps[0].BindSlots[0].Transform
 	}
-	if boolean && value == "" {
+	value := orm.Transform(transform, s.k("text").Text)
+	if transform != "" && plan.FulltextBoolean(s.k("text").Text) == "" {
 		m := model.Author().Connect(db)
 		m.Orm_().Where("", []orm.ChainKey{{Op: "fulltext_boolean", Columns: s.k("columns").Columns}}, s.k("text").Text)
 		if _, err := m.GetCount(); err != nil {

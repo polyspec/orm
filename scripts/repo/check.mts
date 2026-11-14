@@ -9,7 +9,7 @@ import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors, runtimeSource } from './probes.mts';
-import { composerBranchErrors, composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
+import { composerBranchErrors, composerVersionErrors, extensionMinorErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
@@ -19,7 +19,7 @@ import { checkInputErrors } from '../features/owners.mts';
 import { nativeTestErrors } from './native-tests.mts';
 import { caseRunnerTests, readTree as readRecipeTree } from '../features/recipe-runners.mts';
 import { implementationFiles, implementationTestInventory } from '../features/languages.mts';
-import { COMPUTE, sections } from '../../tests/testcase.mts';
+import { sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
@@ -27,7 +27,7 @@ import { readComposer, readPackage } from '../json/formats.mts';
 // The repository check covers one case: whether the CI workflow gives the database check's servers and variables through make orm-test-servers,
 // and whether the check and the workflow run on the one Node version declared in mise.toml.
 const log = sections();
-log.begin('repo', COMPUTE);
+log.begin('repo');
 
 const root = new URL('../../', import.meta.url).pathname;
 // The files that orm keeps in the form of kit (scripts/repo/kit-copies.mts) follow kit's form, so the rules of this
@@ -200,6 +200,8 @@ const text = (path: string) => existsSync(join(root, path)) ? readFileSync(join(
 const reported = (program: string, args: string[]) => execFileSync(program, args, { cwd: root }).toString().trim();
 const composer = readComposer(join(root, 'legacy/packages/php/composer.json'));
 failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows));
+// The job platform of assets.yml builds the PHP extension for each PHP minor of config/toolchain.json.
+failures.push(...extensionMinorErrors(text('config/toolchain.json'), workflows));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
 // Every workflow sets up the Go of the go line of legacy/packages/go/go.mod, the one Go release of mise.toml (kit K127).

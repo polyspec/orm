@@ -24,7 +24,6 @@ class Rollback(Exception):
 
 
 class DecimalModelDbTest(unittest.TestCase):
-    deadline = testcase.DATABASE
     # The dialects that test_round_trip runs; the entry point narrows it to the one it names.
     dialects = DIALECTS
 

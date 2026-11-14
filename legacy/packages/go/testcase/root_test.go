@@ -9,7 +9,7 @@ import (
 // TestRepositoryRoot checks that RepositoryRoot finds, from the directory of this package, the directory that holds
 // go.work, contracts/implementations.json and docs/spec, and that it is an absolute path (T447).
 func TestRepositoryRoot(t *testing.T) {
-	Start(t, Compute)
+	Start(t)
 	root := RepositoryRoot()
 	if !filepath.IsAbs(root) {
 		t.Fatalf("RepositoryRoot returned %q, which is not absolute", root)

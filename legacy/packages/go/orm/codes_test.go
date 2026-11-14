@@ -47,7 +47,7 @@ func readCatalog(t *testing.T) []catalogCode {
 // with the note of the catalog, and the file holds no other code.
 // Requirements: INT-65.
 func TestCodeCatalog(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	src, err := os.ReadFile(testcase.LegacyPath("packages/go/orm/codes.go"))
 	if err != nil {
 		t.Fatal(err)

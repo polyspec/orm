@@ -13,7 +13,7 @@ import (
 // markdown.session step runs reads of the bind fixture model on a listener that answers from its replies.
 // Requirements: PRT-66.
 func TestRecipeMarkdownSessionNone(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/markdown/session.json"), recipe.None, recipe.WithMarkdownRead(recipe.MarkdownRead{
 		Connect: bindmodel.Connect,
 		Read: func(db *orm.DB) error {

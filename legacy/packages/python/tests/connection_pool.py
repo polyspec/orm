@@ -9,9 +9,8 @@ import os
 import subprocess
 import sys
 import tempfile
-import threading
-import time
 import unittest
+import uuid
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 
@@ -28,7 +27,6 @@ from .case_database import case_database
 from .runner_connect import mysql_connect
 from .server_database import with_database
 
-DIALECTS = ("sqlite", "mysql", "postgres")
 TEMP = {}
 
 
@@ -65,23 +63,7 @@ def code_of(run):
     return None
 
 
-def read_only(db, body):
-    return db.transaction(body, {"readOnly": True, "retry": 0})
-
-
 class ConnectionPoolTest(unittest.TestCase):
-    deadline = testcase.DATABASE
-
-    def each(self, body, dialects=DIALECTS):
-        for dialect in dialects:
-            with (
-                self.subTest(dialect=dialect),
-                case_database(dialect, TEMP["dir"].name, "orm_pool") as dsn,
-            ):
-                setup = models.connect(dsn)
-                install_bench(setup)
-                setup.close()
-                body(dialect, dsn)
 
     def test_idle_pool_discards_connection_that_fails_liveness_check(self):
         class Connection:
@@ -201,68 +183,6 @@ class ConnectionPoolTest(unittest.TestCase):
         )
         self.assertFalse(pooled.is_alive())
 
-    # Requirements: CFG-4, CFG-5.
-    def test_options(self):
-        def body(dialect, dsn):
-            db = models.connect(dsn)
-            try:
-                self.assertEqual(
-                    db.stats().max_open_connections, 10, "the default pool size"
-                )
-            finally:
-                db.close()
-            db = models.connect(dsn, poolSize=3)
-            try:
-                self.assertEqual(db.stats().max_open_connections, 3, "poolSize")
-            finally:
-                db.close()
-
-        self.each(body, ("sqlite",))
-
-    def test_idle_size_and_lifetime(self):
-        def body(_dialect, dsn):
-            db = models.connect(dsn, poolSize=3, poolIdleSize=1)
-            try:
-                barrier = threading.Barrier(3)
-
-                def hold():
-                    read_only(db, lambda: barrier.wait(10))
-
-                threads = [threading.Thread(target=hold) for _ in range(3)]
-                for thread in threads:
-                    thread.start()
-                for thread in threads:
-                    thread.join(10)
-                stats = db.stats()
-                self.assertEqual(
-                    (stats.open_connections, stats.idle),
-                    (1, 1),
-                    "the idle connections kept",
-                )
-            finally:
-                db.close()
-            db = models.connect(dsn, poolSize=1, poolLifetimeMs=200)
-            try:
-
-                def taken():
-                    return db.transaction(
-                        lambda: db.active_frame().connection, {"retry": 0}
-                    )
-
-                first = taken()
-                self.assertIs(
-                    taken(), first, "a connection within its lifetime is reused"
-                )
-                time.sleep(0.4)
-                self.assertIsNot(
-                    taken(), first, "a connection past its lifetime is closed"
-                )
-            finally:
-                db.close()
-
-        # The pool of SQLite differs by runtime; the recipe connection_pool states MySQL and PostgreSQL.
-        self.each(body, ("sqlite",))
-
     # Requirements: CFG-42. A recipe case runs on the connections of one test process in Python, so this test starts the processes.
     def test_sqlite_several_process_writers_commit_every_row(self):
         with tempfile.TemporaryDirectory(prefix="orm-sqlite-processes-") as directory:
@@ -311,6 +231,22 @@ class ConnectionPoolTest(unittest.TestCase):
                 db = models.connect(dsn, poolSize=1, poolIdleSize=1)
                 try:
                     self.assertFalse(db.utils().schema().exists("orm"))
+                    # On MySQL and MariaDB the idle connection holds a named lock, which its thread releases when it
+                    # ends: KILL returns before the killed thread has ended, and GET_LOCK of that lock, with a wait that
+                    # the server limits, answers when it has (T475). execute runs DO GET_LOCK on the connection of the
+                    # pool, which then returns to it.
+                    lock = f"orm_int92_{uuid.uuid4().hex}"
+                    if dialect == "mysql":
+                        db.execute(
+                            {
+                                "id": 0,
+                                "role": "write",
+                                "sql": f"DO GET_LOCK('{lock}', 0)",
+                                "tables": [],
+                                "bind_slots": [],
+                            },
+                            [],
+                        )
                     self.assertEqual(
                         db.stats().idle, 1, "the pool holds one idle connection"
                     )
@@ -344,21 +280,27 @@ class ConnectionPoolTest(unittest.TestCase):
                                     len(rows), 1, "one idle client session is present"
                                 )
                                 session_id = int(rows[0][0])
+                                # One read: the idle connection holds the lock unless the pool reset its session
+                                # when it took it back.
+                                cursor.execute("SELECT IS_USED_LOCK(%s)", (lock,))
+                                holder = cursor.fetchone()[0]
+                                self.assertEqual(
+                                    holder,
+                                    session_id,
+                                    f"the idle session {session_id} does not hold the named lock {lock}: "
+                                    f"IS_USED_LOCK is {holder}, so the pool reset its session when it took it back",
+                                )
                                 cursor.execute(f"KILL {session_id}")
-                                deadline = time.monotonic() + 10
-                                while True:
-                                    cursor.execute(
-                                        "SELECT COUNT(*) FROM information_schema.PROCESSLIST "
-                                        "WHERE ID = %s",
-                                        (session_id,),
-                                    )
-                                    if cursor.fetchone()[0] == 0:
-                                        break
-                                    if time.monotonic() >= deadline:
-                                        self.fail(
-                                            f"server still lists idle session {session_id} after KILL"
-                                        )
-                                    time.sleep(0.02)
+                                cursor.execute("SELECT GET_LOCK(%s, 30)", (lock,))
+                                taken = cursor.fetchone()[0]
+                                self.assertEqual(
+                                    taken,
+                                    1,
+                                    f"GET_LOCK({lock}, 30) returned {taken}: the killed session {session_id} "
+                                    "did not end within the limit of the server",
+                                )
+                                cursor.execute("SELECT RELEASE_LOCK(%s)", (lock,))
+                                cursor.fetchall()
 
                     self.assertFalse(
                         db.utils().schema().exists("orm"),

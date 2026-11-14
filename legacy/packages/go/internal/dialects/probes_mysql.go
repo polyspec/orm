@@ -93,10 +93,6 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (a tinyint)")
 			e.Fails("INSERT INTO t VALUES (128)", "1264")
 		}),
-		p("session.partial_revokes_listed", "SHOW GLOBAL VARIABLES lists partial_revokes, OFF on this server, and its form that asks for a value other than OFF lists no row", func(e *Env) {
-			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes'", "partial_revokes|OFF")
-			e.WantRows("SHOW GLOBAL VARIABLES WHERE Variable_name = 'partial_revokes' AND Value <> 'OFF'", "")
-		}),
 		p("session.statement_timeout", "SESSION max_execution_time bounds a SELECT in milliseconds (3024), and MySQL has no max_statement_time (1193)", func(e *Env) {
 			e.Exec("SET SESSION max_execution_time = 237")
 			e.Want("SELECT @@SESSION.max_execution_time", "237")

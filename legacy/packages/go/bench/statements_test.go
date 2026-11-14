@@ -14,7 +14,7 @@ import (
 // the same statement as the SQL text that the generated client runs. If the statements of the two sides
 // differ, the gate's ratio measures the statement difference, not the client cost.
 func TestNativeStatementsEqualClient(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	db, err := model.Connect(dsn(t), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestNativeStatementsEqualClient(t *testing.T) {
 // TestNativeWorkloadsRead checks that the native read workloads of the gate and the benchmark
 // read rows from the seeded bench database and finish without error.
 func TestNativeWorkloadsRead(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	db := open(t)
 	defer testcase.Close(t, db)
 	ctx := context.Background()

@@ -16,7 +16,7 @@ import (
 // TestOrmLinksMySQLOnly reads the modules that this binary links: packages/go/orm brings the MySQL driver and
 // neither pgx nor modernc.org/sqlite, which only orm/pg and orm/sqlite import (DIA-20).
 func TestOrmLinksMySQLOnly(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		t.Fatal("the test binary carries no build information")
@@ -39,7 +39,7 @@ func TestOrmLinksMySQLOnly(t *testing.T) {
 // TestOpenWithoutDriverPackageNamesTheImport connects to a PostgreSQL and a SQLite DSN in a binary that imports neither
 // driver package: orm.Connect (the orm.Open of the rule) fails with CONFIG, and its message names the import that registers the driver (DIA-21).
 func TestOpenWithoutDriverPackageNamesTheImport(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for dsn, pkg := range map[string]string{
 		"postgres://user:secret@127.0.0.1:1/orm": "pg",
 		"sqlite:///tmp/orm-mysqlonly.db":         "sqlite",

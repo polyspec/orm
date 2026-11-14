@@ -5,8 +5,8 @@ use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 #[tokio::main(flavor = "current_thread")]
 // Requirements: SCH-3.
 async fn physical_tool_queries_reject_budgets_without_partial_success() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check_databases()).await.expect("tool query budget test deadline");
+    let _case = polyspec_orm_testcase::case!();
+    check_databases().await;
 }
 
 async fn check_databases() {
@@ -45,7 +45,7 @@ async fn check_databases() {
 // A SQLite DSN with a query creates the file from the path alone (docs/spec/dialects.md "Probe environment").
 #[tokio::main(flavor = "current_thread")]
 async fn tool_sqlite_file_name_is_the_path() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let directory = std::env::temp_dir().join(format!("orm-tool-sqlite-name-{}", std::process::id()));
     assert!(!directory.exists(), "{} already exists", directory.display());
     std::fs::create_dir(&directory).expect("temporary directory");

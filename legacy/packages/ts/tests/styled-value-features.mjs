@@ -2,14 +2,14 @@
 // column getter. The styled column states at the setter and the getter are a case of the recipe conformance_verification.
 import { decode } from '../dist/codec.js';
 import * as orm from '../dist/index.js';
-import { cases as caseRunner, COMPUTE } from '../../../../tests/testcase.mts';
+import { cases as caseRunner } from '../../../../tests/testcase.mts';
 
 const suite = caseRunner();
 const probeText = 'dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  primary key (seq)\n  settings {\n    codec payload ordered_json\n  }\n}\n';
 const { manifest } = orm.dbspecManifest([orm.parseDbspec(probeText, {}).document]);
 const model = orm.registerModel(manifest.manifestText, manifest.manifestHash);
 // Requirements: COD-20, COD-25.
-await suite.run('styled-value/model-states', COMPUTE, () => {
+await suite.run('styled-value/model-states', () => {
   const probe = new orm.Core({ model, entity: model.entities.get('styled_probe'), create: () => { throw new Error('not used'); } });
   try { probe.column('payload'); throw new Error('unselected getter was accepted'); }
   catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
@@ -26,7 +26,7 @@ function rejectsLostOutput(label, read) {
   catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
 }
 // Requirements: COD-21, COD-73.
-await suite.run('styled-value/lost-output', COMPUTE, () => {
+await suite.run('styled-value/lost-output', () => {
   rejectsLostOutput('styled toJSON', () => orm.StyledValue.value({ missing: undefined }).toJSON());
   rejectsLostOutput('nested styled JSON.stringify', () => JSON.stringify(orm.StyledValue.value({ nested: { missing: undefined } })));
   rejectsLostOutput('styled array gap', () => orm.StyledValue.value(Object.assign([], { 1: 'present' })).toJSON());
@@ -58,7 +58,7 @@ await suite.run('styled-value/lost-output', COMPUTE, () => {
 // digits (COD-16, COD-26); a class object is its toJSON form, read once, so a form that is the object again has no JSON
 // form and is refused, never read again (COD-73).
 // Requirements: COD-16, COD-26, COD-73.
-await suite.run('styled-value/nested-json-output', COMPUTE, () => {
+await suite.run('styled-value/nested-json-output', () => {
   const text = '{"n":1.50,"m":9007199254740993}';
   const author = new orm.Author().setJsonSetting(orm.StyledValue.value({ inner: decode(['ordered_json'], text).payload() }));
   const want = `"json_setting":{"kind":"value","value":{"inner":${text}}}`;
@@ -82,7 +82,7 @@ await suite.run('styled-value/nested-json-output', COMPUTE, () => {
 // Core.jsonColumn, which the getter of an ordered_json column calls: it takes a styled SQL NULL or ordered-json value and
 // refuses any other value with a TypeError that names the column.
 // Requirements: DBS-112, DBS-114.
-await suite.run('styled-value/json-column', COMPUTE, () => {
+await suite.run('styled-value/json-column', () => {
   try { new orm.Author().getJsonSetting(); throw new Error('the unselected getter was accepted'); }
   catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
   const stored = decode(['ordered_json'], '{"b":1,"a":[true,null]}');

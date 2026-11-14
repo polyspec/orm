@@ -42,7 +42,7 @@ fn bench_set() -> PathBuf {
 #[test]
 fn environment_subprocess() {
     let Some(case) = std::env::var_os(CHILD_CASE) else {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         require_child_success(run_child("explicit-output-no-out-dir", None, None), "explicit-output-no-out-dir");
         require_child_success(run_child("relative-public-paths", Some(package_dir().to_str().expect("package path is UTF-8")), None), "relative-public-paths");
         require_child_success(run_child("absolute-public-paths", None, None), "absolute-public-paths");
@@ -53,7 +53,7 @@ fn environment_subprocess() {
         return;
     };
     let case = case.to_str().expect("test case name is UTF-8");
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let set = bench_set().canonicalize().expect("absolute bench set");
 
     match case {

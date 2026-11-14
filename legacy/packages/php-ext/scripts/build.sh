@@ -1,12 +1,16 @@
 #!/bin/sh
 # Delegate extension builds to the canonical Kit builder, which stages the tracked source-copy declarations for each run; the
-# layout is the one kit 0.0.98 fixed (packages/php-ext, var/php-ext, the PHP library packages/php, vendor and node_modules skipped).
-# Usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]
+# extension is the directory of this package and library the PHP library beside it, each relative to the repository, so the build
+# follows the place of the packages (legacy/packages/php-ext and legacy/packages/php); var/php-ext is the build directory, and vendor
+# and node_modules are skipped.
+# Usage: sh legacy/packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]
 set -eu
-out=${1:?usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]}
+out=${1:?usage: sh legacy/packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|native-test]}
 mode=${2:-release}
-package=$(cd "$(dirname "$0")/.." && pwd)
-repository=$(git -C "$package" rev-parse --show-toplevel)
+package=$(cd "$(dirname "$0")/.." && pwd -P)
+repository=$(cd "$(git -C "$package" rev-parse --show-toplevel)" && pwd -P)
+extension=${package#"$repository"/}
+library=$(dirname "$extension")/php
 node=$(command -v node || true)
 if [ -z "$node" ]; then
   echo "build.sh: the pinned Node runtime is not on PATH; run the build through make, which sets up the toolchain" >&2
@@ -22,16 +26,16 @@ out=$(cd "$(dirname "$out")" && pwd)/$(basename "$out")
 cd "$repository"
 # The build compiles the copy of the SQLite cancel callback that make writes from the PHP library's one source; a missing or
 # different copy is refused, so no build compiles another revision of it.
-if ! cmp -s packages/php/src/native/sqlite_cancel.c packages/php-ext/src/native/sqlite_cancel.c; then
-  echo "build.sh: packages/php-ext/src/native/sqlite_cancel.c is missing or differs from packages/php/src/native/sqlite_cancel.c; run make packages/php-ext/src/native/sqlite_cancel.c" >&2
+if ! cmp -s "$library/src/native/sqlite_cancel.c" "$extension/src/native/sqlite_cancel.c"; then
+  echo "build.sh: $extension/src/native/sqlite_cancel.c is missing or differs from $library/src/native/sqlite_cancel.c; run make $extension/src/native/sqlite_cancel.c" >&2
   exit 1
 fi
-set -- "$builder" build --extension packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library packages/php --output "$out" --configure-arg
+set -- "$builder" build --extension "$extension" --build-dir var/php-ext --skip vendor --skip node_modules --library "$library" --output "$out" --configure-arg
 case "$mode" in
   release) set -- "$@" --disable-polyspec-orm-native-test ;;
   native-test)
     set -- "$@" --enable-polyspec-orm-native-test --source-copy \
-      packages/php-ext/testing/native/module.c src/native_test.c ;;
+      "$extension/testing/native/module.c" src/native_test.c ;;
   *) echo "build.sh: unknown build mode $mode (expected release or native-test)" >&2; exit 2 ;;
 esac
 exec "$node" "$@"

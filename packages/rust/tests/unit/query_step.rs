@@ -3,53 +3,9 @@
 
 use serde_json::{json, Value};
 
-use super::query_members_tests::{MEMBER, MEMBER_HASH};
-use crate::db::Pool;
+use super::query_members_tests::{account_db, account_schema, MEMBER, MEMBER_HASH};
 use crate::test_support::Scratch;
 use crate::{Config, Connection, Db, Schema, StepRunner};
-
-const ACCOUNT: &str = "dbspec 1 account
-
-table account {
-  seq i64 identity
-  email varchar(64)
-  name varchar(32) null
-  revision i64
-  primary key (seq)
-  unique uq_account_email (email)
-  settings {
-    select explicit name
-  }
-}
-
-table account_key {
-  seq i64 identity
-  account_seq i64
-  label varchar(32)
-  primary key (seq)
-  index ix_account_key_account (account_seq)
-  foreign key fk_account_key_account (account_seq) references account (seq) on delete restrict on update restrict
-}
-";
-const ACCOUNT_HASH: &str = "sha256:21700a328449535485eb78d219d2b73bb8cf0c5df7411089c0f2bf3e38b135dc";
-
-fn account_schema() -> Schema {
-    Schema::load(ACCOUNT, "", ACCOUNT_HASH).expect("the account schema loads")
-}
-
-/// A SQLite database with the accounts 1 to 3, the keys 1 and 2 of account 1 and the key 3 of account 2.
-async fn account_db(scratch: &Scratch, schema: &Schema) -> Db {
-    let db = Db::connect(&format!("sqlite://{}", scratch.join("account.sqlite").display()), 1, Config::default()).await.expect("connect");
-    db.utils().schema().install(schema).await.expect("install");
-    let Pool::Sqlite(pool) = &db.inner.pool else { panic!("the case uses SQLite") };
-    for statement in [
-        "INSERT INTO account (seq, email, name, revision) VALUES (1, 'a@x', 'Ann', 0), (2, 'b@x', 'Bob', 0), (3, 'c@x', NULL, 0)",
-        "INSERT INTO account_key (seq, account_seq, label) VALUES (1, 1, 'k1'), (2, 1, 'k2'), (3, 2, 'k3')",
-    ] {
-        sqlx::query(statement).execute(pool).await.expect("insert rows");
-    }
-    db
-}
 
 /// The outcome of the step `step` that `runner` ran, as JSON.
 async fn run(runner: &mut StepRunner, step: &Value) -> Value {
@@ -81,7 +37,7 @@ fn error_kind(outcome: &Value) -> &str {
 // row read, the rows of a relations result and the key of each row.
 #[tokio::test]
 async fn a_read_step_runs_its_calls_and_its_terminal() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-read");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -127,7 +83,7 @@ async fn a_read_step_runs_its_calls_and_its_terminal() {
 // duplicate_key, to the core that asked.
 #[tokio::test]
 async fn a_write_step_returns_its_row_or_the_kind_of_its_failure() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-write");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -164,7 +120,7 @@ async fn a_write_step_returns_its_row_or_the_kind_of_its_failure() {
 // orm_value and an entity that the schema does not have each return the kind of the failure.
 #[tokio::test]
 async fn a_step_that_the_runner_cannot_read_returns_its_kind() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-refused");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -218,7 +174,7 @@ fn end(rollback: bool) -> Value {
 // or rolls back.
 #[tokio::test]
 async fn a_transaction_step_runs_the_steps_until_its_end() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-transaction");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -243,7 +199,7 @@ async fn a_transaction_step_runs_the_steps_until_its_end() {
 // duplicate_key is rolled back to it and the transaction goes on.
 #[tokio::test]
 async fn a_savepoint_step_rolls_back_to_its_start() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-savepoint");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -271,7 +227,7 @@ async fn a_savepoint_step_rolls_back_to_its_start() {
 // close rolls back what is open and leaves the runner on its connection.
 #[tokio::test]
 async fn close_rolls_back_what_is_open() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-close");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -300,7 +256,7 @@ async fn close_rolls_back_what_is_open() {
 // returns to the pool, where the next statement takes it.
 #[tokio::test]
 async fn a_dropped_runner_rolls_back_its_transaction() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-drop");
     let schema = account_schema();
     let db = account_db(&scratch, &schema).await;
@@ -317,7 +273,7 @@ async fn a_dropped_runner_rolls_back_its_transaction() {
 // Requirements: CORE-94. The terminals restore and restore_or_create return the row, and their failures their kinds.
 #[tokio::test]
 async fn a_restore_step_returns_its_row_or_the_kind_of_its_failure() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-step-restore");
     let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
     let db = Db::connect(&format!("sqlite://{}", scratch.join("member.sqlite").display()), 1, Config::default()).await.expect("connect");

@@ -14,7 +14,7 @@ type rejectingModel struct{ core *Core }
 func (m *rejectingModel) Orm_() *Core { return m.core }
 
 func TestAssemblerReturnsAssignmentError(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	want := errors.New("invalid column value")
 	ent := &Entity{
 		Name: "record",
@@ -39,7 +39,7 @@ func TestAssemblerReturnsAssignmentError(t *testing.T) {
 // into the generated model, and returns an error if the assignment fails or the field is missing.
 // The dbspec parser enforces the type rules of identity columns.
 func TestIdentityAssignmentValidationBeforeWrite(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	ent := &Entity{New: func(c *Core) Model { m := &rejectingModel{core: c}; c.Bind(m); return m }}
 	ent.Assign = func(Model, string, any) (bool, error) { return true, nil }
 	m := ent.New(NewCore(ent))

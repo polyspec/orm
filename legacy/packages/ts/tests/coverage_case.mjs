@@ -14,23 +14,23 @@ export const repositoryRoot = new URL('../../..', import.meta.url).pathname;
 
 /**
  * Runs the cases of a file without a database. The command line gives the case IDs in their order, and each prints
- * `CASE <id> PASS`. An unknown or repeated ID is an error. Each run is stopped after timeoutMs of wall-clock time. Without an ID,
+ * `CASE <id> PASS`. An unknown or repeated ID is an error. No clock ends a case: it ends when its work ends (T473). Without an ID,
  * each case of suite runs as a node:test test named by its ID.
  */
-export async function runCases(file, cases, timeoutMs, suite = cases) {
-  return runItems([{ database: 'none', driver: 'none', dsn: null }], file, cases, timeoutMs, suite);
+export async function runCases(file, cases, suite = cases) {
+  return runItems([{ database: 'none', driver: 'none', dsn: null }], file, cases, suite);
 }
 
 /** Runs the cases of a test file on the one database that the file names, with no selection of the manifest. */
-export async function runCasesOn(database, file, cases, timeoutMs, dsn = null) {
-  return runItems([{ database, driver: database, dsn }], file, cases, timeoutMs, cases);
+export async function runCasesOn(database, file, cases, dsn = null) {
+  return runItems([{ database, driver: database, dsn }], file, cases, cases);
 }
 
-async function runItems(items, file, cases, timeoutMs, suite) {
+async function runItems(items, file, cases, suite) {
   const requested = process.argv.slice(2);
   if (requested.length === 0) {
     for (const [id, body] of Object.entries(suite)) {
-      for (const item of items) caseTest(item.database === 'none' ? id : `${id} [${item.database}]`, timeoutMs, () => body(item));
+      for (const item of items) caseTest(item.database === 'none' ? id : `${id} [${item.database}]`, () => body(item));
     }
     return;
   }
@@ -40,11 +40,7 @@ async function runItems(items, file, cases, timeoutMs, suite) {
   }
   for (const id of requested) {
     for (const item of items) {
-      let timer;
-      const deadline = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`case ${id} exceeded ${timeoutMs} ms`)), timeoutMs);
-      });
-      try { await Promise.race([cases[id](item), deadline]); } finally { clearTimeout(timer); }
+      await cases[id](item);
       console.log(item.database === 'none' ? `CASE ${id} PASS` : `CASE ${id} [${item.database}] PASS`);
     }
   }

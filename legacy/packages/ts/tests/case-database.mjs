@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
-import { caseTest, DATABASE } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 
 const execute = promisify(execFile);
 const require = createRequire(new URL('../package.json', import.meta.url));
@@ -101,7 +101,8 @@ export async function createCaseDatabase(dialect, step) {
     };
   }
   if (!(dialect in adminEnv)) throw new Error(`unknown dialect ${dialect}`);
-  const { dsn: base } = await admin(dialect, dialect !== 'postgres' ? `CREATE DATABASE \`${name}\`` : `CREATE DATABASE "${name}"`);
+  // The name is lower-case letters, digits and underscores, which every server takes unquoted.
+  const { dsn: base } = await admin(dialect, `CREATE DATABASE ${name}`);
   step(`database ${name} created`);
   return {
     dialect, name, path: null, dsn: relatedDsn(base, name),
@@ -197,11 +198,24 @@ export async function withCaseCorpus(setPath, step, body) {
  * case-database-mysql.test.mjs and case-database-mariadb.test.mjs run it on the two servers of the MySQL dialect (DIA-200).
  */
 export function dropDiscardsItsSession(dialect) {
-  caseTest(`${dialect}: the drop of a case database leaves the next admin session with foreign_key_checks 1`, DATABASE, async ({ step }) => {
+  caseTest(`${dialect}: the drop of a case database leaves the next admin session with foreign_key_checks 1`, async ({ step }) => {
     const database = await createCaseDatabase(dialect, step);
     await database.drop();
     const { rows } = await admin(dialect, 'SELECT @@SESSION.foreign_key_checks AS checks');
     if (Number(rows[0].checks) !== 1) throw new Error(`the next admin session has foreign_key_checks ${rows[0].checks}, want 1`);
     step('the next admin session has foreign_key_checks 1');
   });
+}
+
+// The SQLite pool of db opens a connection when a statement or a session first needs one (CFG-5a): install runs on the state
+// of each connection that is idle now and of each that the pool opens later, so a fault of the test driver reaches every one.
+export function onSqliteConnections(db, install) {
+  const pool = db.pool.pool;
+  for (const connection of pool.idle) install(connection.state);
+  const dial = pool.dial;
+  pool.dial = async signal => {
+    const connection = await dial(signal);
+    install(connection.state);
+    return connection;
+  };
 }

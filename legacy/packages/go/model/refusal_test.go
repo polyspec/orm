@@ -32,7 +32,7 @@ var refusalChains = []refusalChain{
 // and refuses the use that drops the error, so the refusal cannot be left unread.
 // Requirements: DSL-10, DSL-19, DSL-47, DSL-67, DSL-96, DSL-98, DSL-123, PRT-14.
 func TestRefusalIsATypedError(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	imported := loadModelTypes(t)
 	check := func(t *testing.T, body string) []string {
 		t.Helper()

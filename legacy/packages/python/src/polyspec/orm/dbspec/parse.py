@@ -92,8 +92,16 @@ INTEGER_RANGES = {
 STAGES = frozenset(
     {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"}
 )
-# JSON_STAGE is the name of the stage ordered_json in the core (DBS-69).
+# JSON_STAGE is the name of the stage ordered_json in the core (DBS-185).
 JSON_STAGE = "json"
+
+
+def codec_stage_meaning(stage: str) -> str:
+    """The stage that a codec stage name means: json means ordered_json, with the same encoding, and any other name
+    means itself (DBS-185). A document keeps the name that it was written with, so its canonical text and its manifest
+    hash are those of the document as written."""
+    return "ordered_json" if stage == JSON_STAGE else stage
+
 ACTIONS = frozenset({"restrict", "cascade", "set_null"})
 CONSTRAINT_WORDS = frozenset({"primary", "unique", "index", "foreign", "check"})
 EXPRESSION_WORDS = frozenset(
@@ -1741,11 +1749,9 @@ class DocumentParser:
             self._name(w[0])
             stages = w[1:]
             for s in stages:
-                # json is the name of the stage ordered_json in the core, with the same encoding (DBS-69), so the reader
-                # takes it as ordered_json and the canonical form writes ordered_json.
-                if s.t == JSON_STAGE:
-                    s.t = "ordered_json"
-                if s.t in STAGES:
+                # json is the name of the stage ordered_json in the core, with the same encoding: the reader keeps the
+                # name as written, so the canonical text and the manifest hash are those of the document (DBS-185).
+                if codec_stage_meaning(s.t) in STAGES:
                     _mark(s, "keyword")
                 elif not self._detached_block:
                     self._at("setting", s, f"codec stage {goq(s.t)} is unknown")
@@ -3016,10 +3022,10 @@ class DocumentParser:
     def _codec(self, table: _Table, s: _Setting) -> None:
         """The stage order, and the storage type the last stage requires (codec in engine/dbspec/settings.go)."""
         column = self._lookup(table, s.column, "setting")
-        stages = [stage.t for stage in s.stages]
+        stages = [codec_stage_meaning(stage.t) for stage in s.stages]
         known = all(stage in STAGES for stage in stages)
         for i, stage in enumerate(s.stages):
-            if stage.t == "ordered_json" and i > 0:
+            if codec_stage_meaning(stage.t) == "ordered_json" and i > 0:
                 self._at("setting", stage, "ordered_json is the first codec stage")
         if column is None or column.type is None or not known:
             return

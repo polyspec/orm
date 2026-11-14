@@ -27,6 +27,7 @@
   "cases": [
     {
       "id": "read_path_codes",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-44"
       ],
@@ -255,35 +256,32 @@
           "sql": {
             "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
             "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
-            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version TEXT NOT NULL, token TEXT NULL)"
           },
           "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -433,6 +431,7 @@
     },
     {
       "id": "rotation_path_codes",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-47"
       ],
@@ -662,35 +661,32 @@
           "sql": {
             "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
             "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
-            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version TEXT NOT NULL, token TEXT NULL)"
           },
           "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -816,6 +812,7 @@
     },
     {
       "id": "stored_version_text",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-49"
       ],
@@ -846,35 +843,32 @@
           "sql": {
             "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
             "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
-            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version TEXT NOT NULL, token TEXT NULL)"
           },
           "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -1135,6 +1129,7 @@
     },
     {
       "id": "stored_version_above_i32",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-51"
       ],
@@ -1171,29 +1166,26 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -1455,6 +1447,7 @@
     },
     {
       "id": "stored_version_text_decodes",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-53"
       ],
@@ -1485,35 +1478,32 @@
           "sql": {
             "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
             "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
-            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version TEXT NOT NULL, token TEXT NULL)"
           },
           "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -1581,7 +1571,19 @@
               ]
             },
             "sqlite": {
-              "error": "row_write_mismatch"
+              "rows": [
+                [
+                  {
+                    "ref": "page11.rows.0.0"
+                  },
+                  {
+                    "text": "1"
+                  },
+                  {
+                    "ref": "page11.rows.0.2"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -1913,6 +1915,7 @@
     },
     {
       "id": "null_version_with_aes_value",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-58"
       ],
@@ -1949,29 +1952,26 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -2096,6 +2096,7 @@
     },
     {
       "id": "null_aes_null_version",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-59"
       ],
@@ -2132,29 +2133,26 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -2377,6 +2375,7 @@
     },
     {
       "id": "model_statement_after_schema_change",
+      "databases_differ": "Each server changes the type of a column in its own statement, and SQLite makes the table again; a statement prepared before the change runs again on MySQL and SQLite, while on PostgreSQL the prepared statement whose result type changed fails inside a transaction, which cannot prepare it again (DIA-222, CFG-28).",
       "requirements": [
         "CFG-28"
       ],
@@ -2445,11 +2444,36 @@
         },
         {
           "op": "sql.exec",
-          "only": [
-            "postgres"
-          ],
           "reason": "changes the result type of the statement the model read prepared",
-          "sql": "ALTER TABLE rot_row ALTER COLUMN token TYPE TEXT"
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY token TEXT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN token TYPE TEXT",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "copies the rows of the SQLite table into the replacement table",
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "drops the old SQLite table",
+          "sql": "DROP TABLE rot_row"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "renames the replacement table to the case table",
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row"
         },
         {
           "op": "model.query",
@@ -2535,11 +2559,36 @@
         },
         {
           "op": "sql.exec",
-          "only": [
-            "postgres"
-          ],
           "reason": "changes the result type again, for the read inside a transaction",
-          "sql": "ALTER TABLE rot_row ALTER COLUMN token TYPE VARCHAR(255)"
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY token VARCHAR(255) NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN token TYPE VARCHAR(255)",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token VARCHAR(255) NULL)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "copies the rows of the SQLite table into the replacement table",
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "drops the old SQLite table",
+          "sql": "DROP TABLE rot_row"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "renames the replacement table to the case table",
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row"
         },
         {
           "op": "transaction",
@@ -2668,6 +2717,7 @@
     },
     {
       "id": "utility_statement_after_schema_change",
+      "databases_differ": "Each server changes the type of a column in its own statement, and SQLite makes the table again (DIA-222).",
       "requirements": [
         "CFG-28"
       ],
@@ -2819,11 +2869,36 @@
         },
         {
           "op": "sql.exec",
-          "only": [
-            "postgres"
-          ],
           "reason": "changes the result type of the statement the status read prepared",
-          "sql": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE BIGINT"
+          "sql": {
+            "mysql": "ALTER TABLE rot_row MODIFY aes_key_version BIGINT NOT NULL",
+            "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE BIGINT",
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version BIGINT NOT NULL, token TEXT NULL)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "copies the rows of the SQLite table into the replacement table",
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "drops the old SQLite table",
+          "sql": "DROP TABLE rot_row"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "renames the replacement table to the case table",
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row"
         },
         {
           "op": "utils.aes_status",
@@ -3681,6 +3756,7 @@
     },
     {
       "id": "json_column_round_trip_and_rotation",
+      "databases_differ": "The stored bytes are read with the byte functions of each server, HEX, LEFT and LOCATE on MySQL, encode, substring and position on PostgreSQL and hex, substr and instr on SQLite, which share no form (DIA-1, DIA-224).",
       "requirements": [
         "COD-7"
       ],
@@ -4558,6 +4634,7 @@
     },
     {
       "id": "a_refused_aes_configuration_opens_no_database_file",
+      "databases_differ": "Only a SQLite connection opens a database file, which a refused configuration must leave uncreated (COD-8).",
       "requirements": [
         "COD-8"
       ],
@@ -4688,6 +4765,7 @@
     },
     {
       "id": "a_rotation_that_fails_on_a_row_keeps_every_row_at_its_version",
+      "databases_differ": "A trigger that skips the change of a row exists on PostgreSQL and SQLite, where the rotation finds the row unchanged and returns the conflict of INT-48; on MySQL a trigger can only refuse the update, which every client reports as DRIVER (DIA-223, INT-60).",
       "requirements": [
         "INT-60",
         "PLN-44"
@@ -5180,6 +5258,7 @@
     },
     {
       "id": "stored_version_text_with_a_leading_zero_decodes",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-53"
       ],
@@ -5210,35 +5289,32 @@
           "sql": {
             "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
             "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
-            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version TEXT NOT NULL, token TEXT NULL)"
           },
           "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {
@@ -5636,6 +5712,7 @@
     },
     {
       "id": "stored_version_text_above_i32_fails_the_read",
+      "databases_differ": "The stored version column changes type in the statement of each server, and SQLite, which has no statement that changes the type of a column, makes the table again (DIA-222).",
       "requirements": [
         "COD-51",
         "COD-53"
@@ -5667,35 +5744,32 @@
           "sql": {
             "mysql": "ALTER TABLE rot_row MODIFY aes_key_version VARCHAR(16) NOT NULL",
             "postgres": "ALTER TABLE rot_row ALTER COLUMN aes_key_version TYPE VARCHAR(16) USING aes_key_version::text",
-            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)"
+            "sqlite": "CREATE TABLE rot_row_new (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version TEXT NOT NULL, token TEXT NULL)"
           },
           "reason": "drifts the stored version column to text, keeping its rows (COD-6)"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "INSERT INTO rot_row_new (seq, aes_key_version, token) SELECT seq, aes_key_version, token FROM rot_row",
           "reason": "copies the rows of the SQLite table into the replacement table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "DROP TABLE rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "DROP TABLE rot_row",
           "reason": "drops the old SQLite table"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "SELECT 1",
-            "postgres": "SELECT 1",
-            "sqlite": "ALTER TABLE rot_row_new RENAME TO rot_row"
-          },
+          "only": [
+            "sqlite"
+          ],
+          "sql": "ALTER TABLE rot_row_new RENAME TO rot_row",
           "reason": "renames the replacement table to the case table"
         },
         {

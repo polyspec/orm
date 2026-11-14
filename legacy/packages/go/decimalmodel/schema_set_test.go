@@ -65,18 +65,18 @@ func schemaSetEditedManifest(t *testing.T, driver string) {
 
 // Requirements: DBS-120, SCH-7, SCH-11.
 func TestSchemaSetEditedManifestSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	schemaSetEditedManifest(t, "sqlite")
 }
 
 // Requirements: DBS-120, SCH-7, SCH-11.
 func TestSchemaSetEditedManifestMySQL(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	schemaSetEditedManifest(t, "mysql")
 }
 
 // Requirements: DBS-120, SCH-7, SCH-11.
 func TestSchemaSetEditedManifestPostgres(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	testcase.Start(t)
 	schemaSetEditedManifest(t, "postgres")
 }

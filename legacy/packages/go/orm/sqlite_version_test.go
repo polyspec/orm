@@ -13,7 +13,7 @@ import (
 
 // Requirements: DSL-150.
 func TestSQLiteMinimumVersionThroughConnect(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	previous := sqlite3.SQLITE_VERSION
 	orm.RegisterSQLiteVersion("3.9.0")
 	t.Cleanup(func() { orm.RegisterSQLiteVersion(previous) })
@@ -40,7 +40,7 @@ func TestSQLiteMinimumVersionThroughConnect(t *testing.T) {
 
 // Requirements: DSL-150.
 func TestSQLiteVersionMalformedIsInternal(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	previous := sqlite3.SQLITE_VERSION
 	t.Cleanup(func() { orm.RegisterSQLiteVersion(previous) })
 	for _, version := range []string{"3.46", "3.46.0.0.0", "3..0", ".46.0", " 3.46.0", "3.46.0 ", "3.46.0\n", "3.46.0\r", "3.46.0\u2028", "3.46.0\u2029", "+3.46.0", "3.46.0-rc1", "3.4294967296.0", "3.46.0.4294967296", "3.46.0.", "\u0663.46.0"} {

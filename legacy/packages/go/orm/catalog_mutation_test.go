@@ -8,7 +8,7 @@ import (
 )
 
 func TestCatalogSameCellComparesWrittenTemporalTextExactly(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	tests := []struct {
 		name      string
 		stored    any
@@ -32,7 +32,7 @@ func TestCatalogSameCellComparesWrittenTemporalTextExactly(t *testing.T) {
 }
 
 func TestCatalogBytesValuePreservesNativeTimeAsText(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, nativeType := range []string{"TIME", "TIME(3)", "time without time zone", "time(3) without time zone"} {
 		got, err := catalogBytesValue([]byte("12:34:56.123"), nativeType)
 		if err != nil || got != "12:34:56.123" {

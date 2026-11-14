@@ -13,6 +13,6 @@ import (
 // PLN-73, PLN-74, PLN-75, PLN-76, PLN-77, PLN-78, PLN-79, PLN-80, PLN-81, PLN-82, PLN-83, PLN-84, PLN-85, PLN-86, PLN-87,
 // PLN-88, DBS-109.
 func TestRecipeDbspecPlanCases(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("tests/dbspec/plan-cases.json"), recipe.None)
 }

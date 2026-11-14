@@ -6,7 +6,8 @@
 # fuzz checks and the common state contracts of the conformance results, split
 # into the CI groups of the Makefile (CI_GROUPS): one job per group, all at
 # once, each running make check-run GROUP=<group> on the targets CI_TARGETS_<group>;
-# the groups together run every target of CHECK_TARGETS once. The job docs runs
+# the groups together run every target of CHECK_TARGETS once. The job assets
+# builds the binding assets of each platform from the commit (assets.yml). The job docs runs
 # the documentation checks of the published site, and the last job ci-passed,
 # the run whose id the release takes (make release-tag requires its success), passes
 # only when every other job succeeded. This is where the full suite
@@ -57,6 +58,14 @@ jobs:
   kit:
     needs: [preflight]
     uses: ./.github/workflows/ci-pipeline.yml
+    permissions:
+      contents: read
+
+  # The binding assets of each platform (assets.yml), built from the commit of the run, so the run proves that the release of
+  # this commit builds every asset.
+  assets:
+    needs: [preflight]
+    uses: ./.github/workflows/assets.yml
     permissions:
       contents: read
 
@@ -457,7 +466,7 @@ jobs:
   # lists every other job.
   ci-passed:
     if: ${{ always() }}
-    needs: [preflight, kit, test, docs, editor]
+    needs: [preflight, kit, assets, test, docs, editor]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5

@@ -5,13 +5,10 @@
 //   runCase, runGroup, runLong, sections: written by runners that are not tests. The result is the TAP lines `ok - <case>` or
 //   `not ok - <case>` with the reason `# <reason>`, and steps are the subprocess output lines as-is.
 //
-// When a case past its deadline is stuck and ignores its signal, write the `Bail out! <case>: ...` line that TAP uses to stop the run,
-// and end the process with exit code 1.
-//
-// Long tasks (build, install, tool runs) have no deadline. runLong sets no deadline; its success and failure are decided not by the clock but
-// by the observed result and errors.
-//
-// Deadlines are wall-clock time, because a deadline is a timer that ends a stuck case, not a limit measuring the case's own computation time (AGENTS.md testing rule).
+// No case has a deadline (T473, AGENTS.md testing rule): a case ends when its work ends, and its result is decided by what the work
+// observed, never by the clock, because the time that a machine gives a case depends on its load and not on the code under test.
+// A wait inside a case waits for its event. A case that does not end is seen in the step lines and in the RUN line of the runner
+// that started it, and the person or the runner that runs it stops it with a signal.
 import { spawn, type SpawnOptions } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,67 +17,10 @@ import test from 'node:test';
 
 /** step writes one step line of the running case. */
 export type Step = (text: string) => void;
-/** The body of a case with a deadline: signal aborts at the deadline. */
+/** The body of a case. signal is aborted when the process is asked to stop (SIGINT or SIGTERM), so that the case ends its work and its cleanup. */
 export type CaseBody = (context: { signal: AbortSignal; step: Step }) => unknown;
-/** The body of a group or a long task, which has no deadline. */
+/** The body of a group or a long task. */
 export type LongBody = (context: { step: Step }) => unknown;
-
-// The deadline classes. A case uses the class that fits what it does; work that takes longer than its class
-// uses its own deadline, with the basis stated in a comment.
-// COMPUTE: cases that only compute in memory and read repository files. The largest one (parsing and emitting the dbspec stress
-// document) also finishes within seconds, so a case past one minute is stuck.
-export const COMPUTE = 60_000;
-// DATABASE: cases that connect to the database of TEST_ENV and run a set number of statements. Two minutes is generous, including
-// creating and dropping the database and waiting for locks on the shared server.
-export const DATABASE = 120_000;
-// PROCESS: cases that run child processes such as go, php, cargo binaries, node. `go run` compile takes minutes when
-// the build cache is empty.
-export const PROCESS = 300_000;
-// GRACE: the time to wait after the deadline passes before failing the case. A case that follows its signal can
-// fail on the deadline with its own error and finish its cleanup.
-export const GRACE = 5_000;
-// STEP_BUDGET and FIXED_BUDGET: the deadline of a case that applies its steps one after another is STEP_BUDGET for each step plus
-// FIXED_BUDGET for the work around them (the Go testcase package's StepBudget). The MySQL stress plan applies its steps at 28 to
-// 35 ms a step on the slowest CI runs, so 250 ms is several times the slowest step rate: an upper bound, and a stuck step is found
-// by stepGuard long before.
-export const STEP_BUDGET = 250;
-export const FIXED_BUDGET = 60_000;
-
-// stepBudget is the deadline of a case that applies `steps` steps one after another.
-export function stepBudget(steps: number): number {
-  return steps * STEP_BUDGET + FIXED_BUDGET;
-}
-
-// seconds writes ms as seconds with the digits it needs (120s, 60.25s), the form of the texts of the step guard.
-function seconds(ms: number): string {
-  return `${ms / 1000}s`;
-}
-
-// stallText is the failure text of a case whose step guard saw no step within `limit` ms; every runtime writes the same text.
-export function stallText(limit: number): string {
-  return `no step was applied within ${seconds(limit)}`;
-}
-
-// budgetText is the failure text of a case that kept applying steps past its step `budget` ms; every runtime writes the same text.
-export function budgetText(budget: number): string {
-  return `step budget ${seconds(budget)} exceeded`;
-}
-
-// stepGuard ends a case with a step deadline (the Go testcase package's StepGuard): `ended` resolves with the error of budgetText when
-// `budget` ms have passed, and with the error of stallText when progress is not called within `stall` ms. Each progress restarts the stall limit, so a long
-// case that keeps applying steps is ended only by its budget, while a stuck step is ended by the stall limit. stop releases the guard.
-export function stepGuard(budget: number, stall: number): { ended: Promise<Error>; progress: () => void; stop: () => void } {
-  let fail: (error: Error) => void = () => {};
-  const ended = new Promise<Error>(resolve => { fail = resolve; });
-  const spent = setTimeout(() => fail(new Error(budgetText(budget))), budget);
-  let stalled: ReturnType<typeof setTimeout> | undefined;
-  const progress = () => {
-    clearTimeout(stalled);
-    stalled = setTimeout(() => fail(new Error(stallText(stall))), stall);
-  };
-  progress();
-  return { ended, progress, stop: () => { clearTimeout(spent); clearTimeout(stalled); } };
-}
 
 // duration writes ms in Go time.Duration's String format (1m0s, 1.5s, 12ms). The report lines of the three
 // languages share this format.
@@ -112,26 +52,32 @@ function reason(error: unknown): string {
   return String(error);
 }
 
-// execute runs body under deadline (ms) and returns the failure reason; it is undefined when body passes. A body that is aborted at the deadline
-// gives body a signal; if body still has not finished after the deadline plus GRACE, it writes a `Bail out!` line and ends the process
-// with exit code 1. A stuck body's handles, such as timers or connections, cannot be released, and leaving them open would keep the process from ending.
-// Later cases in the same process do not run.
-async function execute(name: string, deadline: number, body: CaseBody, step: Step): Promise<string | undefined> {
-  if (!(deadline > 0)) throw new Error(`runCase ${name}: deadline ${deadline} is not positive`);
+// stopped is the signal of every case of the process: it is aborted when the process is asked to stop, and by nothing else.
+// The listeners are added on the first case, so a script that runs no case keeps the default handling of the signals. Each
+// listener runs once: the first SIGINT or SIGTERM asks the cases to end, and a second one ends the process by its default
+// handling, so a case that does not follow its signal is still stopped by the one who stops the run.
+let stopped: AbortSignal | undefined;
+function stopSignal(): AbortSignal {
+  if (stopped !== undefined) return stopped;
   const controller = new AbortController();
-  const abort = setTimeout(() => controller.abort(new Error(`deadline ${duration(deadline)} exceeded`)), deadline);
-  const expire = setTimeout(() => {
-    console.log(`Bail out! ${name}: deadline ${duration(deadline)} exceeded and the case did not stop`);
-    process.exit(1);
-  }, deadline + GRACE);
+  for (const name of ['SIGINT', 'SIGTERM'] as const) {
+    process.once(name, () => {
+      controller.abort(new Error(`the process was asked to stop by ${name}`));
+      // The case ends its work on the signal; the exit status is that of the signal.
+      process.exitCode = 128 + (name === 'SIGINT' ? 2 : 15);
+    });
+  }
+  stopped = controller.signal;
+  return stopped;
+}
+
+// execute runs body and returns the failure reason; it is undefined when body passes.
+async function execute(body: CaseBody, step: Step): Promise<string | undefined> {
   try {
-    await body({ signal: controller.signal, step });
+    await body({ signal: stopSignal(), step });
     return undefined;
   } catch (error) {
     return reason(error);
-  } finally {
-    clearTimeout(abort);
-    clearTimeout(expire);
   }
 }
 
@@ -146,17 +92,17 @@ function report(name: string, failure: string | undefined): boolean {
   return false;
 }
 
-// runCase runs one case under deadline (ms) and writes its TAP result line. body receives { signal, step }. signal is
-// aborted at the deadline, and step(text) writes a step line. It returns true when the case passes and false when it fails. The process exit code is
+// runCase runs one case and writes its TAP result line. body receives { signal, step }. signal is
+// aborted when the process is asked to stop, and step(text) writes a step line. It returns true when the case passes and false when it fails. The process exit code is
 // decided by the caller.
-export async function runCase(name: string, deadline: number, body: CaseBody): Promise<boolean> {
-  return report(name, await execute(name, deadline, body, text => console.log(text)));
+export async function runCase(name: string, body: CaseBody): Promise<boolean> {
+  return report(name, await execute(body, text => console.log(text)));
 }
 
-function registerCase(name: string, deadline: number, body: CaseBody): Promise<boolean> {
+function registerCase(name: string, body: CaseBody): Promise<boolean> {
   let passed = true;
   return test(name, async t => {
-    const failure = await execute(name, deadline, body, text => t.diagnostic(text));
+    const failure = await execute(body, text => t.diagnostic(text));
     if (failure !== undefined) {
       passed = false;
       throw new Error(failure);
@@ -169,8 +115,8 @@ function registerCase(name: string, deadline: number, body: CaseBody): Promise<b
 export function cases() {
   let failed = 0;
   return {
-    async run(name: string, deadline: number, body: CaseBody): Promise<boolean> {
-      const passed = await registerCase(name, deadline, body);
+    async run(name: string, body: CaseBody): Promise<boolean> {
+      const passed = await registerCase(name, body);
       if (!passed) failed++;
       return passed;
     },
@@ -184,13 +130,12 @@ export function cases() {
   };
 }
 
-// sections reports test code regions that are not split into functions as cases. begin(name, deadline)
-// starts a region, and end(reason) writes an `ok` line if there is no reason, or a `not ok` line if there is one. Since a region is code that cannot be interrupted,
-// if the deadline plus GRACE passes, it writes a `Bail out!` line and ends the process. If the process
+// sections reports test code regions that are not split into functions as cases. begin(name)
+// starts a region, and end(reason) writes an `ok` line if there is no reason, or a `not ok` line if there is one. If the process
 // exits while the region is open (an uncaught error, or a process.exit called after logging an error), it writes a `Bail out!` line. The reason is that the region's
 // last error while it was open is the message of the uncaught error, or otherwise the last line written to stderr. So that line carries the actual error.
 export function sections() {
-  let open: { name: string; timer?: NodeJS.Timeout } | null = null;
+  let open: { name: string } | null = null;
   let lastError = '';
   const write = process.stderr.write.bind(process.stderr);
   process.stderr.write = (chunk: string | Uint8Array, ...rest: unknown[]): boolean => {
@@ -207,16 +152,9 @@ export function sections() {
     if (open) console.log(`Bail out! ${open.name}: the process ended inside the case: ${lastError || 'no error was written'}`);
   });
   return {
-    begin(name: string, deadline: number): void {
+    begin(name: string): void {
       if (open) throw new Error(`case ${name} began inside case ${open.name}`);
-      if (!(deadline > 0)) throw new Error(`case ${name}: deadline ${deadline} is not positive`);
-      const opened: { name: string; timer?: NodeJS.Timeout } = { name };
-      open = opened;
-      opened.timer = setTimeout(() => {
-        console.log(`Bail out! ${name}: deadline ${duration(deadline)} exceeded`);
-        open = null;
-        process.exit(1);
-      }, deadline + GRACE);
+      open = { name };
     },
     step(text: string): void {
       if (!open) throw new Error('step outside a case');
@@ -224,28 +162,25 @@ export function sections() {
     },
     end(failure?: string): void {
       if (!open) throw new Error('case ended without a beginning');
-      clearTimeout(open.timer);
       report(open.name, failure);
       open = null;
     },
   };
 }
 
-// runGroup runs one job that groups cases, each with its own deadline (a command that runs another runner), and writes a TAP result line.
-// The group itself has no deadline. body receives { step }. It returns true when it passes and false when it fails.
+// runGroup runs one job that groups cases (a command that runs another runner), and writes a TAP result line. body receives { step }. It returns true when it passes and false when it fails.
 export function runGroup(name: string, body: LongBody): Promise<boolean> {
-  return runWithoutDeadline(name, body);
+  return runJob(name, body);
 }
 
-// runLong runs one long-running job (a build, an install, a tool run) with no deadline and writes a TAP result line. So that a slow but healthy job
-// does not fail because of the clock, no timer is set. Progress is observed through the output lines that body emits with step (the output of child processes),
+// runLong runs one long-running job (a build, an install, a tool run) and writes a TAP result line. Progress is observed through the output lines that body emits with step (the output of child processes),
 // and success or failure is decided by the result body observes (the exit code and errors). body receives { step }. It returns true when it passes,
 // and false when it fails.
 export function runLong(name: string, body: LongBody): Promise<boolean> {
-  return runWithoutDeadline(name, body);
+  return runJob(name, body);
 }
 
-async function runWithoutDeadline(name: string, body: LongBody): Promise<boolean> {
+async function runJob(name: string, body: LongBody): Promise<boolean> {
   const step: Step = text => console.log(text);
   try {
     await body({ step });
@@ -294,8 +229,8 @@ export function runChild(command: string, args: readonly string[], step: Step, o
 
 // caseTest runs a case as one node:test test. Steps are t.diagnostic (the `#` lines of TAP), and a failed case reports its reason
 // Fails the test with the error it carries.
-export function caseTest(name: string, deadline: number, body: CaseBody): void {
-  void registerCase(name, deadline, body);
+export function caseTest(name: string, body: CaseBody): void {
+  void registerCase(name, body);
 }
 
 /**

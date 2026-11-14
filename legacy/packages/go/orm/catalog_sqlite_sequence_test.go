@@ -53,7 +53,7 @@ func restoreSQLiteSequence(ctx context.Context, db *sql.DB, table string, snapsh
 
 // Requirements: DIA-63.
 func TestCatalogSQLiteSequenceRestoration(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	ctx := context.Background()
 	raw, err := sql.Open("sqlite", ":memory:")
 	if err != nil {

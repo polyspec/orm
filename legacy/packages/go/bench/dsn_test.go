@@ -11,7 +11,7 @@ import (
 // ORM_BENCH_MYSQL_DSN is unset; the bench and the gate never fall back to a
 // local server.
 func TestBenchDSNIsRequired(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	t.Setenv("ORM_BENCH_MYSQL_DSN", "")
 	if _, err := benchDSN(); err == nil || !strings.Contains(err.Error(), "ORM_BENCH_MYSQL_DSN is required") {
 		t.Fatalf("benchDSN() error = %v, want the ORM_BENCH_MYSQL_DSN requirement", err)

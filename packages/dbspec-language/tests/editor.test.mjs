@@ -11,9 +11,7 @@ import { fileURLToPath } from 'node:url';
 import * as language from '../dist/index.js';
 import { repo } from './helpers.mjs';
 
-// The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
-const TIMEOUT = 15000;
-const vector = (name, body) => caseTest(name, TIMEOUT, body);
+const vector = (name, body) => caseTest(name, body);
 
 const { openDocument } = language;
 const dir = fileURLToPath(new URL('tests/editor/', repo));

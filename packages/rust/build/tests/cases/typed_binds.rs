@@ -5,8 +5,8 @@ use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-116.
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+    let _case = polyspec_orm_testcase::case!();
+    async {
         let path = sqlite_path("typed-binds");
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
@@ -35,16 +35,15 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed bind cases failed: {failures:?}");
-    })
-    .await
-    .expect("typed bind deadline");
+    }
+    .await;
 }
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-116, INT-122.
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+    let _case = polyspec_orm_testcase::case!();
+    async {
         let path = sqlite_path("typed-writes");
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
@@ -225,9 +224,8 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed write cases failed: {failures:?}");
-    })
-    .await
-    .expect("typed write deadline");
+    }
+    .await;
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {

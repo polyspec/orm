@@ -9,7 +9,7 @@ import (
 // TestSetRoot covers the prefix and the root of step 1: no recipe step states the empty prefix of a set path in the working directory (FCV-2).
 // Requirements: DBS-12.
 func TestSetRoot(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	for _, c := range []struct{ path, prefix, root string }{
 		{"dbspec-set.json", "", "."},
 		{"/dbspec-set.json", "/", "/"},

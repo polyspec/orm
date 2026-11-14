@@ -4,13 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { caseTest, COMPUTE } from '../tests/testcase.mts';
+import { caseTest } from '../tests/testcase.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { command, commandEnvironment, observed } from './decimal-physical-check.mts';
 
 const kitRunTests = fileURLToPath(import.meta.resolve('@polyspec/kit/run-tests'));
 
-caseTest('dispatches each decimal owner to its native command and rejects unknown runtimes', COMPUTE, () => {
+caseTest('dispatches each decimal owner to its native command and rejects unknown runtimes', () => {
   const extension = '/build/polyspec_orm.so';
   const rustRun = mkdtempSync(join(tmpdir(), 'orm-decimal-rust-'));
   writeFileSync(join(rustRun, 'binaries.json'), JSON.stringify({
@@ -47,12 +47,12 @@ caseTest('dispatches each decimal owner to its native command and rejects unknow
   assert.throws(() => command('unknown-runtime', 'postgres', {}), /unknown decimal physical runtime/);
 });
 
-caseTest('accepts the expected TeamCity pass event', COMPUTE, async () => {
+caseTest('accepts the expected TeamCity pass event', async () => {
   await runPhysicalCommandCase(async () => "##teamcity[testFinished name='test_group_rows']", 'php', [], {}, 'dsn-secret',
     { kind: 'teamcity', testName: 'test_group_rows' }, 'missing pass event');
 });
 
-caseTest('rejects a failed or unexpected TeamCity event and nonmatching exact output', COMPUTE, async () => {
+caseTest('rejects a failed or unexpected TeamCity event and nonmatching exact output', async () => {
   const run = async () => "##teamcity[testFinished name='test_group_rows']\n##teamcity[testFailed name='test_group_rows']";
   await assert.rejects(runPhysicalCommandCase(run, 'php', [], {}, 'dsn-secret',
     { kind: 'teamcity', testName: 'test_group_rows' }, 'missing pass event'), /missing pass event/);
@@ -62,7 +62,7 @@ caseTest('rejects a failed or unexpected TeamCity event and nonmatching exact ou
     { kind: 'predicate', accepts: output => output === 'accepted' }, 'missing predicate output'), /missing predicate output/);
 });
 
-caseTest('a nonmatching output fails with that output and its DSN redacted', COMPUTE, async () => {
+caseTest('a nonmatching output fails with that output and its DSN redacted', async () => {
   const run = async () => 'connected to dsn-secret\nCASE other PASS';
   await assert.rejects(runPhysicalCommandCase(run, 'node', [], {}, 'dsn-secret',
     { kind: 'exact', output: 'CASE group_rows_mysql PASS' }, 'missing exact output'), (error: Error) => {
@@ -76,7 +76,7 @@ caseTest('a nonmatching output fails with that output and its DSN redacted', COM
   });
 });
 
-caseTest('matches the exact PHP decimal PHPUnit class and data-set events', COMPUTE, () => {
+caseTest('matches the exact PHP decimal PHPUnit class and data-set events', () => {
   const database = 'mysql';
   const classSuite = "##teamcity[testSuiteStarted name='Polyspec\\Orm\\Tests\\DecimalModelDbTest']";
   const finished = ['testGenerate', 'testSetters', 'testRoundTrip']
@@ -89,7 +89,7 @@ caseTest('matches the exact PHP decimal PHPUnit class and data-set events', COMP
   assert.equal(observed('php', database, `${output}\n##teamcity[testFailed name='testSetters']`), false);
 });
 
-caseTest('matches the exact Go decimal test2json symbol and package pass', COMPUTE, () => {
+caseTest('matches the exact Go decimal test2json symbol and package pass', () => {
   const output = [
     JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/legacy/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 }),
     JSON.stringify({ Action: 'pass', Package: 'github.com/polyspec/orm/legacy/packages/go/decimalmodel', Elapsed: 0.03 }),
@@ -100,7 +100,7 @@ caseTest('matches the exact Go decimal test2json symbol and package pass', COMPU
   assert.equal(observed('go', 'mysql', `${output}\n${JSON.stringify({ Action: 'fail', Package: 'github.com/polyspec/orm/legacy/packages/go/decimalmodel', Test: 'TestDecimalPhysicalMySQL', Elapsed: 0.03 })}`), false);
 });
 
-caseTest('matches the exact PHP extension decimal native test event', COMPUTE, () => {
+caseTest('matches the exact PHP extension decimal native test event', () => {
   // The report of kit's run-tests (kit 0.0.105): each case by its qualified name with its time, then the run's summary.
   const name = 'Polyspec\\Orm\\Extension\\Tests\\DecimalModelDbNativeTest::testNativeRoundTrip with data set "mysql"';
   const output = [
@@ -114,14 +114,14 @@ caseTest('matches the exact PHP extension decimal native test event', COMPUTE, (
   assert.equal(observed('php-extension', 'mysql', output.replace('0 failed', '1 failed')), false);
 });
 
-caseTest('matches the exact Rust decimal test symbol and passing summary', COMPUTE, () => {
+caseTest('matches the exact Rust decimal test symbol and passing summary', () => {
   const output = 'test decimal_physical::decimal_mysql ... ok\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.03s';
   assert.equal(observed('rust', 'mysql', output), true);
   assert.equal(observed('rust', 'mysql', output.replace('decimal_mysql', 'decimal_postgres')), false);
   assert.equal(observed('rust', 'mysql', output.replace('1 passed; 0 failed', '0 passed; 1 failed')), false);
 });
 
-caseTest('matches both exact TypeScript decimal node:test pass events', COMPUTE, () => {
+caseTest('matches both exact TypeScript decimal node:test pass events', () => {
   const output = [
     '✔ decimal_db/mysql/setters (0.317458ms)',
     '✔ decimal_db/mysql/round_trip (0.0525ms)',
@@ -139,7 +139,7 @@ caseTest('matches both exact TypeScript decimal node:test pass events', COMPUTE,
   assert.equal(observed('typescript', 'mysql', `${output}\n✔ decimal_db/mysql/unexpected (0.1ms)`), false);
 });
 
-caseTest('matches both exact Python decimal unittest results', COMPUTE, () => {
+caseTest('matches both exact Python decimal unittest results', () => {
   const output = [
     'test_round_trip (__main__.DecimalModelDbTest.test_round_trip) ... ok',
     'test_setters (__main__.DecimalModelDbTest.test_setters) ... ok',
@@ -154,7 +154,7 @@ caseTest('matches both exact Python decimal unittest results', COMPUTE, () => {
   assert.equal(observed('python', 'mysql', `${output}\ntest_extra (__main__.DecimalModelDbTest.test_extra) ... ok`), false);
 });
 
-caseTest('redacts the DSN from command failures', COMPUTE, async () => {
+caseTest('redacts the DSN from command failures', async () => {
   const cause = new TypeError('failed for dsn-secret');
   cause.stack = `${cause.stack}\ncommand context dsn-secret`;
   Object.assign(cause, { stderr: 'driver reported dsn-secret' });
@@ -173,7 +173,7 @@ caseTest('redacts the DSN from command failures', COMPUTE, async () => {
   });
 });
 
-caseTest('reports the matching database state and rejects a changed state', COMPUTE, async () => {
+caseTest('reports the matching database state and rejects a changed state', async () => {
   const messages: string[] = [];
   await reportUnchangedState(async () => 'state-hash', 'state-hash', 'state changed', message => messages.push(message));
   assert.deepEqual(messages, ['state state-hash']);

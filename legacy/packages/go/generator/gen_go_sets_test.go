@@ -40,7 +40,7 @@ func generateConsumerAndProducer(t *testing.T, reason string) {
 // calls are type-checked. The consumer is listed first here.
 func TestGenerateSetsGeneratesAProducerBeforeItsConsumerWhateverTheOrder(t *testing.T) {
 	// Requirements: DSL-151, DSL-154, DSL-157.
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("consumer/consumer.go", "package consumer\n\n"+searchConsumerImports)
 	generateConsumerAndProducer(t, "the consumer set listed first is not generated after its producer")
@@ -55,7 +55,7 @@ func TestGenerateSetsGeneratesAProducerBeforeItsConsumerWhateverTheOrder(t *test
 // refused and the error names both sets.
 func TestGenerateSetsRefusesACycleAndNamesBothSets(t *testing.T) {
 	// Requirements: DSL-151, DSL-157.
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	// The set leftmodel scans ./right, which imports rightmodel; the set rightmodel
 	// scans ./left, which imports leftmodel. Each set needs the other.
@@ -102,7 +102,7 @@ func readModelFileFrom(t *testing.T, dir, name string) []byte {
 // import: the scan of the default build alone does not see it.
 func TestGenerateSetsOrdersAProducerImportedOnlyByATaggedFile(t *testing.T) {
 	// Requirements: DSL-151, DSL-154, DSL-157.
-	testcase.Start(t, testcase.Process)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("consumer/consumer.go", "package consumer\n")
 	write("consumer/tagged.go", "//go:build markdown\n\npackage consumer\n\n"+searchConsumerImports)

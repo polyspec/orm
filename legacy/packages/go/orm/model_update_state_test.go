@@ -10,7 +10,7 @@ import (
 // The update of an unloaded row keeps the assigned columns selected and the key values of its key, so the row
 // written by the update reads back as written.
 func TestUnloadedUpdateKeepsAssignedValuesSelectedAndKeyed(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	ent := &runtimemodel.Entity{Name: "account", PK: []string{"seq"}}
 	c := &Core{sets: []setSpec{
 		{column: "seq", value: int64(7)},

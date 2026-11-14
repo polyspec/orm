@@ -7,11 +7,8 @@ import assert from 'node:assert/strict';
 import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 import * as api from '../dist/index.js';
 
-// TIMEOUT is the deadline (ms) of one case.
-const TIMEOUT = 15000;
-
 function rule(name, body) {
-  caseTest(name, TIMEOUT, body);
+  caseTest(name, body);
 }
 
 const text = lines => lines.join('\n') + '\n';

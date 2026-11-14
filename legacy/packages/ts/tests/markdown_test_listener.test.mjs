@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { caseTest, PROCESS } from '../../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { createConnection, createServer } from 'node:net';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 
-caseTest('listens on an ephemeral loopback port and closes the listener', PROCESS, async () => {
+caseTest('listens on an ephemeral loopback port and closes the listener', async () => {
   const server = createServer(socket => socket.end('ready'));
   const listener = await listenMarkdownTestServer(server);
   try {
@@ -28,7 +28,7 @@ caseTest('listens on an ephemeral loopback port and closes the listener', PROCES
   assert.equal(server.listening, false);
 });
 
-caseTest('rejects the original asynchronous listen error and removes its listeners', PROCESS, async () => {
+caseTest('rejects the original asynchronous listen error and removes its listeners', async () => {
   const server = createServer();
   const expected = new Error('synthetic listen failure');
   server.listen = () => {
@@ -40,7 +40,7 @@ caseTest('rejects the original asynchronous listen error and removes its listene
   assert.equal(server.listenerCount('connection'), 0);
 });
 
-caseTest('rejects the original close error and destroys accepted sockets', PROCESS, async () => {
+caseTest('rejects the original close error and destroys accepted sockets', async () => {
   let accepted;
   const server = createServer(socket => { accepted = socket; });
   const originalConnectionListeners = server.listenerCount('connection');

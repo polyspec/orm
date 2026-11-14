@@ -5,7 +5,7 @@ use super::*;
 /// PHP keeps a canonical decimal key that does not fit i64 as a string key, so the key is not changed to an int.
 #[test]
 fn php_int_key_keeps_out_of_range_decimal_as_string() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     assert_eq!(php_int_key("9223372036854775807"), Some(i64::MAX));
     assert_eq!(php_int_key("-9223372036854775808"), Some(i64::MIN));
     assert_eq!(php_int_key("9223372036854775808"), None);
@@ -17,7 +17,7 @@ fn php_int_key_keeps_out_of_range_decimal_as_string() {
 /// A refusal of a codec stage states its rule and names neither the value nor the library text.
 #[test]
 fn malformed_serialize_states_its_rule() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let error = decode(&["serialize".into()], &Val::Str("i:not-a-number;".into())).expect_err("malformed integer must fail");
     assert_eq!(error.kind(), crate::Kind::CodecDecode);
     assert_eq!(error.to_string(), "codec_decode: serialize: bad int");
@@ -34,7 +34,7 @@ fn malformed_serialize_states_its_rule() {
 /// A stream that the library of a stage refuses is the stage's own text, never the library's.
 #[test]
 fn codec_parser_refusals_state_the_stage_text() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for (styles, raw, message) in [
         (vec!["gz"], Val::Bytes(b"not-zlib".to_vec()), "codec_decode: gz: bad zlib stream"),
         (vec!["base64"], Val::Str("!".into()), "codec_decode: base64: bad input"),
@@ -68,7 +68,7 @@ fn codec_parser_refusals_state_the_stage_text() {
 /// grammar, the column in Unicode characters and the byte order mark not counted (COD-80).
 #[test]
 fn yaml_parse_keeps_the_position_of_the_reader() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     for (stream, line, column) in [("a: 'b'#c\n", 1, 7), ("\u{feff}한: [\n b,\n,]\n", 3, 1), ("a: 1\r\nb: \"\\q\"\n", 2, 6), ("[a", 1, 3)] {
         let error = decode(&["yaml".into()], &Val::Str(stream.into())).expect_err("a stream outside the grammar must fail");
         assert_eq!(error.to_string(), "codec_decode: yaml: the stream does not parse");
@@ -81,7 +81,7 @@ fn yaml_parse_keeps_the_position_of_the_reader() {
 /// (COD-81): one input of each kind that a caller can meet.
 #[test]
 fn json_errors_state_the_rule_of_their_fact() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let deep = format!("{}{}", "[".repeat(257), "]".repeat(257));
     let parse = |text: &[u8]| strict_json::parse(text, &strict_json::ParseOptions::default());
     let cases: Vec<(strict_json::Error, &str)> = vec![

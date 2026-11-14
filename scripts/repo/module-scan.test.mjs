@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { caseTest } from '../../tests/testcase.mts';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isBuiltinModule, scanModule } from '../../tests/module-scan.mjs';
 
-caseTest('recognizes Node builtin roots with and without the node prefix', COMPUTE, () => {
+caseTest('recognizes Node builtin roots with and without the node prefix', () => {
   assert.equal(isBuiltinModule('fs/promises'), true);
   assert.equal(isBuiltinModule('node:fs/promises'), true);
   assert.equal(isBuiltinModule('@polyspec/orm/dbspec'), false);
 });
 
-caseTest('finds literal imports and Node globals without flagging property names', COMPUTE, () => {
+caseTest('finds literal imports and Node globals without flagging property names', () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-module-scan-'));
   const file = join(root, 'scan.mjs');
   try {

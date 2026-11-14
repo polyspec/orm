@@ -24,7 +24,7 @@ func TestAnalyzers(t *testing.T) {
 		{analyzers.TimeFailure, []string{"timefailure"}},
 	} {
 		t.Run(check.analyzer.Name, func(t *testing.T) {
-			testcase.Start(t, testcase.Compute)
+			testcase.Start(t)
 			analysistest.Run(t, analysistest.TestData(), check.analyzer, check.packages...)
 		})
 	}

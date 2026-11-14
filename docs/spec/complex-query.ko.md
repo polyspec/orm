@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-query -->
-<!-- source-sha256: ca25e18f3cfe4401f781b45bb93c672bac74feed8f95065ec4800a53061839ef -->
+<!-- source-sha256: 915e7d93a453186d095771999dda44ae44d2e1c9b76d3855981992bff4a8d08d -->
 # 복잡한 쿼리 예 — 상품 검색 목록
 
 이 예는 [dsl.md](dsl.ko.md)의 문법을 사용하며 여러 관계와 조건 패턴을 함께 사용한다.
@@ -173,8 +173,8 @@ step 0  query   (root with three IN subqueries; no filter joins or grouping)
          OR `a`.`seq` IN (SELECT `s3`.`product_seq` FROM `product_lang` AS `s3`
                           WHERE MATCH(`s3`.`name`, `s3`.`short_description`, `s3`.`content`) AGAINST (? IN BOOLEAN MODE)))
   ORDER BY `a`.`like_count` DESC, `a`.`seq` DESC
-  LIMIT ?, ?
-  binds: [cat1, cat2, cat3, cat3, service_seq, 0, 1, 1, 0, kw', kw', kw', offset, 20]
+  LIMIT ? OFFSET ?
+  binds: [cat1, cat2, cat3, cat3, service_seq, 0, 1, 1, 0, kw', kw', kw', 20, offset]
          (kw' = keyword converted by the boolean full-text rule to "+w1 +w2*")
 
 step 0c count  SELECT COUNT(*) FROM `product` AS `a` WHERE … same conditions (without ORDER/LIMIT), requested by getsPage

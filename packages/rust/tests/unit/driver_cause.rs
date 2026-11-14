@@ -4,7 +4,7 @@ use crate::Param;
 // Requirements: PRT-79a.
 #[test]
 fn postgres_bind_preserves_native_parse_cause_message() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let value = Param::Str("not-an-integer".into());
     let error = match bind_pg(sqlx::query("SELECT $1"), &value, "i32", 0) {
         Err(error) => error,
@@ -38,7 +38,7 @@ fn postgres_bind_preserves_native_parse_cause_message() {
 // Requirements: PRT-79a.
 #[test]
 fn postgres_bind_preserves_utf8_cause_message() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let value = Param::Bytes(vec![0xff]);
     let error = match bind_pg(sqlx::query("SELECT $1"), &value, "text", 0) {
         Err(error) => error,
@@ -51,7 +51,7 @@ fn postgres_bind_preserves_utf8_cause_message() {
 // Requirements: PRT-79a.
 #[test]
 fn postgres_datetime_bind_preserves_parse_cause_message() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!();
     let value = Param::Str("not-a-datetime".into());
     let error = match bind_pg(sqlx::query("SELECT $1"), &value, "datetime", 0) {
         Err(error) => error,

@@ -11,8 +11,7 @@ use polyspec_orm_schema::dbspec::{self, Document};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-// DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
-// (polyspec_orm_testcase::wall_for_cpu).
+// DEADLINE is the CPU time reference of the test; a CPU time above it prints a warning, and no clock ends the test.
 const DEADLINE: Duration = Duration::from_secs(10);
 
 fn source(path: &str) -> String {
@@ -24,7 +23,7 @@ fn document(path: &str) -> Document {
 }
 
 fn manifest_text_without_header_is_rejected() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!();
     let clock = CaseClock::start();
     let errors = dbspec::parse_manifest("table t {\n}\n").expect_err("a manifest text starts with a header");
     assert_eq!(errors[0].rule, "header");
@@ -41,7 +40,7 @@ fn manifest_text_without_header_is_rejected() {
 }
 
 fn runtime_model_of_bench() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!();
     let clock = CaseClock::start();
     let bench = document("contracts/fixtures/bench/bench.dbs");
     let model = dbspec::runtime_model(&[&bench]).unwrap();
@@ -61,7 +60,7 @@ fn runtime_model_of_bench() {
 }
 
 fn runtime_model_names_entities_and_reads_settings() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!();
     let clock = CaseClock::start();
     let text = "dbspec 1 shop\n\ntable service_member {\n  id i64 identity\n  rank i16 default 3\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (id)\n  index ix_service_member_audit (audit_seq)\n  foreign key fk_service_member_audit (audit_seq) references member_audit (seq) on delete restrict on update restrict\n  settings {\n    entity member\n    soft_delete deleted_at\n    audit into member_history column audit_seq references member_audit action change previous previous_audit_seq\n  }\n}\n\ntable member_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  id i64\n  rank i16\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n  settings {\n    immutable\n  }\n}\n\ntable member_audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n  settings {\n    entity member_record\n  }\n}\n";
     let shop = dbspec::parse(text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|errors| format!("{errors:?}"));

@@ -12,9 +12,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { root, runRunner, runners } from './runners.mts';
 
-// TIMEOUT is the deadline for one case. A case runs the Go, PHP, TypeScript, Rust, and PHP extension runner processes on one vector file,
-// and the Go runner includes the `go run` compile.
-const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
 if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required; run it through make dbspec-compare-check, which writes the stress document');
 
@@ -128,10 +125,10 @@ function inputsWith(index: number | string, mutation: Mutation | { file: string;
 }
 
 // Requirements: PAR-2.
-caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
+caseTest('the unchanged vectors run in every runner', async () => {
   const inputs = [join(root, 'tests/dbspec'), stress, ...['ddl', 'plan-cases', 'mermaid'].map(name => join(root, `tests/dbspec/${name}.json`))];
   for (const runner of runners) {
-    const result = await runRunner(runner, inputs, TIMEOUT);
+    const result = await runRunner(runner, inputs);
     assert.equal(result.code, 0, `${runner.name}: ${result.stderr}`);
   }
 });
@@ -145,8 +142,8 @@ mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);
   const target = mutation.recipe ?? mutation.file;
   for (const runner of runners.filter(runner => runner.reads.includes(mutation.file))) {
-    caseTest(`${runner.name} rejects ${target} ${location} that ${mutation.problem}`, TIMEOUT, async () => {
-      const result = await runRunner(runner, inputs, TIMEOUT);
+    caseTest(`${runner.name} rejects ${target} ${location} that ${mutation.problem}`, async () => {
+      const result = await runRunner(runner, inputs);
       assert.notEqual(result.code, 0, `${runner.name} exited 0`);
       assert.equal(result.signal, null, `${runner.name} ended by ${result.signal}`);
       assert.ok(result.stderr.includes(`${path}: ${location} ${mutation.problem}`), `${runner.name} stderr: ${result.stderr}`);
@@ -157,8 +154,8 @@ mutations.forEach((mutation, index) => {
 refusals.forEach((refusal, index) => {
   const { path, inputs } = inputsWith(`refusals-${index}`, { file: refusal.file, recipe: refusal.recipe, location: '', edits: refusal.edits });
   for (const runner of runners.filter(runner => runner.reads.includes(refusal.file))) {
-    caseTest(`${runner.name} reports every refusal of ${refusal.file}: ${refusal.problems.join(', ')}`, TIMEOUT, async () => {
-      const result = await runRunner(runner, inputs, TIMEOUT);
+    caseTest(`${runner.name} reports every refusal of ${refusal.file}: ${refusal.problems.join(', ')}`, async () => {
+      const result = await runRunner(runner, inputs);
       assert.notEqual(result.code, 0, `${runner.name} exited 0`);
       assert.equal(result.signal, null, `${runner.name} ended by ${result.signal}`);
       const lines = result.stderr.split('\n').filter(line => line.startsWith(`${path}: `));
@@ -173,9 +170,9 @@ refusals.forEach((refusal, index) => {
 const slow = inputsWith('slow-reader', { file: 'dir', recipe: 'normalize.json', location: 'cases[0].steps[0].crlf', edits: [['set', '/cases/0/steps/0/crlf', 'true']] });
 for (const runner of runners.filter(runner => runner.reads.includes('dir'))) {
   // Requirements: PAR-2.
-  caseTest(`${runner.name} writes its whole refusal to a reader that reads slowly`, TIMEOUT, async () => {
-    const fast = await runRunner(runner, slow.inputs, TIMEOUT);
-    const paced = await runRunner(runner, slow.inputs, TIMEOUT, 100);
+  caseTest(`${runner.name} writes its whole refusal to a reader that reads slowly`, async () => {
+    const fast = await runRunner(runner, slow.inputs);
+    const paced = await runRunner(runner, slow.inputs, 100);
     assert.notEqual(paced.code, 0, `${runner.name} exited 0`);
     assert.ok(fast.stderr.includes(`${slow.path}: ${slow.location} is not a boolean`), `${runner.name} stderr: ${fast.stderr}`);
     assert.equal(paced.stderr.length, fast.stderr.length, `${runner.name}: a slow reader got ${paced.stderr.length} of the ${fast.stderr.length} bytes of the refusal`);

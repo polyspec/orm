@@ -6,10 +6,9 @@ import assert from 'node:assert/strict';
 import { caseTest } from '../testcase.mts';
 import { runFixture } from './fixture.mts';
 
-const TIMEOUT = 120_000;
 const mermaid = '<pre class="mermaid">graph TD</pre>'.repeat(20);
 
-caseTest('a link whose quoted attribute holds a > is checked, so its missing target fails the check', TIMEOUT, () => {
+caseTest('a link whose quoted attribute holds a > is checked, so its missing target fails the check', () => {
   const result = runFixture('scripts/docs/check.mts', {
     'docs/.vitepress/dist/index.html': `<html><head><link rel="icon" href="/orm/favicon.svg"></head><body>${mermaid}</body></html>`,
     'docs/.vitepress/dist/favicon.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',

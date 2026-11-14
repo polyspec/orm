@@ -12,11 +12,11 @@ import (
 // dropDatabaseDiscardsItsSession on the two servers of the MySQL dialect (DIA-200, DIA-212). The MariaDB entry needs the
 // MariaDB servers, which go-test-check does not hold; make mariadb-recipes-check/go runs it.
 func TestDropDatabaseDiscardsItsSessionMysql(t *testing.T) {
-	dropDatabaseDiscardsItsSession(t, testcase.Start(t, testcase.Database), "mysql")
+	dropDatabaseDiscardsItsSession(t, testcase.Start(t), "mysql")
 }
 
 func TestDropDatabaseDiscardsItsSessionMariadb(t *testing.T) {
-	dropDatabaseDiscardsItsSession(t, testcase.Start(t, testcase.Database), "mariadb")
+	dropDatabaseDiscardsItsSession(t, testcase.Start(t), "mariadb")
 }
 
 // dropDatabaseDiscardsItsSession drops a database through an admin pool of one connection and then reads the

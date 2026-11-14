@@ -24,7 +24,7 @@ table note {
 // of both generations changes no file and reports no error.
 func TestGoGenerationOfTwoModelPackagesSettlesInOneRun(t *testing.T) {
 	// The test of DSL-39 (docs/spec).
-	testcase.Start(t, testcase.Compute)
+	testcase.Start(t)
 	write := scannedModule(t)
 	write("a/model/doc.go", "// Package model holds the generated models.\npackage model\n")
 	write("b/model/doc.go", "// Package model holds the generated models.\npackage model\n")

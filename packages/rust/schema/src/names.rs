@@ -18,7 +18,7 @@ pub fn snake_case(value: &str) -> String {
 mod tests {
     #[test]
     fn snake_case_separates_ascii_uppercase_characters() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!();
         assert_eq!(super::snake_case("AuthorUUID"), "author_u_u_i_d");
         assert_eq!(super::snake_case("already_snake"), "already_snake");
     }

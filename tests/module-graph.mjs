@@ -1,3 +1,5 @@
+import { scanModule } from './module-scan.mjs';
+
 /** Visits a module graph breadth-first, once per module, collecting violations from each inspector call. */
 export function walkModules(start, inspect) {
   const modules = new Set();
@@ -24,4 +26,17 @@ export function resolveImports(imports, resolve) {
     if (result.violation !== undefined) violations.push(result.violation);
   }
   return { targets, violations };
+}
+
+/**
+ * Visits the module graph from start, scanning each module with scanModule relative to root and resolving each of its
+ * imports with resolve(specifier, at, file): every module that the resolver targets is visited, and the violations of
+ * the scan and of the resolver are collected.
+ */
+export function walkScannedModules(start, root, resolve) {
+  return walkModules(start, file => {
+    const { imports, violations: local } = scanModule(file, root);
+    const inspected = resolveImports(imports, (specifier, at) => resolve(specifier, at, file));
+    return { targets: inspected.targets, violations: [...local, ...inspected.violations] };
+  });
 }

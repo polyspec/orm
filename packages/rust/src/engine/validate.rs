@@ -2,12 +2,10 @@
 
 use super::dialect::{column_function_types, is_value_function, value_function_unit};
 use super::err;
-use crate::ir;
+use crate::ir::{self, VERSION as IR_VERSION};
 use crate::schema::Manifest;
 use crate::Result;
 use polyspec_orm_schema::dbspec::{Entity, Field, Type};
-
-const IR_VERSION: u32 = 1;
 
 fn numeric(c: &Field) -> bool {
     matches!(c.ty.name(), "i16" | "i32" | "i64" | "f64" | "decimal")
@@ -20,7 +18,7 @@ fn col_op(op: &str) -> bool {
 /// Decides whether an operator can be used with the column's type and codec stages. An AES column
 /// compares equality by blind index, and a column that uses only `hex` and `ip` has the same value as the same
 /// stored value, so equality is compared.
-fn op_allowed(c: &Field, op: &str) -> bool {
+pub(super) fn op_allowed(c: &Field, op: &str) -> bool {
     polyspec_orm_schema::dbspec::operator_allowed_for_field(c, op, col_op(op))
 }
 
