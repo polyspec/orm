@@ -19,6 +19,13 @@ mod driver;
 pub mod engine;
 mod error;
 pub mod events;
+/// The fault injection points of the crate (binding design G-5, X-1; docs/spec/core.md CORE-121), which `faults` of the
+/// interface contract names. A point does nothing unless the feature `fault-test` is on.
+pub mod fault {
+    /// A column of the rows of a step that the plan does not project: the kind `internal`, which no input reaches.
+    #[doc(hidden)]
+    pub const INTERNAL: &str = "orm.internal";
+}
 pub mod ir;
 mod kind;
 pub mod listen;

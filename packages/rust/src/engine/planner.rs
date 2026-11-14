@@ -64,11 +64,10 @@ struct Ch {
 
 impl Asm {
     fn index_of(&self, name: &str) -> Result<usize> {
-        self.columns
-            .iter()
-            .find(|c| c.name == name)
-            .map(|c| c.index)
-            .ok_or_else(|| err(crate::Kind::Internal, format!("planner: column {name} is not projected in {}", self.entity)))
+        // CORE-121, X-1: the fault injection point orm.internal imitates a column that the step does not project, which
+        // the planner excludes, so no input reaches the kind internal here.
+        let projected = if binding_core::fault::point!(crate::fault::INTERNAL).is_some() { None } else { self.columns.iter().find(|c| c.name == name) };
+        projected.map(|c| c.index).ok_or_else(|| err(crate::Kind::Internal, format!("planner: column {name} is not projected in {}", self.entity)))
     }
 
     fn key_refs(&self, columns: &[String]) -> Result<Vec<KeyRef>> {
