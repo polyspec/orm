@@ -211,7 +211,7 @@ the core that differ from the rules that the language implementations of `legacy
   text keys, and `nested:json_value`. The type of a column decides the kind of its value, and the value does not:
   `i16` and `i32` are `int`, `i64` is `int64`, `f64` is `float`, `bool` is `bool`, `bytes` is `bytes`, and `decimal`,
   `varchar`, `text`, `uuid`, `date`, `time` and `datetime` are `text`, a `datetime(p)` with exactly p fraction digits
-  (PRT-69); SQL NULL is `null`. A column after the stage `json` is `nested:json_value` (CORE-61). A column after
+  (PRT-69); SQL NULL is `null`. A column after the stage `json` is `nested:json_value` (CORE-122). A column after
   another style stage is its value of the common value model in the kinds `null`, `bool`, `int64`, `float`, `text`,
   `list` and `map`: a number with no fraction and no exponent that fits `i64` is `int64`, any other number that fits
   `i64` or a finite `f64` is `float`, and a number that fits neither is `codec_decode`.
@@ -232,11 +232,17 @@ the core that differ from the rules that the language implementations of `legacy
   the number text, `text`, `list` and `map` in member order. A JSON string that holds an unpaired surrogate has no
   `text`, so a JSON value that holds one is `codec_decode` with the message `the JSON value holds a string that is no
   sequence of Unicode scalar values` when the value of its column is read.
-- **CORE-61** The codec stage that stores a JSON value with its member order, number text and empty containers (COD-9,
+- **CORE-61** Retired, replaced by CORE-122: the canonical form of a document no longer writes `json` for the stage
+  `ordered_json`.
+- **CORE-122** The codec stage that stores a JSON value with its member order, number text and empty containers (COD-9,
   COD-16) is `json` in the core. The language implementations name it `ordered_json` after the library that wrote it,
   and the core depends on no library of that name (CORE-1), so a dbspec document of the core writes `json`. The core
   reads `ordered_json` as the stage `json`, with the same encoding, so a document that the language implementations
-  read is read by the core too, and its canonical form writes `json`. The value wrapper of a shared case for such a value is `json_value`
+  read is read by the core too. A document keeps the stage name that it was written with: its canonical text, its
+  manifest text and its schema text write `ordered_json` where the document wrote `ordered_json`, because the hash of a
+  document must not change with an alias that a parser reads, and the released generators write the name as written,
+  so a document has one manifest hash in the core and in a release. The runtime model of the document holds the stage
+  `json` for either name. The value wrapper of a shared case for such a value is `json_value`
   (FCV-4), as the value that leaves the core is (CORE-60), and a case that tests the stage names it `json` in its id; the
   fixed copies of CORE-1 keep the old names for the language implementations.
 

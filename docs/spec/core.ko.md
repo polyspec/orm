@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: f87c05c6862bf3b0bf211b8bfd0169c658823641dc6e9c9b9b2725540dfd4ed6 -->
+<!-- source-sha256: 7d880444ac78c851e82d2876bf2e482e7818c6d194428a5db18c511043dbc06f -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -167,7 +167,7 @@
   열 값의 kind는 값이 아니라 열의 타입이 정한다: `i16`과 `i32`는 `int`, `i64`는 `int64`, `f64`는 `float`, `bool`은
   `bool`, `bytes`는 `bytes`이고, `decimal`, `varchar`, `text`, `uuid`, `date`, `time`, `datetime`은 `text`이며
   `datetime(p)`는 소수 자리가 정확히 p개다(PRT-69). SQL NULL은 `null`이다. stage `json` 뒤의 열은
-  `nested:json_value`다(CORE-61). 다른 style stage 뒤의 열은 공통 값 모델의 값이며 kind는 `null`, `bool`, `int64`,
+  `nested:json_value`다(CORE-122). 다른 style stage 뒤의 열은 공통 값 모델의 값이며 kind는 `null`, `bool`, `int64`,
   `float`, `text`, `list`, `map`이다: 소수부와 지수가 없고 `i64`에 들어가는 수는 `int64`, `i64`나 유한한 `f64`에
   들어가는 그 밖의 수는 `float`이고, 어느 쪽에도 들어가지 않는 수는 `codec_decode`다.
 - **CORE-63** 언어의 값은 함수 `from_host` 하나로 코어에 들어오며, 이 함수는 값만 읽는다: null은 `null`, boolean은
@@ -184,10 +184,15 @@
   `json_value`의 `out` 표의 kind로 기술한다: `null`, `bool`, 수 텍스트를 가진 `number`, `text`, `list`, member 순서의
   `map`이다. 짝 없는 surrogate를 가진 JSON 문자열에는 `text`가 없으므로, 그런 문자열을 가진 JSON 값은 그 열의 값을
   읽을 때 `codec_decode`이고 메시지는 `the JSON value holds a string that is no sequence of Unicode scalar values`다.
-- **CORE-61** JSON 값을 member 순서·숫자 텍스트·빈 container와 함께 저장하는 codec stage(COD-9, COD-16)는 코어에서
+- **CORE-61** 폐기되었고 CORE-122가 대체한다: 문서의 canonical form은 더 이상 stage `ordered_json`을 `json`으로 쓰지
+  않는다.
+- **CORE-122** JSON 값을 member 순서·숫자 텍스트·빈 container와 함께 저장하는 codec stage(COD-9, COD-16)는 코어에서
   `json`이다. 언어 구현은 그것을 쓰던 라이브러리 이름을 따라 `ordered_json`이라 부르지만 코어는 그 이름의 라이브러리에
   의존하지 않으므로(CORE-1), 코어의 dbspec 문서는 `json`을 쓴다. 코어는 `ordered_json`을 같은 encoding의 stage
-  `json`으로 읽으므로, 언어 구현이 읽는 문서를 코어도 읽고, 그 canonical form은 `json`을 쓴다. 그런 값의
+  `json`으로 읽으므로, 언어 구현이 읽는 문서를 코어도 읽는다. 문서는 쓰인 stage 이름을 지킨다. 문서가
+  `ordered_json`이라 쓴 곳에서 그 canonical 텍스트, manifest 텍스트, schema 텍스트는 `ordered_json`을 쓴다. 문서의
+  hash는 parser가 읽는 별칭 때문에 바뀌면 안 되고, 릴리스된 생성기는 이름을 쓰인 대로 쓰므로, 한 문서는 코어와
+  릴리스에서 같은 manifest hash를 갖는다. 문서의 runtime model은 두 이름 모두에 대해 stage `json`을 갖는다. 그런 값의
   공유 case 값 wrapper는 코어를 나가는 값(CORE-60)과 같이 `json_value`이고(FCV-4), 그 stage를 시험하는 case의 id도
   `json`으로 그것을 부른다. CORE-1의 고정 사본은 언어 구현을 위해 옛 이름을 지킨다.
 
