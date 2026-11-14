@@ -14,6 +14,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, re
 import { EventEmitter } from 'node:events';
 import { dirname, join } from 'node:path';
 import { caseTest, withTemporaryDirectory } from '../tests/testcase.mts';
+import { isolatedEnvironment } from '../tests/environment.mts';
 import { installBay, kinds, pull, remote, remove, run, start, type Context } from './test-servers-container.mts';
 import { ORM_ACCOUNTS_SQL } from './test-servers.mts';
 
@@ -616,7 +617,8 @@ caseTest('a run with a cache keeps the downloads of its tools in the cache and i
         const copy = join(dir, `ends-${job}-${keep}`);
         cpSync(join(containers(context.root), project), copy, { recursive: true });
         if (!keep) rmSync(join(copy, 'keep'));
-        for (const name of ['repo/packages/rust/target', 'home', 'cargo/bin', 'rustup', 'node/bin']) mkdirSync(join(copy, name), { recursive: true });
+        // The clone holds what the run wrote into it, the build output of cargo among it, which the end removes with the clone.
+        for (const name of ['repo/written', 'home', 'cargo/bin', 'rustup', 'node/bin']) mkdirSync(join(copy, name), { recursive: true });
         for (const name of ['address-mysql']) writeFileSync(join(copy, name), '192.0.2.1\n');
         writeFileSync(join(copy, 'build.sh'), 'exit 0\n');
         writeFileSync(join(copy, script), `exit ${status}\n`);
@@ -885,7 +887,7 @@ caseTest('a run that is given a check through a Unix socket is refused, since th
   withTemporaryDirectory('orm-containers-', async dir => {
     const stand = standIn(dir);
     const script = join(import.meta.dirname, 'test-servers-container.mts');
-    const refused = spawnSync(process.execPath, [script, 'run', 'mysql', '--runner', '--', 'true'], { cwd: dir, env: { ...process.env, BAY_COMMAND: stand.bay, ORM_CONTAINER_SOCKET_BUILD: 'make socket-build' }, encoding: 'utf8' });
+    const refused = spawnSync(process.execPath, [script, 'run', 'mysql', '--runner', '--', 'true'], { cwd: dir, env: isolatedEnvironment({ BAY_COMMAND: stand.bay, ORM_CONTAINER_SOCKET_BUILD: 'make socket-build' }), encoding: 'utf8' });
     assert.equal(refused.status, 2, refused.stderr);
     assert.match(refused.stderr, /a check through a Unix socket runs in the container of its server, and the jobs of bay of the runner run no command there; no run takes SOCKET_BUILD or SOCKET_RUN \(BAY8\)/);
     assert.deepEqual(calls(stand), [], 'a refused run ran bay');
