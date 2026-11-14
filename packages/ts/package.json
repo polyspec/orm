@@ -39,6 +39,6 @@
     ]
   },
   "dependencies": {
-    "@polyspec/json": "*"
+    "@polyspec/json": "0.0.27"
   }
 }
