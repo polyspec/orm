@@ -36,7 +36,15 @@
     "packages/dbspec-language/package.json": "archive",
     "packages/dbspec-lsp/package.json": "archive",
     "packages/dbspec-codemirror/package.json": "archive",
-    "packages/dbspec-vscode/package.json": "version"
+    "packages/dbspec-vscode/package.json": "version",
+    "packages/ts/package.json": "version",
+    "packages/ts/Cargo.toml": "version",
+    "packages/ts/wasm/Cargo.toml": "version",
+    "packages/python/pyproject.toml": "version",
+    "packages/python/Cargo.toml": "version",
+    "packages/php-ext/Cargo.toml": "version",
+    "packages/go/internal/ffi/Cargo.toml": "version",
+    "packages/php-ext/composer.json": "git-tag"
   },
   "notReleased": {
     "package.json": "the private npm workspace root: it installs legacy/packages/ts as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides",
@@ -59,7 +67,9 @@
     "legacy/packages/ts/package.json": "a language implementation of legacy/, kept for its own tests and as the other side of the differential tests until its removal (docs/spec/core.md CORE-1); the bindings of packages/rust/interface.json replace it",
     "legacy/packages/php/composer.json": "a language implementation of legacy/, kept for its own tests and as the other side of the differential tests until its removal (docs/spec/core.md CORE-1); the bindings of packages/rust/interface.json replace it",
     "legacy/packages/php-ext/composer.json": "a language implementation of legacy/, kept for its own tests and as the other side of the differential tests until its removal (docs/spec/core.md CORE-1); the bindings of packages/rust/interface.json replace it",
-    "legacy/packages/python/pyproject.toml": "a language implementation of legacy/, kept for its own tests and as the other side of the differential tests until its removal (docs/spec/core.md CORE-1); the bindings of packages/rust/interface.json replace it"
+    "legacy/packages/python/pyproject.toml": "a language implementation of legacy/, kept for its own tests and as the other side of the differential tests until its removal (docs/spec/core.md CORE-1); the bindings of packages/rust/interface.json replace it",
+    "packages/go/go.mod": "the Go module of the bindings, which make release-go-module of packages/release.mk releases with binding release-go-module: it tags a commit of its own that carries the generated files and the static libraries (binding GN-19f), so the tag of the release names no Go module",
+    "legacy/packages/go/go.mod": "a language implementation of legacy/, kept for its own tests and as the other side of the differential tests until its removal (docs/spec/core.md CORE-1); the bindings of packages/rust/interface.json replace it"
   },
   "goModules": {},
   "annotatedTags": true,

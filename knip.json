@@ -72,7 +72,11 @@
     // the MySQL driver of the TypeScript client (legacy/packages/ts), which the root's database checks import through the workspace
     "mysql2",
     // the PostgreSQL driver of the TypeScript client (legacy/packages/ts), which the root's database checks import through the workspace
-    "pg"
+    "pg",
+    // the generator of the bindings, which the binding recipes and packages/release.mk run as node_modules/.bin/binding
+    "@polyspec/binding",
+    // the napi CLI, which make release-npm-platform of packages/release.mk runs as node_modules/.bin/napi
+    "@napi-rs/cli"
   ],
   "workspaces": {
     // the TypeScript client @polyspec/orm, a workspace of the root package.json

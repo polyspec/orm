@@ -387,7 +387,7 @@ const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/w
 const mise = (version: string) => version ? `[tools]\nnode = "${version}"\n` : '[tools]\n';
 
 caseTest('the checks and every workflow run the Node of mise.toml', () => {
-  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/documents.yml']);
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/assets.yml', '.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/documents.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
 
@@ -1194,6 +1194,14 @@ caseTest('a job on another runner fails', () => {
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('    runs-on: ubuntu-26.04-arm\n', '') }), ['ci.yml job test declares no runs-on']);
   const call = 'jobs:\n  kit:\n    uses: ./.github/workflows/ci-pipeline.yml\n';
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': call }), []);
+  const platform = (runners: string[]) => `jobs:\n  platform:\n    strategy:\n      matrix:\n        include:\n${runners.map(runner => `          - runner: ${runner}\n`).join('')}    runs-on: \${{ matrix.runner }}\n    steps:\n      - run: "true"\n`;
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { '.github/workflows/assets.yml': platform(['ubuntu-26.04', 'ubuntu-26.04-arm', 'macos-15']) }), []);
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { '.github/workflows/assets.yml': platform(['ubuntu-26.04', 'windows-2025']) }), [
+    '.github/workflows/assets.yml job platform runs on the runners ["ubuntu-26.04","windows-2025"] of its matrix; the binding assets are built on macos-15, ubuntu-26.04, ubuntu-26.04-arm',
+  ]);
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { '.github/workflows/ci.yml': platform(['ubuntu-26.04', 'ubuntu-26.04-arm', 'macos-15']) }), [
+    '.github/workflows/ci.yml job platform runs on ${{ matrix.runner }}; .github/runner declares ubuntu-26.04-arm',
+  ], 'the matrix exception is the job platform of assets.yml alone');
   assert.deepEqual(runnerErrors('', {}), ['.github/runner must hold one runner label and a newline, found ""']);
   assert.deepEqual(runnerErrors('macos-26\n', {}), [
     '.github/runner macos-26 is not a Linux runner; the linux-runner checks of contracts/features.json run only there',

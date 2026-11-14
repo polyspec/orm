@@ -106,3 +106,7 @@ go.work.sum
 /packages/*/generated/
 /packages/ts/wasm/generated/
 /packages/go/internal/ffi/generated/
+# The release recipes that binding release-recipes writes (binding GN-19h), and the folders of make release-npm-platform, in
+# which napi writes and packs the npm package of a platform; a release writes both again.
+/packages/release.mk
+/packages/ts/npm/

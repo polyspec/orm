@@ -15,6 +15,10 @@ golangci-lint = "2.14.0"
 "github:asamarts/alint" = "0.18.2"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 "github:rustsec/rustsec" = { version = "0.22.2", version_prefix = "cargo-audit/v" }
+# The wasm-bindgen CLI binds the WASM crate of packages/ts/wasm for the npm package (make node-package, make release-npm of
+# packages/release.mk), and must be the release of the wasm-bindgen crate that packages/ts/wasm/Cargo.toml and Cargo.lock pin,
+# which the recipes check (binding GN-18); mise.lock pins the digest of its release archive of each platform.
+"github:wasm-bindgen/wasm-bindgen" = "0.2.130"
 # composer.phar is one file, so its sha256 is declared here, from getcomposer.org/download/<version>/composer.phar.sha256sum,
 # and mise.lock records it.
 "http:composer" = { version = "2.10.3", url = "https://getcomposer.org/download/{{ version }}/composer.phar", checksum = "sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6", bin = "composer" }

@@ -357,19 +357,18 @@ test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; o
 # ---- Bindings: generated from packages/rust/interface.json by binding (binding design C-0) -----------------------------
 # The core crate polyspec-orm is packages/rust, and the binding crates that binding scaffold writes sit beside it:
 # packages/ts (Node), packages/ts/wasm (WASM), packages/python, packages/php-ext and packages/go/internal/ffi (Go), all
-# members of the root workspace (binding design L-1, L-2, GN-4). binding is not yet a package that package-lock.json pins;
-# until it is, BINDING names the cli (packages/ts/src/cli.ts) of a binding checkout, and each target that runs it refuses
-# to run without it. bindings writes the generated folders, which Git ignores, and the Go files zz_generated_*.go of
-# packages/go, which are tracked (binding GN-3); bindings-check runs the contract check, which also compares the tracked
-# binding packages with what binding scaffold writes (binding L-2, CK-19) and the commit of binding_core that Cargo.lock
-# pins with the commit of that checkout (CK-20).
+# members of the root workspace (binding design L-1, L-2, GN-4). binding is the npm package @polyspec/binding of
+# package.json, the asset of the GitHub Release of the tag that every dependency line on polyspec-binding-core names, so
+# that the tool and the crate are one release (binding CK-20, CK-70); package-lock.json pins it by its integrity. bindings
+# writes the generated folders, which Git ignores, and the Go files zz_generated_*.go of packages/go, which are tracked
+# (binding GN-3); bindings-check runs the contract check, which also compares the tracked binding packages with what
+# binding scaffold writes (binding L-2, CK-19) and the version of binding_core that Cargo.lock pins with the version of
+# the tool (CK-20).
 .PHONY: bindings bindings-check lint-bindings test-bindings node-package test-wasm test-go-bindings
-BINDING ?=
+BINDING := $(CURDIR)/node_modules/.bin/binding
 bindings:
-	@test -n "$(BINDING)" || { echo "bindings: set BINDING to the cli of binding (packages/ts/src/cli.ts of a binding checkout)"; exit 1; }
 	$(NODE) $(BINDING) generate --root $(CURDIR)
 bindings-check:
-	@test -n "$(BINDING)" || { echo "bindings-check: set BINDING to the cli of binding (packages/ts/src/cli.ts of a binding checkout)"; exit 1; }
 	$(NODE) $(BINDING) check $(CURDIR)/packages/rust/interface.json
 # The lint and the tests of the binding crates, after make bindings writes their generated folders. The PHP extension
 # crate builds against the headers of the PHP of .php-version, whose php-config ext-php-rs reads.
@@ -384,10 +383,10 @@ test-bindings: bindings lease-tool
 # The WASM module and its glue, which wasm-bindgen writes into packages/ts/wasm/generated before the package is packed
 # (binding GN-18, P-5), and the Node package with the addon of this machine's platform, packed and installed into
 # var/node as a release installs it (T-2): the addon is the npm package of the platform that the package names in
-# optionalDependencies, and the recipe installs both tarballs, without the other platforms' packages. WASM_BINDGEN names
-# the wasm-bindgen CLI of the release of the wasm-bindgen crate of packages/ts/wasm/Cargo.toml (binding GN-18), which
-# node-package compares before it runs it.
-WASM_BINDGEN ?=
+# optionalDependencies, and the recipe installs both tarballs, without the other platforms' packages. WASM_BINDGEN is the
+# shim of the wasm-bindgen CLI that mise.toml pins at the release of the wasm-bindgen crate of packages/ts/wasm/Cargo.toml
+# (binding GN-18), which make install-tools installs and node-package compares before it runs it.
+WASM_BINDGEN ?= $(KIT_TOOLS)/mise/shims/wasm-bindgen
 CDYLIB := $(if $(filter Darwin,$(shell uname -s)),dylib,so)
 NODE_PLATFORM = $(shell $(NODE) -p 'process.platform + "-" + process.arch + (process.platform === "linux" ? "-gnu" : "")')
 WASM_BINDGEN_RELEASE = $(shell sed -n 's/^wasm-bindgen = "=\(.*\)"$$/\1/p' packages/ts/wasm/Cargo.toml)
@@ -430,6 +429,18 @@ test-go-bindings: bindings lease-tool
 	cd packages/go && $(GO_BINDING_ENV) $(GO) vet ./...
 	cd packages/go && $(GO_BINDING_ENV) $(GO) test -count=1 -v ./...
 	rm -rf $(RUN_DIR)
+
+# ---- Release recipes of the bindings: packages/release.mk, which binding release-recipes writes (binding GN-19h) -----------
+# The recipes of the platform assets (release-go-static, release-wheel, release-php-ext, release-npm-platform, release-npm,
+# release-go-module, release-binding-check, release-platform-assets, install-llvm and install-wasm-bindgen) are the file that
+# binding release-recipes writes for the contract; Git ignores it, and make release-recipes writes it again before a release
+# runs a recipe, because no recipe of these targets is written by hand (CK-94). The file reads BINDING_RUN, NODE, NPM and UV,
+# which this Makefile defines before the include; a checkout that has not written the file yet reads none of its targets.
+BINDING_RUN := $(NODE) $(BINDING)
+.PHONY: release-recipes
+release-recipes:
+	$(BINDING_RUN) release-recipes --root $(CURDIR)
+-include packages/release.mk
 
 # The CI pipeline of orm (.github/workflows/ci-pipeline.yml): the plan of its jobs from config/ci.json, the setup and context
 # targets that config/ci.json names, the targets of a job past failures with their report, and the closing check of ci.yml.
@@ -510,7 +521,7 @@ land: ## Land the branch BRANCH on main by a fast-forward after the gates that i
 
 # The release (config/release.json): release.yml tags the commit of the successful CI run RUN, then builds, publishes and
 # undrafts the GitHub Release of the tag TAG; release-candidate prepares the archives of the committed candidate before CI.
-.PHONY: release-candidate release-prepare release-tools release-tools-path release-tag release-assets release-candidate-assets release-publish release-undraft release-coverage
+.PHONY: release-candidate release-prepare release-tools release-tools-path release-tag release-tag-output release-assets release-candidate-assets release-publish release-undraft release-coverage
 release-candidate: ## Prepare the VERSION archives of the committed candidate before CI
 	RELEASE_ASSETS=var/release/assets $(NODE) $(KIT)/release-run.$(KIT_EXT) prepare "$(VERSION)"
 release-prepare:: ## The preparation of the release before release-tools; orm needs none
@@ -529,6 +540,9 @@ release-tag: ## Tag the commit of the successful ci.yml run RUN with vX.Y.Z of i
 	@test -n "$$RUN" || { echo "release-tag: RUN is required; run make release-tag RUN=<id of a successful ci.yml run>" >&2; exit 1; }
 	$(NODE) scripts/repo/release-run.mts "$$RUN"$(if $(AUTO), --commit "$$(git rev-parse HEAD)")
 	RELEASE_MAIN=origin/main $(NODE) $(KIT)/release-run.$(KIT_EXT) tag "$$RUN"$(if $(AUTO), --auto)
+release-tag-output: ## Give the later jobs of the release workflow TAG and VERSION, which release-tag wrote into the environment of its job, through GITHUB_OUTPUT; both are empty when the run releases nothing
+	@test -n "$$GITHUB_OUTPUT" || { echo 'release-tag-output: GITHUB_OUTPUT is not set; run it in the release workflow'; exit 2; }
+	printf 'tag=%s\nversion=%s\n' "$$TAG" "$$VERSION" >> "$$GITHUB_OUTPUT"
 release-assets: ## Build the archive of every package of TAG and packages.json into var/release/assets; ONLINE
 	@test -n "$$TAG" || { echo "release-assets: TAG is required; run make release-assets TAG=v<version>" >&2; exit 1; }
 	RELEASE_ASSETS=var/release/assets $(ONLINE) $(NODE) $(KIT)/release.$(KIT_EXT) assets "$$TAG"
