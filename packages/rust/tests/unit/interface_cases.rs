@@ -654,13 +654,6 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("codec.blind_index", None) => {
             Returned::Value(Value::from(crate::orm_value::blind_index(orm_value(field(args, "value", member), member)?, &text(args, "key", member))?))
         }
-        ("query.connect", Some(Instance::Query(query))) => {
-            let Instance::Db(db) = Box::pin(instance(field(args, "connection", member), member)).await else {
-                panic!("{member}: connection is no instance of db")
-            };
-            query.connect(crate::Connection::Db(db));
-            Returned::Value(Value::Null)
-        }
         (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
         (other, None) => panic!("the case runner calls no member {other} without a receiver"),
     })
