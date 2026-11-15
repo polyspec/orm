@@ -533,7 +533,7 @@
   files of another; it does not establish completion of a worker that still owns a file in that directory.
 
 `Scratch` uses exclusive directory creation with a process-local atomic candidate counter and never removes a path
-while allocating. Native committed-tree verification is pending. Dedicated SQLite worker completion after a discarded
+while allocating. The committed native Scratch owner passes both cases, including panic cleanup. Dedicated SQLite worker completion after a discarded
 connection is a separate unverified lifecycle bound.
 
 ## Owner checks

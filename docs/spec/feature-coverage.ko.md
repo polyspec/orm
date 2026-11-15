@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 551964978bd15a87836a1957f438839297fb69750d24e9f12f5bc7092380ebc0 -->
+<!-- source-sha256: 1d1d958de38c77c23dd2e128afc7e276effffbaf00f4e5d4ea2295ce45776dd0 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -534,7 +534,7 @@
   완료를 입증하지 않는다.
 
 `Scratch`는 process 안의 atomic 후보 counter로 directory를 배타적으로 생성하며 할당할 때 경로를 지우지 않는다.
-native committed-tree 검증은 아직 끝나지 않았다. 폐기된 connection 뒤의 전용 SQLite worker 완료는 별도로 검증하지
+커밋한 native Scratch owner는 panic 정리를 포함한 두 case를 통과한다. 폐기된 connection 뒤의 전용 SQLite worker 완료는 별도로 검증하지
 못한 수명 경계다.
 
 ## Owner 검사 {#owner-checks}
