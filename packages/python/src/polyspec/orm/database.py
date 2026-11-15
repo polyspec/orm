@@ -40,7 +40,7 @@ from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
 from polyspec.orm.engine import Engine
-from polyspec.orm.engine.validate import analyze_restore
+from polyspec.orm.engine.validate import analyze_restore, restore_analysis_shape
 from polyspec.orm.aes import _stored_version
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
@@ -2257,10 +2257,14 @@ class Db:
         """Classifies restore columns without statements, hooks or write validation (INT188)."""
         if self.closed:
             raise OrmError(codes.CONFIG, "database is closed")
-        manifest_hash = request.get("manifest_hash")
+        restore_analysis_shape(request)
+        manifest_hash = request.get("manifest_hash") or ""
         engine = self.engines.get(manifest_hash)
         if engine is None:
-            raise OrmError(codes.SCHEMA_HASH_MISMATCH, f"restore analysis manifest {manifest_hash} is not registered on this connection")
+            raise OrmError(
+                codes.SCHEMA_HASH_MISMATCH,
+                f"restore analysis manifest {manifest_hash} is not registered on this connection",
+            )
         return analyze_restore(engine.model, request)
 
     def with_future(self, future: asyncio.Future) -> Db:
@@ -3668,7 +3672,10 @@ def write(ex: Executor, request: dict, params, after_hook=None):
         ):
             raise OrmError(codes.OPTIMISTIC_LOCK, "the row changed after it was read")
         if request.get("require_match") and result["affected"] == 0:
-            raise OrmError(codes.NO_ROWS, f'the {request["kind"]} of {request["entity"]} matched no row')
+            raise OrmError(
+                codes.NO_ROWS,
+                f"the {request['kind']} of {request['entity']} matched no row",
+            )
         insert_id = result["insert_id"]
         identity_id = (
             int(insert_id)

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "manifest_type",
+    "request": {
+      "ir_version": 1,
+      "kind": "restore",
+      "entity": "unused",
+      "manifest_hash": []
+    },
+    "code": "IR_INVALID",
+    "message": "IR_INVALID: manifest_hash: string required"
+  },
+  {
+    "id": "missing_manifest",
+    "request": {
+      "ir_version": 1,
+      "kind": "restore",
+      "entity": "unused"
+    },
+    "code": "SCHEMA_HASH_MISMATCH",
+    "message": "SCHEMA_HASH_MISMATCH: restore analysis manifest  is not registered on this connection"
+  },
+  {
+    "id": "null_manifest",
+    "request": {
+      "ir_version": 1,
+      "kind": "restore",
+      "entity": "unused",
+      "manifest_hash": null
+    },
+    "code": "SCHEMA_HASH_MISMATCH",
+    "message": "SCHEMA_HASH_MISMATCH: restore analysis manifest  is not registered on this connection"
+  },
+  {
+    "id": "null_predicate_column",
+    "use_fixture_hash": true,
+    "request": {
+      "ir_version": 1,
+      "kind": "restore",
+      "entity": "soft_record",
+      "where": {
+        "items": [
+          {
+            "pred": {
+              "op": "eq",
+              "p": 0,
+              "column": null
+            }
+          }
+        ]
+      },
+      "set": [
+        {
+          "column": "seq",
+          "p": 1
+        },
+        {
+          "column": "name",
+          "p": 2
+        }
+      ]
+    },
+    "analysis": {
+      "key": [
+        "seq"
+      ],
+      "assignments": [
+        "name"
+      ]
+    }
+  }
+]

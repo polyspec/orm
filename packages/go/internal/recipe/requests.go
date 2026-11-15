@@ -94,7 +94,11 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err := json.Unmarshal(s.k("request").Request, &request); err != nil {
 			return outcome{}, err
 		}
-		if request.ManifestHash == "" {
+		var members map[string]json.RawMessage
+		if err := json.Unmarshal(s.k("request").Request, &members); err != nil {
+			return outcome{}, err
+		}
+		if _, present := members["manifest_hash"]; !present {
 			request.ManifestHash = c.schema.Hash
 		}
 		before, err := json.Marshal(request)

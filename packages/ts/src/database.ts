@@ -11,7 +11,7 @@ import { Utils } from './utils.js';
 import { wallMicros } from './clock.js';
 import { AesKeyring, storedVersion } from './aes.js';
 import { Engine } from './engine/index.js';
-import { analyzeRestore } from './engine/validate.js';
+import { analyzeRestore, checkRestoreAnalysisShape } from './engine/validate.js';
 import { canonicalize } from './engine/canonical.js';
 import { modelOfManifest, type RuntimeModel } from './engine/model.js';
 import { decimalScaled, normalizeDecimal } from './decimal.js';
@@ -637,8 +637,10 @@ export class Db {
   /** Classifies restore columns without executing or validating assignment permissions (INT188). */
   public analyzeRestore(request: Request): RestoreAnalysis {
     if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
-    const engine = this.engines.get(request.manifest_hash);
-    if (engine === undefined) throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `restore analysis manifest ${request.manifest_hash} is not registered on this connection`);
+    checkRestoreAnalysisShape(request);
+    const hash = request.manifest_hash ?? '';
+    const engine = this.engines.get(hash);
+    if (engine === undefined) throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `restore analysis manifest ${hash} is not registered on this connection`);
     return analyzeRestore(engine.model, request);
   }
 

@@ -746,7 +746,10 @@ export function analyzeRestore(m: RuntimeModel, r: Request): { key: string[]; as
   if (r.ir_version !== IR_VERSION) fail(codes.VERSION_MISMATCH, `ir_version ${String(r.ir_version)}, engine ${String(IR_VERSION)}`);
   if (r.kind !== 'restore') fail(codes.IR_INVALID, 'restore analysis requires a restore request');
   const ent = entityOf(m, r.entity) ?? fail(codes.ENTITY_UNKNOWN, r.entity);
-  for (const a of r.set ?? []) columnOf(ent, a.column) ?? fail(codes.COLUMN_UNKNOWN, `${ent.name}.${a.column}`);
+  for (const a of r.set ?? []) {
+    const column = a.column ?? '';
+    columnOf(ent, column) ?? fail(codes.COLUMN_UNKNOWN, `${ent.name}.${column}`);
+  }
   const parts = classifyRestore(ent, r);
   return { key: [...parts.key], assignments: parts.set.map(a => a.column) };
 }
@@ -759,4 +762,9 @@ export function restoreKey(ent: Entity, r: Request): RestoreParts {
     if (c.primary || c.identity || a.column === ent.softDelete) fail(codes.IR_INVALID, `restore cannot assign ${a.column}`);
   }
   return parts;
+}
+
+/** Checks only the Request record shape before restore analysis reads its schema key. */
+export function checkRestoreAnalysisShape(value: unknown): asserts value is Request {
+  shape('Request', value, '');
 }

@@ -4330,6 +4330,7 @@ ZEND_METHOD(Polyspec_Orm_Db, analyzeRestore)
     ZEND_PARSE_PARAMETERS_END();
     zval *state = rd(ZEND_THIS, "state");
     if (as_bool(rd(state, "closed"))) { db_throw_orm("CONFIG", "database is closed"); RETURN_THROWS(); }
+    if (!validator_restore_analysis_shape(request)) RETURN_THROWS();
     zval *hash = zend_hash_str_find(Z_ARRVAL_P(request), "manifest_hash", sizeof("manifest_hash") - 1);
     zval *sets = rd(state, "sets");
     if (hash == NULL || Z_TYPE_P(hash) != IS_STRING || sets == NULL || Z_TYPE_P(sets) != IS_ARRAY || zend_symtable_find(Z_ARRVAL_P(sets), Z_STR_P(hash)) == NULL) {

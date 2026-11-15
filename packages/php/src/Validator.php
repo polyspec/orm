@@ -276,7 +276,7 @@ final class Validator
                 $pr !== null && ($pr['op'] ?? '') === 'eq' && isset($pr['p']) && !isset($pr['fn'])
                 && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])
             ) {
-                $valued[$pr['column']] = true;
+                $valued[$pr['column'] ?? ''] = true;
             }
         }
         $set = $r['set'] ?? [];
@@ -327,6 +327,12 @@ final class Validator
         return $parts;
     }
 
+    /** @internal Checks record shape before analysis reads the schema registry key. */
+    public static function restoreAnalysisShape(array $request): void
+    {
+        self::shape('Request', $request, '');
+    }
+
     /** The classification shared by public analysis and the write planner (PRT91). */
     public static function analyzeRestore(RuntimeModel $model, array $r): array
     {
@@ -343,8 +349,9 @@ final class Validator
             throw self::err(Code::ENTITY_UNKNOWN, $name);
         }
         foreach ($r['set'] ?? [] as $a) {
-            if (RuntimeModel::column($ent, $a['column']) === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, $name . '.' . $a['column']);
+            $column = $a['column'] ?? '';
+            if (RuntimeModel::column($ent, $column) === null) {
+                throw self::err(Code::COLUMN_UNKNOWN, $name . '.' . $column);
             }
         }
         $parts = self::classifyRestore($ent, $r);

@@ -314,6 +314,7 @@ final class Db
         if ($this->state->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
+        Validator::restoreAnalysisShape($request);
         $hash = $request['manifest_hash'] ?? '';
         if (!isset($this->state->sets[$hash])) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "restore analysis manifest $hash is not registered on this connection");

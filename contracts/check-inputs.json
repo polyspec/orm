@@ -5450,6 +5450,33 @@
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/rust/orm/src/db.rs"
       ]
+    },
+    "restore-analysis-shape-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules",
+        "python",
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/ir/restore-analysis-shape.json",
+        "packages/ts/tests/restore-analysis-shape.test.mjs",
+        "packages/python/tests/test_restore_analysis_shape.py",
+        "packages/php/tests/RestoreAnalysisShapeTest.php",
+        "packages/php-ext/tests/RestoreAnalysisShapeExtensionTest.php",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/engine/validate.ts",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/engine/validate.py",
+        "packages/php/src/Db.php",
+        "packages/php/src/Validator.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/validator.c",
+        "contracts/fixtures/bench/bench.dbs"
+      ]
     }
   },
   "paths": {

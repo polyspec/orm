@@ -3934,3 +3934,20 @@ restore-analysis-api-check: php-vendor-check typescript-read interface-typescrip
 
 CHECK_TARGETS += restore-analysis-api-check
 CI_TARGETS_static += restore-analysis-api-check
+
+.PHONY: restore-analysis-shape-check restore-analysis-shape-check/typescript restore-analysis-shape-check/python restore-analysis-shape-check/php restore-analysis-shape-check/php-extension
+restore-analysis-shape-check: restore-analysis-shape-check/typescript restore-analysis-shape-check/python restore-analysis-shape-check/php restore-analysis-shape-check/php-extension
+restore-analysis-shape-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
+	$(RECIPE_TS_TEST) packages/ts/tests/restore-analysis-shape.test.mjs
+restore-analysis-shape-check/python: python-venv-check python-models
+	$(PYTHON_TESTS) -- packages.python.tests.test_restore_analysis_shape
+restore-analysis-shape-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RestoreAnalysisShapeTest.php
+restore-analysis-shape-check/php-extension: RUN_DIR = $(abspath .runtime/run)/restore-analysis-shape-check-$$PPID
+restore-analysis-shape-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
+	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/RestoreAnalysisShapeExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+
+CHECK_TARGETS += restore-analysis-shape-check
+CI_TARGETS_static += restore-analysis-shape-check

@@ -950,7 +950,9 @@ def validate(m: RuntimeModel, r: dict) -> None:
     ):
         _fail(codes.CONFIG, f"{target.table} is owned by another document set")
     if r.get("require_match") and r["kind"] not in ("update", "delete", "restore"):
-        raise OrmError(codes.IR_INVALID, "require_match is only valid on update, delete or restore")
+        raise OrmError(
+            codes.IR_INVALID, "require_match is only valid on update, delete or restore"
+        )
     if r.get("load") and (r["kind"] != "insert" or r.get("on_duplicate")):
         _fail(codes.IR_INVALID, "load is only valid on insert without on_duplicate")
     # restart_identity restarts the identity of one entity only, so it takes no rows or values.
@@ -1140,17 +1142,24 @@ def analyze_restore(m: RuntimeModel, r: dict) -> dict:
     """Classifies columns without applying write assignment restrictions (PRT91)."""
     _shape("Request", r, "")
     if r.get("ir_version") != IR_VERSION:
-        _fail(codes.VERSION_MISMATCH, f"ir_version {r.get('ir_version')}, engine {IR_VERSION}")
+        _fail(
+            codes.VERSION_MISMATCH,
+            f"ir_version {r.get('ir_version')}, engine {IR_VERSION}",
+        )
     if r.get("kind") != "restore":
         _fail(codes.IR_INVALID, "restore analysis requires a restore request")
     ent = entity_of(m, r.get("entity") or "")
     if ent is None:
         _fail(codes.ENTITY_UNKNOWN, r.get("entity") or "")
     for a in r.get("set") or []:
-        if field_of(ent, a["column"]) is None:
-            _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{a['column']}")
+        column = a.get("column") or ""
+        if field_of(ent, column) is None:
+            _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{column}")
     parts = _classify_restore(ent, r)
-    return {"key": list(parts["key"]), "assignments": [a["column"] for a in parts["set"]]}
+    return {
+        "key": list(parts["key"]),
+        "assignments": [a["column"] for a in parts["set"]],
+    }
 
 
 def restore_key(ent: Entity, r: dict) -> dict:
@@ -1161,3 +1170,8 @@ def restore_key(ent: Entity, r: dict) -> dict:
         if col.primary or col.identity or a["column"] == ent.soft_delete:
             _fail(codes.IR_INVALID, f"restore cannot assign {a['column']}")
     return parts
+
+
+def restore_analysis_shape(request: dict) -> None:
+    """Checks only record shape before analysis reads the schema registry key."""
+    _shape("Request", request, "")

@@ -1091,6 +1091,15 @@ static bool analyze_restore(vctx *c, zval *request, zval *ret)
     return true;
 }
 
+bool validator_restore_analysis_shape(zval *request)
+{
+    vctx c;
+    ctx_init(&c, NULL);
+    bool ok = shape(&c, "Request", request, "");
+    release(&c);
+    return ok;
+}
+
 bool validator_restore_analysis(zval *model, zval *request, zval *ret)
 {
     vctx c;
