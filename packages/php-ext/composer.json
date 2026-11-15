@@ -6,7 +6,7 @@
   "require": {
     "php": ">=8.4",
     "ext-polyspec_json": "*",
-    "polyspec/json": "0.0.29"
+    "polyspec/json": "0.0.30"
   },
   "php-ext": {
     "extension-name": "polyspec_orm",

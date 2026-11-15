@@ -26,9 +26,9 @@ fault-test = ["polyspec-binding-core/fault-test"]
 # (Failure, Raised), the wait tokens (Io), cancellation (Cancel), the map types (OrderedMap, KeyedMap), the out values
 # of orm_value (OutValue) and the name conversion that generate uses (binding design E-1c, I-2 (4), T-1, T-2, U-1, N-2;
 # CORE-27, CORE-50, CORE-60).
-polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.8" }
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.10" }
 polyspec-orm-schema = { version = "=0.0.33", path = "schema" }
-polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.29" }
+polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.30" }
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "json", "ipnet"] }
 # The SQLite library bundled with sqlx. The connection does not ask for that version via SQL; it reads it from this crate.
@@ -56,7 +56,7 @@ serde-saphyr = { version = "2.0.0", default-features = false, features = ["seria
 
 [dev-dependencies]
 # The tests make the wait tokens and raised exceptions that only generated code makes (binding design I-2 (4), U-3).
-polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.8", features = ["construct"] }
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.10", features = ["construct"] }
 # The fault entry point exists only with the feature test-faults, and the fault injection points fire only with the
 # feature fault-test. The tests of this crate enable both through their own crate, so a test target, a plain cargo test
 # included, runs with them and the normal build does not (binding CK-65).
