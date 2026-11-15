@@ -76,6 +76,8 @@ caseTest('a changed file selects the transaction end tests that it holds or that
 caseTest('a changed machine artifact selects its native machine verification', async () => {
   for (const path of ['packages/rust/src/tx/machine.rs', 'packages/rust/tests/unit/machine.rs'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-machines-rust'], path);
+  for (const path of ['packages/rust/src/db/machine.rs', 'packages/rust/tests/unit/execute_machine.rs'])
+    assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['planner/execute-machine-rust'], path);
 });
 
 caseTest('a whole-suite command is split by package', async () => {

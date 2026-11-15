@@ -470,8 +470,9 @@ has no case of the three members because each needs a database (CORE-72).
   A returned `Io` owns its inputs independently of the machine and can complete after the machine is dropped; the
   driver cancels it by dropping that future too. Cancellation cannot undo an already executed statement.
 
-CORE-127 is not implemented: `db.execute` still names the borrowed future `Db::execute_text` without `machine: true`.
-Native machine verification and generated binding runtime verification of this member are incomplete.
+`Db::execute_text_machine` is implemented. Its native artifact verification is pending; the contract still names the
+borrowed future `Db::execute_text` without `machine: true` until that verification succeeds. Generated binding runtime
+verification of this member is incomplete.
 
 ## Interface contract
 

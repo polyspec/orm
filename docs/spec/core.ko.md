@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 278b36985d6d66fbe1aa771c14cbd8459cea903533f05108c0ce2befb91048c0 -->
+<!-- source-sha256: aa23a42732e9471a6fdd530bec02687a596a2106d6beaf4ae743ad994ec1c533 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -396,8 +396,9 @@ case가 없다(CORE-72).
   독립적으로 입력을 소유하고 machine을 drop한 뒤에도 완료할 수 있다. driver는 그 future도 drop하여 취소한다.
   취소는 이미 실행한 statement를 되돌릴 수 없다.
 
-CORE-127은 구현되지 않았다. `db.execute`는 아직 `machine: true` 없이 빌린 future `Db::execute_text`를 가리킨다.
-이 member의 native machine 검증과 생성된 binding runtime 검증은 끝나지 않았다.
+`Db::execute_text_machine`은 구현되었다. native artifact 검증은 아직 끝나지 않았으며 그 검증이 성공할 때까지
+contract는 `machine: true` 없이 빌린 future `Db::execute_text`를 가리킨다. 이 member의 생성된 binding runtime
+검증은 끝나지 않았다.
 
 ## 인터페이스 계약
 

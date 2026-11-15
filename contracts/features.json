@@ -5032,7 +5032,11 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/unit/execute_machine.rs",
-            "packages/rust/interface.json"
+            "packages/rust/interface.json",
+            "packages/rust/src/db/machine.rs",
+            "packages/rust/src/db.rs",
+            "packages/rust/src/lib.rs",
+            "contracts/fixtures/conformance_verification/conformance_shared.dbs"
           ]
         }
       ],

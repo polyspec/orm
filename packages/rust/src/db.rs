@@ -27,6 +27,9 @@ use crate::tx::{AuditKey, TxShared};
 use crate::value::Param;
 use crate::{Error, Result};
 
+mod machine;
+pub use machine::Execute;
+
 /// The audit source of a connection: it returns the audit values of the
 /// current request, column names and values of the audit record table, such as
 /// the account and the request id. A transaction with `audit(values)` calls it
@@ -1488,6 +1491,12 @@ impl Db {
     pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()> {
         self.ensure_open()?;
         execute_step(Executor::Db(self.clone()), step, params).await
+    }
+
+    /// Owns the compiled-step text and parameter values in one I/O machine (CORE-127). Native Rust callers may still
+    /// await `execute_text`; this constructor gives the binding an operation whose future can outlive its driver.
+    pub fn execute_text_machine(self, step: String, params: Vec<crate::OrmValue>) -> Execute {
+        Execute::new(self, step, params)
     }
 
     /// Runs one statement of a plan that reads no rows, as `execute` does, with the step as the JSON text of its form
