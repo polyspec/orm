@@ -29,7 +29,7 @@ func goWord() []byte {
 	return out
 }
 
-// TestCommittedTablesAreGenerated checks that the three generated files match the content produced from Go's current table.
+// Requirements: FCV-20. TestCommittedTablesAreGenerated checks every generated file against Go's current table and the current harness.
 func TestCommittedTablesAreGenerated(t *testing.T) {
 	testcase.Start(t)
 	spans := wordSpans()

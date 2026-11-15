@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 88314657181b81dda59ce68160d60427da6acf65f7d7014379cbc3a99dc94da8 -->
+<!-- source-sha256: 01f90d21b795cda2b7be95604627b918a714bda6342d58378bccbc4c251a2032 -->
 # 변경 이력
 
 ## Unreleased
+
+- Unicode generator는 폐지한 Duration import와 wall_for_cpu deadline 대신 현재의 case!()를 출력한다(T494-1, FCV-20). 커밋된 Unicode 17.0.0 표와 code point 분류는 바꾸지 않는다. 기존 owner의 수정 전 Red는 동일한 출력 차이로 직접 checksum과 repository-root 실행 두 case가 실패하고 세 case가 통과했다. 커밋 전 수정안은 같은 Go owner 다섯 case를 모두 통과했다. 커밋된 Go와 Rust Unicode owner 검증은 아직 남아 있다.
 
 - Unicode 표 emitter의 Rust harness 출력을 독립 선행 작업으로 등록한다(T494-1, FCV-20). 현재 표의 분류와 시간 제한 없는 case는 유지하며 generator에 남은 폐지한 deadline의 수정과 검증은 아직 없다.
 
