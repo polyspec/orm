@@ -454,8 +454,9 @@ implementation is eligible for removal on that evidence.
 
 The implementation of CORE-100 to CORE-105 is in `packages/rust/src/tx/machine.rs`, and the contract names `machine`
 on the three members. The locked `polyspec-binding-core` 0.0.4 provides `Passthrough`, `Step::Await` and
-`Machine::settle`. Verification is incomplete: the tests of the core drive each machine step by step, but the contract
-has no case of the three members because each needs a database (CORE-72).
+`Machine::settle`. Verification is incomplete: the tests of the core drive each machine step by step, and the contract
+has the cases of `db.transaction` and `db.close` on a SQLite database (CORE-129); `tx.savepoint` has none, because
+no member gives a `tx` that a case can name.
 
 - **CORE-100** The members `db.transaction`, `tx.savepoint` and `db.close` of the contract name `"machine": true` in
   their `core`, because each has `wait: async_driver` and reaches language code: the first two call a function of the
@@ -533,7 +534,7 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   when the core has it and every type of its signature is a type of the contract. The value alias `orm_value`
   (CORE-62) and the members of `Query` that take or return it are declared: `where`, `value`, `get_by` and
   `get_count_by`. The members of `Query` of CORE-85 to CORE-91 and the class `StepRunner` of CORE-92 and CORE-93 are
-  declared; `StepRunner` needs a connection, so its members have no case (CORE-72). The units and members of
+  declared; the cases of `StepRunner` run on a SQLite database (CORE-129). The units and members of
   [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Tx::execute` (a plan step), `Db::subscribe` (an
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), the field `audit_source`
@@ -548,9 +549,20 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   `after`, and the instance that it returns is observed by the cases of its methods, whose receiver it makes (binding
   G-5). The core runs every such
   group by the functions that the contract names, and a group that names a member that the test cannot call fails.
-- **CORE-72** A case that needs a database is not implemented: a SQLite DSN holds an absolute path (CFG-11) and a
-  server DSN is given by the run, and the case form has no value for either. `contracts/interface/core.json` holds only
-  cases that send no statement, and the members that need a database are tested by the tests of the core.
+- **CORE-72** Retired, replaced by CORE-129: the case form now names a SQLite database in the directory of a case.
+- **CORE-129** A case that needs a SQLite database runs on the file `shop.db` in the directory of its test: its DSN is
+  the composed text `{"text": ["sqlite://", {"case_path": "shop.db"}]}` (binding GN-13l), and the instance value of its
+  `db` makes the tables and the rows of the case with `db.execute` before the call. The rows of `cases` of such groups
+  have `only` without `wasm`, whose core has no file system. A case that needs a database server waits for the
+  services of binding GN-13j, and a kind that a case reaches only through a `tx` handle, which no member returns and
+  no step of a function value can pass to another member, has no case until the case form gives one (T500).
+- **CORE-130** The `raises` of a member of the contract names only a kind that a path of that member returns. The
+  reads `get_count`, `get_count_by` and `get_by` send one `SELECT` and raise no kind of a write, `read_only` included; only an insert checks
+  the condition of `condition_not_met`, so `update`, `delete` and `restore` do not raise it; `restore` returns a row
+  that is not deleted unchanged, so only `restore_or_create` raises `row_not_deleted`; `restore_or_create` reads the
+  restored row in its own transaction and does not raise `no_rows`; `db.execute` runs on the `Db` and raises neither
+  `busy` nor `transaction_ended`, which only a `Tx` raises. No member of `Query` raises `column_unknown`: the builder
+  refuses an unknown column with `config` (CORE-82) before a terminal reads the entity.
 - **CORE-121** The core holds a fault injection point at a branch of the category `internal` that no input reaches, so
   that a case of the contract arms the point and checks the kind, the category and the message of the error that the
   branch raises (binding G-5, X-1). A point is `binding_core::fault::point!` with a constant of the module

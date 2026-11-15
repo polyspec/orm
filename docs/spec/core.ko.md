@@ -381,8 +381,8 @@
 
 CORE-100부터 CORE-105의 구현은 `packages/rust/src/tx/machine.rs`에 있고, 계약은 세 member에 `machine`을 적는다.
 고정된 `polyspec-binding-core` 0.0.4는 `Passthrough`, `Step::Await`, `Machine::settle`을 제공한다. 검증은 아직
-완료하지 않았다. core의 시험이 각 machine을 한 단계씩 구동하지만, 세 member는 각각 database가 필요해서 contract에
-case가 없다(CORE-72).
+완료하지 않았다. core의 시험이 각 machine을 한 단계씩 구동하고, contract는 `db.transaction`과 `db.close`의
+case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 case가 없다. case가 이름할 수 있는 `tx`를 주는 member가 없기 때문이다.
 
 - **CORE-100** 계약의 멤버 `db.transaction`, `tx.savepoint`, `db.close`는 `core`에 `"machine": true`를 이름한다. 셋 다
   `wait: async_driver`이고 언어 코드에 닿기 때문이다: 앞의 둘은 언어의 함수를 호출하고, `Db`나 `Tx`의 instance는 멤버가
@@ -452,7 +452,7 @@ case가 없다(CORE-72).
 - **CORE-70** 코어의 인터페이스 계약은 `packages/rust/interface.json`이다. 계약은 코어가 가지고 있고 시그니처의 모든
   타입이 계약의 타입인 unit과 member만 선언한다. 값 alias `orm_value`(CORE-62)와 그것을 받거나 돌려주는 `Query`의
   member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. CORE-85~CORE-91의 `Query` member와 CORE-92, CORE-93의
-  class `StepRunner`를 선언한다. `StepRunner`는 연결이 필요하므로 그 member는 case가 없다(CORE-72). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
+  class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다), `Tx::execute`(plan step),
   `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Config`의 field
   `audit_source`(함수), `TransactionOptions`의 field `audit`, `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
@@ -464,9 +464,19 @@ case가 없다(CORE-72).
   receiver가 없는 member는 `after`를 적지 않는다. 그 member가 돌려준 인스턴스는 그것을 receiver로 만드는 method의
   case가 관찰한다(binding G-5). 코어는 그 모든 group을 계약이 이름하는 함수로 실행하고, 시험이 부를 수 없는 member를
   이름하는 group은 실패한다.
-- **CORE-72** 데이터베이스가 필요한 case는 구현되지 않았다: SQLite DSN은 절대 경로를 담고(CFG-11) 서버 DSN은 실행이
-  주는데, case 형식에는 그 어느 쪽의 값도 없다. `contracts/interface/core.json`은 문장을 보내지 않는 case만 담고,
-  데이터베이스가 필요한 member는 코어의 시험이 시험한다.
+- **CORE-72** 폐기됨, CORE-129로 대체: case 형식이 이제 case의 디렉터리에 있는 SQLite 데이터베이스를 이름한다.
+- **CORE-129** SQLite 데이터베이스가 필요한 case는 그 시험의 디렉터리에 있는 파일 `shop.db`에서 실행된다: 그 DSN은
+  조합 텍스트 `{"text": ["sqlite://", {"case_path": "shop.db"}]}`이고(binding GN-13l), 그 `db`의 instance 값은 호출
+  전에 `db.execute`로 case의 표와 행을 만든다. 그런 group의 `cases` 행은 `wasm`을 뺀 `only`를 가진다. `wasm`의
+  코어에는 파일 시스템이 없기 때문이다. 데이터베이스 서버가 필요한 case는 binding GN-13j의 service를 기다리고,
+  case가 `tx` handle을 거쳐서만 닿는 kind는 case 형식이 그것을 줄 때까지 case가 없다. 어떤 member도 `tx`를
+  돌려주지 않고, 함수 값의 step은 그것을 다른 member에 넘길 수 없기 때문이다(T500).
+- **CORE-130** 계약의 member의 `raises`는 그 member의 경로가 돌려주는 kind만 이름한다. 읽기 `get_count`,
+  `get_count_by`, `get_by`는 `SELECT` 하나를 보내고 `read_only`를 포함한 쓰기의 kind를 내지 않는다. `condition_not_met`의 조건은 insert만
+  검사하므로 `update`, `delete`, `restore`는 그것을 내지 않는다. `restore`는 지워지지 않은 행을 그대로 돌려주므로
+  `row_not_deleted`는 `restore_or_create`만 낸다. `restore_or_create`는 복원한 행을 자기 transaction에서 읽으므로
+  `no_rows`를 내지 않는다. `db.execute`는 `Db`에서 실행되어 `Tx`만 내는 `busy`와 `transaction_ended`를 내지 않는다. `Query`의 어떤 member도 `column_unknown`을 내지 않는다.
+  builder가 terminal이 entity를 읽기 전에 모르는 열을 `config`로 거부하기 때문이다(CORE-82).
 - **CORE-121** 코어는 어떤 입력도 닿지 않는 category `internal`의 분기에 fault injection point를 두어, 계약의 case가
   그 point를 설정하고 그 분기가 일으키는 오류의 kind, category, message를 확인하게 한다(binding G-5, X-1). point는
   module `polyspec_orm::fault`의 상수를 받는 `binding_core::fault::point!`다. point는 코어의 feature `fault-test`가

@@ -480,7 +480,7 @@ impl Db {
   그 case(CORE-71), 생성된 바인딩, flowmark의 Go 코드는 FMS-80의 함수 다음이다. 선언은 작성되었고, 코어의 case runner가
   부르는 member 19개의 case가 있다. unit `dbspec`, `runtime_model`, `codec`의 member는 입력이 일으키는 `raises`의
   kind마다 case를 가진다. `dbspec.read_set`의 `config`는 Unicode 텍스트가 아닌 path에서 나오고, case는 그런 path를
-  줄 수 없다. `dbspec.read_set`과 `db.execute`는 case가 없고, `db.connect_schema`는 `config`의 case만 있다:
-  `read_set`의 결과는 시험의 디렉터리를 담은 텍스트여서 case가 적을 수 없고, case 형식에는 데이터베이스의 값이
-  없다(CORE-72, OM-1.5-3). `polyspec-orm`과 `polyspec-orm-schema`에 있는 FMS-81의 schema 시험은
+  줄 수 없다. `dbspec.read_set`, `db.execute`, `db.connect_schema`는
+  CORE-129의 case를 가진다: `read_set`의 결과는 시험의 디렉터리를 조합 텍스트로 이름하고(binding GN-13l),
+  `db.execute`는 case의 SQLite 데이터베이스에서 실행된다(OM-1.5-3). `polyspec-orm`과 `polyspec-orm-schema`에 있는 FMS-81의 schema 시험은
   시험 crate `polyspec-orm-test-support`의 `schema_form`을 거쳐 `jsonschema`로 schema를 읽는다. 생성된 바인딩과 flowmark의 Go 코드는 구현되지 않았다.
