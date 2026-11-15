@@ -1,5 +1,5 @@
 // Checks that CI runs the generated model checks (go-model-check, ts-model-check) and the common interface check. CI runs one job per CI group
-// that runs make check-run GROUP=<group>, and every CHECK_TARGETS target but a gate of kit is a target of some CI group (CI_TARGETS_<group>).
+// that runs make ci-test GROUP=<group>, whose recipe runs make check-run GROUP=<group> (T497), and every CHECK_TARGETS target but a gate of kit is a target of some CI group (CI_TARGETS_<group>).
 // The interface check is run by feature-check in make orm-check as a verify command in contracts/features.json.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,8 +9,8 @@ import { jobTargets } from '../../../scripts/repo/ci.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
-// GROUP_CHECK is the make check-run step of a CI group job.
-const GROUP_CHECK = 'run: make check-run GROUP=${{ matrix.group }}';
+// GROUP_CHECK is the run step of a CI group job, whose recipe ci-test runs make check-run GROUP=<group>.
+const GROUP_CHECK = 'run: make ci-test GROUP=${{ matrix.group }}';
 // INTERFACE_COMMAND is the command of make interface-check, and feature-check runs it as a verify command.
 const INTERFACE_COMMAND = 'ORM_PYTHON=legacy/packages/python/.venv/bin/python PATH=$HOME/.cargo/bin:$PATH node tests/interfaces/check/main.mts --self-test';
 
@@ -31,12 +31,12 @@ function withoutTarget(makefile: string, prefix: string, target: string): string
 }
 
 function validateGeneratedCI(workflow: string, makefile: string, features: string): void {
-  if (!workflow.split('\n').some(line => line.trim() === GROUP_CHECK)) throw new Error(`CI must run make check-run GROUP=<group> for each CI group: ${GROUP_CHECK}`);
+  if (!workflow.split('\n').some(line => line.trim().replace(/^- /, '') === GROUP_CHECK)) throw new Error(`CI must run make ci-test GROUP=<group> for each CI group: ${GROUP_CHECK}`);
   const targets = new Set(makeVariable(makefile, 'CHECK_TARGETS'));
   for (const target of ['go-model-check', 'ts-model-check']) {
     if (!targets.has(target)) throw new Error(`CHECK_TARGETS must include ${target}`);
   }
-  // Every CHECK_TARGETS target runs in one CI place: a CI group (its job runs it with make check-run GROUP=<group>), a gate of
+  // Every CHECK_TARGETS target runs in one CI place: a CI group (its job runs it with make ci-test GROUP=<group>), a gate of
   // kit (CI_KIT_GATES, which the gates workflow runs), the docs job's make docs-ci, or the editor job's make ci-vscode-integration. The targets of docs-ci are read from the
   // Makefile by jobTargets, the parser of the CI coverage check, so this test and that check agree on the docs job.
   const grouped = new Set(makeVariable(makefile, 'CI_GROUPS').flatMap(group => makeVariable(makefile, `CI_TARGETS_${group}`)));
@@ -54,8 +54,8 @@ caseTest('CI requires the generated checks', () => {
   const workflow = read('.github/workflows/ci.yml'), makefile = read('Makefile'), features = read('contracts/features.json');
   validateGeneratedCI(workflow, makefile, features);
   for (const [name, w, mk, f] of [
-    ['make check-run GROUP step removed', workflow.replace(GROUP_CHECK, 'run: true'), makefile, features],
-    ['make orm-check in place of make check-run GROUP', workflow.replace(GROUP_CHECK, 'run: make orm-check'), makefile, features],
+    ['make ci-test GROUP step removed', workflow.replace(GROUP_CHECK, 'run: true'), makefile, features],
+    ['make orm-check in place of make ci-test GROUP', workflow.replace(GROUP_CHECK, 'run: make orm-check'), makefile, features],
     ['go-model-check', workflow, withoutTarget(makefile, 'CHECK_TARGETS = ', 'go-model-check'), features],
     ['ts-model-check', workflow, withoutTarget(makefile, 'CHECK_TARGETS = ', 'ts-model-check'), features],
     ['go-model-check in a CI group', workflow, withoutTarget(makefile, 'CI_TARGETS_', 'go-model-check'), features],

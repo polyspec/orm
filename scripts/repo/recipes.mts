@@ -19,6 +19,8 @@ export function makeCall(text: string): { target: string; args: Record<string, s
   for (const word of words.slice(2)) {
     const match = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(word);
     if (!match?.[1]) return undefined;
+    // A value is a literal or an expression of GitHub: a shell expansion, quote or operator makes the step a shell script.
+    if (!/^(?:[^\s$`'"\\;&|<>()]|\$\{\{[^}]*\}\})*$/.test(match[2] ?? '')) return undefined;
     args[match[1]] = match[2] ?? '';
   }
   return { target: words[1], args };

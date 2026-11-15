@@ -21,7 +21,7 @@ const jobCommands = (run: JobRun, makefile: string): SimpleCommand[] => [...runC
 
 // CI_JOB_LINE reads a line of the job runner in a recipe (scripts/check/ci-job.mts): its action, its id or options, and the
 // make arguments after `--`.
-const CI_JOB_LINE = /^@?\$\(CI_JOB\) (begin|setup|check|always|end) \$\(CI_NAME\)(?: (.*?))?(?: -- (.*))?$/;
+const CI_JOB_LINE = /^@?\$\(CI_JOB\) (begin|setup|check|always|end) \$\(CI_NAME\)(?: (?!-- )(.*?))?(?: -- (.*))?$/;
 /** A line of the job runner in a recipe. */
 export type JobLine = { action: string; options: string[]; make: string[] };
 /** jobLines are the lines of the job runner in the recipe of a target, in order. */

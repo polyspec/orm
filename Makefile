@@ -2687,6 +2687,7 @@ interface-api-binding-unit-check:
 	$(NODE) --test tests/interfaces/check/api.test.mts
 .PHONY: interface-contract-unit-check
 CHECK_TARGETS += interface-contract-unit-check
+CI_TARGETS_static += interface-contract-unit-check
 interface-contract-unit-check:
 	$(RUN_TESTS) go --cwd tests -- -count=1 -timeout=0 ./interfaces/contracts
 interface-typescript-extractor-check: interface-typescript-check lease-tool

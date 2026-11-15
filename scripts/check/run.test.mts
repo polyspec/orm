@@ -278,31 +278,21 @@ caseTest('make orm-check delegates to ci-targets and make check-run starts the r
   const ormCheck = recipe('orm-check');
   assert.deepEqual(ormCheck, ['$(MAKE) ci-targets TARGETS=check-run']);
   const run = recipe('check-run');
-  assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
-  assert.deepEqual(run.slice(2), ['( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
+  assert.ok(run[0]?.startsWith('$(if $(GROUP),') && run[0].endsWith(')'), run.join('\n'));
+  assert.deepEqual(run.slice(1), ['( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
   // dry runs make -n check-run with only the variables given (isolatedEnvironment: GITHUB_ACTIONS is never inherited), so the case is a local run.
   const dry = (variables: Record<string, string>) => spawnSync('make', ['-n', '--no-print-directory', 'check-run'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment(variables) });
   const plain = dry({});
   assert.equal(plain.status, 0, `${plain.stdout}${plain.stderr}`);
   assert.match(plain.stdout, /node scripts\/check\/run\.mts /, plain.stdout);
+  // T497: a local run of one CI group is the call of its job, make ci-test GROUP=<group>, so check-run accepts GROUP outside
+  // GitHub Actions too.
   const local = dry({ GROUP: 'static' });
-  assert.notEqual(local.status, 0, local.stdout);
-  assert.match(local.stderr, /GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP/);
+  assert.equal(local.status, 0, `${local.stdout}${local.stderr}`);
   const unknown = dry({ GROUP: 'nope' });
   assert.notEqual(unknown.status, 0, unknown.stdout);
   assert.match(unknown.stderr, /GROUP nope names no CI group; give one of CI_GROUPS:/);
 });
-
-// The accepting case needs GitHub Actions, which sets GITHUB_ACTIONS=true in every job. It is registered only in a process that GitHub
-// Actions started, so a local run never reads a CI identity as set and never sets one: the case passes the value of its own process
-// to make. runner-check runs this file in the static CI group (CI_TARGETS_static), so the case runs in CI.
-if (process.env.GITHUB_ACTIONS === 'true') {
-  caseTest('make check-run accepts a CI group on GitHub Actions', () => {
-    const result = spawnSync('make', ['-n', '--no-print-directory', 'check-run', 'GROUP=static'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ GITHUB_ACTIONS: process.env.GITHUB_ACTIONS ?? '' }) });
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
-    assert.match(result.stdout, /node scripts\/check\/run\.mts /, result.stdout);
-  });
-}
 
 caseTest('a run records its setup steps and its targets', () => {
   const c = checkout(scope);
@@ -833,7 +823,7 @@ caseTest('a CI group job records a target not-run when it needs a setup step tha
   try {
     assert.equal(c.run('', { STUB_SUITE: 'group-rust', ORM_CHECK_RUN_ID: '16-1-static' }).status, 1);
     const record = c.record();
-    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name = '']) => name.startsWith('ci/')), [['ci/rust', 'failed']]);
+    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name = '']) => name.startsWith('ci/')), [['ci/rust', 'failed'], ['ci/rust-crates', 'failed']]);
     const a = named(record, 'a');
     assert.equal(a.status, 'not-run');
     assert.match(a.reason ?? '', /^the CI setup step rust was skipped, and a target of this run needs rust; the recipe of the group job runs the setup steps/);
