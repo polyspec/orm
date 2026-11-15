@@ -5036,7 +5036,8 @@
             "packages/rust/src/db/machine.rs",
             "packages/rust/src/db.rs",
             "packages/rust/src/lib.rs",
-            "contracts/fixtures/conformance_verification/conformance_shared.dbs"
+            "contracts/fixtures/conformance_verification/conformance_shared.dbs",
+            "contracts/fixtures/conformance_verification/conformance_verification.dbs"
           ]
         }
       ],

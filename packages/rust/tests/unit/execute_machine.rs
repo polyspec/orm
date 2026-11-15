@@ -25,11 +25,25 @@ fn execute_machine_contract_names_the_owned_constructor() {
     assert_eq!(execute["core"]["receiver"], "&self", "the binding clones the receiver; it does not consume its instance");
 }
 
+/// The actual compiled insert of an existing committed model, including its native bind types.
+fn compiled_insert(path: &str, entity: &str, columns: &[&str]) -> String {
+    let model = crate::testing::ir_request::schema(path);
+    let assigned: Vec<_> = columns.iter().enumerate().map(|(param, column)| serde_json::json!({"column": column, "p": param})).collect();
+    let request = serde_json::json!({
+        "ir_version": 1, "manifest_hash": model.manifest_hash,
+        "kind": "insert", "entity": entity, "set": assigned, "n_params": columns.len(),
+    });
+    let plan: serde_json::Value =
+        serde_json::from_str(&model.compile(&request.to_string(), "sqlite").expect("compile the insert")).expect("the compiled plan is JSON");
+    plan["steps"][0].to_string()
+}
+
 /// A compiled insert from a committed model, with its own physical database and statement observer.
 struct Fixture {
     db: Db,
     runtime: Runtime,
     step: String,
+    bytes_step: String,
     statements: Arc<Mutex<Vec<String>>>,
     subscription: Option<crate::Subscription>,
     _scratch: Scratch,
@@ -41,16 +55,17 @@ impl Fixture {
         let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().expect("runtime");
         let db = runtime.block_on(Db::connect(&format!("sqlite://{}", scratch.join("execute.sqlite").display()), 1, Config::default())).expect("connect");
         // Construct the owner before preparation so its Drop closes the database on a later preparation failure too.
-        let mut fixture = Self { db, runtime, step: String::new(), statements: Arc::new(Mutex::new(Vec::new())), subscription: None, _scratch: scratch };
-        let model = crate::testing::ir_request::schema("contracts/fixtures/conformance_verification/conformance_shared.dbs");
-        let request = serde_json::json!({
-            "ir_version": 1, "manifest_hash": model.manifest_hash,
-            "kind": "insert", "entity": "shared_note",
-            "set": [{"column": "seq", "p": 0}, {"column": "title", "p": 1}], "n_params": 2,
-        });
-        let plan: serde_json::Value =
-            serde_json::from_str(&model.compile(&request.to_string(), "sqlite").expect("compile the insert")).expect("the compiled plan is JSON");
-        fixture.step = plan["steps"][0].to_string();
+        let mut fixture = Self {
+            db,
+            runtime,
+            step: String::new(),
+            bytes_step: String::new(),
+            statements: Arc::new(Mutex::new(Vec::new())),
+            subscription: None,
+            _scratch: scratch,
+        };
+        fixture.step = compiled_insert("contracts/fixtures/conformance_verification/conformance_shared.dbs", "shared_note", &["seq", "title"]);
+        fixture.bytes_step = compiled_insert("contracts/fixtures/conformance_verification/conformance_verification.dbs", "byte_cell", &["body"]);
         let Pool::Sqlite(pool) = fixture.db.pool() else { panic!("the fixture uses SQLite") };
         fixture.runtime.block_on(async {
             let mut connection = pool.acquire().await.expect("the fixture owns its setup connection");
@@ -58,6 +73,10 @@ impl Fixture {
                 .execute(&mut *connection)
                 .await
                 .expect("create the fixture table");
+            sqlx::query("CREATE TABLE byte_cell (seq INTEGER PRIMARY KEY AUTOINCREMENT, body BLOB)")
+                .execute(&mut *connection)
+                .await
+                .expect("create the binary fixture table");
             connection.return_to_pool().await;
         });
         let statements = Arc::clone(&fixture.statements);
@@ -74,7 +93,7 @@ impl Fixture {
     }
 
     fn values(id: i64) -> Vec<OrmValue> {
-        vec![OrmValue::Int64(id), OrmValue::Text("owned λ\0text".into())]
+        vec![OrmValue::Int64(id), OrmValue::Text("owned λ text".into())]
     }
 
     fn drive(&self, mut machine: Execute) -> Result<(), Error> {
@@ -111,7 +130,16 @@ fn execute_machine_stores_compiled_parameters_and_preserves_the_native_api() {
     let rows = fixture.rows();
     assert_eq!(rows.len(), 1, "the single statement stores exactly one row");
     assert_eq!(rows[0].0, 7);
-    assert_eq!(rows[0].1.as_bytes(), b"owned \xce\xbb\0text", "the owned text preserves UTF-8 and its embedded zero byte");
+    assert_eq!(rows[0].1.as_bytes(), b"owned \xce\xbb text", "the owned text preserves UTF-8");
+    let bytes = vec![0x00, 0xff, 0x80, 0xc3, 0x28, 0x7f];
+    fixture
+        .drive(fixture.db.clone().execute_text_machine(fixture.bytes_step.clone(), vec![OrmValue::Bytes(bytes.clone())]))
+        .expect("execute the binary parameter");
+    let Pool::Sqlite(pool) = fixture.db.pool() else { panic!("the fixture uses SQLite") };
+    let stored: (Vec<u8>, String) =
+        fixture.runtime.block_on(sqlx::query_as("SELECT body, typeof(body) FROM byte_cell").fetch_one(pool)).expect("read the stored binary value");
+    assert_eq!(stored.0, bytes, "zero and non-UTF8 bytes preserve their exact values");
+    assert_eq!(stored.1, "blob", "a Bytes parameter remains binary storage");
     fixture.runtime.block_on(fixture.db.execute_text(&fixture.step, Fixture::values(8))).expect("the native future API still executes");
     assert_eq!(fixture.rows().iter().map(|row| row.0).collect::<Vec<_>>(), [7, 8]);
     let native = fixture.runtime.block_on(fixture.db.execute_text(&fixture.step, Fixture::values(7))).expect_err("the native call reports a duplicate");
@@ -134,6 +162,7 @@ fn execute_machine_preserves_native_refusals_and_validation_order() {
         ("{}".to_owned(), vec![OrmValue::List(Vec::new())], Kind::Config),
         (fixture.step.clone(), vec![OrmValue::List(Vec::new()), OrmValue::Null], Kind::CodecEncode),
         (fixture.step.clone(), vec![OrmValue::Int64(7)], Kind::IrInvalid),
+        (fixture.step.clone(), vec![OrmValue::Int64(7), OrmValue::Text("refused\0text".into())], Kind::CodecEncode),
     ];
     for (step, params, expected) in cases {
         let native = fixture.runtime.block_on(fixture.db.execute_text(&step, params.clone())).expect_err("the native operation refuses the input");
