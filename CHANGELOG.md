@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The native connection adapter item waits for the transaction adapter prerequisite (T494-2). Its full owner remains unchanged and resumes automatically after T494-3 corrects the retained async snapshot. The current eight passed and two failed are not completion evidence.
+
 - The Collection.connect validator also matches its actual Into<Connection> signature and retains a negative mutation for the former borrowed-Db form (T494-2, INT-17b). The same full owner reports eight passed and two failed, exposing the next stale transaction result expectation. The full package is still not Green.
 
 - The same native contract item also specifies the existing Collection.connect Into<Connection> adapter (T494-2, INT-17b). The failure exposed after correcting the Model mapping comes from the Collection validator's former borrowed-Db expectation; its correction is not implemented yet.

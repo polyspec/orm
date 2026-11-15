@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ce3106cdbcea7c067c20732a5ea05efb9cc4083a92dc5829d2fd68bd713e9cd6 -->
+<!-- source-sha256: 97668cf40123391e99ded9385f467bab27095d787f75919e849136df12c7e4d0 -->
 # 변경 이력
 
 ## Unreleased
+
+- Native connection adapter 항목은 transaction adapter 선행 작업을 기다린다(T494-2). 전체 owner의 입력과 결과 기대값은 그대로 유지하며 T494-3이 유지된 async snapshot을 정정하면 같은 검증을 자동 재개한다. 현재 여덟 case 통과·두 case 실패를 완료로 보고하지 않는다.
 
 - Collection.connect validator도 실제 Into<Connection> signature와 일치하고 예전 borrowed-Db 형태를 거부하는 회귀 mutation을 유지한다(T494-2, INT-17b). 같은 전체 owner는 여덟 case 통과·두 case 실패이며 다음 transaction result adapter의 오래된 기대값을 드러냈다. 전체 package는 아직 Green이 아니다.
 
