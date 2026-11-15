@@ -3201,6 +3201,65 @@ mod database {
         corpus: Option<std::path::PathBuf>,
         /// The error of the last step that failed without an expected error, as its call returned it.
         unexpected: Option<polyspec_orm::Error>,
+        /// The before-transaction hooks of the case (INT-190).
+        transaction_hooks: TransactionHooks,
+    }
+
+    /// The nested steps of a before-transaction hook and where the hook awaits their outcome.
+    type HookCall = (Arc<Vec<Value>>, tokio::sync::oneshot::Sender<polyspec_orm::Result<()>>);
+
+    /// The before-transaction hooks of a case (INT-190): the records of their calls, in call order, their remove handles by
+    /// the names of `as`, and the stack of the steps that run the nested steps of a hook. A hook future is 'static and cannot
+    /// borrow the case state, so it sends its steps to the innermost step that waits for a transaction, which runs them on
+    /// the case state while the transaction waits for the hook.
+    #[derive(Default)]
+    struct TransactionHooks {
+        records: Arc<Mutex<Vec<(String, bool)>>>,
+        removers: HashMap<String, polyspec_orm::BeforeTransactionHook>,
+        servers: Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<HookCall>>>>,
+    }
+
+    /// The case state that a transaction step shares between its callback and the nested steps of the hooks it calls.
+    type CaseState<'s, 'c, 'a> = tokio::sync::Mutex<(&'s mut Option<CatalogConnection>, &'c mut Context<'a>)>;
+
+    /// Awaits `work` and meanwhile runs the nested steps of each before-transaction hook that it calls on `state` (INT-190).
+    /// This step is the innermost that serves hooks until `work` ends. The hooks run before the transaction takes a
+    /// connection and before its callback, so the state is free then; a hook that a callback calls while it holds the state
+    /// fails with a step failure instead of waiting for it.
+    async fn serving_hooks<T>(state: &CaseState<'_, '_, '_>, servers: &Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<HookCall>>>>, work: impl Future<Output = T>) -> T {
+        let (sender, mut calls) = tokio::sync::mpsc::unbounded_channel::<HookCall>();
+        servers.lock().unwrap().push(sender);
+        let serve = async {
+            while let Some((steps, reply)) = calls.recv().await {
+                let outcome = match state.try_lock() {
+                    Err(_) => Err(polyspec_orm::Error::Config("transaction_hook.install: the steps of the hook ran while a callback holds the case state".into())),
+                    Ok(mut guard) => {
+                        let (catalog, context) = &mut *guard;
+                        let mut outcome = Ok(());
+                        for nested in steps.iter() {
+                            if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
+                                outcome = Err(context.unexpected.take().unwrap_or(polyspec_orm::Error::Config(message)));
+                                break;
+                            }
+                        }
+                        outcome
+                    }
+                };
+                // The hook awaits the reply until it arrives; a hook that no longer awaits it belongs to a transaction that
+                // was dropped, which has no caller to report to, and the dropped transaction fails its own step.
+                if reply.send(outcome).is_err() {
+                    break;
+                }
+            }
+        };
+        let mut work = std::pin::pin!(work);
+        let value = tokio::select! {
+            biased;
+            value = &mut work => value,
+            () = serve => work.await,
+        };
+        servers.lock().unwrap().pop();
+        value
     }
 
     impl<'a> Context<'a> {
@@ -3234,6 +3293,7 @@ mod database {
                 wait_start: None,
                 corpus: None,
                 unexpected: None,
+                transaction_hooks: TransactionHooks::default(),
             }
         }
     }
@@ -3692,6 +3752,7 @@ mod database {
         catalog: &mut Option<CatalogConnection>,
         context: &mut Context<'_>,
     ) -> Result<Output, Failure> {
+        let servers = context.transaction_hooks.servers.clone();
         let state = tokio::sync::Mutex::new((catalog, context));
         let attempts = std::sync::atomic::AtomicU64::new(0);
         let conflicts = crate::recipe_reads::read(step, "conflicts")["conflicts"].as_u64().unwrap_or(0);
@@ -3737,7 +3798,7 @@ mod database {
         if crate::recipe_reads::read(step, "audit").get("audit").is_some() {
             transaction = transaction.audit(audit_values(&crate::recipe_reads::read(step, "audit")["audit"])?);
         }
-        let result = transaction.await;
+        let result = serving_hooks(&state, &servers, async { transaction.await }).await;
         state.into_inner().1.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
         match result {
             Ok(()) => Ok(Output::fields(ok_value())),
@@ -4173,19 +4234,23 @@ mod database {
                 }
                 let ran = std::sync::atomic::AtomicU64::new(0);
                 let ran_ref = &ran;
-                let (once_catalog, once_context) = (&mut *catalog, &mut *context);
-                let result = db
-                    .transaction_once(|| async move {
-                        ran_ref.store(1, std::sync::atomic::Ordering::SeqCst);
-                        for nested in &steps {
-                            Box::pin(run_step(once_catalog, nested, once_context)).await?;
-                        }
-                        if fail {
-                            return Err(CALLBACK_FAILED.to_owned());
-                        }
-                        Ok::<(), String>(())
-                    })
-                    .await;
+                let servers = context.transaction_hooks.servers.clone();
+                let state = tokio::sync::Mutex::new((&mut *catalog, &mut *context));
+                let state_ref = &state;
+                let once = db.transaction_once(|| async move {
+                    ran_ref.store(1, std::sync::atomic::Ordering::SeqCst);
+                    let mut guard = state_ref.lock().await;
+                    let (once_catalog, once_context) = &mut *guard;
+                    for nested in &steps {
+                        Box::pin(run_step(once_catalog, nested, once_context)).await?;
+                    }
+                    if fail {
+                        return Err(CALLBACK_FAILED.to_owned());
+                    }
+                    Ok::<(), String>(())
+                });
+                let result = serving_hooks(&state, &servers, async { once.await }).await;
+                drop(state);
                 context.attempts = ran.load(std::sync::atomic::Ordering::SeqCst);
                 result.map_err(|e| match e {
                     TransactionOnceError::Callback(message) if message == CALLBACK_FAILED => Failure::Call(format!("{CALLBACK}: {message}")),
@@ -4202,6 +4267,62 @@ mod database {
                     TransactionOnceError::Rollback { callback, rollback } => Failure::Step(format!("{callback}; rollback: {rollback}")),
                 })?;
                 Output::fields(ok_value())
+            }
+            // transaction_hook.install (INT-190): one hook on the connection of the step through the public
+            // before_transaction. Each call records its name and readOnly, runs its steps on the case state and then fails
+            // with the code of fail.
+            "transaction_hook.install" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let name = bound_name(step).map_err(fault)?;
+                let steps: Arc<Vec<Value>> = Arc::new(crate::recipe_reads::read(step, "steps")["steps"].as_array().cloned().unwrap_or_default());
+                let fail = match crate::recipe_reads::read(step, "fail").get("fail") {
+                    None => None,
+                    Some(code) => Some(code.as_str().ok_or_else(|| fault(format!("transaction_hook.install fail {code} is not a code")))?.to_owned()),
+                };
+                let records = context.transaction_hooks.records.clone();
+                let servers = context.transaction_hooks.servers.clone();
+                let hook_name = name.clone();
+                let hook = db.before_transaction(move |read_only| {
+                    let (name, steps, fail, records, servers) = (hook_name.clone(), steps.clone(), fail.clone(), records.clone(), servers.clone());
+                    Box::pin(async move {
+                        records.lock().unwrap().push((name, read_only));
+                        if !steps.is_empty() {
+                            let server = servers.lock().unwrap().last().cloned().ok_or_else(|| {
+                                polyspec_orm::Error::Config("transaction_hook.install: no transaction step runs the steps of the hook".into())
+                            })?;
+                            let (reply, answer) = tokio::sync::oneshot::channel();
+                            server
+                                .send((steps, reply))
+                                .map_err(|error| polyspec_orm::Error::Config(format!("transaction_hook.install: the step that runs the steps of the hook ended: {error}")))?;
+                            answer
+                                .await
+                                .map_err(|error| polyspec_orm::Error::Config(format!("transaction_hook.install: the steps of the hook ended without an outcome: {error}")))??;
+                        }
+                        match fail {
+                            Some(code) => Err(polyspec_orm::Error::Engine { code, msg: "before-transaction hook refused".into(), source: None }),
+                            None => Ok(()),
+                        }
+                    })
+                });
+                context.transaction_hooks.removers.insert(name, hook);
+                Output::fields(json!({}))
+            }
+            "transaction_hook.remove" => {
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().ok_or_else(|| fault("transaction_hook.remove names no ref".into()))?;
+                let hook = context.transaction_hooks.removers.remove(name).ok_or_else(|| fault(format!("transaction_hook.remove: no hook {name}")))?;
+                hook.remove();
+                Output::fields(json!({}))
+            }
+            "transaction_hook.records" => {
+                let records: Vec<Value> = context
+                    .transaction_hooks
+                    .records
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .map(|(hook, read_only)| json!({ "object": [["hook", { "text": hook }], ["read_only", { "bool": read_only }]] }))
+                    .collect();
+                Output::fields(json!({ "value": { "array": records } }))
             }
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
             // The client writes the reading of this clock, cut to the microsecond, so both edges are the reading

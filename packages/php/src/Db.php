@@ -325,6 +325,25 @@ final class Db
     }
 
     /**
+     * Registers $hook to be called before every outermost transaction that transaction() begins on this connection or
+     * on a handle of it, at each attempt, with whether the transaction is read-only (INT-190). Every handle of the
+     * connection shares the hooks. The client calls the hooks registered when the attempt starts, in registration
+     * order, before the transaction sends any statement; an exception of a hook ends the transaction before it begins
+     * and passes through unchanged, with no retry. The returned closure removes the hook.
+     *
+     * @param \Closure(bool): void $hook
+     * @return \Closure(): void
+     */
+    public function beforeTransaction(\Closure $hook): \Closure
+    {
+        $id = $this->state->beforeTransactionSeq++;
+        $this->state->beforeTransactionHooks[$id] = $hook;
+        return function () use ($id): void {
+            unset($this->state->beforeTransactionHooks[$id]);
+        };
+    }
+
+    /**
      * Classifies restore columns without statements, hooks or write validation (INT188).
      * @return array{key: list<string>, assignments: list<string>}
      */
@@ -831,6 +850,8 @@ final class Db
             return $this->savepoint($outer, $fn);
         }
         for ($attempt = 0;; $attempt++) {
+            // Outside the retry: an exception of a hook ends the transaction unchanged, DEADLOCK included (INT-190).
+            $this->beforeBegin($readOnly, $timeoutMs);
             try {
                 return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
             } catch (OrmException $e) {
@@ -974,13 +995,30 @@ final class Db
         return $v;
     }
 
-    private function begin(string $isolation, bool $readOnly, int $timeoutMs): TxFrame
+    /**
+     * The checks of an attempt of an outermost transaction, then the before-transaction hooks registered now, in
+     * registration order (INT-190). It runs before the transaction takes the connection or sends a statement, the
+     * SQLite row lock table included; an exception of a hook passes through unchanged and no later hook runs.
+     */
+    private function beforeBegin(bool $readOnly, int $timeoutMs): void
     {
         if ($this->state->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         if ($timeoutMs > 0 && $this->driver !== 'postgres') {
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
+        }
+        // The list as it is now: a hook that registers or removes a hook changes the next transaction only.
+        foreach ($this->state->beforeTransactionHooks as $hook) {
+            $hook($readOnly);
+        }
+    }
+
+    private function begin(string $isolation, bool $readOnly, int $timeoutMs): TxFrame
+    {
+        // A hook may have closed the connection (INT-190).
+        if ($this->state->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
         }
         $level = strtoupper(str_replace('_', ' ', $isolation));
         if ($this->driver === 'sqlite') {

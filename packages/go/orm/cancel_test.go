@@ -327,6 +327,52 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	}
 }
 
+// handleKey is the key of the context value that names the handle a before-transaction hook receives the context of.
+type handleKey struct{}
+
+// TestBeforeTransactionSharedByContextHandle checks that the hooks of BeforeTransaction are shared by a WithContext handle
+// of the connection: a hook registered on the connection runs before a transaction begun on the handle, and a hook
+// registered on the handle runs before a transaction begun on the connection, each with the context of the handle that
+// begins the transaction. It is native (FCV-2): a cancellation handle of CFG-9 is a primitive of a language that a recipe
+// step does not spell.
+// Requirements: INT-190, CFG-9.
+func TestBeforeTransactionSharedByContextHandle(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db := connectSchemaDB(t, newDatabase(t, "sqlite"), fixtureSchema(t, "zone"))
+	defer testcase.Close(t, db)
+	handle := db.WithContext(context.WithValue(context.Background(), handleKey{}, "handle"))
+	var calls []string
+	record := func(name string) func(context.Context, bool) error {
+		return func(ctx context.Context, readOnly bool) error {
+			// The connection's own context carries no handle name, so its transactions record an empty one.
+			begun := ""
+			if name, ok := ctx.Value(handleKey{}).(string); ok {
+				begun = name
+			}
+			calls = append(calls, fmt.Sprintf("%s on %q read-only %t", name, begun, readOnly))
+			return nil
+		}
+	}
+	removeConnection, err := db.BeforeTransaction(record("connection hook"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := handle.Transaction(func() error { return nil }, orm.Retry(0)); err != nil {
+		t.Fatal(err)
+	}
+	removeConnection()
+	if _, err := handle.BeforeTransaction(record("handle hook")); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Transaction(func() error { return nil }, orm.Retry(0), orm.ReadOnly()); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{`connection hook on "handle" read-only false`, `handle hook on "" read-only true`}
+	if !slices.Equal(calls, want) {
+		t.Fatalf("the hook calls are %q, want %q", calls, want)
+	}
+}
+
 // mysqlLockWaiters lists the sessions that wait for a table of the case database, one form on MySQL and MariaDB
 // (DIA-200, rule 1): the pending metadata locks of performance_schema.metadata_locks, which both servers keep live, as the
 // recipe runners read a lock holder (MariaDB has no performance_schema.data_locks, and information_schema.INNODB_TRX is

@@ -152,6 +152,12 @@ export function registerModel(manifestText: string, manifestHash: string, extern
 }
 
 /**
+ * A hook of Db.beforeTransaction: the client calls it with whether the transaction is read-only before each outermost
+ * transaction begins, and awaits the promise it returns before it calls the next hook (INT-190).
+ */
+export type TransactionHook = (readOnly: boolean) => void | Promise<void>;
+
+/**
  * The hook of a connection handle (Db.withRequestHook): it receives a request of the handle right
  * before planning and returns the request to plan, or a promise of it, which the client awaits before it
  * plans (INT-78), so that a hook can read on another connection between two requests. addParam appends a
@@ -522,8 +528,8 @@ export class Db {
   // State shared by all handles of one connection. rollbackFault is the test fault that the test entry
   // point's failNextRollback sets.
   // events holds the subscriber list and the transaction number; rowLockTable says whether the SQLite row lock table was created on this
-  // connection.
-  private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; fixedClock: number | null; lastAffected: number | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, fixedClock: null, lastAffected: null, events: new Subscribers(), rowLockTable: false };
+  // connection; transactionHooks holds the before-transaction hooks in registration order (INT-190).
+  private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; fixedClock: number | null; lastAffected: number | null; events: Subscribers; rowLockTable: boolean; transactionHooks: readonly TransactionHook[] } = { closed: false, rollbackFault: false, statementFault: null, fixedClock: null, lastAffected: null, events: new Subscribers(), rowLockTable: false, transactionHooks: [] };
   public readonly signal: AbortSignal | undefined = undefined;
   /** The hook of the handle (withRequestHook); a connection has none. */
   public readonly requestHook: RequestHook | undefined = undefined;
@@ -648,6 +654,20 @@ export class Db {
   public transactionActive(): boolean {
     if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
     return activeFor(this) !== undefined;
+  }
+
+  /**
+   * Registers hook to be called before every outermost transaction that transaction begins on the connection or a handle of it,
+   * each attempt included, with whether it is read-only. The client awaits each hook in registration order before the transaction
+   * takes a connection or sends a statement; an error of a hook ends the transaction unchanged and without retry (INT-190). Every
+   * handle of the connection shares the hooks. The returned function removes this registration.
+   */
+  public beforeTransaction(hook: (readOnly: boolean) => void | Promise<void>): () => void {
+    if (typeof hook !== 'function') throw new OrmError(codes.CONFIG, 'beforeTransaction takes a function of readOnly');
+    // Even if the same function is registered twice, removing removes only its own registration.
+    const entry: TransactionHook = readOnly => hook(readOnly);
+    this.shared.transactionHooks = [...this.shared.transactionHooks, entry];
+    return () => { this.shared.transactionHooks = this.shared.transactionHooks.filter(h => h !== entry); };
   }
 
   /** A handle of the same connection: it shares the state and changes only one property to value. */
@@ -806,6 +826,9 @@ export class Db {
       return this.savepoint(outer, callback);
     }
     for (let attempt = 0; ; attempt++) {
+      if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
+      // The hooks run before the attempt reserves a connection or sends a statement, outside the retry of its errors (INT-190).
+      await this.callTransactionHooks(options.readOnly === true);
       try {
         const begin: BeginOptions = { timeoutMs };
         if (options.isolation !== undefined) begin.isolation = options.isolation;
@@ -917,6 +940,11 @@ export class Db {
     const key = created.values.get(present(entity.primaryKey[0], `the primary key of ${entity.table}`));
     if (key === undefined || key === null) throw new OrmError(codes.CONFIG, `the audit record ${entity.table} has no ${entity.primaryKey[0]} after its insert`);
     return { table: entity.table, key };
+  }
+
+  /** Calls the hooks registered when the attempt starts, in order, awaiting each; the first error ends the calls unchanged. */
+  private async callTransactionHooks(readOnly: boolean): Promise<void> {
+    for (const hook of this.shared.transactionHooks) await hook(readOnly);
   }
 
   private async run<T>(callback: () => Promise<T> | T, options: BeginOptions, record: AuditInsert | undefined): Promise<T> {

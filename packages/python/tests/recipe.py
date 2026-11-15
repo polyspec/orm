@@ -2809,6 +2809,8 @@ def _run_case_on(
         "closers": closers,
         "fields": {},
         "records": [],
+        # The transaction hook records of transaction_hook.install, separate from the request hook records (INT-190).
+        "transaction_hook_records": [],
         "hook_bases": {},
         # The step guard of a case with a step deadline, which each apply event restarts (recipe_apply).
         "guard": guard,
@@ -4887,6 +4889,49 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
     return {"value": {"array": listed}, "counts": counts}
 
 
+def _op_transaction_hook_install(step: dict, context: dict) -> dict:
+    """transaction_hook.install (FCV-4, INT-190): one hook registered by the public before_transaction; each call
+    records its name and read_only, runs its steps and then fails with the code of fail when it is set."""
+    # The fields are read when the hook is installed, since the hook runs after the step ends.
+    name = step["as"]
+    steps = step.get("steps") or []
+    fail = step.get("fail")
+
+    def hook(read_only: bool) -> None:
+        context["transaction_hook_records"].append(
+            {"hook": name, "read_only": read_only}
+        )
+        for nested in steps:
+            _run_database_step(nested, context)
+        if fail is not None:
+            raise OrmError(fail, "before-transaction hook refused")
+
+    return {"bind": _connection_of(step, context).before_transaction(hook)}
+
+
+def _op_transaction_hook_remove(step: dict, context: dict) -> dict:
+    """transaction_hook.remove (FCV-4, INT-190): calls the remove function bound to ref."""
+    _bound_value(step["ref"], context)()
+    return {}
+
+
+def _op_transaction_hook_records(_step: dict, context: dict) -> dict:
+    """transaction_hook.records (FCV-4, INT-190): the transaction hook records in the order of the calls."""
+    return {
+        "value": {
+            "array": [
+                {
+                    "object": [
+                        ["hook", {"text": record["hook"]}],
+                        ["read_only", {"bool": record["read_only"]}],
+                    ]
+                }
+                for record in context["transaction_hook_records"]
+            ]
+        }
+    }
+
+
 def _keyring(raw: dict) -> AesKeyring:
     """The keyring of a recipe (FCV-4 aesKeyring), by the public constructor."""
     return AesKeyring(
@@ -5013,6 +5058,9 @@ _DATABASE_OPS = {
     "transaction.active": _op_transaction_active,
     "hook.install": _op_hook_install,
     "hook.records": _op_hook_records,
+    "transaction_hook.install": _op_transaction_hook_install,
+    "transaction_hook.remove": _op_transaction_hook_remove,
+    "transaction_hook.records": _op_transaction_hook_records,
     "utils.aes_status": _op_aes_status,
     "utils.aes_rotate": _op_aes_rotate,
 }

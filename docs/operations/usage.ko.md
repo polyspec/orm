@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 2c9681ec0546ebf95f1c8da872a67f176416cf96604958b8dbdf5a331f4f57eb -->
+<!-- source-sha256: 6a4ebbbd4ad0797aa5d62769670145925997715d0e577ed9b3f590154fa389e0 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -461,6 +461,7 @@ $b->getJsonSetting()['a'];
 | key를 지킨 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | handle의 모든 request를 plan 전에 바꾸기 | 연결의 `withRequestHook`([request hook](#request-hook)) |
 | transaction이 활성인 동안 데이터베이스 밖의 작업 거절 | 연결의 `transactionActive()`(Go `TransactionActive`, Python과 Rust `transaction_active`). 호출한 flow에 그 연결의 transaction이 있으면 true이며 문장을 보내지 않는다([INT-189](../spec/interfaces.ko.md)) |
+| transaction이 시작하기 전에 code 실행, 예를 들어 다른 연결의 write | 연결의 `beforeTransaction(hook)`(Go `BeforeTransaction`, Python과 Rust `before_transaction`). hook는 `transaction`의 가장 바깥 transaction마다, connection을 잡거나 statement를 보내기 전에 실행되며, 등록은 hook를 지우는 함수를 돌려준다([INT-190](../spec/interfaces.md)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](../spec/dsl.md)) |
 | 실행 없이 페이지의 문장 보기 | 연결한 모델의 `getPagePlanSteps(page, perPage)` ([dsl.md](../spec/dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |

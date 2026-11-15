@@ -1782,6 +1782,8 @@ class _Shared:
         "last_affected",
         "pool",
         "held",
+        "transaction_hooks",
+        "transaction_hooks_lock",
     )
 
     def __init__(self):
@@ -1797,6 +1799,10 @@ class _Shared:
         # The connections of the Db, and the connection a thread holds for a sequence of statements.
         self.pool = None
         self.held = threading.local()
+        # The hooks of before_transaction in registration order (INT-190). A registration or a removal replaces the
+        # tuple under the lock, so a transaction reads the hooks registered at that moment without the lock.
+        self.transaction_hooks: tuple = ()
+        self.transaction_hooks_lock = threading.Lock()
 
 
 DEFAULT_POOL_SIZE = 10
@@ -2284,6 +2290,30 @@ class Db:
         handle._cancellation = _FutureCancellation(future)
         return handle
 
+    def before_transaction(self, hook: Callable[[bool], None]) -> Callable[[], None]:
+        """Registers hook on the connection, shared by every handle of it, and returns the function that removes it
+        (INT-190). Before every outermost transaction that transaction begins on the connection or a handle of it,
+        each attempt of the retry included, the client calls the hooks registered at that moment in registration
+        order with whether the transaction is read-only, before the transaction takes a connection or sends a
+        statement. An error of a hook ends the transaction before it begins and is raised unchanged."""
+        if not callable(hook):
+            raise OrmError(codes.CONFIG, "before_transaction takes a callable")
+        shared = self._shared
+        # Each registration has its own entry, so a hook registered twice is removed one registration at a time.
+        entry = (hook,)
+        with shared.transaction_hooks_lock:
+            shared.transaction_hooks = (*shared.transaction_hooks, entry)
+
+        def remove() -> None:
+            with shared.transaction_hooks_lock:
+                shared.transaction_hooks = tuple(
+                    registered
+                    for registered in shared.transaction_hooks
+                    if registered is not entry
+                )
+
+        return remove
+
     def root(self) -> Db:
         """The connection this handle was derived from; a connection returns itself."""
         return self._root if self._root is not None else self
@@ -2582,8 +2612,15 @@ class Db:
                     "accepts only the retry option",
                 )
             return self._savepoint(outer, callback)
+        read_only = bool(options.get("readOnly"))
         attempt = 0
         while True:
+            if self._shared.closed:
+                raise OrmError(codes.CONFIG, "database is closed")
+            # The hooks of INT-190 run at the start of each attempt, before the transaction takes a connection or
+            # sends a statement; an error of a hook is raised unchanged, outside the retry of INT-43.
+            for (hook,) in self._shared.transaction_hooks:
+                hook(read_only)
             try:
                 return self._run(
                     callback,

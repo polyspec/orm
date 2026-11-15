@@ -208,7 +208,7 @@ type databaseStep struct {
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
 	Ref  json.RawMessage `json:"ref"`
 	Row  json.RawMessage `json:"row"`
-	Fail bool            `json:"fail"`
+	Fail stepFail        `json:"fail"`
 	Kind string          `json:"kind"`
 	// The ORM error of a failing subscriber (INT-96).
 	Refusal *struct {
@@ -244,6 +244,20 @@ type databaseStep struct {
 	PayloadRepeat int  `json:"payload_repeat"`
 	WithinMS      int  `json:"within_ms"`
 	PayloadBytes  bool `json:"payload_bytes"`
+}
+
+// stepFail is the fail key of a step: true on a transaction, whose callback then fails after its steps, or the error code
+// of the failure of a hook of transaction_hook.install (INT-190).
+type stepFail struct {
+	set  bool
+	code string
+}
+
+func (f *stepFail) UnmarshalJSON(raw []byte) error {
+	if len(raw) > 0 && raw[0] == '"' {
+		return json.Unmarshal(raw, &f.code)
+	}
+	return json.Unmarshal(raw, &f.set)
 }
 
 // eventMask replaces one bind of one captured event with a name, for a value that no recipe can fix (FCV-4).
@@ -305,6 +319,8 @@ type databaseContext struct {
 	progress func()
 	// records are the requests that a record action of the installed hook saw (hook.records).
 	records []hookRecord
+	// transactionHooks are the calls of the hooks that transaction_hook.install registered, in order (INT-190).
+	transactionHooks []transactionHookRecord
 }
 
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
@@ -1383,13 +1399,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			options = append(options, orm.Audit(values))
 		}
+		if s.k("fail").Fail.code != "" {
+			return outcome{}, fmt.Errorf("transaction takes fail true, not the error code %s", s.k("fail").Fail.code)
+		}
 		attempts := 0
 		err = db.Transaction(func() error {
 			attempts++
 			if err := runNested(s.k("steps").Steps, c); err != nil {
 				return err
 			}
-			if s.k("fail").Fail {
+			if s.k("fail").Fail.set {
 				return errCallback
 			}
 			if attempts <= s.k("conflicts").Conflicts {

@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::{FixedOffset, NaiveDateTime, Utc};
+use futures_util::future::BoxFuture;
 use sqlx::mysql::{MySqlConnectOptions, MySqlPool};
 use sqlx::postgres::{PgConnectOptions, PgPool};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -43,6 +44,46 @@ pub type HookFuture<'a> = futures_util::future::BoxFuture<'a, Result<()>>;
 /// and adds parameters with [`RequestParams::add`], in the future it returns, which the
 /// client awaits. An error it returns fails the operation unchanged, before any statement.
 pub type RequestHook = Arc<dyn for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync>;
+
+/// A before-transaction hook (INT-190): the client awaits the future it returns before each outermost transaction of the
+/// connection, with whether the transaction is read-only.
+type TransactionHook = Arc<dyn Fn(bool) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+
+/// The before-transaction hooks of a connection, shared by every handle of it, in registration order.
+#[derive(Default)]
+pub(crate) struct TransactionHooks {
+    list: Mutex<Vec<(u64, TransactionHook)>>,
+    /// The id of the next hook.
+    next_id: AtomicU64,
+}
+
+impl TransactionHooks {
+    /// Calls the hooks registered now, in registration order, each after the previous one ended, and returns the first
+    /// error unchanged; the hooks after it are not called.
+    pub(crate) async fn call(&self, read_only: bool) -> Result<()> {
+        let hooks: Vec<TransactionHook> = self.list.lock().unwrap().iter().map(|(_, hook)| hook.clone()).collect();
+        for hook in hooks {
+            hook(read_only).await?;
+        }
+        Ok(())
+    }
+}
+
+/// A registered before-transaction hook: `remove` removes it.
+#[must_use = "dropping a BeforeTransactionHook keeps the hook registered; call remove to remove it"]
+pub struct BeforeTransactionHook {
+    db: std::sync::Weak<DbInner>,
+    id: u64,
+}
+
+impl BeforeTransactionHook {
+    /// Removes the hook. No transaction that begins after this returns calls it.
+    pub fn remove(self) {
+        if let Some(inner) = self.db.upgrade() {
+            inner.transaction_hooks.list.lock().unwrap().retain(|(id, _)| *id != self.id);
+        }
+    }
+}
 
 /// The parameters of the request a [`RequestHook`] receives: it reads the values that the request binds and adds
 /// parameters.
@@ -613,6 +654,8 @@ pub(crate) struct DbInner {
     pub(crate) sqlite_lock_ready: AtomicBool,
     /// The connection's statement event subscribers and transaction number. All clones of the connection share them.
     pub(crate) subscribers: Subscribers,
+    /// The before-transaction hooks of the connection (INT-190). All handles of the connection share them.
+    pub(crate) transaction_hooks: TransactionHooks,
     /// The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature
     /// Can be set only in builds with `test-faults`.
     pub(crate) rollback_fault: AtomicBool,
@@ -978,6 +1021,7 @@ impl Db {
                 idle_trim: tokio::sync::Mutex::new(()),
                 sqlite_lock_ready: AtomicBool::new(false),
                 subscribers: Subscribers::default(),
+                transaction_hooks: TransactionHooks::default(),
                 rollback_fault: AtomicBool::new(false),
                 #[cfg(feature = "test-faults")]
                 statement_fault: Mutex::new(None),
@@ -1021,6 +1065,20 @@ impl Db {
         let manifest = schema.manifest()?;
         let parts = crate::engine::validate::analyze_restore(&manifest, request)?;
         Ok(RestoreAnalysis { key: parts.key, assignments: parts.set.into_iter().map(|a| a.column).collect() })
+    }
+
+    /// Registers `hook` on the connection, which every handle of it shares (INT-190). Before each outermost transaction
+    /// that `transaction`, `transaction_send` or `transaction_once` begins on the connection or a handle of it, each attempt
+    /// of a retry, `utils().run` outside a transaction and a model terminal in a transaction of its own included, the client
+    /// awaits the hooks registered at that moment in registration order, each with whether the transaction is read-only. It
+    /// does so before the transaction takes a connection of the pool or sends a statement. A savepoint calls none. An error of
+    /// a hook ends the transaction before it begins: no later hook, no statement, no callback and no retry, and the error is
+    /// returned unchanged. `remove` of the result removes the hook.
+    pub fn before_transaction(&self, hook: impl Fn(bool) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static) -> BeforeTransactionHook {
+        let hooks = &self.inner.transaction_hooks;
+        let id = hooks.next_id.fetch_add(1, Ordering::Relaxed);
+        hooks.list.lock().unwrap().push((id, Arc::new(hook)));
+        BeforeTransactionHook { db: Arc::downgrade(&self.inner), id }
     }
 
     /// Whether a transaction of this connection that has not ended is active in the calling task (INT-189). It reads the

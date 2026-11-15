@@ -907,6 +907,9 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
             source: None,
         });
     }
+    // Every outermost transaction calls the before-transaction hooks of the connection first, so a hook runs while the
+    // transaction holds no connection of the pool and no lock and has sent no statement (INT-190).
+    db.inner.transaction_hooks.call(read_only).await?;
     let level = isolation.map(Isolation::sql);
     // The statement that opens a transaction (docs/operations/usage.md "Statement events").
     let mut opening: Vec<(&str, String)> = Vec::new();

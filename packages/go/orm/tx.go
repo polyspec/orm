@@ -470,6 +470,68 @@ func Retry(n int) TransactionOption {
 	return func(o *txOptions) { o.retry = n }
 }
 
+// transactionHook is one hook that BeforeTransaction registered. It is found by pointer when it is removed.
+type transactionHook struct {
+	fn func(ctx context.Context, readOnly bool) error
+}
+
+// transactionHooks is the hook list that every handle of the connection shares (INT-190). The list is rebuilt whenever it
+// changes, so a transaction calls the hooks of the list it reads, the hooks registered at that moment, without a lock.
+type transactionHooks struct {
+	mu   sync.Mutex
+	list atomic.Pointer[[]*transactionHook]
+}
+
+// BeforeTransaction registers hook on the connection, shared by every handle of it, and returns the function that removes
+// it (INT-190). Before every outermost transaction that begins on the connection or a handle of it, each attempt of a retry
+// included, the hooks run in registration order with the context of the handle that begins the transaction and whether
+// the transaction is read-only, before the transaction reserves a connection of the pool or sends any statement. An error
+// of a hook ends the transaction before it begins: no later hook runs, the callback does not run nor run again, and the
+// transaction returns that error unchanged. A nil hook is CONFIG.
+func (d *DB) BeforeTransaction(hook func(ctx context.Context, readOnly bool) error) (remove func(), err error) {
+	if hook == nil {
+		return nil, configErr("the before-transaction hook is nil")
+	}
+	h := &transactionHook{fn: hook}
+	hooks := &d.m.txHooks
+	hooks.mu.Lock()
+	var list []*transactionHook
+	if old := hooks.list.Load(); old != nil {
+		list = append(list, *old...)
+	}
+	list = append(list, h)
+	hooks.list.Store(&list)
+	hooks.mu.Unlock()
+	return func() {
+		hooks.mu.Lock()
+		defer hooks.mu.Unlock()
+		var kept []*transactionHook
+		if old := hooks.list.Load(); old != nil {
+			for _, x := range *old {
+				if x != h {
+					kept = append(kept, x)
+				}
+			}
+		}
+		hooks.list.Store(&kept)
+	}, nil
+}
+
+// callTransactionHooks calls the hooks registered now, in registration order, with the context of the handle d, and
+// returns the error of the first hook that fails, unchanged (INT-190).
+func (d *DB) callTransactionHooks(readOnly bool) error {
+	p := d.m.txHooks.list.Load()
+	if p == nil {
+		return nil
+	}
+	for _, h := range *p {
+		if err := h.fn(d.ctx, readOnly); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Transaction runs fn in one transaction. An error or panic rolls back;
 // otherwise the transaction commits. Models without connect inside fn use
 // this transaction. A transaction of the same connection inside an active one
@@ -513,9 +575,17 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 		}
 		return outer.savepoint(fn)
 	}
-	var err error
 	for attempt := 0; ; attempt++ {
-		err = d.runTransaction(fn, o)
+		// Each attempt checks its options, then calls the hooks before it takes a connection; the error of a hook is
+		// returned unchanged and never runs the callback again, even when it is a deadlock (INT-190).
+		level, err := d.openingLevel(o)
+		if err != nil {
+			return err
+		}
+		if err := d.callTransactionHooks(o.readOnly); err != nil {
+			return err
+		}
+		err = d.runTransaction(fn, o, level)
 		if err == nil || !IsDeadlock(err) || attempt >= o.retry {
 			return err
 		}
@@ -524,8 +594,8 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 	}
 }
 
-func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
-	t, err := d.begin(o)
+func (d *DB) runTransaction(fn func() error, o txOptions, level string) (err error) {
+	t, err := d.begin(o, level)
 	if err != nil {
 		return err
 	}
@@ -594,26 +664,35 @@ func rollbackFaultErr() error {
 	return &ir.Error{Code: CodeFault, Msg: "test fault: the rollback of the transaction ran and is reported as failed"}
 }
 
-func (d *DB) begin(o txOptions) (*txConn, error) {
+// openingLevel checks that the connection is open and that the options of a transaction are supported, and returns the
+// SQL isolation level of the options, empty for the default.
+func (d *DB) openingLevel(o txOptions) (string, error) {
 	if d.m.closed.Load() {
-		return nil, configErr("database is closed")
+		return "", configErr("database is closed")
 	}
 	if o.timeoutMs > 0 && d.driver != "postgres" {
-		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction timeoutMs is supported only by postgres"}
+		return "", &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction timeoutMs is supported only by postgres"}
 	}
-	level := ""
 	switch o.isolation {
 	case "":
+		return "", nil
 	case ReadUncommitted:
-		level = "READ UNCOMMITTED"
+		return "READ UNCOMMITTED", nil
 	case ReadCommitted:
-		level = "READ COMMITTED"
+		return "READ COMMITTED", nil
 	case RepeatableRead:
-		level = "REPEATABLE READ"
+		return "REPEATABLE READ", nil
 	case Serializable:
-		level = "SERIALIZABLE"
-	default:
-		return nil, configErr("unsupported transaction isolation %q", o.isolation)
+		return "SERIALIZABLE", nil
+	}
+	return "", configErr("unsupported transaction isolation %q", o.isolation)
+}
+
+// begin opens the transaction of one attempt with the isolation level that openingLevel returned. A hook that ran before
+// it may have closed the connection, so it checks again that the connection is open.
+func (d *DB) begin(o txOptions, level string) (*txConn, error) {
+	if d.m.closed.Load() {
+		return nil, configErr("database is closed")
 	}
 	if d.driver == "sqlite" {
 		// SQLite's row lock table is created once, before the connection's first transaction.

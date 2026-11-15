@@ -2,7 +2,7 @@
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "PRT-90",
-    "INT-78", "INT-188", "PRT-91", "INT-189",
+    "INT-78", "INT-188", "PRT-91", "INT-189", "INT-190", "INT-39", "INT-41", "INT-43", "INT-46", "INT-48", "INT-79", "INT-150", "CFG-5a", "CFG-11", "CFG-12", "CFG-14", "INT-55",
     "PRT-2",
     "PRT-4",
     "PRT-5",
@@ -5286,6 +5286,2517 @@
             },
             "sqlite": {
               "counts": {}
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_commits_another_row_before_the_begin",
+      "databases_differ": "busy_timeout is a parameter of the SQLite DSN (CFG-12), which MySQL and PostgreSQL do not take, so the other connection opens with it on SQLite only; every database runs the same steps and outcomes after it.",
+      "requirements": [
+        "INT-190",
+        "CFG-11",
+        "CFG-12"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "dsn": "case?_pragma=busy_timeout(0)",
+          "as": "other",
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "other",
+          "only": [
+            "mysql",
+            "postgres"
+          ]
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "db_events"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first",
+          "steps": [
+            {
+              "op": "events.captured",
+              "ref": "db_events",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "array": []
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "array": []
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "array": []
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "other",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "model": "HookEntry",
+                  "values": {
+                    "part": {
+                      "text": "b"
+                    },
+                    "label": {
+                      "text": "k"
+                    }
+                  },
+                  "connection": "other"
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "model": "HookEntry",
+              "values": {
+                "part": {
+                  "text": "b"
+                },
+                "label": {
+                  "text": "k"
+                }
+              },
+              "connection": "db"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "HookEntry",
+          "where": {
+            "part": {
+              "text": "b"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "columns": [
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "k"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "k"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "k"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_read_in_the_transaction_finds_the_committed_row",
+      "databases_differ": "busy_timeout is a parameter of the SQLite DSN (CFG-12), which MySQL and PostgreSQL do not take, so the other connection opens with it on SQLite only; every database runs the same steps and outcomes after it.",
+      "requirements": [
+        "INT-190"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "dsn": "case?_pragma=busy_timeout(0)",
+          "as": "other",
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "other",
+          "only": [
+            "mysql",
+            "postgres"
+          ]
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "db_events"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first",
+          "steps": [
+            {
+              "op": "events.captured",
+              "ref": "db_events",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "array": []
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "array": []
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "array": []
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "other",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "model": "HookEntry",
+                  "values": {
+                    "part": {
+                      "text": "b"
+                    },
+                    "label": {
+                      "text": "k"
+                    }
+                  },
+                  "connection": "other"
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "db",
+              "model": "HookEntry",
+              "where": {
+                "part": {
+                  "text": "b"
+                }
+              },
+              "order": [
+                "id"
+              ],
+              "columns": [
+                "label"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "text": "k"
+                      }
+                    ]
+                  ]
+                },
+                "postgres": {
+                  "rows": [
+                    [
+                      {
+                        "text": "k"
+                      }
+                    ]
+                  ]
+                },
+                "sqlite": {
+                  "rows": [
+                    [
+                      {
+                        "text": "k"
+                      }
+                    ]
+                  ]
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "model": "HookEntry",
+              "values": {
+                "part": {
+                  "text": "b"
+                },
+                "label": {
+                  "text": "k"
+                }
+              },
+              "connection": "db"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "HookEntry",
+          "where": {
+            "part": {
+              "text": "b"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "columns": [
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "k"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "k"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "k"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_receives_read_only",
+      "requirements": [
+        "INT-190",
+        "INT-41"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "read_only": true,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": true
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": true
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": true
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_not_inside_an_active_transaction",
+      "requirements": [
+        "INT-190",
+        "INT-46",
+        "INT-150"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "transaction",
+              "connection": "db",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "model": "HookEntry",
+                  "values": {
+                    "part": {
+                      "text": "n"
+                    },
+                    "label": {
+                      "text": "savepoint"
+                    }
+                  },
+                  "connection": "db"
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "utils.run",
+              "connection": "db",
+              "statements": [
+                {
+                  "kind": "utility",
+                  "tables": [],
+                  "sql": "SELECT 1"
+                }
+              ],
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "array": [
+                      {
+                        "array": [
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "array": [
+                      {
+                        "array": [
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "array": [
+                      {
+                        "array": [
+                          {
+                            "int": "1"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_run_and_restore_or_create_outside_a_transaction",
+      "requirements": [
+        "INT-190",
+        "INT-150",
+        "INT-39"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first"
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT 1"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "model": "HookEntry",
+          "restore_or_create": true,
+          "values": {
+            "part": {
+              "text": "r"
+            },
+            "label": {
+              "text": "r"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "HookEntry",
+          "where": {
+            "part": {
+              "text": "r"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "columns": [
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "r"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "r"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "r"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_before_each_attempt",
+      "requirements": [
+        "INT-190",
+        "INT-43",
+        "INT-48"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 1,
+          "conflicts": 1,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction.attempts",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_hooks_run_in_order_until_removed",
+      "requirements": [
+        "INT-190"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "second"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.remove",
+          "ref": "first"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.remove",
+          "ref": "second"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_shared_by_a_request_hook_handle",
+      "requirements": [
+        "INT-190",
+        "INT-78"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "hook.install",
+          "connection": "db",
+          "as": "hooked",
+          "hooks": [
+            {
+              "action": "record",
+              "kinds": "every"
+            }
+          ]
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first"
+        },
+        {
+          "op": "transaction",
+          "connection": "hooked",
+          "retry": 0,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "hooked",
+          "as": "second"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "second"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_hook_error_ends_the_transaction_before_it_begins",
+      "requirements": [
+        "INT-190",
+        "INT-43",
+        "INT-79"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "db_events"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first",
+          "fail": "DEADLOCK"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "second"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 1,
+          "steps": [
+            {
+              "op": "model.create",
+              "model": "HookEntry",
+              "values": {
+                "part": {
+                  "text": "f"
+                },
+                "label": {
+                  "text": "f"
+                }
+              },
+              "connection": "db"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DEADLOCK",
+              "message": "DEADLOCK: before-transaction hook refused"
+            },
+            "postgres": {
+              "error": "DEADLOCK",
+              "message": "DEADLOCK: before-transaction hook refused"
+            },
+            "sqlite": {
+              "error": "DEADLOCK",
+              "message": "DEADLOCK: before-transaction hook refused"
+            }
+          }
+        },
+        {
+          "op": "transaction.attempts",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "0"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "db_events",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.stats",
+          "connection": "db",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_hook_reads_on_its_own_connection",
+      "requirements": [
+        "INT-190",
+        "CFG-5a",
+        "CFG-14"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first",
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "db",
+              "model": "HookEntry",
+              "where": {
+                "part": {
+                  "text": "s"
+                }
+              },
+              "order": [
+                "id"
+              ],
+              "columns": [
+                "label"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": []
+                },
+                "postgres": {
+                  "rows": []
+                },
+                "sqlite": {
+                  "rows": []
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "model": "HookEntry",
+              "values": {
+                "part": {
+                  "text": "s"
+                },
+                "label": {
+                  "text": "s"
+                }
+              },
+              "connection": "db"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "HookEntry",
+          "where": {
+            "part": {
+              "text": "s"
+            }
+          },
+          "order": [
+            "id"
+          ],
+          "columns": [
+            "label"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "s"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "s"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "s"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_schema_install_transaction",
+      "databases_differ": "MySQL commits schema statements implicitly, so schema().install runs its statements on a connection outside any transaction there (INT-55), while PostgreSQL and SQLite run them in a transaction of the connection, which calls the hooks (INT-190).",
+      "requirements": [
+        "INT-190",
+        "INT-55"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "transaction_hook.install",
+          "connection": "db",
+          "as": "first"
+        },
+        {
+          "op": "schema.install",
+          "connection": "db"
+        },
+        {
+          "op": "transaction_hook.records",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "hook",
+                        {
+                          "text": "first"
+                        }
+                      ],
+                      [
+                        "read_only",
+                        {
+                          "bool": false
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
             }
           }
         }

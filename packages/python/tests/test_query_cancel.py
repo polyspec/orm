@@ -255,6 +255,34 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
                 await asyncio.to_thread(handle.execute, step, [])
             self.assertEqual(still_cancelled.exception.code, "CANCELED")
 
+    # Requirements: INT-190, CFG-9.
+    async def test_before_transaction_hooks_are_shared_with_future_handles(self):
+        """A hook registered on the connection is called for a transaction begun on a with_future handle of it, and a
+        hook registered on such a handle is called for a transaction begun on the connection."""
+        with tempfile.TemporaryDirectory(prefix="orm-before-transaction-") as directory:
+            with case_database("sqlite", directory, "before_transaction") as dsn:
+                db = Db(dsn, {"poolSize": 1})
+                self.addCleanup(db.close)
+                future = asyncio.get_running_loop().create_future()
+                handle = db.with_future(future)
+                calls = []
+                remove_root = db.before_transaction(
+                    lambda read_only: calls.append(("root", read_only))
+                )
+                await asyncio.to_thread(
+                    handle.transaction, lambda: None, {"retry": 0, "readOnly": True}
+                )
+                self.assertEqual(calls, [("root", True)])
+                remove_root()
+                remove_handle = handle.before_transaction(
+                    lambda read_only: calls.append(("handle", read_only))
+                )
+                await asyncio.to_thread(db.transaction, lambda: None, {"retry": 0})
+                self.assertEqual(calls, [("root", True), ("handle", False)])
+                remove_handle()
+                await asyncio.to_thread(handle.transaction, lambda: None, {"retry": 0})
+                self.assertEqual(calls, [("root", True), ("handle", False)])
+
 
 PROBE_ROW = "UPDATE cancel_probe SET name = 'temporary' WHERE id = 1"
 

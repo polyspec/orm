@@ -164,6 +164,24 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return boolOutcome(active), nil
+	case "transaction_hook.install":
+		return c.installTransactionHook(s)
+	case "transaction_hook.remove":
+		remove, err := boundAPI[*transactionHookRemoval](s.k("ref").Ref, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		remove.remove()
+		return okOutcome(), nil
+	case "transaction_hook.records":
+		list := []any{}
+		for _, r := range c.transactionHooks {
+			list = append(list, map[string]any{"object": []any{
+				[]any{"hook", map[string]any{"text": r.hook}},
+				[]any{"read_only", map[string]any{"bool": r.readOnly}},
+			}})
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"array": list}}}, nil
 	case "hook.install":
 		return c.installHook(s)
 	case "hook.records":
@@ -270,6 +288,49 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{"value": value}}, nil
 	}
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
+}
+
+// transactionHookRecord is one call of a hook that transaction_hook.install registered (INT-190, transaction_hook.records).
+type transactionHookRecord struct {
+	hook     string
+	readOnly bool
+}
+
+// transactionHookRemoval is the function that removes a hook of transaction_hook.install, bound to its as.
+type transactionHookRemoval struct{ remove func() }
+
+// installTransactionHook registers one hook of INT-190 on the connection of s with the public BeforeTransaction. Each call
+// records its name and readOnly, runs the steps of s in order, each with its own expect, and then fails with the error of
+// the code of fail, when s names one (FCV-4).
+func (c *databaseContext) installTransactionHook(s databaseStep) (outcome, error) {
+	db, err := connectionOf(s, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	name := s.k("as").As
+	if name == "" {
+		return outcome{}, fmt.Errorf("transaction_hook.install names no as")
+	}
+	if s.k("fail").Fail.set {
+		return outcome{}, fmt.Errorf("transaction_hook.install takes the error code of its failure as fail, not true")
+	}
+	steps, code := s.k("steps").Steps, s.k("fail").Fail.code
+	remove, err := db.BeforeTransaction(func(_ context.Context, readOnly bool) error {
+		c.transactionHooks = append(c.transactionHooks, transactionHookRecord{hook: name, readOnly: readOnly})
+		if err := runNested(steps, c); err != nil {
+			return err
+		}
+		if code != "" {
+			return &ir.Error{Code: code, Msg: "before-transaction hook refused"}
+		}
+		return nil
+	})
+	if err != nil {
+		return outcome{}, err
+	}
+	out := okOutcome()
+	out.api = &transactionHookRemoval{remove: remove}
+	return out, nil
 }
 
 // hookAction is one action of hook.install, with its value converted once.

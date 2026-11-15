@@ -123,6 +123,7 @@ classDiagram
         withRequestHook()
         analyzeRestore()
         transactionActive()
+        beforeTransaction()
     }
     class TransactionFlow {
         <<internal>>

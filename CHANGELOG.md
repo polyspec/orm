@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- A connection registers a hook with `beforeTransaction` (Go `BeforeTransaction`, Python and Rust `before_transaction`) that every client calls, and awaits in TypeScript and Rust, before each outermost transaction that `transaction` begins on the connection or a handle of it, before the transaction takes a connection or sends a statement; the registration returns a function that removes the hook. A hook can so commit a row on another connection after the reads of a call and before its write transaction, on SQLite before the `BEGIN IMMEDIATE` takes the write lock. An error of a hook ends the transaction before it begins, unchanged and without a retry (T450, INT-190).
+
 - A connection reports through `transactionActive` (Go `TransactionActive`, Python and Rust `transaction_active`) whether a transaction of it is active in the calling execution flow, so a caller can refuse an action outside the database inside a transaction. The call reads the existing transaction stack in all six clients and sends no statement, calls no hook and asks the driver nothing (T449, INT-189).
 
 - A connection can analyze the current restore request through `analyzeRestore`, separating its selected key from new assignment columns before write validation. The public analysis and planner share one classifier in all six clients, and analysis sends no statement or hook (T448, INT-188, PRT-91).

@@ -249,6 +249,7 @@
         "Db.withRequestHook",
         "Db.analyzeRestore",
         "Db.transactionActive",
+        "Db.beforeTransaction",
         "Db.close",
         "Db.stats",
         "Utils.lock",
@@ -506,7 +507,8 @@
         "execute",
         "withRequestHook",
         "analyzeRestore",
-        "transactionActive"
+        "transactionActive",
+        "beforeTransaction"
       ],
       "ownership": "Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers.",
       "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다."
@@ -2313,6 +2315,44 @@
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::transactionActive",
           "signature": "public function transactionActive(): bool"
+        }
+      },
+      "for": "once"
+    },
+    {
+      "id": "Db.beforeTransaction",
+      "inputs": [
+        "TransactionHook"
+      ],
+      "output": "Unsubscribe",
+      "errors": [
+        "CONFIG"
+      ],
+      "state": "Registers a hook that the client calls, in registration order and with readOnly, before each outermost transaction that transaction begins on the connection or a handle of it, every attempt, utils().run outside a transaction and a model terminal in a transaction of its own included, before the transaction takes a connection or sends a statement; a client whose calls return a promise or a future awaits the hook, an error of a hook ends the transaction before it begins and is returned unchanged, and the returned value removes the hook (INT-190)",
+      "native": {
+        "go": {
+          "symbol": "packages/go/orm/tx.go::DB.BeforeTransaction",
+          "signature": "receiver=*DB func(hook func(ctx context.Context, readOnly bool) error) (remove func(), err error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::beforeTransaction",
+          "signature": "public function beforeTransaction(Closure $hook): Closure"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/database.ts::Db.beforeTransaction",
+          "signature": "public beforeTransaction(hook: (readOnly: boolean) => void | Promise<void>): () => void"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.before_transaction",
+          "signature": "def before_transaction(self, hook: Callable[[bool], None]) -> Callable[[], None]"
+        },
+        "rust": {
+          "symbol": "packages/rust/orm/src/db.rs::Db::before_transaction",
+          "signature": "pub fn before_transaction(&self, hook: impl Fn(bool) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static) -> BeforeTransactionHook"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::beforeTransaction",
+          "signature": "public function beforeTransaction(Closure $hook): Closure"
         }
       },
       "for": "once"

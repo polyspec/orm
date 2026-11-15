@@ -3983,3 +3983,27 @@ transaction-open-api-check: php-vendor-check typescript-read interface-typescrip
 
 CHECK_TARGETS += transaction-open-api-check
 CI_TARGETS_static += transaction-open-api-check
+
+# The before-transaction hooks of INT-190: the request_hook cases before_transaction_ on SQLite in every client.
+.PHONY: before-transaction-unit-check before-transaction-unit-check/go before-transaction-unit-check/typescript before-transaction-unit-check/python before-transaction-unit-check/php before-transaction-unit-check/rust before-transaction-unit-check/php-extension
+before-transaction-unit-check: before-transaction-unit-check/go before-transaction-unit-check/typescript before-transaction-unit-check/python before-transaction-unit-check/php before-transaction-unit-check/rust before-transaction-unit-check/php-extension
+before-transaction-unit-check/go: go-models
+	$(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^before_transaction_|^TestBeforeTransactionSharedByContextHandle$$' -count=1
+before-transaction-unit-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
+	$(RECIPE_TS_TEST) --test-name-pattern=before_transaction_ packages/ts/tests/request_hook-sqlite.test.mjs
+	$(RECIPE_TS_TEST) --test-name-pattern='before-transaction hooks' packages/ts/tests/transaction-flow.mjs
+before-transaction-unit-check/python: python-venv-check
+	$(PYTHON_VENV)/bin/python -m unittest -k before_transaction_ packages.python.tests.test_request_hook_sqlite
+	$(PYTHON_VENV)/bin/python -m unittest -k test_before_transaction_hooks_are_shared_with_future_handles packages.python.tests.test_query_cancel
+before-transaction-unit-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testSqlite.*before_transaction_' packages/php/tests/RequestHookSqliteRecipeTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBeforeTransactionHooksAreSharedWithACancellationHandle' packages/php/tests/QueryCancellationTest.php
+before-transaction-unit-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) before-transaction-unit-check -- $(RECIPE_RUST_TEST) --test all -- request_hook_sqlite::before_transaction_
+before-transaction-unit-check/php-extension: RUN_DIR = $(abspath .runtime/run)/before-transaction-unit-check-$$PPID
+before-transaction-unit-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
+	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testSqlite.*before_transaction_' packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php && env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeBeforeTransactionHooksAreSharedWithACancellationHandle' packages/php-ext/tests/QueryCancellationNativeTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+CHECK_TARGETS += before-transaction-unit-check
+CI_TARGETS_static += before-transaction-unit-check

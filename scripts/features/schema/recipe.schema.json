@@ -1065,6 +1065,9 @@
             "hook.records",
             "restore.analyze",
             "transaction.active",
+            "transaction_hook.install",
+            "transaction_hook.remove",
+            "transaction_hook.records",
             "clock.read",
             "transaction.attempts",
             "transaction.deadlock",
@@ -1465,6 +1468,15 @@
         },
         {
           "$ref": "#/$defs/ops/transaction.active"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction_hook.install"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction_hook.remove"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction_hook.records"
         },
         {
           "$ref": "#/$defs/ops/clock.read"
@@ -2668,6 +2680,9 @@
         "properties": {
           "op": {
             "const": "model.connect"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
           },
           "pool_size": {
             "type": "integer",
@@ -8235,6 +8250,37 @@
             "description": "The name that binds the UTC text of six fraction digits, for a bind of a later step.",
             "$ref": "#/$defs/name"
           }
+        }
+      },
+      "transaction_hook.install": {
+        "description": "Registers one before-transaction hook of INT-190 on connection and binds as to its remove function; each call records {hook, read_only}, runs steps, then fails with fail (FCV-4).",
+        "type": "object",
+        "required": ["op", "connection", "as"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {"const": "transaction_hook.install"},
+          "connection": {"$ref": "#/$defs/name"},
+          "as": {"$ref": "#/$defs/name"},
+          "steps": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/step"}},
+          "fail": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}
+        }
+      },
+      "transaction_hook.remove": {
+        "type": "object",
+        "required": ["op", "ref"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {"const": "transaction_hook.remove"},
+          "ref": {"$ref": "#/$defs/name"}
+        }
+      },
+      "transaction_hook.records": {
+        "type": "object",
+        "required": ["op", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {"const": "transaction_hook.records"},
+          "expect": {"$ref": "#/$defs/expect"}
         }
       },
       "transaction.active": {

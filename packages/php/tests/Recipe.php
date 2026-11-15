@@ -2807,6 +2807,7 @@ final class Recipe
                 'fields' => [],
                 'records' => [],
                 'hookBases' => [],
+                'transactionHookRecords' => [],
             ];
             try {
                 $namespace = $catalog->currentNamespace();
@@ -3520,6 +3521,36 @@ final class Recipe
                 $fiber = new \Fiber(static fn(): bool => $db->transactionActive());
                 $fiber->start();
                 return ['value' => ['bool' => $fiber->getReturn()]];
+            case 'transaction_hook.install':
+                // One before-transaction hook of INT-190 on the connection of the step (FCV-4): each call records its
+                // name and readOnly, runs its steps and then fails with the code of fail, when the step names one.
+                $as = $s['as'];
+                $steps = $s['steps'] ?? [];
+                $fail = $s['fail'] ?? null;
+                $remove = self::connectionOf($s, $context)->beforeTransaction(
+                    function (bool $readOnly) use ($as, $steps, $fail, &$context): void {
+                        $context['transactionHookRecords'][] = ['hook' => $as, 'read_only' => $readOnly];
+                        foreach ($steps as $nested) {
+                            self::databaseStep($nested, $context);
+                        }
+                        if ($fail !== null) {
+                            throw new OrmException($fail, 'before-transaction hook refused');
+                        }
+                    }
+                );
+                return ['bind' => $remove];
+            case 'transaction_hook.remove':
+                $remove = self::boundValue($s['ref'], $context);
+                if (!$remove instanceof \Closure) {
+                    throw new \LogicException("transaction_hook.remove: {$s['ref']} is not a bound remove function");
+                }
+                $remove();
+                return [];
+            case 'transaction_hook.records':
+                return ['value' => ['array' => array_map(static fn (array $record): array => ['object' => [
+                    ['hook', ['text' => $record['hook']]],
+                    ['read_only', ['bool' => $record['read_only']]],
+                ]], $context['transactionHookRecords'])]];
             case 'restore.analyze':
                 $request = $s['request'] + ['manifest_hash' => $context['schema']->manifestHash];
                 $before = $request;

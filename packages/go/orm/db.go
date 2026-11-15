@@ -135,6 +135,9 @@ type dbMutable struct {
 	// subs holds the connection's statement event subscribers and the transaction number.
 	subs subscribers
 
+	// txHooks holds the hooks of BeforeTransaction that every handle of the connection shares (INT-190).
+	txHooks transactionHooks
+
 	// rollbackFault is the test fault that FailNextRollback sets. Only builds with the build tag
 	// ormtest can set it.
 	rollbackFault atomic.Bool
