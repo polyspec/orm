@@ -55,6 +55,12 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 			n.Signature = strings.Replace(n.Signature, "connection: impl Into<polyspec_orm::Connection>", "db: &polyspec_orm::Db", 1)
 			r.Native["rust"] = n
 		},
+		"rust collection connection": func(d *document) {
+			r := find(d, "Collection.connect")
+			n := r.Native["rust"]
+			n.Signature = strings.Replace(n.Signature, "connection : impl Into < crate :: Connection >", "db : & crate :: Db", 1)
+			r.Native["rust"] = n
+		},
 	} {
 		var d document
 		if err := json.Unmarshal(source, &d); err != nil {

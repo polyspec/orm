@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 87172673531f4af3b9bb1595c68743111324ef9849b70df661f6459368c4f0e2 -->
+<!-- source-sha256: ce3106cdbcea7c067c20732a5ea05efb9cc4083a92dc5829d2fd68bd713e9cd6 -->
 # 변경 이력
 
 ## Unreleased
+
+- Collection.connect validator도 실제 Into<Connection> signature와 일치하고 예전 borrowed-Db 형태를 거부하는 회귀 mutation을 유지한다(T494-2, INT-17b). 같은 전체 owner는 여덟 case 통과·두 case 실패이며 다음 transaction result adapter의 오래된 기대값을 드러냈다. 전체 package는 아직 Green이 아니다.
 
 - 같은 native contract 검사 항목은 Collection.connect의 기존 Into<Connection> adapter도 명시한다(T494-2, INT-17b). Model mapping 정정 뒤 드러난 실패는 Collection validator의 예전 borrowed-Db 기대값 때문이며 Collection 수정은 아직 없다.
 

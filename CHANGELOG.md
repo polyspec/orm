@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Collection.connect validator also matches its actual Into<Connection> signature and retains a negative mutation for the former borrowed-Db form (T494-2, INT-17b). The same full owner reports eight passed and two failed, exposing the next stale transaction result expectation. The full package is still not Green.
+
 - The same native contract item also specifies the existing Collection.connect Into<Connection> adapter (T494-2, INT-17b). The failure exposed after correcting the Model mapping comes from the Collection validator's former borrowed-Db expectation; its correction is not implemented yet.
 
 - The Model.connect native validator maps the current impl Into<Connection> signature and retains a regression mutation refusing the old borrowed-Db signature (T494-2, INT-17a). A dedicated installed-runner owner and inputs execute the existing contract package. The unchanged Model mapping reported eight passed and two failed; after its correction the same counts expose the next stale Collection mapping. The item remains active, with no Green or package-completion claim.
