@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 22c9258d597ac28acaa90451d7a3b987e537c2a24286836e498f66c0d38019d2 -->
+<!-- source-sha256: af91ad349248888a7ac875025529659b7e8ce32e094d3cc949b84f2f828c8f33 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -399,6 +399,10 @@ case가 없다(CORE-72).
 `Db::execute_text_machine`은 구현되었으며 native 실행 artifact 세 case를 통과한다. contract는 이 소유 constructor를
 `machine: true`로 가리킨다. machine 전체 검증은 별도의 pool 사용 수 실패 때문에 아직 끝나지 않았고 이 member의
 생성된 binding runtime 검증도 끝나지 않았다.
+
+- **CORE-128** SQLite row-lock-table 준비가 성공하면 CREATE statement를 실행한 실제 connection lease를 준비 완료 전에 반환한다. 따라서 독립된 operation이 없을 때 완료한 transaction-opening I/O는 의도한 transaction lease만 보유한다. 취소나 오류는 반환하지 않은 준비 lease를 폐기한다. 이 규칙은 pool 소유권에 관한 것이며 SQLite worker 종료 수신을 뜻하지 않는다.
+
+이 준비 반환 규칙은 아직 구현하거나 검증하지 않았다.
 
 ## 인터페이스 계약
 

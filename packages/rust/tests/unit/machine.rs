@@ -625,6 +625,54 @@ struct ReturnGate {
     release: tokio::sync::Notify,
 }
 
+// Requirements: CORE-128. Preparation cannot report success while its own connection is held at return.
+#[test]
+fn sqlite_lock_preparation_machine_returns_its_actual_lease_before_completion() {
+    use std::sync::atomic::Ordering;
+    use std::sync::Arc;
+
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-machine-preparation-return");
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
+    let mut db = runtime.block_on(Db::connect(&format!("sqlite://{}", scratch.join("prepare.sqlite").display()), 1, Config::default())).expect("connect");
+    runtime.block_on(db.pool().close());
+    let gate = Arc::new(ReturnGate::default());
+    let on_return = Arc::clone(&gate);
+    let pool = runtime.block_on(
+        sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).after_release(move |_, _| {
+            let gate = Arc::clone(&on_return);
+            Box::pin(async move {
+                if gate.armed.swap(false, Ordering::AcqRel) {
+                    gate.entered.notify_one();
+                    gate.release.notified().await;
+                }
+                Ok(true)
+            })
+        }).connect(&format!("sqlite://{}", scratch.join("prepare.sqlite").display()))
+    ).expect("connect the gated pool");
+    Arc::get_mut(&mut db.inner).expect("the fixture owns its Db").pool = Pool::Sqlite(pool);
+    gate.armed.store(true, Ordering::Release);
+    let preparing_db = db.clone();
+    let mut setup = runtime.spawn(async move { super::ensure_sqlite_lock_table(&preparing_db).await });
+    let (completed_while_held, result) = runtime.block_on(async {
+        let early = tokio::select! {
+            _ = gate.entered.notified() => None,
+            result = &mut setup => Some(result),
+        };
+        let completed = early.is_some() || setup.is_finished();
+        if early.as_ref().is_some_and(|result| matches!(result, Ok(Ok(())))) {
+            gate.entered.notified().await;
+        }
+        gate.release.notify_one();
+        let result = match early { Some(result) => result, None => setup.await };
+        db.close_async().await;
+        (completed, result)
+    });
+    result.expect("the preparation task completes").expect("the lock table is prepared");
+    assert!(!completed_while_held, "preparation completed before its actual lease returned");
+    assert_eq!(db.stats().in_use, 0, "normal close completed before the assertion");
+}
+
 // Requirements: CORE-7. Before terminal I/O acquires the connection, abort prevents COMMIT. After COMMIT and cleanup
 // prove the connection clean and admit its return, an independently retained return future may complete after Drop.
 #[test]

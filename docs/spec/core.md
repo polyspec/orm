@@ -474,6 +474,10 @@ has no case of the three members because each needs a database (CORE-72).
 owned constructor with `machine: true`. Aggregate machine verification is still pending a separate pool-use
 count failure; generated binding runtime verification of this member is incomplete.
 
+- **CORE-128** Successful SQLite row-lock-table preparation returns the actual connection lease that executed its CREATE statement before preparation completes. A completed transaction-opening I/O therefore retains only its intended transaction lease when no independent operation is active. Cancellation or error discards an unreturned preparation lease. This rule concerns pool ownership, not receipt of SQLite worker shutdown.
+
+This preparation-return rule is not yet implemented or verified.
+
 ## Interface contract
 
 - **CORE-70** The interface contract of the core is `packages/rust/interface.json`. It declares a unit or a member only

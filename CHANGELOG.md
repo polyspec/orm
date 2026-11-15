@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- SQLite row-lock-table preparation must return the lease that executed its CREATE before reporting success (T493-10, CORE-128). The aggregate machine owner observed one connection still in use at Call after cancellation; the exact origin of that extra lease is unproved. A gated preparation test and same-connection fixture setup are pending; physical SQLite worker completion remains separate.
+
 - The checklist verification cells of T493-5 to T493-9 use executable code spans, so item-test extracts the existing make commands. They previously held plain text that the item runner does not execute. The commands and earlier native verification results are unchanged; no Scratch rerun is needed for this formatting change (T493-5).
 - The checklist records the private SQLite worker proof-owner design prerequisite (T493-9). A Node owner must validate the explicit parent PID before allocation, own the directory and Rust proof child, and await all-exit close before cleanup, using the published Kit 0.0.113 public process-resource utilities. No harness, dependency update or unsafe old-implementation proof runs in this registration; worker completion remains a separate pending investigation.
 - The checklist records the WASM application compile-graph review (T493-8). Its adapter inherits the full native core, including Tokio net/rt-multi-thread and native SQLx, while the pinned Tokio/Mio source excludes wasm32-unknown-unknown with that graph. Db/connect are still declared for all five binding targets; real support or an explicit reviewed contract alternative remains to be designed. This is a source-only finding, not completed WASM runtime verification.

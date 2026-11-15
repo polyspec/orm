@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 833f6fefd5420b3443bd8509628c6a5578864688c9f3e2df30fe6ad02d5aef6a -->
+<!-- source-sha256: ea000788a9a2669a7570580168cbe4e3c191dec4470d6e0320bb62d43c707849 -->
 # 변경 이력
 
 ## Unreleased
+
+- SQLite row-lock-table 준비는 CREATE를 실행한 lease를 반환한 뒤 성공을 보고해야 한다(T493-10, CORE-128). 전체 machine owner는 Call 취소 뒤에도 사용 중인 연결 하나를 관찰했지만 그 추가 lease의 정확한 출처는 입증하지 않았다. Gate로 제어하는 준비 시험과 동일 연결 fixture 준비는 아직 진행 전이며 물리적 SQLite worker 완료는 별도 문제다.
 
 - T493-5부터 T493-9의 checklist 검증 cell은 실행 가능한 code span을 사용하여 item-test가 기존 make 명령을 추출한다. 이전에는 item runner가 실행하지 않는 일반 text였다. 명령과 앞선 native 검증 결과는 바뀌지 않으며 이 표기 수정으로 Scratch를 다시 실행하지 않는다(T493-5).
 - checklist는 private SQLite worker proof owner 설계의 선행 항목을 기록한다(T493-9). Node owner는 할당 전에 명시적인 parent PID를 검증하고 directory와 Rust proof child를 소유하며 공개된 Kit 0.0.113의 public process-resource utility로 all-exit close를 기다린 뒤 정리해야 한다. 이 등록에서는 harness, 의존성 갱신이나 안전하지 않은 이전 구현의 입증을 실행하지 않으며 worker 완료는 별도로 조사 중이다.
