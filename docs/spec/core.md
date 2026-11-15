@@ -476,7 +476,7 @@ count failure; generated binding runtime verification of this member is incomple
 
 - **CORE-128** Successful SQLite row-lock-table preparation returns the actual connection lease that executed its CREATE statement before preparation completes. A completed transaction-opening I/O therefore retains only its intended transaction lease when no independent operation is active. Cancellation or error discards an unreturned preparation lease. This rule concerns pool ownership, not receipt of SQLite worker shutdown. Preparation acquires before statement observation: acquisition failure (`closed` or `pool_timeout`) sends no SQL, publishes no statement event and is neither server-remapped nor replaced by a subscriber error. The statement elapsed duration excludes pool acquisition, as INT-91 measures send through result.
 
-The preparation-return helper is implemented. Its gated actual-lease and closed-pool observation cases pass in the uncommitted native owner run; committed verification is pending.
+The preparation-return helper and its gated actual-lease and closed-pool observation cases are implemented and pass the committed native machine owner. This proves pool ownership and observation, not physical SQLite worker shutdown.
 
 ## Interface contract
 
