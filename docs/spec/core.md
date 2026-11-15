@@ -471,8 +471,9 @@ has no case of the three members because each needs a database (CORE-72).
   driver cancels it by dropping that future too. Cancellation cannot undo an already executed statement.
 
 `Db::execute_text_machine` is implemented and its three native execution artifact cases pass. The contract names this
-owned constructor with `machine: true`. Aggregate machine verification is still pending a separate pool-use
-count failure; generated binding runtime verification of this member is incomplete.
+owned constructor with `machine: true`. The committed native machine owner passes 27 cases without failure or skip, including four execute artifacts,
+18 transaction/savepoint/close artifacts, two preparation artifacts and three existing dbspec matches. Generated
+binding runtime verification of this member is incomplete.
 
 - **CORE-128** Successful SQLite row-lock-table preparation returns the actual connection lease that executed its CREATE statement before preparation completes. A completed transaction-opening I/O therefore retains only its intended transaction lease when no independent operation is active. Cancellation or error discards an unreturned preparation lease. This rule concerns pool ownership, not receipt of SQLite worker shutdown. Preparation acquires before statement observation: acquisition failure (`closed` or `pool_timeout`) sends no SQL, publishes no statement event and is neither server-remapped nor replaced by a subscriber error. The statement elapsed duration excludes pool acquisition, as INT-91 measures send through result.
 

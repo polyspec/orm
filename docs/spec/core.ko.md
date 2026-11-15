@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 92bdb7fb98c325fded036ee0adc195ef0c976f054017330d3d44a3d410154dee -->
+<!-- source-sha256: 23d019ccf319b0ced979f0fd17f2a9ba6cd666dee5c8946eb4cd0db5330f9ac5 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -397,8 +397,7 @@ case가 없다(CORE-72).
   취소는 이미 실행한 statement를 되돌릴 수 없다.
 
 `Db::execute_text_machine`은 구현되었으며 native 실행 artifact 세 case를 통과한다. contract는 이 소유 constructor를
-`machine: true`로 가리킨다. machine 전체 검증은 별도의 pool 사용 수 실패 때문에 아직 끝나지 않았고 이 member의
-생성된 binding runtime 검증도 끝나지 않았다.
+`machine: true`로 가리킨다. 커밋된 native machine owner는 execute artifact 4개, transaction/savepoint/close artifact 18개, 준비 artifact 2개, 기존 dbspec 일치 3개를 포함한 27개 case에서 실패와 skip 없이 통과한다. 이 member의 생성된 binding runtime 검증은 끝나지 않았다.
 
 - **CORE-128** SQLite row-lock-table 준비가 성공하면 CREATE statement를 실행한 실제 connection lease를 준비 완료 전에 반환한다. 따라서 독립된 operation이 없을 때 완료한 transaction-opening I/O는 의도한 transaction lease만 보유한다. 취소나 오류는 반환하지 않은 준비 lease를 폐기한다. 이 규칙은 pool 소유권에 관한 것이며 SQLite worker 종료 수신을 뜻하지 않는다. 준비는 statement 관찰 전에 연결을 얻는다. 연결 획득 실패(`closed` 또는 `pool_timeout`)는 SQL을 보내거나 statement event를 발행하지 않으며 server 오류 변환이나 subscriber 오류 대체를 거치지 않는다. INT-91이 전송부터 결과까지 측정하므로 statement elapsed는 pool 연결 대기를 제외한다.
 
