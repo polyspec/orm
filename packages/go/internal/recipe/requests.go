@@ -131,6 +131,39 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, fmt.Errorf("restore analysis changed its request")
 		}
 		return jsonOutcome(map[string]any{"key": result.Key, "assignments": result.Assignments}), nil
+	case "transaction.active":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		if s.k("closed").Closed {
+			if err := db.Close(); err != nil {
+				return outcome{}, err
+			}
+		}
+		var active bool
+		switch flow := s.k("flow").Flow; flow {
+		case "":
+			active, err = db.TransactionActive()
+		case "other":
+			type answer struct {
+				active bool
+				err    error
+			}
+			done := make(chan answer, 1)
+			go func() {
+				active, err := db.TransactionActive()
+				done <- answer{active, err}
+			}()
+			got := <-done
+			active, err = got.active, got.err
+		default:
+			return outcome{}, fmt.Errorf("transaction.active has no flow %q", flow)
+		}
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(active), nil
 	case "hook.install":
 		return c.installHook(s)
 	case "hook.records":

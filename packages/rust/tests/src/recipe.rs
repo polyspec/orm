@@ -4213,6 +4213,20 @@ mod database {
                 other => return Err(fault(format!("clock.read has no edge {other:?}"))),
             },
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
+            // transaction.active (INT-189): the public call on the connection of the step, after its close when the step
+            // names one, in this task or in a task of its own.
+            "transaction.active" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                if crate::recipe_reads::read(step, "closed")["closed"].as_bool().unwrap_or(false) {
+                    db.close().await;
+                }
+                let active = match crate::recipe_reads::read(step, "flow")["flow"].as_str() {
+                    None => db.transaction_active().map_err(orm)?,
+                    Some("other") => tokio::spawn(async move { db.transaction_active() }).await.map_err(|error| fault(error.to_string()))?.map_err(orm)?,
+                    Some(flow) => return Err(fault(format!("transaction.active has no flow {flow}"))),
+                };
+                Output::fields(json!({ "value": { "bool": active } }))
+            }
             "events.subscribe" => {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;

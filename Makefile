@@ -3951,3 +3951,35 @@ restore-analysis-shape-check/php-extension: php-vendor-check php-models orm-inst
 
 CHECK_TARGETS += restore-analysis-shape-check
 CI_TARGETS_static += restore-analysis-shape-check
+
+.PHONY: transaction-open-unit-check transaction-open-unit-check/go transaction-open-unit-check/typescript transaction-open-unit-check/python transaction-open-unit-check/php transaction-open-unit-check/rust transaction-open-unit-check/php-extension
+transaction-open-unit-check: transaction-open-unit-check/go transaction-open-unit-check/typescript transaction-open-unit-check/python transaction-open-unit-check/php transaction-open-unit-check/rust transaction-open-unit-check/php-extension
+transaction-open-unit-check/go: go-models
+	$(GO_TEST) ./packages/go/orm -run '^TestRecipe(Transactions|RequestHook)Sqlite$$/^transaction_active_' -count=1
+transaction-open-unit-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
+	$(RECIPE_TS_TEST) --test-name-pattern=transaction_active_ packages/ts/tests/transactions-sqlite.test.mjs packages/ts/tests/request_hook-sqlite.test.mjs
+transaction-open-unit-check/python: python-venv-check
+	$(PYTHON_VENV)/bin/python -m unittest -k transaction_active_ packages.python.tests.test_transactions_sqlite packages.python.tests.test_request_hook_sqlite
+transaction-open-unit-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testSqlite.*transaction_active_' packages/php/tests/TransactionsRecipeTest.php packages/php/tests/RequestHookSqliteRecipeTest.php
+transaction-open-unit-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) transaction-open-unit-check -- $(RECIPE_RUST_TEST) --test all -- transactions_sqlite::transaction_active_ request_hook_sqlite::transaction_active_
+transaction-open-unit-check/php-extension: RUN_DIR = $(abspath .runtime/run)/transaction-open-unit-check-$$PPID
+transaction-open-unit-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
+	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testSqlite.*transaction_active_' packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+CHECK_TARGETS += transaction-open-unit-check
+CI_TARGETS_static += transaction-open-unit-check
+
+.PHONY: transaction-open-api-check
+transaction-open-api-check: php-vendor-check typescript-read interface-typescript-check python-venv-check lease-tool
+	$(NODE) tests/interfaces/check/main.mts --language typescript
+	$(NODE) tests/interfaces/check/main.mts --language go
+	$(NODE) tests/interfaces/check/main.mts --language php
+	ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/interfaces/check/main.mts --language python
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --language rust
+	$(NODE) tests/interfaces/check/main.mts --language php-extension
+
+CHECK_TARGETS += transaction-open-api-check
+CI_TARGETS_static += transaction-open-api-check

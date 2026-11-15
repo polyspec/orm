@@ -2,7 +2,7 @@
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "PRT-90",
-    "INT-78", "INT-188", "PRT-91",
+    "INT-78", "INT-188", "PRT-91", "INT-189",
     "PRT-2",
     "PRT-4",
     "PRT-5",
@@ -4815,6 +4815,477 @@
                   }
                 ]
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "transaction_active_on_handles_and_another_connection",
+      "requirements": [
+        "INT-189",
+        "INT-78"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "other"
+        },
+        {
+          "op": "hook.install",
+          "connection": "connection",
+          "as": "hooked",
+          "hooks": [
+            {
+              "action": "record",
+              "kinds": "every"
+            }
+          ]
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "transaction.active",
+              "connection": "hooked",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction.active",
+              "connection": "connection",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction.active",
+              "connection": "other",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": false
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "hooked",
+          "steps": [
+            {
+              "op": "transaction.active",
+              "connection": "connection",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction.active",
+              "connection": "hooked",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction.active",
+              "connection": "other",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": false
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "other",
+          "steps": [
+            {
+              "op": "transaction.active",
+              "connection": "other",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction.active",
+              "connection": "connection",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": false
+                  }
+                }
+              }
+            },
+            {
+              "op": "transaction.active",
+              "connection": "hooked",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": false
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction.active",
+          "connection": "hooked",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "transaction_active_sends_no_statement_and_calls_no_hook",
+      "requirements": [
+        "INT-189"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "hook.install",
+          "connection": "connection",
+          "hooks": [
+            {
+              "action": "record",
+              "kinds": "every"
+            }
+          ]
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "connection",
+          "as": "outside"
+        },
+        {
+          "op": "transaction.active",
+          "connection": "connection",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "outside",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "events.unsubscribe",
+          "ref": "outside"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "events.subscribe",
+              "connection": "connection",
+              "as": "inside"
+            },
+            {
+              "op": "transaction.active",
+              "connection": "connection",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "events.captured",
+              "ref": "inside",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "array": []
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "array": []
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "array": []
+                  }
+                }
+              }
+            },
+            {
+              "op": "events.unsubscribe",
+              "ref": "inside"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "hook.records",
+          "expect": {
+            "mysql": {
+              "counts": {}
+            },
+            "postgres": {
+              "counts": {}
+            },
+            "sqlite": {
+              "counts": {}
             }
           }
         }

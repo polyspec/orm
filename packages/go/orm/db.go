@@ -495,6 +495,19 @@ func (d *DB) AnalyzeRestore(r *ir.Request) (RestoreAnalysis, error) {
 	return result, nil
 }
 
+// TransactionActive reports whether a transaction of this connection that has not ended is active in the calling goroutine
+// (INT-189). It reads the transaction stack of the goroutine and sends no statement.
+func (d *DB) TransactionActive() (bool, error) {
+	if d.m.closed.Load() {
+		return false, configErr("database is closed")
+	}
+	t, err := activeFor(d)
+	if err != nil {
+		return false, err
+	}
+	return t != nil && !t.finished.Load(), nil
+}
+
 // Root returns the connection a handle was derived from, so two handles of one
 // connection compare equal. A connection returns itself.
 func (d *DB) Root() *DB {

@@ -1023,6 +1023,13 @@ impl Db {
         Ok(RestoreAnalysis { key: parts.key, assignments: parts.set.into_iter().map(|a| a.column).collect() })
     }
 
+    /// Whether a transaction of this connection that has not ended is active in the calling task (INT-189). It reads the
+    /// transaction stack of the task and sends no statement.
+    pub fn transaction_active(&self) -> Result<bool> {
+        self.ensure_open()?;
+        Ok(crate::tx::active_for(self).is_some_and(|t| !t.finished.load(Ordering::Acquire)))
+    }
+
     /// The database of the connection: mysql, postgres, sqlite, or markdown, a
     /// corpus that a flowmark server serves.
     pub fn driver(&self) -> &'static str {

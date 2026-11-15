@@ -2267,6 +2267,14 @@ class Db:
             )
         return analyze_restore(engine.model, request)
 
+    def transaction_active(self) -> bool:
+        """Whether a transaction of this connection that has not ended is active in the calling thread; sends no
+        statement (INT189)."""
+        if self.closed:
+            raise OrmError(codes.CONFIG, "database is closed")
+        frame = _active_for(self)
+        return frame is not None and not frame.finished
+
     def with_future(self, future: asyncio.Future) -> Db:
         """Returns a handle whose active statements are interrupted when future is cancelled."""
         if not isinstance(future, asyncio.Future):

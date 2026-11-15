@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 28efba21e3d5a87cf5512d2096b3e15f6070b496d5fcb2da0ec7e678ee935bf5 -->
+<!-- source-sha256: 0dce0c9efc4a532dd1daa3696b8c80d1278c14b66962a9ecfc76b273b7fe34f8 -->
 # 변경 이력
 
 ## Unreleased
+
+- 연결의 `transactionActive`(Go `TransactionActive`, Python과 Rust `transaction_active`)로 호출한 execution flow에 그 연결의 transaction이 활성인지 알려 주므로, 호출자는 transaction 안에서 데이터베이스 밖의 작업을 거절할 수 있습니다. 여섯 client 모두 기존 transaction stack만 읽으며 statement를 보내거나 hook을 부르거나 driver에 묻지 않습니다(T449, INT-189).
 
 - 연결의 `analyzeRestore`로 현재 restore 요청에서 선택한 key와 새 assignment 컬럼을 쓰기 검증 전에 구분합니다. 여섯 client의 공개 분석과 planner가 같은 classifier를 쓰며, 분석은 statement를 보내거나 hook을 부르지 않습니다(T448, INT-188, PRT-91).
 

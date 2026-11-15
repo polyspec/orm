@@ -147,11 +147,14 @@ type databaseStep struct {
 	// Code is the error code of fault.next_statement (PRT-48), armed with Message.
 	Code string `json:"code"`
 	// Request and Params are the request of db.execute (INT-76) and the values of its parameters.
-	Request      json.RawMessage   `json:"request"`
-	MutateReturn bool              `json:"mutate_return"`
-	Params       []json.RawMessage `json:"params"`
-	Elapsed      *applyElapsed     `json:"elapsed"`
-	On           *applyOn          `json:"on"`
+	Request      json.RawMessage `json:"request"`
+	MutateReturn bool            `json:"mutate_return"`
+	// Flow "other" makes the call of transaction.active in a goroutine of its own, and Closed closes the connection first (INT-189).
+	Flow    string            `json:"flow"`
+	Closed  bool              `json:"closed"`
+	Params  []json.RawMessage `json:"params"`
+	Elapsed *applyElapsed     `json:"elapsed"`
+	On      *applyOn          `json:"on"`
 	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
 	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
 	MessageContains string           `json:"message_contains"`

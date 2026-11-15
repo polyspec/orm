@@ -879,6 +879,13 @@
       "expect",
       "op"
     ],
+    "transaction.active": [
+      "closed",
+      "connection",
+      "expect",
+      "flow",
+      "op"
+    ],
     "restore.analyze": [
       "connection",
       "expect",

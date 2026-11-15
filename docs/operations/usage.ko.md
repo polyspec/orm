@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 57e571e63c2bd2d215abe5a0da751a4309885781d52105b3037666ee907936e3 -->
+<!-- source-sha256: 2c9681ec0546ebf95f1c8da872a67f176416cf96604958b8dbdf5a331f4f57eb -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -460,6 +460,7 @@ $b->getJsonSetting()['a'];
 | Statement event | 연결의 `subscribe`. client가 보내는 모든 statement([statement event](#statement-events)) |
 | key를 지킨 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | handle의 모든 request를 plan 전에 바꾸기 | 연결의 `withRequestHook`([request hook](#request-hook)) |
+| transaction이 활성인 동안 데이터베이스 밖의 작업 거절 | 연결의 `transactionActive()`(Go `TransactionActive`, Python과 Rust `transaction_active`). 호출한 flow에 그 연결의 transaction이 있으면 true이며 문장을 보내지 않는다([INT-189](../spec/interfaces.ko.md)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](../spec/dsl.md)) |
 | 실행 없이 페이지의 문장 보기 | 연결한 모델의 `getPagePlanSteps(page, perPage)` ([dsl.md](../spec/dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |

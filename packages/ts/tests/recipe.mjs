@@ -2,6 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { isUtf8 } from 'node:buffer';
 import { execFile } from 'node:child_process';
 import { chmodSync, appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
@@ -873,6 +874,9 @@ async function connectRelay(dsn) {
   return relay;
 }
 
+// The asynchronous context of the module load, outside every transaction callback: transaction.active runs its other flow here.
+const OUTSIDE_FLOW = AsyncLocalStorage.snapshot();
+
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
@@ -1242,6 +1246,14 @@ const OPS = {
   async 'utils.aes_rotate'(s, context) {
     const rotated = await connectionOf(s, context).utils().aes().rotate(coreModel(s.model, context).connect(connectionOf(s, context)), aesKeyring(s.keyring));
     return { value: { int: String(rotated) } };
+  },
+  async 'transaction.active'(s, context) {
+    const db = connectionOf(s, context);
+    if (s.closed === true) await db.close();
+    if (s.flow === undefined) return { value: { bool: db.transactionActive() } };
+    if (s.flow !== 'other') throw new Error(`transaction.active has no flow ${s.flow}`);
+    // An asynchronous context that did not start inside the transaction callback (INT-189).
+    return { value: { bool: OUTSIDE_FLOW(() => db.transactionActive()) } };
   },
   'restore.analyze'(s, context) {
     const request = { ...structuredClone(s.request), manifest_hash: s.request.manifest_hash ?? context.schema.manifestHash };

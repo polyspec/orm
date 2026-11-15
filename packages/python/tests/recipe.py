@@ -4820,6 +4820,32 @@ def _install_hook(step: dict, context: dict) -> None:
     context["bound"][target] = base.with_request_hook(hook)
 
 
+def _op_transaction_active(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    if step.get("closed", False):
+        db.close()
+    flow = step.get("flow")
+    if flow is None:
+        return {"value": {"bool": db.transaction_active()}}
+    if flow != "other":
+        raise ValueError(f"transaction.active has no flow {flow}")
+    # A thread of its own is another execution flow (INT-189); its result or its error is read after it ends.
+    answer: dict = {}
+
+    def other_flow() -> None:
+        try:
+            answer["value"] = db.transaction_active()
+        except BaseException as error:  # noqa: BLE001 - the error is raised again in the case thread
+            answer["error"] = error
+
+    thread = threading.Thread(target=other_flow)
+    thread.start()
+    thread.join()
+    if "error" in answer:
+        raise answer["error"]
+    return {"value": {"bool": answer["value"]}}
+
+
 def _op_restore_analyze(step: dict, context: dict) -> dict:
     request = copy.deepcopy(step["request"])
     request.setdefault("manifest_hash", context["schema"].manifest_hash)
@@ -4984,6 +5010,7 @@ _DATABASE_OPS = {
     "utils.run": _op_utils_run,
     "events.captured": _op_events_captured,
     "restore.analyze": _op_restore_analyze,
+    "transaction.active": _op_transaction_active,
     "hook.install": _op_hook_install,
     "hook.records": _op_hook_records,
     "utils.aes_status": _op_aes_status,

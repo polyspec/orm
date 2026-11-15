@@ -248,6 +248,7 @@
         "Db.execute",
         "Db.withRequestHook",
         "Db.analyzeRestore",
+        "Db.transactionActive",
         "Db.close",
         "Db.stats",
         "Utils.lock",
@@ -504,7 +505,8 @@
         "subscribe",
         "execute",
         "withRequestHook",
-        "analyzeRestore"
+        "analyzeRestore",
+        "transactionActive"
       ],
       "ownership": "Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers.",
       "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다."
@@ -2275,6 +2277,42 @@
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::analyzeRestore",
           "signature": "public function analyzeRestore(array $request): array"
+        }
+      },
+      "for": "once"
+    },
+    {
+      "id": "Db.transactionActive",
+      "inputs": [],
+      "output": "TransactionActive",
+      "errors": [
+        "CONFIG"
+      ],
+      "state": "Reports whether a transaction of the connection that has not ended is active in the calling execution flow, from the existing transaction stack of the flow, without statements, request hooks, driver calls or a state of its own; a handle answers as its connection, and a closed connection is CONFIG (INT-189)",
+      "native": {
+        "go": {
+          "symbol": "packages/go/orm/db.go::DB.TransactionActive",
+          "signature": "receiver=*DB func() (bool, error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::transactionActive",
+          "signature": "public function transactionActive(): bool"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/database.ts::Db.transactionActive",
+          "signature": "public transactionActive(): boolean"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.transaction_active",
+          "signature": "def transaction_active(self) -> bool"
+        },
+        "rust": {
+          "symbol": "packages/rust/orm/src/db.rs::Db::transaction_active",
+          "signature": "pub fn transaction_active(&self) -> Result<bool>"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::transactionActive",
+          "signature": "public function transactionActive(): bool"
         }
       },
       "for": "once"

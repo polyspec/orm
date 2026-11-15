@@ -644,6 +644,12 @@ export class Db {
     return analyzeRestore(engine.model, request);
   }
 
+  /** Whether a transaction of this connection that has not ended is active in the calling asynchronous context; sends no statement (INT189). */
+  public transactionActive(): boolean {
+    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
+    return activeFor(this) !== undefined;
+  }
+
   /** A handle of the same connection: it shares the state and changes only one property to value. */
   private derive(property: 'signal' | 'requestHook', value: unknown): Db {
     const handle: unknown = Object.create(Db.prototype);

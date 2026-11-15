@@ -3504,6 +3504,22 @@ final class Recipe
                     ))], $events);
                 }
                 return ['value' => ['array' => $events]];
+            case 'transaction.active':
+                $db = self::connectionOf($s, $context);
+                if ($s['closed'] ?? false) {
+                    $db->close();
+                }
+                $flow = $s['flow'] ?? null;
+                if ($flow === null) {
+                    return ['value' => ['bool' => $db->transactionActive()]];
+                }
+                if ($flow !== 'other') {
+                    throw new \LogicException("transaction.active has no flow {$flow}");
+                }
+                // A Fiber of its own is another execution flow (INT-189).
+                $fiber = new \Fiber(static fn(): bool => $db->transactionActive());
+                $fiber->start();
+                return ['value' => ['bool' => $fiber->getReturn()]];
             case 'restore.analyze':
                 $request = $s['request'] + ['manifest_hash' => $context['schema']->manifestHash];
                 $before = $request;

@@ -5097,6 +5097,26 @@ static zval *active_for(zval *db)
     return NULL;
 }
 
+/* Db::transactionActive (INT-189): whether a transaction of the connection that has not ended is active in the calling
+ * execution flow, from the frames of the request; a frame of another flow is not active for it, and no statement runs. */
+ZEND_METHOD(Polyspec_Orm_Db, transactionActive)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval *state = rd(ZEND_THIS, "state");
+    if (as_bool(rd(state, "closed"))) { db_throw_orm("CONFIG", "database is closed"); RETURN_THROWS(); }
+    zval flow;
+    if (!current_flow(&flow)) RETURN_THROWS();
+    for (size_t i = g_nframes; i > 0; i--) {
+        zval *fstate = rd(rd(&g_frames[i - 1], "db"), "state");
+        if (Z_OBJ_P(fstate) == Z_OBJ_P(state) && same_flow(&g_frames[i - 1], &flow)) {
+            zval_ptr_dtor(&flow);
+            RETURN_BOOL(!as_bool(rd(&g_frames[i - 1], "finished")));
+        }
+    }
+    zval_ptr_dtor(&flow);
+    RETURN_FALSE;
+}
+
 /* Makes the rollback error: OrmException::rollback(cause, rollback). Throws it. */
 static void throw_rollback(zval *cause, zval *rollback)
 {

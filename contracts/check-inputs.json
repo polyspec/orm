@@ -5477,6 +5477,57 @@
         "packages/php-ext/src/validator.c",
         "contracts/fixtures/bench/bench.dbs"
       ]
+    },
+    "transaction-open-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules",
+        "python",
+        "php",
+        "composer",
+        "rust",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "contracts/fixtures/transactions/transactions.json",
+        "contracts/fixtures/request_hook/request_hook.json",
+        "packages/go/orm/db.go",
+        "packages/go/orm/tx.go",
+        "packages/go/internal/recipe/requests.go",
+        "packages/ts/src/database.ts",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/tests/recipe.py",
+        "packages/php/src/Db.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/tx.rs",
+        "packages/rust/tests/src/recipe.rs"
+      ]
+    },
+    "transaction-open-api-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules",
+        "python",
+        "php",
+        "composer",
+        "rust",
+        "interfaces-typescript"
+      ],
+      "inputs": [
+        "contracts/interfaces.json",
+        "packages/go/orm/db.go",
+        "packages/ts/src/database.ts",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/php/src/Db.php",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/rust/orm/src/db.rs"
+      ]
     }
   },
   "paths": {

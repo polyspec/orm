@@ -122,6 +122,7 @@ classDiagram
         execute()
         withRequestHook()
         analyzeRestore()
+        transactionActive()
     }
     class TransactionFlow {
         <<internal>>

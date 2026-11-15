@@ -306,6 +306,25 @@ final class Db
     }
 
     /**
+     * Whether a transaction of this connection that has not ended is active in the calling execution flow, the Fiber or
+     * the main request; reads the frames of the request and sends no statement (INT189).
+     */
+    public function transactionActive(): bool
+    {
+        if ($this->state->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        $flow = \Fiber::getCurrent();
+        for ($i = count(self::$frames) - 1; $i >= 0; $i--) {
+            $frame = self::$frames[$i];
+            if ($frame->db->state === $this->state && $frame->flow === $flow) {
+                return !$frame->finished;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Classifies restore columns without statements, hooks or write validation (INT188).
      * @return array{key: list<string>, assignments: list<string>}
      */

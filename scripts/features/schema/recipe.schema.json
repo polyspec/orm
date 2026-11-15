@@ -1064,6 +1064,7 @@
             "hook.install",
             "hook.records",
             "restore.analyze",
+            "transaction.active",
             "clock.read",
             "transaction.attempts",
             "transaction.deadlock",
@@ -1461,6 +1462,9 @@
         },
         {
           "$ref": "#/$defs/ops/restore.analyze"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.active"
         },
         {
           "$ref": "#/$defs/ops/clock.read"
@@ -8231,6 +8235,18 @@
             "description": "The name that binds the UTC text of six fraction digits, for a bind of a later step.",
             "$ref": "#/$defs/name"
           }
+        }
+      },
+      "transaction.active": {
+        "type": "object",
+        "required": ["op", "connection", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {"const": "transaction.active"},
+          "connection": {"$ref": "#/$defs/name"},
+          "flow": {"enum": ["other"]},
+          "closed": {"const": true},
+          "expect": {"$ref": "#/$defs/expect"}
         }
       },
       "restore.analyze": {
