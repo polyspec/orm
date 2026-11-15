@@ -57,7 +57,7 @@ from polyspec.orm.model import Model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
 from polyspec.orm.schema import Schema
-from typing import TypedDict, Callable, TypeVar
+from typing import Callable, TypedDict, TypeVar
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
 from polyspec.orm.dbspec.parse import goq
@@ -1756,9 +1756,6 @@ def _active_for(db: "Db") -> TxFrame | None:
     return _ACTIVE.get(id(db.root()))
 
 
-# Request hook: receives each request of a handle just before it is planned and returns the request to plan. The second argument, add_param(value),
-# appends value to the end of the request parameters and returns its index; the third argument is a read-only
-# tuple of the parameters the request bound (docs/operations/usage.md "Request hook").
 class RestoreAnalysis(TypedDict):
     """Selected restore key and new assignment columns (INT188)."""
 
@@ -1766,6 +1763,9 @@ class RestoreAnalysis(TypedDict):
     assignments: list[str]
 
 
+# Request hook: receives each request of a handle just before it is planned and returns the request to plan. The second argument, add_param(value),
+# appends value to the end of the request parameters and returns its index; the third argument is a read-only
+# tuple of the parameters the request bound (docs/operations/usage.md "Request hook").
 RequestHook = Callable[[IRRequest, Callable[[object], int], tuple], IRRequest]
 
 
