@@ -1,6 +1,11 @@
 //! Shared test doubles and utilities for Rust ORM unit tests.
 
-use std::{borrow::Cow, error::Error as StdError, fmt};
+use std::{
+    borrow::Cow,
+    error::Error as StdError,
+    fmt,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use polyspec_orm_test_support::temp_directory;
 
@@ -8,14 +13,17 @@ pub(crate) struct Scratch(std::path::PathBuf);
 
 impl Scratch {
     pub(crate) fn new(prefix: &str) -> Self {
-        let path = std::env::temp_dir().join(format!("{prefix}-{}", std::process::id()));
-        if let Err(error) = std::fs::remove_dir_all(&path) {
-            if error.kind() != std::io::ErrorKind::NotFound {
-                panic!("remove {}: {error}", path.display());
+        static NEXT_DIRECTORY: AtomicU64 = AtomicU64::new(0);
+        let root = std::env::temp_dir();
+        loop {
+            let id = NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed);
+            let path = root.join(format!("{prefix}-{}-{id}", std::process::id()));
+            match std::fs::create_dir(&path) {
+                Ok(()) => return Scratch(path),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("create {}: {error}", path.display()),
             }
         }
-        std::fs::create_dir_all(&path).expect("create test directory");
-        Scratch(path)
     }
 
     pub(crate) fn join(&self, name: &str) -> std::path::PathBuf {

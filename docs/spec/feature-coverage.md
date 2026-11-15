@@ -532,8 +532,9 @@
   removes only the path that instance allocated. Distinct directory ownership prevents one instance from replacing the
   files of another; it does not establish completion of a worker that still owns a file in that directory.
 
-This allocation rule is not implemented: the allocator still removes and reuses its prefix/PID path. Dedicated SQLite
-worker completion after a discarded connection is a separate unverified lifecycle bound.
+`Scratch` uses exclusive directory creation with a process-local atomic candidate counter and never removes a path
+while allocating. Native committed-tree verification is pending. Dedicated SQLite worker completion after a discarded
+connection is a separate unverified lifecycle bound.
 
 ## Owner checks
 
