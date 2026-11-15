@@ -1,12 +1,10 @@
-// The job runner of the CI recipes (scripts/check/ci-job.mts), the plan of the group jobs (scripts/check/ci-plan.mts) and the
-// plan of the kit jobs (scripts/check/ci-kit.mts), T497: the setup steps stop at the first failure and skip the steps that no
+// The job runner of the CI recipes (scripts/check/ci-job.mts) and the plan of the group jobs (scripts/check/ci-plan.mts), T497: the setup steps stop at the first failure and skip the steps that no
 // target of the group needs, every check runs to its end, a cleanup runs only after its preparation, and the status of the job
 // is that of its steps.
 import assert from 'node:assert/strict';
 import { caseTest } from '../../tests/testcase.mts';
 import { jobEnvironment, jobLines, jobStatus, ranSetup, recordSetup, setupDecision, startState, type JobState } from './ci-job.mts';
 import { parseGroups, planLines } from './ci-plan.mts';
-import { parsePlan, words } from './ci-kit.mts';
 
 const other = (state: JobState, kind: 'check' | 'always', outcome: 'success' | 'failure' | 'skipped'): JobState =>
   ({ ...state, others: [...state.others, { kind, command: 'target', outcome }] });
@@ -68,15 +66,4 @@ caseTest('T497: the plan writes the matrix of the group jobs with PHP and Rust f
   assert.throws(() => parseGroups(['static']), /is no <group>=<target>/);
   assert.throws(() => parseGroups(['a=x', 'a=y']), /given twice/);
   assert.throws(() => planLines({ preflight: ['undeclared'] }, needs), /declares no needs/);
-});
-
-caseTest('T497: a kit job installs the tools and runs the gate that the plan of kit names for it', () => {
-  const plan = parsePlan(JSON.stringify({ runner: 'r', runtimes: [{ runtime: 'php', installTools: ['go'], targets: ['php-check'] }], commonTools: ['go', 'php'], sharedTargets: ['docs-check'] }));
-  assert.deepEqual(words(plan, 'tools', 'shared', undefined), ['go', 'php']);
-  assert.deepEqual(words(plan, 'targets', 'shared', undefined), ['kit-gates-static', 'docs-check']);
-  assert.deepEqual(words(plan, 'tools', 'runtime', 'php'), ['go']);
-  assert.deepEqual(words(plan, 'targets', 'runtime', 'php'), ['kit-gates-runtime-php', 'php-check']);
-  assert.throws(() => words(plan, 'targets', 'runtime', 'go'), /holds no runtime go/);
-  assert.throws(() => words(plan, 'tools', 'shared', 'php'), /takes no runtime/);
-  assert.throws(() => parsePlan('{"runtimes":[{"runtime":"php"}],"commonTools":[],"sharedTargets":[]}'), /no list installTools/);
 });

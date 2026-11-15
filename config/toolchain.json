@@ -24,7 +24,7 @@
   ],
   "llvm": {
     "version": "21",
-    "reason": "the major release of the LLVM whose libclang and clang the bindgen of ext-php-rs uses in make release-php-ext of packages/release.mk (binding GN-19d, GN-19h): clang-sys takes the libclang of the highest LLVM that it finds and bindgen asks the clang of PATH for its headers, so the two differ on a machine with several LLVM releases, and the ubuntu-26.04 runners hold LLVM 20, 21 and 22 with clang 21 as /usr/bin/clang. make install-llvm installs it; the recipe reads LLVM_ROOT, /usr/lib/llvm-<major> on Linux and the Homebrew formula llvm@<major> on macOS",
+    "reason": "the major release of the LLVM whose libclang and clang the bindgen of ext-php-rs uses in make release-php-ext of packages/release.mk (binding GN-19d, GN-19h): clang-sys takes the libclang of the highest LLVM that it finds and bindgen asks the clang of PATH for its headers, so the two differ on a machine with several LLVM releases, and the ubuntu-26.04 runners hold LLVM 20, 21 and 22 with clang 21 as /usr/bin/clang. the ubuntu-26.04 images hold it and install-llvm-action of .github/workflows/assets.yml installs it on macOS; the recipe reads LLVM_ROOT, /usr/lib/llvm-<major> on Linux and LLVM_PATH of that action on macOS",
     "removal": "when the build of the PHP extension no longer runs bindgen, or a release of ext-php-rs no longer reads the libclang of the machine"
   }
 }

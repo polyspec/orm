@@ -442,18 +442,12 @@ release-recipes:
 	$(BINDING_RUN) release-recipes --root $(CURDIR)
 -include packages/release.mk
 
-# The CI pipeline of orm (.github/workflows/ci-pipeline.yml): the plan of its jobs from config/ci.json, the setup and context
-# targets that config/ci.json names, the targets of a job past failures with their report, and the closing check of ci.yml.
-.PHONY: kit-ci-plan kit-ci-setup kit-ci-context-prepare kit-ci-context-cleanup ci-targets ci-passed
+# The CI pipeline of orm (.github/workflows/ci-pipeline.yml): the plan of its jobs from config/ci.json, the targets of a job
+# past failures with their report, and the closing check of ci.yml.
+.PHONY: kit-ci-plan ci-targets ci-passed
 CI_REPORT ?= var/report/ci-targets
 kit-ci-plan: ## Validate config/ci.json and write the runtime, tool and target plan to GITHUB_OUTPUT
 	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --plan
-kit-ci-setup: ## Run the setup targets of config/ci.json for GROUP=shared|runtime, with RUNTIME
-	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --setup $(GROUP) $(RUNTIME)
-kit-ci-context-prepare: ## Run the context preparation target of config/ci.json for GROUP and RUNTIME
-	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --context-prepare $(GROUP) $(RUNTIME)
-kit-ci-context-cleanup: ## Run the context cleanup target of config/ci.json for GROUP and RUNTIME
-	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --context-cleanup $(GROUP) $(RUNTIME)
 ci-targets: ## Run TARGETS past failures and write CI_REPORT (logs, record.json, summary.md)
 	$(NODE) $(KIT)/ci-targets.$(KIT_EXT) -k $(CI_REPORT) $(TARGETS)
 ci-passed: ## Fail unless every job of RESULTS, the JSON of toJSON(needs), has the result success
@@ -461,42 +455,21 @@ ci-passed: ## Fail unless every job of RESULTS, the JSON of toJSON(needs), has t
 
 # The recipes of the jobs of ci-pipeline.yml (T497), which the job kit of ci.yml calls: each job runs one step, make
 # ci-kit-<job>. The job plan writes the plan of kit to GITHUB_OUTPUT, which the uses: steps of the other jobs read (setup-php
-# for a common tool php, the matrix of the runtimes); the recipes of the jobs shared and runtime read the plan again
-# (scripts/check/ci-kit.mts) for the tools they install and the targets of their gate. The context of a job is cleaned only
-# after its preparation ran. The job required is the judgement of the pipeline, with RESULTS, the JSON of toJSON(needs); a
-# runtime that the plan did not select is skipped, which it accepts.
-.PHONY: ci-kit-plan ci-kit-shared ci-kit-runtime ci-kit-required ci-kit-tools ci-kit-gates
+# for a common tool php, the matrix of the runtimes). The jobs shared and runtime are runs of ci-setup of kit (kit K1250): it
+# installs the tools of the job of config/ci.json and runs its setup targets, stopping at the first failure, then prepares the
+# context of the job when config/ci.json declares one, runs kit-gates-static or kit-gates-runtime-<runtime> with the targets
+# that config/ci.json declares for the job through make -k ci-targets, every target to its end, and cleans up the context
+# whenever its preparation ran. The job required is the judgement of the pipeline, with RESULTS, the JSON of toJSON(needs).
+.PHONY: ci-kit-plan ci-kit-shared ci-kit-runtime ci-kit-required
 ci-kit-plan:
 	$(MAKE) --no-print-directory kit-ci-plan
-ci-kit-shared: CI_NAME = $(CI_RUN)-kit-shared
 ci-kit-shared:
-	@$(CI_JOB) begin $(CI_NAME)
-	@$(CI_JOB) setup $(CI_NAME) tools -- ci-kit-tools GROUP=shared
-	@$(CI_JOB) setup $(CI_NAME) prerequisites -- kit-ci-setup GROUP=shared
-	@$(CI_JOB) setup $(CI_NAME) context -- kit-ci-context-prepare GROUP=shared
-	@$(CI_JOB) check $(CI_NAME) -- ci-kit-gates GROUP=shared
-	@$(CI_JOB) always $(CI_NAME) --after context -- kit-ci-context-cleanup GROUP=shared
-	@$(CI_JOB) end $(CI_NAME)
-ci-kit-runtime: CI_NAME = $(CI_RUN)-kit-$(RUNTIME)
+	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --job shared
 ci-kit-runtime:
 	@test -n "$(RUNTIME)" || { echo 'ci-kit-runtime: RUNTIME is required; run make ci-kit-runtime RUNTIME=<runtime of config/ci.json>' >&2; exit 2; }
-	@$(CI_JOB) begin $(CI_NAME)
-	@$(CI_JOB) setup $(CI_NAME) tools -- ci-kit-tools GROUP=runtime RUNTIME=$(RUNTIME)
-	@$(CI_JOB) setup $(CI_NAME) prerequisites -- kit-ci-setup GROUP=runtime RUNTIME=$(RUNTIME)
-	@$(CI_JOB) setup $(CI_NAME) context -- kit-ci-context-prepare GROUP=runtime RUNTIME=$(RUNTIME)
-	@$(CI_JOB) check $(CI_NAME) -- ci-kit-gates GROUP=runtime RUNTIME=$(RUNTIME)
-	@$(CI_JOB) always $(CI_NAME) --after context -- kit-ci-context-cleanup GROUP=runtime RUNTIME=$(RUNTIME)
-	@$(CI_JOB) end $(CI_NAME)
+	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --job runtime $(RUNTIME)
 ci-kit-required:
-	$(MAKE) --no-print-directory ci-passed
-# ci-kit-tools installs the tools of the plan for GROUP and RUNTIME, and nothing when the plan names none.
-ci-kit-tools:
-	@tools="$$($(NODE) scripts/check/ci-kit.mts tools $(GROUP) $(RUNTIME))" || exit 1; \
-	if [ -n "$$tools" ]; then $(MAKE) --no-print-directory install-tools TOOLS="$$tools"; else echo "ci-kit-tools: the plan of kit names no tool for $(GROUP) $(RUNTIME)"; fi
-# ci-kit-gates runs the gate of GROUP and RUNTIME with the targets of the plan, past failures (ci-targets).
-ci-kit-gates:
-	@targets="$$($(NODE) scripts/check/ci-kit.mts targets $(GROUP) $(RUNTIME))" || exit 1; \
-	$(MAKE) --no-print-directory ci-targets TARGETS="$$targets"
+	$(NODE) $(KIT)/ci-setup.$(KIT_EXT) --required
 
 # The Git hooks and merges: make hooks points core.hooksPath at .githooks, makes the hooks of config/checklist.json executable
 # and declares the merge drivers of the changelogs and checklists, which git runs as twin-merge with MERGE="%O %A %B %P". The
@@ -624,7 +597,7 @@ ci-release-zip:
 	@command -v zip >/dev/null || { echo 'Info-ZIP is required for Composer release archives; install the zip package on the Ubuntu runner' >&2; exit 1; }
 ci-release-platform-assets:
 	@test -d var/release/platform || { echo 'ci-release-platform-assets: var/release/platform is missing; the release job downloads the artifacts assets-* of the job assets there' >&2; exit 1; }
-	cp var/release/platform/* var/release/assets/
+	cp -R var/release/platform/. var/release/assets/
 
 # The recipes of the jobs of assets.yml (T497), which the jobs assets of ci.yml and release.yml call: platform builds the binding
 # assets of the platform of its runner, npm the npm package. RELEASE=true, the input release of the workflow, runs the release
@@ -632,6 +605,13 @@ ci-release-platform-assets:
 # steps of the job platform set up each PHP minor of phpExtension.minors of config/toolchain.json before the run step, and
 # ci-assets-php-ext builds the extension for the PHP of one minor (MINOR) with its php-config.
 .PHONY: ci-assets-platform ci-assets-npm ci-assets-php-ext
+# The job provisions the LLVM of config/toolchain.json before this recipe (binding GN-19i): the ubuntu-26.04 images hold it at
+# /usr/lib/llvm-<major>, the default LLVM_ROOT of packages/release.mk, and on macOS install-llvm-action installs it and sets
+# LLVM_PATH, which ci-assets-php-ext passes as LLVM_ROOT. install-llvm-action also appends DYLD_LIBRARY_PATH and
+# LD_LIBRARY_PATH with /usr/lib first to GITHUB_ENV, and the PHP of Homebrew then loads the libsqlite3 of the system and
+# aborts, so the recipes and their sub-makes run with both empty and the build reads LLVM through LLVM_ROOT alone.
+ci-assets-platform ci-assets-php-ext: DYLD_LIBRARY_PATH :=
+ci-assets-platform ci-assets-php-ext: LD_LIBRARY_PATH :=
 ci-assets-platform: CI_NAME = $(CI_RUN)-assets-platform
 ci-assets-platform:
 	@$(CI_JOB) begin $(CI_NAME)
@@ -639,7 +619,6 @@ ci-assets-platform:
 	@$(CI_JOB) setup $(CI_NAME) uv-python -- install-tools 'TOOLS=uv python'
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
 	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
-	@$(CI_JOB) setup $(CI_NAME) llvm -- install-llvm
 	@$(CI_JOB) check $(CI_NAME) -- release-go-static
 	@$(CI_JOB) check $(CI_NAME) -- release-wheel
 	@$(CI_JOB) check $(CI_NAME) -- ci-assets-php-ext MINOR=8.4
@@ -661,7 +640,7 @@ ci-assets-php-ext:
 	@test -n "$(MINOR)" || { echo 'ci-assets-php-ext: MINOR is required; run make ci-assets-php-ext MINOR=<x.y>' >&2; exit 2; }
 	@if command -v php$(MINOR) >/dev/null; then php=php$(MINOR); config=php-config$(MINOR); \
 	else prefix="$$(brew --prefix php@$(MINOR))" || exit 1; php="$$prefix/bin/php"; config="$$prefix/bin/php-config"; fi; \
-	$(MAKE) --no-print-directory release-php-ext PHP="$$php" PHP_CONFIG="$$config"
+	$(MAKE) --no-print-directory release-php-ext PHP="$$php" PHP_CONFIG="$$config" $(if $(LLVM_PATH),LLVM_ROOT=$(LLVM_PATH))
 
 release-assets: ## Build the archive of every package of TAG and packages.json into var/release/assets; ONLINE
 	@test -n "$$TAG" || { echo "release-assets: TAG is required; run make release-assets TAG=v<version>" >&2; exit 1; }
