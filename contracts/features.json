@@ -10374,6 +10374,16 @@
         "legacy/packages/go/internal/dialects/introspect_compare_physical_test.go"
       ],
       "command": "node tests/go-test.mts -v -timeout 0 ./legacy/packages/go/internal/dialects -run '^(TestApplyExtensionRunnerMode|TestIntrospectCompareRunnerEnvironment)$' -count=1"
+    },
+    {
+      "id": "rust-scratch",
+      "paths": [
+        "packages/rust/tests/common/test_support.rs"
+      ],
+      "tests": [
+        "packages/rust/tests/unit/scratch.rs"
+      ],
+      "command": "make test-rust CASES=scratch"
     }
   ]
 }

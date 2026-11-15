@@ -104,6 +104,9 @@ caseTest('a shared helper selects its own check and no feature', async () => {
     assert.deepEqual(await helperIds([path]), [helper], path);
   }
   assert.deepEqual(await helperIds(['legacy/packages/go/orm/sqlite_crashed_holder_test.go']), []);
+  assert.deepEqual(await selectOwners(manifest, root, ['packages/rust/tests/common/test_support.rs']), []);
+  assert.deepEqual(await helperIds(['packages/rust/tests/common/test_support.rs']), ['rust-test-helpers', 'rust-scratch']);
+  assert.deepEqual(await helperIds(['packages/rust/tests/unit/scratch.rs']), ['rust-scratch']);
 });
 
 caseTest('a fixture selects the units whose declared data names it', async () => {

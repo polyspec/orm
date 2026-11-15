@@ -79,3 +79,7 @@ impl sqlx::error::DatabaseError for DatabaseErrorStub {
         sqlx::error::ErrorKind::Other
     }
 }
+
+#[cfg(test)]
+#[path = "../unit/scratch.rs"]
+mod scratch_tests;
