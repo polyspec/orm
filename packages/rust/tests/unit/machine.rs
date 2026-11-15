@@ -888,7 +888,8 @@ impl TerminalPeer {
                         return Err(format!("malformed terminal statement: {line}"));
                     }
                     observed.send(sql.to_owned()).map_err(|error| error.to_string())?;
-                    if replies.recv().unwrap_or(false) {
+                    // A reply of false, or a test that dropped its sender, asks for no ACK: the terminal request stays in flight.
+                    if let Ok(true) = replies.recv() {
                         writeln!(writer, "{{\"ok\":true}}").map_err(|error| error.to_string())?;
                     }
                     line.clear();
@@ -932,15 +933,24 @@ impl Drop for TerminalPeer {
         // Unblocks a peer waiting to ACK a terminal request.
         drop(self.reply.take());
         // Wakes accept on preparation failure. If the real connection was already accepted, the listener is closed.
+        // A socket that the peer already closed refuses the shutdown, which leaves nothing to release, so the cleanup
+        // reports only what the drop of a failed test can still show.
         if let Ok(wakeup) = std::net::TcpStream::connect(self.address) {
-            let _ = wakeup.shutdown(std::net::Shutdown::Both);
+            if let Err(error) = wakeup.shutdown(std::net::Shutdown::Both) {
+                eprintln!("the wakeup of the peer did not shut down: {error}");
+            }
         }
         if let Some(accepted) = self.accepted.take() {
             if let Ok(socket) = accepted.recv() {
-                let _ = socket.shutdown(std::net::Shutdown::Both);
+                if let Err(error) = socket.shutdown(std::net::Shutdown::Both) {
+                    eprintln!("the accepted socket of the peer did not shut down: {error}");
+                }
             }
         }
-        let _ = thread.join();
+        // The peer's own result is checked by finish; a peer of a failed test is joined so that its thread ends with the test.
+        if let Err(panic) = thread.join() {
+            eprintln!("the peer thread panicked: {panic:?}");
+        }
     }
 }
 
