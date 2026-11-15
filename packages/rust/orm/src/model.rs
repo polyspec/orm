@@ -1253,6 +1253,9 @@ fn finish_write(req: &Req, key: Val, affected: u64) -> Result<(Val, u64)> {
     if req.ir.kind == "update" && req.ir.optimistic.is_some() && affected == 0 {
         return Err(Error::OptimisticLock);
     }
+    if req.ir.require_match && affected == 0 {
+        return Err(Error::Engine { code: codes::NO_ROWS.into(), msg: format!("the {} of {} matched no row", req.ir.kind, req.ir.query.entity), source: None });
+    }
     Ok((key, affected))
 }
 

@@ -1,6 +1,44 @@
 {
   "comment": "Each make target of CHECK_TARGETS declares its scope and the setup steps it needs: needs [\"databases\"] is a target that reads the servers of make orm-test-servers and the bench and decimal databases of the run, which the runner records as not-run, with the failed step and its first failure lines, when the setup steps servers, databases/create or go-lease fail; needs [] runs whatever the setup steps did. The other needs are the tools that the CI setup steps install (scripts/check/ci-setup.mts): go, go-lease, rust, php, php-min, composer, node-modules, interfaces-typescript, php-extension-tools and server-programs; when such a step fails in CI, the runner records the targets that need it as not-run with that step, and runs every other target. A local run has no CI setup steps. An owner target is a per-file check (format, checklist, documents, the unit tests of a checker): make owner-check runs it when a changed path matches its inputs. A suite target is part of the full suite only: make orm-check runs it once, and make owner-check never selects it; a changed feature's own verification and coverage run in its place. make owner-check and make repo-check fail on a target without a scope, an owner target without inputs, a suite target with inputs, and an input pattern that matches no tracked file. A pattern matches a repository path: * within one path segment, ** across segments.",
   "targets": {
+    "write-match-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules",
+        "python",
+        "php",
+        "composer",
+        "rust",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/ir/validate.json",
+        "contracts/fixtures/request_hook/request_hook.json",
+        "contracts/fixtures/audit_triggers/audit_triggers.json",
+        "contracts/fixtures/model_writes_chain/model_writes_chain.json",
+        "packages/go/engine/ir/ir.go",
+        "packages/go/orm/exec.go",
+        "packages/go/internal/recipe/requests.go",
+        "packages/ts/src/ir.ts",
+        "packages/ts/src/engine/validate.ts",
+        "packages/ts/src/database.ts",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/src/polyspec/orm/engine/validate.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/tests/recipe.py",
+        "packages/php/src/Validator.php",
+        "packages/php/src/Db.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php-ext/src/validator.c",
+        "packages/php-ext/src/db.c",
+        "packages/rust/orm/src/ir.rs",
+        "packages/rust/orm/src/engine/validate.rs",
+        "packages/rust/orm/src/testing/ir_request.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/tests/src/recipe.rs"
+      ]
+    },
     "collection-php-extension-check": {
       "scope": "owner",
       "needs": [

@@ -264,6 +264,8 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 				continue
 			}
 			switch a.action {
+			case "require_match":
+				r.RequireMatch = true
 			case "scope":
 				if a.nested {
 					scopeTree(&r.Query, a.column, a.value, addParam)

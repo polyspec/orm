@@ -753,6 +753,7 @@ _RECORDS = {
         "manifest_hash": "string",
         "kind": "string",
         "load": "bool",
+        "require_match": "bool",
         "set": "list<Assign>",
         "on_duplicate": "list<Assign>",
         "rows": "list<list<int>>",
@@ -948,6 +949,8 @@ def validate(m: RuntimeModel, r: dict) -> None:
         and r["kind"] in ("insert", "update", "delete", "restore", "restart_identity")
     ):
         _fail(codes.CONFIG, f"{target.table} is owned by another document set")
+    if r.get("require_match") and r["kind"] not in ("update", "delete", "restore"):
+        raise OrmError(codes.IR_INVALID, "require_match is only valid on update, delete or restore")
     if r.get("load") and (r["kind"] != "insert" or r.get("on_duplicate")):
         _fail(codes.IR_INVALID, "load is only valid on insert without on_duplicate")
     # restart_identity restarts the identity of one entity only, so it takes no rows or values.

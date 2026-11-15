@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Requests may require an update, delete or restore to match a row with `require_match`; a final zero match raises `NO_ROWS`, while a matched same-value update succeeds. The shared cases cover audit preservation, optimistic/revision precedence and null-as-absent decoding. SQLite unit evidence is verified in all six clients; other database evidence remains pending (T447, PRT-90).
+
 - In TypeScript, a statement of `utils().run` on a handle of `withSignal` is cancelled by its signal as a model statement is, and an aborted transaction that waits for its connection ends with `CANCELED` instead of waiting for the connection (T444, INT-150, CFG-9).
 
 - `make interface-check` builds the TypeScript client before its tests, and the hung-extractor cases fail at once with the output of a checker that ended before it started the extractor, instead of at their deadline of 5 minutes (T443).

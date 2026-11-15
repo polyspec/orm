@@ -1408,6 +1408,9 @@ final class Db
         if (isset($r->ir['optimistic']) && $affected === 0) {
             throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
         }
+        if (($r->ir['require_match'] ?? false) && $affected === 0) {
+            throw new OrmException(Code::NO_ROWS, "the {$r->ir['kind']} of {$r->ir['entity']} matched no row");
+        }
         TxFrame::recordInserted($frame, $r, $id);
         $this->state->lastAffected = $affected;
         return [$id, $affected];

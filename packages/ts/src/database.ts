@@ -1605,6 +1605,7 @@ async function writeStep(ex: Executor, request: Request, params: readonly unknow
     // The statement writes every row or none (docs/spec/protocol.md PRT-86), so none means the condition does not hold.
     if (conditional && result.affected === 0) throw conditionNotMet(request.entity);
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
+    if (request.require_match === true && result.affected === 0) throw new OrmError(codes.NO_ROWS, `the ${request.kind} of ${request.entity} matched no row`);
     const key = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
     const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;

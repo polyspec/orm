@@ -15,6 +15,9 @@ pub struct Request {
     /// table with an identity requires; not valid with `on_duplicate`.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub load: bool,
+    /// Require the final update, delete or restore predicate to match a row (PRT-90).
+    #[serde(skip_serializing_if = "std::ops::Not::not", deserialize_with = "absent_bool")]
+    pub require_match: bool,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub set: Vec<Assign>,
     /// insert only: assignments applied when the unique key already exists (never PK/auto).
@@ -28,6 +31,11 @@ pub struct Request {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub agg: String,
     pub n_params: usize,
+}
+
+/// A null request member is absent, so an optional boolean uses false (protocol 1).
+fn absent_bool<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
+    Option::<bool>::deserialize(deserializer).map(Option::unwrap_or_default)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

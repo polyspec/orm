@@ -3867,3 +3867,34 @@ php-test-assertions-helper-check: php-vendor-check php-models
 .PHONY: typescript-performance-gate-unit-check
 typescript-performance-gate-unit-check:
 	$(RUN_TESTS) node -- --test-concurrency=1 --test packages/ts/tests/coverage_performance_gate.test.mjs
+
+# PRT-90 uses the existing public request-hook recipe on SQLite without starting database servers.
+.PHONY: write-match-unit-check write-match-unit-check/go
+CHECK_TARGETS += write-match-unit-check
+write-match-unit-check: write-match-unit-check/go
+write-match-unit-check/go: go-models
+	$(GO_TEST) ./packages/go/engine/ir -run '^TestRecipeIRValidateNone$$/^require_match_' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^require_match_' -count=1
+	$(GO_TEST) ./packages/go/orm -run '^TestRecipe(AuditTriggers|ModelWritesChain)Sqlite$$/^require_match_' -count=1
+.PHONY: write-match-unit-check/python write-match-unit-check/typescript
+write-match-unit-check: write-match-unit-check/python write-match-unit-check/typescript
+write-match-unit-check/python: python-venv-check
+	$(PYTHON_VENV)/bin/python -m unittest -k require_match packages.python.tests.test_ir_validate_none packages.python.tests.test_request_hook_sqlite packages.python.tests.test_audit_triggers_sqlite packages.python.tests.test_model_writes_chain_sqlite
+write-match-unit-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
+	$(RECIPE_TS_TEST) --test-name-pattern=require_match packages/ts/tests/engine.mjs packages/ts/tests/request_hook-sqlite.test.mjs packages/ts/tests/audit_triggers-sqlite.test.mjs packages/ts/tests/model_writes_chain-sqlite.test.mjs
+
+.PHONY: write-match-unit-check/php
+write-match-unit-check: write-match-unit-check/php
+write-match-unit-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '(testNone|testSqlite).*require_match' packages/php/tests/IrValidateRecipeTest.php packages/php/tests/RequestHookSqliteRecipeTest.php packages/php/tests/AuditTriggersRecipeTest.php packages/php/tests/ModelWritesChainRecipeTest.php
+.PHONY: write-match-unit-check/rust write-match-unit-check/php-extension
+write-match-unit-check: write-match-unit-check/rust write-match-unit-check/php-extension
+write-match-unit-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) write-match-unit-check -- $(RECIPE_RUST_TEST) --test all -- ir_validate_none::require_match_ request_hook_sqlite::require_match_ audit_triggers_sqlite::require_match_ model_writes_chain_sqlite::require_match_
+write-match-unit-check/php-extension: RUN_DIR = $(abspath .runtime/run)/write-match-unit-check-$$PPID
+write-match-unit-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
+	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist --filter '(testNone|testSqlite).*require_match' packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+
+CI_TARGETS_static += write-match-unit-check

@@ -2477,6 +2477,9 @@ function installHook(s, context) {
     for (const a of actions) {
       if (!kindMatches(a.kinds, query.kind)) continue;
       switch (a.action) {
+        case 'require_match':
+          query.require_match = true;
+          break;
         case 'scope':
           if (a.nested) scopeTree(query, a.column, a.value, addParam);
           else andWhere(query, equalPred(addParam, a.column, a.value));

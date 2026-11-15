@@ -3815,6 +3815,11 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
         db_throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
         return false;
     }
+    if (aget(ir, "require_match") != NULL && zend_is_true(aget(ir, "require_match")) && n == 0) {
+        zval_ptr_dtor(&id);
+        db_throw_orm("NO_ROWS", "the %s of %s matched no row", Z_STRVAL_P(aget(ir, "kind")), Z_STRVAL_P(aget(ir, "entity")));
+        return false;
+    }
     if (!record_inserted(frame, r, &id)) {
         zval_ptr_dtor(&id);
         return false;

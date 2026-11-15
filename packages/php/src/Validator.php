@@ -31,7 +31,7 @@ final class Validator
     /** Field types of every record: int, string, bool, list<T>, map<T>, or a record name. */
     private const RECORDS = [
         'Request' => self::QUERY + [
-            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'load' => 'bool',
+            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'load' => 'bool', 'require_match' => 'bool',
             'set' => 'list<Assign>',
             'on_duplicate' => 'list<Assign>', 'rows' => 'list<list<int>>', 'optimistic' => 'Optimist',
             'agg' => 'string', 'n_params' => 'int',
@@ -127,6 +127,9 @@ final class Validator
             && in_array($kind, ['insert', 'update', 'delete', 'restore', 'restart_identity'], true)
         ) {
             throw self::err(Code::CONFIG, "{$target['table']} is owned by another document set");
+        }
+        if (($r['require_match'] ?? false) && !in_array($kind, ['update', 'delete', 'restore'], true)) {
+            throw self::err(Code::IR_INVALID, 'require_match is only valid on update, delete or restore');
         }
         if (($r['load'] ?? false) && ($kind !== 'insert' || ($r['on_duplicate'] ?? []) !== [])) {
             throw self::err(Code::IR_INVALID, 'load is only valid on insert without on_duplicate');

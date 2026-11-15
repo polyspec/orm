@@ -4012,6 +4012,9 @@ final class Recipe
                     continue;
                 }
                 switch ($a['action']) {
+                    case 'require_match':
+                        $r->ir['require_match'] = true;
+                        break;
                     case 'scope':
                         if ($a['nested']) {
                             self::scopeTree($r->ir, $a['column'], $a['value'], $r);

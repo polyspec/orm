@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: e2ce669a2dbdfb9216a481e8f3671ae3cc20abda25ff6212183f5d265779d35e -->
+<!-- source-sha256: 91180e01027341aaeb1dc07d9fafc4dc3f69a146c3d0a8052a3e3e0e420241f1 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -461,6 +461,7 @@
   - 값의 `null`은 `{"null": <type>}`이며 `<type>`은 recipe schema의 열 type 가운데 하나다: `int`, `text`, `date`, `time`, `datetime`, `decimal`, `bytes_hex`, `bool`, `float`. 어휘는 닫혀 있다. API: contains_null(INT-20, PRT-67)과 null_into_not_null(PRT-67, PRT-5)의 타입이 있는 NULL, 그리고 styled value의 null인 COD-20.
   - `model.create`의 `attached: {<name>: <argument>}`는 열이 아닌 값을 만들어진 행에 붙인다(DSL-101). 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 쓰지 않으며, 만들어진 모델이 그 값을 갖는다(DSL-115). API: write_cycle vector(`NewLabel("created")`), DSL-101과 DSL-115. vector와 requirement로 선언한다.
   - `hook.install {connection, hooks}`는 연결 `connection`에 request hook 하나를 설치한다. Go는 `db.WithRequestHook`이고 각 runtime은 그 공개 대응 호출이다(API unit `client-db-with-request-hook`). helper는 `connection`을 hook이 걸린 연결로 다시 묶고 hook을 건 연결을 보관하므로, 같은 이름에 나중의 `hook.install`은 hook을 바꾸며, 기록을 비운다. `as`가 있으면 hook이 걸린 handle이 그 이름을 받고 `connection`은 hook 없이 자기 이름을 유지한다(INT-78). 그 step은 `expect`가 없다. `hooks`는 아래 action의 목록이고, 연결의 모든 요청마다 순서대로 실행한다:
+    - `{"action": "require_match", "kinds": K}`는 일치하는 요청에 `require_match: true`를 두고 다른 필드는 그대로 둔다(PRT-90);
     - `{"action": "scope", "kinds": K, "column": C, "value": V, "nested": B}`는 종류가 K에 있는 요청의 where에 `C = V`를 AND로 덧붙인다. V는 parameter로 바인딩한다. `nested: true`이면 그 요청의 모든 relation query에도 덧붙인다.
     - `{"action": "assign", "kinds": K, "column": C, "value": V}`는 일치하는 insert(단일과 묶음 모두)의 Set에 `C = V`를 덧붙인다. V는 parameter로 바인딩한다.
     - `{"action": "assign_first", "kinds": K, "column": C, "value": V}`는 일치하는 요청의 Set 맨 앞에 `C = V`를 넣는다. V는 parameter로 바인딩한다.

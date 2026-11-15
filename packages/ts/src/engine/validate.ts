@@ -470,7 +470,7 @@ const queryShape: Readonly<Record<string, string>> = {
 };
 const records: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   Request: {
-    ...queryShape, ir_version: 'int', manifest_hash: 'string', kind: 'string', load: 'bool', set: 'list<Assign>',
+    ...queryShape, ir_version: 'int', manifest_hash: 'string', kind: 'string', load: 'bool', require_match: 'bool', set: 'list<Assign>',
     on_duplicate: 'list<Assign>', rows: 'list<list<int>>', optimistic: 'Optimist', agg: 'string', n_params: 'int',
   },
   Query: queryShape,
@@ -627,6 +627,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (target?.external === true && ['insert', 'update', 'delete', 'restore', 'restart_identity'].includes(r.kind)) {
     fail(codes.CONFIG, `${target.table} is owned by another document set`);
   }
+  if (r.require_match === true && !['update', 'delete', 'restore'].includes(r.kind)) fail(codes.IR_INVALID, 'require_match is only valid on update, delete or restore');
   if (r.load === true && (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0)) fail(codes.IR_INVALID, 'load is only valid on insert without on_duplicate');
   // restart_identity restarts the identity of one entity only, so it takes no row or value.
   if (r.kind === 'restart_identity' && ((r.set ?? []).length > 0 || (r.rows ?? []).length > 0 || (r.on_duplicate ?? []).length > 0 || r.where !== undefined || r.optimistic !== undefined)) {

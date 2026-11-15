@@ -10989,6 +10989,15 @@
       "oneOf": [
         {
           "type": "object",
+          "required": ["action", "kinds"],
+          "additionalProperties": false,
+          "properties": {
+            "action": {"const": "require_match"},
+            "kinds": {"$ref": "#/$defs/kinds"}
+          }
+        },
+        {
+          "type": "object",
           "required": [
             "action",
             "kinds",

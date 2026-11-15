@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 577abec844c2983b544860fddca972172e6ac4f1dfbf73626aac362b695a3d4e -->
+<!-- source-sha256: 78365385b0195cf8664b5d1c6031ab21769965ff037af6519ec313d65bf05841 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -129,6 +129,8 @@ primary key나 identity 컬럼을 할당하는 `update`는 `IR_INVALID`("cannot 
 
 - **PRT-81** default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. 다만 PostgreSQL과 SQLite의 `default now` 컬럼은 `now` slot을 bind한다(PRT-33). default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다.
 - **PRT-82** planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다. 문장은 요청 `set`의 컬럼을 요청 순서로 쓰고 이어서 planner가 할당하는 컬럼을 쓴다. `insert`는 AES 키 버전, audit 컬럼, bind하는 `default now` 컬럼(컬럼 순서)이고, `update`는 AES 키 버전, `updated` 컬럼, audit 컬럼이며, soft delete는 soft delete 컬럼 다음에 audit 컬럼을 쓴다.
+
+- **PRT-90** 요청은 `update`, `delete`, `restore`에 `require_match: true`를 둘 수 있다. Request hook 뒤 main write의 최종 predicate와 일치한 행이 0이면 `NO_ROWS`, `the <kind> of <entity> matched no row`로 실패한다. 같은 값을 쓰더라도 행과 일치하는 update는 CFG-10의 found-row 의미에 따라 성공하며, soft delete는 main update와 일치한 행의 수를 사용한다. 결과를 추측하려고 write 앞뒤에 read를 더하지 않는다. Write의 audit guard는 거절 전에 0으로 정산하므로 거절된 zero-match write 자체의 audit record를 남기지 않는다. Flag는 boolean이며 생략하거나 false이면 기존 write 동작을 유지한다. Insert와 duplicate-update insert를 포함한 다른 kind에서 true이면 `IR_INVALID`, `require_match is only valid on update, delete or restore`로 실패한다. Driver 오류와 optimistic-lock 거절이 먼저이며, 그 밖에는 match 거절이 model의 expected-revision 검사보다 먼저다. 할당이 없어 요청을 만들기 전에 반환하는 update는 그대로이며 hook을 호출하지 않는다. Flag는 정확히 한 행이 아니라 하나 이상의 일치를 요구하며 test 전용 last-write counter가 아닌 최종 write의 일치 수를 사용한다.
 
 ### 1.5 Restore
 

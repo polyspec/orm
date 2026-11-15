@@ -4751,7 +4751,9 @@ def _install_hook(step: dict, context: dict) -> None:
             if not _kind_matches(a["kinds"], query["kind"]):
                 continue
             action = a["action"]
-            if action == "scope":
+            if action == "require_match":
+                query["require_match"] = True
+            elif action == "scope":
                 if a["nested"]:
                     _scope_tree(query, a["column"], a["value"], add_param)
                 else:

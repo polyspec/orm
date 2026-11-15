@@ -28,9 +28,11 @@ type Request struct {
 	Query
 	// Load means insert loads a row under the stored key as it is: it takes the value of the identity column,
 	// and requires that value if the table has an identity. It is not used with on_duplicate.
-	Load        bool     `json:"load,omitempty"`
-	Set         []Assign `json:"set,omitempty"`
-	OnDuplicate []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
+	Load bool `json:"load,omitempty"`
+	// RequireMatch refuses a final update, delete or restore matching no row (PRT-90).
+	RequireMatch bool     `json:"require_match,omitempty"`
+	Set          []Assign `json:"set,omitempty"`
+	OnDuplicate  []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
 	// Rows holds the parameters of each additional inserted row, in the
 	// column order of Set. Every Set item is then a value assignment.
 	Rows       [][]int   `json:"rows,omitempty"`
@@ -398,6 +400,9 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 		case "insert", "update", "delete", "restore", "restart_identity":
 			return errf("CONFIG", "%s is owned by another document set", ent.Table)
 		}
+	}
+	if r.RequireMatch && r.Kind != "update" && r.Kind != "delete" && r.Kind != "restore" {
+		return errf("IR_INVALID", "require_match is only valid on update, delete or restore")
 	}
 	if r.Load && (r.Kind != "insert" || len(r.OnDuplicate) > 0) {
 		return errf("IR_INVALID", "load is only valid on insert without on_duplicate")

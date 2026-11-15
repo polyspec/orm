@@ -205,6 +205,9 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
             return Err(err(codes::CONFIG, format!("{} is owned by another document set", ent.table)));
         }
     }
+    if r.require_match && !matches!(r.kind.as_str(), "update" | "delete" | "restore") {
+        return Err(err(codes::IR_INVALID, "require_match is only valid on update, delete or restore"));
+    }
     if r.load && (r.kind != "insert" || !r.on_duplicate.is_empty()) {
         return Err(err(codes::IR_INVALID, "load is only valid on insert without on_duplicate"));
     }

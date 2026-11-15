@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5e36aed178a0bcae8c60bf200268f124fffc18491a597186f21a7942d57a261d -->
+<!-- source-sha256: 8a5ea377f91456645e3d3f34b7035b66c0e82cea63e3e815281d04504db871e8 -->
 # 변경 이력
 
 ## Unreleased
+
+- 요청은 `require_match`로 update, delete, restore의 행 일치를 요구할 수 있습니다. 최종 일치가 0이면 `NO_ROWS`로 실패하고, 같은 값을 쓰더라도 행과 일치한 update는 성공합니다. 공통 case는 audit 보존, optimistic/revision 우선순위, null의 생략 처리도 검증합니다. 여섯 client의 SQLite 단위 증거는 확인했고 다른 database 증거는 남아 있습니다(T447, PRT-90).
 
 - TypeScript에서 `withSignal` handle의 `utils().run` statement는 model statement처럼 그 signal로 취소된다. 연결을 기다리는 transaction은 abort되면 연결을 계속 기다리지 않고 `CANCELED`로 끝난다(T444, INT-150, CFG-9).
 

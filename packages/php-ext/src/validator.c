@@ -432,7 +432,7 @@ static const field_t REQUEST_FIELDS[] = {
     {"relations", "list<Relation>"}, {"order", "list<Order>"}, {"group_by", "list<string>"},
     {"limit", "Limit"}, {"force_index", "string"}, {"lock", "string"}, {"key_by", "string"}, {"flatten", "bool"},
     {"limit_per_parent", "int"}, {"if_parent", "IfParent"}, {"no_cascade_delete", "bool"},
-    {"ir_version", "int"}, {"manifest_hash", "string"}, {"kind", "string"}, {"load", "bool"}, {"set", "list<Assign>"},
+    {"ir_version", "int"}, {"manifest_hash", "string"}, {"kind", "string"}, {"load", "bool"}, {"require_match", "bool"}, {"set", "list<Assign>"},
     {"on_duplicate", "list<Assign>"}, {"rows", "list<list<int>>"}, {"optimistic", "Optimist"}, {"agg", "string"}, {"n_params", "int"},
 };
 static const field_t COLUMNS_FIELDS[] = {{"mode", "string"}, {"add", "list<string>"}, {"remove", "list<string>"}, {"fn", "map<ColFunc>"}, {"sub", "map<Sub>"}};
@@ -1917,6 +1917,9 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
     const char *owned[] = {"insert", "update", "delete", "restore", "restart_identity"};
     if (target != NULL && flag(target, "external") && IN(kind, owned)) {
         return fail("CONFIG", "%s is owned by another document set", str(c, target, "table", ""));
+    }
+    if (flag(r, "require_match") && !streq(kind, "update") && !streq(kind, "delete") && !streq(kind, "restore")) {
+        return fail(IR_INVALID, "require_match is only valid on update, delete or restore");
     }
     if (flag(r, "load") && (!streq(kind, "insert") || has_items(ha(orm_hash_value(r, "on_duplicate", sizeof("on_duplicate") - 1, true))))) {
         return fail(IR_INVALID, "load is only valid on insert without on_duplicate");

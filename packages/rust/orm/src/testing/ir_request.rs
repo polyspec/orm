@@ -440,10 +440,11 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
             "optimistic",
             "agg",
             "load",
+            "require_match",
         ],
     );
     let mut query_input = input.clone();
-    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "rows", "optimistic", "agg", "load"] {
+    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "rows", "optimistic", "agg", "load", "require_match"] {
         query_input.as_object_mut().expect("input object").remove(key);
     }
     let request = ir::Request {
@@ -456,6 +457,11 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         on_duplicate: object.get("on_duplicate").map(|set| assigns(set, "input.on_duplicate")).unwrap_or_default(),
         rows: rows(object.get("rows")),
         agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
+        require_match: object
+            .get("require_match")
+            .filter(|value| !value.is_null())
+            .map(|value| value.as_bool().unwrap_or_else(|| panic!("{REJECTED}input.require_match: expected a bool")))
+            .unwrap_or_default(),
         load: object.get("load").map(|load| load.as_bool().unwrap_or_else(|| panic!("{REJECTED}input.load: expected a bool"))).unwrap_or_default(),
         optimistic: object.get("optimistic").map(|o| {
             let o = members(o, "input.optimistic", &["column", "p"]);
@@ -465,7 +471,16 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
             }
         }),
     };
+    if object.contains_key("require_match") {
+        let mut raw = input.clone();
+        raw["manifest_hash"] = json!(manifest_hash);
+        let decoded: ir::Request = serde_json::from_value(raw).expect("the public request decoder accepts the fixture");
+        assert_eq!(decoded.require_match, request.require_match, "the public decoder keeps require_match semantics");
+    }
     let mut with_hash = normalized(input);
+    if with_hash.get("require_match").is_some_and(|value| value.is_null() || value == false) {
+        with_hash.as_object_mut().expect("request object").remove("require_match");
+    }
     with_hash["manifest_hash"] = json!(manifest_hash);
     assert_eq!(serde_json::to_value(&request).expect("serialized request"), with_hash, "the request read from the fixture differs from its input");
     request

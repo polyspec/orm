@@ -3649,6 +3649,8 @@ def write(ex: Executor, request: dict, params, after_hook=None):
             and result["affected"] == 0
         ):
             raise OrmError(codes.OPTIMISTIC_LOCK, "the row changed after it was read")
+        if request.get("require_match") and result["affected"] == 0:
+            raise OrmError(codes.NO_ROWS, f'the {request["kind"]} of {request["entity"]} matched no row')
         insert_id = result["insert_id"]
         identity_id = (
             int(insert_id)
