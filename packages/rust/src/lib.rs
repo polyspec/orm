@@ -344,6 +344,10 @@ mod or_panic;
 mod interface_cases;
 
 #[cfg(test)]
+#[path = "../tests/unit/interface_service_cases.rs"]
+mod interface_service_cases;
+
+#[cfg(test)]
 mod sqlite_code_tests {
     use super::*;
 

@@ -1212,8 +1212,16 @@ dbspec-lock-php-extension-check: php-vendor-check php-models orm-install-php-ext
 dbspec-lock-python-check: python-venv-check
 	$(PYTHON_TESTS) -- legacy.packages.python.tests.test_dbspec_sqlite_lock
 
+# interface-service-cases-rust runs the cases of the interface contract that need the database servers, the groups of
+# contracts/interface/service.json, with the servers of make orm-test-servers (WITH_TEST_ENV) and the state program
+# scripts/service-state.mts (docs/spec/service-state.md SVC-7, binding GN-13j).
+.PHONY: interface-service-cases-rust
+SERVICE_STATE = $(abspath scripts/service-state.mts)
+interface-service-cases-rust:
+	$(WITH_TEST_ENV) export ORM_TEST_SERVICE_STATE=$(SERVICE_STATE) && cd packages/rust && $(CARGO_TEST) interface-service-cases-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib interface_service_cases -- --ignored --nocapture
+
 dbspec-lock-rust-check:
-	cd packages/rust && $(CARGO_TEST) dbspec-lock-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib sqlite_lock_result_tests -- --nocapture
+	cd packages/rust &&$(CARGO_TEST) dbspec-lock-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib sqlite_lock_result_tests -- --nocapture
 
 dbspec-lock-ts-check: typescript-current
 	$(READ_TYPESCRIPT)

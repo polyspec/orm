@@ -654,6 +654,13 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("codec.blind_index", None) => {
             Returned::Value(Value::from(crate::orm_value::blind_index(orm_value(field(args, "value", member), member)?, &text(args, "key", member))?))
         }
+        ("query.connect", Some(Instance::Query(query))) => {
+            let Instance::Db(db) = Box::pin(instance(field(args, "connection", member), member)).await else {
+                panic!("{member}: connection is no instance of db")
+            };
+            query.connect(crate::Connection::Db(db));
+            Returned::Value(Value::Null)
+        }
         (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
         (other, None) => panic!("the case runner calls no member {other} without a receiver"),
     })
@@ -715,7 +722,7 @@ const RESERVED: [&str; 9] = ["id", "note", "rule", "raises", "result", "receiver
 
 /// Runs one case of `member` and adds to `failures` each difference between what the case states and what the member did:
 /// the test runs every case to its end and then names every case that failed (HR-86 of the checks, CORE-71).
-async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
+pub(crate) async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
     let fields = case.as_object().unwrap_or_else(|| panic!("{member}: a case is an object"));
     let id = fields.get("id").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: a case has an id"));
     let what = format!("{member} {id}");
@@ -873,6 +880,10 @@ async fn the_core_passes_the_cases_of_its_contract() {
     let mut members = 0usize;
     let mut failures = Vec::new();
     for row in rows {
+        // The groups of contracts/interface/service.json need the servers of a run (docs/spec/service-state.md SVC-7).
+        if row["file"].as_str() == Some("contracts/interface/service.json") {
+            continue;
+        }
         assert_eq!(row["file"].as_str(), Some("contracts/interface/core.json"), "{row}: the case file that this test reads");
         let name = row["group"].as_str().expect("a row of cases names its group");
         let group = cases[name].as_array().unwrap_or_else(|| panic!("contracts/interface/core.json has no group {name}"));
