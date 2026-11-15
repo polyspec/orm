@@ -277,7 +277,8 @@
   없는 column과 읽지 않은 column은 database 없이 실패한다. 저장된 값을 변환할 때는 여전히 `codec_decode`가 날 수
   있고, 일관되지 않은 내부 row 상태는 `internal`이다. `set`의 쓰기 배정은 raw decoded row를 주거나 descriptor를
   교체하지 않는다. 이는 binding 오류 목록만 정정한다. native lazy schema, 직접 만든 native descriptor와 그 검증
-  동작은 바뀌지 않는다. 저장된 행의 `codec_decode` binding case는 아직 구현하지 않았으며 기존 column 오류 case는 유지한다.
+  동작은 바뀌지 않는다. group `query.value.sqlite`가 저장된 행의 `codec_decode` case를 담는다:
+  `restore`가 돌려준 행에서 읽은, 짝이 없는 surrogate escape를 담은 JSON cell이다(CORE-129). 기존 column 오류 case는 유지한다.
 - **CORE-82** `where(chain, values)`는 DSL-36과 DSL-37의 chain 이름(예: `GtServiceSeqAndIsClose`)의 조건을 key마다 값
   하나로 더한다. 값은 `orm_value`다(CORE-62): `null`은 조건의 null이고, `list`는 연산자가 없거나 `Ne`인 key의 값
   목록, 값이 둘일 때 `Between` key의 쌍, tuple key의 값 묶음 목록이며, `map`과 `nested:json_value`를 뺀 다른 kind는 값

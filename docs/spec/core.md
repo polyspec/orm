@@ -337,7 +337,8 @@ implementation is eligible for removal on that evidence.
   value can still fail with `codec_decode`, and inconsistent internal row state remains `internal`. Write assignments
   of `set` do not supply a raw decoded row or replace its descriptor. This corrects the binding error inventory only;
   native lazy schemas, manually constructed native descriptors and their validation behavior are unchanged.
-  The `codec_decode` binding case for a stored row is not implemented yet; the existing column-error cases remain.
+  The group `query.value.sqlite` holds the `codec_decode` case of a stored row: a JSON cell that holds an unpaired
+  surrogate escape, read from the row that `restore` returns (CORE-129); the existing column-error cases remain.
 - **CORE-82** `where(chain, values)` adds the conditions of a chain name of DSL-36 and DSL-37, such as
   `GtServiceSeqAndIsClose`, with one value per key. The values are `orm_value` (CORE-62): `null` is the null of a
   condition, a `list` is the list of values of a key with no operator or with `Ne`, the pair of a `Between` key when

@@ -128,7 +128,7 @@ caseTest('T493-4: query.value preserves the admitted descriptor error inventory 
   const caseFiles = new Map<string, unknown>([['contracts/interface/core.json', groups]]);
   const findings = (input: Contract) => checkContract(input, { caseFiles }).filter(finding => finding.check === 'CK-22' && (finding.path === path || finding.path.startsWith(`${path}/`))).map(finding => finding.message);
   const missing = (kind: string) => `no case of query.value raises the kind ${kind} (K-1, B-4)`;
-  assert.deepEqual(findings(contract), [missing('codec_decode')], 'the real stored-row codec case is still missing; schema and entity failures are not Query.value outcomes');
+  assert.deepEqual(findings(contract), [], 'query.value.sqlite holds the stored-row codec case; schema and entity failures are not Query.value outcomes');
   assert.deepEqual(value.raises, ['polyspec_orm::Kind::ColumnUnknown', 'polyspec_orm::Kind::ColumnUnselected', 'polyspec_orm::Kind::CodecDecode', 'polyspec_orm::Kind::Internal']);
   assert.equal(query.constructible, false);
   assert.equal(query.final, true);
@@ -151,7 +151,7 @@ caseTest('T493-4: query.value preserves the admitted descriptor error inventory 
   const oldValue = obsolete.units[queryIndex]?.members?.[valueIndex];
   assert.ok(oldValue?.raises, 'the mutation finds Query.value errors');
   oldValue.raises.push('polyspec_orm::Kind::SchemaInvalid', 'polyspec_orm::Kind::SchemaHashMismatch', 'polyspec_orm::Kind::EntityUnknown');
-  assert.deepEqual(findings(obsolete), ['codec_decode', 'schema_invalid', 'schema_hash_mismatch', 'entity_unknown'].map(missing), 'restoring only the obsolete declarations restores exactly their three missing outcomes');
+  assert.deepEqual(findings(obsolete), ['schema_invalid', 'schema_hash_mismatch', 'entity_unknown'].map(missing), 'restoring only the obsolete declarations restores exactly their three missing outcomes');
 });
 
 // No clock ends a test case in any runtime (T473, T474): a machine under load runs the same work more slowly, and the result of

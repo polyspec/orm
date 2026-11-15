@@ -5520,6 +5520,20 @@
         "targets": ["php", "python", "node", "go"],
         "reason": "SVC-2"
       }
+    },
+    {
+      "member": "query.value",
+      "file": "contracts/interface/core.json",
+      "group": "query.value.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
     }
   ]
 }
