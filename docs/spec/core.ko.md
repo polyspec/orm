@@ -479,8 +479,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   builder가 terminal이 entity를 읽기 전에 모르는 열을 `config`로 거부하기 때문이다(CORE-82). `db.connect`와
   `db.connect_schema`는 `capability_unsupported`를 내지 않는다. 묶인 SQLite가 연결이 거부하는 유일한 경우인 3.46보다
   새롭기 때문이다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,
-  그것은 manifest가 아닌 텍스트를 연결 전에 거부한다. `query.value`는 `codec_decode`를 내지 않는다. 읽기가 `value`의
-  변환 전에 행의 모든 cell을 decode하기 때문이다.
+  그것은 manifest가 아닌 텍스트를 연결 전에 거부한다.
 - **CORE-121** 코어는 어떤 입력도 닿지 않는 category `internal`의 분기에 fault injection point를 두어, 계약의 case가
   그 point를 설정하고 그 분기가 일으키는 오류의 kind, category, message를 확인하게 한다(binding G-5, X-1). point는
   module `polyspec_orm::fault`의 상수를 받는 `binding_core::fault::point!`다. point는 코어의 feature `fault-test`가

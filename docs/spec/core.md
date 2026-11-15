@@ -565,8 +565,7 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   refuses an unknown column with `config` (CORE-82) before a terminal reads the entity. `db.connect` and
   `db.connect_schema` do not raise `capability_unsupported`: the bundled SQLite is newer than 3.46, the one version that
   the connection refuses. `db.connect_schema` does not raise `schema_invalid`: a schema of the contract is made by
-  `Schema::load`, which refuses a text that is no manifest before any connection. `query.value` does not raise
-  `codec_decode`: the read decodes every cell of the row before `value` converts it.
+  `Schema::load`, which refuses a text that is no manifest before any connection.
 - **CORE-121** The core holds a fault injection point at a branch of the category `internal` that no input reaches, so
   that a case of the contract arms the point and checks the kind, the category and the message of the error that the
   branch raises (binding G-5, X-1). A point is `binding_core::fault::point!` with a constant of the module

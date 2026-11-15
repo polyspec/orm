@@ -3167,6 +3167,7 @@
           "raises": [
             "polyspec_orm::Kind::ColumnUnknown",
             "polyspec_orm::Kind::ColumnUnselected",
+            "polyspec_orm::Kind::CodecDecode",
             "polyspec_orm::Kind::Internal"
           ],
           "wait": "none",
