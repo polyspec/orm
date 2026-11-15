@@ -4285,7 +4285,8 @@
         "optimistic": "IROptimist",
         "agg": "text",
         "n_params": "integer",
-        "rows": "list<list<integer>>"
+        "rows": "list<list<integer>>",
+        "require_match": "bool"
       },
       "optional": [
         "load",
@@ -4293,7 +4294,8 @@
         "on_duplicate",
         "optimistic",
         "agg",
-        "rows"
+        "rows",
+        "require_match"
       ],
       "extends": "IRQuery"
     },
