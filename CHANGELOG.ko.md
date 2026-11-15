@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: af112dace0a831ad3d8a4dc05ddddaf0a23c85346cca210b59d34c6e1444aac5 -->
+<!-- source-sha256: 15f3ae1dd68400a796fded3c8f2ba30f30754cf6cc298f15f4c60cc9f47d9148 -->
 # 변경 이력
 
 ## Unreleased
+
+- Value alias의 생성 runtime 검증은 설치된 의존성이 outgoing float의 safe_integer predicate를 거부하여 대기한다(T493-2). 공개된 provider pin을 갱신하고 생성 graph를 검증할 수 있으면 재개하며 native owner 통과를 그 증거로 대신하지 않는다.
 
 - `query.value`의 binding 오류 목록은 column, codec, internal 오류를 유지하고 허용된 factory가 이미 마친 schema와 entity 검증 선언 세 개만 제거한다(T493-4, CORE-126). 허용된 Query 반환 경로는 모두 검증된 descriptor를 유지하며, contract의 어떤 member도 이를 교체하거나 raw row를 받아들이지 않는다. 기존 column 오류 fixture 두 개는 그대로이고 저장된 행의 `codec_decode` case는 아직 없다. 집중 metadata 회귀 시험은 옛 선언을 되돌렸을 때 finding 세 개만 다시 생기는지 확인한다. native descriptor와 runtime 동작은 바뀌지 않으며 새 runtime 검증으로 보고하지 않는다.
 - `query.new`의 binding 오류 목록은 `entity_unknown`만 선언한다(T493-3, CORE-125). 전에는 허용된 Schema factory가 `schema.load` 하나이고 query가 받기 전에 불변 schema를 검증하고 cache하는데도 `schema_invalid`와 `schema_hash_mismatch`를 함께 선언했다. interface는 모든 binding 언어의 정정을 `changes`에 기록한다. Schema.load 검증 case, Query.new entity case와 native lazy Schema의 동작은 유지한다. 집중 contract 회귀 시험은 factory 목록을 확인하고 옛 선언을 되돌렸을 때 finding 두 개가 다시 생기는지 확인하며, 새 runtime 검증은 아니다.
