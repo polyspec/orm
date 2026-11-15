@@ -556,6 +556,11 @@ The case `dbspec_format_refusal` of the suite unit `schema-definition` (contract
 The go engine test `TestFormat` was also bound to this unit; it stays bound by `coverage-schema-definition-dbspec-format`.
 
 
+## Generated Unicode table verification
+
+- **FCV-20** The Unicode word-table generator emits the current deadline-free Rust test harness (`case!()`). Regeneration must preserve the committed table bytes and all code-point classifications; it must not restore a retired time limit. This generator-only surface stays native under FCV-2 and is checked by `TestCommittedTablesAreGenerated` and the remaining cases of `tests/dbspec/unicode`. The emitter still contains a retired deadline and its correction is not implemented.
+
+
 ## Catalog connection exclusions {#catalog-connection-exclusions}
 
 The recipe `contracts/fixtures/catalog_connection/catalog_connection.json` covers the catalog behavior that the six runtimes share (SCH-6a, INT-117). A native test stays only for a behavior that FCV-2 leaves to one runtime, or that the recipe cannot express. Each kept behavior is listed here with its reason.

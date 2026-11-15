@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 15f3ae1dd68400a796fded3c8f2ba30f30754cf6cc298f15f4c60cc9f47d9148 -->
+<!-- source-sha256: 88314657181b81dda59ce68160d60427da6acf65f7d7014379cbc3a99dc94da8 -->
 # 변경 이력
 
 ## Unreleased
+
+- Unicode 표 emitter의 Rust harness 출력을 독립 선행 작업으로 등록한다(T494-1, FCV-20). 현재 표의 분류와 시간 제한 없는 case는 유지하며 generator에 남은 폐지한 deadline의 수정과 검증은 아직 없다.
 
 - Value alias의 생성 runtime 검증은 설치된 의존성이 outgoing float의 safe_integer predicate를 거부하여 대기한다(T493-2). 공개된 provider pin을 갱신하고 생성 graph를 검증할 수 있으면 재개하며 native owner 통과를 그 증거로 대신하지 않는다.
 
