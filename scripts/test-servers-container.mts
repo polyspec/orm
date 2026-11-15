@@ -48,7 +48,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { errorCode } from '../tests/errors.mts';
-import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_WAL, TestServerError } from './test-servers.mts';
+import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_PREPARED, POSTGRES_WAL, TestServerError } from './test-servers.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
 // SCHEMA is the contract schema version of bay that this script and its run.sh are written for. A run takes the bay of
@@ -142,7 +142,7 @@ const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysql
 // container reads, so the key is copied for the user postgres first.
 const postgresKey = `install -m 0600 -o postgres -g postgres ${BAY_TLS}/key.pem ${POSTGRES_KEY}`;
 const postgresSettings = ['-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'ssl=on', '-c', `ssl_cert_file=${BAY_TLS}/cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`,
-  ...POSTGRES_WAL.flatMap(setting => ['-c', setting]), ...SMALL_SHARED_BUFFERS];
+  ...[...POSTGRES_WAL, ...POSTGRES_PREPARED].flatMap(setting => ['-c', setting]), ...SMALL_SHARED_BUFFERS];
 
 // The temporary server that an image starts to initialize a data directory listens only on its socket, so each readiness
 // program connects over TCP on 127.0.0.1 and succeeds only for the server that the checks reach.

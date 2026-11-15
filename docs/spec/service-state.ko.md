@@ -1,4 +1,5 @@
 <!-- doc-id: service-state -->
+<!-- source-sha256: e9555a5d11ef854bfdd5a8f846508eb5f7f1e8349ec26cdca8858473784087e0 -->
 # 인터페이스 case의 service
 
 [English](service-state.md)
@@ -25,8 +26,10 @@
   transaction에서 조건의 행의 `column`을 그 식별자의 앞 16자리로 바꾸고 transaction을 준비(`XA PREPARE`)하므로,
   program의 session이 끝나도 서버가 배타 행 잠금을 유지한다. 행을 바꾸는 이유는 InnoDB가 아무것도 바꾸지 않은
   준비된 XA transaction의 잠금을 잠금 읽기까지 포함해 유지하지 않기 때문이다. 그 전에 앞선 실행이 남긴 같은 식별자의
-  준비된 transaction을 되돌리므로 step은 멱등이다. `hold`는 MySQL만 받는다. PostgreSQL은
-  `max_prepared_transactions`가 0보다 클 때만 준비된 transaction을 유지하는데, 시험 서버는 그것을 정하지 않는다.
+  준비된 transaction을 행을 넣기 전에 되돌리므로 step은 멱등이다. PostgreSQL에서는 같은 식별자의 준비된
+  transaction(`BEGIN`, update, `PREPARE TRANSACTION`)이고, 시험 서버는 `max_prepared_transactions=8`로 시작하므로
+  (`scripts/test-servers.mts`의 `POSTGRES_PREPARED`) 그것을 유지한다. PostgreSQL의 case는 `db.execute`로
+  `SET lock_timeout`을 보내 session의 잠금 기다림을 제한하므로, 호출은 `lock_not_available`(SQLSTATE 55P03)로 실패한다.
   이유: 다른 holder가 잡은 잠금은 case의 문장을 기다리게 하거나 실패하게 하는 상태이며, 준비된 transaction은 step보다
   오래 사는 process 없이 그 잠금을 유지한다.
 - **SVC-5** 같은 case를 동시에 실행하는 두 target은 같은 행 잠금을 잡으므로, 두 번째 target의 `setup`은 첫 target의
@@ -36,6 +39,12 @@
 - **SVC-6** `release: true`인 `{"service", "release"}`의 `check`는 scope의 준비된 transaction을 되돌리고, scope의 준비된
   transaction이 남지 않았을 때 0으로 끝난다. `{"service", "absent": "<표>"}`의 `check`는 그 표가 없을 때 0으로
   끝난다. `change`는 아직 어떤 case도 쓰지 않으며, 그것을 적은 메시지와 함께 1로 끝난다.
+- **SVC-8** PostgreSQL의 `connection_lost` case는 호출이 자기 session을 끝내게 한다: `db.execute`는
+  `pg_terminate_backend(pg_backend_pid())`를 실행하고, `query`의 member는 view `service_pg_gone`을 읽거나 쓴다. 그
+  view의 조건은 행마다 그 함수를 부르고, `WITH CHECK OPTION`이 insert에도 그 조건을 적용한다. case의 `db` instance
+  값은 호출 전에 `db.execute`로 기본 표, 그 행, view를 만든다. 서버는 SQLSTATE 57P01로 session을 끝내고, 코어는 그것을
+  `connection_lost`로 바꾼다(`packages/rust/src/lib.rs`의 `PgDatabaseError` 대응). 이유: state program이 호출 사이에
+  끝낸 session은 다음 문장 전에 pool이 바꾸므로, 자기 session을 끝내는 문장만 그 kind에 닿는다.
 - **SVC-7** 코어는 `contracts/interface/service.json`의 case를 `packages/rust/tests/unit/interface_service_cases.rs`의
   시험 `the_core_passes_the_service_cases_of_its_contract`에서 실행의 서버로 실행한다(`make
   interface-service-cases-rust`). 그 scope는 `rust:<member>:<case id>:`다. service의 변수가 정해지지 않으면 시험은

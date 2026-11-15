@@ -593,9 +593,9 @@ caseTest('the test servers keep small redo logs, binary logs and WAL', () => {
   assert.equal(typeof postgresArguments, 'function', 'scripts/test-servers.mts states no arguments of the PostgreSQL servers');
   assert.deepEqual(POSTGRES_WAL, ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep_size=0']);
   assert.deepEqual(postgresArguments('/data', 5432, true, '/tls'), ['-D', '/data', '-p', '5432', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
-    '-c', 'timezone=Asia/Seoul', '-c', 'ssl=on', '-c', 'ssl_cert_file=/tls/postgres-cert.pem', '-c', 'ssl_key_file=/tls/postgres-key.pem', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+    '-c', 'timezone=Asia/Seoul', '-c', 'ssl=on', '-c', 'ssl_cert_file=/tls/postgres-cert.pem', '-c', 'ssl_key_file=/tls/postgres-key.pem', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0', '-c', 'max_prepared_transactions=8']);
   assert.deepEqual(postgresArguments('/replica', 5433, false, '/tls'), ['-D', '/replica', '-p', '5433', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
-    '-c', 'timezone=Asia/Seoul', '-c', 'ssl=on', '-c', 'ssl_cert_file=/tls/postgres-replica-cert.pem', '-c', 'ssl_key_file=/tls/postgres-replica-key.pem', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+    '-c', 'timezone=Asia/Seoul', '-c', 'ssl=on', '-c', 'ssl_cert_file=/tls/postgres-replica-cert.pem', '-c', 'ssl_key_file=/tls/postgres-replica-key.pem', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0', '-c', 'max_prepared_transactions=8']);
 });
 
 caseTest('the MySQL privilege probe has a separate writable binlog server with trust creators off', () => {

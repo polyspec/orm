@@ -30,8 +30,11 @@ state.
   identifier and prepares the transaction (`XA PREPARE`), so the server keeps the exclusive row locks after the session
   of the program ends. The transaction changes a row because InnoDB keeps no lock of a prepared XA transaction that
   changed nothing, a locking read included. Before it does, the program rolls back a prepared transaction of the same
-  identifier that an earlier run left, so the step is idempotent. Only MySQL takes `hold`: PostgreSQL keeps a prepared
-  transaction only with `max_prepared_transactions` above 0, which the test servers do not set. Why: a lock that
+  identifier that an earlier run left, before it inserts the rows, so the step is idempotent. On PostgreSQL the
+  transaction is a prepared transaction of the same identifier (`BEGIN`, the update, `PREPARE TRANSACTION`), which
+  the test servers keep because they start with `max_prepared_transactions=8` (`POSTGRES_PREPARED` of
+  `scripts/test-servers.mts`). A case on PostgreSQL bounds the wait of its session for the lock with
+  `SET lock_timeout` through `db.execute`, so the call fails with `lock_not_available` (SQLSTATE 55P03). Why: a lock that
   another holder took is the state that makes a statement of the case wait or fail, and a prepared transaction holds
   it with no process that outlives the step.
 - **SVC-5** Two targets that run the same case at once take the same row lock, so the `setup` of the second waits until
@@ -42,6 +45,13 @@ state.
 - **SVC-6** `check` of `{"service", "release"}` with `release: true` rolls back the prepared transaction of the scope and
   exits with 0 when no prepared transaction of the scope is left. `check` of `{"service", "absent": "<table>"}` exits
   with 0 when the table does not exist. `change` is not used by a case yet and exits with 1 and a message that names it.
+- **SVC-8** A case of `connection_lost` on PostgreSQL makes its call end its own session: `db.execute` runs
+  `pg_terminate_backend(pg_backend_pid())`, and the members of `query` read or write the view `service_pg_gone`, whose
+  condition calls it for each row and which `WITH CHECK OPTION` applies to an insert too. The instance value of the
+  `db` of the case creates the base table, its rows and the view with `db.execute` before the call. The server ends the
+  session with SQLSTATE 57P01, which the core maps to `connection_lost` (`packages/rust/src/lib.rs`, the mapping of
+  `PgDatabaseError`). Why: a session that the state program ended between the calls is replaced by the pool before
+  the next statement, so only a statement that ends its own session reaches the kind.
 - **SVC-7** The core runs the cases of `contracts/interface/service.json` in the test
   `the_core_passes_the_service_cases_of_its_contract` of `packages/rust/tests/unit/interface_service_cases.rs`, whose
   scope is `rust:<member>:<case id>:`, with the servers of the run: `make interface-service-cases-rust`. A variable of

@@ -53,10 +53,17 @@ function run(server: Server, dsn: string, sql: string, what: string): string {
 // The XA identifier of a scope: 64 hex digits, within the 64 bytes of an XA gtrid.
 const xid = (scope: string) => createHash('sha256').update(scope).digest('hex');
 
-function rollbackHeld(dsn: string, scope: string, what: string) {
+// Whether a prepared transaction of the scope is held: an XA transaction on MySQL, a prepared transaction on PostgreSQL.
+function held(server: Server, dsn: string, scope: string, what: string): boolean {
   const id = xid(scope);
-  const held = run('mysql', dsn, 'XA RECOVER;', what).split('\n').some(line => line.split('\t')[3] === id);
-  if (held) run('mysql', dsn, `XA ROLLBACK '${id}';`, what);
+  if (server === 'mysql') return run('mysql', dsn, 'XA RECOVER;', what).split('\n').some(line => line.split('\t')[3] === id);
+  return run('postgres', dsn, `SELECT count(*) FROM pg_prepared_xacts WHERE gid = '${id}';`, what).trim() !== '0';
+}
+
+function rollbackHeld(server: Server, dsn: string, scope: string, what: string) {
+  if (!held(server, dsn, scope, what)) return;
+  const id = xid(scope);
+  run(server, dsn, server === 'mysql' ? `XA ROLLBACK '${id}';` : `ROLLBACK PREPARED '${id}';`, what);
 }
 
 function quoteValue(value: unknown, what: string): string {
@@ -81,25 +88,26 @@ function setup(server: Server, dsn: string, scope: string, step: Step) {
   if (values.length > 0) {
     sql += server === 'mysql' ? `INSERT IGNORE INTO ${table} VALUES ${values.join(', ')};\n` : `INSERT INTO ${table} VALUES ${values.join(', ')} ON CONFLICT DO NOTHING;\n`;
   }
+  // A transaction that an earlier run of the scope left holds rows that the insert would wait for, so it is rolled back first.
+  if (step.hold !== undefined) rollbackHeld(server, dsn, scope, what);
   run(server, dsn, sql, what);
   if (step.hold === undefined) return;
-  if (server !== 'mysql') throw new StateError(`${what}: hold needs the service mysql, because the PostgreSQL test servers keep no prepared transaction (SVC-4)`);
   const hold = step.hold as { where?: unknown; mode?: unknown; column?: unknown };
   if (hold.mode !== 'update') throw new StateError(`${what}: hold.mode is update`);
   const where = text(hold.where, `${what}: hold.where`);
   const column = text(hold.column, `${what}: hold.column`);
-  rollbackHeld(dsn, scope, what);
   const id = xid(scope);
-  run('mysql', dsn, `XA START '${id}';\nUPDATE ${table} SET ${column} = ${quoteValue(id.slice(0, 16), what)} WHERE ${where};\nXA END '${id}';\nXA PREPARE '${id}';\n`, what);
+  const update = `UPDATE ${table} SET ${column} = ${quoteValue(id.slice(0, 16), what)} WHERE ${where};`;
+  run(server, dsn, server === 'mysql'
+    ? `XA START '${id}';\n${update}\nXA END '${id}';\nXA PREPARE '${id}';\n`
+    : `BEGIN;\n${update}\nPREPARE TRANSACTION '${id}';\n`, what);
 }
 
 function check(server: Server, dsn: string, scope: string, step: Step) {
   const what = `check of ${scope}`;
   if (step.release === true) {
-    if (server !== 'mysql') throw new StateError(`${what}: release needs the service mysql (SVC-6)`);
-    rollbackHeld(dsn, scope, what);
-    const left = run('mysql', dsn, 'XA RECOVER;', what).split('\n').some(line => line.split('\t')[3] === xid(scope));
-    if (left) throw new StateError(`${what}: the prepared transaction of the scope is still held`);
+    rollbackHeld(server, dsn, scope, what);
+    if (held(server, dsn, scope, what)) throw new StateError(`${what}: the prepared transaction of the scope is still held`);
     return;
   }
   if (step.absent !== undefined) {

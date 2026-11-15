@@ -622,6 +622,11 @@ export function postgresEnvironment(base: NodeJS.ProcessEnv = process.env): Node
 // still holds every segment the replica has not received (postgresBaseBackupArguments).
 export const POSTGRES_WAL = ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep_size=0'];
 
+// POSTGRES_PREPARED lets both PostgreSQL servers keep prepared transactions: the state program of the interface cases
+// holds a row lock in one so that the lock outlives its session (docs/spec/service-state.md SVC-4). A standby needs at
+// least the value of its primary, so both take the same one.
+export const POSTGRES_PREPARED = ['max_prepared_transactions=8'];
+
 // postgresArguments are the arguments of the postgres server on data and port: the primary names the replica as its
 // synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
 export function postgresArguments(data: string, port: number, primary: boolean, tlsDir: string): string[] {
@@ -630,7 +635,7 @@ export function postgresArguments(data: string, port: number, primary: boolean, 
     '-c', `timezone=${SERVER_TIME_ZONE}`,
     // TLS with the certificate of TLS_SERVERS, which tls issues before the servers start (CFG-45); a client without sslmode sends no TLS (CFG-47).
     '-c', 'ssl=on', '-c', `ssl_cert_file=${tlsDir}/${name}-cert.pem`, '-c', `ssl_key_file=${tlsDir}/${name}-key.pem`,
-    ...(primary ? ['-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'] : []), ...POSTGRES_WAL.flatMap(setting => ['-c', setting])];
+    ...(primary ? ['-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'] : []), ...[...POSTGRES_WAL, ...POSTGRES_PREPARED].flatMap(setting => ['-c', setting])];
 }
 
 async function startPostgres(p: Paths, ports: Ports): Promise<void> {

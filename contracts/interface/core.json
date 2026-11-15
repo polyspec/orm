@@ -14768,6 +14768,20 @@
         "kind": "driver",
         "message": "driver: unable to open database file (SQLITE_CANTOPEN)"
       }
+    },
+    {
+      "id": "a_server_that_accepts_no_connection",
+      "rule": "CORE-30",
+      "dsn": "postgres://orm@127.0.0.1:1/orm_test",
+      "pool_size": 1,
+      "cfg": {
+        "pool_acquire_timeout_ms": 100
+      },
+      "raises": {
+        "category": "store",
+        "kind": "pool_timeout",
+        "message": "pool_timeout: no connection of the pool became free within pool_acquire_timeout_ms"
+      }
     }
   ],
   "db.connect_schema.sqlite": [
@@ -14796,6 +14810,28 @@
         "category": "store",
         "kind": "driver",
         "message": "driver: unable to open database file (SQLITE_CANTOPEN)"
+      }
+    },
+    {
+      "id": "a_server_that_accepts_no_connection",
+      "rule": "CORE-30",
+      "dsn": "postgres://orm@127.0.0.1:1/orm_test",
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+        }
+      },
+      "pool_size": 1,
+      "cfg": {
+        "pool_acquire_timeout_ms": 100
+      },
+      "raises": {
+        "category": "store",
+        "kind": "pool_timeout",
+        "message": "pool_timeout: no connection of the pool became free within pool_acquire_timeout_ms"
       }
     }
   ],

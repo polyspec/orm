@@ -5534,6 +5534,20 @@
         ],
         "reason": "CORE-71"
       }
+    },
+    {
+      "member": "db.execute",
+      "file": "contracts/interface/service.json",
+      "group": "db.execute.service",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "SVC-2"
+      }
     }
   ]
 }

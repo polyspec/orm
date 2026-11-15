@@ -278,6 +278,97 @@
         "category": "store",
         "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
       }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
+      }
     }
   ],
   "query.get_by.service": [
@@ -505,6 +596,104 @@
         "kind": "canceled",
         "category": "store",
         "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
+      }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
       }
     }
   ],
@@ -734,6 +923,104 @@
         "category": "store",
         "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
       }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
+      }
     }
   ],
   "query.create.service": [
@@ -800,6 +1087,223 @@
         "kind": "driver",
         "category": "store",
         "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    },
+    {
+      "id": "a_key_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SET lock_timeout = '100ms'\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "?"
+      }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 3
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
       }
     }
   ],
@@ -880,6 +1384,223 @@
         "category": "store",
         "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
       }
+    },
+    {
+      "id": "a_row_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SET lock_timeout = '100ms'\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "?"
+      }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
+      }
     }
   ],
   "query.delete.service": [
@@ -948,6 +1669,203 @@
         "kind": "driver",
         "category": "store",
         "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    },
+    {
+      "id": "a_row_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SET lock_timeout = '100ms'\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "?"
+      }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
       }
     }
   ],
@@ -1026,6 +1944,203 @@
         "category": "store",
         "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
       }
+    },
+    {
+      "id": "a_row_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SET lock_timeout = '100ms'\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 2
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "?"
+      }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 2
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
+      }
     }
   ],
   "query.restore_or_create.service": [
@@ -1102,6 +2217,334 @@
         "kind": "driver",
         "category": "store",
         "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    },
+    {
+      "id": "a_row_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SET lock_timeout = '100ms'\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 2
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "?"
+      }
+    },
+    {
+      "id": "a_view_that_ends_the_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "entity": "service_pg_gone"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_base (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_base VALUES (1, 'live', NULL), (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE VIEW service_pg_gone AS SELECT id, label, deleted_at FROM service_pg_base WHERE pg_terminate_backend(pg_backend_pid()) WITH CHECK OPTION\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 2
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
+      }
+    }
+  ],
+  "db.execute.service": [
+    {
+      "id": "a_statement_that_ends_its_session",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "service": "address"
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SELECT pg_terminate_backend(pg_backend_pid())\",\"tables\":[],\"bind_slots\":[]}",
+      "params": [],
+      "raises": {
+        "kind": "connection_lost",
+        "category": "store",
+        "message": "?"
+      }
+    },
+    {
+      "id": "a_row_lock_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "service": "address"
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SELECT id FROM service_pg_row WHERE id = 1 FOR UPDATE NOWAIT\",\"tables\":[],\"bind_slots\":[]}",
+      "params": [],
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "?"
       }
     }
   ]
