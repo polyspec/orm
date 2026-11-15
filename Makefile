@@ -456,7 +456,7 @@ test-binding-python: bindings
 # with its test features for the PHP of .php-version (BINDING_ENV) and copied into the RUN_TARGET of the run.
 test-binding-php: bindings lease-tool php-vendor-check
 	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) cargo build --locked -p polyspec-orm-php-ext --features panic-test,case-test
-	$(KIT_TOOLS)/bin/php -d extension=$(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) vendor-php/bin/phpunit packages/php-ext/generated/tests
+	$(RUN_TESTS) phpunit --php-extension $(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) -- packages/php-ext/generated/tests
 	rm -rf $(RUN_DIR)
 
 # ---- Release recipes of the bindings: packages/release.mk, which binding release-recipes writes (binding GN-19h) -----------
