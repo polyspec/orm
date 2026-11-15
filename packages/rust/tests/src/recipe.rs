@@ -3853,10 +3853,11 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 32] = [
+    const MODEL_OPS: [&str; 33] = [
         "model.connect",
         "transaction.deadlock",
         "model.restore",
+        "restore.analyze",
         "hook.install",
         "hook.records",
         "utils.aes_status",
@@ -7417,6 +7418,30 @@ mod tables {
             let db = connections.bound(connection)?;
             let model = crate::recipe_reads::read(step, "model")["model"].as_str().unwrap_or_default();
             match op {
+                "restore.analyze" => {
+                    let mut raw = crate::recipe_reads::read(step, "request")["request"].clone();
+                    if raw.get("manifest_hash").is_none() {
+                        raw["manifest_hash"] = json!(self.schema.hash());
+                    }
+                    let request: polyspec_orm::ir::Request = serde_json::from_value(raw).map_err(|error| error.to_string())?;
+                    let before = serde_json::to_value(&request).map_err(|error| error.to_string())?;
+                    let mut result = db.analyze_restore(&request).map_err(orm)?;
+                    if crate::recipe_reads::read(step, "mutate_return")["mutate_return"].as_bool().unwrap_or(false) {
+                        if !result.key.is_empty() {
+                            result.key[0] = "changed".into();
+                        }
+                        if !result.assignments.is_empty() {
+                            result.assignments[0] = "changed".into();
+                        }
+                        result.key.push("changed".into());
+                        result.assignments.push("changed".into());
+                        result = db.analyze_restore(&request).map_err(orm)?;
+                    }
+                    if serde_json::to_value(&request).map_err(|error| error.to_string())? != before {
+                        return Err("restore analysis changed its request".into());
+                    }
+                    Ok(json!({"json": {"key": result.key, "assignments": result.assignments}}))
+                }
                 "hook.install" => {
                     let actions = hook_actions(&crate::recipe_reads::read(step, "hooks")["hooks"])?;
                     let base = match self.bases.get(connection) {

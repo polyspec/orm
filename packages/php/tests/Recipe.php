@@ -3504,6 +3504,19 @@ final class Recipe
                     ))], $events);
                 }
                 return ['value' => ['array' => $events]];
+            case 'restore.analyze':
+                $request = $s['request'] + ['manifest_hash' => $context['schema']->manifestHash];
+                $before = $request;
+                $result = self::connectionOf($s, $context)->analyzeRestore($request);
+                if ($s['mutate_return'] ?? false) {
+                    if ($result['key'] !== []) { $result['key'][0] = 'changed'; }
+                    if ($result['assignments'] !== []) { $result['assignments'][0] = 'changed'; }
+                    $result['key'][] = 'changed';
+                    $result['assignments'][] = 'changed';
+                    $result = self::connectionOf($s, $context)->analyzeRestore($request);
+                }
+                Assert::assertSame($before, $request, 'restore analysis keeps its request unchanged');
+                return ['json' => $result];
             case 'hook.install':
                 // Binds the connection of the step to its connection with the hook of the step (FCV-4); a later
                 // hook.install on the same connection replaces the hook.

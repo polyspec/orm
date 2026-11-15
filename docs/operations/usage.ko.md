@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 1b55c61b632badda973c101e3e4bab5c3bcdb8a163028aace058bf55eb008bf5 -->
+<!-- source-sha256: 57e571e63c2bd2d215abe5a0da751a4309885781d52105b3037666ee907936e3 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -380,6 +380,15 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 - restore는 soft delete처럼 `updated` 컬럼을 할당하지 않는다. update와 읽기는 문장 두 개이며, 트랜잭션 안에서는 한 상태를 본다.
 
 ---
+
+
+Hook는 새 값을 받기 전에 `db.analyzeRestore(request)`를 호출할 수 있다
+([INT-188](../spec/interfaces.ko.md), [PRT-91](../spec/protocol.ko.md)). 결과는
+선택한 `key` 컬럼과 새 `assignments` 컬럼을 담는다. PHP는 request hook의
+`$r->ir`를 넘긴다. 분석은 planner와 같은 분류기를 쓰고 요청을 바꾸지 않으며,
+할당의 허용 여부는 이후 기존 write 검증이 검사한다. 문장을 보내지 않으므로
+hook나 기존 transaction 안에서 실행할 수 있다. Set에 들어 있는 컬럼만으로
+선택한 key를 추측하지 않는다.
 
 ### 행 되돌리기 또는 만들기 {#restore-or-create-a-row}
 

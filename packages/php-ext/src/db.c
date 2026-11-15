@@ -1,3 +1,4 @@
+#include "validator.h"
 /*
  * Polyspec\Orm\Db of the PHP library (packages/php/src/Db.php) in C: the connection (its PDO handle, driver, registered sets,
  * statement cache, statement event subscribers and request hook) and the statement path (select, scalarOf, paginate, writeOf,
@@ -4319,6 +4320,26 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     } else if (Z_TYPE(cleanup) != IS_UNDEF) {
         put_exception(&cleanup);
     }
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, analyzeRestore)
+{
+    zval *request;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(request)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *state = rd(ZEND_THIS, "state");
+    if (as_bool(rd(state, "closed"))) { db_throw_orm("CONFIG", "database is closed"); RETURN_THROWS(); }
+    zval *hash = zend_hash_str_find(Z_ARRVAL_P(request), "manifest_hash", sizeof("manifest_hash") - 1);
+    zval *sets = rd(state, "sets");
+    if (hash == NULL || Z_TYPE_P(hash) != IS_STRING || sets == NULL || Z_TYPE_P(sets) != IS_ARRAY || zend_symtable_find(Z_ARRVAL_P(sets), Z_STR_P(hash)) == NULL) {
+        db_throw_orm("SCHEMA_HASH_MISMATCH", "restore analysis manifest %s is not registered on this connection", hash != NULL && Z_TYPE_P(hash) == IS_STRING ? Z_STRVAL_P(hash) : ""); RETURN_THROWS();
+    }
+    zval model;
+    if (!registered_model(ZEND_THIS, hash, &model)) RETURN_THROWS();
+    bool ok = validator_restore_analysis(&model, request, return_value);
+    zval_ptr_dtor(&model);
+    if (!ok) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, withRequestHook)

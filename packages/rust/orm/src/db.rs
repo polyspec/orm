@@ -641,6 +641,15 @@ pub struct Db {
     pub(crate) hook: Option<RequestHook>,
 }
 
+/// Selected restore key and new assignment columns (INT188).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RestoreAnalysis {
+    /// Selected key columns in schema order.
+    pub key: Vec<String>,
+    /// New assignment columns in request order.
+    pub assignments: Vec<String>,
+}
+
 /// The connection pool state.
 /// Requirements: INT-79.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -998,6 +1007,20 @@ impl Db {
     /// replaces the hook of a hooked handle.
     pub fn with_request_hook(&self, hook: impl for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync + 'static) -> Db {
         Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)) }
+    }
+
+    /// Classifies restore columns without statements, hooks or write validation (INT188).
+    pub fn analyze_restore(&self, request: &crate::ir::Request) -> Result<RestoreAnalysis> {
+        self.ensure_open()?;
+        let schema = self.inner.schemas.read().unwrap().iter().copied().find(|s| s.hash() == request.manifest_hash);
+        let schema = schema.ok_or_else(|| Error::Engine {
+            code: codes::SCHEMA_HASH_MISMATCH.into(),
+            msg: format!("restore analysis manifest {} is not registered on this connection", request.manifest_hash),
+            source: None,
+        })?;
+        let manifest = schema.manifest()?;
+        let parts = crate::engine::validate::analyze_restore(&manifest, request)?;
+        Ok(RestoreAnalysis { key: parts.key, assignments: parts.set.into_iter().map(|a| a.column).collect() })
     }
 
     /// The database of the connection: mysql, postgres, sqlite, or markdown, a

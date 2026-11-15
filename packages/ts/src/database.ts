@@ -11,6 +11,7 @@ import { Utils } from './utils.js';
 import { wallMicros } from './clock.js';
 import { AesKeyring, storedVersion } from './aes.js';
 import { Engine } from './engine/index.js';
+import { analyzeRestore } from './engine/validate.js';
 import { canonicalize } from './engine/canonical.js';
 import { modelOfManifest, type RuntimeModel } from './engine/model.js';
 import { decimalScaled, normalizeDecimal } from './decimal.js';
@@ -19,6 +20,12 @@ import { Model } from './model.js';
 import { fieldOf, type Entity } from './engine/model.js';
 import { openMarkdown } from './markdown.js';
 import * as codes from './codes.js';
+
+/** The selected restore key and new assignment columns (INT188). */
+export interface RestoreAnalysis {
+  key: string[];
+  assignments: string[];
+}
 
 export interface ConnectOptions {
   /** key of aesVersion for aes writes; absent takes aesKeys[aesVersion] */
@@ -625,6 +632,14 @@ export class Db {
   public withRequestHook(hook: RequestHook): Db {
     if (typeof hook !== 'function') throw new OrmError(codes.CONFIG, 'withRequestHook takes a function of the request and addParam');
     return this.derive('requestHook', hook);
+  }
+
+  /** Classifies restore columns without executing or validating assignment permissions (INT188). */
+  public analyzeRestore(request: Request): RestoreAnalysis {
+    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
+    const engine = this.engines.get(request.manifest_hash);
+    if (engine === undefined) throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `restore analysis manifest ${request.manifest_hash} is not registered on this connection`);
+    return analyzeRestore(engine.model, request);
   }
 
   /** A handle of the same connection: it shares the state and changes only one property to value. */

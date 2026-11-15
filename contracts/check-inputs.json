@@ -5394,6 +5394,62 @@
         "rust",
         "mariadb-server"
       ]
+    },
+    "restore-analysis-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules",
+        "python",
+        "php",
+        "composer",
+        "rust",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/ir/validate.json",
+        "contracts/fixtures/request_hook/request_hook.json",
+        "contracts/fixtures/request_hook/request_hook.dbs",
+        "packages/go/engine/ir/ir.go",
+        "packages/go/orm/db.go",
+        "packages/go/internal/recipe/requests.go",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/engine/validate.ts",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/engine/validate.py",
+        "packages/python/tests/recipe.py",
+        "packages/php/src/Db.php",
+        "packages/php/src/Validator.php",
+        "packages/php/tests/recipe.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/validator.c",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/engine/validate.rs",
+        "packages/rust/tests/src/recipe.rs"
+      ]
+    },
+    "restore-analysis-api-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules",
+        "python",
+        "php",
+        "composer",
+        "rust",
+        "interfaces-typescript"
+      ],
+      "inputs": [
+        "contracts/interfaces.json",
+        "packages/go/orm/db.go",
+        "packages/ts/src/database.ts",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/php/src/Db.php",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/rust/orm/src/db.rs"
+      ]
     }
   },
   "paths": {

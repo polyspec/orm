@@ -464,6 +464,37 @@ func (d *DB) WithRequestHook(hook RequestHook) *DB {
 	return &handle
 }
 
+// RestoreAnalysis identifies the selected key and new assignments (INT188).
+type RestoreAnalysis struct {
+	Key         []string
+	Assignments []string
+}
+
+// AnalyzeRestore classifies a registered restore without running statements or hooks.
+func (d *DB) AnalyzeRestore(r *ir.Request) (RestoreAnalysis, error) {
+	if d.m.closed.Load() {
+		return RestoreAnalysis{}, configErr("database is closed")
+	}
+	if r == nil {
+		return RestoreAnalysis{}, &ir.Error{Code: CodeIrInvalid, Msg: "object required"}
+	}
+	d.m.engineMu.RLock()
+	eng := d.m.engines[r.ManifestHash]
+	d.m.engineMu.RUnlock()
+	if eng == nil {
+		return RestoreAnalysis{}, &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("restore analysis manifest %s is not registered on this connection", r.ManifestHash)}
+	}
+	parts, err := ir.AnalyzeRestore(eng.M, r)
+	if err != nil {
+		return RestoreAnalysis{}, err
+	}
+	result := RestoreAnalysis{Key: append([]string{}, parts.Key...), Assignments: []string{}}
+	for _, a := range parts.Set {
+		result.Assignments = append(result.Assignments, a.Column)
+	}
+	return result, nil
+}
+
 // Root returns the connection a handle was derived from, so two handles of one
 // connection compare equal. A connection returns itself.
 func (d *DB) Root() *DB {

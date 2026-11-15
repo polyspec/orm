@@ -11,6 +11,7 @@
 bool validator_construct(zval *self, zval *model);
 bool validator_validate(zval *self, HashTable *r);
 bool validator_op_allowed(HashTable *col, zend_string *op);
+bool validator_restore_analysis(zval *model, zval *request, zval *ret);
 bool validator_restore_key(HashTable *ent, HashTable *r, zval *ret);
 bool validator_param_uses(zval *self, HashTable *r, zval *ret);
 bool validator_function_type(zend_string *name, HashTable *col, zval *ret);

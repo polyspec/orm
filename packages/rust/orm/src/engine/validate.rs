@@ -325,7 +325,7 @@ pub(crate) struct RestoreParts {
 /// primary key when they cover it, otherwise the first unique key in name order that they cover. A set value of a key
 /// column becomes a condition, every other set value is a new value, and the where keeps its other conditions, which
 /// narrow the restore further; the key still names at most one row.
-pub(crate) fn restore_key(ent: &Entity, r: &ir::Request) -> Result<RestoreParts> {
+fn classify_restore(ent: &Entity, r: &ir::Request) -> Result<RestoreParts> {
     let Some(soft_delete) = ent.soft_delete.as_deref() else {
         return Err(err(codes::IR_INVALID, format!("restore of {}, which has no soft_delete setting", ent.name)));
     };
@@ -376,10 +376,7 @@ pub(crate) fn restore_key(ent: &Entity, r: &ir::Request) -> Result<RestoreParts>
             continue;
         }
         // The key and the soft delete column are the table's own: a restore clears the latter itself.
-        let c = ent.field(&a.column).ok_or_else(|| unknown_column(&r.query.entity, &a.column))?;
-        if c.primary_key || c.identity || a.column == soft_delete {
-            return Err(err(codes::IR_INVALID, format!("restore cannot assign {}", a.column)));
-        }
+        ent.field(&a.column).ok_or_else(|| unknown_column(&r.query.entity, &a.column))?;
         set.push(a.clone());
     }
     Ok(RestoreParts { key, where_: ir::Group { items: where_items, ..Default::default() }, set, soft_delete: soft_delete.to_owned() })
@@ -927,4 +924,31 @@ fn joined_refs<'g>(g: &'g ir::Group, seen: &mut Vec<&'g str>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Shares restore classification without applying write assignment restrictions (PRT91).
+pub(crate) fn analyze_restore(m: &Manifest, r: &ir::Request) -> Result<RestoreParts> {
+    if r.ir_version != IR_VERSION {
+        return Err(err(codes::VERSION_MISMATCH, format!("ir_version {}, engine {}", r.ir_version, IR_VERSION)));
+    }
+    if r.kind != "restore" {
+        return Err(err(codes::IR_INVALID, "restore analysis requires a restore request"));
+    }
+    let ent = m.entity(&r.query.entity)?;
+    for a in &r.set {
+        ent.field(&a.column).ok_or_else(|| unknown_column(&ent.name, &a.column))?;
+    }
+    classify_restore(ent, r)
+}
+
+/// Applies write restrictions after the single restore classifier.
+pub(crate) fn restore_key(ent: &Entity, r: &ir::Request) -> Result<RestoreParts> {
+    let parts = classify_restore(ent, r)?;
+    for a in &parts.set {
+        let c = ent.field(&a.column).ok_or_else(|| unknown_column(&ent.name, &a.column))?;
+        if c.primary_key || c.identity || a.column == parts.soft_delete {
+            return Err(err(codes::IR_INVALID, format!("restore cannot assign {}", a.column)));
+        }
+    }
+    Ok(parts)
 }

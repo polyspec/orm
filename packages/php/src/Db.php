@@ -305,6 +305,22 @@ final class Db
         return $handle;
     }
 
+    /**
+     * Classifies restore columns without statements, hooks or write validation (INT188).
+     * @return array{key: list<string>, assignments: list<string>}
+     */
+    public function analyzeRestore(array $request): array
+    {
+        if ($this->state->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        $hash = $request['manifest_hash'] ?? '';
+        if (!isset($this->state->sets[$hash])) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "restore analysis manifest $hash is not registered on this connection");
+        }
+        return Validator::analyzeRestore(Registry::model($hash), $request);
+    }
+
     /** Returns a handle on this connection whose statements use the shared $cancellation signal. */
     public function withCancellation(Cancellation $cancellation): Db
     {

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8a5ea377f91456645e3d3f34b7035b66c0e82cea63e3e815281d04504db871e8 -->
+<!-- source-sha256: 28efba21e3d5a87cf5512d2096b3e15f6070b496d5fcb2da0ec7e678ee935bf5 -->
 # 변경 이력
 
 ## Unreleased
+
+- 연결의 `analyzeRestore`로 현재 restore 요청에서 선택한 key와 새 assignment 컬럼을 쓰기 검증 전에 구분합니다. 여섯 client의 공개 분석과 planner가 같은 classifier를 쓰며, 분석은 statement를 보내거나 hook을 부르지 않습니다(T448, INT-188, PRT-91).
 
 - 요청은 `require_match`로 update, delete, restore의 행 일치를 요구할 수 있습니다. 최종 일치가 0이면 `NO_ROWS`로 실패하고, 같은 값을 쓰더라도 행과 일치한 update는 성공합니다. 공통 case는 audit 보존, optimistic/revision 우선순위, null의 생략 처리도 검증합니다. 여섯 client의 SQLite 단위 증거는 확인했고 다른 database 증거는 남아 있습니다(T447, PRT-90).
 

@@ -879,6 +879,13 @@
       "expect",
       "op"
     ],
+    "restore.analyze": [
+      "connection",
+      "expect",
+      "mutate_return",
+      "op",
+      "request"
+    ],
     "clock.read": [
       "as",
       "edge",

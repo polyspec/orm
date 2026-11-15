@@ -121,6 +121,7 @@ classDiagram
         subscribe()
         execute()
         withRequestHook()
+        analyzeRestore()
     }
     class TransactionFlow {
         <<internal>>

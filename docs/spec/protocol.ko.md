@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 78365385b0195cf8664b5d1c6031ab21769965ff037af6519ec313d65bf05841 -->
+<!-- source-sha256: 3358348fb91e71f8d33fb8d7de04fb8a1e937fa8c56269976ac81546bc69df63 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -141,6 +141,8 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 ```
 
 이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 뺀다: root와 각 subquery는 `WHERE`에서, 각 join child는 `ON` 조건에서 빼므로 left join은 null child를 주며, 각 relation은 자기 statement에서 뺀다. soft delete한 행과 맞는 요청은 `restore`뿐이다(conformance vector `joins_soft_deleted`). 모델 메서드 `restore`는 set 값을 `set`으로 보내고 `where`는 보내지 않으며, 이 step을 실행한 뒤 hook이 남긴 요청에서 planner가 고른 key의 값으로 행을 읽는다([사용법](../operations/usage.ko.md#restore-a-soft-deleted-row)).
+
+- **PRT-91** Restore 분석은 key 선택과 assignment 분류를 쓰기 검증과 분리한다. 호출 시점 요청에 이 절의 key 선택 규칙을 적용한다. 완전한 primary key가 우선이고, 그렇지 않으면 이름 순서에서 첫 완전한 unique key다. Key 컬럼은 schema 순서, assignment는 중복 컬럼을 포함한 요청 set 순서를 유지한다. 선택한 key 컬럼과 매개변수 값 key 조건으로 소비하지 않은 set 컬럼을 보고한다. 분석과 planner는 같은 분류기를 부르며, planner는 그다음 기존 검증으로 primary, identity, soft-delete, audit 등 허용되지 않은 할당을 거절한다. 분석은 쓰기를 허가하지 않으며 매개변수 범위, 값 타입, 할당 권한은 검사하지 않아 hook가 해당 할당을 먼저 분류하고 거절할 수 있다. 요청 형태 오류, 알 수 없는 entity나 assignment 컬럼, soft delete가 없는 table, 최상위 restore 조건 사이의 or, 불완전한 key는 기존 코드와 메시지로 거절한다. Restore가 아닌 kind는 `IR_INVALID` `restore analysis requires a restore request`다. 호출은 bind 값을 읽거나 매개변수 번호를 바꾸지 않고 요청을 유지한다. 반환 목록은 독립적이므로 목록 수정이 요청, 등록 schema, 다음 결과를 바꿀 수 없다.
 
 ### 1.6 적재 {#_1-6-load}
 

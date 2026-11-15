@@ -1243,6 +1243,20 @@ const OPS = {
     const rotated = await connectionOf(s, context).utils().aes().rotate(coreModel(s.model, context).connect(connectionOf(s, context)), aesKeyring(s.keyring));
     return { value: { int: String(rotated) } };
   },
+  'restore.analyze'(s, context) {
+    const request = { ...structuredClone(s.request), manifest_hash: s.request.manifest_hash ?? context.schema.manifestHash };
+    const before = structuredClone(request);
+    let result = connectionOf(s, context).analyzeRestore(request);
+    if (s.mutate_return === true) {
+      if (result.key.length > 0) result.key[0] = 'changed';
+      if (result.assignments.length > 0) result.assignments[0] = 'changed';
+      result.key.push('changed');
+      result.assignments.push('changed');
+      result = connectionOf(s, context).analyzeRestore(request);
+    }
+    assert.deepEqual(request, before, 'restore analysis keeps its request unchanged');
+    return { json: result };
+  },
   'hook.install'(s, context) {
     const hooked = installHook(s, context);
     return s.as === undefined ? {} : { bind: hooked };

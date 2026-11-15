@@ -1687,6 +1687,7 @@ final class Db
     public function stats(): Stats {}
     public function close(): void {}
     public function withRequestHook(\Closure $hook): Db {}
+    public function analyzeRestore(array $request): array {}
     public function withCancellation(Cancellation $cancellation): Db {}
     public function subscribe(\Closure $subscriber): \Closure {}
     /** @internal */

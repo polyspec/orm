@@ -247,6 +247,7 @@
         "Db.subscribe",
         "Db.execute",
         "Db.withRequestHook",
+        "Db.analyzeRestore",
         "Db.close",
         "Db.stats",
         "Utils.lock",
@@ -502,7 +503,8 @@
         "stats",
         "subscribe",
         "execute",
-        "withRequestHook"
+        "withRequestHook",
+        "analyzeRestore"
       ],
       "ownership": "Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers.",
       "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다."
@@ -2233,6 +2235,49 @@
           "signature": "public function withRequestHook(Closure $hook): Polyspec\\Orm\\Db"
         }
       }
+    },
+    {
+      "id": "Db.analyzeRestore",
+      "inputs": [
+        "Request"
+      ],
+      "output": "RestoreAnalysis",
+      "errors": [
+        "CONFIG",
+        "VERSION_MISMATCH",
+        "SCHEMA_HASH_MISMATCH",
+        "IR_INVALID",
+        "ENTITY_UNKNOWN",
+        "COLUMN_UNKNOWN"
+      ],
+      "state": "Classifies a registered restore into independent key and assignment column lists using the write planner classifier, without statements, hooks, transaction changes, parameter bounds or assignment permission validation (INT-188, PRT-91)",
+      "native": {
+        "go": {
+          "symbol": "packages/go/orm/db.go::DB.AnalyzeRestore",
+          "signature": "receiver=*DB func(r *ir.Request) (RestoreAnalysis, error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::analyzeRestore",
+          "signature": "public function analyzeRestore(array $request): array"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/database.ts::Db.analyzeRestore",
+          "signature": "public analyzeRestore(request: Request): RestoreAnalysis"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.analyze_restore",
+          "signature": "def analyze_restore(self, request: IRRequest) -> RestoreAnalysis"
+        },
+        "rust": {
+          "symbol": "packages/rust/orm/src/db.rs::Db::analyze_restore",
+          "signature": "pub fn analyze_restore(&self, request: &crate::ir::Request) -> Result<RestoreAnalysis>"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::analyzeRestore",
+          "signature": "public function analyzeRestore(array $request): array"
+        }
+      },
+      "for": "once"
     },
     {
       "id": "Db.close",

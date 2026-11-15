@@ -380,6 +380,16 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 
 ---
 
+
+A hook can call `db.analyzeRestore(request)` before it accepts new values
+([INT-188](../spec/interfaces.md), [PRT-91](../spec/protocol.md)). The result
+contains the selected `key` columns and the new `assignments` columns. PHP
+passes `$r->ir` from its request hook. The analysis uses the same classifier
+as the planner and changes no request; assignment legality is checked later
+by ordinary write validation. It sends no statement and may run in a hook
+or an existing transaction. Do not infer the selected key from whichever
+set columns happen to be present.
+
 ### Restore or create a row
 
 `restoreOrCreate()` gives a key of a table with a `soft_delete` setting its row whatever state the key is in: set the values of the primary key or of one unique key on a new model, and the other values of the row, as for `restore()`.

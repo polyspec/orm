@@ -18,7 +18,7 @@ from polyspec.orm.codec import (
     ordered_json_value,
     php_serialize,
 )
-from polyspec.orm.database import Db, DbStats, RequestHook, connect
+from polyspec.orm.database import Db, DbStats, RequestHook, RestoreAnalysis, connect
 from polyspec.orm.engine import (
     Entity,
     Field,
@@ -52,6 +52,7 @@ __all__ = [
     "Model",
     "OrmError",
     "RequestHook",
+    "RestoreAnalysis",
     "RuntimeModel",
     "Schema",
     "StyledValue",

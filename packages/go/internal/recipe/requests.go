@@ -85,6 +85,48 @@ func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
 // requestOp runs the request hook and AES ops of FCV-4, or OP_UNKNOWN for an op that it does not name.
 func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.k("op").Op {
+	case "restore.analyze":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		var request ir.Request
+		if err := json.Unmarshal(s.k("request").Request, &request); err != nil {
+			return outcome{}, err
+		}
+		if request.ManifestHash == "" {
+			request.ManifestHash = c.schema.Hash
+		}
+		before, err := json.Marshal(request)
+		if err != nil {
+			return outcome{}, err
+		}
+		result, err := db.AnalyzeRestore(&request)
+		if err != nil {
+			return outcome{}, err
+		}
+		if s.k("mutate_return").MutateReturn {
+			if len(result.Key) > 0 {
+				result.Key[0] = "changed"
+			}
+			if len(result.Assignments) > 0 {
+				result.Assignments[0] = "changed"
+			}
+			result.Key = append(result.Key, "changed")
+			result.Assignments = append(result.Assignments, "changed")
+			result, err = db.AnalyzeRestore(&request)
+			if err != nil {
+				return outcome{}, err
+			}
+		}
+		after, err := json.Marshal(request)
+		if err != nil {
+			return outcome{}, err
+		}
+		if string(before) != string(after) {
+			return outcome{}, fmt.Errorf("restore analysis changed its request")
+		}
+		return jsonOutcome(map[string]any{"key": result.Key, "assignments": result.Assignments}), nil
 	case "hook.install":
 		return c.installHook(s)
 	case "hook.records":

@@ -256,7 +256,7 @@ final class Validator
      *     set: list<array<string, mixed>>} the key, the where with an eq condition for each set value of a
      *     key column, and the new values
      */
-    public static function restoreKey(array $ent, array $r): array
+    private static function classifyRestore(array $ent, array $r): array
     {
         if ($ent['soft_delete'] === '') {
             throw self::err(Code::IR_INVALID, "restore of {$ent['entity']}, which has no soft_delete setting");
@@ -322,11 +322,44 @@ final class Validator
                 continue;
             }
             // The key and the soft delete column are the table's own: a restore clears the latter itself.
+            $parts['set'][] = $a;
+        }
+        return $parts;
+    }
+
+    /** The classification shared by public analysis and the write planner (PRT91). */
+    public static function analyzeRestore(RuntimeModel $model, array $r): array
+    {
+        self::shape('Request', $r, '');
+        if (($r['ir_version'] ?? null) !== self::IR_VERSION) {
+            throw self::err(Code::VERSION_MISMATCH, 'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION);
+        }
+        if (($r['kind'] ?? '') !== 'restore') {
+            throw self::err(Code::IR_INVALID, 'restore analysis requires a restore request');
+        }
+        $name = $r['entity'] ?? '';
+        $ent = $model->entity($name);
+        if ($ent === null) {
+            throw self::err(Code::ENTITY_UNKNOWN, $name);
+        }
+        foreach ($r['set'] ?? [] as $a) {
+            if (RuntimeModel::column($ent, $a['column']) === null) {
+                throw self::err(Code::COLUMN_UNKNOWN, $name . '.' . $a['column']);
+            }
+        }
+        $parts = self::classifyRestore($ent, $r);
+        return ['key' => array_values($parts['key']), 'assignments' => array_column($parts['set'], 'column')];
+    }
+
+    /** Applies ordinary write restrictions after the shared restore classification. */
+    public static function restoreKey(array $ent, array $r): array
+    {
+        $parts = self::classifyRestore($ent, $r);
+        foreach ($parts['set'] as $a) {
             $c = RuntimeModel::column($ent, $a['column']);
             if ($c['pk'] || $ent['identity'] === $a['column'] || $a['column'] === $ent['soft_delete']) {
                 throw self::err(Code::IR_INVALID, 'restore cannot assign ' . $a['column']);
             }
-            $parts['set'][] = $a;
         }
         return $parts;
     }

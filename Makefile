@@ -3898,3 +3898,39 @@ write-match-unit-check/php-extension: php-vendor-check php-models orm-install-ph
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist --filter '(testNone|testSqlite).*require_match' packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
 
 CI_TARGETS_static += write-match-unit-check
+
+.PHONY: restore-analysis-unit-check restore-analysis-unit-check/typescript
+restore-analysis-unit-check: restore-analysis-unit-check/typescript
+restore-analysis-unit-check/typescript: typescript-current
+	$(READ_TYPESCRIPT)
+	$(RECIPE_TS_TEST) --test-name-pattern=restore_ packages/ts/tests/engine.mjs packages/ts/tests/request_hook-sqlite.test.mjs
+
+.PHONY: restore-analysis-unit-check/go restore-analysis-unit-check/python restore-analysis-unit-check/php restore-analysis-unit-check/rust restore-analysis-unit-check/php-extension
+restore-analysis-unit-check: restore-analysis-unit-check/go restore-analysis-unit-check/python restore-analysis-unit-check/php restore-analysis-unit-check/rust restore-analysis-unit-check/php-extension
+restore-analysis-unit-check/go: go-models
+	$(GO_TEST) ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^(restore_|require_match_restore_)' -count=1
+	$(GO_TEST) ./packages/go/engine/ir -run '^TestRecipeIRValidateNone$$/^restore_' -count=1
+restore-analysis-unit-check/python: python-venv-check
+	$(PYTHON_VENV)/bin/python -m unittest -k restore_ packages.python.tests.test_ir_validate_none packages.python.tests.test_request_hook_sqlite
+restore-analysis-unit-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '(testNone|testSqlite).*restore_' packages/php/tests/IrValidateRecipeTest.php packages/php/tests/RequestHookSqliteRecipeTest.php
+restore-analysis-unit-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) restore-analysis-unit-check -- $(RECIPE_RUST_TEST) --test all -- ir_validate_none::restore_ request_hook_sqlite::restore_ request_hook_sqlite::require_match_restore_
+restore-analysis-unit-check/php-extension: RUN_DIR = $(abspath .runtime/run)/restore-analysis-unit-check-$$PPID
+restore-analysis-unit-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
+	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist --filter '(testNone|testSqlite).*restore_' packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+CHECK_TARGETS += restore-analysis-unit-check
+CI_TARGETS_static += restore-analysis-unit-check
+
+.PHONY: restore-analysis-api-check
+restore-analysis-api-check: php-vendor-check typescript-read interface-typescript-check python-venv-check lease-tool
+	$(NODE) tests/interfaces/check/main.mts --language typescript
+	$(NODE) tests/interfaces/check/main.mts --language go
+	$(NODE) tests/interfaces/check/main.mts --language php
+	ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/interfaces/check/main.mts --language python
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --language rust
+	$(NODE) tests/interfaces/check/main.mts --language php-extension
+
+CHECK_TARGETS += restore-analysis-api-check
+CI_TARGETS_static += restore-analysis-api-check

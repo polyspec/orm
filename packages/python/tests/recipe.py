@@ -4,6 +4,7 @@
 # output of its own.
 import atexit
 import contextlib
+import copy
 import dataclasses
 import json
 import math
@@ -4819,6 +4820,23 @@ def _install_hook(step: dict, context: dict) -> None:
     context["bound"][target] = base.with_request_hook(hook)
 
 
+def _op_restore_analyze(step: dict, context: dict) -> dict:
+    request = copy.deepcopy(step["request"])
+    request.setdefault("manifest_hash", context["schema"].manifest_hash)
+    before = copy.deepcopy(request)
+    result = _connection_of(step, context).analyze_restore(request)
+    if step.get("mutate_return", False):
+        if result["key"]:
+            result["key"][0] = "changed"
+        if result["assignments"]:
+            result["assignments"][0] = "changed"
+        result["key"].append("changed")
+        result["assignments"].append("changed")
+        result = _connection_of(step, context).analyze_restore(request)
+    _expect_equal(request, before, "restore analysis keeps its request unchanged")
+    return {"json": result}
+
+
 def _op_hook_install(step: dict, context: dict) -> dict:
     _install_hook(step, context)
     return {"bind": context["bound"][step["as"]]} if "as" in step else {}
@@ -4965,6 +4983,7 @@ _DATABASE_OPS = {
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,
     "events.captured": _op_events_captured,
+    "restore.analyze": _op_restore_analyze,
     "hook.install": _op_hook_install,
     "hook.records": _op_hook_records,
     "utils.aes_status": _op_aes_status,

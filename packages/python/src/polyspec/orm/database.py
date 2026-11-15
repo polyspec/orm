@@ -40,6 +40,7 @@ from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
 from polyspec.orm.engine import Engine
+from polyspec.orm.engine.validate import analyze_restore
 from polyspec.orm.aes import _stored_version
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
@@ -56,7 +57,7 @@ from polyspec.orm.model import Model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
 from polyspec.orm.schema import Schema
-from typing import Callable, TypeVar
+from typing import TypedDict, Callable, TypeVar
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
 from polyspec.orm.dbspec.parse import goq
@@ -1758,6 +1759,13 @@ def _active_for(db: "Db") -> TxFrame | None:
 # Request hook: receives each request of a handle just before it is planned and returns the request to plan. The second argument, add_param(value),
 # appends value to the end of the request parameters and returns its index; the third argument is a read-only
 # tuple of the parameters the request bound (docs/operations/usage.md "Request hook").
+class RestoreAnalysis(TypedDict):
+    """Selected restore key and new assignment columns (INT188)."""
+
+    key: list[str]
+    assignments: list[str]
+
+
 RequestHook = Callable[[IRRequest, Callable[[object], int], tuple], IRRequest]
 
 
@@ -2244,6 +2252,16 @@ class Db:
         handle.request_hook = hook
         handle._root = self.root()
         return handle
+
+    def analyze_restore(self, request: IRRequest) -> RestoreAnalysis:
+        """Classifies restore columns without statements, hooks or write validation (INT188)."""
+        if self.closed:
+            raise OrmError(codes.CONFIG, "database is closed")
+        manifest_hash = request.get("manifest_hash")
+        engine = self.engines.get(manifest_hash)
+        if engine is None:
+            raise OrmError(codes.SCHEMA_HASH_MISMATCH, f"restore analysis manifest {manifest_hash} is not registered on this connection")
+        return analyze_restore(engine.model, request)
 
     def with_future(self, future: asyncio.Future) -> Db:
         """Returns a handle whose active statements are interrupted when future is cancelled."""

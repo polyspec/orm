@@ -1063,6 +1063,7 @@
             "dbspec.import_mermaid",
             "hook.install",
             "hook.records",
+            "restore.analyze",
             "clock.read",
             "transaction.attempts",
             "transaction.deadlock",
@@ -1457,6 +1458,9 @@
         },
         {
           "$ref": "#/$defs/ops/hook.records"
+        },
+        {
+          "$ref": "#/$defs/ops/restore.analyze"
         },
         {
           "$ref": "#/$defs/ops/clock.read"
@@ -8227,6 +8231,18 @@
             "description": "The name that binds the UTC text of six fraction digits, for a bind of a later step.",
             "$ref": "#/$defs/name"
           }
+        }
+      },
+      "restore.analyze": {
+        "type": "object",
+        "required": ["op", "connection", "request", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {"const": "restore.analyze"},
+          "connection": {"$ref": "#/$defs/name"},
+          "request": {"type": "object"},
+          "mutate_return": {"type": "boolean"},
+          "expect": {"$ref": "#/$defs/expect"}
         }
       },
       "hook.records": {
