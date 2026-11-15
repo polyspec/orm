@@ -4817,6 +4817,20 @@
       "to": "query.value"
     }
   ],
+  "services": [
+    {
+      "id": "postgres",
+      "address": "ORM_TEST_POSTGRES_DSN",
+      "state": "ORM_TEST_SERVICE_STATE",
+      "reason": "SVC-1"
+    },
+    {
+      "id": "mysql",
+      "address": "ORM_TEST_MYSQL_DSN",
+      "state": "ORM_TEST_SERVICE_STATE",
+      "reason": "SVC-1"
+    }
+  ],
   "cases": [
     {
       "member": "integer_value.constructor",
@@ -5147,6 +5161,96 @@
       "member": "codec.blind_index",
       "file": "contracts/interface/core.json",
       "group": "codec.blind_index"
+    },
+    {
+      "member": "db.connect",
+      "file": "contracts/interface/service.json",
+      "group": "db.connect.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "db.connect_schema",
+      "file": "contracts/interface/service.json",
+      "group": "db.connect_schema.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.get_count",
+      "file": "contracts/interface/service.json",
+      "group": "query.get_count.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.get_by",
+      "file": "contracts/interface/service.json",
+      "group": "query.get_by.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.get_count_by",
+      "file": "contracts/interface/service.json",
+      "group": "query.get_count_by.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.create",
+      "file": "contracts/interface/service.json",
+      "group": "query.create.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.update",
+      "file": "contracts/interface/service.json",
+      "group": "query.update.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.delete",
+      "file": "contracts/interface/service.json",
+      "group": "query.delete.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.restore",
+      "file": "contracts/interface/service.json",
+      "group": "query.restore.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
+    },
+    {
+      "member": "query.restore_or_create",
+      "file": "contracts/interface/service.json",
+      "group": "query.restore_or_create.service",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "SVC-2"
+      }
     }
   ]
 }

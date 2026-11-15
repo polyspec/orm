@@ -1,0 +1,1108 @@
+{
+  "db.connect.service": [
+    {
+      "id": "refused_startup_parameter",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres"
+      },
+      "dsn": {
+        "service": "address"
+      },
+      "pool_size": 1,
+      "cfg": {
+        "statement_timeout_ms": 4294967295
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: invalid value for parameter \"statement_timeout\": \"4294967295\" (SQLSTATE 22023)"
+      }
+    }
+  ],
+  "db.connect_schema.service": [
+    {
+      "id": "refused_startup_parameter",
+      "rule": "SVC-7",
+      "service": {
+        "id": "postgres"
+      },
+      "dsn": {
+        "service": "address"
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+        }
+      },
+      "pool_size": 1,
+      "cfg": {
+        "statement_timeout_ms": 4294967295
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: invalid value for parameter \"statement_timeout\": \"4294967295\" (SQLSTATE 22023)"
+      }
+    }
+  ],
+  "query.get_count.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    },
+    {
+      "id": "row_lock_no_wait",
+      "rule": "SVC-4",
+      "service": {
+        "id": "mysql",
+        "setup": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "table": "service_lock_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+          "rows": [
+            [
+              1,
+              "held"
+            ]
+          ],
+          "hold": {
+            "where": "id = 1",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+            }
+          },
+          "entity": "service_lock_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Id",
+              "values": [
+                {
+                  "kind": "int",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          {
+            "call": "query.for_update_no_wait"
+          }
+        ]
+      },
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "lock_not_available: Statement aborted because lock(s) could not be acquired immediately and NOWAIT is set."
+      }
+    },
+    {
+      "id": "row_lock_statement_timeout",
+      "rule": "SVC-4",
+      "service": {
+        "id": "mysql",
+        "setup": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "table": "service_lock_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+          "rows": [
+            [
+              1,
+              "held"
+            ]
+          ],
+          "hold": {
+            "where": "id = 1",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+            }
+          },
+          "entity": "service_lock_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {
+                    "statement_timeout_ms": 100
+                  }
+                }
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Id",
+              "values": [
+                {
+                  "kind": "int",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          {
+            "call": "query.for_update"
+          }
+        ]
+      },
+      "raises": {
+        "kind": "canceled",
+        "category": "store",
+        "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
+      }
+    }
+  ],
+  "query.get_by.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    },
+    {
+      "id": "row_lock_no_wait",
+      "rule": "SVC-4",
+      "service": {
+        "id": "mysql",
+        "setup": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "table": "service_lock_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+          "rows": [
+            [
+              1,
+              "held"
+            ]
+          ],
+          "hold": {
+            "where": "id = 1",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+            }
+          },
+          "entity": "service_lock_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.for_update_no_wait"
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "lock_not_available: Statement aborted because lock(s) could not be acquired immediately and NOWAIT is set."
+      }
+    },
+    {
+      "id": "row_lock_statement_timeout",
+      "rule": "SVC-4",
+      "service": {
+        "id": "mysql",
+        "setup": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "table": "service_lock_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+          "rows": [
+            [
+              1,
+              "held"
+            ]
+          ],
+          "hold": {
+            "where": "id = 1",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+            }
+          },
+          "entity": "service_lock_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {
+                    "statement_timeout_ms": 100
+                  }
+                }
+              }
+            }
+          },
+          {
+            "call": "query.for_update"
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "canceled",
+        "category": "store",
+        "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
+      }
+    }
+  ],
+  "query.get_count_by.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    },
+    {
+      "id": "row_lock_no_wait",
+      "rule": "SVC-4",
+      "service": {
+        "id": "mysql",
+        "setup": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "table": "service_lock_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+          "rows": [
+            [
+              1,
+              "held"
+            ]
+          ],
+          "hold": {
+            "where": "id = 1",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+            }
+          },
+          "entity": "service_lock_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.for_update_no_wait"
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "lock_not_available",
+        "category": "store",
+        "message": "lock_not_available: Statement aborted because lock(s) could not be acquired immediately and NOWAIT is set."
+      }
+    },
+    {
+      "id": "row_lock_statement_timeout",
+      "rule": "SVC-4",
+      "service": {
+        "id": "mysql",
+        "setup": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "table": "service_lock_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+          "rows": [
+            [
+              1,
+              "held"
+            ]
+          ],
+          "hold": {
+            "where": "id = 1",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+            }
+          },
+          "entity": "service_lock_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {
+                    "statement_timeout_ms": 100
+                  }
+                }
+              }
+            }
+          },
+          {
+            "call": "query.for_update"
+          }
+        ]
+      },
+      "chain": "Id",
+      "values": [
+        {
+          "kind": "int",
+          "value": 1
+        }
+      ],
+      "raises": {
+        "kind": "canceled",
+        "category": "store",
+        "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
+      }
+    }
+  ],
+  "query.create.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    }
+  ],
+  "query.update.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "int",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    }
+  ],
+  "query.delete.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "int",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    }
+  ],
+  "query.restore.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    }
+  ],
+  "query.restore_or_create.service": [
+    {
+      "id": "missing_table",
+      "rule": "SVC-7",
+      "service": {
+        "id": "mysql",
+        "check": {
+          "service": "ORM_TEST_MYSQL_DSN",
+          "absent": "service_absent_event"
+        }
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+            }
+          },
+          "entity": "service_absent_event"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "kind": "driver",
+        "category": "store",
+        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
+      }
+    }
+  ]
+}
