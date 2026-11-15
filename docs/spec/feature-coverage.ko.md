@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 80e2041e07bd9d6b102413875cc8c09c439bfed7bf2ed23d914f8d49755fcaec -->
+<!-- source-sha256: 60738200d352f6b942c70a176dc3b6aad698ded3171e663ee3e573c5384ef514 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -564,4 +564,4 @@ recipe `contracts/fixtures/catalog_connection/catalog_connection.json`은 여섯
 
 ## Unicode 표 생성 검증
 
-- **FCV-20** Unicode word-table generator는 현재의 시간 제한 없는 Rust 시험 harness(`case!()`)를 출력한다. 재생성은 커밋된 표의 bytes와 모든 code point 분류를 유지하며 폐지한 시간 제한을 되돌리지 않는다. 이 generator 전용 surface는 FCV-2에 따라 native에 남고 `tests/dbspec/unicode`의 `TestCommittedTablesAreGenerated`와 나머지 case가 검사한다. Emitter는 현재 harness를 사용한다. 수정 전 native Red는 오래된 생성 Rust text 때문에 두 case가 실패하고 세 case가 통과했으며 커밋 전 수정안은 Go owner 다섯 case를 모두 통과했다. 커밋된 Go와 Rust Unicode owner 검증은 아직 남아 있다.
+- **FCV-20** Unicode word-table generator는 현재의 시간 제한 없는 Rust 시험 harness(`case!()`)를 출력한다. 재생성은 커밋된 표의 bytes와 모든 code point 분류를 유지하며 폐지한 시간 제한을 되돌리지 않는다. 이 generator 전용 surface는 FCV-2에 따라 native에 남고 `tests/dbspec/unicode`의 `TestCommittedTablesAreGenerated`와 나머지 case가 검사한다. Emitter는 현재 harness를 사용한다. 수정 전 native Red는 오래된 생성 Rust text 때문에 두 case가 실패하고 세 case가 통과했으며 커밋 전 수정안은 Go owner 다섯 case를 모두 통과했다. 선언된 커밋 tree 검증은 Go owner 다섯 case와 Rust Unicode 전체 code point case를 실패와 skip 없이 통과한다.

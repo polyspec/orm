@@ -558,7 +558,7 @@ The go engine test `TestFormat` was also bound to this unit; it stays bound by `
 
 ## Generated Unicode table verification
 
-- **FCV-20** The Unicode word-table generator emits the current deadline-free Rust test harness (`case!()`). Regeneration must preserve the committed table bytes and all code-point classifications; it must not restore a retired time limit. This generator-only surface stays native under FCV-2 and is checked by `TestCommittedTablesAreGenerated` and the remaining cases of `tests/dbspec/unicode`. The emitter uses the current harness. Its unchanged-emitter native Red reported three passed and two failed, both failures from the stale generated Rust text; the uncommitted repair passes all five Go owner cases. Committed Go and Rust Unicode owner verification remains pending.
+- **FCV-20** The Unicode word-table generator emits the current deadline-free Rust test harness (`case!()`). Regeneration must preserve the committed table bytes and all code-point classifications; it must not restore a retired time limit. This generator-only surface stays native under FCV-2 and is checked by `TestCommittedTablesAreGenerated` and the remaining cases of `tests/dbspec/unicode`. The emitter uses the current harness. Its unchanged-emitter native Red reported three passed and two failed, both failures from the stale generated Rust text; the uncommitted repair passes all five Go owner cases. The declared committed-tree verification passes all five Go owner cases and the Rust Unicode full-code-point case, with no failure or skip.
 
 
 ## Catalog connection exclusions {#catalog-connection-exclusions}
