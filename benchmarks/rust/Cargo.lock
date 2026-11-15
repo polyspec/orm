@@ -529,7 +529,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1442,8 +1442,8 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "polyspec-binding-core"
-version = "0.0.4"
-source = "git+https://github.com/polyspec/binding.git?tag=v0.0.4#13d4820f3f876378b3631c41f5e15dc6677a189a"
+version = "0.0.8"
+source = "git+https://github.com/polyspec/binding.git?tag=v0.0.8#7b71949ede916c00c17c0ab35ddc735ab33fa8f6"
 dependencies = [
  "indexmap",
  "libc",
@@ -1452,8 +1452,8 @@ dependencies = [
 
 [[package]]
 name = "polyspec-json"
-version = "0.0.27"
-source = "git+https://github.com/polyspec/json.git?tag=v0.0.27#e658bf429368622a305a60c4be4535c4050bdb34"
+version = "0.0.29"
+source = "git+https://github.com/polyspec/json.git?tag=v0.0.29#84b6f1459b21f5c9fd66d47d614c0c30f8cdd5be"
 dependencies = [
  "polyspec-binding-core",
  "ryu-js",
@@ -1715,7 +1715,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2588,7 +2588,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
