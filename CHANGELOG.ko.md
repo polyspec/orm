@@ -1,10 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ea000788a9a2669a7570580168cbe4e3c191dec4470d6e0320bb62d43c707849 -->
+<!-- source-sha256: bb2b1591a75ef8b1017d5c59305fae9839292a9c292ea944e62d915fd5e5440c -->
 # 변경 이력
 
 ## Unreleased
 
-- SQLite row-lock-table 준비는 CREATE를 실행한 lease를 반환한 뒤 성공을 보고해야 한다(T493-10, CORE-128). 전체 machine owner는 Call 취소 뒤에도 사용 중인 연결 하나를 관찰했지만 그 추가 lease의 정확한 출처는 입증하지 않았다. Gate로 제어하는 준비 시험과 동일 연결 fixture 준비는 아직 진행 전이며 물리적 SQLite worker 완료는 별도 문제다.
+- SQLite row-lock-table 준비는 CREATE를 실행한 lease를 반환한 뒤 성공을 보고해야 한다(T493-10, CORE-128). 전체 machine owner는 Call 취소 뒤에도 사용 중인 연결 하나를 관찰했지만 그 추가 lease의 정확한 출처는 입증하지 않았다. Helper는 실제 lease 반환을 기다리고 fixture 준비는 같은 획득 연결에서 실행하며 물리적 SQLite worker 완료는 별도 문제다. 준비는 statement 관찰 전에 연결을 얻으므로 closed/timeout 연결 획득에는 SQL event, server 오류 변환, subscriber 오류 대체가 없고 statement elapsed는 pool 대기를 제외한다(INT-91). 실제 닫힌 pool helper 시험은 closed 오류와 subscriber 호출 0회를 확인한다. 결정적인 커밋 Red는 준비가 lease 반환 전에 완료되어 22개 통과·1개 실패를 기록했다. 커밋 전 수정안은 transaction/savepoint/close artifact 18개, execute artifact 4개, 준비 artifact 2개, 기존 dbspec 일치 3개로 27개 통과·실패 및 skip 0개를 기록했다. 커밋된 수정안 검증은 진행 전이다.
 
 - T493-5부터 T493-9의 checklist 검증 cell은 실행 가능한 code span을 사용하여 item-test가 기존 make 명령을 추출한다. 이전에는 item runner가 실행하지 않는 일반 text였다. 명령과 앞선 native 검증 결과는 바뀌지 않으며 이 표기 수정으로 Scratch를 다시 실행하지 않는다(T493-5).
 - checklist는 private SQLite worker proof owner 설계의 선행 항목을 기록한다(T493-9). Node owner는 할당 전에 명시적인 parent PID를 검증하고 directory와 Rust proof child를 소유하며 공개된 Kit 0.0.113의 public process-resource utility로 all-exit close를 기다린 뒤 정리해야 한다. 이 등록에서는 harness, 의존성 갱신이나 안전하지 않은 이전 구현의 입증을 실행하지 않으며 worker 완료는 별도로 조사 중이다.

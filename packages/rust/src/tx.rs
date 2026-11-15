@@ -796,7 +796,11 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
     let create = "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))";
     let sent = Sent::bare(KIND_UTILITY, &tables, None, create);
     match db.pool() {
-        Pool::Sqlite(p) => events::raw(db, p, sent).await?,
+        Pool::Sqlite(p) => {
+            let mut connection = CancellableConnection::new(p.acquire().await?);
+            events::raw(db, &mut *connection, sent).await?;
+            connection.returned().await;
+        }
         Pool::Markdown(p) => events::raw(db, &mut p.acquire().await?, sent).await?,
         _ => return Ok(()),
     }

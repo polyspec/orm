@@ -474,9 +474,9 @@ has no case of the three members because each needs a database (CORE-72).
 owned constructor with `machine: true`. Aggregate machine verification is still pending a separate pool-use
 count failure; generated binding runtime verification of this member is incomplete.
 
-- **CORE-128** Successful SQLite row-lock-table preparation returns the actual connection lease that executed its CREATE statement before preparation completes. A completed transaction-opening I/O therefore retains only its intended transaction lease when no independent operation is active. Cancellation or error discards an unreturned preparation lease. This rule concerns pool ownership, not receipt of SQLite worker shutdown.
+- **CORE-128** Successful SQLite row-lock-table preparation returns the actual connection lease that executed its CREATE statement before preparation completes. A completed transaction-opening I/O therefore retains only its intended transaction lease when no independent operation is active. Cancellation or error discards an unreturned preparation lease. This rule concerns pool ownership, not receipt of SQLite worker shutdown. Preparation acquires before statement observation: acquisition failure (`closed` or `pool_timeout`) sends no SQL, publishes no statement event and is neither server-remapped nor replaced by a subscriber error. The statement elapsed duration excludes pool acquisition, as INT-91 measures send through result.
 
-This preparation-return rule is not yet implemented or verified.
+The preparation-return helper is implemented. Its gated actual-lease and closed-pool observation cases pass in the uncommitted native owner run; committed verification is pending.
 
 ## Interface contract
 

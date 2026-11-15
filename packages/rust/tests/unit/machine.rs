@@ -93,8 +93,8 @@ fn probe_db(scratch: &Scratch) -> (Runtime, Db) {
     let db = runtime.block_on(async {
         let db = Db::connect(&format!("sqlite://{}", scratch.join("machine.sqlite").display()), 2, Config::default()).await.expect("connect");
         let Pool::Sqlite(pool) = db.pool() else { panic!("the test database is SQLite") };
-        sqlx::query("CREATE TABLE machine_probe (id INTEGER PRIMARY KEY)").execute(pool).await.expect("create the table");
-        let mut connection = pool.acquire().await.expect("wait for the fixture connection to return");
+        let mut connection = pool.acquire().await.expect("acquire the fixture connection");
+        sqlx::query("CREATE TABLE machine_probe (id INTEGER PRIMARY KEY)").execute(&mut *connection).await.expect("create the table");
         connection.return_to_pool().await;
         db
     });
@@ -625,6 +625,33 @@ struct ReturnGate {
     release: tokio::sync::Notify,
 }
 
+// Requirements: CORE-128, INT-91. A failed acquisition sends no statement and cannot invoke a subscriber.
+#[test]
+fn sqlite_lock_preparation_machine_on_a_closed_pool_emits_no_statement() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-machine-preparation-closed");
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
+    let db = runtime.block_on(Db::connect(&format!("sqlite://{}", scratch.join("closed.sqlite").display()), 1, Config::default())).expect("connect");
+    runtime.block_on(db.close_async());
+    let events = Arc::new(AtomicUsize::new(0));
+    let observed = Arc::clone(&events);
+    let subscription = db
+        .subscribe(move |_| {
+            observed.fetch_add(1, Ordering::SeqCst);
+            Err(Error::config("an acquisition failure must not invoke a statement subscriber"))
+        })
+        .expect("subscribe");
+    let result = runtime.block_on(super::ensure_sqlite_lock_table(&db));
+    subscription.unsubscribe();
+    let error = result.expect_err("a closed pool refuses acquisition");
+    assert_eq!(error.kind(), Kind::Closed);
+    assert_eq!(error.text(), "database is closed");
+    assert_eq!(events.load(Ordering::SeqCst), 0);
+}
+
 // Requirements: CORE-128. Preparation cannot report success while its own connection is held at return.
 #[test]
 fn sqlite_lock_preparation_machine_returns_its_actual_lease_before_completion() {
@@ -638,18 +665,23 @@ fn sqlite_lock_preparation_machine_returns_its_actual_lease_before_completion() 
     runtime.block_on(db.pool().close());
     let gate = Arc::new(ReturnGate::default());
     let on_return = Arc::clone(&gate);
-    let pool = runtime.block_on(
-        sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).after_release(move |_, _| {
-            let gate = Arc::clone(&on_return);
-            Box::pin(async move {
-                if gate.armed.swap(false, Ordering::AcqRel) {
-                    gate.entered.notify_one();
-                    gate.release.notified().await;
-                }
-                Ok(true)
-            })
-        }).connect(&format!("sqlite://{}", scratch.join("prepare.sqlite").display()))
-    ).expect("connect the gated pool");
+    let pool = runtime
+        .block_on(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .max_connections(1)
+                .after_release(move |_, _| {
+                    let gate = Arc::clone(&on_return);
+                    Box::pin(async move {
+                        if gate.armed.swap(false, Ordering::AcqRel) {
+                            gate.entered.notify_one();
+                            gate.release.notified().await;
+                        }
+                        Ok(true)
+                    })
+                })
+                .connect(&format!("sqlite://{}", scratch.join("prepare.sqlite").display())),
+        )
+        .expect("connect the gated pool");
     Arc::get_mut(&mut db.inner).expect("the fixture owns its Db").pool = Pool::Sqlite(pool);
     gate.armed.store(true, Ordering::Release);
     let preparing_db = db.clone();
@@ -664,7 +696,10 @@ fn sqlite_lock_preparation_machine_returns_its_actual_lease_before_completion() 
             gate.entered.notified().await;
         }
         gate.release.notify_one();
-        let result = match early { Some(result) => result, None => setup.await };
+        let result = match early {
+            Some(result) => result,
+            None => setup.await,
+        };
         db.close_async().await;
         (completed, result)
     });

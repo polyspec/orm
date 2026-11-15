@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: af91ad349248888a7ac875025529659b7e8ce32e094d3cc949b84f2f828c8f33 -->
+<!-- source-sha256: dd74b9c81ba99c302644f386b4a0edfc98e7826175b88a58aa34a05ac394a26b -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -400,9 +400,9 @@ case가 없다(CORE-72).
 `machine: true`로 가리킨다. machine 전체 검증은 별도의 pool 사용 수 실패 때문에 아직 끝나지 않았고 이 member의
 생성된 binding runtime 검증도 끝나지 않았다.
 
-- **CORE-128** SQLite row-lock-table 준비가 성공하면 CREATE statement를 실행한 실제 connection lease를 준비 완료 전에 반환한다. 따라서 독립된 operation이 없을 때 완료한 transaction-opening I/O는 의도한 transaction lease만 보유한다. 취소나 오류는 반환하지 않은 준비 lease를 폐기한다. 이 규칙은 pool 소유권에 관한 것이며 SQLite worker 종료 수신을 뜻하지 않는다.
+- **CORE-128** SQLite row-lock-table 준비가 성공하면 CREATE statement를 실행한 실제 connection lease를 준비 완료 전에 반환한다. 따라서 독립된 operation이 없을 때 완료한 transaction-opening I/O는 의도한 transaction lease만 보유한다. 취소나 오류는 반환하지 않은 준비 lease를 폐기한다. 이 규칙은 pool 소유권에 관한 것이며 SQLite worker 종료 수신을 뜻하지 않는다. 준비는 statement 관찰 전에 연결을 얻는다. 연결 획득 실패(`closed` 또는 `pool_timeout`)는 SQL을 보내거나 statement event를 발행하지 않으며 server 오류 변환이나 subscriber 오류 대체를 거치지 않는다. INT-91이 전송부터 결과까지 측정하므로 statement elapsed는 pool 연결 대기를 제외한다.
 
-이 준비 반환 규칙은 아직 구현하거나 검증하지 않았다.
+준비 반환 helper를 구현했다. Gate로 제어한 실제 lease 시험과 닫힌 pool 관찰 시험은 커밋 전 native owner 실행에서 통과했으며 커밋된 검증은 진행 전이다.
 
 ## 인터페이스 계약
 
