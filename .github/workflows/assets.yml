@@ -57,12 +57,12 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          tools: none
+          tools: composer:2.10.3
           coverage: none
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          tools: none
+          tools: composer:2.10.3
           coverage: none
       - run: make ci-assets-platform RELEASE=${{ inputs.release }}
       - uses: actions/upload-artifact@v4
