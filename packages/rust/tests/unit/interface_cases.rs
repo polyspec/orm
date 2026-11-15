@@ -4,8 +4,10 @@
 // it, so a member whose cases the contract names and that the table lacks fails the test. A value of orm_value is
 // given as {kind, value} (binding GN-13) and enters through from_host, as it enters from a language.
 
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::future::Future;
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -13,7 +15,11 @@ use binding_core::{Failure, Handle, HostText, HostValue, HostValues, IntOut, Ord
 use serde_json::{Map, Value};
 
 use crate::or_panic::OrPanic as _;
-use crate::{AesKeyring, BytesValue, Config, Db, Error, FloatValue, IntegerValue, Manifest, MapValue, OrmValue, Query, Schema};
+use crate::test_support::Scratch;
+use crate::{
+    AesKeyring, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest, MapValue, OrmValue, Query, Schema, StepRunner,
+    TransactionOptions, Tx,
+};
 
 const CONTRACT: &str = include_str!("../../interface.json");
 const CASES: &str = include_str!("../../../../contracts/interface/core.json");
@@ -21,6 +27,8 @@ const CASES: &str = include_str!("../../../../contracts/interface/core.json");
 /// An instance of a class unit that a case made.
 enum Instance {
     Db(Db),
+    Tx(Tx),
+    Runner(Box<StepRunner>),
     Keyring(AesKeyring),
     Schema(Schema),
     Query(Box<Query>),
@@ -41,8 +49,61 @@ fn field<'a>(args: &'a Map<String, Value>, name: &str, member: &str) -> &'a Valu
     args.get(name).unwrap_or_else(|| panic!("{member}: the case gives no {name}"))
 }
 
+thread_local! {
+    /// The directory of the case that runs on this thread (binding GN-6y, GN-13i, GN-13l): the files of `@files`, a value
+    /// of `path` and a part `case_path` of a composed text resolve in it.
+    static ROOT: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+    /// The databases that the case opened, which the case closes when it ends.
+    static OPENED: RefCell<Vec<Db>> = const { RefCell::new(Vec::new()) };
+}
+
+/// The directory of the case that runs.
+fn root(what: &str) -> PathBuf {
+    ROOT.with_borrow(|root| root.clone()).unwrap_or_else(|| panic!("{what}: no case directory is set"))
+}
+
+/// A relative path of a case (binding GN-6y) inside the directory of the case.
+fn case_path(relative: &str, what: &str) -> PathBuf {
+    assert!(
+        !relative.is_empty() && !relative.starts_with('/') && relative.split('/').all(|part| !part.is_empty() && part != ".."),
+        "{what}: {relative} is no relative path of a case"
+    );
+    if relative == "." {
+        root(what)
+    } else {
+        root(what).join(relative)
+    }
+}
+
+/// A text of a case: a plain text, or the composed form of binding GN-13l, `{"text": [<literal>, {"case_path": <relative>,
+/// "as": "json-string"}, ..]}`, whose path parts resolve in the directory of the case.
+fn case_text(value: &Value, what: &str) -> Option<String> {
+    if let Some(text) = value.as_str() {
+        return Some(text.to_owned());
+    }
+    let fields = value.as_object()?;
+    let parts = fields.get("text").and_then(Value::as_array).filter(|parts| fields.len() == 1 && !parts.is_empty())?;
+    let mut out = String::new();
+    for part in parts {
+        if let Some(literal) = part.as_str() {
+            out.push_str(literal);
+            continue;
+        }
+        let path = part.as_object().unwrap_or_else(|| panic!("{what}: a part of a composed text is a text or a path object"));
+        let relative = path.get("case_path").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a path object names case_path"));
+        let resolved = case_path(relative, what);
+        let resolved = resolved.to_str().unwrap_or_else(|| panic!("{what}: the directory of the case is no Unicode text")).to_owned();
+        match path.get("as").map(|mode| mode.as_str()) {
+            None => out.push_str(&resolved),
+            Some(Some("json-string")) => out.push_str(&serde_json::to_string(&resolved).or_panic(|error| format!("{what}: {error}"))),
+            Some(other) => panic!("{what}: a path object has no mode {other:?}"),
+        }
+    }
+    Some(out)
+}
+
 fn text(args: &Map<String, Value>, name: &str, member: &str) -> String {
-    field(args, name, member).as_str().unwrap_or_else(|| panic!("{member}: {name} is no text")).to_owned()
+    case_text(field(args, name, member), member).unwrap_or_else(|| panic!("{member}: {name} is no text"))
 }
 
 fn uint(args: &Map<String, Value>, name: &str, member: &str) -> u32 {
@@ -258,6 +319,80 @@ fn case_value(value: &OrmValue, what: &str) -> Value {
     }
 }
 
+/// A connection of a case: an instance value of `db`, or of `tx` (the interface `connection`).
+async fn connection(value: &Value, what: &str) -> Connection {
+    match Box::pin(instance(value, what)).await {
+        Instance::Db(db) => Connection::Db(db),
+        Instance::Tx(tx) => Connection::Tx(tx),
+        _ => panic!("{what}: the connection is no db and no tx"),
+    }
+}
+
+/// The record `transaction_options`: each field is required and may be null (INT-40 to INT-43).
+fn transaction_options(value: &Value, member: &str) -> TransactionOptions {
+    let fields = value.as_object().unwrap_or_else(|| panic!("{member}: options is no record"));
+    for name in fields.keys() {
+        assert!(["isolation", "read_only", "timeout_ms", "retry"].contains(&name.as_str()), "{member}: options has no field {name}");
+    }
+    let given = |name: &str| fields.get(name).unwrap_or_else(|| panic!("{member}: options gives no {name}")).clone();
+    let isolation = match given("isolation").as_str() {
+        None => None,
+        Some("read_uncommitted") => Some(Isolation::ReadUncommitted),
+        Some("read_committed") => Some(Isolation::ReadCommitted),
+        Some("repeatable_read") => Some(Isolation::RepeatableRead),
+        Some("serializable") => Some(Isolation::Serializable),
+        Some(other) => panic!("{member}: {other} is no isolation"),
+    };
+    let ms = given("timeout_ms").as_u64();
+    let retry = given("retry").as_u64().map(|n| u32::try_from(n).or_panic(|error| format!("{member}: retry {n} does not fit u32: {error}")));
+    TransactionOptions { isolation, read_only: given("read_only").as_bool(), timeout_ms: ms, retry, audit: None }
+}
+
+/// The message of the failure of a function fixture with `"raise": "exception"`, which the case expects by `raises: "callback"`.
+const CALLBACK_RAISED: &str = "the function of the case raised";
+
+/// Runs a function fixture of a case (binding GN-6z): each step on the argument at its position, then the result or the raise.
+async fn run_function(fixture: Value, argument: Instance, what: String) -> Result<Value, Error> {
+    let function = fixture.get("function").and_then(Value::as_object).unwrap_or_else(|| panic!("{what}: a function value is {{function}}"));
+    let mut argument = argument;
+    let empty = Map::new();
+    for step in function.get("calls").and_then(Value::as_array).map_or(&[][..], Vec::as_slice) {
+        assert_eq!(step.get("on").and_then(Value::as_str), Some("0"), "{what}: a step of a function is on its argument 0");
+        let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a step of a function names call"));
+        let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {name} is no object")));
+        let returned = Box::pin(call(name, Some(&mut argument), args)).await?;
+        if let Some(expected) = step.get("result") {
+            match returned {
+                Returned::Value(value) => assert_eq!(&value, expected, "{what}: the step {name} of the function"),
+                Returned::Instance(_) => panic!("{what}: the step {name} of the function returns an instance"),
+            }
+        }
+    }
+    match (function.get("result"), function.get("raise")) {
+        (Some(result), None) => Ok(result.clone()),
+        (None, Some(raise)) if raise == "exception" => Err(Error::config(CALLBACK_RAISED)),
+        _ => panic!("{what}: a function value has a result or the raise exception"),
+    }
+}
+
+/// A cancellation of a case (binding GN-6aq): `{"cancel": "fired"}` or `{"cancel": "open"}`.
+fn cancel(value: &Value, member: &str) -> binding_core::Cancel {
+    let (trigger, cancel) = binding_core::cancel_pair();
+    match value.get("cancel").and_then(Value::as_str) {
+        Some("fired") => trigger.cancel(),
+        // The trigger of a cancellation that never fires lives as long as the test process.
+        Some("open") => std::mem::forget(trigger),
+        _ => panic!("{member}: a cancellation is {{\"cancel\": \"fired\"}} or {{\"cancel\": \"open\"}}"),
+    }
+    cancel
+}
+
+/// A database that the case opened: the case closes it when it ends.
+fn opened(db: Db) -> Returned {
+    OPENED.with_borrow_mut(|opened| opened.push(db.clone()));
+    Returned::Instance(Instance::Db(db))
+}
+
 /// Calls the core function that the contract names for `member`.
 async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
     Ok(match (member, receiver) {
@@ -413,16 +548,61 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("query.get_count_by", Some(Instance::Query(query))) => {
             Returned::Value(Value::from(query.get_count_by(&text(args, "chain", member), orm_values(args, "values", member)?).await?))
         }
-        ("db.connect", None) => Returned::Instance(Instance::Db(
-            Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
-        )),
+        ("db.connect", None) => {
+            opened(Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?)
+        }
         ("db.connect_schema", None) => {
             let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
                 panic!("{member}: schema is no instance of schema")
             };
-            Returned::Instance(Instance::Db(
-                Db::connect_schema(&text(args, "dsn", member), &schema, uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?,
-            ))
+            opened(Db::connect_schema(&text(args, "dsn", member), &schema, uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?)
+        }
+        ("db.close", Some(Instance::Db(db))) => {
+            db.close_async().await;
+            Returned::Value(Value::Null)
+        }
+        ("db.stats", Some(Instance::Db(db))) => {
+            let stats = db.stats();
+            Returned::Value(serde_json::json!({
+                "max_open_connections": stats.max_open_connections,
+                "open_connections": stats.open_connections,
+                "in_use": stats.in_use,
+                "idle": stats.idle,
+            }))
+        }
+        ("db.driver", Some(Instance::Db(db))) => Returned::Value(Value::from(db.driver())),
+        ("db.sql_driver", Some(Instance::Db(db))) => Returned::Value(Value::from(db.sql_driver())),
+        ("db.with_cancel", Some(Instance::Db(db))) => Returned::Instance(Instance::Db(db.with_cancel(cancel(field(args, "cancel", member), member)))),
+        ("db.execute", Some(Instance::Db(db))) => {
+            db.execute_text(&text(args, "step", member), orm_values(args, "params", member)?).await?;
+            Returned::Value(Value::Null)
+        }
+        ("db.transaction", Some(Instance::Db(db))) => {
+            let fixture = field(args, "callback", member).clone();
+            let options = transaction_options(field(args, "options", member), member);
+            let what = format!("{member}: callback");
+            Returned::Value(db.transaction_async(|tx| run_function(fixture.clone(), Instance::Tx(tx), what.clone()), options).await?)
+        }
+        ("tx.savepoint", Some(Instance::Tx(tx))) => {
+            let fixture = field(args, "callback", member).clone();
+            let what = format!("{member}: callback");
+            Returned::Value(tx.savepoint_async(|tx| run_function(fixture, Instance::Tx(tx), what)).await?)
+        }
+        ("query.connect", Some(Instance::Query(query))) => {
+            query.connect(connection(field(args, "connection", member), member).await);
+            Returned::Value(Value::Null)
+        }
+        ("step_runner.new", None) => {
+            let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
+                panic!("{member}: schema is no instance of schema")
+            };
+            Returned::Instance(Instance::Runner(Box::new(StepRunner::new(&schema, connection(field(args, "connection", member), member).await))))
+        }
+        ("step_runner.run", Some(Instance::Runner(runner))) => Returned::Value(Value::from(runner.run(&text(args, "step", member)).await)),
+        ("step_runner.close", Some(Instance::Runner(runner))) => Returned::Value(Value::from(runner.close().await)),
+        ("dbspec.read_set", None) => {
+            let path = case_path(&text(args, "path", member), member);
+            Returned::Value(Value::from(crate::dbspec_json::read_set(binding_core::Io::for_generated_call(), &path)?))
         }
         ("aes_keyring.constructor", None) => Returned::Instance(Instance::Keyring(AesKeyring::new(
             keyed_texts(field(args, "keys", member), member),
@@ -479,25 +659,38 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
     })
 }
 
-/// An instance value of a case: `{new, args, then}` (binding G-5).
+/// An instance value of a case: `{new, receiver, args, then}` (binding G-5, GN-13f). A value that cannot be made fails the
+/// test of the case.
 async fn instance(value: &Value, what: &str) -> Instance {
+    match made(value, what).await {
+        Ok(instance) => instance,
+        Err(failure) => panic!("{failure}"),
+    }
+}
+
+/// Makes an instance value, or names the call of its preparation that failed.
+async fn made(value: &Value, what: &str) -> Result<Instance, String> {
     let made = value.as_object().unwrap_or_else(|| panic!("{what}: an instance value is an object"));
     let member = made.get("new").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an instance value names its member in new"));
     let empty = Map::new();
     let args = made.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args is no object")));
-    let mut out = match call(member, None, args).await {
+    let mut receiver = match made.get("receiver") {
+        Some(value) => Some(Box::pin(self::made(value, what)).await?),
+        None => None,
+    };
+    let mut out = match call(member, receiver.as_mut(), args).await {
         Ok(Returned::Instance(instance)) => instance,
-        Ok(Returned::Value(_)) => panic!("{what}: {member} returns no instance"),
-        Err(error) => panic!("{what}: the preparation {member} failed: {error}"),
+        Ok(Returned::Value(_)) => return Err(format!("{what}: {member} returns no instance")),
+        Err(error) => return Err(format!("{what}: the preparation {member} failed: {error}")),
     };
     for step in made.get("then").and_then(Value::as_array).map_or(&[][..], Vec::as_slice) {
         let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a then step names its member in call"));
         let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {name} is no object")));
         if let Err(error) = call(name, Some(&mut out), args).await {
-            panic!("{what}: the preparation {name} failed: {error}");
+            return Err(format!("{what}: the preparation {name} failed: {error}"));
         }
     }
-    out
+    Ok(out)
 }
 
 /// The call of a member under the arming of its case: the arming is installed on the thread around each poll of the
@@ -518,7 +711,7 @@ impl<F: Future> Future for Faulted<F> {
 }
 
 /// The keys of a case that are no parameter of its member (binding G-5).
-const RESERVED: [&str; 8] = ["id", "note", "rule", "raises", "result", "receiver", "after", "faults"];
+const RESERVED: [&str; 9] = ["id", "note", "rule", "raises", "result", "receiver", "after", "faults", "@files"];
 
 /// Runs one case of `member` and adds to `failures` each difference between what the case states and what the member did:
 /// the test runs every case to its end and then names every case that failed (HR-86 of the checks, CORE-71).
@@ -526,11 +719,50 @@ async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
     let fields = case.as_object().unwrap_or_else(|| panic!("{member}: a case is an object"));
     let id = fields.get("id").and_then(Value::as_str).unwrap_or_else(|| panic!("{member}: a case has an id"));
     let what = format!("{member} {id}");
+    // The directory of the case (binding GN-6y): the files of the case are written into it before any value of the case
+    // is made (GN-13i), and it is removed with the case, after the databases of the case are closed.
+    let scratch = Scratch::new("orm-rust-interface-case");
+    ROOT.with_borrow_mut(|root| *root = Some(scratch.path().to_path_buf()));
+    if let Some(files) = fields.get("@files") {
+        let files = files.as_object().unwrap_or_else(|| panic!("{what}: @files is an object"));
+        for (relative, content) in files {
+            let path = case_path(relative, &what);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).or_panic(|error| format!("{what}: create {}: {error}", parent.display()));
+            }
+            let bytes = match content.as_str() {
+                Some(text) => text.as_bytes().to_vec(),
+                None => {
+                    let mut holder = Map::new();
+                    holder.insert("file".to_owned(), content.clone());
+                    bytes(&holder, "file", &what)
+                }
+            };
+            std::fs::write(&path, bytes).or_panic(|error| format!("{what}: write {}: {error}", path.display()));
+        }
+    }
+    run_case_in(member, fields, &what, failures).await;
+    for db in OPENED.with_borrow_mut(std::mem::take) {
+        db.close_async().await;
+    }
+    ROOT.with_borrow_mut(|root| *root = None);
+    drop(scratch);
+}
+
+/// Runs the case `what` of `member` in its directory.
+async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, failures: &mut Vec<String>) {
+    let what = what.to_owned();
     assert!(fields.get("rule").and_then(Value::as_str).is_some_and(|rule| !rule.is_empty()), "{what}: the case names its rule");
     let args: Map<String, Value> =
         fields.iter().filter(|(name, _)| !RESERVED.contains(&name.as_str())).map(|(name, value)| (name.clone(), value.clone())).collect();
     let mut receiver = match fields.get("receiver") {
-        Some(value) => Some(instance(value, &what).await),
+        Some(value) => match made(value, &what).await {
+            Ok(receiver) => Some(receiver),
+            Err(failure) => {
+                failures.push(failure);
+                return;
+            }
+        },
         None => None,
     };
     let outcome = match fields.get("faults") {
@@ -550,6 +782,12 @@ async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
     };
     let mut result = None;
     match (outcome, fields.get("raises")) {
+        (Err(error), Some(raises)) if raises == "callback" => {
+            if error.text() != CALLBACK_RAISED {
+                failures.push(format!("{what}: the case expects the failure of its function, and the member raised {error}"));
+            }
+            return;
+        }
         (Err(error), Some(raises)) => {
             let raised = serde_json::json!({"kind": error.kind().as_str(), "category": error.category().as_str(), "message": error.to_string()});
             if raises != &raised {
@@ -567,6 +805,11 @@ async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
         }
         (Ok(Returned::Value(value)), None) => {
             let expected = fields.get("result").unwrap_or_else(|| panic!("{what}: the case states no result"));
+            // An expected text may be composed with the paths of the case (binding GN-13l), compared as text.
+            let expected = &match (expected.get("text"), case_text(expected, &what)) {
+                (Some(_), Some(text)) => Value::from(text),
+                _ => expected.clone(),
+            };
             if &value != expected {
                 failures.push(format!("{what}: the case expects the result {expected}, and the member returned {value}"));
             }
@@ -594,11 +837,7 @@ async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
             Err(error) => panic!("{what}: after {name} failed: {error}"),
         }
     }
-    for made in [receiver, result].into_iter().flatten() {
-        if let Instance::Db(db) = made {
-            db.close_async().await;
-        }
-    }
+    drop((receiver, result));
 }
 
 /// A case of the alias `orm_value` (binding CK-22, U-7): `{id, value, raises}`, a value that `from_host` refuses.

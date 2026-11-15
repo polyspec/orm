@@ -430,6 +430,35 @@ test-go-bindings: bindings lease-tool
 	cd packages/go && $(GO_BINDING_ENV) $(GO) test -count=1 -v ./...
 	rm -rf $(RUN_DIR)
 
+# The generated tests of the Node binding (binding GN-13) through the package that node-package installs into var/node.
+.PHONY: orm-install-binding-python test-binding-python test-binding-node test-binding-php
+test-binding-node: node-package
+	cp packages/ts/generated/tests/generated.test.mjs $(NODE_PACKAGE_DIR)/generated.test.mjs
+	cd $(NODE_PACKAGE_DIR) && $(NODE) --expose-gc --test generated.test.mjs
+
+# The Python binding: orm-install-binding-python builds the wheel of packages/python with the test features through uv and the
+# maturin build backend of its pyproject.toml, as release-wheel builds it (GN-19c), and installs it with its dependencies into the
+# venv BINDING_PYTHON_VENV; it downloads, so it is an install target, which the python job of config/ci.json runs as setup.
+# test-binding-python runs the generated tests of packages/python/generated/tests on unittest in that venv, offline.
+BINDING_PYTHON_VENV = $(abspath var/binding-python/venv)
+BINDING_PYTHON_WHEELS = $(abspath var/binding-python/wheels)
+orm-install-binding-python: bindings
+	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
+	$(MAKE) --no-print-directory python-venv DIR=$(BINDING_PYTHON_VENV)
+	rm -rf $(BINDING_PYTHON_WHEELS)
+	MATURIN_PEP517_ARGS='--locked --features panic-test' $(ONLINE) $(UV) build --wheel --python $(BINDING_PYTHON_VENV)/bin/python --out-dir $(BINDING_PYTHON_WHEELS) packages/python
+	$(ONLINE) $(UV) pip install --python $(BINDING_PYTHON_VENV)/bin/python --reinstall $(BINDING_PYTHON_WHEELS)/*.whl
+test-binding-python: bindings
+	@test -x $(BINDING_PYTHON_VENV)/bin/python || { echo "test-binding-python: $(BINDING_PYTHON_VENV) is missing; run make orm-install-binding-python, which installs the wheel"; exit 1; }
+	$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -v -s packages/python/generated/tests -t packages/python/generated/tests
+
+# The generated tests of the PHP binding on the PHPUnit of vendor-php, with the extension of the crate polyspec-orm-php-ext built
+# with its test features for the PHP of .php-version (BINDING_ENV) and copied into the RUN_TARGET of the run.
+test-binding-php: bindings lease-tool php-vendor-check
+	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) cargo build --locked -p polyspec-orm-php-ext --features panic-test,case-test
+	$(KIT_TOOLS)/bin/php -d extension=$(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) vendor-php/bin/phpunit packages/php-ext/generated/tests
+	rm -rf $(RUN_DIR)
+
 # ---- Release recipes of the bindings: packages/release.mk, which binding release-recipes writes (binding GN-19h) -----------
 # The recipes of the platform assets (release-go-static, release-wheel, release-php-ext, release-npm-platform, release-npm,
 # release-go-module, release-binding-check, release-platform-assets, install-llvm and install-wasm-bindgen) are the file that

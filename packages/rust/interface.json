@@ -5147,6 +5147,305 @@
       "member": "codec.blind_index",
       "file": "contracts/interface/core.json",
       "group": "codec.blind_index"
+    },
+    {
+      "member": "query.get_count",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_count.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.get_count_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_count_by.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.get_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_by.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.create",
+      "file": "contracts/interface/core.json",
+      "group": "query.create.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.update",
+      "file": "contracts/interface/core.json",
+      "group": "query.update.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.delete",
+      "file": "contracts/interface/core.json",
+      "group": "query.delete.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.restore",
+      "file": "contracts/interface/core.json",
+      "group": "query.restore.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.restore_or_create",
+      "file": "contracts/interface/core.json",
+      "group": "query.restore_or_create.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.connect",
+      "file": "contracts/interface/core.json",
+      "group": "query.connect",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.close",
+      "file": "contracts/interface/core.json",
+      "group": "db.close",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.stats",
+      "file": "contracts/interface/core.json",
+      "group": "db.stats",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.driver",
+      "file": "contracts/interface/core.json",
+      "group": "db.driver",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.sql_driver",
+      "file": "contracts/interface/core.json",
+      "group": "db.sql_driver",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.with_cancel",
+      "file": "contracts/interface/core.json",
+      "group": "db.with_cancel",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.execute",
+      "file": "contracts/interface/core.json",
+      "group": "db.execute",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.transaction",
+      "file": "contracts/interface/core.json",
+      "group": "db.transaction",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "step_runner.new",
+      "file": "contracts/interface/core.json",
+      "group": "step_runner.new",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "step_runner.run",
+      "file": "contracts/interface/core.json",
+      "group": "step_runner.run",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "step_runner.close",
+      "file": "contracts/interface/core.json",
+      "group": "step_runner.close",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "dbspec.read_set",
+      "file": "contracts/interface/core.json",
+      "group": "dbspec.read_set"
+    },
+    {
+      "member": "db.connect",
+      "file": "contracts/interface/core.json",
+      "group": "db.connect.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.connect_schema",
+      "file": "contracts/interface/core.json",
+      "group": "db.connect_schema.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
     }
   ]
 }

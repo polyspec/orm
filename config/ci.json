@@ -20,7 +20,8 @@
         "orm-install-flowmark"
       ],
       "python": [
-        "orm-install-python"
+        "orm-install-python",
+        "orm-install-binding-python"
       ],
       "rust": [],
       "ts": [
@@ -47,6 +48,26 @@
     "php-ext": {
       "prepare": "php-extension-context-prepare",
       "cleanup": "php-extension-context-cleanup"
+    }
+  },
+  "targets": {
+    "runtimes": {
+      "go": [
+        "test-go-bindings"
+      ],
+      "php-ext": [
+        "test-binding-php"
+      ],
+      "python": [
+        "test-binding-python"
+      ],
+      "rust": [
+        "test-bindings"
+      ],
+      "ts": [
+        "test-wasm",
+        "test-binding-node"
+      ]
     }
   },
   "runner": "ubuntu-26.04-arm"
