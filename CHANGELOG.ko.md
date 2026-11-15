@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1290db99f184a504764ccc86ab711b9e3c5c12dc308b429ed757e62a280e1605 -->
+<!-- source-sha256: 5eb9439b54ea785c4604c06a0e57849fb4d192275591e42a7b3282a1d8bc2edc -->
 # 변경 이력
 
 ## Unreleased
+
+- Native contract validator는 Model.connect의 현재 Rust Connection adapter를 독립 항목으로 검사한다(T494-2, INT-17a). 실제 signature와 공통 contract는 impl Into<Connection>인데 validator만 borrowed Db 전용 인자를 기대한다. 수정과 새 검증은 아직 없다.
 
 - Unicode generator는 폐지한 Duration import와 wall_for_cpu deadline 대신 현재의 case!()를 출력한다(T494-1, FCV-20). 커밋된 Unicode 17.0.0 표와 code point 분류는 바꾸지 않는다. 기존 owner의 수정 전 Red는 동일한 출력 차이로 직접 checksum과 repository-root 실행 두 case가 실패하고 세 case가 통과했다. 커밋 전 수정안은 같은 Go owner 다섯 case를 모두 통과했다. 선언된 커밋 tree 검증도 Go 다섯 case와 Rust Unicode 전체 code point 한 case를 실패와 skip 없이 통과하여 항목을 완료했다.
 

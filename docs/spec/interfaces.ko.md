@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 32742a579ffe16cc16953bccfc51337463b2879df61de427b4d8966abfb03614 -->
+<!-- source-sha256: f27119a4b2f0b8a764f3e7337092ef9a99ce9de25b27ba2f1b2a12b2fa419faa -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -110,6 +110,8 @@ classDiagram
 
 - **INT-16** 모델 생성 — PHP: `new Product`; Go: `model.Product()`; Rust: `Product::new()`; TypeScript: `new Product()`; Python: `Product()`
 - **INT-17** 연결 — PHP: `->connect($db)` 또는 `($db)`; Go: `.Connect(db)`; Rust: `.connect(&db)`; TypeScript: `.connect(db)`; Python: `.connect(db)`
+- **INT-17a** `Model.connect`의 논리 `Connection` 입력은 Rust의 `connection: impl Into<polyspec_orm::Connection>`에 대응하며 허용된 `&Db`, `&Tx`, `&Connection` 변환을 유지한다. Native contract 검증은 예전 borrowed-Db 전용 signature로 되돌리지 않고 이 정확한 adapter를 검사한다. 이 checker surface는 FCV-2에 따라 `tests/interfaces/contracts`의 native에 남으며 오래된 validator mapping은 아직 수정하지 않았다.
+
 - **INT-18** 컬렉션 종단 — PHP: `gets()`; Go: `Gets()`; Rust: `gets().await?`; TypeScript: `gets()`; Python: `gets()`
 - **INT-19** 개수 종단 — PHP: `getCount()`; Go: `GetCount()`; Rust: `get_count().await?`; TypeScript: `getCount()`; Python: `get_count()`
 
