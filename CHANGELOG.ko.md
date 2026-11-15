@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4846ceb958acf8fe4479a4013045b7a459c8e720bc206991dc5bc873c5fbfd41 -->
+<!-- source-sha256: 86e7129df3f7a675c820b040c0778e8c7b11b4821bcb061dda52e4efc579043c -->
 # 변경 이력
 
 ## Unreleased
 
+- T493-5부터 T493-9의 checklist 검증 cell은 실행 가능한 code span을 사용하여 item-test가 기존 make 명령을 추출한다. 이전에는 item runner가 실행하지 않는 일반 text였다. 명령과 앞선 native 검증 결과는 바뀌지 않으며 이 표기 수정으로 Scratch를 다시 실행하지 않는다(T493-5).
 - checklist는 private SQLite worker proof owner 설계의 선행 항목을 기록한다(T493-9). Node owner는 할당 전에 명시적인 parent PID를 검증하고 directory와 Rust proof child를 소유하며 공개된 Kit 0.0.113의 public process-resource utility로 all-exit close를 기다린 뒤 정리해야 한다. 이 등록에서는 harness, 의존성 갱신이나 안전하지 않은 이전 구현의 입증을 실행하지 않으며 worker 완료는 별도로 조사 중이다.
 - checklist는 WASM application compile graph 검토를 기록한다(T493-8). adapter는 Tokio net/rt-multi-thread와 native SQLx를 포함한 전체 native core를 상속하지만 pin된 Tokio/Mio 소스는 그 graph의 wasm32-unknown-unknown을 제외한다. Db/connect는 여전히 binding target 다섯 개에 선언되어 있으며 실제 지원이나 검토된 명시적 contract 대안의 설계가 남아 있다. 이는 소스 검토 결과이며 완료된 WASM runtime 검증이 아니다.
 - Rust Scratch는 배타적 생성과 process 안의 atomic 후보 counter로 새 directory를 할당한다(T493-6, FCV-19). 이전에는 prefix와 PID의 경로를 지우고 재사용하여 살아 있는 두 번째 instance가 첫 번째 instance의 파일을 지웠다. native 회귀 시험에서 그 삭제를 재현했다(1개 통과, 1개 실패). 수정한 committed tree는 실패나 skip 없이 Scratch 두 case를 통과하며 feature owner 검사는 64개를 통과한다. 할당은 더 이상 기존 경로를 지우지 않으며 Drop은 여전히 자기 경로만 지운다. machine fixture 준비 중 SQLite IOERR_DELETE_NOENT를 관측했지만 정확한 unlink 원인과 분리된 worker 완료는 입증하지 못했다(T493-7).
