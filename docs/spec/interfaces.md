@@ -111,6 +111,8 @@ Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite:
 - **INT-17** connection — PHP: `->connect($db)` or `($db)`; Go: `.Connect(db)`; Rust: `.connect(&db)`; TypeScript: `.connect(db)`; Python: `.connect(db)`
 - **INT-17a** The logical `Connection` input of `Model.connect` maps to Rust `connection: impl Into<polyspec_orm::Connection>`, preserving admitted `&Db`, `&Tx` and `&Connection` conversions. Native contract validation checks that exact adapter rather than restoring an older borrowed-Db-only signature. This checker surface stays native under FCV-2 in `tests/interfaces/contracts`; the Model adapter mapping is corrected. The full package still reports eight passed and two failed because the next Collection adapter mapping is stale; this is not completed package verification.
 
+- **INT-17b** The logical `CollectionConnection` input of `Collection.connect` maps to Rust `connection: impl Into<crate::Connection>`. Preserve the existing conversions forwarded to every model rather than restoring the validator's borrowed-Db-only signature. This native checker surface is checked by the same contract package under FCV-2; the Collection mapping is not corrected yet.
+
 - **INT-18** collection terminal — PHP: `gets()`; Go: `Gets()`; Rust: `gets().await?`; TypeScript: `gets()`; Python: `gets()`
 - **INT-19** count terminal — PHP: `getCount()`; Go: `GetCount()`; Rust: `get_count().await?`; TypeScript: `getCount()`; Python: `get_count()`
 

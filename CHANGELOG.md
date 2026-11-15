@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The same native contract item also specifies the existing Collection.connect Into<Connection> adapter (T494-2, INT-17b). The failure exposed after correcting the Model mapping comes from the Collection validator's former borrowed-Db expectation; its correction is not implemented yet.
+
 - The Model.connect native validator maps the current impl Into<Connection> signature and retains a regression mutation refusing the old borrowed-Db signature (T494-2, INT-17a). A dedicated installed-runner owner and inputs execute the existing contract package. The unchanged Model mapping reported eight passed and two failed; after its correction the same counts expose the next stale Collection mapping. The item remains active, with no Green or package-completion claim.
 
 - Native contract validation has a separate item for the current Rust Model.connect Connection adapter (T494-2, INT-17a). The actual signature and common contract use impl Into<Connection>, but the validator alone expects a borrowed Db argument. Correction and new verification are pending.

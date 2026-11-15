@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 31b2c2c385034c27f5c0f3d6c11915c1c023dc77c54ba4a91eed8a6d1e995e7f -->
+<!-- source-sha256: 87172673531f4af3b9bb1595c68743111324ef9849b70df661f6459368c4f0e2 -->
 # 변경 이력
 
 ## Unreleased
+
+- 같은 native contract 검사 항목은 Collection.connect의 기존 Into<Connection> adapter도 명시한다(T494-2, INT-17b). Model mapping 정정 뒤 드러난 실패는 Collection validator의 예전 borrowed-Db 기대값 때문이며 Collection 수정은 아직 없다.
 
 - Model.connect의 native validator mapping은 현재 impl Into<Connection> signature를 검사하고 예전 borrowed-Db signature를 거부하는 회귀 mutation을 유지한다(T494-2, INT-17a). 설치된 runner가 기존 contract package를 실행하는 전용 owner와 입력을 선언했다. 수정 전 여덟 case 통과·두 case 실패는 Model mapping 때문이며 수정 뒤 같은 수의 실패가 다음 Collection mapping을 드러냈다. 항목은 active이며 Green이나 package 완료로 보고하지 않는다.
 

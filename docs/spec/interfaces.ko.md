@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: b3cd90d34a5a764a90a716fba106c9a19ad9660a66eb057c2dc7bafb8c3f5342 -->
+<!-- source-sha256: 54484085d69233f48e25d406447433a5ac1562e69aa0c6cd46e3e2d9639253c2 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -111,6 +111,8 @@ classDiagram
 - **INT-16** 모델 생성 — PHP: `new Product`; Go: `model.Product()`; Rust: `Product::new()`; TypeScript: `new Product()`; Python: `Product()`
 - **INT-17** 연결 — PHP: `->connect($db)` 또는 `($db)`; Go: `.Connect(db)`; Rust: `.connect(&db)`; TypeScript: `.connect(db)`; Python: `.connect(db)`
 - **INT-17a** `Model.connect`의 논리 `Connection` 입력은 Rust의 `connection: impl Into<polyspec_orm::Connection>`에 대응하며 허용된 `&Db`, `&Tx`, `&Connection` 변환을 유지한다. Native contract 검증은 예전 borrowed-Db 전용 signature로 되돌리지 않고 이 정확한 adapter를 검사한다. 이 checker surface는 FCV-2에 따라 `tests/interfaces/contracts`의 native에 남으며 Model adapter mapping은 수정했다. 전체 package는 다음 Collection adapter mapping이 오래되어 여덟 case 통과와 두 case 실패를 보고하며 package 검증 완료가 아니다.
+
+- **INT-17b** `Collection.connect`의 논리 `CollectionConnection` 입력은 Rust `connection: impl Into<crate::Connection>`에 대응한다. 모든 model에 전달되는 기존 변환을 유지하고 예전 borrowed-Db 전용 validator signature를 되돌리지 않는다. 이 native checker surface는 FCV-2에 따라 같은 contract package가 검사하며 Collection mapping은 아직 수정하지 않았다.
 
 - **INT-18** 컬렉션 종단 — PHP: `gets()`; Go: `Gets()`; Rust: `gets().await?`; TypeScript: `gets()`; Python: `gets()`
 - **INT-19** 개수 종단 — PHP: `getCount()`; Go: `GetCount()`; Rust: `get_count().await?`; TypeScript: `getCount()`; Python: `get_count()`
