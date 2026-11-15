@@ -76,7 +76,7 @@ async fn a_read_step_runs_its_calls_and_its_terminal() {
     ]);
     assert_eq!(run(&mut runner, &query_step(accounts, "gets")).await, json!({"ok": {"rows": rows}}));
     runner.close().await;
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-92. A write step writes, its result holds the created row, and a failure returns its kind, such as
@@ -113,7 +113,7 @@ async fn a_write_step_returns_its_row_or_the_kind_of_its_failure() {
     let keys = json!({"entity": "account_key", "calls": []});
     assert_eq!(run(&mut runner, &query_step(keys, "get_count")).await, json!({"ok": {"count": 2}}));
     runner.close().await;
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-92. A text that is no step, a call or a terminal that no step has, a value of no kind of
@@ -147,7 +147,7 @@ async fn a_step_that_the_runner_cannot_read_returns_its_kind() {
         assert!(outcome["error"]["message"].as_str().is_some_and(|message| message.starts_with(&format!("{kind}: "))), "{what}: {outcome}");
     }
     runner.close().await;
-    db.close().await;
+    db.close_async().await;
 }
 
 /// The step that creates the account of `email`.
@@ -192,7 +192,7 @@ async fn a_transaction_step_runs_the_steps_until_its_end() {
     assert_eq!(run(&mut runner, &end(true)).await, ok, "the end rolls back");
     assert_eq!(run(&mut runner, &count_account("e@x")).await, json!({"ok": {"count": 0}}));
     runner.close().await;
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-93. A savepoint step opens a savepoint of the innermost transaction, so a write that fails with
@@ -220,7 +220,7 @@ async fn a_savepoint_step_rolls_back_to_its_start() {
         assert_eq!(run(&mut runner, &count_account(email)).await, json!({"ok": {"count": count}}), "{email}");
     }
     runner.close().await;
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-93. A savepoint or an end with no open transaction and an option that no step has are config, and
@@ -249,7 +249,7 @@ async fn close_rolls_back_what_is_open() {
     let outcome = run(&mut runner, &end(false)).await;
     assert_eq!(error_kind(&outcome), "config", "close ended every open one: {outcome}");
     runner.close().await;
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-93. A runner dropped with an open transaction rolls it back, and the connection of the pool of one
@@ -267,7 +267,7 @@ async fn a_dropped_runner_rolls_back_its_transaction() {
     let mut next = StepRunner::new(&schema, Connection::from(&db));
     assert_eq!(run(&mut next, &count_account("d@x")).await, json!({"ok": {"count": 0}}));
     next.close().await;
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-94. The terminals restore and restore_or_create return the row, and their failures their kinds.
@@ -292,5 +292,5 @@ async fn a_restore_step_returns_its_row_or_the_kind_of_its_failure() {
     assert_eq!(restored["ok"]["row"]["values"]["seq"], int64(1), "{restored}");
     assert_eq!(restored["ok"]["row"]["values"]["email"], text("a@x"), "{restored}");
     runner.close().await;
-    db.close().await;
+    db.close_async().await;
 }

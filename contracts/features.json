@@ -2268,7 +2268,8 @@
         "legacy/packages/php-ext/tests/TransactionsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php-ext/tests/UtilsMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/TransactionsMariadbRecipeTest.php",
-        "legacy/packages/php/tests/UtilsMariadbRecipeTest.php"
+        "legacy/packages/php/tests/UtilsMariadbRecipeTest.php",
+        "packages/rust/tests/unit/machine.rs"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -2530,6 +2531,18 @@
           "shard": "other",
           "inputs": [
             "legacy/packages/ts/tests/coverage_transactions-mysql.test.mjs"
+          ]
+        },
+        {
+          "id": "transaction-machines-rust",
+          "command": "make test-rust CASES=machine",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/src/tx/machine.rs",
+            "packages/rust/src/tx.rs",
+            "packages/rust/src/db.rs",
+            "packages/rust/tests/unit/machine.rs",
+            "packages/rust/interface.json"
           ]
         }
       ],
@@ -4888,7 +4901,8 @@
         "legacy/packages/go/engine/planner/scalar_subquery_type_test.go",
         "legacy/packages/go/orm/values_test.go",
         "legacy/packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-        "packages/rust/schema/src/dbspec/mod.rs"
+        "packages/rust/schema/src/dbspec/mod.rs",
+        "packages/rust/tests/unit/execute_machine.rs"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -5010,6 +5024,20 @@
           "shard": "other",
           "inputs": [
             "legacy/packages/ts/tests/plan-cache-in.mjs"
+          ]
+        },
+        {
+          "id": "execute-machine-rust",
+          "command": "make test-rust CASES=machine",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/tests/unit/execute_machine.rs",
+            "packages/rust/interface.json",
+            "packages/rust/src/db/machine.rs",
+            "packages/rust/src/db.rs",
+            "packages/rust/src/lib.rs",
+            "contracts/fixtures/conformance_verification/conformance_shared.dbs",
+            "contracts/fixtures/conformance_verification/conformance_verification.dbs"
           ]
         }
       ],
@@ -10347,6 +10375,16 @@
         "legacy/packages/go/internal/dialects/introspect_compare_physical_test.go"
       ],
       "command": "node tests/go-test.mts -v -timeout 0 ./legacy/packages/go/internal/dialects -run '^(TestApplyExtensionRunnerMode|TestIntrospectCompareRunnerEnvironment)$' -count=1"
+    },
+    {
+      "id": "rust-scratch",
+      "paths": [
+        "packages/rust/tests/common/test_support.rs"
+      ],
+      "tests": [
+        "packages/rust/tests/unit/scratch.rs"
+      ],
+      "command": "make test-rust CASES=scratch"
     }
   ]
 }

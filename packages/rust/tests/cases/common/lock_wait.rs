@@ -103,7 +103,7 @@ pub async fn probe_waits(driver: &str, dsn: &str, statement: &str) {
             let code = ended.as_ref().err().and_then(|e| e.as_database_error()).and_then(|e| e.code()).map(|code| code.into_owned());
             assert_eq!(code.as_deref(), Some("5"), "{driver}: the probe {statement} ended with {ended:?}, not with SQLITE_BUSY");
             drop(conn);
-            probe.close().await;
+            probe.close_async().await;
         }
         "mysql" | "mariadb" => {
             let probe = Db::connect(dsn, 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: open the probe: {e}"));
@@ -121,7 +121,7 @@ pub async fn probe_waits(driver: &str, dsn: &str, statement: &str) {
                 .map(|e| e.number());
             assert_eq!(number, Some(1205), "{driver}: the probe {statement} ended with {ended:?}, not with the lock wait timeout 1205");
             drop(conn);
-            probe.close().await;
+            probe.close_async().await;
         }
         other => panic!("{other}: the probe runs on MySQL, MariaDB and SQLite; PostgreSQL reports its lock waits"),
     }

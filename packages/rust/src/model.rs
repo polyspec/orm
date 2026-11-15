@@ -1170,8 +1170,8 @@ where
     Fut: Future<Output = Result<T>>,
 {
     match conn {
-        Some(Connection::Db(db)) => db.transaction(|tx| f(Connection::Tx(tx)), crate::TransactionOptions { retry: Some(0), ..Default::default() }).await,
-        Some(Connection::Tx(tx)) => tx.savepoint(|savepoint| f(Connection::Tx(savepoint))).await,
+        Some(Connection::Db(db)) => db.transaction_async(|tx| f(Connection::Tx(tx)), crate::TransactionOptions { retry: Some(0), ..Default::default() }).await,
+        Some(Connection::Tx(tx)) => tx.savepoint_async(|savepoint| f(Connection::Tx(savepoint))).await,
         None => Err(Error::config("the model has no connection; connect it to a Db or to the Tx of a transaction")),
     }
 }
@@ -2162,6 +2162,6 @@ mod split_plan_tests {
         let widest = db.max_cached_bind_slots();
         polyspec_orm_testcase::step(format_args!("the widest plan of the connection binds {widest} slots"));
         assert!(widest <= bind_limit("sqlite"), "a plan of the split count binds {widest} slots, over the SQLite limit of {}", bind_limit("sqlite"));
-        db.close().await;
+        db.close_async().await;
     }
 }

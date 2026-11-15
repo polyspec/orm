@@ -41,6 +41,19 @@ verified, and the inventory of differences required by CORE-5 is incomplete. The
 recorded in `changes`; those entries do not establish that every legacy API difference is recorded. No language
 implementation is eligible for removal on that evidence.
 
+- **CORE-7** A driver that cancels a transaction or savepoint machine drops both the machine and its current I/O
+  future. Dropping a machine that owns an open transaction invalidates every retained handle immediately. Dropping an
+  open savepoint machine invalidates its whole transaction, because Drop cannot await a rollback of that savepoint.
+  A cancelled opening that has not acquired a transaction or savepoint owns none and leaves its parent usable. An
+  independently retained operation owns its connection borrow until its future completes or is dropped: logical
+  invalidation is immediate, and an open or unknown connection is discarded when its final borrow ends, never returned
+  to the pool. No new operation or terminal action is admitted after invalidation. Terminal I/O is admitted when it
+  holds the connection slot lock, checks that the transaction is not aborted, and takes the connection. An already
+  admitted terminal future owns its completion independently. A clean return is admitted only after the terminal
+  statement and cleanup succeeded and the abort check passed; a retained return future admitted before invalidation
+  may return that proven-clean connection. A COMMIT already sent cannot be retracted: dropping the machine cannot prove
+  rollback or distinguish a committed result from an unknown outcome, and does not undo a completed commit.
+
 ## Errors
 
 - **CORE-6** The interface contract declares a class for every error category of the binding boundary, including `io`
@@ -439,9 +452,10 @@ implementation is eligible for removal on that evidence.
 
 ## State machines
 
-CORE-100 to CORE-105 are not implemented: `Db::transaction`, `Tx::savepoint` and `Db::close` are futures that borrow
-their receiver, and the contract names no `machine`. They wait for a release of `polyspec-binding-core` that has
-`Passthrough`, `Step::Await` and `Machine::settle`, which the release that `Cargo.lock` pins does not have.
+The implementation of CORE-100 to CORE-105 is in `packages/rust/src/tx/machine.rs`, and the contract names `machine`
+on the three members. The locked `polyspec-binding-core` 0.0.4 provides `Passthrough`, `Step::Await` and
+`Machine::settle`. Verification is incomplete: the tests of the core drive each machine step by step, but the contract
+has no case of the three members because each needs a database (CORE-72).
 
 - **CORE-100** The members `db.transaction`, `tx.savepoint` and `db.close` of the contract name `"machine": true` in
   their `core`, because each has `wait: async_driver` and reaches language code: the first two call a function of the
@@ -463,8 +477,9 @@ their receiver, and the contract names no `machine`. They wait for a release of 
   `polyspec_orm::Error`, which carries its kind and its whole message (CORE-12). A `Passthrough` is a value of the
   language that the core moves and never reads: the value that the callback returned is the value that the member
   returns. The functions that Rust code awaits, `Db::transaction_async(&self, callback, options)` and
-  `Tx::savepoint_async(&self, callback)`, whose callback returns a future, keep the rules of CORE-20 to CORE-26 and are
-  no members of the contract; the step runner of CORE-93 calls them.
+  `Tx::savepoint_async(&self, callback)`, whose callback returns a future, and `Db::close_async(&self)` keep the rules
+  of CORE-20 to CORE-26 and of CORE-31 and are no members of the contract; the step runner of CORE-93 calls the first
+  two.
 - **CORE-103** The machine of `Db::transaction` and of `Tx::savepoint` gives these steps, and makes no I/O itself:
   1. `Io`: the opening, which borrows a connection and sends `BEGIN` with the options (CORE-20), or sends `SAVEPOINT`
      after the check of CORE-22 and CORE-23. A failure of the opening ends the machine with `Done(Err(Failure::Kind))`,
@@ -492,6 +507,25 @@ their receiver, and the contract names no `machine`. They wait for a release of 
   with `machine`, so a caller that sets no option passes the empty record.
 - **CORE-105** The machine of `Db::close` gives one `Io` step, the close of the pool of CORE-31, and ends with
   `Done(Ok(()))`; it calls no language code, so it gives neither `Call` nor `Await`, and its `settle` is never called.
+
+- **CORE-127** The binding member `db.execute` uses `Db::execute_text_machine(self, step: String, params: Vec<OrmValue>)`,
+  a machine that owns the database handle, compiled-step text and parameter values. Its first advance gives one `Io`
+  future that calls the existing `execute_text` logic, preserving its parse, step-validation and scalar-conversion order
+  (FMS-42); its next advance gives `Done(Result<(), Error>)` with that result unchanged. It gives no `Call` or `Await`
+  and performs no I/O in construction or advancement. The contract keeps receiver `&self`: the binding clones the
+  handle, and the caller retains its instance. Native Rust `execute_text(&self, &str, Vec<OrmValue>)` remains the native
+  future API. Dropping the machine before it gives `Io`, or dropping the unpolled owned future, sends no statement.
+  A returned `Io` owns its inputs independently of the machine and can complete after the machine is dropped; the
+  driver cancels it by dropping that future too. Cancellation cannot undo an already executed statement.
+
+`Db::execute_text_machine` is implemented and its three native execution artifact cases pass. The contract names this
+owned constructor with `machine: true`. The committed native machine owner passes 27 cases without failure or skip, including four execute artifacts,
+18 transaction/savepoint/close artifacts, two preparation artifacts and three existing dbspec matches. Generated
+binding runtime verification of this member is incomplete.
+
+- **CORE-128** Successful SQLite row-lock-table preparation returns the actual connection lease that executed its CREATE statement before preparation completes. A completed transaction-opening I/O therefore retains only its intended transaction lease when no independent operation is active. Cancellation or error discards an unreturned preparation lease. This rule concerns pool ownership, not receipt of SQLite worker shutdown. Preparation acquires before statement observation: acquisition failure (`closed` or `pool_timeout`) sends no SQL, publishes no statement event and is neither server-remapped nor replaced by a subscriber error. The statement elapsed duration excludes pool acquisition, as INT-91 measures send through result.
+
+The preparation-return helper and its gated actual-lease and closed-pool observation cases are implemented and pass the committed native machine owner. This proves pool ownership and observation, not physical SQLite worker shutdown.
 
 ## Interface contract
 

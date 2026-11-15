@@ -27,6 +27,9 @@ use crate::tx::{AuditKey, TxShared};
 use crate::value::Param;
 use crate::{Error, Result};
 
+mod machine;
+pub use machine::Execute;
+
 /// The audit source of a connection: it returns the audit values of the
 /// current request, column names and values of the audit record table, such as
 /// the account and the request id. A transaction with `audit(values)` calls it
@@ -79,6 +82,16 @@ pub(crate) async fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()>
 /// The bound of the wait for a connection of the pool when the configuration states none (CORE-30).
 pub const DEFAULT_POOL_ACQUIRE_TIMEOUT_MS: u32 = 30_000;
 
+/// The defaults of the other fields of [`Config`], which the contract names in `default_core` (binding GN-6i).
+pub const DEFAULT_AES_KEY: &str = "";
+pub const DEFAULT_BLIND_INDEX_KEY: &str = "";
+pub const DEFAULT_AES_VERSION: i32 = 1;
+pub const DEFAULT_PLAN_CACHE_SIZE: usize = 256;
+pub const DEFAULT_STATEMENT_CACHE_SIZE: usize = 256;
+pub const DEFAULT_STATEMENT_TIMEOUT_MS: u32 = 0;
+pub const DEFAULT_POOL_IDLE_SIZE: u32 = 0;
+pub const DEFAULT_POOL_LIFETIME_MS: u32 = 0;
+
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
@@ -109,16 +122,16 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            aes_key: String::new(),
-            blind_index_key: String::new(),
-            aes_version: 1,
+            aes_key: DEFAULT_AES_KEY.to_owned(),
+            blind_index_key: DEFAULT_BLIND_INDEX_KEY.to_owned(),
+            aes_version: DEFAULT_AES_VERSION,
             aes_keys: BTreeMap::new(),
-            statement_timeout_ms: 0,
-            pool_idle_size: 0,
-            pool_lifetime_ms: 0,
+            statement_timeout_ms: DEFAULT_STATEMENT_TIMEOUT_MS,
+            pool_idle_size: DEFAULT_POOL_IDLE_SIZE,
+            pool_lifetime_ms: DEFAULT_POOL_LIFETIME_MS,
             pool_acquire_timeout_ms: DEFAULT_POOL_ACQUIRE_TIMEOUT_MS,
-            plan_cache_size: 256,
-            statement_cache_size: 256,
+            plan_cache_size: DEFAULT_PLAN_CACHE_SIZE,
+            statement_cache_size: DEFAULT_STATEMENT_CACHE_SIZE,
             audit_source: None,
         }
     }
@@ -708,6 +721,10 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, acqu
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/execute_machine.rs"]
+mod execute_machine_tests;
+
+#[cfg(test)]
 #[path = "db/sqlite_version_tests.rs"]
 mod sqlite_version_tests;
 
@@ -834,7 +851,7 @@ impl Db {
         schema.registered()?;
         let db = Db::connect(dsn, pool_size, cfg).await?;
         if let Err(error) = db.register(schema) {
-            db.close().await;
+            db.close_async().await;
             return Err(error);
         }
         Ok(db)
@@ -1087,8 +1104,16 @@ impl Db {
         }
     }
 
-    /// Closes the pool and clears cached plans. Calling it more than once is safe.
-    pub async fn close(&self) {
+    /// Closes the pool as a state machine (CORE-102, CORE-105): the member `db.close` of the contract. The machine owns
+    /// this clone of the handle, gives one I/O step, the close of the pool, and calls no language code.
+    #[must_use]
+    pub fn close(self) -> crate::tx::Close {
+        crate::tx::Close::new(self)
+    }
+
+    /// Closes the pool and clears cached plans. Calling it more than once is safe. This is the form that Rust code
+    /// awaits (CORE-102).
+    pub async fn close_async(&self) {
         self.inner.closed.store(true, Ordering::Release);
         self.inner.plans.lock().unwrap().clear();
         self.inner.plan_order.lock().unwrap().clear();
@@ -1466,6 +1491,12 @@ impl Db {
     pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()> {
         self.ensure_open()?;
         execute_step(Executor::Db(self.clone()), step, params).await
+    }
+
+    /// Owns the compiled-step text and parameter values in one I/O machine (CORE-127). Native Rust callers may still
+    /// await `execute_text`; this constructor gives the binding an operation whose future can outlive its driver.
+    pub fn execute_text_machine(self, step: String, params: Vec<crate::OrmValue>) -> Execute {
+        Execute::new(self, step, params)
     }
 
     /// Runs one statement of a plan that reads no rows, as `execute` does, with the step as the JSON text of its form

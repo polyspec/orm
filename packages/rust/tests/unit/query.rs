@@ -65,7 +65,7 @@ async fn the_memory_of_a_loaded_schema_returns_with_its_last_owner() {
     drop(rows);
     drop(row);
     assert!(text.upgrade().is_some(), "the connection that the schema is registered on shares it");
-    db.close().await;
+    db.close_async().await;
     drop(db);
     assert!(text.upgrade().is_none(), "the last owner is dropped, so the text of the schema is returned");
 
@@ -149,7 +149,7 @@ async fn where_and_order_by_select_and_order_the_rows() {
     assert_eq!(query.get_count().await.expect("count"), 3, "seq > 1 or label = first");
     let statement = query.get_query().await.expect("statement");
     assert!(statement.sql.contains(" OR "), "the statement joins the two conditions with OR: {}", statement.sql);
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-83. A terminal with a chain adds its conditions with and, and does not change the query.
@@ -168,7 +168,7 @@ async fn a_terminal_with_a_chain_leaves_the_query_unchanged() {
     assert_eq!(row.value("seq").expect("seq"), int(2));
     assert!(query.get_by("Label", vec![text("first")]).await.expect("get by").is_none(), "seq > 1 and label = first matches no row");
     assert_eq!(query.get_count().await.expect("count"), 2, "the query keeps only its own condition");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-83. A name that is no column of the entity is column_unknown, and a column that the row did not
@@ -187,7 +187,7 @@ async fn value_names_a_column_that_the_row_read() {
     assert_eq!(row.value("label").expect("label"), text("first"));
     let error = row.value("missing").expect_err("no column of the entity");
     assert_eq!(error.to_string(), "column_unknown: clock_event.missing");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-81, CORE-20. A query that is connected to the Tx of a transaction runs in that transaction.
@@ -198,7 +198,7 @@ async fn a_query_runs_in_the_transaction_it_is_connected_to() {
     let schema = clock();
     let db = clock_db(&scratch, &schema).await;
     let counted = db
-        .transaction(
+        .transaction_async(
             |tx| {
                 let schema = &schema;
                 async move {
@@ -212,5 +212,5 @@ async fn a_query_runs_in_the_transaction_it_is_connected_to() {
         .await
         .expect("transaction");
     assert_eq!(counted, 3);
-    db.close().await;
+    db.close_async().await;
 }

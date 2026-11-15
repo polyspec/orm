@@ -24,7 +24,7 @@ const WRITER_NAME: &str = "ORM_SQLITE_WRITER_NAME";
 
 /// Runs one transaction that reads the service count and then inserts the service `label`.
 async fn write_service(db: &Db, label: &str) -> polyspec_orm::Result<()> {
-    db.transaction(
+    db.transaction_async(
         |tx: polyspec_orm::Tx| async move {
             polyspec_orm::model::get_count(service(Some((&tx).into())).core()).await?;
             let mut row = service(Some((&tx).into()));

@@ -466,12 +466,13 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!({ "id": m.get_id()?, "name": m.get_name()?, "count": count })
         }
         "transaction_commit" => {
-            db.transaction(|tx: Tx| async move { Logs::new().connect(&tx).set_task("T3").set_note("committed").create().await.map(drop) }, options()).await?;
+            db.transaction_async(|tx: Tx| async move { Logs::new().connect(&tx).set_task("T3").set_note("committed").create().await.map(drop) }, options())
+                .await?;
             json!(Logs::new().connect(db).get_count().await?)
         }
         "transaction_rollback" => {
             let ended: polyspec_orm::Result<()> = db
-                .transaction(
+                .transaction_async(
                     |tx: Tx| async move {
                         Logs::new().connect(&tx).set_task("T3").set_note("rolled back").create().await?;
                         Err(stop())
@@ -486,11 +487,11 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!(Logs::new().connect(db).get_count().await?)
         }
         "savepoint_rollback" => {
-            db.transaction(
+            db.transaction_async(
                 |tx: Tx| async move {
                     Logs::new().connect(&tx).set_task("T3").set_note("outer").create().await?;
                     let inner: polyspec_orm::Result<()> = tx
-                        .savepoint(|savepoint: Tx| async move {
+                        .savepoint_async(|savepoint: Tx| async move {
                             Logs::new().connect(&savepoint).set_task("T3").set_note("inner").create().await?;
                             Err(stop())
                         })
@@ -508,7 +509,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!(notes)
         }
         "read_only_write" => {
-            db.transaction(
+            db.transaction_async(
                 |tx: Tx| async move { Logs::new().connect(&tx).set_task("T3").set_note("read only").create().await.map(drop) },
                 TransactionOptions { read_only: Some(true), ..options() },
             )
@@ -516,7 +517,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             Value::Null
         }
         "lock_update" => {
-            db.transaction(
+            db.transaction_async(
                 |tx: Tx| async move {
                     People::new()
                         .connect(&tx)
@@ -534,7 +535,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .await?
         }
         "lock_nowait" => {
-            db.transaction(|tx: Tx| async move { People::new().connect(&tx).id("P1").for_update_no_wait().get().await.map(drop) }, options()).await?;
+            db.transaction_async(|tx: Tx| async move { People::new().connect(&tx).id("P1").for_update_no_wait().get().await.map(drop) }, options()).await?;
             Value::Null
         }
         // The statement of a read, which the connection plans in SQLite's dialect (docs/spec/dialects.md), and its binds.
@@ -544,13 +545,13 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!({ "sql": statement.sql, "binds": binds })
         }
         "isolation" => {
-            db.transaction(|_tx: Tx| async move { Ok(()) }, TransactionOptions { isolation: Some(Isolation::Serializable), ..options() }).await?;
+            db.transaction_async(|_tx: Tx| async move { Ok(()) }, TransactionOptions { isolation: Some(Isolation::Serializable), ..options() }).await?;
             Value::Null
         }
         "write_conflict" => {
             let dir = &s.dir;
             let committed = db
-                .transaction(
+                .transaction_async(
                     |tx: Tx| async move {
                         let mut m = People::new().connect(&tx).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?.set_name("Ann C");
                         m.update(false).await?;
@@ -577,7 +578,7 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         "transaction_retry_commit" => {
             let runs = &std::sync::atomic::AtomicU32::new(0);
             let committed = db
-                .transaction(
+                .transaction_async(
                     |tx: Tx| async move {
                         runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         let m = People::new().connect(&tx).id("P1").get().await?.ok_or(polyspec_orm::Error::no_rows())?;
@@ -594,11 +595,11 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             json!({ "error": code, "runs": runs.load(std::sync::atomic::Ordering::SeqCst) })
         }
         "connect_corpus_mismatch" => {
-            markdown_model::connect(&s.dsn("other", &s.token), 0, Config::default()).await?.close().await;
+            markdown_model::connect(&s.dsn("other", &s.token), 0, Config::default()).await?.close_async().await;
             Value::Null
         }
         "connect_token_mismatch" => {
-            markdown_model::connect(&s.dsn(&s.corpus, &"0".repeat(32)), 0, Config::default()).await?.close().await;
+            markdown_model::connect(&s.dsn(&s.corpus, &"0".repeat(32)), 0, Config::default()).await?.close_async().await;
             Value::Null
         }
         // NULL sorts before every value ascending and after every value descending.

@@ -136,11 +136,11 @@ async fn pool_discards_ended_idle_connection() {
             }
             Pool::Sqlite(_) | Pool::Markdown(_) => unreachable!("server session DSNs select MySQL or PostgreSQL"),
         }
-        admin.close().await;
+        admin.close_async().await;
         assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: statement after server ended idle connection: {e}")));
         complete_idle_release(&db, driver).await;
         assert_eq!(db.stats().idle, 1, "{driver}: the pool retained a replacement connection");
-        db.close().await;
+        db.close_async().await;
         database.drop().await;
     }
 }
@@ -242,7 +242,7 @@ async fn postgres_float_round_trip() {
         let binary: f64 = sqlx::query_scalar("SELECT $1::float8").bind(v).fetch_one(pool).await.unwrap();
         assert_eq!(binary.to_bits(), v.to_bits(), "binary format of {v:e}: {binary:e}");
     }
-    db.close().await;
+    db.close_async().await;
 }
 
 /// Dropping the future of a statement cancels the statement, and the
@@ -290,12 +290,12 @@ async fn dropping_a_query_cancels_it_on(drivers: &[&str]) {
         // The drop closed the connection of the statement on the spot, without the five-second close path of SQLx (INT-67).
         assert_eq!(db.stats().in_use, 0, "{driver}: the dropped statement still holds its pool connection");
         held.release().await;
-        holder.close().await;
+        holder.close_async().await;
         // The pool holds one connection, so the next statement proves the
         // cancelled one released it.
         let count = polyspec_orm::model::get_count(event(&db).core()).await.or_panic(|e| format!("{driver}: count after cancellation: {e}"));
         assert_eq!(count, 1, "{driver}: rows after cancellation");
-        db.close().await;
+        db.close_async().await;
         database.drop().await;
     }
 }
@@ -333,7 +333,7 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
         let held = HeldRows::hold(&holder, "zone_event").await;
         let mut waits = waits_of(&db).await;
         {
-            let transaction = std::pin::pin!(db.transaction(
+            let transaction = std::pin::pin!(db.transaction_async(
                 |tx: polyspec_orm::Tx| async move {
                     let mut row = event(&tx);
                     row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
@@ -359,15 +359,15 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
         // The holder ends first, as in dropping_a_query_cancels_it: a SQLite transaction begins with the write lock (DIA-221),
         // which the holder has. The pool holds one connection, so the next transaction proves the dropped one released it.
         held.release().await;
-        holder.close().await;
-        db.transaction(
+        holder.close_async().await;
+        db.transaction_async(
             |_tx: polyspec_orm::Tx| async { Ok::<(), polyspec_orm::Error>(()) },
             polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() },
         )
         .await
         .or_panic(|e| format!("{driver}: the transaction after the dropped one: {e}"));
         assert_eq!(polyspec_orm::model::get_count(event(&db).core()).await.unwrap(), 1, "{driver}: dropped transaction committed");
-        db.close().await;
+        db.close_async().await;
         database.drop().await;
     }
 }

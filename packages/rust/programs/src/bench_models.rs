@@ -162,7 +162,7 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
         Box::pin(async move {
             for (name, db) in self.connections.0.drain() {
                 if name != CASE_CONNECTION {
-                    db.close().await;
+                    db.close_async().await;
                 }
             }
         })

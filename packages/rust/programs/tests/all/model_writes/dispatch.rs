@@ -77,7 +77,7 @@ async fn transaction_deadlock(db: &polyspec_orm::Connection, step: &Value) -> Re
                     let attempts = std::cell::Cell::new(0_u64);
                     let deadlocks = std::cell::Cell::new(0_u64);
                     let result: polyspec_orm::Result<()> = conn
-                        .transaction(
+                        .transaction_async(
                             |tx: polyspec_orm::Tx| {
                                 let (attempts, deadlocks, name, held) = (&attempts, &deadlocks, &name, &held);
                                 async move {
@@ -99,7 +99,7 @@ async fn transaction_deadlock(db: &polyspec_orm::Connection, step: &Value) -> Re
                             polyspec_orm::TransactionOptions { isolation: Some(polyspec_orm::Isolation::ReadCommitted), retry: Some(3), ..Default::default() },
                         )
                         .await;
-                    conn.close().await;
+                    conn.close_async().await;
                     result.map_err(fail)?;
                     Ok((attempts.get(), deadlocks.get()))
                 })

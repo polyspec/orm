@@ -141,7 +141,7 @@ pub fn release() {
         Err(poisoned) => poisoned.into_inner(),
     };
     if let Some(shared) = guard.take() {
-        shared.runtime.block_on(shared.served.db.close());
+        shared.runtime.block_on(shared.served.db.close_async());
     }
 }
 

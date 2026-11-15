@@ -94,6 +94,6 @@ async fn main() -> polyspec_orm::Result<()> {
     }
     let native = p50(s);
     eprintln!("rust: client p50 {client}µs, native p50 {native}µs ({ITERATIONS} iterations)");
-    db.close().await;
+    db.close_async().await;
     Ok(())
 }

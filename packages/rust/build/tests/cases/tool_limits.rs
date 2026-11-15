@@ -54,7 +54,7 @@ async fn tool_sqlite_file_name_is_the_path() {
         let (database, mut connection, _) = tool_db::open(&dsn).await?;
         connection.exec("CREATE TABLE t (a INTEGER)", &[]).await.map_err(|e| e.to_string())?;
         drop(connection);
-        database.close().await;
+        database.close_async().await;
         Ok::<_, String>(())
     }
     .await;

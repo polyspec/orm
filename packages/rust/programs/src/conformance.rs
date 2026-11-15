@@ -94,7 +94,9 @@ async fn main() {
         ..Default::default()
     };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
-    db.transaction(|_tx: Tx| async { Ok(()) }, TransactionOptions { retry: Some(0), ..Default::default() }).await.expect("prepare conformance connection");
+    db.transaction_async(|_tx: Tx| async { Ok(()) }, TransactionOptions { retry: Some(0), ..Default::default() })
+        .await
+        .expect("prepare conformance connection");
     // Records each statement as that event (docs/operations/usage.md "Statement events"). A transaction's
     // number is counted from 1 in order of first appearance within the vector, and is null outside a transaction. error is the statement's error
     // code, or null.
@@ -113,13 +115,13 @@ async fn main() {
     let out = match run_all(&db, &shared, &args.vectors).await {
         Ok(out) => out,
         Err(e) => {
-            db.close().await;
+            db.close_async().await;
             eprintln!("conformance: {e}");
             std::process::exit(2);
         }
     };
     println!("{}", serde_json::to_string_pretty(&out).unwrap());
-    db.close().await;
+    db.close_async().await;
 }
 
 type Vector<'a> = (&'static str, std::pin::Pin<Box<dyn std::future::Future<Output = polyspec_orm::Result<Value>> + 'a>>);
@@ -212,7 +214,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
 
     run!(
         "now_defaults",
-        db.transaction(
+        db.transaction_async(
             |tx: Tx| async move {
                 let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
                 let before = chrono::Utc::now().naive_utc();
@@ -241,7 +243,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     );
     run!(
         "delete_recursive",
-        db.transaction(
+        db.transaction_async(
             |tx: Tx| async move {
                 let service = Service::new().connect(&tx).set_name("recursive").create().await?;
                 let seq = service.get_seq().unwrap();
@@ -278,7 +280,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     // test entry point (docs/spec/protocol.md "Test write result").
     run!(
         "affected_counts",
-        db.transaction(
+        db.transaction_async(
             |tx: Tx| async move {
                 let created = UpsertCell::new().connect(&tx).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
                 let seq = created.get_seq().unwrap();
@@ -310,7 +312,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     // the connection.
     run!(
         "clock_truncate_write",
-        db.transaction(
+        db.transaction_async(
             |tx: Tx| async move {
                 use chrono::SubsecRound;
                 polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
@@ -331,7 +333,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     );
     run!(
         "clock_compare_six_digits",
-        db.transaction(
+        db.transaction_async(
             |tx: Tx| async move {
                 polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
                 let day = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap();

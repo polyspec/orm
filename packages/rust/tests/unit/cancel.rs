@@ -65,7 +65,7 @@ async fn a_statement_after_the_cancellation_is_canceled_and_not_sent() {
     assert_eq!(sent.take(), [] as [&str; 0], "a canceled statement is not sent");
     assert_eq!(count_of(&schema, Connection::from(&db)).get_count().await.expect("the handle without the cancellation"), 0);
     assert_eq!(sent.take(), ["select"]);
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-46. The install of the schema tools of the handle starts with a BEGIN of the handle, which is
@@ -81,7 +81,7 @@ async fn a_schema_install_after_the_cancellation_is_canceled_and_not_sent() {
     let error = handle.utils().schema().install(&schema).await.expect_err("an install after the cancellation");
     assert_eq!(error.to_string(), CANCELED);
     assert_eq!(sent.take(), [] as [&str; 0], "a canceled install sends nothing");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-46. The BEGIN of a handle whose cancellation has fired is canceled: nothing is sent and the
@@ -96,7 +96,7 @@ async fn a_begin_after_the_cancellation_is_canceled_and_not_sent() {
     trigger.cancel();
     let ran = Arc::new(Mutex::new(false));
     let error = handle
-        .transaction(
+        .transaction_async(
             |_tx| {
                 let ran = Arc::clone(&ran);
                 async move {
@@ -111,7 +111,7 @@ async fn a_begin_after_the_cancellation_is_canceled_and_not_sent() {
     assert_eq!(error.to_string(), CANCELED);
     assert!(!*ran.lock().expect("the mark of the callback"), "the callback of a canceled BEGIN does not run");
     assert_eq!(sent.take(), [] as [&str; 0], "a canceled BEGIN is not sent");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-45, CORE-46. The Tx of a transaction carries the cancellation of the handle that started it: a
@@ -124,7 +124,7 @@ async fn a_canceled_transaction_still_rolls_back() {
     let (trigger, cancel) = cancel_pair();
     let handle = db.with_cancel(cancel);
     let error = handle
-        .transaction(
+        .transaction_async(
             |tx| {
                 let (schema, trigger) = (&schema, &trigger);
                 async move {
@@ -140,7 +140,7 @@ async fn a_canceled_transaction_still_rolls_back() {
         .expect_err("a statement after the cancellation");
     assert_eq!(error.to_string(), CANCELED);
     assert_eq!(sent.take(), ["begin", "select", "rollback"], "the second statement is not sent and the ROLLBACK is");
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-46. A callback that returns a value after the cancellation fired commits: the COMMIT is sent
@@ -153,7 +153,7 @@ async fn a_canceled_transaction_still_commits() {
     let (trigger, cancel) = cancel_pair();
     let handle = db.with_cancel(cancel);
     handle
-        .transaction(
+        .transaction_async(
             |_tx| {
                 let trigger = &trigger;
                 async move {
@@ -166,7 +166,7 @@ async fn a_canceled_transaction_still_commits() {
         .await
         .expect("a callback that returns a value");
     assert_eq!(sent.take(), ["begin", "commit"]);
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: CORE-46. A SAVEPOINT after the cancellation is canceled and not sent; a cancellation that fires inside
@@ -181,12 +181,12 @@ async fn a_canceled_savepoint_still_ends() {
         let (trigger, cancel) = cancel_pair();
         let handle = db.with_cancel(cancel);
         handle
-            .transaction(
+            .transaction_async(
                 |tx| {
                     let (schema, trigger) = (&schema, &trigger);
                     async move {
                         let inside = tx
-                            .savepoint(|inner| async move {
+                            .savepoint_async(|inner| async move {
                                 trigger.cancel();
                                 if fails {
                                     count_of(schema, Connection::from(&inner)).get_count().await.map(drop)
@@ -199,7 +199,7 @@ async fn a_canceled_savepoint_still_ends() {
                         if let Err(error) = inside {
                             assert_eq!(error.to_string(), CANCELED);
                         }
-                        let error = tx.savepoint(|_inner| async { Ok(()) }).await.expect_err("a savepoint after the cancellation");
+                        let error = tx.savepoint_async(|_inner| async { Ok(()) }).await.expect_err("a savepoint after the cancellation");
                         assert_eq!(error.to_string(), CANCELED);
                         Ok(())
                     }
@@ -210,5 +210,5 @@ async fn a_canceled_savepoint_still_ends() {
             .expect("the transaction");
         assert_eq!(sent.take(), ends, "fails {fails}");
     }
-    db.close().await;
+    db.close_async().await;
 }

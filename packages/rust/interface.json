@@ -85,6 +85,12 @@
         "python": "ORMInternalError",
         "node": "OrmInternalError",
         "wasm": "OrmInternalError"
+      },
+      "io": {
+        "php": "Polyspec\\Orm\\OrmIoError",
+        "python": "ORMIoError",
+        "node": "OrmIoError",
+        "wasm": "OrmIoError"
       }
     },
     "fixed": [
@@ -1273,7 +1279,8 @@
           "type": "text",
           "default": {
             "literal": ""
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_AES_KEY"
         },
         {
           "name": [
@@ -1284,7 +1291,8 @@
           "type": "text",
           "default": {
             "literal": ""
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_BLIND_INDEX_KEY"
         },
         {
           "name": [
@@ -1294,7 +1302,8 @@
           "type": "int",
           "default": {
             "literal": 1
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_AES_VERSION"
         },
         {
           "name": [
@@ -1320,7 +1329,8 @@
           "type": "uint",
           "default": {
             "literal": 256
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_PLAN_CACHE_SIZE"
         },
         {
           "name": [
@@ -1331,7 +1341,8 @@
           "type": "uint",
           "default": {
             "literal": 256
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_STATEMENT_CACHE_SIZE"
         },
         {
           "name": [
@@ -1342,7 +1353,8 @@
           "type": "uint",
           "default": {
             "literal": 0
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_STATEMENT_TIMEOUT_MS"
         },
         {
           "name": [
@@ -1353,7 +1365,8 @@
           "type": "uint",
           "default": {
             "literal": 0
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_POOL_IDLE_SIZE"
         },
         {
           "name": [
@@ -1364,7 +1377,8 @@
           "type": "uint",
           "default": {
             "literal": 0
-          }
+          },
+          "default_core": "polyspec_orm::DEFAULT_POOL_LIFETIME_MS"
         },
         {
           "name": [
@@ -1531,7 +1545,9 @@
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Db::close",
-            "receiver": "&self"
+            "receiver": "&self",
+            "machine": true,
+            "result": true
           }
         },
         {
@@ -1645,7 +1661,8 @@
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Db::transaction",
-            "receiver": "&self"
+            "receiver": "&self",
+            "machine": true
           }
         },
         {
@@ -1785,8 +1802,10 @@
           ],
           "wait": "async_driver",
           "core": {
-            "path": "polyspec_orm::Db::execute_text",
-            "receiver": "&self"
+            "path": "polyspec_orm::Db::execute_text_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
           }
         }
       ]
@@ -1860,7 +1879,8 @@
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Tx::savepoint",
-            "receiver": "&self"
+            "receiver": "&self",
+            "machine": true
           }
         }
       ]

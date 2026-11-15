@@ -22,7 +22,7 @@ async fn decimal_physical(env: &str) {
     assert!(!dsn.is_empty(), "{env} is empty");
     let db = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let result: polyspec_orm::Result<()> = db
-        .transaction(
+        .transaction_async(
             |tx: polyspec_orm::Tx| async move {
                 let row =
                     DecimalCase::new().connect(&tx).set_seq(1).set_amount("48.0450")?.set_large_value(Some("9007199254740993".to_owned()))?.create().await?;
@@ -39,7 +39,7 @@ async fn decimal_physical(env: &str) {
         matches!(&result, Err(error) if error.kind() == polyspec_orm::Kind::Config && error.text() == "decimal fixture rollback"),
         "transaction rollback result: {result:?}"
     );
-    db.close().await;
+    db.close_async().await;
 }
 
 // Requirements: DIA-25, COD-2, DBS-108, SCH-7.
@@ -151,7 +151,7 @@ async fn schema_set_edited_manifest(driver: &str) {
     assert_eq!(error.code(), "schema_hash_mismatch", "{driver}: {error}");
     assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), before, "{driver}: statements of the edited request");
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows after the rejected request");
-    db.close().await;
+    db.close_async().await;
     drop_schema_set_database(driver, &dsn, &name).await;
 }
 

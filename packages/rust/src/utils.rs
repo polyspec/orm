@@ -147,7 +147,9 @@ impl<'a> Utils<'a> {
             return f(&tx.executor()?).await;
         }
         let f = &f;
-        self.db.transaction(move |tx: Tx| async move { f(&tx.executor()?).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() }).await
+        self.db
+            .transaction_async(move |tx: Tx| async move { f(&tx.executor()?).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() })
+            .await
     }
 
     /// Calls `f` with the transaction handle (INT-150): the transaction of `Tx::utils`, or a new transaction for
@@ -158,7 +160,7 @@ impl<'a> Utils<'a> {
             return f(tx).await;
         }
         let f = &f;
-        self.db.transaction(move |tx: Tx| async move { f(&tx).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() }).await
+        self.db.transaction_async(move |tx: Tx| async move { f(&tx).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() }).await
     }
 
     /// Runs an existence-check statement that takes only text binds.

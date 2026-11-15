@@ -31,10 +31,10 @@ async fn insert_event(tx: &Tx, label: &str) -> i64 {
 /// the LOG message "still waiting for" while the update waits, and only then the transaction reads the state once (T475).
 async fn postgres_waiter(dsn: &str, db: &Db) {
     let utils = db.utils();
-    let seq = db.transaction(|tx: Tx| async move { Ok(insert_event(&tx, "held").await) }, once()).await.or_panic(|e| format!("postgres: {e}"));
+    let seq = db.transaction_async(|tx: Tx| async move { Ok(insert_event(&tx, "held").await) }, once()).await.or_panic(|e| format!("postgres: {e}"));
     let utils = &utils;
     let (waiting, waiter) = db
-        .transaction(
+        .transaction_async(
             |tx: Tx| async move {
                 let mut row = connected::<ClockEvent>(&tx);
                 row.core_mut().set("seq", Param::from(seq));
@@ -52,7 +52,7 @@ async fn postgres_waiter(dsn: &str, db: &Db) {
                         .map(|_| ())
                         .map_err(|e| e.to_string());
                     drop(conn);
-                    other.close().await;
+                    other.close_async().await;
                     result
                 });
                 tokio::select! {
@@ -75,7 +75,7 @@ async fn bounded(driver: &str) {
     let db = Db::connect_schema(database.dsn(), &CLOCK_SCHEMA, 4, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
     db.utils().schema().install(&CLOCK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     postgres_waiter(database.dsn(), &db).await;
-    db.close().await;
+    db.close_async().await;
     database.drop().await;
 }
 

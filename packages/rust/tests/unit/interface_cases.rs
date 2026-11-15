@@ -596,7 +596,7 @@ async fn run_case(member: &str, case: &Value, failures: &mut Vec<String>) {
     }
     for made in [receiver, result].into_iter().flatten() {
         if let Instance::Db(db) = made {
-            db.close().await;
+            db.close_async().await;
         }
     }
 }

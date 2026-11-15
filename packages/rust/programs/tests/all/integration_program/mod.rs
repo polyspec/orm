@@ -74,7 +74,7 @@ async fn generated_external_model_reads_its_table() {
     sqlx::query("INSERT INTO ext_account (seq, name) VALUES (1, 'kim')").execute(pool).await.or_panic(|e| format!("insert: {e}"));
     let row = external_member::ExtAccount::new().connect(&db).get_by_seq(1).await.or_panic(|e| format!("read: {e}")).expect("a row");
     assert_eq!(row.get_name().unwrap(), "kim");
-    db.close().await;
+    db.close_async().await;
     database.drop().await;
 }
 
@@ -174,7 +174,7 @@ impl Target {
 
     /// Closes the connection and drops the case database.
     async fn finish(self) {
-        self.db.close().await;
+        self.db.close_async().await;
         self.database.drop().await;
     }
 }
@@ -433,7 +433,7 @@ async fn primary_and_replica_case(t: &Target, replica_base: &str) {
     // Waits, through the replica's existing database connection, until the replica receives the case database and the installed table.
     let replica_admin = crate::model::connect(replica_base, 1, config()).await.unwrap();
     await_replica(master, &replica_admin).await;
-    replica_admin.close().await;
+    replica_admin.close_async().await;
     let slave1 = crate::model::connect(&t.database.related_dsn(replica_base), 2, config()).await.unwrap();
     let name = format!("replica-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
     User::new().connect(master).set_name(&name).create().await.unwrap();
@@ -455,7 +455,7 @@ async fn primary_and_replica_case(t: &Target, replica_base: &str) {
     let tx_name = format!("{name}-tx");
     let (tx_name, slave1) = (&tx_name, &slave1);
     let r: polyspec_orm::Result<()> = master
-        .transaction(
+        .transaction_async(
             |tx: polyspec_orm::Tx| async move {
                 User::new().connect(&tx).set_name(tx_name.as_str()).create().await?;
                 assert_eq!(User::new().connect(&tx).name(tx_name.as_str()).get_count().await?, 1, "the primary connection inside its transaction");
@@ -469,7 +469,7 @@ async fn primary_and_replica_case(t: &Target, replica_base: &str) {
     await_replica(master, slave1).await;
     let committed = vec![format!("{name}-renamed"), tx_name.clone()];
     assert_eq!(User::new().connect(slave1).name(committed).get_count().await.unwrap(), 2, "the replica reads the committed rows");
-    slave1.close().await;
+    slave1.close_async().await;
 }
 
 /// Writes through a connection to a SQLite database file the process may
@@ -479,7 +479,7 @@ async fn read_only_sqlite(t: &Target) {
     use std::os::unix::fs::PermissionsExt;
     let path = t.database.path().expect("a SQLite case database file");
     User::new().connect(&t.db).set_name("read-only").create().await.unwrap();
-    t.db.close().await;
+    t.db.close_async().await;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
     let db = crate::model::connect(&t.dsn, 2, config()).await.unwrap();
     assert_eq!(User::new().connect(&db).name("read-only").get_count().await.unwrap(), 1, "the read-only database reads the row");
@@ -488,7 +488,7 @@ async fn read_only_sqlite(t: &Target) {
         polyspec_orm_test_support::catalog_code::code_of_kind(polyspec_orm::Kind::ReadOnly),
         "a write to the read-only database"
     );
-    db.close().await;
+    db.close_async().await;
 }
 
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL

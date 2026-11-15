@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 12305043a4e6dc368ccd8d504dd3f24a6fba16fb2ea505be9971e2ddd1e7817a -->
+<!-- source-sha256: 0e3fbb8831c5741aae729704af6bd5209b5f397da45c1f90da9a5e69c56acf8c -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -34,6 +34,18 @@
 언어 구현은 아직 CORE-1에 따라 core와 공존한다. CORE-4의 제거 조건은 검증하지 않았으며, CORE-5가 요구하는 차이
 목록은 아직 완전하지 않다. `changes`는 CORE-124의 값 표현을 기록하지만, 그 항목들만으로 모든 legacy API 차이가
 기록되었다고 볼 수 없다. 이 증거로 제거할 수 있는 언어 구현은 없다.
+
+- **CORE-7** transaction 또는 savepoint machine을 취소하는 driver는 machine과 현재 I/O future를 함께 drop한다.
+  열린 transaction을 소유한 machine을 drop하면 보관된 모든 handle을 즉시 무효화한다. 열린 savepoint machine을
+  drop하면 transaction 전체를 무효화한다. Drop은 그 savepoint의 rollback을 await할 수 없기 때문이다.
+  transaction이나 savepoint를 아직 획득하지 않은 취소된 opening은 소유한 것이 없고 parent를 계속 사용할 수 있게 둔다.
+  독립적으로 보관된 operation은 그 future가 완료되거나 drop될 때까지 connection borrow를 소유한다. 논리적 무효화는
+  즉시 적용하고, 열린 상태이거나 상태를 알 수 없는 connection은 마지막 borrow가 끝날 때 폐기하며 pool에 반환하지 않는다.
+  무효화 뒤에는 새 operation이나 종료 동작을 받지 않는다. 종료 I/O의 수락 시점은 connection slot lock을 잡고 transaction이
+  중단되지 않았음을 확인한 뒤 connection을 꺼낼 때다. 이미 수락된 종료 future는 독립적으로 완료를 소유한다. 정상 반환은
+  종료 statement와 정리가 성공하고 중단 검사를 통과한 뒤에만 수락한다. 무효화 전에 수락된 반환 future는 정상임이 입증된
+  connection을 반환할 수 있다. 이미 보낸 COMMIT은 취소할 수 없다. machine을 drop해도 rollback을 입증하거나 commit된
+  결과와 알 수 없는 결과를 구별할 수 없으며, 완료된 commit을 되돌리지 않는다.
 
 ## 오류
 
@@ -367,9 +379,10 @@
 
 ## 상태 기계
 
-CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savepoint`, `Db::close`는 receiver를 빌리는 future이고,
-계약은 `machine`을 이름하지 않는다. `Passthrough`, `Step::Await`, `Machine::settle`이 있는 `polyspec-binding-core` release를
-기다리며, `Cargo.lock`이 고정한 release에는 이 셋이 없다.
+CORE-100부터 CORE-105의 구현은 `packages/rust/src/tx/machine.rs`에 있고, 계약은 세 member에 `machine`을 적는다.
+고정된 `polyspec-binding-core` 0.0.4는 `Passthrough`, `Step::Await`, `Machine::settle`을 제공한다. 검증은 아직
+완료하지 않았다. core의 시험이 각 machine을 한 단계씩 구동하지만, 세 member는 각각 database가 필요해서 contract에
+case가 없다(CORE-72).
 
 - **CORE-100** 계약의 멤버 `db.transaction`, `tx.savepoint`, `db.close`는 `core`에 `"machine": true`를 이름한다. 셋 다
   `wait: async_driver`이고 언어 코드에 닿기 때문이다: 앞의 둘은 언어의 함수를 호출하고, `Db`나 `Tx`의 instance는 멤버가
@@ -388,9 +401,10 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
   - `Db::close(self)`. `Done`은 `Result<(), E>`이다.
   `F`는 `FnMut(Tx) -> Result<binding_core::Passthrough, Failure<E>>`이고, `E`는 코어의 error인 `polyspec_orm::Error`로,
   kind와 메시지 전체를 가진다(CORE-12). `Passthrough`는 코어가 옮기기만 하고 읽지 않는 언어의 값이다: 콜백이 돌려준 값이
-  멤버가 돌려주는 값이다. Rust 코드가 await하는 함수 `Db::transaction_async(&self, callback, options)`와
-  `Tx::savepoint_async(&self, callback)`는 콜백이 future를 돌려주며, CORE-20부터 CORE-26의 규칙을 그대로 따르고 계약의
-  멤버가 아니다. CORE-93의 step runner가 이 둘을 호출한다.
+  멤버가 돌려주는 값이다. Rust 코드가 await하는 함수는 콜백이 future를 돌려주는
+  `Db::transaction_async(&self, callback, options)`와 `Tx::savepoint_async(&self, callback)`, 그리고
+  `Db::close_async(&self)`다. 셋은 CORE-20부터 CORE-26과 CORE-31의 규칙을 그대로 따르고 계약의 멤버가 아니다. CORE-93의
+  step runner가 앞의 둘을 호출한다.
 - **CORE-103** `Db::transaction`과 `Tx::savepoint`의 상태 기계는 다음 단계를 내고, 스스로 I/O를 하지 않는다:
   1. `Io`: 시작. 연결을 빌리고 옵션과 함께 `BEGIN`을 보내거나(CORE-20), CORE-22와 CORE-23의 검사 뒤에 `SAVEPOINT`를
      전송한다. 시작이 실패하면 기계는 `Done(Err(Failure::Kind))`로 끝나고 콜백은 실행되지 않는다.
@@ -415,6 +429,23 @@ CORE-100부터 CORE-105는 구현되지 않았다: `Db::transaction`, `Tx::savep
   매개변수를 거부하므로, 옵션을 정하지 않는 호출자는 빈 record를 넘긴다.
 - **CORE-105** `Db::close`의 상태 기계는 `Io` 단계 하나, 곧 CORE-31의 pool 닫기를 내고 `Done(Ok(()))`로 끝난다. 언어 코드를
   호출하지 않으므로 `Call`도 `Await`도 내지 않고, 그 `settle`은 호출되지 않는다.
+
+- **CORE-127** binding member `db.execute`는 database handle, compiled-step text, parameter 값을 소유하는 machine인
+  `Db::execute_text_machine(self, step: String, params: Vec<OrmValue>)`를 사용한다. 첫 advance는 기존 `execute_text`
+  로직을 호출하는 `Io` future 하나를 준다. parse, step 검증, scalar 변환 순서(FMS-42)를 보존한다. 다음 advance는
+  그 결과를 바꾸지 않은 `Done(Result<(), Error>)`를 준다. `Call`이나 `Await`를 주지 않으며 생성이나 advance에서
+  I/O를 하지 않는다. contract의 receiver는 `&self`로 유지한다. binding은 handle을 clone하고 호출자는 자기 instance를
+  유지한다. native Rust `execute_text(&self, &str, Vec<OrmValue>)`는 native future API로 남는다. `Io`를 주기 전에
+  machine을 drop하거나 poll하지 않은 소유 future를 drop하면 statement를 보내지 않는다. 반환한 `Io`는 machine과
+  독립적으로 입력을 소유하고 machine을 drop한 뒤에도 완료할 수 있다. driver는 그 future도 drop하여 취소한다.
+  취소는 이미 실행한 statement를 되돌릴 수 없다.
+
+`Db::execute_text_machine`은 구현되었으며 native 실행 artifact 세 case를 통과한다. contract는 이 소유 constructor를
+`machine: true`로 가리킨다. 커밋된 native machine owner는 execute artifact 4개, transaction/savepoint/close artifact 18개, 준비 artifact 2개, 기존 dbspec 일치 3개를 포함한 27개 case에서 실패와 skip 없이 통과한다. 이 member의 생성된 binding runtime 검증은 끝나지 않았다.
+
+- **CORE-128** SQLite row-lock-table 준비가 성공하면 CREATE statement를 실행한 실제 connection lease를 준비 완료 전에 반환한다. 따라서 독립된 operation이 없을 때 완료한 transaction-opening I/O는 의도한 transaction lease만 보유한다. 취소나 오류는 반환하지 않은 준비 lease를 폐기한다. 이 규칙은 pool 소유권에 관한 것이며 SQLite worker 종료 수신을 뜻하지 않는다. 준비는 statement 관찰 전에 연결을 얻는다. 연결 획득 실패(`closed` 또는 `pool_timeout`)는 SQL을 보내거나 statement event를 발행하지 않으며 server 오류 변환이나 subscriber 오류 대체를 거치지 않는다. INT-91이 전송부터 결과까지 측정하므로 statement elapsed는 pool 연결 대기를 제외한다.
+
+준비 반환 helper와 gate로 제어한 실제 lease 시험, 닫힌 pool 관찰 시험을 구현했으며 커밋된 native machine owner에서 통과했다. 이는 pool 소유권과 관찰을 입증하며 물리적 SQLite worker 종료를 입증하지 않는다.
 
 ## 인터페이스 계약
 

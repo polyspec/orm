@@ -21,7 +21,7 @@ async fn check() {
         if dialect == "sqlite" {
             let (db, conn, _) = crate::tool_db::open(&dsn).await.unwrap();
             drop(conn);
-            db.close().await;
+            db.close_async().await;
         }
         let catalog = CatalogConnection::connect(&dsn).await.unwrap();
         let owner = catalog;

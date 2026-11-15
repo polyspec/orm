@@ -76,13 +76,13 @@ async fn transaction_forms_rollback_fault(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
     let once = || polyspec_orm::TransactionOptions { retry: Some(0), ..Default::default() };
     polyspec_orm::testing::fail_next_rollback(&db);
-    db.transaction(|tx: polyspec_orm::Tx| async move { create(&tx, "committed").await }, once())
+    db.transaction_async(|tx: polyspec_orm::Tx| async move { create(&tx, "committed").await }, once())
         .await
         .or_panic(|e| format!("{driver}: a committed transaction with an armed fault: {e}"));
     let count = async || polyspec_orm::model::get_count(connected::<RollbackProbe>(&db).core()).await.unwrap();
 
     let error = db
-        .transaction(
+        .transaction_async(
             |tx: polyspec_orm::Tx| async move {
                 create(&tx, "rolled back").await?;
                 Err::<(), _>(fault_callback())
@@ -93,11 +93,11 @@ async fn transaction_forms_rollback_fault(driver: &str, dsn: &str) {
         .expect_err("transaction");
     check_fault(driver, &error, "transaction");
     polyspec_orm::testing::fail_next_rollback(&db);
-    db.transaction(|_tx: polyspec_orm::Tx| async move { Ok(()) }, once()).await.or_panic(|e| format!("{driver}: a committed transaction: {e}"));
-    let error = db.transaction(|_tx: polyspec_orm::Tx| async move { Err::<(), _>(fault_callback()) }, once()).await.expect_err("second");
+    db.transaction_async(|_tx: polyspec_orm::Tx| async move { Ok(()) }, once()).await.or_panic(|e| format!("{driver}: a committed transaction: {e}"));
+    let error = db.transaction_async(|_tx: polyspec_orm::Tx| async move { Err::<(), _>(fault_callback()) }, once()).await.expect_err("second");
     check_fault(driver, &error, "transaction after a commit");
     assert_eq!(count().await, 1, "{driver}: the faulted rollbacks keep only the committed row");
-    db.close().await;
+    db.close_async().await;
 }
 
 /// Runs the case in its own case database, and drops the database when done.

@@ -38,7 +38,7 @@ async fn failed_cleanup_discards_the_connection() {
         id
     };
     let clean = session().await;
-    db.transaction(|tx: Tx| async move { tx.utils().lock(&format!("orm_test.clean.{}", std::process::id())).await }, once())
+    db.transaction_async(|tx: Tx| async move { tx.utils().lock(&format!("orm_test.clean.{}", std::process::id())).await }, once())
         .await
         .expect("a clean transaction");
     assert_eq!(session().await, clean, "a transaction that ended cleanly keeps its session");
@@ -47,7 +47,7 @@ async fn failed_cleanup_discards_the_connection() {
         let key = format!("orm_test.discard.{fail}.{}", std::process::id());
         let key = &key;
         let result = db
-            .transaction(
+            .transaction_async(
                 |tx: Tx| async move {
                     tx.utils().lock(key).await?;
                     // If the lock is released early, RELEASE_LOCK at the end of the transaction returns 0, and the cleanup fails.
@@ -64,7 +64,7 @@ async fn failed_cleanup_discards_the_connection() {
         let path = if fail { "rollback" } else { "commit" };
         assert_ne!(session().await, before, "{path}: session {before} returned to the pool after its cleanup failed");
     }
-    db.close().await;
+    db.close_async().await;
 }
 
 // Even if RELEASE_LOCK fails, the local value reset is still attempted, and both failures are reported.
@@ -76,7 +76,7 @@ async fn every_failed_cleanup_step_is_reported() {
     let lock = format!("orm_test.killed.{}", std::process::id());
     let cleanup = polyspec_orm::testing::killed_transaction_cleanup(&db, Some(lock)).await.expect_err("the cleanup of a killed connection fails");
     assert_eq!(cleanup.to_string().split("; ").count(), 2, "the release and the reset are both reported: {cleanup}");
-    db.close().await;
+    db.close_async().await;
 }
 
 // The transaction of a callback that panicked ends by closing the connection. The server ends that session's transaction and
@@ -89,7 +89,7 @@ async fn panicking_callback_ends_its_transaction() {
     let key = format!("orm_test.panicked.{}", std::process::id());
     let key_ref = &key;
     let panicked: Result<()> = db
-        .transaction(
+        .transaction_async(
             |tx: Tx| async move {
                 tx.utils().lock(key_ref).await?;
                 panic!("callback panicked")
@@ -106,7 +106,7 @@ async fn panicking_callback_ends_its_transaction() {
     let released: Option<i64> = sqlx::query_scalar("SELECT RELEASE_LOCK(?)").bind(&key).fetch_one(&mut *other).await.expect("RELEASE_LOCK");
     assert_eq!(released, Some(1));
     drop(other);
-    db.close().await;
+    db.close_async().await;
 }
 
 // A transaction future dropped before it finished closes the connection. The server ends that session's
@@ -142,7 +142,7 @@ async fn dropped_transaction_closes_its_connection() {
         let key = format!("orm_test.dropped.{}", std::process::id());
         let held = Arc::new(tokio::sync::Notify::new());
         let (key_ref, held_ref) = (&key, &held);
-        let transaction = db.transaction(
+        let transaction = db.transaction_async(
             |tx: Tx| async move {
                 tx.utils().lock(key_ref).await?;
                 if driver == "sqlite" {
@@ -187,7 +187,7 @@ async fn dropped_transaction_closes_its_connection() {
             }
             Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
         }
-        db.close().await;
+        db.close_async().await;
     }
     std::fs::remove_dir_all(&tmp).or_panic(|e| format!("remove {}: {e}", tmp.display()));
 }
@@ -203,7 +203,7 @@ async fn failed_local_reset_is_reported() {
     assert!(reset.is_err(), "the reset of a killed connection is reported: {reset:?}");
     let ended = polyspec_orm::testing::killed_transaction_rollback(&db).await.expect_err("the rollback of a killed connection reports the reset");
     assert!(ended.to_string().contains("transaction cleanup failed"), "{ended}");
-    db.close().await;
+    db.close_async().await;
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
