@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5eb9439b54ea785c4604c06a0e57849fb4d192275591e42a7b3282a1d8bc2edc -->
+<!-- source-sha256: 31b2c2c385034c27f5c0f3d6c11915c1c023dc77c54ba4a91eed8a6d1e995e7f -->
 # 변경 이력
 
 ## Unreleased
+
+- Model.connect의 native validator mapping은 현재 impl Into<Connection> signature를 검사하고 예전 borrowed-Db signature를 거부하는 회귀 mutation을 유지한다(T494-2, INT-17a). 설치된 runner가 기존 contract package를 실행하는 전용 owner와 입력을 선언했다. 수정 전 여덟 case 통과·두 case 실패는 Model mapping 때문이며 수정 뒤 같은 수의 실패가 다음 Collection mapping을 드러냈다. 항목은 active이며 Green이나 package 완료로 보고하지 않는다.
 
 - Native contract validator는 Model.connect의 현재 Rust Connection adapter를 독립 항목으로 검사한다(T494-2, INT-17a). 실제 signature와 공통 contract는 impl Into<Connection>인데 validator만 borrowed Db 전용 인자를 기대한다. 수정과 새 검증은 아직 없다.
 

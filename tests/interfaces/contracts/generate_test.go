@@ -9,6 +9,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
+// Requirements: INT-17a. The admitted connection adapter remains part of the checked native contract.
 func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 	testcase.Start(t)
 	if _, err := load(); err != nil {
@@ -46,6 +47,12 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 			r := find(d, "Model.get")
 			n := r.Native["rust"]
 			n.Signature = strings.Replace(n.Signature, "async ", "", 1)
+			r.Native["rust"] = n
+		},
+		"rust connection": func(d *document) {
+			r := find(d, "Model.connect")
+			n := r.Native["rust"]
+			n.Signature = strings.Replace(n.Signature, "connection: impl Into<polyspec_orm::Connection>", "db: &polyspec_orm::Db", 1)
 			r.Native["rust"] = n
 		},
 	} {

@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Model.connect native validator maps the current impl Into<Connection> signature and retains a regression mutation refusing the old borrowed-Db signature (T494-2, INT-17a). A dedicated installed-runner owner and inputs execute the existing contract package. The unchanged Model mapping reported eight passed and two failed; after its correction the same counts expose the next stale Collection mapping. The item remains active, with no Green or package-completion claim.
+
 - Native contract validation has a separate item for the current Rust Model.connect Connection adapter (T494-2, INT-17a). The actual signature and common contract use impl Into<Connection>, but the validator alone expects a borrowed Db argument. Correction and new verification are pending.
 
 - The Unicode generator emits the current case!() instead of the retired Duration import and wall_for_cpu deadline (T494-1, FCV-20). The committed Unicode 17.0.0 table and code-point classifications are unchanged. The existing owner Red reported three passed and two failed: the direct checksum and repository-root execution both found the same generated-text difference. The uncommitted repair passes all five cases of the same Go owner. The declared committed-tree verification also passes all five Go cases and the Rust Unicode full-code-point case without failure or skip, completing this item.

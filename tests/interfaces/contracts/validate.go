@@ -124,7 +124,7 @@ func init() {
 // language. Rust receivers are checked separately.
 var inputs = map[string]map[string]string{
 	"":                       {"go": "", "php": "", "rust": "", "typescript": "", "python": ""},
-	"Connection":             {"go": "db*orm.DB", "php": "Polyspec\\Orm\\Db$db", "rust": "db:&polyspec_orm::Db", "typescript": "db:Db", "python": "db:Db"},
+	"Connection":             {"go": "db*orm.DB", "php": "Polyspec\\Orm\\Db$db", "rust": "connection:implInto<polyspec_orm::Connection>", "typescript": "db:Db", "python": "db:Db"},
 	"ConnectorArgument":      {"go": "args...any", "php": "mixed...$args", "rust": "arg:A", "typescript": "arg?:((q:this)=>unknown)|Model", "python": "*args"},
 	"ChildModel":             {"go": "childorm.Model", "php": "Polyspec\\Orm\\Model$child", "rust": "child:implpolyspec_orm::Model", "typescript": "child:Model", "python": "child:Model"},
 	"OffsetCount":            {"go": "offset,countint", "php": "int$offset,int$count", "rust": "offset:u32,count:u32", "typescript": "offset:number,count:number", "python": "offset:int,count:int"},

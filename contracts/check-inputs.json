@@ -5656,6 +5656,21 @@
         "rust",
         "mariadb-server"
       ]
+    },
+    "interface-contract-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/interfaces.json",
+        "tests/interfaces/contracts/**",
+        "tests/go.mod",
+        "tests/go.sum",
+        "legacy/packages/go/testcase/**"
+      ]
     }
   },
   "paths": {

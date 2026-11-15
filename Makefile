@@ -2480,6 +2480,10 @@ interface-check/tests: php-vendor-check typescript-current
 	$(NODE) --test tests/interfaces/check/*.test.mts
 interface-api-binding-unit-check:
 	$(NODE) --test tests/interfaces/check/api.test.mts
+.PHONY: interface-contract-unit-check
+CHECK_TARGETS += interface-contract-unit-check
+interface-contract-unit-check:
+	$(RUN_TESTS) go --cwd tests -- -count=1 -timeout=0 ./interfaces/contracts
 interface-typescript-extractor-check: interface-typescript-check lease-tool
 	$(READ_TYPESCRIPT)
 	$(RUN_LONG) interface-typescript-extractor -- $(NODE) legacy/packages/ts/testing/interfaces/typescript/node_modules/typescript/bin/tsc --project legacy/packages/ts/testing/interfaces/tsconfig.json --noEmit
