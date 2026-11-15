@@ -21,6 +21,7 @@ fn execute_machine_contract_names_the_owned_constructor() {
         .find(|member| member["id"] == "db.execute")
         .expect("db.execute");
     assert_eq!(execute["core"]["machine"], true, "the async driver requires an owned machine");
+    assert_eq!(execute["core"]["result"], true, "the driver unwraps the machine’s Result even though execute returns no value");
     assert_eq!(execute["core"]["path"], "polyspec_orm::Db::execute_text_machine");
     assert_eq!(execute["core"]["receiver"], "&self", "the binding clones the receiver; it does not consume its instance");
 }

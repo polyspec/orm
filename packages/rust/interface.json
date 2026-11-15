@@ -1802,8 +1802,10 @@
           ],
           "wait": "async_driver",
           "core": {
-            "path": "polyspec_orm::Db::execute_text",
-            "receiver": "&self"
+            "path": "polyspec_orm::Db::execute_text_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
           }
         }
       ]

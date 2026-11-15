@@ -470,9 +470,9 @@ has no case of the three members because each needs a database (CORE-72).
   A returned `Io` owns its inputs independently of the machine and can complete after the machine is dropped; the
   driver cancels it by dropping that future too. Cancellation cannot undo an already executed statement.
 
-`Db::execute_text_machine` is implemented. Its native artifact verification is pending; the contract still names the
-borrowed future `Db::execute_text` without `machine: true` until that verification succeeds. Generated binding runtime
-verification of this member is incomplete.
+`Db::execute_text_machine` is implemented and its three native execution artifact cases pass. The contract names this
+owned constructor with `machine: true`. Aggregate machine verification is still pending a separate pool-use
+count failure; generated binding runtime verification of this member is incomplete.
 
 ## Interface contract
 
