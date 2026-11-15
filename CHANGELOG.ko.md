@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 97668cf40123391e99ded9385f467bab27095d787f75919e849136df12c7e4d0 -->
+<!-- source-sha256: d5f9956011f1aeab14f6602b5c61d1479807fbeb7a95e8a774ec16094e750e3a -->
 # 변경 이력
 
 ## Unreleased
+
+- 논리 Rust adapter snapshot은 유지된 transaction_async와 close_async를 명시하는 선행 항목을 가진다(T494-3, INT-17c, INT-17d). Source identity 검토는 선언 122개에서 잘못된 함수 연결 두 개와 별도의 오래된 transaction validator 기대값을 확인했다. 실제 Rust 추출과 엄격한 async·generic mutation을 owner로 선언하며 구현과 새 검증은 아직 없다.
 
 - Native connection adapter 항목은 transaction adapter 선행 작업을 기다린다(T494-2). 전체 owner의 입력과 결과 기대값은 그대로 유지하며 T494-3이 유지된 async snapshot을 정정하면 같은 검증을 자동 재개한다. 현재 여덟 case 통과·두 case 실패를 완료로 보고하지 않는다.
 

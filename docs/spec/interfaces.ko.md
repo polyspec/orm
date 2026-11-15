@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: ead8ebbeacdd74203073fc1c7bf52443caffb233b4a0cf343a4978a2c46ee470 -->
+<!-- source-sha256: d3dc078e528e32edc78354f52998f37159a6fb0630c696dfa1a981c172dbe99c -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -113,6 +113,10 @@ classDiagram
 - **INT-17a** `Model.connect`의 논리 `Connection` 입력은 Rust의 `connection: impl Into<polyspec_orm::Connection>`에 대응하며 허용된 `&Db`, `&Tx`, `&Connection` 변환을 유지한다. Native contract 검증은 예전 borrowed-Db 전용 signature로 되돌리지 않고 이 정확한 adapter를 검사한다. 이 checker surface는 FCV-2에 따라 `tests/interfaces/contracts`의 native에 남으며 Model adapter mapping은 수정했다. 수정안 실행은 당시 오래된 Collection adapter 때문에 여덟 case 통과와 두 case 실패를 보고했으며 package 검증 완료가 아니었다.
 
 - **INT-17b** `Collection.connect`의 논리 `CollectionConnection` 입력은 Rust `connection: impl Into<crate::Connection>`에 대응한다. 모든 model에 전달되는 기존 변환을 유지하고 예전 borrowed-Db 전용 validator signature를 되돌리지 않는다. 이 native checker surface는 FCV-2에 따라 같은 contract package가 검사하며 Collection mapping은 수정했다. 전체 owner는 별도의 오래된 transaction result adapter 때문에 여덟 case 통과와 두 case 실패를 계속 보고하므로 package 검증은 미완료다.
+
+- **INT-17c** 논리 `Db.transaction`의 Rust native adapter는 유지된 `packages/rust/src/tx.rs::Db::transaction_async`다. Receiver는 `&self`, 입력은 `callback: F, options: TransactionOptions`, 결과는 `Result<T>`이며 `F: Fn(Tx) -> Fut`, `Fut: Future<Output = Result<T>>` 조건을 정확히 검사한다. 실제 source identity와 async·receiver·generic 조건의 drift를 기존 Rust 추출기와 native contract owner가 검사한다. `Db::transaction(self, ...) -> Transaction<F>` 머신과 binding 계약은 별도이며 바꾸지 않는다. Snapshot과 validator의 정정은 아직 구현하지 않았다.
+
+- **INT-17d** 논리 `Db.close`의 Rust native adapter는 유지된 `packages/rust/src/db.rs::Db::close_async(&self)`이며 async이고 결과 값이 없다. 이름이 같은 `Pool::close`나 `Db::close(self) -> Close` 머신으로 대신하지 않는다. 기존 추출기가 실제 소유 타입과 signature를 확인하며 snapshot 정정은 아직 구현하지 않았다. 이 규칙은 SQLite worker의 물리적 종료 확인이나 향후 close 결과 API를 구현하지 않는다.
 
 - **INT-18** 컬렉션 종단 — PHP: `gets()`; Go: `Gets()`; Rust: `gets().await?`; TypeScript: `gets()`; Python: `gets()`
 - **INT-19** 개수 종단 — PHP: `getCount()`; Go: `GetCount()`; Rust: `get_count().await?`; TypeScript: `getCount()`; Python: `get_count()`

@@ -113,6 +113,10 @@ Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite:
 
 - **INT-17b** The logical `CollectionConnection` input of `Collection.connect` maps to Rust `connection: impl Into<crate::Connection>`. Preserve the existing conversions forwarded to every model rather than restoring the validator's borrowed-Db-only signature. This native checker surface is checked by the same contract package under FCV-2; the Collection mapping is corrected. The full owner still reports eight passed and two failed on a separate stale transaction result adapter, so package verification remains incomplete.
 
+- **INT-17c** The logical `Db.transaction` Rust native adapter is the retained `packages/rust/src/tx.rs::Db::transaction_async`. Its receiver is `&self`, inputs are `callback: F, options: TransactionOptions`, and result is `Result<T>` with exact bounds `F: Fn(Tx) -> Fut` and `Fut: Future<Output = Result<T>>`. Existing Rust extraction and the native contract owner check actual source identity and async, receiver and generic-bound drift. The owned `Db::transaction(self, ...) -> Transaction<F>` machine and binding contract remain separate and unchanged. Snapshot and validator corrections are not implemented yet.
+
+- **INT-17d** The logical `Db.close` Rust native adapter is the retained async `packages/rust/src/db.rs::Db::close_async(&self)` with no result value. Neither the similarly named `Pool::close` nor the owned `Db::close(self) -> Close` machine substitutes for it. The existing extractor checks its actual owner and signature; the snapshot correction is not implemented yet. This rule does not implement physical SQLite worker completion or a future close-result API.
+
 - **INT-18** collection terminal — PHP: `gets()`; Go: `Gets()`; Rust: `gets().await?`; TypeScript: `gets()`; Python: `gets()`
 - **INT-19** count terminal — PHP: `getCount()`; Go: `GetCount()`; Rust: `get_count().await?`; TypeScript: `getCount()`; Python: `get_count()`
 

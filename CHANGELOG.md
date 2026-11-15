@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Logical Rust adapter snapshots have a prerequisite naming retained transaction_async and close_async (T494-3, INT-17c, INT-17d). Source identity inspection of 122 declarations found those two incorrect function links and the separately stale transaction validator expectations. Actual Rust extraction and strict async/generic mutations are declared owners; correction and new verification remain pending.
+
 - The native connection adapter item waits for the transaction adapter prerequisite (T494-2). Its full owner remains unchanged and resumes automatically after T494-3 corrects the retained async snapshot. The current eight passed and two failed are not completion evidence.
 
 - The Collection.connect validator also matches its actual Into<Connection> signature and retains a negative mutation for the former borrowed-Db form (T494-2, INT-17b). The same full owner reports eight passed and two failed, exposing the next stale transaction result expectation. The full package is still not Green.
