@@ -1521,7 +1521,6 @@
           },
           "raises": [
             "polyspec_orm::Kind::Config",
-            "polyspec_orm::Kind::CapabilityUnsupported",
             "polyspec_orm::Kind::Internal",
             "polyspec_orm::Kind::ConnectionLost",
             "polyspec_orm::Kind::Driver",
@@ -1741,12 +1740,10 @@
           },
           "raises": [
             "polyspec_orm::Kind::Config",
-            "polyspec_orm::Kind::CapabilityUnsupported",
             "polyspec_orm::Kind::Internal",
             "polyspec_orm::Kind::ConnectionLost",
             "polyspec_orm::Kind::Driver",
-            "polyspec_orm::Kind::PoolTimeout",
-            "polyspec_orm::Kind::SchemaInvalid"
+            "polyspec_orm::Kind::PoolTimeout"
           ],
           "wait": "async_driver",
           "core": {
@@ -3170,7 +3167,6 @@
           "raises": [
             "polyspec_orm::Kind::ColumnUnknown",
             "polyspec_orm::Kind::ColumnUnselected",
-            "polyspec_orm::Kind::CodecDecode",
             "polyspec_orm::Kind::Internal"
           ],
           "wait": "none",

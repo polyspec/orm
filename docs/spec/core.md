@@ -562,7 +562,11 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   that is not deleted unchanged, so only `restore_or_create` raises `row_not_deleted`; `restore_or_create` reads the
   restored row in its own transaction and does not raise `no_rows`; `db.execute` runs on the `Db` and raises neither
   `busy` nor `transaction_ended`, which only a `Tx` raises. No member of `Query` raises `column_unknown`: the builder
-  refuses an unknown column with `config` (CORE-82) before a terminal reads the entity.
+  refuses an unknown column with `config` (CORE-82) before a terminal reads the entity. `db.connect` and
+  `db.connect_schema` do not raise `capability_unsupported`: the bundled SQLite is newer than 3.46, the one version that
+  the connection refuses. `db.connect_schema` does not raise `schema_invalid`: a schema of the contract is made by
+  `Schema::load`, which refuses a text that is no manifest before any connection. `query.value` does not raise
+  `codec_decode`: the read decodes every cell of the row before `value` converts it.
 - **CORE-121** The core holds a fault injection point at a branch of the category `internal` that no input reaches, so
   that a case of the contract arms the point and checks the kind, the category and the message of the error that the
   branch raises (binding G-5, X-1). A point is `binding_core::fault::point!` with a constant of the module
