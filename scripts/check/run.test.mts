@@ -156,8 +156,7 @@ const goLease = process.env.STUB_SUITE === 'go-lease';
 // 했고, 어느 target도 database가 필요하지 않다. group에서는 c만 go가 필요하고, group-rust에서는 a가 건너뛴 rust도 필요하다.
 const group = process.env.STUB_SUITE === 'group';
 const groupRust = process.env.STUB_SUITE === 'group-rust';
-const skipped = { checkout: { outcome: 'success' }, node: { outcome: 'success' }, 'group-needs': { outcome: 'success' }, go: { outcome: 'success' },
-  rust: { outcome: 'skipped' }, 'rust-cache': { outcome: 'skipped' }, php: { outcome: 'skipped' }, composer: { outcome: 'skipped' },
+const skipped = { go: { outcome: 'success' }, rust: { outcome: 'skipped' }, 'rust-crates': { outcome: 'skipped' }, composer: { outcome: 'skipped' },
   'server-programs': { outcome: 'skipped' }, servers: { outcome: 'skipped' } };
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
@@ -217,7 +216,13 @@ const removed = '## files under /tmp that were removed but are still open (lsof 
 const snapshot = space ? undefined
   : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
   : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
-process.exitCode = await runChecks({ root, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: goLease ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, 'go-lease-modules': { outcome: 'failure' } }) : serverPrograms ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, 'server-programs': { outcome: 'skipped' } }) : cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
+// setupFile writes the results of the setup steps as the job runner (scripts/check/ci-job.mts) writes them, and names the file.
+const setupFile = (steps) => {
+  if (steps === null) return '';
+  writeFileSync(root + '/ci-steps.json', JSON.stringify(steps));
+  return root + '/ci-steps.json';
+};
+process.exitCode = await runChecks({ root, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: setupFile(goLease ? { go: { outcome: 'success' }, 'go-lease-modules': { outcome: 'failure' } } : serverPrograms ? { go: { outcome: 'success' }, 'server-programs': { outcome: 'skipped' } } : cisetup ? { go: { outcome: 'success' }, rust: { outcome: 'failure' } } : group || groupRust ? skipped : null) });
 `;
 
 function checkout(t: { after: (f: () => void) => void }) {
@@ -744,8 +749,8 @@ caseTest('a failed npm command keeps its debug log and its error lines in the re
 });
 
 // The CI-setup case (G5.52) is a run in which the CI setup step rust fails. The runner records setup phase ci/rust as failed, and records a
-// target that needs rust, a, along with that step, as not-run; b and c run. Even if it fails, a step the targets do not need (rust-cache)
-// is not recorded.
+// target that needs rust, a, along with that step, as not-run; b and c run. The results come from the file ORM_CI_SETUP_FILE that the
+// job runner (scripts/check/ci-job.mts) writes.
 caseTest('a failed CI setup step marks the targets that need it not-run and runs every other target', () => {
   const c = checkout(scope);
   try {
@@ -831,7 +836,7 @@ caseTest('a CI group job records a target not-run when it needs a setup step tha
     assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name = '']) => name.startsWith('ci/')), [['ci/rust', 'failed']]);
     const a = named(record, 'a');
     assert.equal(a.status, 'not-run');
-    assert.match(a.reason ?? '', /^the CI setup step rust was skipped, and a target of this run needs rust; make ci-group-needs runs the setup steps/);
+    assert.match(a.reason ?? '', /^the CI setup step rust was skipped, and a target of this run needs rust; the recipe of the group job runs the setup steps/);
     assert.deepEqual(record.targets.filter(target => target.name !== 'a').map(({ name, status }) => [name, status]), [['b', 'passed'], ['c', 'passed']]);
   } finally {
     cleanup();

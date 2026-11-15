@@ -81,15 +81,17 @@
   Enforced by: none, 작업 순서는 에이전트의 판단이다
 - Own: 저장소의 전체 테스트 묶음은 `main`으로의 push 뒤 GitHub CI에서 실행한다: 수동 실행에서도 실행한다.
   CI는 그것을 Makefile의 CI group(`CI_GROUPS`, `CI_TARGETS_<group>`)으로 나눈다: group마다 job
-  하나가 모두 동시에, 그 target이 필요로 하는 setup step만 실행한 뒤 `make check-run GROUP=<group>`을 실행한다. group들은 함께
+  하나가 모두 동시에 `make ci-test GROUP=<group>`을 실행하고, 그것은 그 target이 필요로 하는 setup step만 실행한 뒤
+  `make check-run GROUP=<group>`을 실행한다. group들은 함께
   gate(`CI_KIT_GATES`, `ci-pipeline.yml`이 자기 병렬 job에서 실행하는 `kit-gates`의 선행 target)를 뺀
   `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make orm-check`는 guard를 거쳐 모든 target을 실행한다.
   CI 실행 한 번은 다음 CI 실행 전에
   그 실행이 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다. 실행은 실패에서 멈추지 않는다: 필요한
   setup 단계가 실패한 target은 그 단계와 첫 실패 줄과 함께 `not-run`으로 기록하고 나머지 target은 모두
   실행하며, target의 독립된 부분은 실패한 부분 뒤에도 실행하고, 실행은 묶음 전체를 끝까지 마친다. CI의 setup
-  step(설치, toolchain, server)도 setup 단계다: 각 step은 앞의 step이 실패해도 실행되고, 실패한 step이 설치하는
-  것이 필요한 target은 그 step과 함께 `not-run`으로 기록하므로 설치 하나가 실패해도 묶음은 멈추지 않는다. target이
+  step(설치, toolchain, server)도 setup 단계다: 첫 실패에서 멈추고 뒤의 step은 건너뛴 것으로 기록하며, 실패하거나
+  건너뛴 step이 설치하는 것이 필요한 target은 그 step과 함께 `not-run`으로 기록하고 다른 target은 모두 실행하므로
+  설치 하나가 실패해도 묶음은 멈추지 않는다. target이
   필요로 하는 것에는 그 need의 setup 단계가 필요로 하는 것이 들어간다(scripts/check/ci-setup.mts의 `SETUP_NEEDS`:
   `databases/create`는 TypeScript client를 통해 decimal database를 설치한다). `make repo-check`는 모든 CI group이 그
   모두의 setup step을 실행하기를 요구한다. 실패마다
@@ -166,12 +168,29 @@
   그 run이 release가 받는 run이다. `[skip ci]`는 push의 head commit만 읽으므로 쓰지 않는다.
   `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
   Enforced by: `make repo-check`
+- Own: workflow의 모든 job은 자기 내용을 Makefile recipe 하나에서 실행하므로 CI와 로컬 실행은 같은 recipe를
+  호출한다: 순서, 조건, step output이 YAML에 있는 job(여러 run step, step `if:`, `${{ toJSON(steps) }}`, 앞
+  step의 output)은 GitHub의 runner 없이 로컬에서 되풀이할 수 없기 때문이다. job은 `run:` step을 정확히 하나
+  가지며, 그것은 make 변수 인수만 가진 `make ci-<job>`이고 그 값은 literal, matrix 값(`NAME=${{ matrix.key }}`),
+  호출된 workflow의 input(`RELEASE=${{ inputs.release }}`)뿐이다. 호출된 workflow의 job은
+  `make ci-<caller>-<job>`(`ci-kit-shared`, `ci-assets-platform`)을 실행한다. 다른 모든 step은 runner를 준비하는
+  `uses:` step(checkout, setup action, cache, `.github/actions/kit-bootstrap`)이거나 run step 뒤에서 결과를 옮기는
+  `uses:` step(upload-artifact, upload-pages-artifact)이고, `if:`는 `uses:` step에만 있다. recipe는
+  `scripts/check/ci-job.mts`로 순서와 조건을 담는다: 먼저 setup step을 실행하고 첫 실패에서 멈추며, 이어서 모든
+  검사를 끝까지 실행하고, 그다음 summary와 정리를 언제나 실행한다. setup step이나 검사가 실패하면 job이
+  실패한다. step이 앞 step의 결과에서 계산하던 것은 recipe가 스스로 계산한다: setup step의 결과는 파일
+  (`ORM_CI_SETUP_FILE`)로 검사 runner에 간다. `uses:` step이 run step 전에 필요로 하는 값(cache key, group이
+  PHP나 Rust를 준비하는지, PHP의 가장 낮은 release)은 run step 하나가 `make ci-plan`이나 `make ci-kit-plan`인
+  plan job의 output이거나 정적인 matrix 값이며, matrix는 그런 output의 `fromJSON`으로 펼칠 수 있다. job의
+  환경은 literal, 실행의 token, 필요로 하는 job의 output만 담는다. 판정 job `ci-passed`와 `required`는 CI에만
+  있고, 그 run step은 `RESULTS: ${{ toJSON(needs) }}`를 넘긴다. 로컬 실행은 CI의 호출인 `make ci-<job> NAME=value`다.
+  Enforced by: `make repo-check`
 - Own: `make orm-check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
   `var/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부하며, 그렇지 않으면 target `check-run`을 실행하고
   결과를 기록한다. `make rerun-failed`는 같은 tree에서 그 기록의 통과하지 못한 target을 다시 실행한다: 원인이 tree
   밖(환경이나 machine 자원)에 있는 실패에 쓴다. 다시 실행하려고 기록을 지우거나 고치지 않는다. 새 checkout에는 기록이
-  없으므로 CI는 guard가 없는 `make check-run GROUP=<group>`을 실행한다.
+  없으므로 CI는 `make ci-test GROUP=<group>`을 실행하고, 그 검사인 `make check-run GROUP=<group>`에는 guard가 없다.
   Enforced by: none, guard는 로컬 `make orm-check`에서만 실행되고 어떤 검사도 이를 실행하지 않는다
 - Own: 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는
   도구다(`config/owner-checks.json`이 path를 `make feature-owner-check`에 넘기고, 그것이

@@ -2,8 +2,8 @@ import { SERVER_VARIABLES } from '../test-servers.mts';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mts';
-import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
+import { groupSetupErrors } from '../check/ci-setup.mts';
+import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciRecipeErrors, checkTargets, ciSetupErrors, lockedCacheErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
 import { workflowSteps } from './workflow.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
@@ -41,7 +41,9 @@ const failures = [];
 const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
 // The CI workflow gives the database check's servers and variables through make orm-test-servers.
-failures.push(...ciServerErrors(ci, SERVER_VARIABLES));
+failures.push(...ciServerErrors(ci, SERVER_VARIABLES, makefile));
+// Every job of ci.yml restores the caches of its locked installs, keyed by the outputs of the job plan.
+failures.push(...lockedCacheErrors(ci, makefile));
 
 // The CI workflow runs every target the same as the local make orm-check (CHECK_TARGETS), once each.
 failures.push(...ciCheckTargetErrors(ci, makefile));
@@ -73,8 +75,8 @@ const workflowDirectory = join(root, '.github/workflows');
 const allWorkflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
 const workflows = ownWorkflows(allWorkflows, kitOwned);
-// Every CI step runs a make target (except the summary).
-failures.push(...ciMakeErrors(workflows));
+// Every job of a workflow runs one step, make ci-<job>, whose recipe holds the order and the conditions of the job (T497).
+failures.push(...ciRecipeErrors(workflows, makefile));
 // Workflows that run on push declare concurrency so that a new push ends the earlier run.
 failures.push(...concurrencyErrors(workflows));
 // ci.yml and docs-pages.yml run only on the events they declare, and the other workflows
@@ -178,9 +180,8 @@ failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTarg
 failures.push(...stepTimeoutErrors(workflows));
 // A workflow step does not run, outside make, a program that reads the lease variable (LEASE).
 failures.push(...ciLeaseErrors(workflows, tracked, readTracked));
-// A workflow that runs make orm-check has no other check step after it.
-failures.push(...ciAfterCheckErrors(workflows));
-failures.push(...ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }));
+// The recipe of the CI group jobs runs the setup steps of scripts/check/ci-setup.mts under their conditions.
+failures.push(...ciSetupErrors(workflows, makefile));
 failures.push(...independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')));
 failures.push(...chainedCommandErrors(features));
 // AGENTS.md and AGENTS.ko.md state the rule that the full suite runs in CI after push.
@@ -199,13 +200,13 @@ failures.push(...composerBranchErrors(Object.fromEntries(tracked.filter(path => 
 const text = (path: string) => existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : '';
 const reported = (program: string, args: string[]) => execFileSync(program, args, { cwd: root }).toString().trim();
 const composer = readComposer(join(root, 'legacy/packages/php/composer.json'));
-failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows));
+failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows, makefile));
 // The job platform of assets.yml builds the PHP extension for each PHP minor of config/toolchain.json.
-failures.push(...extensionMinorErrors(text('config/toolchain.json'), workflows));
+failures.push(...extensionMinorErrors(text('config/toolchain.json'), workflows, makefile));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
 // Every workflow sets up the Go of the go line of legacy/packages/go/go.mod, the one Go release of mise.toml (kit K127).
-failures.push(...goVersionErrors(workflows));
+failures.push(...goVersionErrors(workflows, makefile));
 // Composer is the one exact release declared by the mise.toml tool http:composer. The running one need only match its major and minor (patch does not matter).
 // Every tracked go.mod declares the module path of its own directory.
 failures.push(...goModulePathErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)go\.mod$/.test(path)).map(path => [path, text(path)]))));

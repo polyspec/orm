@@ -3,19 +3,39 @@ import { Minimatch } from 'minimatch';
 import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
 import { checkTargets, makeRecipes, makeTargets } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
-import { CI_SETUP, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
+import { CI_SETUP, STEP_OUTPUT } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
+import { jobRuns, makeCall, reached, recipeCommands, recipeLines, type JobRun } from './recipes.mts';
 
 // The database server check of the CI workflow. The database check of make orm-check reads the variables in .runtime/servers/env that make orm-test-servers
-// (scripts/test-servers.mts) wrote, so the workflow starts the servers with the same definition
-// and gives all of those variables to the check step.
-
+// (scripts/test-servers.mts) wrote, so the recipe of the group job starts the servers with the same definition, and no
+// workflow sets those variables.
 
 // runSegments is the commands that a step's run text executes (scripts/repo/shell.mts).
 const runSegments = (step: WorkflowStep): string[] => step.run ? segments(step.run, 'workflow') : [];
 // runCommands is the simple commands that a step's run text executes (scripts/repo/shell.mts).
 const runCommands = (step: WorkflowStep): SimpleCommand[] => step.run ? commands(step.run, 'workflow') : [];
+// jobCommands is the simple commands that a job runs: those of its run step and of the recipes it reaches (scripts/repo/recipes.mts).
+const jobCommands = (run: JobRun, makefile: string): SimpleCommand[] => [...runCommands(run.step), ...recipeCommands(makefile, [run.target])];
+
+// CI_JOB_LINE reads a line of the job runner in a recipe (scripts/check/ci-job.mts): its action, its id or options, and the
+// make arguments after `--`.
+const CI_JOB_LINE = /^@?\$\(CI_JOB\) (begin|setup|check|always|end) \$\(CI_NAME\)(?: (.*?))?(?: -- (.*))?$/;
+/** A line of the job runner in a recipe. */
+export type JobLine = { action: string; options: string[]; make: string[] };
+/** jobLines are the lines of the job runner in the recipe of a target, in order. */
+export function jobLines(makefile: string, target: string): JobLine[] {
+  return recipeLines(makefile, target).flatMap(line => {
+    const match = CI_JOB_LINE.exec(line.trim());
+    return match ? [{ action: match[1] ?? '', options: (match[2] ?? '').split(/\s+/).filter(Boolean), make: (match[3] ?? '').split(/\s+/).filter(Boolean) }] : [];
+  });
+}
+
+// GROUP_JOBS are the recipes of the CI group jobs: ci-test runs the group of its GROUP, and ci-preflight the group preflight
+// through ci-test.
+export const GROUP_JOBS = { test: 'make ci-test GROUP=${{ matrix.group }}', preflight: 'make ci-preflight' };
+const groupRun = (run: JobRun) => run.step.run.trim() === GROUP_JOBS.test || run.step.run.trim() === GROUP_JOBS.preflight;
 // provides returns whether a command defines a variable: it assigns that name (`NAME=…`, `export NAME=…`) or writes `NAME=…` to
 // $GITHUB_ENV.
 const provides = (command: SimpleCommand, variable: string): boolean => command.assigns.includes(variable) ||
@@ -27,62 +47,40 @@ const links = (command: SimpleCommand): boolean => {
     words.some(word => /symlink/i.test(word));
 };
 
-// A repository make target is a command that a step runs. A make that builds in another directory
-// (e.g. `(cd /tmp/sqlite && make)`) is not a check.
-const startsServers = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make orm-test-servers$/.test(segment));
-// make install and that part (install-*) only download without a server, so they may come before the server.
-const runsMake = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make\s+(?!(?:orm-)?install(?:-[\w-]+)?(?:\s+(?:orm-)?install(?:-[\w-]+)?)*$)/.test(segment)) && !startsServers(step);
-
-// ciServerErrors returns one error at each place where the workflow does not give the database check's servers and variables with the same definition as test-servers.mts,
-// or where it creates a symbolic link.
-//   - If no step runs make orm-test-servers, each variable the workflow does not set is an error.
-//   - If another step that runs make comes before that step, it is an error.
-//   - If the workflow defines that variable directly or writes .runtime/servers/env directly, it is an error.
-//   - A step that creates a symbolic link (ln -s, symlink) is an error.
-export function ciServerErrors(workflow: string, variables: readonly string[]): string[] {
+// ciServerErrors returns one error at each place where the CI group jobs do not get the database check's servers and variables with the
+// same definition as test-servers.mts, or where a job creates a symbolic link. workflow is ci.yml and makefile the Makefile.
+//   - The recipe of the group job (ci-test) starts the servers with a setup step servers that runs make orm-test-servers, before
+//     its check, and no command of the job provides a variable of the servers itself.
+//   - No workflow defines such a variable and no command writes .runtime/servers/env itself.
+//   - A command that creates a symbolic link (ln -s, symlink) is an error.
+export function ciServerErrors(workflow: string, variables: readonly string[], makefile: string): string[] {
   const errors: string[] = [];
   if (variables.length === 0) return ['scripts/test-servers.mts writes no environment variable'];
-  // The servers start in the job that runs make orm-test-servers, so the order that counts is the order of that job's steps; another
-  // job, such as the preflight job that every other job needs, runs on a runner of its own.
-  const serverJob = readWorkflow(workflow).jobs.find(job => job.steps.some(startsServers));
-  const steps = serverJob ? serverJob.steps : workflowSteps(workflow);
+  const runs = jobRuns(workflow, 'ci.yml');
+  const lines = jobLines(makefile, 'ci-test');
+  const server = lines.findIndex(line => line.action === 'setup' && line.options[0] === 'servers' && line.make.join(' ') === 'orm-test-servers');
+  const check = lines.findIndex(line => line.action === 'check');
+  if (server === -1) errors.push('the recipe ci-test of the CI group jobs does not start the database servers with a setup step servers -- orm-test-servers');
+  else if (check !== -1 && check < server) errors.push('the recipe ci-test runs its check before the setup step servers starts the database servers');
   const defined = environment(workflow);
-  const server = steps.findIndex(startsServers);
-  if (server === -1) {
-    for (const variable of variables) {
-      if (!defined.has(variable) && !steps.some(step => runCommands(step).some(command => provides(command, variable))))
-        errors.push(`ci.yml does not provide ${variable}, which the database checks read`);
-    }
-    errors.push('ci.yml does not start the database servers with make orm-test-servers');
-  } else {
-    // The CI setup step and the runner steps (scripts/check/ci-setup.mts) are installation, hashing and environment checking that
-    // need no server.
-    steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '') && !RUNNER_STEPS.includes(step.id ?? '')).forEach(step =>
-      errors.push(`ci.yml step "${step.name}" runs make before make orm-test-servers starts the servers`));
-  }
-  for (const variable of variables) {
-    if (defined.has(variable))
-      errors.push(`ci.yml defines ${variable}; make orm-test-servers defines it`);
-  }
-  if (steps.some(step => step.run && writtenFiles(step.run, 'workflow').includes('.runtime/servers/env')))
-    errors.push('ci.yml writes .runtime/servers/env; make orm-test-servers writes it');
-  // Symbolic links are not used (AGENTS.md): the server program is found from its own package path.
-  for (const step of steps) {
-    if (runCommands(step).some(links))
-      errors.push(`ci.yml step "${step.name}" creates a symbolic link`);
+  for (const variable of variables) if (defined.has(variable)) errors.push(`ci.yml defines ${variable}; make orm-test-servers defines it`);
+  for (const run of runs) {
+    const job = jobCommands(run, makefile);
+    // orm-test-servers itself writes the environment file; the recipes of the job reach it.
+    if (runCommands(run.step).some(command => command.writes.includes('.runtime/servers/env')))
+      errors.push(`ci.yml job ${run.job.id} writes .runtime/servers/env; make orm-test-servers writes it`);
+    for (const variable of variables)
+      if (runCommands(run.step).some(command => provides(command, variable))) errors.push(`ci.yml job ${run.job.id} provides ${variable}; make orm-test-servers defines it`);
+    // Symbolic links are not used (AGENTS.md): the server program is found from its own package path.
+    if (job.some(links)) errors.push(`ci.yml job ${run.job.id} creates a symbolic link through make ${run.target}`);
   }
   return errors;
 }
 
 export { checkTargets };
 
-// GROUP_CHECK is the line that a CI group's job runs for the runner (make check-run): it runs the target (CI_TARGETS_<group>) of one group in the matrix.
-export const GROUP_CHECK = 'make check-run GROUP=${{ matrix.group }}';
-
-// runsCheck is whether a command fragment runs the full suite: all targets (`make orm-check`, `make check-run`) or one CI group (GROUP_CHECK).
-export const runsCheck = (segment: string) => /^make\s+(?:orm-check|check-run)\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
-const checkStep = (step: WorkflowStep): boolean => runSegments(step).some(runsCheck);
-const groupStep = (step: WorkflowStep): boolean => runSegments(step).some((segment: string) => segment === GROUP_CHECK);
+// runsCheck is whether a recipe line or a command runs the full suite: all targets (make orm-check, make check-run) or one CI group.
+export const runsCheck = (segment: string) => /^make\s+(?:orm-check|check-run)(?:\s+GROUP=\S+)?\s*$/.test(segment.trim());
 
 // ciGroups is the Makefile's CI groups: groups is CI_GROUPS, and targets is, for each group, that group's CI_TARGETS_<group>.
 export function ciGroups(makefile: string): { groups: string[]; targets: Record<string, string[]> } {
@@ -112,32 +110,36 @@ export function kitGates(makefile: string): string[] {
 
 // lockedCacheErrors returns one error for each place where a CI job does not restore the caches of its locked installs (B3-4).
 // A job that installs the npm packages, the composer packages, the uv packages, the Go modules or the tools of mise.toml must restore,
-// before that install, a cache whose key is the hash of the lock file the install reads. The key is the output of the step `locks`
-// (LOCKS_STEP), which hashes the tracked lock files once after the checkout: actions/cache evaluates its key again after the last
-// step, and a hashFiles key would then read the workspace as the job left it (CI run 42784034583). setup-node keeps its own npm
-// cache off (scripts/repo/node.mts), so the npm cache is the one this check reads.
-export function lockedCacheErrors(workflow: string): string[] {
+// before its run step, a cache whose key is the hash of the lock file the install reads. What a job installs is what the recipe of
+// its run step reaches (scripts/repo/recipes.mts). The key is the output of the job plan, whose recipe ci-plan hashes the tracked
+// lock files once (make ci-lock-hashes): actions/cache evaluates its key again after the last step, and a hashFiles key would then
+// read the workspace as the job left it (CI run 42784034583). setup-node keeps its own npm cache off (scripts/repo/node.mts).
+export function lockedCacheErrors(workflow: string, makefile: string): string[] {
   const errors: string[] = [];
   const installs: [RegExp, string, string, string][] = [
-    [/\bnpm\b/, '~/.npm', 'npm', 'the npm packages'],
-    [/\borm-install-php\b/, '~/.cache/composer', 'composer', 'the composer packages'],
-    [/\borm-install-python\b/, '~/.cache/uv', 'uv', 'the uv packages'],
-    [/\borm-install-go\b/, '~/go/pkg/mod', 'go', 'the Go modules'],
-    [/\b(?:ci-)?install-tools\b/, 'var/tools', 'tools', 'the tools of mise.toml'],
+    [/^orm-install-php$/, '~/.cache/composer', 'composer', 'the composer packages'],
+    [/^orm-install-python$/, '~/.cache/uv', 'uv', 'the uv packages'],
+    [/^orm-install-go(?:-lease)?$/, '~/go/pkg/mod', 'go', 'the Go modules'],
+    [/^(?:ci-)?install-tools$/, 'var/tools', 'tools', 'the tools of mise.toml'],
   ];
   // text reads a workflow value that is a string, and is empty otherwise.
   const text = (value: unknown): string => (typeof value === 'string' ? value : '');
-  for (const job of readWorkflow(workflow).jobs) {
-    job.steps.forEach((step, index) => {
-      for (const [pattern, path, lock, what] of installs) {
-        if (step.id === LOCKS_STEP['id'] || !pattern.test(step.run)) continue;
-        const before = job.steps.slice(0, index);
-        const hashed = before.some(earlier => earlier.id === LOCKS_STEP['id'] && earlier.run === LOCKS_STEP['run']);
-        const restored = hashed && before.some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
-          text(earlier.with['path']).split(/\s+/).includes(path) && text(earlier.with['key']).includes(`\${{ steps.locks.outputs.${lock} }}`));
-        if (!restored) errors.push(`ci.yml job ${job.id} step ${step.name} installs ${what} with no cache before it, keyed by steps.locks.outputs.${lock} of the step locks (${path})`);
-      }
-    });
+  const runs = jobRuns(workflow, 'ci.yml');
+  const plan = runs.find(run => run.target === 'ci-plan');
+  if (!plan && runs.length) return ['ci.yml has no job plan that runs make ci-plan, whose outputs key the caches of the other jobs'];
+  if (plan && !recipeLines(makefile, 'ci-plan').some(line => line.includes('ci-lock-hashes'))) errors.push('the recipe ci-plan does not write the hashes of the lock files (make ci-lock-hashes)');
+  for (const run of runs) {
+    if (run === plan) continue;
+    const targets = reached(makefile, [run.target]);
+    const before = run.job.steps.slice(0, run.job.steps.indexOf(run.step));
+    for (const [pattern, path, lock, what] of installs) {
+      if (!targets.some(target => pattern.test(target))) continue;
+      const restored = before.some(earlier => earlier.uses?.split('@')[0] === 'actions/cache' &&
+        text(earlier.with['path']).split(/\s+/).includes(path) && text(earlier.with['key']).includes(`\${{ needs.plan.outputs.${lock} }}`));
+      const needs = run.job.value['needs'];
+      const planned = Array.isArray(needs) ? needs.includes('plan') : needs === 'plan';
+      if (!restored || !planned) errors.push(`ci.yml job ${run.job.id} installs ${what} through make ${run.target} with no cache before its run step, keyed by needs.plan.outputs.${lock} of the job plan (${path})`);
+    }
   }
   return errors;
 }
@@ -177,8 +179,9 @@ export function jobOverlapErrors(makefile: string): string[] {
   return [...owners].filter(([, runs]) => runs.length > 1).map(([target, runs]) => `${target} runs in ${runs.join(' and ')}; every target runs in one CI job`);
 }
 
-// ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. For a job that runs GROUP_CHECK,
-// the matrix groups equal CI_GROUPS, each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS
+// ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. The jobs test and preflight run
+// the group jobs (GROUP_JOBS) with the matrix include that the job plan writes from CI_GROUPS (make ci-plan,
+// scripts/check/ci-plan.mts); each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS
 // without the gates of kit (CI_KIT_GATES), which the gates workflow runs, and no target is in two groups. So the two workflows
 // together run every target of make orm-check once.
 export function ciGroupErrors(workflow: string, makefile: string): string[] {
@@ -187,21 +190,18 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const all = checkTargets(makefile);
   const gates = kitGates(makefile);
   const checks = all.filter(target => !gates.includes(target));
-  if (groups.length === 0) return [`ci.yml runs ${GROUP_CHECK}, but the Makefile declares no CI_GROUPS`];
-  // The jobs that run GROUP_CHECK together list every group once: the job preflight runs the group preflight, which every
-  // other job needs (T428), and the job test the other groups.
-  const listed: string[] = [];
-  for (const job of readWorkflow(workflow).jobs) {
-    const { id } = job;
-    if (!job.steps.some(groupStep)) continue;
-    const matrix = matrixGroups(job);
-    if (!matrix) { errors.push(`ci.yml job ${id} runs ${GROUP_CHECK} without a matrix group: [...] of CI_GROUPS`); continue; }
-    for (const group of new Set(matrix.filter((group, index) => matrix.indexOf(group) !== index))) errors.push(`ci.yml job ${id} lists the matrix group ${group} twice`);
-    for (const group of new Set(matrix)) if (!groups.includes(group)) errors.push(`ci.yml job ${id} has the matrix group ${group}, which is not in CI_GROUPS`);
-    for (const group of new Set(matrix)) if (listed.includes(group)) errors.push(`ci.yml lists the matrix group ${group} in two jobs`);
-    listed.push(...new Set(matrix));
+  if (groups.length === 0) return ['ci.yml runs the CI group jobs, but the Makefile declares no CI_GROUPS'];
+  const runs = jobRuns(workflow, 'ci.yml');
+  for (const [id, line, output] of [['test', GROUP_JOBS.test, 'groups'], ['preflight', GROUP_JOBS.preflight, 'preflight']] as const) {
+    const run = runs.find(item => item.job.id === id);
+    if (!run || run.step.run.trim() !== line) { errors.push(`ci.yml job ${id} does not run ${line}`); continue; }
+    const strategy = run.job.value['strategy'];
+    const matrix = typeof strategy === 'object' && strategy !== null && 'matrix' in strategy ? strategy.matrix : undefined;
+    const include = typeof matrix === 'object' && matrix !== null && 'include' in matrix ? matrix.include : undefined;
+    if (include !== `\${{ fromJSON(needs.plan.outputs.${output}) }}`) errors.push(`ci.yml job ${id} does not take its matrix include from \${{ fromJSON(needs.plan.outputs.${output}) }}, which make ci-plan writes from CI_GROUPS`);
   }
-  if (listed.length > 0) for (const group of groups) if (!listed.includes(group)) errors.push(`ci.yml has no matrix group ${group} of CI_GROUPS, so no job runs its targets`);
+  if (!recipeLines(makefile, 'ci-plan').some(line => line.includes('scripts/check/ci-plan.mts') && line.includes('$(CI_GROUPS)')))
+    errors.push('the recipe ci-plan does not write the matrix of the group jobs from CI_GROUPS with scripts/check/ci-plan.mts');
   for (const group of new Set(groups.filter((group, index) => groups.indexOf(group) !== index))) errors.push(`Makefile CI_GROUPS lists ${group} twice`);
   for (const group of groups) if (!((targets[group]?.length ?? 0) > 0)) errors.push(`Makefile CI group ${group} declares no CI_TARGETS_${group}`);
   for (const group of Object.keys(targets)) if (!groups.includes(group)) errors.push(`Makefile declares CI_TARGETS_${group}, but ${group} is not in CI_GROUPS`);
@@ -212,65 +212,70 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const own = jobTargets(makefile);
   for (const target of own.docs) owners.set(target, [...(owners.get(target) ?? []), 'docs']);
   for (const target of own.editor) owners.set(target, [...(owners.get(target) ?? []), 'editor']);
-  for (const [target, runs] of owners) if (gates.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, a gate of kit (CI_KIT_GATES) that the gates workflow runs`);
+  for (const [target, ran] of owners) if (gates.includes(target)) errors.push(`CI group ${ran.join(', ')} runs ${target}, a gate of kit (CI_KIT_GATES) that the gates workflow runs`);
   for (const target of checks) {
-    const runs = owners.get(target) ?? [];
-    if (runs.length === 0) errors.push(`no CI group runs ${target} of CHECK_TARGETS; add it to one CI_TARGETS_<group>`);
-    else if (runs.length > 1) errors.push(`CI groups ${runs.join(', ')} each run ${target}; every target of CHECK_TARGETS runs in exactly one group`);
+    const ran = owners.get(target) ?? [];
+    if (ran.length === 0) errors.push(`no CI group runs ${target} of CHECK_TARGETS; add it to one CI_TARGETS_<group>`);
+    else if (ran.length > 1) errors.push(`CI groups ${ran.join(', ')} each run ${target}; every target of CHECK_TARGETS runs in exactly one group`);
   }
-  for (const [target, runs] of owners) if (!all.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
+  for (const [target, ran] of owners) if (!all.includes(target)) errors.push(`CI group ${ran.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
   return errors;
 }
 
-// ciReportPathErrors returns one error at each place where the report directory a CI job uploads is not the directory the runner writes. For each job,
-// the `ORM_CHECK_RUN_ID` of the step and the `path:` of the upload step take run id 1, attempt 1 and the matrix group (for each group of CI_GROUPS), and
-// require the path to equal the runner's report `.runtime/check/<runName(ORM_CHECK_RUN_ID)>/report/`. runName replaces every character that is not
-// a lowercase English letter or digit with `_`, so a path for a group name with other characters points to a directory the runner did not write.
+// reportName returns the ORM_CHECK_RUN_ID of a job run with run id 1 and attempt 1: the CI_NAME of its recipe (`$(CI_RUN)-<name>`),
+// with GROUP filled by group. It is undefined when the recipe names no CI_NAME.
+function reportName(makefile: string, target: string, group: string): string | undefined {
+  // ci-preflight runs ci-test with GROUP=preflight.
+  const named = target === 'ci-preflight' ? 'ci-test' : target;
+  const name = new RegExp(`^${named.replace(/[-/]/g, '\\$&')}: CI_NAME = \\$\\(CI_RUN\\)-(\\S+)$`, 'm').exec(makefile)?.[1];
+  return name === undefined ? undefined : `1-1-${name.replaceAll('$(GROUP)', group)}`;
+}
+
+// ciReportPathErrors returns one error at each place where the report directory a CI job uploads is not the directory the runner writes.
+// For each job whose recipe runs the check runner (make check-run, docs-ci or documents-ci), the job uploads, after its run step,
+// `.runtime/check/<runName(ORM_CHECK_RUN_ID)>/report/`, where ORM_CHECK_RUN_ID is the CI_NAME of its recipe; the path takes run id
+// 1, attempt 1 and, for a group job, each group of CI_GROUPS. runName replaces every character that is not a lowercase English
+// letter or digit with `_`, so a path for a group name with other characters points to a directory the runner did not write.
 export function ciReportPathErrors(workflow: string, makefile: string): string[] {
   const { groups } = ciGroups(makefile);
   const errors: string[] = [];
-  for (const job of readWorkflow(workflow).jobs) {
-    const { id, steps } = job;
-    const runId = steps.map(step => step.env['ORM_CHECK_RUN_ID']).find((value): value is string => typeof value === 'string');
-    const path = steps.map(step => step.with['path']).find((value): value is string => typeof value === 'string' && value.startsWith('.runtime/check/'));
-    if (!runId || !path) continue;
-    // The matrix group fills ${{ matrix.group }} with its name.
+  for (const run of jobRuns(workflow, 'ci.yml')) {
+    const lines = jobLines(makefile, run.target === 'ci-preflight' ? 'ci-test' : run.target);
+    if (!lines.some(line => line.action === 'check' && /^(?:check-run|docs-ci|documents-ci)$/.test(line.make[0] ?? ''))) continue;
+    const after = run.job.steps.slice(run.job.steps.indexOf(run.step) + 1);
+    const path = after.map(step => step.with['path']).find((value): value is string => typeof value === 'string' && value.startsWith('.runtime/check/'));
+    if (!path) { errors.push(`ci.yml job ${run.job.id} runs the check runner through make ${run.target} and uploads no report .runtime/check/<run>/report/ after it`); continue; }
     const fill = (text: string, group: string) => text.replaceAll('${{ matrix.group }}', group).replaceAll('${{ github.run_id }}', '1').replaceAll('${{ github.run_attempt }}', '1');
-    // A job uploads the reports of the groups of its own matrix.
-    for (const group of runId.includes('matrix.group') ? (matrixGroups(job) ?? groups) : ['']) {
-      const want = `.runtime/check/${runName(fill(runId, group))}/report/`;
+    const grouped = run.target === 'ci-test' ? groups.filter(group => group !== 'preflight') : run.target === 'ci-preflight' ? ['preflight'] : [''];
+    for (const group of grouped) {
+      const name = reportName(makefile, run.target, group);
+      if (name === undefined) { errors.push(`the recipe ${run.target} of ci.yml job ${run.job.id} names no CI_NAME = $(CI_RUN)-<name>, the run id of its report`); break; }
+      const want = `.runtime/check/${runName(name)}/report/`;
       const have = fill(path, group);
-      if (have !== want) errors.push(`ci.yml job ${id}${group ? ` group ${group}` : ''} uploads ${have}, but the runner writes the report of ORM_CHECK_RUN_ID ${fill(runId, group)} to ${want}; name the group with lowercase letters, digits and _ only`);
+      if (have !== want) errors.push(`ci.yml job ${run.job.id}${group ? ` group ${group}` : ''} uploads ${have}, but the runner writes the report of ORM_CHECK_RUN_ID ${name} to ${want}; name the group with lowercase letters, digits and _ only`);
     }
   }
   return errors;
 }
 
-// ciCheckTargetErrors returns one error for each place where the CI workflow omits a make orm-check target (CHECK_TARGETS) or
-// runs it twice. It reads the target that the `make` at the start of a line in a step's run text runs.
-// `make orm-check` runs every CHECK_TARGETS entry through the make orm-check runner (scripts/check/run.mts), so
-// running that target separately runs it twice. `make check-run GROUP=...` runs one CI group, so the groups
-// must divide CHECK_TARGETS exactly (ciGroupErrors). Without `make orm-check`, each target must be in some step.
+// ciCheckTargetErrors returns one error for each place where the CI workflow runs a make orm-check target (CHECK_TARGETS) outside
+// the check runner, or where the CI groups do not split CHECK_TARGETS (ciGroupErrors). A job reaches a target through the
+// recipe of its run step: the make arguments of its lines and the targets they run. make check-run runs the targets of one CI
+// group through the runner (scripts/check/run.mts), so a job that runs such a target itself runs it twice.
 export function ciCheckTargetErrors(workflow: string, makefile: string): string[] {
   const targets = checkTargets(makefile);
   if (targets.length === 0) return ['Makefile declares no CHECK_TARGETS'];
-  const ran = new Map<string, string>();
-  for (const step of workflowSteps(workflow)) {
-    for (const segment of runSegments(step)) {
-      const command = /^make\s+(.*)$/s.exec(segment)?.[1];
-      if (!command) continue;
-      for (const word of command.split(/\s+/)) {
-        if (!/^[a-z0-9-]+$/.test(word)) break;
-        ran.set(word, step.name);
-      }
+  const errors: string[] = [];
+  const own = jobTargets(makefile);
+  for (const run of jobRuns(workflow, 'ci.yml')) {
+    const lines = jobLines(makefile, run.target === 'ci-preflight' ? 'ci-test' : run.target);
+    for (const line of lines) {
+      const target = line.make[0];
+      if (target && targets.includes(target) && !own.docs.includes(target) && !own.editor.includes(target))
+        errors.push(`ci.yml job ${run.job.id} runs ${target} through make ${run.target}, which make orm-check runs`);
     }
   }
-  if (ran.has('orm-check') || ran.has('check-run'))
-    return [...targets.filter(target => ran.has(target)).map(target =>
-      `ci.yml step "${ran.get(target)}" runs ${target}, which make orm-check runs`),
-    ...(workflowSteps(workflow).some(groupStep) ? ciGroupErrors(workflow, makefile) : [])];
-  return targets.filter(target => !ran.has(target)).map(target =>
-    `ci.yml does not run ${target} of CHECK_TARGETS`);
+  return [...errors, ...ciGroupErrors(workflow, makefile)];
 }
 
 // featureCommands returns the verification commands in contracts/features.json that run at the repository root (their `command`
@@ -303,6 +308,12 @@ function shellCommand(command: string, fromMakefile: boolean): string {
   return text.replace(/^\$WITH_TEST_ENV\s+/, '').replace(/\s+/g, ' ');
 }
 
+// jobMakeCommands are the make calls of a job: its run step and the make arguments of each line of the job runner in its recipe.
+function jobMakeCommands(run: JobRun, makefile: string): SimpleCommand[] {
+  const target = run.target === 'ci-preflight' ? 'ci-test' : run.target;
+  return [...runCommands(run.step), ...jobLines(makefile, target).filter(line => line.make.length).flatMap(line => commands(`make ${line.make.join(' ')}`, 'workflow'))];
+}
+
 // ciDuplicateCommandErrors covers the verification commands that feature-check runs inside make orm-check: each CI workflow step that
 // runs such a command again gets one error. The step's command (scripts/repo/shell.mts) equals it, or the make
 // target (outside CHECK_TARGETS) that it runs has only that command, which means it runs the command twice.
@@ -310,17 +321,17 @@ export function ciDuplicateCommandErrors(workflow: string, makefile: string, com
   const known = new Set(commands.map((command: string) => shellCommand(command, false)));
   const targets = new Set(checkTargets(makefile));
   const errors: string[] = [];
-  for (const step of workflowSteps(workflow)) {
-    for (const command of runCommands(step)) {
+  for (const run of jobRuns(workflow, 'ci.yml')) {
+    for (const command of jobMakeCommands(run, makefile)) {
       if (known.has(shellCommand(command.text, false))) {
-        errors.push(`ci.yml step "${step.name}" runs ${command.text}, which make orm-check runs in feature-check`);
+        errors.push(`ci.yml job ${run.job.id} runs ${command.text}, which make orm-check runs in feature-check`);
         continue;
       }
       if (command.name !== 'make') continue;
       for (const target of command.args.filter(word => /^[a-z0-9][a-z0-9/-]*$/.test(word) && !targets.has(word) && word !== 'orm-check')) {
         const body = recipe(makefile, target);
         if (body !== undefined && body.length > 0 && body.every(line => known.has(shellCommand(line, true))))
-          errors.push(`ci.yml step "${step.name}" runs make ${target}, whose commands make orm-check runs in feature-check`);
+          errors.push(`ci.yml job ${run.job.id} runs make ${target}, whose commands make orm-check runs in feature-check`);
       }
     }
   }
@@ -523,28 +534,24 @@ export function runnerIdentity(segment: string): string | undefined {
 // is an error. It judges by the runner's identity, not the command text. The make target that the step runs (outside CHECK_TARGETS)
 // has its recipe judged the same way, with make variables expanded.
 export function ciRerunErrors(workflow: string, makefile: string): string[] {
-  const steps = workflowSteps(workflow);
-  if (!steps.some(checkStep)) return [];
+  const runs = jobRuns(workflow, 'ci.yml');
+  if (!runs.some(groupRun)) return [];
   const targets = new Set(checkTargets(makefile));
   const variables = makeVariables(makefile);
   const errors: string[] = [];
-  const report = (step: WorkflowStep, identity: string, via: string) => errors.push(`ci.yml step "${step.name}" runs ${identity}${via} outside make orm-check; make orm-check runs every test once, and a check it lacks belongs in a target of CHECK_TARGETS`);
-  for (const step of steps) {
-    // The CI setup step (scripts/check/ci-setup.mts) installs tools and checks the environment, and does not run any test.
-    if (Object.hasOwn(CI_SETUP, step.id ?? '')) continue;
-    for (const segment of runSegments(step)) {
-      if (runsCheck(segment)) continue;
-      const identity = runnerIdentity(segment);
-      if (identity) { report(step, identity, ''); continue; }
-      const make = /^make\s+(.*)$/.exec(segment)?.[1];
-      if (!make) continue;
-      for (const target of make.split(/\s+/).filter(word => /^[a-z0-9-]+$/.test(word) && word !== 'orm-check' && !targets.has(word))) {
-        for (const line of recipe(makefile, target) ?? [])
-          for (const part of segments(expand(line, variables), 'make')) {
-            const inner = runnerIdentity(part);
-            if (inner) report(step, inner, ` through make ${target}`);
-          }
-      }
+  const report = (run: JobRun, identity: string, via: string) => errors.push(`ci.yml job ${run.job.id} runs ${identity}${via} outside make orm-check; make orm-check runs every test once, and a check it lacks belongs in a target of CHECK_TARGETS`);
+  for (const run of runs) {
+    const identity = runnerIdentity(run.step.run);
+    if (identity) report(run, identity, '');
+    // A setup step of a recipe installs tools and checks the environment, and runs no test.
+    for (const line of jobLines(makefile, run.target === 'ci-preflight' ? 'ci-test' : run.target).filter(item => item.action !== 'setup')) {
+      const target = line.make[0];
+      if (!target || target === 'orm-check' || target === 'check-run' || targets.has(target)) continue;
+      for (const body of recipe(makefile, target) ?? [])
+        for (const part of segments(expand(body, variables), 'make')) {
+          const inner = runnerIdentity(part);
+          if (inner) report(run, inner, ` through make ${target}`);
+        }
     }
   }
   return errors;
@@ -592,53 +599,6 @@ export function ciLeaseErrors(workflows: Record<string, string>, tracked: string
   return errors;
 }
 
-// AFTER_CHECK is the steps that come after make orm-check. The full suite runs in CI after push and does not stop at a failure, so after it
-// only two steps that record the run's information come, not checks: the summary, which writes to the job summary and the
-// report even if the runner has not finished, and report, which uploads only the report directory of that run id. Both have `if: ${{ !cancelled() }}`.
-// AFTER_GROUP_CHECK is the same two steps of a CI group job: since the run id, artifact name and report directory carry the matrix group,
-// the groups' reports do not overlap. Steps are compared by their YAML values in the workflow.
-export const RUN_ID = '${{ github.run_id }}-${{ github.run_attempt }}';
-export const GROUP_RUN_ID = '${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}';
-const NOT_CANCELLED = '${{ !cancelled() }}';
-export const AFTER_CHECK: Record<string, unknown>[] = [
-  { name: 'summary', if: NOT_CANCELLED, env: { ORM_CHECK_RUN_ID: RUN_ID }, run: 'node scripts/check/summary.mts' },
-  { name: 'report', if: NOT_CANCELLED, uses: 'actions/upload-artifact@v4',
-    with: { name: 'check-${{ github.run_id }}-${{ github.run_attempt }}', path: '.runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', 'if-no-files-found': 'error' } },
-];
-export const AFTER_GROUP_CHECK: Record<string, unknown>[] = [
-  { name: 'summary', if: NOT_CANCELLED, env: { ORM_CHECK_RUN_ID: GROUP_RUN_ID }, run: 'node scripts/check/summary.mts' },
-  { name: 'report', if: NOT_CANCELLED, uses: 'actions/upload-artifact@v4',
-    with: { name: 'check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}', path: '.runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/', 'if-no-files-found': 'error' } },
-];
-
-// ciAfterCheckErrors returns one error at each place where, in each job of a workflow that runs make orm-check, the make orm-check step does not give ORM_CHECK_RUN_ID, or the steps after it
-// are not exactly the same as AFTER_CHECK's summary and report. All the checks are in make orm-check's
-// targets (CHECK_TARGETS), and the steps after it only leave that run's summary and report.
-export function ciAfterCheckErrors(workflows: Record<string, string>): string[] {
-  const errors: string[] = [];
-  for (const [path, whole] of Object.entries(workflows)) for (const { steps } of readWorkflow(whole, path).jobs) {
-    const check = steps.findIndex(checkStep);
-    const checkStepOf = steps[check];
-    if (!checkStepOf) continue;
-    const grouped = groupStep(checkStepOf);
-    const declared = grouped ? AFTER_GROUP_CHECK : AFTER_CHECK;
-    const runId = grouped ? GROUP_RUN_ID : RUN_ID;
-    if (checkStepOf.env['ORM_CHECK_RUN_ID'] !== runId)
-      errors.push(`${path} step "${checkStepOf.name}" gives make orm-check no ORM_CHECK_RUN_ID: ${runId}, which names the report of the run`);
-    const after = steps.slice(check + 1);
-    for (const [index, step] of after.entries()) {
-      const want = declared[index];
-      if (want && isDeepStrictEqual(step.value, want)) continue;
-      errors.push(want
-        ? `${path} step "${step.name}" after make orm-check is not the declared ${String(want['name'])} step: ${JSON.stringify(step.value)} instead of ${JSON.stringify(want)}`
-        : `${path} step "${step.name}" runs ${step.run.split('\n')[0] || JSON.stringify(step.value)} after make orm-check; make orm-check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS`);
-    }
-    for (const want of declared.slice(after.length))
-      errors.push(`${path} has no ${String(want['name'])} step after make orm-check: ${JSON.stringify(want)}`);
-  }
-  return errors;
-}
-
 // FULL_SUITE_RULE is the full suite rule that AGENTS.md and AGENTS.ko.md must state: the full suite runs in CI after push, and one CI run
 // gathers the information to fix all failures before the next run, and no local check is needed before push. The previous rule (run once locally when every active item is done) does not remain.
 export const FULL_SUITE_RULE: Record<string, { required: string[]; removed: string[] }> = {
@@ -664,63 +624,102 @@ export function fullSuiteRuleErrors(documents: Record<string, string>): string[]
   return errors;
 }
 
-// ciSetupErrors returns one error at each place where a workflow's setup step fails, yet the steps after it still run and that failure is not recorded.
-// In a job that runs make orm-check, every step before make orm-check has an id, and that id is a step the runner needs (RUNNER_STEPS)
-// or a step that records what that step provides in CI_SETUP of scripts/check/ci-setup.mts. The steps of the table
-// are all in the workflow. A step after the first step, and make orm-check, run even if an earlier step fails, via `if: ${{ !cancelled() }}`,
-// and make orm-check receives the step results as ORM_CI_SETUP: ${{ toJSON(steps) }}. A `run:` step in another job also has, for the
-// earlier steps of its job, a condition that it runs even if they fail (starting with `if: ${{ !cancelled()`). continue-on-error removes the failure from the job, so it
-// appears nowhere.
-// GROUP_NEEDS is the line that the group-needs step of a CI group job runs.
-export const GROUP_NEEDS = 'make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"';
-
-export function ciSetupErrors(workflows: Record<string, string>, { setup, runner }: { setup: Record<string, string | null>; runner: string[] }): string[] {
+// ciSetupErrors returns one error at each place where the recipe of the CI group jobs (ci-test) does not run the setup steps of
+// scripts/check/ci-setup.mts as the check runner reads their results. Every setup line of the recipe has an id of CI_SETUP,
+// every id of CI_SETUP has one setup line, and a line runs under `--when <output>` exactly when STEP_OUTPUT names that output.
+// The recipe begins the job with the targets of its group (`begin $(CI_NAME) --group $(GROUP) $(CI_TARGETS_$(GROUP))`), runs
+// make check-run GROUP=$(GROUP) as its check after the setup steps, the summary in every case and ends the job. No workflow
+// uses continue-on-error, which hides a failed step from the job. A job whose recipe installs PHP tools (make install-tools of
+// all tools or of a PHP tool) sets up the PHP of .php-version with setup-php before its run step.
+export function ciSetupErrors(workflows: Record<string, string>, makefile: string, { setup, output }: { setup: Record<string, string>; output: Record<string, string | null> } = { setup: CI_SETUP, output: STEP_OUTPUT }): string[] {
   const errors: string[] = [];
+  const lines = jobLines(makefile, 'ci-test');
+  const ids = lines.filter(line => line.action === 'setup').map(line => line.options[0] ?? '');
+  const begin = lines[0];
+  if (begin?.action !== 'begin' || begin.options.join(' ') !== '--group $(GROUP) $(CI_TARGETS_$(GROUP))')
+    errors.push('the recipe ci-test does not begin its job with --group $(GROUP) $(CI_TARGETS_$(GROUP)), the targets whose needs decide its setup steps');
+  for (const line of lines.filter(item => item.action === 'setup')) {
+    const id = line.options[0] ?? '';
+    if (!Object.hasOwn(setup, id)) { errors.push(`the recipe ci-test runs the setup step ${id}, which scripts/check/ci-setup.mts does not map to what it installs`); continue; }
+    const when = line.options[1] === '--when' ? line.options[2] : undefined;
+    const want = output[id] ?? undefined;
+    if (when !== want) errors.push(`the recipe ci-test runs the setup step ${id} ${when ? `--when ${when}` : 'in every group'} instead of ${want ? `--when ${want}` : 'in every group'}, the condition that scripts/check/ci-setup.mts declares`);
+  }
+  for (const id of Object.keys(setup)) if (!ids.includes(id)) errors.push(`the recipe ci-test has no setup step ${id} of scripts/check/ci-setup.mts`);
+  for (const id of new Set(ids.filter((id, index) => ids.indexOf(id) !== index))) errors.push(`the recipe ci-test runs the setup step ${id} twice`);
+  const check = lines.findIndex(line => line.action === 'check');
+  if (check === -1 || lines[check]?.make.join(' ') !== 'check-run GROUP=$(GROUP)') errors.push('the recipe ci-test does not run make check-run GROUP=$(GROUP) as its check');
+  else if (lines.slice(check).some(line => line.action === 'setup')) errors.push('the recipe ci-test runs a setup step after its check');
+  if (!lines.some(line => line.action === 'always' && line.make.join(' ') === 'ci-summary')) errors.push('the recipe ci-test does not write the summary of the run in every case (always -- ci-summary)');
+  if (lines.at(-1)?.action !== 'end') errors.push('the recipe ci-test does not end its job with end $(CI_NAME), which gives the status of the job');
   for (const [path, whole] of Object.entries(workflows)) {
     const { jobs } = readWorkflow(whole, path);
     if (jobs.some(job => Object.hasOwn(job.value, 'continue-on-error') || job.steps.some(step => Object.hasOwn(step.value, 'continue-on-error'))))
-      errors.push(`${path} uses continue-on-error, which hides a failed step from the job; run later steps with if: \${{ !cancelled() }} instead`);
-    for (const { steps } of jobs) {
-      for (const [index, step] of steps.entries()) {
-        const installTools = runCommands(step).find(command => command.name === 'make' && command.args.includes('install-tools') && !command.args.includes('TOOLS=npm'));
-        if (!installTools) continue;
-        const selected = /(?:^|\s)TOOLS=(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(step.run ?? '');
-        const selectedTools = selected?.[1] ?? selected?.[2] ?? selected?.[3];
-        const needsPhp = selectedTools === undefined || /(?:^|\s)(?:php|phpunit|phpcs|phpstan|composer)(?:\s|$)/.test(selectedTools);
-        if (!needsPhp) continue;
-        const prepared = steps.slice(0, index).some(prior => prior.id === 'php-bootstrap' &&
-          prior.uses === 'shivammathur/setup-php@v2' && prior.with['php-version-file'] === '.php-version');
-        if (!prepared) errors.push(`${path} step "${step.name}" runs make install-tools before setup-php installs .php-version`);
-      }
-      const check = steps.findIndex(checkStep);
-      const guarded = (index: number) => steps[index]?.if?.startsWith('${{ !cancelled()') ?? false;
-      if (check === -1) {
-        for (const [index, step] of steps.entries())
-          if (index > 0 && step.run && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier step; give it if: \${{ !cancelled() ... }}`);
+      errors.push(`${path} uses continue-on-error, which hides a failed step from the job; a recipe runs its checks to their end instead`);
+    for (const run of jobRuns(whole, path)) {
+      const installs = recipeCommands(makefile, [run.target]).some(command => command.name !== undefined && /(?:^|\/)make$|^\$\(MAKE\)$/.test(command.name) && command.args.includes('install-tools') &&
+        (() => { const selected = command.args.find(arg => arg.startsWith('TOOLS=')); return selected === undefined || /(?:^|=|\s)(?:php|phpunit|phpcs|phpstan|composer)(?:\s|$)/.test(selected); })());
+      if (!installs) continue;
+      const prepared = run.job.steps.slice(0, run.job.steps.indexOf(run.step)).some(prior => prior.uses?.split('@')[0] === 'shivammathur/setup-php' && prior.with['php-version-file'] === '.php-version');
+      if (!prepared) errors.push(`${path} job ${run.job.id} runs make install-tools through make ${run.target} before setup-php installs .php-version`);
+    }
+  }
+  return errors;
+}
+
+// JUDGEMENT_JOBS are the jobs that judge the other jobs of their workflow: their run step passes RESULTS, the JSON of
+// toJSON(needs), to make ci-passed (ci.yml) or make ci-kit-required (ci-pipeline.yml).
+export const JUDGEMENT_JOBS = ['ci-passed', 'required'];
+// RESULT_ACTIONS are the actions that carry a result of the run step and may follow it.
+export const RESULT_ACTIONS = ['actions/upload-artifact', 'actions/upload-pages-artifact', 'actions/deploy-pages'];
+// The expressions that a make argument of a run step may hold: a matrix value and an input of a called workflow.
+const ARGUMENT = /^\$\{\{ (?:matrix|inputs)\.[A-Za-z_][A-Za-z0-9_-]* \}\}$/;
+// The expressions that the environment of a job may hold: the token of the run and an output of a job it needs.
+const JOB_ENV = /^\$\{\{ (?:github\.token|needs\.[a-z][a-z0-9_-]*\.outputs\.[a-z][a-z0-9_]*) \}\}$/;
+
+// ciRecipeErrors returns one error at each place where a job of a workflow does not run its content in one Makefile recipe
+// (T497): CI and a local run call the same recipe, so a local run repeats a CI job without the runner of GitHub. A job that
+// calls a workflow (uses) is the jobs of that workflow. Every other job has exactly one run step, `make ci-<job> NAME=value...`,
+// whose target the Makefile declares and whose values are literals, matrix values or inputs of a called workflow; the step has
+// no if:, env:, shell: or working-directory:, except that a judgement job (JUDGEMENT_JOBS) passes RESULTS: ${{ toJSON(needs) }}.
+// Every other step is a uses: step, and only the result actions (RESULT_ACTIONS) follow the run step. A job with no run step
+// only carries a result. The environment of a job holds literals, the token of the run and outputs of the jobs it needs.
+export function ciRecipeErrors(workflows: Record<string, string>, makefile: string): string[] {
+  const errors: string[] = [];
+  const declared = new Set(makeTargets(makefile).map(entry => entry.target));
+  for (const [path, whole] of Object.entries(workflows)) {
+    for (const job of readWorkflow(whole, path).jobs) {
+      if ('uses' in job.value) continue;
+      const where = `${path} job ${job.id}`;
+      const env = job.value['env'];
+      if (typeof env === 'object' && env !== null)
+        for (const [name, value] of Object.entries(env))
+          if (typeof value === 'string' && value.includes('${{') && !JOB_ENV.test(value)) errors.push(`${where} sets ${name} to ${value}; the recipe computes it, and a job passes only the token of the run and the outputs of the jobs it needs`);
+      const runs = job.steps.filter(step => step.run !== '' || Object.hasOwn(step.value, 'run'));
+      if (runs.length === 0) {
+        if (job.steps.some(step => !RESULT_ACTIONS.includes(step.uses?.split('@')[0] ?? ''))) errors.push(`${where} runs no make ci-${job.id} step; give it one run step make ci-${job.id} whose recipe runs the job`);
         continue;
       }
-      for (const [index, step] of steps.slice(0, check).entries()) {
-        if (!step.id) errors.push(`${path} step "${step.name}" before make orm-check has no id; give it the id of what it installs in scripts/check/ci-setup.mts`);
-        else if (!runner.includes(step.id) && !Object.hasOwn(setup, step.id)) errors.push(`${path} step "${step.name}" has the id ${step.id}, which scripts/check/ci-setup.mts does not map to what it installs`);
-        if (index > 0 && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier setup step; give it if: \${{ !cancelled() }}`);
+      if (runs.length > 1) errors.push(`${where} has ${runs.length} run steps; a job runs one step, make ci-<job>, whose recipe holds the order and the conditions of the job`);
+      const run = runs[0];
+      if (!run) continue;
+      const call = makeCall(run.run);
+      if (!call || !call.target.startsWith('ci-')) errors.push(`${where} runs ${JSON.stringify(run.run.trim())}; its run step is make ci-<job> with make-variable arguments only`);
+      else {
+        if (!declared.has(call.target)) errors.push(`${where} runs make ${call.target}, which the Makefile does not declare`);
+        for (const [name, value] of Object.entries(call.args))
+          if (value.includes('${{') && !ARGUMENT.test(value)) errors.push(`${where} passes ${name}=${value}; an argument holds a literal, a matrix value or an input of a called workflow`);
       }
-      // In a CI group's job, a setup step runs only when that group needs it: the condition is stepCondition in scripts/check/ci-setup.mts,
-      // and the group-needs step writes the output of make ci-group-needs to $GITHUB_OUTPUT.
-      const checkStepOf = steps[check];
-      if (!checkStepOf) continue;
-      if (groupStep(checkStepOf)) {
-        for (const step of steps.slice(0, check)) {
-          if (!Object.hasOwn(setup, step.id ?? '')) continue;
-          const want = stepCondition(step.id ?? '');
-          if (step.if !== want) errors.push(`${path} step "${step.name}" of the CI group job runs under ${step.if === undefined ? 'no if:' : `if: ${step.if}`} instead of if: ${want}, the condition that scripts/check/ci-setup.mts declares for the step ${step.id}`);
-        }
-        const needs = steps.slice(0, check).find(step => step.id === 'group-needs');
-        if (needs && needs.run !== GROUP_NEEDS) errors.push(`${path} step "${needs.name}" runs ${needs.run} instead of ${GROUP_NEEDS}, which writes the setup of the CI group as step outputs`);
+      for (const key of ['if', 'shell', 'working-directory'])
+        if (Object.hasOwn(run.value, key)) errors.push(`${where} gives its run step ${key}:; the recipe holds the conditions of the job`);
+      const judgement = JUDGEMENT_JOBS.includes(job.id) && isDeepStrictEqual(run.env, { RESULTS: '${{ toJSON(needs) }}' });
+      if (Object.hasOwn(run.value, 'env') && !judgement) errors.push(`${where} gives its run step env:; only a judgement job passes RESULTS: \${{ toJSON(needs) }}`);
+      const at = job.steps.indexOf(run);
+      for (const [index, step] of job.steps.entries()) {
+        if (step === run) continue;
+        if (!step.uses) { errors.push(`${where} step "${step.name}" is no uses: step; every step but the run step provisions the runner or carries a result`); continue; }
+        if (index > at && !RESULT_ACTIONS.includes(step.uses.split('@')[0] ?? '')) errors.push(`${where} step "${step.name}" follows the run step; only a step that carries a result (${RESULT_ACTIONS.join(', ')}) follows it`);
       }
-      const ids = new Set(steps.slice(0, check).map(step => step.id));
-      for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mts`);
-      if (!guarded(check)) errors.push(`${path} step "${checkStepOf.name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
-      if (checkStepOf.env['ORM_CI_SETUP'] !== '${{ toJSON(steps) }}') errors.push(`${path} step "${checkStepOf.name}" gives make orm-check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
     }
   }
   return errors;
@@ -777,27 +776,6 @@ export function chainedCommandErrors(features: { features?: { id: string; verifi
   };
   for (const feature of features.features ?? []) for (const verification of feature.verification ?? []) check(`${feature.id}/${verification.id}`, verification.command);
   for (const helper of features.helpers ?? []) check(`helper ${helper.id}`, helper.command);
-  return errors;
-}
-
-// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: summary writes the run's record after make orm-check.
-export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = {
-  '.github/workflows/ci.yml': { summary: 'node scripts/check/summary.mts' },
-  '.github/workflows/docs-pages.yml': {},
-};
-
-// ciMakeErrors returns one error for each place where a workflow step runs a command that is not a make target. Every step
-// runs the same make targets as locally, so there is no command that only CI knows. workflows is {path: text}.
-export function ciMakeErrors(workflows: Record<string, string>): string[] {
-  const errors: string[] = [];
-  for (const [path, workflow] of Object.entries(workflows)) {
-    for (const step of workflowSteps(workflow)) {
-      if (!step.run) continue;
-      if (CI_RUN_EXCEPTIONS[path]?.[step.name]?.trimEnd() === step.run.trimEnd()) continue;
-      for (const segment of runSegments(step))
-        if (!/^make(\s|$)/.test(segment)) errors.push(`${path} step "${step.name}" runs ${segment}; run it through a make target`);
-    }
-  }
   return errors;
 }
 
@@ -903,23 +881,13 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
   return errors;
 }
 
-// CI_PASSED_STEPS are the steps of ci.yml's last job, ci-passed. The check that the verify step of release requires from ci.yml is this one job: it runs with `if: always()`,
+// CI_PASSED_STEPS are the steps of ci.yml's last job, ci-passed. The check that the release requires from ci.yml is this one job: it runs with `if: always()`,
 // so it runs even when other jobs fail or are cancelled. Its needs are every other job, so make ci-passed passes only when all of those jobs succeed; FAIL_SKIPPED=1 fails a skipped job too (kit K1111).
-// make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
-// checkout, the node of mise.toml and the install of the package come before it.
-export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed FAIL_SKIPPED=1' };
-// LOCKS_STEP hashes the tracked lock files of each cache once, after the checkout of a job (lockedCacheErrors).
-export const LOCKS_STEP: Record<string, unknown> = {
-  name: 'hashes of the lock files', id: 'locks', if: NOT_CANCELLED,
-  run: 'make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"',
-};
+// make ci-passed runs the ci-passed tool of @polyspec/kit with node, so the checkout and the kit bootstrap come before it.
+export const CI_PASSED_STEP: Record<string, unknown> = { env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed FAIL_SKIPPED=1' };
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
-  LOCKS_STEP,
-  { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml', 'package-manager-cache': false } },
-  { name: 'cache of the npm packages', id: 'cache-npm', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: '~/.npm', key: 'npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}' } },
-  { name: 'cache of the tools of mise.toml', id: 'cache-tools', if: NOT_CANCELLED, uses: 'actions/cache@v4', with: { path: 'var/tools', key: 'tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}' } },
-  { uses: './.github/actions/kit-bootstrap', id: 'kit-bootstrap', if: NOT_CANCELLED },
+  { uses: './.github/actions/kit-bootstrap' },
   CI_PASSED_STEP,
 ];
 

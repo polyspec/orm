@@ -15,46 +15,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The site of main: build builds docs/.vitepress/dist and uploads it as the Pages artifact, and deploy publishes it.
-  # The documentation checks of the site run in the job docs of ci.yml on every pull request and merge group.
-  build:
+  # The site of main: site builds docs/.vitepress/dist with make ci-site (T497) and uploads it as the Pages artifact, and
+  # deploy publishes it. The documentation checks of the site run in the job docs of ci.yml.
+  site:
     runs-on: ubuntu-26.04-arm
-    env:
-      VITEPRESS_BASE: /orm/
     steps:
       - uses: actions/checkout@v5
-        id: checkout
-      - uses: actions/setup-node@v7
-        id: node
-        if: ${{ !cancelled() }}
-        with:
-          node-version-file: mise.toml
-          package-manager-cache: false
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
-        id: kit-bootstrap
-        if: ${{ !cancelled() }}
-      - name: install Node dependencies
-        id: node-modules
-        if: ${{ !cancelled() }}
-        run: make install-packages
-      # make docs-build writes codes.ts of the TypeScript client with orm-gen errors, a Go program.
-      - name: Go of mise.toml
-        id: go
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=go
-      - name: build the site
-        id: build
-        if: ${{ !cancelled() }}
-        run: make docs-build
+      - run: make ci-site
+      # A failed build ends the job before this step, so only a built site is uploaded.
       - uses: actions/upload-pages-artifact@v3
-        if: ${{ steps.build.outcome == 'success' }}
         with:
           path: docs/.vitepress/dist
 
+  # The deploy carries the artifact of site to Pages; it runs no recipe of its own.
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: build
+    needs: site
     runs-on: ubuntu-26.04-arm
     permissions:
       pages: write

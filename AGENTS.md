@@ -93,7 +93,8 @@ from kit and holds as its own; this file states only the rules of orm.
 - Own: The repository's full test suite runs on GitHub CI after a push to `main` and on a manual run.
   CI splits it into the CI groups of the
   Makefile (`CI_GROUPS`, `CI_TARGETS_<group>`): one job per group, all at once, each running
-  `make check-run GROUP=<group>` after only the setup steps that its targets need; the groups together
+  `make ci-test GROUP=<group>`, which runs only the setup steps that its targets need and then
+  `make check-run GROUP=<group>`; the groups together
   run every target of `CHECK_TARGETS` but the gates (`CI_KIT_GATES`, the prerequisites of
   `kit-gates`, which `ci-pipeline.yml` runs in its own parallel jobs) exactly once (`make repo-check`),
   and a local `make orm-check` runs every target after its guard. One CI run must
@@ -101,9 +102,10 @@ from kit and holds as its own; this file states only the rules of orm.
   stops at a failure: every target runs unless a setup step it needs failed, which records the
   target as `not-run` with that step and its first failure lines; the independent parts of a
   target run after a failed part; and the run completes the whole suite. The setup steps of CI
-  (installs, toolchains, servers) are setup steps too: each runs after a failed earlier one, and a
-  target that needs what a failed step installs is recorded as `not-run` with that step, so a
-  failed install never stops the suite. What a target needs includes what the setup steps of its
+  (installs, toolchains, servers) are setup steps too: they stop at the first failure, the later
+  ones are recorded as skipped, and a target that needs what a failed or skipped step installs is
+  recorded as `not-run` with that step while every other target runs, so a failed install never
+  stops the suite. What a target needs includes what the setup steps of its
   needs need (`SETUP_NEEDS` of scripts/check/ci-setup.mts: `databases/create` installs the decimal
   database through the TypeScript client), and `make repo-check` requires that every CI group
   runs the setup steps of all of it. Each failure records its
@@ -193,13 +195,35 @@ from kit and holds as its own; this file states only the rules of orm.
   its run is the one that a release takes; `[skip ci]` is not used, since it reads the head commit of a push alone.
   `.github/workflows/docs-pages.yml` only builds and deploys the site of `main`.
   Enforced by: `make repo-check`
+- Own: Every job of a workflow runs its content in one Makefile recipe, so that CI and a local run
+  call the same recipe: a job whose order, conditions and step outputs live in YAML (several run
+  steps, step `if:`, `${{ toJSON(steps) }}`, outputs of earlier steps) cannot be repeated locally
+  without the runner of GitHub. A job has exactly one `run:` step, `make ci-<job>` with make-variable
+  arguments only, whose values are literals, matrix values (`NAME=${{ matrix.key }}`) or inputs of a
+  called workflow (`RELEASE=${{ inputs.release }}`); a job of a called workflow runs
+  `make ci-<caller>-<job>` (`ci-kit-shared`, `ci-assets-platform`). Every other step is a `uses:`
+  step that provisions the runner (checkout, setup actions, caches, `.github/actions/kit-bootstrap`)
+  or, after the run step, carries a result (upload-artifact, upload-pages-artifact), and only a
+  `uses:` step has `if:`. The recipe holds the order and the conditions through
+  `scripts/check/ci-job.mts`: the setup steps first, stopping at the first failure; then every
+  check to its end; then the summary and the cleanup in every case; the job fails when a setup step
+  or a check failed. What a step computed from the results of earlier steps the recipe computes
+  itself: the results of the setup steps go to the check runner as a file (`ORM_CI_SETUP_FILE`). A
+  value that a `uses:` step needs before the run step (a cache key, whether a group sets up PHP or
+  Rust, the lowest PHP release) is an output of a plan job, whose one run step is `make ci-plan` or
+  `make ci-kit-plan`, or a static matrix value; a matrix may fan out with `fromJSON` of such an
+  output. The environment of a job holds only literals, the token of the run and outputs of the
+  jobs it needs. The judgement jobs `ci-passed` and `required` exist only in CI, and their run step
+  passes `RESULTS: ${{ toJSON(needs) }}`. A local run is `make ci-<job> NAME=value`, the call of CI.
+  Enforced by: `make repo-check`
 - Own: `make orm-check` runs the guard of kit (`full-run`) before any step: it refuses while a
   checklist item, sub-items included, is `[~]`, while tracked files have uncommitted changes, while the
   Git hooks are not installed, and when `var/full-run.json` records a full run of the same tree; it
   then runs the target `check-run` and records the result. `make rerun-failed` reruns, on the same
   tree, the targets of that record that did not pass, for a failure whose cause lies outside the tree
   (an environment or a machine resource). Do not delete or edit the record to run again. A fresh
-  checkout has no record, so CI runs `make check-run GROUP=<group>`, which has no guard.
+  checkout has no record, so CI runs `make ci-test GROUP=<group>`, whose check `make check-run
+  GROUP=<group>` has no guard.
   Enforced by: none, the guard runs only in a local `make orm-check`, and no check runs that
 - Own: Owner checks: `make owner-check` (or `make owner-check PATHS="<paths>"`) is a tool that runs the
   checks owning the changed files (`config/owner-checks.json` hands the paths to

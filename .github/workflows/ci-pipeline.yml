@@ -1,9 +1,9 @@
-# The gate pipeline of orm (kit K270, K910), which orm took from the example of kit and owns (T391); every step runs a target
-# of the Makefile. .github/workflows/ci.yml holds the triggers and the concurrency and calls it as a job
-# (`uses: ./.github/workflows/ci-pipeline.yml`), so one push runs one workflow: shared first, then the runtime jobs in
-# parallel, then required. Each job installs only its own locked prerequisites, declared in config/ci.json or selected from the
-# repository's deps-<runtime> targets (K859), and runs the gate of its group with the targets that config/ci.json declares for
-# that group (targets.shared, targets.runtimes.<runtime>) through make ci-targets, inside its context window.
+# The gate pipeline of orm (kit K270, K910), which orm took from the example of kit and owns (T391). .github/workflows/ci.yml
+# holds the triggers and the concurrency and calls it as a job (`uses: ./.github/workflows/ci-pipeline.yml`), so one push runs
+# one workflow: the plan, shared, then the runtime jobs in parallel, then required. Each job runs one step, make ci-kit-<job>
+# (T497), whose recipe installs only the locked prerequisites of the job, declared in config/ci.json, and runs the gate of its
+# group with the targets that config/ci.json declares for that group (targets.shared, targets.runtimes.<runtime>) through make
+# ci-targets. The job plan writes the plan of kit, which the uses: steps of the other jobs read.
 name: ci-pipeline
 
 on:
@@ -13,40 +13,34 @@ permissions:
   contents: read
 
 jobs:
-  # The shared job writes the plan that names the runner of the other jobs (config/ci.json runner), so it runs on the default runner.
-  shared:
-    runs-on: ubuntu-24.04
+  plan:
+    runs-on: ubuntu-26.04-arm
     outputs:
       runtimes: ${{ steps.plan.outputs.runtimes }}
-      runner: ${{ steps.plan.outputs.runner }}
       has_runtimes: ${{ steps.plan.outputs.has_runtimes }}
+      common_tools: ${{ steps.plan.outputs.common_tools }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
+      - uses: ./.github/actions/kit-bootstrap
+      - id: plan
+        run: make ci-kit-plan
+
+  shared:
+    needs: plan
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
-      # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
-      - id: plan
-        run: make kit-ci-plan
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ contains(steps.plan.outputs.common_tools, 'php') }}
+        if: ${{ contains(fromJSON(needs.plan.outputs.common_tools), 'php') }}
         with:
           php-version-file: .php-version
-          tools: none
+          tools: composer:2.10.3
           coverage: none
-      - name: install common gate tools
-        if: ${{ steps.plan.outputs.common_tools != '[]' }}
-        run: make install-tools TOOLS="${{ join(fromJSON(steps.plan.outputs.common_tools), ' ') }}"
-      - name: install shared prerequisites
-        run: make kit-ci-setup GROUP=shared
-      - id: context_prepare
-        name: prepare shared CI context
-        run: make kit-ci-context-prepare GROUP=shared
-      - name: shared gates
-        run: make ci-targets TARGETS="kit-gates-static ${{ join(fromJSON(steps.plan.outputs.shared_targets), ' ') }}"
-      - name: cleanup shared CI context
-        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
-        run: make kit-ci-context-cleanup GROUP=shared
+      - run: make ci-kit-shared
       # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
       - name: report
         if: ${{ !cancelled() }}
@@ -57,37 +51,23 @@ jobs:
           if-no-files-found: ignore
 
   runtime:
-    needs: shared
-    if: ${{ needs.shared.outputs.has_runtimes == 'true' }}
+    needs: [plan, shared]
+    if: ${{ needs.plan.outputs.has_runtimes == 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.shared.outputs.runtimes) }}
-    runs-on: ${{ needs.shared.outputs.runner }}
+        include: ${{ fromJSON(needs.plan.outputs.runtimes) }}
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         if: ${{ matrix.runtime == 'php' || matrix.runtime == 'php-ext' }}
         with:
           php-version-file: .php-version
-          tools: none
+          tools: composer:2.10.3
           coverage: none
-      # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
-      - name: install runtime tools
-        if: ${{ join(matrix.installTools, ' ') != '' }}
-        run: make install-tools TOOLS="${{ join(matrix.installTools, ' ') }}"
-      - name: install runtime prerequisites
-        run: make kit-ci-setup GROUP=runtime RUNTIME=${{ matrix.runtime }}
-      - id: context_prepare
-        name: prepare runtime CI context
-        run: make kit-ci-context-prepare GROUP=runtime RUNTIME=${{ matrix.runtime }}
-      - name: runtime gate
-        run: make ci-targets TARGETS="kit-gates-runtime-${{ matrix.runtime }} ${{ join(matrix.targets, ' ') }}"
-      - name: cleanup runtime CI context
-        if: ${{ always() && steps.context_prepare.outcome != 'skipped' }}
-        run: make kit-ci-context-cleanup GROUP=runtime RUNTIME=${{ matrix.runtime }}
-      # actions/upload-artifact v7.0.1: the report of make ci-targets, var/report/ci-targets.
+      - run: make ci-kit-runtime RUNTIME=${{ matrix.runtime }}
       - name: report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -96,34 +76,15 @@ jobs:
           path: var/report/ci-targets/
           if-no-files-found: ignore
 
-  # The closing common part: it fails when a job that the plan selected does not succeed. The plan selects shared, and runtime when
-  # the repository has one (K950). A job
-  # the plan did not select is skipped and is not a result; a selected job that is skipped fails the pipeline. It runs on the
-  # default runner, since the runner output of shared is empty when shared fails before the plan.
+  # The judgement of the pipeline: it fails when a job did not succeed. A runtime job that the plan did not select is skipped,
+  # which it accepts; a failed plan or shared job fails it.
   required:
     if: ${{ always() }}
-    needs: [shared, runtime]
-    runs-on: ubuntu-24.04
-    env:
-      SHARED_RESULT: ${{ needs.shared.result }}
-      RUNTIME_RESULT: ${{ needs.runtime.result }}
-      SHARED_SELECTED: 'true'
-      RUNTIME_SELECTED: ${{ needs.shared.outputs.has_runtimes == 'true' }}
+    needs: [plan, shared, runtime]
+    runs-on: ubuntu-26.04-arm
     steps:
-      - name: require every job that the plan selected
-        run: |
-          failed=0
-          judge() {
-            if [ "$3" != true ]; then
-              echo "$1: not selected by the plan, not judged"
-              return 0
-            fi
-            echo "$1: $2"
-            if [ "$2" != success ]; then
-              echo "$1 ended with $2, and the plan selected it; expected success" >&2
-              failed=1
-            fi
-          }
-          judge shared "$SHARED_RESULT" "$SHARED_SELECTED"
-          judge runtime "$RUNTIME_RESULT" "$RUNTIME_SELECTED"
-          exit "$failed"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/kit-bootstrap
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: make ci-kit-required

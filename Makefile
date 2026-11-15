@@ -1,7 +1,7 @@
 .PHONY: split-read-plan-check split-read-plan-check/go split-read-plan-check/ts split-read-plan-check/python split-read-plan-check/rust
 .PHONY: dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check
 .PHONY: paged-read-rust-check
-.PHONY: orm-check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-result-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check ts-aes-auth-check ts-codec-errors-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-lock-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-parse-check docs-site-check docs-site-parse-check docs-verify-idempotent docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear orm-test-mysql-privilege-start sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check php-extension-context-prepare php-extension-context-cleanup orm-install-php-extension-runtime orm-install-typescript-runtime
+.PHONY: orm-check check-run databases-create feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-result-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check ts-aes-auth-check ts-codec-errors-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-lock-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-parse-check docs-site-check docs-site-parse-check docs-verify-idempotent docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear orm-test-mysql-privilege-start sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check php-extension-context-prepare php-extension-context-cleanup orm-install-php-extension-runtime orm-install-typescript-runtime
 .PHONY: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
 .PHONY: comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
@@ -459,6 +459,45 @@ ci-targets: ## Run TARGETS past failures and write CI_REPORT (logs, record.json,
 ci-passed: ## Fail unless every job of RESULTS, the JSON of toJSON(needs), has the result success
 	$(NODE) $(KIT)/ci-passed.$(KIT_EXT)
 
+# The recipes of the jobs of ci-pipeline.yml (T497), which the job kit of ci.yml calls: each job runs one step, make
+# ci-kit-<job>. The job plan writes the plan of kit to GITHUB_OUTPUT, which the uses: steps of the other jobs read (setup-php
+# for a common tool php, the matrix of the runtimes); the recipes of the jobs shared and runtime read the plan again
+# (scripts/check/ci-kit.mts) for the tools they install and the targets of their gate. The context of a job is cleaned only
+# after its preparation ran. The job required is the judgement of the pipeline, with RESULTS, the JSON of toJSON(needs); a
+# runtime that the plan did not select is skipped, which it accepts.
+.PHONY: ci-kit-plan ci-kit-shared ci-kit-runtime ci-kit-required ci-kit-tools ci-kit-gates
+ci-kit-plan:
+	$(MAKE) --no-print-directory kit-ci-plan
+ci-kit-shared: CI_NAME = $(CI_RUN)-kit-shared
+ci-kit-shared:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) tools -- ci-kit-tools GROUP=shared
+	@$(CI_JOB) setup $(CI_NAME) prerequisites -- kit-ci-setup GROUP=shared
+	@$(CI_JOB) setup $(CI_NAME) context -- kit-ci-context-prepare GROUP=shared
+	@$(CI_JOB) check $(CI_NAME) -- ci-kit-gates GROUP=shared
+	@$(CI_JOB) always $(CI_NAME) --after context -- kit-ci-context-cleanup GROUP=shared
+	@$(CI_JOB) end $(CI_NAME)
+ci-kit-runtime: CI_NAME = $(CI_RUN)-kit-$(RUNTIME)
+ci-kit-runtime:
+	@test -n "$(RUNTIME)" || { echo 'ci-kit-runtime: RUNTIME is required; run make ci-kit-runtime RUNTIME=<runtime of config/ci.json>' >&2; exit 2; }
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) tools -- ci-kit-tools GROUP=runtime RUNTIME=$(RUNTIME)
+	@$(CI_JOB) setup $(CI_NAME) prerequisites -- kit-ci-setup GROUP=runtime RUNTIME=$(RUNTIME)
+	@$(CI_JOB) setup $(CI_NAME) context -- kit-ci-context-prepare GROUP=runtime RUNTIME=$(RUNTIME)
+	@$(CI_JOB) check $(CI_NAME) -- ci-kit-gates GROUP=runtime RUNTIME=$(RUNTIME)
+	@$(CI_JOB) always $(CI_NAME) --after context -- kit-ci-context-cleanup GROUP=runtime RUNTIME=$(RUNTIME)
+	@$(CI_JOB) end $(CI_NAME)
+ci-kit-required:
+	$(MAKE) --no-print-directory ci-passed
+# ci-kit-tools installs the tools of the plan for GROUP and RUNTIME, and nothing when the plan names none.
+ci-kit-tools:
+	@tools="$$($(NODE) scripts/check/ci-kit.mts tools $(GROUP) $(RUNTIME))" || exit 1; \
+	if [ -n "$$tools" ]; then $(MAKE) --no-print-directory install-tools TOOLS="$$tools"; else echo "ci-kit-tools: the plan of kit names no tool for $(GROUP) $(RUNTIME)"; fi
+# ci-kit-gates runs the gate of GROUP and RUNTIME with the targets of the plan, past failures (ci-targets).
+ci-kit-gates:
+	@targets="$$($(NODE) scripts/check/ci-kit.mts targets $(GROUP) $(RUNTIME))" || exit 1; \
+	$(MAKE) --no-print-directory ci-targets TARGETS="$$targets"
+
 # The Git hooks and merges: make hooks points core.hooksPath at .githooks, makes the hooks of config/checklist.json executable
 # and declares the merge drivers of the changelogs and checklists, which git runs as twin-merge with MERGE="%O %A %B %P". The
 # hooks of .githooks are orm's own and run the two targets after twin-merge.
@@ -543,6 +582,87 @@ release-tag: ## Tag the commit of the successful ci.yml run RUN with vX.Y.Z of i
 release-tag-output: ## Give the later jobs of the release workflow TAG and VERSION, which release-tag wrote into the environment of its job, through GITHUB_OUTPUT; both are empty when the run releases nothing
 	@test -n "$$GITHUB_OUTPUT" || { echo 'release-tag-output: GITHUB_OUTPUT is not set; run it in the release workflow'; exit 2; }
 	printf 'tag=%s\nversion=%s\n' "$$TAG" "$$VERSION" >> "$$GITHUB_OUTPUT"
+# The recipes of the jobs of release.yml (T497): each job runs one step. ci-release-tag (job tag) tags the commit of the CI
+# run RUN, which a dispatch names in its input run and a workflow_run in the id of its run (GITHUB_EVENT_PATH), and gives
+# TAG and VERSION, which release-tag wrote into GITHUB_ENV, to the later jobs. ci-release (job release) builds and publishes
+# the release of TAG; its steps run in order and stop at the first failure, and the tools of var/tools are on its PATH. The
+# assets of each platform, which the uses: step before it downloads into var/release/platform, join var/release/assets after
+# release-assets writes that folder.
+.PHONY: ci-release-tag ci-release-tag-run ci-release-tag-output ci-release ci-release-zip ci-release-platform-assets
+ci-release-tag: CI_NAME = $(CI_RUN)-release-tag
+ci-release-tag:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) tag -- ci-release-tag-run
+	@$(CI_JOB) setup $(CI_NAME) output -- ci-release-tag-output
+	@$(CI_JOB) end $(CI_NAME)
+ci-release-tag-run:
+	@run="$${RUN:-$$($(NODE) -p 'const event = require(process.env.GITHUB_EVENT_PATH); String(event.inputs?.run ?? event.workflow_run?.id ?? "")')}" && \
+	$(MAKE) --no-print-directory release-tag RUN="$$run" $(if $(filter workflow_run,$(GITHUB_EVENT_NAME)),AUTO=1)
+ci-release-tag-output:
+	@tag=$$(test -n "$$GITHUB_ENV" && sed -n 's/^TAG=//p' "$$GITHUB_ENV" | tail -n 1); \
+	version=$$(test -n "$$GITHUB_ENV" && sed -n 's/^VERSION=//p' "$$GITHUB_ENV" | tail -n 1); \
+	printf 'tag=%s\nversion=%s\n' "$$tag" "$$version" >> "$${GITHUB_OUTPUT:-/dev/stdout}"
+ci-release: CI_NAME = $(CI_RUN)-release
+ci-release: export PATH := $(KIT_TOOLS)/mise/shims:$(KIT_TOOLS)/bin:$(PATH)
+ci-release:
+	@test -n "$$TAG" || { echo 'ci-release: TAG is required; run make ci-release TAG=v<version> VERSION=<version>' >&2; exit 2; }
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) zip -- ci-release-zip
+	@$(CI_JOB) setup $(CI_NAME) prepare -- release-prepare
+	@$(CI_JOB) setup $(CI_NAME) tools -- release-tools
+	@$(CI_JOB) setup $(CI_NAME) assets -- release-assets
+	@$(CI_JOB) setup $(CI_NAME) platform-assets -- ci-release-platform-assets
+	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
+	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
+	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
+	@$(CI_JOB) setup $(CI_NAME) go-module -- release-go-module $(if $(GITHUB_ACTOR),GIT_AUTHOR_NAME=$(GITHUB_ACTOR) GIT_AUTHOR_EMAIL=$(GITHUB_ACTOR)@users.noreply.github.com GIT_COMMITTER_NAME=$(GITHUB_ACTOR) GIT_COMMITTER_EMAIL=$(GITHUB_ACTOR)@users.noreply.github.com)
+	@$(CI_JOB) setup $(CI_NAME) publish -- release-publish
+	@$(CI_JOB) setup $(CI_NAME) upload -- release-platform-assets
+	@$(CI_JOB) setup $(CI_NAME) undraft -- release-undraft TAG=$(TAG)
+	@$(CI_JOB) end $(CI_NAME)
+ci-release-zip:
+	@command -v zip >/dev/null || { echo 'Info-ZIP is required for Composer release archives; install the zip package on the Ubuntu runner' >&2; exit 1; }
+ci-release-platform-assets:
+	@test -d var/release/platform || { echo 'ci-release-platform-assets: var/release/platform is missing; the release job downloads the artifacts assets-* of the job assets there' >&2; exit 1; }
+	cp var/release/platform/* var/release/assets/
+
+# The recipes of the jobs of assets.yml (T497), which the jobs assets of ci.yml and release.yml call: platform builds the binding
+# assets of the platform of its runner, npm the npm package. RELEASE=true, the input release of the workflow, runs the release
+# check of binding first. Every build is a check of the job, so one run names every asset that does not build. The uses:
+# steps of the job platform set up each PHP minor of phpExtension.minors of config/toolchain.json before the run step, and
+# ci-assets-php-ext builds the extension for the PHP of one minor (MINOR) with its php-config.
+.PHONY: ci-assets-platform ci-assets-npm ci-assets-php-ext
+ci-assets-platform: CI_NAME = $(CI_RUN)-assets-platform
+ci-assets-platform:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
+	@$(CI_JOB) setup $(CI_NAME) uv-python -- install-tools 'TOOLS=uv python'
+	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
+	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
+	@$(CI_JOB) setup $(CI_NAME) llvm -- install-llvm
+	@$(CI_JOB) check $(CI_NAME) -- release-go-static
+	@$(CI_JOB) check $(CI_NAME) -- release-wheel
+	@$(CI_JOB) check $(CI_NAME) -- ci-assets-php-ext MINOR=8.4
+	@$(CI_JOB) check $(CI_NAME) -- ci-assets-php-ext MINOR=8.5
+	@$(CI_JOB) check $(CI_NAME) -- release-npm-platform
+	@$(CI_JOB) end $(CI_NAME)
+ci-assets-npm: CI_NAME = $(CI_RUN)-assets-npm
+ci-assets-npm:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
+	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
+	@$(CI_JOB) setup $(CI_NAME) wasm-bindgen -- install-wasm-bindgen
+	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
+	@$(CI_JOB) check $(CI_NAME) -- release-npm
+	@$(CI_JOB) end $(CI_NAME)
+# The PHP of a minor that setup-php installed is php<minor> with php-config<minor> on Linux, and the keg php@<minor> of
+# Homebrew on macOS.
+ci-assets-php-ext:
+	@test -n "$(MINOR)" || { echo 'ci-assets-php-ext: MINOR is required; run make ci-assets-php-ext MINOR=<x.y>' >&2; exit 2; }
+	@if command -v php$(MINOR) >/dev/null; then php=php$(MINOR); config=php-config$(MINOR); \
+	else prefix="$$(brew --prefix php@$(MINOR))" || exit 1; php="$$prefix/bin/php"; config="$$prefix/bin/php-config"; fi; \
+	$(MAKE) --no-print-directory release-php-ext PHP="$$php" PHP_CONFIG="$$config"
+
 release-assets: ## Build the archive of every package of TAG and packages.json into var/release/assets; ONLINE
 	@test -n "$$TAG" || { echo "release-assets: TAG is required; run make release-assets TAG=v<version>" >&2; exit 1; }
 	RELEASE_ASSETS=var/release/assets $(ONLINE) $(NODE) $(KIT)/release.$(KIT_EXT) assets "$$TAG"
@@ -761,22 +881,111 @@ run-databases:
 # record of the run to .runtime/check/<id>/record.json. The runner reads TEST_ENV as the setup step servers and holds the
 # shared lease of those servers: when the file is missing (make orm-test-servers failed), it records only the targets that need
 # a database as not-run and runs the rest.
-# GROUP runs only one CI group (CI_TARGETS_<group>). That run is one part of the whole suite that one GitHub Actions job runs,
-# so it is accepted only when GITHUB_ACTIONS is true.
+# GROUP runs only one CI group (CI_TARGETS_<group>), as the job of that group runs it (make ci-test GROUP=<group>); a local
+# make check-run GROUP=<group> runs the same targets.
 CHECK_RUN_TARGETS = $(if $(GROUP),$(CI_TARGETS_$(GROUP)),$(CHECK_TARGETS))
 orm-check:
 	$(MAKE) ci-targets TARGETS=check-run
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
-	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP, which runs every target of CHECK_TARGETS)))
 	( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
 
-# ci-group-needs writes the setup steps that the job of CI group GROUP runs as step output lines (`<output>=true|false`): it decides them from the need
-# that each target of the group declares in contracts/check-inputs.json (scripts/check/ci-setup.mts). The workflow adds those lines
-# to $GITHUB_OUTPUT, and a setup step runs only when its own output is true.
-# ci-lock-hashes writes the cache keys of a CI job as step outputs, one line each: the sha256 of the tracked lock files of each
-# cache (npm, the tools of mise.toml, Go, composer, uv). The job computes them once after the checkout, since actions/cache evaluates
-# its key again after the last step, where hashFiles would read the workspace as the job left it (T427).
+# The recipes of the CI jobs (T497). Every job of a workflow runs one step, make ci-<job>, and its recipe holds the order and
+# the conditions of the job, so a local make ci-<job> NAME=value runs what CI runs. Each line runs scripts/check/ci-job.mts
+# (CI_JOB), which records its result in the state of the job: the setup steps run in order and stop at the first failure,
+# every check runs to its end, the steps of always run in every case, and end ends with the status of the job. A setup step
+# with --when runs only when a target of the group needs it (STEP_OUTPUT of scripts/check/ci-setup.mts), and the check runner
+# reads the results of the setup steps (ORM_CI_SETUP_FILE) and records a target that needs what a failed or skipped step
+# installs as not-run. CI_RUN is the run id and attempt of GitHub Actions, or local-1 for a local run; with the name of the
+# job it is ORM_CHECK_RUN_ID, which names the report that the job uploads (.runtime/check/ci_<run>_<attempt>_<name>/report/).
+CI_JOB = CI_JOB_MAKE='$(MAKE)' $(NODE) scripts/check/ci-job.mts
+CI_RUN = $(or $(GITHUB_RUN_ID),local)-$(or $(GITHUB_RUN_ATTEMPT),1)
+CI_EMPTY :=
+CI_SPACE := $(CI_EMPTY) $(CI_EMPTY)
+CI_COMMA := ,
+.PHONY: ci-plan ci-lock-hashes ci-test ci-preflight ci-summary ci-docs ci-documents ci-editor ci-site
+
+# ci-plan writes the outputs of the job plan of ci.yml, which the uses: steps of the other jobs read before their run step:
+# the cache keys (ci-lock-hashes), the matrix of the group jobs with whether each group sets up PHP and Rust (groups and
+# preflight, scripts/check/ci-plan.mts) and the lowest PHP release of the PHP client, which setup-php installs for make
+# php-min-check (php_min). It appends them to GITHUB_OUTPUT, and prints them in a local run.
+ci-plan:
+	@{ $(MAKE) --no-print-directory -s ci-lock-hashes && \
+	  $(NODE) scripts/check/ci-plan.mts $(foreach group,$(CI_GROUPS),$(group)=$(subst $(CI_SPACE),$(CI_COMMA),$(strip $(CI_TARGETS_$(group))))) && \
+	  echo "php_min=$$($(NODE) scripts/php/php-min.mts --version)"; } >> "$${GITHUB_OUTPUT:-/dev/stdout}"
+
+# ci-test runs the job of the CI group GROUP (the jobs test and preflight of ci.yml): the setup steps that the targets of the
+# group need, then make check-run GROUP=<group>, then the summary of the run, which is also the job summary.
+ci-test: CI_NAME = $(CI_RUN)-$(GROUP)
+ci-test:
+	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
+	@$(CI_JOB) begin $(CI_NAME) --group $(GROUP) $(CI_TARGETS_$(GROUP))
+	@$(CI_JOB) setup $(CI_NAME) interfaces-typescript --when interfaces-typescript -- orm-install-interfaces-typescript
+	@$(CI_JOB) setup $(CI_NAME) go -- ci-install-tools GROUP=$(GROUP)
+	@$(CI_JOB) setup $(CI_NAME) go-lease-modules -- orm-install-go-lease
+	@$(CI_JOB) setup $(CI_NAME) go-modules --when go -- orm-install-go
+	@$(CI_JOB) setup $(CI_NAME) flowmark --when flowmark -- orm-install-flowmark
+	@$(CI_JOB) setup $(CI_NAME) rust --when rust -- orm-install-rust-toolchain
+	@$(CI_JOB) setup $(CI_NAME) rust-crates --when rust -- orm-install-rust-crates
+	@$(CI_JOB) setup $(CI_NAME) orm-install-python --when python -- orm-install-python
+	@$(CI_JOB) setup $(CI_NAME) composer --when php -- orm-install-php
+	@$(CI_JOB) setup $(CI_NAME) php-extension-tools --when php-extension-tools -- orm-install-php-extension-tools
+	@$(CI_JOB) setup $(CI_NAME) server-programs --when server-programs -- orm-install-server-programs
+	@$(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers
+	@$(CI_JOB) check $(CI_NAME) -- check-run GROUP=$(GROUP)
+	@$(CI_JOB) always $(CI_NAME) -- ci-summary
+	@$(CI_JOB) end $(CI_NAME)
+# ci-preflight runs the job preflight, the group preflight, which every other job of ci.yml needs (T428).
+ci-preflight:
+	$(MAKE) --no-print-directory ci-test GROUP=preflight
+# ci-summary writes the summary of the run ORM_CHECK_RUN_ID to the job summary and the report, also of a runner that did not
+# finish (scripts/check/summary.mts).
+ci-summary:
+	$(NODE) scripts/check/summary.mts
+
+# ci-docs runs the job docs of ci.yml: the documentation checks of the site that docs-pages.yml publishes, with its base path.
+ci-docs: CI_NAME = $(CI_RUN)-docs
+ci-docs: export VITEPRESS_BASE = /orm/
+ci-docs:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
+	@$(CI_JOB) check $(CI_NAME) -- docs-ci
+	@$(CI_JOB) end $(CI_NAME)
+
+# ci-documents runs the job documents of documents.yml: DOCUMENT_CHECKS, then the size of the diff of the push.
+ci-documents: CI_NAME = $(CI_RUN)-documents
+ci-documents: export VITEPRESS_BASE = /orm/
+ci-documents:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) go -- install-tools 'TOOLS=go alint'
+	@$(CI_JOB) check $(CI_NAME) -- documents-ci
+	@$(CI_JOB) check $(CI_NAME) -- diff-size-check
+	@$(CI_JOB) end $(CI_NAME)
+
+# ci-editor runs the job editor of ci.yml: the VS Code integration test of the dbspec extension on a virtual X server, inside
+# the VS Code that make orm-install-vscode installs.
+ci-editor: CI_NAME = $(CI_RUN)-editor
+ci-editor:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
+	@$(CI_JOB) setup $(CI_NAME) go-lease-modules -- orm-install-go-lease
+	@$(CI_JOB) setup $(CI_NAME) vscode -- orm-install-vscode
+	@$(CI_JOB) check $(CI_NAME) -- ci-vscode-integration
+	@$(CI_JOB) end $(CI_NAME)
+
+# ci-site runs the job site of docs-pages.yml: it builds docs/.vitepress/dist, which the next step uploads as the Pages
+# artifact; make docs-build writes codes.ts of the TypeScript client with orm-gen errors, a Go program.
+ci-site: CI_NAME = $(CI_RUN)-site
+ci-site: export VITEPRESS_BASE = /orm/
+ci-site:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
+	@$(CI_JOB) check $(CI_NAME) -- docs-build
+	@$(CI_JOB) end $(CI_NAME)
+
+# ci-lock-hashes writes the cache keys of the CI jobs, one line each: the sha256 of the tracked lock files of each cache (npm,
+# the tools of mise.toml, Go, composer, uv). The plan job computes them once, since actions/cache evaluates its key again
+# after the last step, where hashFiles would read the workspace as the job left it (T427).
 ci-lock-hashes:
 	@locks() { files=$$(git ls-files -- "$$@") && test -n "$$files" || { echo "ci-lock-hashes: git tracks no file of $$*" >&2; return 1; }; \
 	  sums=$$(git ls-files -z -- "$$@" | xargs -0 sha256sum) || return 1; \
@@ -784,10 +993,6 @@ ci-lock-hashes:
 	npm=$$(locks '*package-lock.json') && tools=$$(locks mise.toml '.mise/locks/**' config/toolchain.json) && \
 	go=$$(locks '*go.sum') && composer=$$(locks '*composer.lock') && uv=$$(locks '*uv.lock') && \
 	printf 'npm=%s\ntools=%s\ngo=%s\ncomposer=%s\nuv=%s\n' "$$npm" "$$tools" "$$go" "$$composer" "$$uv"
-
-ci-group-needs:
-	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
-	@$(NODE) scripts/check/ci-setup.mts outputs $(CI_TARGETS_$(GROUP))
 
 # bench measures performance (parse, introspection, and comparison of the 2000-table stress document, application of the stress plan, and CPU time) per target with the same
 # runner as check. It prints the measurements and only warns, not fails, when they exceed the reference values (AGENTS.md).
@@ -873,7 +1078,7 @@ client-pooler-rust-check: lease-tool orm-codes flowmark-check
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
 # It does not run the actual targets or databases.
 runner-check:
-	$(NODE) --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/check/job-context.test.mts scripts/json/schema.test.mts
+	$(NODE) --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/ci-job.test.mts scripts/check/downloads.test.mts scripts/check/job-context.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check runs twice each the shared dbspec vectors, the Rust rule cases, the plan and Mermaid cases, and the apply cleanup errors injected through a wrapped SQLite
 # connection.
@@ -2425,7 +2630,7 @@ endif
 flowmark-check:
 	test -n "$(FLOWMARK)" && test -x "$(FLOWMARK)" || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
 
-# CI provides the declared group needs as booleans; static checks need every tool,
+# The job runner (scripts/check/ci-job.mts) gives the outputs of the group as CI_GROUP_<OUTPUT>; static checks need every tool,
 # while the other groups install only the shared Go runner and the runtimes their targets use.
 .PHONY: ci-install-tools
 ifeq ($(GROUP),static)
@@ -3483,7 +3688,7 @@ rust-check/clippy-test-faults: lease-tool
 # TypeScript 6 checker used only by the interface extractor. Independent install parts run with make -k.
 
 .PHONY: docs-ci
-.PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-go-lease orm-install-server-programs orm-install-php-extension-tools orm-install-php-extension-runtime orm-install-typescript-runtime ci-php-min-version downloads-check
+.PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-go-lease orm-install-server-programs orm-install-php-extension-tools orm-install-php-extension-runtime orm-install-typescript-runtime downloads-check
 install: orm-codes orm-install-php orm-install-rust orm-install-go orm-install-php-extension-tools orm-install-python orm-install-flowmark orm-install-interfaces-typescript
 # orm-codes writes the error code constants of TypeScript, PHP and Python from docs/spec/errors.yaml with orm-gen errors; they are
 # build output and never tracked (P34). Go and Rust keep theirs tracked, since a go.mod or Cargo.toml consumer installs the tagged tree
@@ -3602,10 +3807,11 @@ orm-install-flowmark:
 	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/packages/go/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
 	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark/packages/go@$$(cat tests/markdown/flowmark.version)
 # orm-install-server-programs installs, on the CI Linux runner, the server programs that make orm-test-servers starts
-# (scripts/ci/server-programs.mts): the MySQL family, or with MARIADB=true, the output mariadb of the group-needs step of a
-# group whose targets need the MariaDB servers, the MariaDB family that make orm-test-mariadb starts.
+# (scripts/ci/server-programs.mts): the MySQL family, or with MARIADB=true, or the output mariadb of a group whose targets need
+# the MariaDB servers (CI_GROUP_MARIADB, which the job runner scripts/check/ci-job.mts gives), the MariaDB family that make
+# orm-test-mariadb starts.
 orm-install-server-programs:
-	$(ONLINE) $(NODE) scripts/ci/server-programs.mts $(if $(filter true,$(MARIADB)),mariadb,mysql)
+	$(ONLINE) $(NODE) scripts/ci/server-programs.mts $(if $(filter true,$(or $(MARIADB),$(CI_GROUP_MARIADB))),mariadb,mysql)
 # orm-install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension polyspec_orm are those of the
 # PHP on PATH (scripts/ci/php-extension-tools.mts), and writes the copy of the SQLite cancel callback that the build compiles; every
 # job that builds the extension runs it (T290). The build runs the gen_stub.php of that PHP itself, so nothing installs the arginfo
@@ -3642,11 +3848,6 @@ orm-install-php-extension-runtime:
 	cd legacy/packages/php-ext && $(ONLINE) $(COMPOSER) install --no-interaction --no-progress
 	$(MAKE) --no-print-directory orm-install-php-extension-tools
 orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts
-
-# All setup steps of CI run make targets (make repo-check). ci-php-min-version records the lowest
-# PHP release of make php-min-check as the input of setup-php (version=x.y). Each client refuses SQLite below 3.46 when it connects.
-ci-php-min-version:
-	@echo "version=$$(node scripts/php/php-min.mts --version)"
 
 # downloads-check checks, without network, that all downloads that check reads are present, and lists each missing one with
 # `run make install` (scripts/check/downloads.mts). The runner (scripts/check/run.mts) runs the same check as the setup step downloads.

@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- orm의 workflow의 모든 job은 step 하나 `make ci-<job>`을 실행하고, 그 Makefile recipe가 job의 순서와 조건을 담으므로 로컬 `make ci-<job> NAME=value`는 CI가 실행하는 것을 실행한다(T497). job은 여러 run step, step `if:` 조건, `ORM_CI_SETUP: ${{ toJSON(steps) }}`, 앞 step의 output을 YAML에 담았고, 로컬 실행은 GitHub의 runner 없이 그것을 되풀이할 수 없었다. job runner `scripts/check/ci-job.mts`는 setup step을 순서대로 실행하고 첫 실패에서 멈추며, 이어서 모든 검사를 끝까지, 그다음 summary와 정리를 실행하고, setup step의 결과를 파일 `ORM_CI_SETUP_FILE`에 쓴다. 검사 runner는 그 파일에서 실패하거나 건너뛴 step이 필요한 target을 not-run으로 기록한다. plan job(`make ci-plan`, `make ci-kit-plan`)은 `uses:` step이 읽는 cache key, PHP와 Rust를 준비하는지를 담은 CI group의 matrix, PHP의 가장 낮은 release를 쓴다. `ci-pipeline.yml`과 `release.yml`은 workflow 규칙이 읽는 orm의 workflow이고, `make check-run GROUP=<group>`은 GitHub Actions 밖에서도 실행되며, `make repo-check`(`scripts/repo/ci.mts`의 `ciRecipeErrors`)는 다른 형태의 job을 실패시킨다.
+
 - 논리 Rust adapter snapshot은 유지된 transaction_async와 close_async를 명시하는 선행 항목을 가진다(T494-3, INT-17c, INT-17d). Source identity 검토는 선언 122개에서 잘못된 함수 연결 두 개와 별도의 오래된 transaction validator 기대값을 확인했다. 실제 Rust 추출과 엄격한 async·generic mutation을 owner로 선언하며 구현과 새 검증은 아직 없다.
 
 - Native connection adapter 항목은 transaction adapter 선행 작업을 기다린다(T494-2). 전체 owner의 입력과 결과 기대값은 그대로 유지하며 T494-3이 유지된 async snapshot을 정정하면 같은 검증을 자동 재개한다. 현재 여덟 case 통과·두 case 실패를 완료로 보고하지 않는다.

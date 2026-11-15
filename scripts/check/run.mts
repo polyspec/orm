@@ -102,7 +102,7 @@ function targetInputs(root: string, target: string): string[] {
 /** The inputs of one run of the check. */
 export type RunOptions = { root: string; jobSummary?: boolean; servers: string | null; targets: string[]; run: Run; needs?: Record<string, string[]>; id?: string | undefined; snapshot?: (root: string, run: string) => DiskSnapshot; ciSetup?: string | undefined; downloads?: typeof missingDownloads };
 
-export async function runChecks({ root, jobSummary = false, servers: given, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP, downloads = missingDownloads }: RunOptions): Promise<number> {
+export async function runChecks({ root, jobSummary = false, servers: given, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP_FILE, downloads = missingDownloads }: RunOptions): Promise<number> {
   let servers = given;
   // The run's name is the given id, or the process id plus a random value. If a database with the same name exists, it was not made by this run
   // so the names must not collide, to keep bench-db.mts from deleting it.
@@ -233,17 +233,18 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   // wanted is the need of this run's targets.
   const needsOf = (target: string) => expandNeeds(declaredNeedsOf(target));
   const wanted = new Set(targets.flatMap(needsOf));
-  // CI setup step (scripts/check/ci-setup.mts): for each failed step in the step results the workflow gave as ORM_CI_SETUP, a setup phase
+  // CI setup step (scripts/check/ci-setup.mts): for each failed step in the results file ORM_CI_SETUP_FILE that the job runner
+  // (scripts/check/ci-job.mts) wrote, a setup phase
   // ci/<id> is recorded as failed, and targets declaring a need that step prepares are recorded as not-run. The step's output is in the job
-  // log for that step. A CI group's job skips setup steps its group's targets do not need (make
-  // ci-group-needs): a skipped step counts as a failure only when a target declaring its need is in this run.
+  // log for that step. A CI group's job skips setup steps its group's targets do not need (`--when` of
+  // the recipe line): a skipped step counts as a failure only when a target declaring its need is in this run.
   for (const { id: step, need, outcome } of failedCiSetup(ciSetup)) {
     if (outcome === 'skipped' && !wanted.has(need)) {
       console.log(`check: the CI setup step ${step} was skipped; no target of this run needs ${need}`);
       continue;
     }
     const reason = outcome === 'skipped'
-      ? `the CI setup step ${step} was skipped, and a target of this run needs ${need}; make ci-group-needs runs the setup steps of the needs that contracts/check-inputs.json declares for the targets of the group`
+      ? `the CI setup step ${step} was skipped, and a target of this run needs ${need}; the recipe of the group job runs the setup steps of the needs that contracts/check-inputs.json declares for the targets of the group`
       : `the CI setup step ${step} failed; its output is in the job log of that step`;
     if (!results.some(result => result.label === `ci/${step}`))
       await record(`ci/${step}`, 'setup', async ({ step: line }) => {

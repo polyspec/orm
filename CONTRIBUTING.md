@@ -24,7 +24,7 @@
 5. Run the unit tests of what changed, its Red/Green cases, and record the result in the commit
    description when needed. End-to-end runs, `make owner-check` and the full suite run in CI after
    the push; no local check is required before a push.
-6. The full suite runs in CI after a push to `main` (`make check-run GROUP=<group>`). For an explicit
+6. The full suite runs in CI after a push to `main` (`make ci-test GROUP=<group>`, which a local run repeats with the same call). For an explicit
    local final verification after every checklist item is terminal, run `make orm-check`, which runs
    `make ci-targets TARGETS=check-run` and records the report under `var/report/ci-targets`.
 

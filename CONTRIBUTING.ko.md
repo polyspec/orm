@@ -23,7 +23,7 @@
 4. 영문과 한글 paired document를 함께 갱신한다.
 5. 바뀐 것의 unit test, 곧 그 Red/Green case를 실행하고 필요하면 commit 설명에 결과를 기록한다. end-to-end
    실행, `make owner-check`, 전체 묶음은 push 뒤 CI에서 실행하며, push 전에 필요한 로컬 검사는 없다.
-6. 전체 묶음은 `main`으로의 push 뒤 CI가 실행한다(`make check-run GROUP=<group>`). 모든 checklist 항목이 terminal 상태일 때
+6. 전체 묶음은 `main`으로의 push 뒤 CI가 실행한다(`make ci-test GROUP=<group>`, 로컬 실행은 같은 호출로 그것을 되풀이한다). 모든 checklist 항목이 terminal 상태일 때
    명시적 로컬 최종 검증을 하려면 `make orm-check`를 실행한다. 그것은 `make ci-targets TARGETS=check-run`을 실행하고
    `var/report/ci-targets` 아래에 report를 기록한다.
 

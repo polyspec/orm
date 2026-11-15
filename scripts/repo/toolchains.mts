@@ -12,14 +12,17 @@ import { parseComposer, parseComposerPackages } from '../json/formats.mts';
 import { commands, type SimpleCommand } from './shell.mts';
 import { makeRecipes } from './testcases.mts';
 import { readWorkflow, actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
+import { recipeLines, workflowCommands } from './recipes.mts';
 
 // MINIMUM_SCRIPT is the script that prints the lowest release of composer.json's require.php.
 const MINIMUM_SCRIPT = 'node scripts/php/php-min.mts';
-// MINIMUM_STEP is the command of the CI step that writes that release as the input of setup-php.
-const MINIMUM_STEP = 'make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"';
-// runs returns whether a simple command (scripts/repo/shell.mts) run by a workflow step matches the test.
-const runs = (workflow: string, test: (command: SimpleCommand) => boolean) =>
-  workflowSteps(workflow).some(step => step.run !== '' && commands(step.run, 'workflow').some(test));
+// MINIMUM_OUTPUT is the input of the setup-php step that installs that release: the output php_min of the job plan, which the
+// recipe ci-plan writes with MINIMUM_SCRIPT.
+const MINIMUM_OUTPUT = '${{ needs.plan.outputs.php_min }}';
+// runs returns whether a simple command (scripts/repo/shell.mts) that a workflow runs matches the test: a command of a run step
+// or of a recipe that a run step reaches (scripts/repo/recipes.mts).
+const runs = (workflow: string, makefile: string, test: (command: SimpleCommand) => boolean) =>
+  workflowSteps(workflow).some(step => step.run !== '' && commands(step.run, 'workflow').some(test)) || workflowCommands(workflow, makefile).some(test);
 // installsToolchain returns whether a command is `rustup toolchain install` without arguments, that is, the installation of the toolchain in rust-toolchain.toml.
 const installsToolchain = (command: SimpleCommand) => command.name === 'rustup' && command.args.join(' ') === 'toolchain install';
 // makes returns whether a command runs a target with make.
@@ -40,11 +43,11 @@ const below = (a: string, b: string): boolean => semver.lt(release(a), release(b
 //   - declared is one exact x.y and is not lower than minimum (">=x.y").
 //   - A shivammathur/setup-php step reads with `php-version-file: .php-version` and does not write `php-version`
 //     directly. One exception is the step that installs make php-min-check's lowest release, which
-//     reads only the output of the step `php-min` that uses scripts/php/php-min.mts --version. The last
+//     reads only the output php_min of the job plan, which make ci-plan writes with scripts/php/php-min.mts --version. The last
 //     setup-php step reads .php-version, so that PHP becomes the php in PATH. A workflow that runs php or composer
 //     uses setup-php.
 //     The job platform of assets.yml is checked by extensionMinorErrors instead.
-export function phpVersionErrors(declared: string, minimum: string | undefined, workflows: Record<string, string>): string[] {
+export function phpVersionErrors(declared: string, minimum: string | undefined, workflows: Record<string, string>, makefile: string): string[] {
   const errors: string[] = [];
   const exact = /^\d+\.\d+$/.test(declared.trim()) && declared === `${declared.trim()}\n`;
   if (!exact) errors.push(`.php-version must hold one release x.y and a newline, found ${JSON.stringify(declared)}`);
@@ -53,7 +56,7 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
   if (exact && lowest && below(declared.trim(), lowest))
     errors.push(`.php-version ${declared.trim()} is below legacy/packages/php/composer.json require.php ${minimum}`);
   for (const [path, workflow] of Object.entries(workflows)) {
-    if (runs(workflow, command => command.name === 'php' || command.name === 'composer') && actionSteps(workflow, 'shivammathur/setup-php').length === 0)
+    if (workflowSteps(workflow).some(step => step.run !== '' && commands(step.run, 'workflow').some(command => command.name === 'php' || command.name === 'composer')) && actionSteps(workflow, 'shivammathur/setup-php').length === 0)
       errors.push(`${path} runs PHP without shivammathur/setup-php`);
     // Each job runs on a runner of its own, so each job that sets up PHP is checked alone: the job preflight runs the steps of
     // the job test (T428).
@@ -61,22 +64,23 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     if (path === EXTENSION_JOB.path && job.id === EXTENSION_JOB.job) continue;
     const steps = job.steps.filter(step => step.uses?.split('@')[0] === 'shivammathur/setup-php');
     if (steps.length === 0) continue;
-    // The php-min step writes composer.json's lowest release as the output version, and the setup-php step that
-    // installs that release reads only that output.
-    // That step runs make ci-php-min-version (the target that writes ${MINIMUM_SCRIPT} --version as version=x.y).
-    const minimumStep = job.steps.some(step => step.id === 'php-min' &&
-      step.run === MINIMUM_STEP);
+    // The job plan writes composer.json's lowest release as its output php_min (make ci-plan runs ${MINIMUM_SCRIPT} --version), and
+    // the setup-php step that installs that release reads only that output.
+    const planned = readWorkflow(workflow, path).jobs.some(entry => entry.id === 'plan' && entry.steps.some(step => step.run.trim() === 'make ci-plan')) &&
+      recipeLines(makefile, 'ci-plan').some(line => line.includes(`php_min=$$($(NODE) ${MINIMUM_SCRIPT.replace(/^node /, '')} --version)`));
+    const needed = Array.isArray(job.value['needs']) ? job.value['needs'].includes('plan') : job.value['needs'] === 'plan';
+    const minimumStep = planned && needed;
     const readsFile = (step: WorkflowStep) => step.with['php-version-file'] === '.php-version';
     const readsMinimum = (step: WorkflowStep) => {
       const version = step.with['php-version'];
-      return typeof version === 'string' && /^\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}$/.test(version);
+      return version === MINIMUM_OUTPUT;
     };
     for (const step of steps) {
       // The PHP for the check runs without a debugger or coverage driver: Xdebug changes the ratio of the hot-path gate.
       if (step.with['coverage'] !== 'none')
         errors.push(`${path} sets up PHP without coverage: none, so Xdebug or pcov can load`);
       if (readsMinimum(step)) {
-        if (!minimumStep) errors.push(`${path} reads steps.php-min.outputs.version without the step that writes it from ${MINIMUM_SCRIPT}`);
+        if (!minimumStep) errors.push(`${path} job ${job.id} reads ${MINIMUM_OUTPUT} without needing the job plan whose make ci-plan writes it with ${MINIMUM_SCRIPT}`);
         continue;
       }
       if (Object.hasOwn(step.with, 'php-version')) errors.push(`${path} declares php-version itself; .php-version declares it`);
@@ -95,14 +99,17 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
 // EXTENSION_JOB is the job that builds the PHP extension of the binding of its platform, and BUILD_EXTENSION the step that
 // builds it for the PHP on PATH (packages/release.mk, binding GN-19d).
 export const EXTENSION_JOB = { path: '.github/workflows/assets.yml', job: 'platform' };
-export const BUILD_EXTENSION = 'make release-php-ext PHP=php';
+export const BUILD_EXTENSION = 'ci-assets-php-ext';
+// EXTENSION_RECIPE is the recipe of the job platform (T497).
+export const EXTENSION_RECIPE = 'ci-assets-platform';
 
 // extensionMinorErrors returns one error at each place where the job platform of assets.yml does not build the PHP extension
 // for each PHP minor of phpExtension.minors of config/toolchain.json; toolchain is the text of that file and workflows is
 // {path: text}. An extension loads only into the PHP minor whose headers built it, so the release has one extension per minor
 // that require.php admits. The job sets up each minor, in the order of the list, with a shivammathur/setup-php step that
-// writes php-version and coverage: none, and runs BUILD_EXTENSION after each; it sets up no other PHP.
-export function extensionMinorErrors(toolchain: string, workflows: Record<string, string>): string[] {
+// writes php-version and coverage: none, and sets up no other PHP; the recipe of its run step (EXTENSION_RECIPE) builds the
+// extension for each minor, in that order, with BUILD_EXTENSION MINOR=<minor>.
+export function extensionMinorErrors(toolchain: string, workflows: Record<string, string>, makefile: string): string[] {
   const value: unknown = JSON.parse(toolchain);
   const extension: unknown = typeof value === 'object' && value !== null && 'phpExtension' in value ? value.phpExtension : undefined;
   const named: unknown = typeof extension === 'object' && extension !== null && 'minors' in extension ? extension.minors : undefined;
@@ -114,17 +121,21 @@ export function extensionMinorErrors(toolchain: string, workflows: Record<string
   if (job === undefined) return [`${EXTENSION_JOB.path} has no job ${EXTENSION_JOB.job}, which builds the PHP extension`];
   const errors: string[] = [];
   const set: string[] = [];
-  const built: string[] = [];
-  let current: string | undefined;
   for (const step of job.steps) {
     if (step.uses?.split('@')[0] === 'shivammathur/setup-php') {
       const version = step.with['php-version'];
-      current = typeof version === 'string' ? version : JSON.stringify(version ?? step.with['php-version-file']);
+      const current = typeof version === 'string' ? version : JSON.stringify(version ?? step.with['php-version-file']);
       set.push(current);
       if (step.with['coverage'] !== 'none') errors.push(`${EXTENSION_JOB.path} sets up PHP ${current} without coverage: none, so Xdebug or pcov can load`);
     }
-    if (step.run === BUILD_EXTENSION && current !== undefined) built.push(current);
   }
+  // The run step of the job runs EXTENSION_RECIPE, whose recipe builds the extension for each minor with BUILD_EXTENSION.
+  const run = job.steps.find(step => step.run !== '');
+  if (!run?.run.trim().startsWith(`make ${EXTENSION_RECIPE}`)) errors.push(`${EXTENSION_JOB.path} job ${EXTENSION_JOB.job} does not run make ${EXTENSION_RECIPE}`);
+  const built = recipeLines(makefile, EXTENSION_RECIPE).flatMap(line => {
+    const minor = new RegExp(`-- ${BUILD_EXTENSION} MINOR=(\\S+)$`).exec(line.trim())?.[1];
+    return minor ? [minor] : [];
+  });
   const of = `the minors ${minors.join(', ')} of config/toolchain.json phpExtension.minors`;
   if (set.join(' ') !== minors.join(' ')) errors.push(`${EXTENSION_JOB.path} job ${EXTENSION_JOB.job} sets up PHP ${set.join(', ') || 'none'}, not ${of}`);
   if (built.join(' ') !== minors.join(' ')) errors.push(`${EXTENSION_JOB.path} job ${EXTENSION_JOB.job} builds the PHP extension for PHP ${built.join(', ') || 'none'}, not for ${of}`);
@@ -157,15 +168,15 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
     for (const action of ['dtolnay/rust-toolchain', 'actions-rust-lang/setup-rust-toolchain'])
       if (actionSteps(workflow, action).length > 0)
         errors.push(`${path} chooses a Rust toolchain with ${action}; rust-toolchain.toml declares it`);
-    if (runs(workflow, command => command.assigns.includes('RUSTUP_TOOLCHAIN') ||
+    if (runs(workflow, makefile, command => command.assigns.includes('RUSTUP_TOOLCHAIN') ||
           (command.name === 'rustup' && (command.args[0] === 'default' || (command.args.join(' ').startsWith('toolchain install ')))) ||
           (command.name === 'cargo' && (command.args[0] ?? '').startsWith('+'))) ||
         environment(workflow).has('RUSTUP_TOOLCHAIN'))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
-    const usesRust = runs(workflow, command => command.name === 'cargo') || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
+    const usesRust = runs(workflow, makefile, command => command.name === 'cargo') || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
     // CI's steps run make targets, so `rustup toolchain install` without arguments is in the recipe of make orm-install-rust-toolchain.
-    const installsRust = runs(workflow, installsToolchain) ||
-      (runs(workflow, command => makes(command, 'orm-install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
+    const installsRust = runs(workflow, makefile, installsToolchain) ||
+      (runs(workflow, makefile, command => makes(command, 'orm-install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
     if (usesRust && !installsRust)
       errors.push(`${path} does not install the toolchain of rust-toolchain.toml with rustup toolchain install`);
   }
@@ -179,13 +190,13 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
 //   - A workflow that runs go runs make install-tools (the tools of mise.toml) or make ci-install-tools, which installs the Go of
 //     mise.toml in every CI group (KSTD-5-116), and none sets up a second Go with
 //     actions/setup-go.
-export function goVersionErrors(workflows: Record<string, string>) {
+export function goVersionErrors(workflows: Record<string, string>, makefile: string) {
   const errors = [];
   for (const [path, workflow] of Object.entries(workflows)) {
     if (actionSteps(workflow, 'actions/setup-go').length > 0)
       errors.push(`${path} sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools`);
-    if (runs(workflow, command => command.name === 'go' || makes(command, 'orm-check') || makes(command, 'orm-install-go')) &&
-        !runs(workflow, command => (makes(command, 'install-tools') && !command.args.some(arg => arg.startsWith('TOOLS='))) || makes(command, 'ci-install-tools')))
+    if (runs(workflow, makefile, command => command.name === 'go' || makes(command, 'orm-check') || makes(command, 'orm-install-go')) &&
+        !runs(workflow, makefile, command => (makes(command, 'install-tools') && !command.args.some(arg => arg.startsWith('TOOLS='))) || makes(command, 'ci-install-tools')))
       errors.push(`${path} runs Go without the Go of mise.toml; add a step that runs make install-tools`);
   }
   return errors;

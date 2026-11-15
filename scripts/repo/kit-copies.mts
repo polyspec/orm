@@ -1,11 +1,10 @@
 // The files that orm took from the examples of @polyspec/kit and keeps in the form of kit (T391, kit
 // docs/spec/utilities-and-recipes.md): kit writes no file of orm since 0.0.98, so these are orm's own files, changed here when
 // orm adopts a change of kit's example. They keep the form of kit, not the forms that the rules of this repository give its
-// own documents and workflows, so those rules skip them.
+// own documents and workflows, so those rules skip them. The workflows ci-pipeline.yml and release.yml are workflows of orm,
+// which follow its workflow rules (T497).
 
 const KIT_FORM_FILES = [
-  '.github/workflows/release.yml',
-  '.github/workflows/ci-pipeline.yml',
   '.github/actions/kit-bootstrap/action.yml',
   'PRINCIPLES.md',
   'PRINCIPLES.ko.md',

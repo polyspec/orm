@@ -6,28 +6,21 @@
 # no run released fails and names its version commit. A concurrency group of the job runs one release of the repository at a time.
 # A dispatch of the workflow with the id of a successful CI run releases the commit of that run (K911): it tags the commit with
 # the version of the newest section ## X.Y.Z of its change log (K924) and creates the GitHub Release of the tag as a draft with
-# its archives, and makes it public. The run is the evidence; the release runs no test again. The workflow has three jobs. The
-# job tag tags the commit and gives TAG and VERSION to the later jobs; the job assets calls assets.yml for the tree of the tag,
-# which runs the release check of binding and builds the binding assets of each platform on the runner of that platform; the
-# job release, which needs both, builds and publishes the release. Its steps run in order and stop at the first failure; each
-# step runs one make target of the Makefile with TAG, vX.Y.Z, from the environment:
-#   bootstrap package installs the locked kit with the npm that devEngines.packageManager names, without scripts
-#   install-tools TOOLS=npm installs the mise, the node and the npm of mise.toml with the bootstrap installer of the kit package
-#   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose utilities the targets below run
-#   release-tag      (job tag) with the Makefile of main: requires a completed successful push or dispatch run RUN of ci.yml
-#                    whose commit is on origin/main, reads X.Y.Z from the change log of that commit, creates and pushes the
-#                    annotated tag vX.Y.Z and the tag of every Go module at that commit, or passes for a tag there already
-#                    (K269), and appends TAG and VERSION to GITHUB_ENV; a tag pushed with the token of the run starts no run
-#   release-tag-output (job tag) gives TAG and VERSION to the later jobs through GITHUB_OUTPUT
-#   checkout of the tag, then the bootstrap, npm and the packages of the tagged commit again
+# its archives, and makes it public. The run is the evidence; the release runs no test again. The workflow has three jobs, and
+# each job runs one step (T497). The job tag runs make ci-release-tag, which tags the commit of the run RUN (the input run of a
+# dispatch, or the id of the CI run of a workflow_run) with release-tag and gives TAG and VERSION, which release-tag wrote into
+# GITHUB_ENV, to the later jobs; the job assets calls assets.yml for the tree of the tag, which runs the release check of
+# binding and builds the binding assets of each platform on the runner of that platform; the job release, which needs both,
+# downloads those assets into var/release/platform and runs make ci-release with TAG and VERSION, whose steps run in order and
+# stop at the first failure, with the tools of var/tools on its PATH:
+#   ci-release-zip   requires Info-ZIP, which the Composer archives need
 #   release-prepare  the preparation that the release of the repository declares with release-prepare:: (none by default)
-#   release-tools    installs the tools that config/release.json needs for the packages of this repository; a make entry adds none
-#   release-tools-path puts var/tools/bin on the PATH of the steps that follow, through GITHUB_PATH
-#   release-assets  builds the archive of every package, and packages.json of the Composer packages, into var/release/assets
-#   download of the artifacts of the job assets into var/release/assets
+#   release-tools    installs the tools that config/release.json needs for the packages of this repository
+#   release-assets   builds the archive of every package, and packages.json of the Composer packages, into var/release/assets
+#   ci-release-platform-assets adds the downloaded assets of each platform to var/release/assets
 #   orm-install-rust, install-tools TOOLS=go and release-recipes prepare the Rust, the crates, the Go and the release
 #                    recipes of binding (packages/release.mk) for the next step
-#   release-go-module commits the static libraries into the Go module of the tag (binding GN-19f)
+#   release-go-module commits the static libraries into the Go module of the tag (binding GN-19f), as the actor of the run
 #   release-publish creates the GitHub Release of the tag as a draft, with its notes and those files
 #   release-platform-assets uploads the binding assets of each platform to that draft
 #   release-undraft makes the release public
@@ -58,12 +51,11 @@ jobs:
     concurrency:
       group: release-${{ github.repository }}
       cancel-in-progress: false
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04-arm
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
     env:
-      RUN: ${{ inputs.run || github.event.workflow_run.id }}
       GH_TOKEN: ${{ github.token }}
     steps:
       # actions/checkout v7.0.1: with the whole history and every branch, so origin/main is there for the ancestry check; a
@@ -75,13 +67,8 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
       # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
-      - name: tag the commit of the CI run
-        if: ${{ !cancelled() }}
-        run: make release-tag ${{ github.event_name == 'workflow_run' && 'AUTO=1' || '' }}
       - id: tag
-        name: give the tag to the later jobs
-        if: ${{ !cancelled() }}
-        run: make release-tag-output
+        run: make ci-release-tag
 
   # The binding assets of each platform, built from the tree of the tag after the release check of binding (assets.yml).
   assets:
@@ -98,7 +85,7 @@ jobs:
     concurrency:
       group: release-${{ github.repository }}-publish
       cancel-in-progress: false
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04-arm
     env:
       TAG: ${{ needs.tag.outputs.tag }}
       VERSION: ${{ needs.tag.outputs.version }}
@@ -109,57 +96,20 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.tag.outputs.tag }}
-      - name: verify the Composer archive tool
-        run: command -v zip >/dev/null || { echo 'Info-ZIP is required for Composer release archives; install the zip package on the Ubuntu runner'; exit 1; }
-      # shivammathur/setup-php 2.40.0: the PHP of .php-version for the Composer packages and the extension of the release. A
-      # repository that needs PHP (a Composer package of config/release.json, or php of config/toolchain.json) declares
-      # .php-version; a repository without PHP has none and sets up no PHP. The release runs no check of its own: release-tag
-      # refuses a commit whose CI run did not pass (K755).
+      # shivammathur/setup-php 2.40.0: the PHP of .php-version for the Composer packages and the extension of the release. The
+      # release runs no check of its own: release-tag refuses a commit whose CI run did not pass (K755).
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ hashFiles('.php-version') != '' }}
         with:
           php-version-file: .php-version
+          tools: composer:2.10.3
           # The proof runs with no debugger or coverage driver, as the checks do.
           coverage: none
       # The bootstrap of kit for the tagged commit, with its own kit and packages (K992).
       - uses: ./.github/actions/kit-bootstrap
-      - name: prepare the release of the repository
-        run: make release-prepare
-      - name: make release-tools
-        run: make release-tools
-      # The tools of var/tools/bin — the Go of mise.toml that the release builds with, and whatever else the packages
-      # need — join PATH for the steps that follow; a step's PATH is its own, so the export goes to the file the
-      # runner reads between steps.
-      - name: put the installed tools on PATH
-        run: make release-tools-path
-      - name: build the assets
-        run: make release-assets
-      # actions/download-artifact v8.0.2: the assets of each platform that the job assets built, merged into var/release/assets.
+      # actions/download-artifact v8.0.2: the assets of each platform that the job assets built, into var/release/platform.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: assets-*
-          path: var/release/assets
+          path: var/release/platform
           merge-multiple: true
-      # The Rust toolchain, whose llvm-nm and llvm-size check the libraries, with the crates of every Cargo.lock that binding
-      # reads, and the Go of mise.toml, with which a consumer proves the commit of the Go module.
-      - name: install Rust and fetch the crates
-        run: make orm-install-rust
-      - name: install Go
-        run: make install-tools TOOLS=go
-      - name: write the release recipes
-        run: make release-recipes
-      # binding makes the commit of the Go module with the identity of the Git of the run, which is the actor of the run, as the
-      # tags of release-tag are.
-      - name: carry the Go module of the tag
-        env:
-          GIT_AUTHOR_NAME: ${{ github.actor }}
-          GIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
-          GIT_COMMITTER_NAME: ${{ github.actor }}
-          GIT_COMMITTER_EMAIL: ${{ github.actor }}@users.noreply.github.com
-        run: make release-go-module
-      - name: create the draft release
-        run: make release-publish
-      - name: upload the assets of each platform
-        run: make release-platform-assets
-      - name: make the release public
-        run: make release-undraft TAG="$TAG"
+      - run: make ci-release

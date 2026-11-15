@@ -1,24 +1,20 @@
-// ci-setup is the setup step that the CI workflow runs before make orm-check, and the needs it prepares.
-// The runner (scripts/check/run.mts) reads the step results the workflow passes as ORM_CI_SETUP (`${{ toJSON(steps) }}`), and for a failed
-// step, a target that declares a need the step prepares (`needs` in contracts/check-inputs.json) is not run; it is recorded together with that step as
-// not-run. All other targets run. The repository check (scripts/repo/ci.mts) confirms that the workflow's setup steps
-// are all listed here.
+// ci-setup is the setup steps that the recipe of a CI group job (make ci-test, make ci-preflight) runs before make check-run,
+// and the needs they prepare (T497). The job runner (scripts/check/ci-job.mts) records the outcome of each setup step in the
+// file ORM_CI_SETUP_FILE, and the check runner (scripts/check/run.mts) reads it: for a failed or skipped step, a target that
+// declares a need the step prepares (`needs` in contracts/check-inputs.json) is not run; it is recorded together with that
+// step as not-run. All other targets run. The repository check (scripts/repo/ci.mts) confirms that the recipe of the group
+// job runs every setup step listed here, under the condition that STEP_OUTPUT declares.
 //
-// CI runs make orm-check as one job per CI group (CI_GROUPS and CI_TARGETS_<group> in the Makefile). The job's step group-needs
-// (make ci-group-needs) writes the GROUP_OUTPUTS values, taken from the needs the group's targets declare, as step outputs, and a setup step
-// runs only when the output named by its STEP_OUTPUT is true. So each group performs only the setup its own targets need.
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { declaredNeeds } from './inputs.mts';
+// CI runs make orm-check as one job per CI group (CI_GROUPS and CI_TARGETS_<group> in the Makefile). The job runner computes
+// the GROUP_OUTPUTS values from the needs the group's targets declare, and a setup step runs only when the output that its
+// STEP_OUTPUT names is true (`--when <output>` of its recipe line). So each group performs only the setup its own targets
+// need. What a `uses:` step of the job provides (the checkout, the Node.js and packages of the kit bootstrap, the PHP releases
+// of setup-php, the caches) is there before the run step, since a failed `uses:` step ends the job: PROVISIONED names those.
+import { readFileSync } from 'node:fs';
 import { parseJson } from '../json/schema.mts';
 
-// CI_SETUP is, for each setup step id, the need that step prepares. A step whose value is null lets its targets run without it even if it fails:
-// rust-cache only restores the build cache, and group-needs only decides which setup steps run (if such a step fails,
-// a conditional setup step is skipped, and the targets declaring its need become not-run).
-export const CI_SETUP: Record<string, string | null> = {
-  'group-needs': null,
-  // The bootstrap installs @polyspec/kit so the first make command can read its Makefile.
-  'kit-bootstrap': 'node-modules',
+// CI_SETUP is, for each setup step id of the recipe of a group job, the need that step prepares.
+export const CI_SETUP: Record<string, string> = {
   go: 'go',
   // check-run builds tests/lease for every group; only its procevent dependency is fetched in the shared runner setup.
   'go-lease-modules': 'go-lease',
@@ -26,17 +22,7 @@ export const CI_SETUP: Record<string, string | null> = {
   'go-modules': 'go',
   'interfaces-typescript': 'interfaces-typescript',
   rust: 'rust',
-  'rust-cache': null,
-  'cache-npm': null,
-  'cache-tools': null,
-  'cache-go': null,
-  'cache-composer': null,
-  'cache-uv': null,
   'rust-crates': 'rust',
-  'php-min': 'php-min',
-  'php-min-release': 'php-min',
-  php: 'php',
-  'php-bootstrap': 'php',
   composer: 'composer',
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
@@ -45,18 +31,19 @@ export const CI_SETUP: Record<string, string | null> = {
   flowmark: 'flowmark',
 };
 
-// RUNNER_STEPS are the steps the runner itself needs: without the repository and Node, neither make orm-check nor the summary runs, and
-// without the hashes of the lock files (locks, make ci-lock-hashes) every cache would be restored and saved under a key of no lock, so
-// that failure is a job failure, and the log of that step is the cause.
-export const RUNNER_STEPS = ['checkout', 'locks', 'node'];
+// PROVISIONED are the needs that the `uses:` steps of a group job prepare before its run step: the packages of
+// .github/actions/kit-bootstrap (node-modules), the PHP of .php-version (php) and the lowest PHP release of the PHP client
+// (php-min) of setup-php. A failed `uses:` step ends the job before the run step, so the recipe never runs without them.
+export const PROVISIONED = ['node-modules', 'php', 'php-min'];
 
 // NEEDS are the needs a target may declare. databases, mysql-privilege-server and mariadb-server are prepared by the runner's
 // setup phase: databases uses servers and databases/create, the privilege server is a separate optional MySQL fixture, and
 // mariadb-server starts the MariaDB servers (make orm-test-mariadb), a set of their own. The rest are prepared by the CI setup
 // steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
-export const NEEDS = ['databases', 'mysql-privilege-server', 'mariadb-server', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
+export const NEEDS = ['databases', 'mysql-privilege-server', 'mariadb-server', ...new Set([...PROVISIONED, ...Object.values(CI_SETUP).filter(need => need !== 'databases')])];
 
-// GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
+// GROUP_OUTPUTS maps each output of a group (the job runner gives it to every make call of the job as CI_GROUP_<OUTPUT>, and
+// make ci-plan writes php and rust into the matrix of the group job) to the need that makes that output true. php installs two PHP releases (the lowest
 // release and .php-version) together with Composer; PHP extension build tools have their own need so library-only checks skip them. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
 // a dependency of the TypeScript client that make databases-create builds, so databases needs both of them as well.
 export const GROUP_OUTPUTS: Record<string, string[]> = {
@@ -75,24 +62,17 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
   flowmark: ['flowmark'],
 };
 
-// STEP_OUTPUT is, for each setup step, the group-needs output that makes that step run. A step whose value is null runs in every group:
-// make orm-check builds tests/lease in Go; go-modules installs the rest of the workspace only when a target owns Go work.
+// STEP_OUTPUT is, for each setup step, the group output that makes that step run (`--when <output>` of its line in the recipe
+// of the group job). A step whose value is null runs in every group: make orm-check builds tests/lease in Go; go-modules
+// installs the rest of the workspace only when a target owns Go work.
 export const STEP_OUTPUT: Record<string, string | null> = {
-  'group-needs': null,
-  'kit-bootstrap': null,
   // The test runner itself builds the Go lease executable.
   go: null,
-  // Kit bootstrap, which installs the pinned npm and the packages, runs in every group before group-needs: the first Make target reads Kit's Makefile.
   'interfaces-typescript': 'interfaces-typescript',
   rust: 'rust',
-  'rust-cache': 'rust',
   'rust-crates': 'rust',
   'go-lease-modules': null,
   'go-modules': 'go',
-  'php-min': 'php',
-  'php-min-release': 'php',
-  php: 'php',
-  'php-bootstrap': 'php',
   composer: 'php',
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
@@ -102,11 +82,6 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   // flowmark installs the flowmark build that markdown-conformance-check runs (make orm-install-flowmark).
   flowmark: 'flowmark',
 };
-
-// stepCondition is the `if:` condition that a setup step id has in a CI group job.
-export const stepCondition = (id: string): string => STEP_OUTPUT[id]
-  ? `\${{ !cancelled() && steps.group-needs.outputs.${STEP_OUTPUT[id]} == 'true' }}`
-  : '${{ !cancelled() }}';
 
 // SETUP_NEEDS maps each need the runner's setup phase prepares to the needs that phase itself requires. databases (the setup phase
 // servers and databases/create (scripts/check/databases.mts) prepare: a server is started by make orm-test-servers from server-programs,
@@ -173,34 +148,21 @@ export function groupSetupErrors(groups: Record<string, string[]>, needs: Needs,
   return [...new Set(errors)];
 }
 
-// failedCiSetup returns the setup steps in the ORM_CI_SETUP text that did not succeed (failed or skipped) as [{ id, need, outcome }].
-// Steps that prepare no need (rust-cache, group-needs) or that succeeded are not included. If server-programs fails, the servers
-// cannot start, so databases fails too. An unknown step id is an error asking that the step be declared in both the workflow and this table.
-export function failedCiSetup(text: string | undefined): { id: string; need: string; outcome: string }[] {
-  if (!text) return [];
-  const steps = parseJson<Record<string, { outcome: 'success' | 'failure' | 'cancelled' | 'skipped' }>>(text, new URL('./schema/ci-steps.schema.json', import.meta.url).pathname, 'ORM_CI_SETUP');
+// failedCiSetup returns the setup steps of the results file ORM_CI_SETUP_FILE (written by scripts/check/ci-job.mts) that did not
+// succeed (failed or skipped) as [{ id, need, outcome }]. If server-programs fails, the servers cannot start, so databases
+// fails too. An unknown step id is an error asking that the step be declared in this table. No file (a local make check-run)
+// means no setup step.
+export function failedCiSetup(file: string | undefined): { id: string; need: string; outcome: string }[] {
+  if (!file) return [];
+  const steps = parseJson<Record<string, { outcome: 'success' | 'failure' | 'skipped' }>>(readFileSync(file, 'utf8'), new URL('./schema/ci-steps.schema.json', import.meta.url).pathname, 'ORM_CI_SETUP_FILE');
   const failed: { id: string; need: string; outcome: string }[] = [];
   for (const [id, step] of Object.entries(steps)) {
     // A failed or skipped step did not prepare what it would have prepared.
-    if (step.outcome === 'success' || RUNNER_STEPS.includes(id)) continue;
-    if (!Object.hasOwn(CI_SETUP, id)) throw new Error(`CI step ${id} failed and declares no need; declare it in scripts/check/ci-setup.mts`);
+    if (step.outcome === 'success') continue;
     const need = CI_SETUP[id];
-    const outcome = step.outcome;
-    if (need) failed.push({ id, need, outcome });
-    if (need === 'server-programs') failed.push({ id, need: 'databases', outcome });
+    if (need === undefined) throw new Error(`CI setup step ${id} did not succeed and declares no need; declare it in scripts/check/ci-setup.mts`);
+    failed.push({ id, need, outcome: step.outcome });
+    if (need === 'server-programs') failed.push({ id, need: 'databases', outcome: step.outcome });
   }
   return failed;
-}
-
-// `node scripts/check/ci-setup.mts outputs <target>...` writes the output lines (`<output>=true|false`) of the group-needs step. make
-// ci-group-needs runs it with CI_TARGETS_<group>, and the workflow appends those lines to $GITHUB_OUTPUT.
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [action, ...targets] = process.argv.slice(2);
-  if (action !== 'outputs' || targets.length === 0) {
-    console.error('usage: node scripts/check/ci-setup.mts outputs <target>...; make ci-group-needs GROUP=<group> runs it with the targets of that CI group');
-    process.exit(2);
-  }
-  const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
-  const needs = declaredNeeds(root);
-  for (const [output, value] of Object.entries(groupOutputs(targets, needs))) console.log(`${output}=${value}`);
 }

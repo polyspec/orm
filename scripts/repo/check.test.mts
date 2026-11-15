@@ -11,7 +11,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
 import { repositoryOf, runErrors } from './release-run.mts';
-import { AFTER_GROUP_CHECK, documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -19,7 +19,7 @@ import { connectProbeErrors } from './probes.mts';
 import { nativeLines, nativeTestErrors } from './native-tests.mts';
 import { composerBranchErrors, composerVersionErrors, BUILD_EXTENSION, EXTENSION_JOB, extensionMinorErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
-import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
+import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
@@ -394,101 +394,108 @@ caseTest('the CI workflow provides every variable of make orm-test-servers', () 
     'ORM_TEST_PGBOUNCER_DSN', 'ORM_TEST_MYSQL_TLS_DSN', 'ORM_RUN_MYSQL_DSN', 'ORM_RUN_POSTGRES_DSN',
     'ORM_RUN_SQLITE_QUERY', 'ORM_TEST_SERVERS_LEASES'])
     assert.ok(variables.includes(variable), `${variable} is not written by scripts/test-servers.mts`);
-  assert.deepEqual(ciServerErrors(workflow, SERVER_VARIABLES), []);
+  assert.deepEqual(ciServerErrors(workflow, SERVER_VARIABLES, text('Makefile')), []);
 });
 
-// steps and script are the two variables of a workflow's minimal form that test-servers.mts uses. Each case changes one of them.
+// steps, serverRecipe and script are the minimal form of a group job, the recipe of its run step and the variables that
+// test-servers.mts writes. Each case changes one of them.
 const steps = [
   'jobs:',
   '  test:',
   '    steps:',
   '      - uses: actions/checkout@v5',
-  '      - name: database servers',
-  '        run: make orm-test-servers',
-  '      - name: checks',
-  '        run: |',
-  '          make repo-check',
-  '          go test ./...',
+  '      - run: make ci-test GROUP=${{ matrix.group }}',
+  '',
+].join('\n');
+const serverRecipe = [
+  'ci-test: CI_NAME = $(CI_RUN)-$(GROUP)',
+  'ci-test:',
+  '\t@$(CI_JOB) begin $(CI_NAME) --group $(GROUP) $(CI_TARGETS_$(GROUP))',
+  '\t@$(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers',
+  '\t@$(CI_JOB) check $(CI_NAME) -- check-run GROUP=$(GROUP)',
+  '\t@$(CI_JOB) end $(CI_NAME)',
+  'orm-test-servers:',
+  '\tnode scripts/test-servers.mts',
   '',
 ].join('\n');
 const script = ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_PGBOUNCER_DSN'];
 
-caseTest('a workflow that starts the servers with make orm-test-servers passes', () => {
-  assert.deepEqual(ciServerErrors(steps, script), []);
+caseTest('a group job whose recipe starts the servers with make orm-test-servers passes', () => {
+  assert.deepEqual(ciServerErrors(steps, script, serverRecipe), []);
 });
 
-caseTest('a workflow without make orm-test-servers names each variable it lacks', () => {
-  const written = steps.replace('run: make orm-test-servers', "run: 'true'").replace(
-    '      - name: checks',
-    '      - run: printf "export ORM_TEST_MYSQL_DSN=x" > .runtime/servers/env\n      - name: checks',
-  );
-  assert.deepEqual(ciServerErrors(written, script), [
-    'ci.yml does not provide ORM_TEST_MYSQL_DSN, which the database checks read',
-    'ci.yml does not provide ORM_TEST_PGBOUNCER_DSN, which the database checks read',
-    'ci.yml does not start the database servers with make orm-test-servers',
-    'ci.yml writes .runtime/servers/env; make orm-test-servers writes it',
-  ]);
+caseTest('T497: a group job whose recipe starts no servers, or checks before them, fails', () => {
+  const none = serverRecipe.replace('\t@$(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers\n', '');
+  assert.deepEqual(ciServerErrors(steps, script, none), ['the recipe ci-test of the CI group jobs does not start the database servers with a setup step servers -- orm-test-servers']);
+  const late = serverRecipe.replace('\t@$(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers\n', '').replace('\t@$(CI_JOB) end', '\t@$(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers\n\t@$(CI_JOB) end');
+  assert.deepEqual(ciServerErrors(steps, script, late), ['the recipe ci-test runs its check before the setup step servers starts the database servers']);
 });
 
 caseTest('a workflow that defines a server variable itself fails', () => {
   const defined = steps.replace('    steps:', '    env:\n      ORM_TEST_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_test"\n    steps:');
-  assert.deepEqual(ciServerErrors(defined, script), ['ci.yml defines ORM_TEST_MYSQL_DSN; make orm-test-servers defines it']);
+  assert.deepEqual(ciServerErrors(defined, script, serverRecipe), ['ci.yml defines ORM_TEST_MYSQL_DSN; make orm-test-servers defines it']);
 });
 
-caseTest('a check before make orm-test-servers fails', () => {
-  const early = steps.replace('      - name: database servers', '      - name: early\n        run: make feature-check\n      - name: database servers');
-  assert.deepEqual(ciServerErrors(early, script), ['ci.yml step "early" runs make before make orm-test-servers starts the servers']);
-  // make install and that part only download, so they may come before the server.
-  const install = steps.replace('      - name: database servers', '      - name: downloads\n        run: make orm-install-go\n      - name: database servers');
-  assert.deepEqual(ciServerErrors(install, script), []);
-});
-
-caseTest('a workflow that creates a symbolic link fails', () => {
+caseTest('a group job whose recipe creates a symbolic link fails', () => {
   for (const command of ['ln -s a b', 'sudo ln -sf /usr/lib/a.so.1t64 /usr/lib/a.so.1', 'ln --symbolic a b', `node -e "fs.symlinkSync('a', 'b')"`]) {
-    const linked = steps.replace('      - name: database servers', `      - name: link\n        run: ${command}\n      - name: database servers`);
-    assert.deepEqual(ciServerErrors(linked, script), ['ci.yml step "link" creates a symbolic link'], command);
+    const linked = serverRecipe.replace('\tnode scripts/test-servers.mts', `\t${command}`);
+    assert.deepEqual(ciServerErrors(steps, script, linked), ['ci.yml job test creates a symbolic link through make ci-test'], command);
   }
 });
 
-// The case after make orm-check (G5.38-4) looks at the repository's workflow and, in a minimal workflow, at the summary and report declared after make orm-check
-// accepts only those two steps. It rejects another command step, another action step, an upload at another path, a missing step, and
-// a make orm-check without ORM_CHECK_RUN_ID.
-caseTest('a workflow runs only the summary and the report upload after make orm-check', () => {
-  assert.deepEqual(ciAfterCheckErrors(workflows), []);
-  const check = ['      - name: make orm-check', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: make orm-check'];
-  const summary = ['      - name: summary', '        if: ${{ !cancelled() }}', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: node scripts/check/summary.mts'];
-  const report = ['      - name: report', '        if: ${{ !cancelled() }}', '        uses: actions/upload-artifact@v4', '        with:', '          name: check-${{ github.run_id }}-${{ github.run_attempt }}',
-    '          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', '          if-no-files-found: error'];
-  const workflow = (...steps: string[][]) => ['jobs:', '  test:', '    steps:', '      - uses: actions/checkout@v5', '      - name: install', '        run: npm ci', ...steps.flat(), ''].join('\n');
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report) }), []);
-  // A step of another job is not a step of the make orm-check job (G5.98).
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, ['  docs:', '    steps:', '      - name: documentation checks', '        run: make docs-ci']) }), []);
-  const fuzz = ['      - name: decoder fuzz smoke checks', '        if: ${{ !cancelled() }}', '        run: make fuzz-check'];
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, fuzz) }), [
-    'ci.yml step "decoder fuzz smoke checks" runs make fuzz-check after make orm-check; make orm-check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS',
+// recipeJob is a workflow of one job with the steps given, and recipeTargets a Makefile that declares the ci- targets.
+const recipeJob = (id: string, ...lines: string[]) => ['jobs:', `  ${id}:`, '    runs-on: ubuntu-26.04-arm', '    steps:', ...lines, ''].join('\n');
+const recipeTargets = 'ci-test:\n\t@:\nci-passed:\n\t@:\nci-site:\n\t@:\n';
+
+caseTest('T497: every job of the workflows runs one step, make ci-<job>, and its other steps provision or carry a result', () => {
+  assert.deepEqual(ciRecipeErrors(workflows, text('Makefile')), []);
+  const ok = recipeJob('test', '      - uses: actions/checkout@v5', '      - uses: shivammathur/setup-php@v2', '        if: ${{ matrix.php }}',
+    '      - run: make ci-test GROUP=${{ matrix.group }}', '      - uses: actions/upload-artifact@v4', '        if: ${{ !cancelled() }}');
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': ok }, recipeTargets), []);
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': recipeJob('ci-passed', '      - uses: actions/checkout@v5', '      - env:', '          RESULTS: ${{ toJSON(needs) }}', '        run: make ci-passed FAIL_SKIPPED=1') }, recipeTargets), []);
+  // A job that only carries a result runs no recipe.
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': recipeJob('deploy', '      - uses: actions/deploy-pages@v4') }, recipeTargets), []);
+});
+
+caseTest('T497: a job with the content of its recipe in YAML fails', () => {
+  const two = recipeJob('test', '      - run: make orm-install-go', '      - run: make ci-test GROUP=static');
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': two }, recipeTargets), [
+    'ci.yml job test has 2 run steps; a job runs one step, make ci-<job>, whose recipe holds the order and the conditions of the job',
+    'ci.yml job test runs "make orm-install-go"; its run step is make ci-<job> with make-variable arguments only',
+    'ci.yml job test step "run: make ci-test GROUP=static" is no uses: step; every step but the run step provisions the runner or carries a result',
   ]);
-  // The value of a step as the workflow reads it.
-  const value = (lines: string[]) => JSON.stringify(readWorkflow(['jobs:', '  test:', '    steps:', ...lines].join('\n')).jobs[0]?.steps[0]?.value);
-  const everything = report.map(line => line.replace('/report/', '/'));
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, everything) }), [
-    `ci.yml step "report" after make orm-check is not the declared report step: ${value(everything)} instead of ${value(report)}`,
+  const steps = recipeJob('test', '      - id: check', '        if: ${{ !cancelled() }}', '        env:', '          ORM_CI_SETUP: ${{ toJSON(steps) }}', '        run: make check-run GROUP=${{ matrix.group }}');
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': steps }, recipeTargets), [
+    'ci.yml job test runs "make check-run GROUP=${{ matrix.group }}"; its run step is make ci-<job> with make-variable arguments only',
+    'ci.yml job test gives its run step if:; the recipe holds the conditions of the job',
+    'ci.yml job test gives its run step env:; only a judgement job passes RESULTS: ${{ toJSON(needs) }}',
   ]);
-  const other = ['      - uses: actions/cache@v4'];
-  assert.match(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, other) })[0] ?? '', /^ci\.yml step "uses: actions\/cache@v4" runs \{"uses":"actions\/cache@v4"\} after make orm-check/);
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check) }), [
-    `ci.yml has no summary step after make orm-check: ${value(summary)}`,
-    `ci.yml has no report step after make orm-check: ${value(report)}`,
+  const output = recipeJob('test', '      - run: make ci-test GROUP=${{ steps.plan.outputs.group }} X=$(date)');
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': output }, recipeTargets), [
+    'ci.yml job test runs "make ci-test GROUP=${{ steps.plan.outputs.group }} X=$(date)"; its run step is make ci-<job> with make-variable arguments only',
   ]);
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(['      - name: make orm-check', '        run: make orm-check'], summary, report) }), [
-    'ci.yml step "make orm-check" gives make orm-check no ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}, which names the report of the run',
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': recipeJob('test', '      - run: make ci-test GROUP=${{ steps.plan.outputs.group }}') }, recipeTargets), [
+    'ci.yml job test passes GROUP=${{ steps.plan.outputs.group }}; an argument holds a literal, a matrix value or an input of a called workflow',
   ]);
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': recipeJob('test', '      - run: make ci-other') }, recipeTargets), ['ci.yml job test runs make ci-other, which the Makefile does not declare']);
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': recipeJob('test', '      - run: make ci-test', '      - uses: actions/cache@v4') }, recipeTargets), [
+    'ci.yml job test step "uses: actions/cache@v4" follows the run step; only a step that carries a result (actions/upload-artifact, actions/upload-pages-artifact, actions/deploy-pages) follows it',
+  ]);
+  assert.deepEqual(ciRecipeErrors({ 'ci.yml': recipeJob('docs', '      - uses: actions/checkout@v5') }, recipeTargets), ['ci.yml job docs runs no make ci-docs step; give it one run step make ci-docs whose recipe runs the job']);
+  const env = recipeJob('release', '      - run: make ci-site').replace('    steps:', '    env:\n      RUN: ${{ inputs.run || github.event.workflow_run.id }}\n      TAG: ${{ needs.tag.outputs.tag }}\n    steps:');
+  assert.deepEqual(ciRecipeErrors({ 'release.yml': env }, recipeTargets), [
+    'release.yml job release sets RUN to ${{ inputs.run || github.event.workflow_run.id }}; the recipe computes it, and a job passes only the token of the run and the outputs of the jobs it needs',
+  ]);
+  // The workflows of T496 hold their jobs in YAML.
+  const before = execFileSync('git', ['show', 'HEAD:.github/workflows/ci.yml'], { cwd: repository }).toString();
+  assert.ok(ciRecipeErrors({ '.github/workflows/ci.yml': before }, text('Makefile')).length > 0);
 });
 
 // The node case checks the repository's mise.toml, package.json, workflow and the running Node, and the minimal
 // workflow, changing one at a time.
 const declared = readFileSync(new URL('mise.toml', repository), 'utf8');
 const minimum = readPackage(join(repository.pathname, 'package.json')).engines?.['node'];
-// Kit owns ci-pipeline.yml and release.yml, so the workflow rules of orm do not apply to them (KSTD-10).
+// The workflows of orm, every one of them a workflow that the rules of orm read (T497).
 const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/workflows/', repository)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')])), kitOwned);
 
@@ -1173,52 +1180,6 @@ caseTest('feature helper checks provision the databases and PHP extension their 
   const recipe = makeRecipes(text('Makefile')).find(unit => unit.name === 'Makefile feature-helper-check')?.commands.join('\n') ?? '';
   assert.match(recipe, /\$\(call php_ext_build,/);
   assert.match(recipe, /POLYSPEC_ORM_EXTENSION=/);
-});
-
-// The CI group setup case (G5.111) checks whether the group job's setup step runs only under the condition ci-setup.mts declares, and the group-needs
-// step writes the output of make ci-group-needs, and whether the summary and report after it write each group's run id and report.
-caseTest('a CI group job runs each setup step under its declared condition and reports per group', () => {
-  assert.equal(stepCondition('go'), '${{ !cancelled() }}');
-  assert.equal(stepCondition('go-lease-modules'), '${{ !cancelled() }}');
-  assert.equal(stepCondition('go-modules'), "${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}");
-  assert.equal(stepCondition('interfaces-typescript'), "${{ !cancelled() && steps.group-needs.outputs.interfaces-typescript == 'true' }}");
-  assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
-  assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
-  assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, go: true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, mariadb: false, databases: true, python: false, flowmark: true });
-  assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, mariadb: false, databases: true, python: false, flowmark: true });
-  assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: true });
-  assert.deepEqual(groupOutputs(['php-library'], { 'php-library': ['php'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: false });
-  assert.deepEqual(groupOutputs(['php-extension'], { 'php-extension': ['php', 'php-extension-tools'] }),
-    { 'node-modules': true, 'interfaces-typescript': false, go: false, rust: false, php: true, 'php-extension-tools': true, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: false });
-  assert.deepEqual(groupOutputs(['api'], { api: ['interfaces-typescript'] }),
-    { 'node-modules': true, 'interfaces-typescript': true, go: false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, mariadb: false, databases: false, python: false, flowmark: false });
-  assert.equal(groupOutputs(['php-ext-tools'], { 'php-ext-tools': ['php-extension-tools'] }).php, true,
-    'the native extension build tools require the pinned PHP setup');
-  assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
-  const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
-  const runner = ['checkout'];
-  const check = `      - name: make orm-check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}-\${{ matrix.group }}\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
-  const after = yamlSteps(AFTER_GROUP_CHECK);
-  const job = (needs: string, composer: string) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - name: setup of the CI group\n        id: group-needs\n        if: \${{ !cancelled() }}\n        run: ${needs}\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: install PHP dependencies\n        id: composer\n        if: ${composer}\n        run: make orm-install-php\n      - name: database servers\n        id: servers\n        if: ${stepCondition('servers')}\n        run: make orm-test-servers\n${check}${after}`;
-  const good = job(GROUP_NEEDS, stepCondition('composer'));
-  assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': good }), []);
-  assert.deepEqual(ciSetupErrors({ 'ci.yml': job(GROUP_NEEDS, '${{ !cancelled() }}') }, { setup, runner }), [
-    `ci.yml step "install PHP dependencies" of the CI group job runs under if: \${{ !cancelled() }} instead of if: ${stepCondition('composer')}, the condition that scripts/check/ci-setup.mts declares for the step composer`,
-  ]);
-  assert.deepEqual(ciSetupErrors({ 'ci.yml': job('make ci-group-needs GROUP=static >> "$GITHUB_OUTPUT"', stepCondition('composer')) }, { setup, runner }), [
-    `ci.yml step "setup of the CI group" runs make ci-group-needs GROUP=static >> "$GITHUB_OUTPUT" instead of ${GROUP_NEEDS}, which writes the setup of the CI group as step outputs`,
-  ]);
-  // A report step that is not a per-group report, and a run id without a group, overwrite the reports of the groups.
-  const shared = good.replace('name: check-${{ matrix.group }}-', 'name: check-');
-  assert.match(ciAfterCheckErrors({ 'ci.yml': shared })[0] ?? '', /^ci\.yml step "report" after make orm-check is not the declared report step: /);
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': good.replace('${{ github.run_attempt }}-${{ matrix.group }}\n          ORM_CI_SETUP', '${{ github.run_attempt }}\n          ORM_CI_SETUP') }), [
-    'ci.yml step "make orm-check" gives make orm-check no ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}, which names the report of the run',
-  ]);
 });
 
 // The ci-passed case (G5.113-2) checks whether the repository's ci.yml places job ci-passed last and takes every other job as needs, and the minimal
@@ -2192,48 +2153,6 @@ caseTest('AGENTS states that the full suite runs on CI after a push', () => {
     .includes('AGENTS.md still states the local full-suite rule: "runs exactly once, when every active checklist   item is complete"'));
 });
 
-// The CI setup case (G5.52) checks that, when a setup step in the workflow fails, the steps after it and make orm-check still run and pass the failure on to the runner.
-// A setup step without an id, as in main's workflow, a step with no condition, continue-on-error, and a make orm-check without ORM_CI_SETUP are errors.
-caseTest('a workflow runs every setup step and make orm-check after a failed setup step and passes the results on', () => {
-  assert.equal(CI_SETUP['kit-bootstrap'], 'node-modules');
-  assert.equal(stepCondition('kit-bootstrap'), '${{ !cancelled() }}');
-  assert.deepEqual(failedCiSetup(JSON.stringify({ 'go-lease-modules': { outcome: 'failure' } })), [
-    { id: 'go-lease-modules', need: 'go-lease', outcome: 'failure' },
-  ]);
-  assert.ok(expandNeeds(['databases']).includes('go-lease'), 'database targets inherit the dependency of the shared Go lease runner');
-  assert.deepEqual(failedCiSetup(JSON.stringify({ 'kit-bootstrap': { outcome: 'failure' } })), [
-    { id: 'kit-bootstrap', need: 'node-modules', outcome: 'failure' },
-  ]);
-  const setup = { go: 'go', rust: 'rust' };
-  const runner = ['checkout'];
-  const workflow = (steps: string, check: string) => `jobs:\n  test:\n    steps:\n${steps}${check}`;
-  const good = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: rust\n        id: rust\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
-    `      - name: make orm-check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n        run: make orm-check\n`);
-  assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
-  const bad = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        with: { go-version: "1.27" }\n      - name: rust\n        id: rustup\n        continue-on-error: true\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
-    `      - name: make orm-check\n        run: make orm-check\n`);
-  assert.deepEqual(ciSetupErrors({ 'ci.yml': bad }, { setup, runner }), [
-    'ci.yml uses continue-on-error, which hides a failed step from the job; run later steps with if: ${{ !cancelled() }} instead',
-    'ci.yml step "uses: actions/setup-go@v6" before make orm-check has no id; give it the id of what it installs in scripts/check/ci-setup.mts',
-    'ci.yml step "uses: actions/setup-go@v6" does not run after a failed earlier setup step; give it if: ${{ !cancelled() }}',
-    'ci.yml step "rust" has the id rustup, which scripts/check/ci-setup.mts does not map to what it installs',
-    'ci.yml has no setup step with the id go of scripts/check/ci-setup.mts',
-    'ci.yml has no setup step with the id rust of scripts/check/ci-setup.mts',
-    'ci.yml step "make orm-check" does not run after a failed setup step; give it if: ${{ !cancelled() }}',
-    'ci.yml step "make orm-check" gives make orm-check no ORM_CI_SETUP: ${{ toJSON(steps) }}, which tells the runner the failed setup steps',
-  ]);
-  // Each job has its own runner, so the docs job after the make orm-check job is not a setup or a later step of make orm-check (G5.98).
-  const docs = `  docs:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - id: node-modules\n        if: \${{ !cancelled() }}\n        run: make install-node\n      - name: documentation checks\n        id: docs\n        if: \${{ !cancelled() }}\n        run: make docs-ci\n`;
-  assert.deepEqual(ciSetupErrors({ 'ci.yml': good + docs }, { setup, runner }), []);
-  assert.deepEqual(ciSetupErrors({ 'ci.yml': good + docs.replace('        if: ${{ !cancelled() }}\n        run: make install-node', '        run: make install-node') }, { setup, runner }),
-    ['ci.yml step "id: node-modules" does not run after a failed earlier step; give it if: ${{ !cancelled() ... }}']);
-  const pages = `jobs:\n  build:\n    steps:\n      - uses: actions/checkout@v5\n      - run: npm ci\n      - name: build\n        if: \${{ !cancelled() && steps.x.outcome == 'success' }}\n        run: make docs-build\n`;
-  assert.deepEqual(ciSetupErrors({ 'pages.yml': pages }, { setup, runner }), ['pages.yml step "run: npm ci" does not run after a failed earlier step; give it if: ${{ !cancelled() ... }}']);
-  const root = new URL('../..', import.meta.url).pathname;
-  const workflows = Object.fromEntries(['ci.yml', 'docs-pages.yml'].map(name => [name, readFileSync(join(root, '.github/workflows', name), 'utf8')]));
-  assert.deepEqual(ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }), []);
-});
-
 // make install-tools checks the checkout PHP version before installing its tools; the npm-only install does not need PHP.
 caseTest('CI installs the declared PHP before make install-tools', () => {
   const workflow = (steps: string) => `jobs:\n  test:\n    steps:\n${steps}`;
@@ -2289,25 +2208,6 @@ caseTest('a script that starts a process group of its own checks that group afte
   const root = new URL('../..', import.meta.url).pathname;
   const tracked = execFileSync('git', ['ls-files', '*.js', '*.mjs'], { cwd: root }).toString().split('\n').filter(Boolean).filter(notVendored);
   assert.deepEqual(detachedGroupErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(join(root, path), 'utf8')]))), []);
-});
-
-caseTest('every CI step runs a make target', () => {
-  const workflow = (summary: string, extra = '') => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n      - name: install\n        run: make install-node\n${extra}      - name: summary\n        run: ${summary}\n`;
-  assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': workflow('node scripts/check/summary.mts') }), []);
-  assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': workflow('node scripts/check/summary.mts', '      - name: deps\n        run: |\n          npm ci\n          make orm-install-php\n') }), [
-    '.github/workflows/ci.yml step "deps" runs npm ci; run it through a make target',
-  ]);
-  assert.deepEqual(ciMakeErrors({ '.github/workflows/docs-pages.yml': workflow('node scripts/check/summary.mts') }), [
-    '.github/workflows/docs-pages.yml step "summary" runs node scripts/check/summary.mts; run it through a make target',
-  ]);
-  // The bootstrap of kit is the shared action .github/actions/kit-bootstrap (K992), so no workflow carries an inline bootstrap step
-  // that needs an exception.
-  assert.equal(CI_RUN_EXCEPTIONS['.github/workflows/ci.yml']?.['bootstrap the installed kit package'], undefined);
-  assert.equal(CI_RUN_EXCEPTIONS['.github/workflows/docs-pages.yml']?.['bootstrap the installed kit package'], undefined);
-  const root = new URL('../..', import.meta.url).pathname;
-  const directory = join(root, '.github/workflows');
-  // orm's own workflows; Kit-owned workflows are checked by Kit's layout target (KSTD-5-24).
-  assert.deepEqual(ciMakeErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')])), kitOwned)), []);
 });
 
 caseTest('a test does not fail on a measured time above a bound', () => {
@@ -2635,14 +2535,12 @@ caseTest('the checks read commands with the shell parser', () => {
 // and a workflow that is not YAML or has no jobs.
 caseTest('the checks read a workflow as a YAML document', () => {
   // A step in flow style is a step.
-  assert.deepEqual(ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - { name: tests, run: go test ./... }\n' }),
-    ['ci.yml step "tests" runs go test ./...; run it through a make target']);
-  assert.deepEqual(ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - { name: tests, run: make test }\n' }), []);
+  assert.deepEqual(readWorkflow('jobs:\n  test:\n    steps:\n      - { name: tests, run: make ci-test }\n').jobs[0]?.steps[0]?.run, 'make ci-test');
   // An input of an action named timeout-minutes is no deadline of the step.
   assert.deepEqual(stepTimeoutErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - uses: some/action@v1\n        with:\n          timeout-minutes: 5\n' }), []);
   // A step's run text is its value, with the indentation of a block scalar removed.
   assert.deepEqual(readWorkflow('jobs:\n  test:\n    steps:\n      - run: |\n          make a\n          make b\n').jobs[0]?.steps[0]?.run, 'make a\nmake b\n');
-  assert.throws(() => ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - run: make a\n     - run: go test ./...\n' }), /^Error: the workflow is no YAML document: /);
+  assert.throws(() => readWorkflow('jobs:\n  test:\n    steps:\n      - run: make a\n     - run: go test ./...\n'), /^Error: the workflow is no YAML document: /);
   assert.throws(() => readWorkflow('jobs:\n  a: {}\n  a: {}\n', 'x.yml'), /^Error: x\.yml is no YAML document: Map keys must be unique/);
   assert.throws(() => readWorkflow('    steps:\n      - run: make a\n', 'x.yml'), /^Error: x\.yml has no map of jobs$/);
   assert.throws(() => readWorkflow('jobs:\n  a:\n    steps:\n      - run: true\n', 'x.yml'), /^Error: x\.yml job a step 1 run is not a string$/);

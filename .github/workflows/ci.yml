@@ -1,27 +1,19 @@
-# CI: every check of the repository. The job preflight runs the CI group preflight, the checks of the structure of the
-# repository, and every other job needs it, so their failure ends the run before any suite starts (T428).
-# The job test runs make orm-check, the targets
-# of the local checks, against MySQL, PostgreSQL, and SQLite, with the common
-# interfaces and the hot-path regression check of the feature verification, the decoder
-# fuzz checks and the common state contracts of the conformance results, split
-# into the CI groups of the Makefile (CI_GROUPS): one job per group, all at
-# once, each running make check-run GROUP=<group> on the targets CI_TARGETS_<group>;
-# the groups together run every target of CHECK_TARGETS once. The job assets
-# builds the binding assets of each platform from the commit (assets.yml). The job docs runs
-# the documentation checks of the published site, and the last job ci-passed,
-# the run whose id the release takes (make release-tag requires its success), passes
-# only when every other job succeeded. This is where the full suite
-# runs: on every push to main and on a manual run, never stopping at a failure, and
-# recording enough to fix every failure before the next run. A check it lacks
-# belongs in a target of CHECK_TARGETS, and make repo-check fails a step after
-# make orm-check other than the summary and the report upload, and a group set that
-# omits or repeats a target of CHECK_TARGETS.
-# make orm-test-servers starts the database servers and writes their DSNs, as it
-# does for the local checks. No step or job has timeout-minutes: every step
-# (a checkout, an install, a server start, a tool run or a whole suite) is a
-# long operation, which the runner logs line by line and judges by its exit
-# code, with no deadline; only a test case inside a suite has its own
-# deadline. make repo-check fails a workflow with timeout-minutes.
+# CI: every check of the repository. Every job runs one step, make ci-<job>, whose recipe in the Makefile holds the order
+# and the conditions of the job, so a local make ci-<job> NAME=value runs what CI runs (T497); its other steps are uses:
+# steps that provision the runner (the checkout, the caches, the kit bootstrap, setup-php, the Rust cache) or carry a result
+# (the report). What those steps need before the run step is an output of the job plan (make ci-plan): the cache keys, the
+# matrix of the CI groups with whether each group sets up PHP and Rust, and the lowest PHP release of the PHP client.
+# The job preflight runs the CI group preflight, the checks of the structure of the repository, and every other job needs it,
+# so their failure ends the run before any suite starts (T428). The job test runs the CI groups of the Makefile (CI_GROUPS):
+# one job per group, all at once, each running make ci-test GROUP=<group>, which runs the setup steps that the targets of the
+# group need and then make check-run GROUP=<group> on the targets CI_TARGETS_<group>; the groups together run every target
+# of CHECK_TARGETS once. The job assets builds the binding assets of each platform from the commit (assets.yml). The job docs
+# runs the documentation checks of the published site, and the last job ci-passed, the run whose id the release takes (make
+# release-tag requires its success), passes only when every other job succeeded. This is where the full suite runs: on every
+# push to main and on a manual run, never stopping at a failure, and recording enough to fix every failure before the next
+# run. A check it lacks belongs in a target of CHECK_TARGETS. No step or job has timeout-minutes: every step is a long
+# operation, which the runner logs line by line and judges by its exit code, with no deadline; only a test case inside a
+# suite has its own deadline. make repo-check fails a workflow with timeout-minutes.
 # A push whose every changed path is a document that only the document checks read starts no run (T418): paths-ignore lists
 # DOCUMENT_PATHS of scripts/repo/ci.mts, and documents.yml runs those checks on every push. GitHub starts the run when any
 # changed path of the whole push matches no pattern, so a code change pushed with documents runs every job, and a version
@@ -53,8 +45,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The gates of orm: ci-pipeline.yml, which orm took from kit and owns (T391), plans and runs the shared and runtime
-  # gates with the targets of the Makefile. No job waits for it but ci-passed, which needs it: every other job installs what it runs itself.
+  # The plan of the other jobs (make ci-plan): the cache keys, which are the hashes of the tracked lock files, computed once,
+  # since actions/cache evaluates its key again after the last step, where hashFiles would read the workspace as the job left
+  # it (T427); the matrix of the CI groups; and the lowest PHP release of the PHP client.
+  plan:
+    runs-on: ubuntu-26.04-arm
+    outputs:
+      npm: ${{ steps.plan.outputs.npm }}
+      tools: ${{ steps.plan.outputs.tools }}
+      go: ${{ steps.plan.outputs.go }}
+      composer: ${{ steps.plan.outputs.composer }}
+      uv: ${{ steps.plan.outputs.uv }}
+      groups: ${{ steps.plan.outputs.groups }}
+      preflight: ${{ steps.plan.outputs.preflight }}
+      php_min: ${{ steps.plan.outputs.php_min }}
+    steps:
+      - uses: actions/checkout@v5
+      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the Node.js of mise.toml, the locked kit package
+      # and the packages, with which scripts/php/php-min.mts reads composer.json.
+      - uses: ./.github/actions/kit-bootstrap
+      - id: plan
+        run: make ci-plan
+
+  # The gates of orm: ci-pipeline.yml, which orm owns (T391), plans and runs the shared and runtime gates with the targets of
+  # the Makefile. No job waits for it but ci-passed: every other job installs what it runs itself.
   kit:
     needs: [preflight]
     uses: ./.github/workflows/ci-pipeline.yml
@@ -70,240 +84,83 @@ jobs:
       contents: read
 
   test:
-    needs: [preflight]
-    # .github/runner declares the runner of every job; make repo-check
-    # requires it.
+    needs: [plan, preflight]
+    # .github/runner declares the runner of every job; make repo-check requires it.
     runs-on: ubuntu-26.04-arm
-    # One job per CI group of the Makefile (CI_GROUPS); make repo-check
-    # requires that this list equals CI_GROUPS. A failed group does not cancel
+    # One job per CI group of the Makefile but preflight (the output groups of make ci-plan). A failed group does not cancel
     # the others: every group runs to its end.
     strategy:
       fail-fast: false
       matrix:
-        group: [static, clients_db, performance, client_db_go, client_db_php, client_db_php_extension, client_db_typescript, client_db_python, client_db_rust, suite_php, suite_typescript, suite_python, clients_pooler_go, clients_pooler_php, clients_pooler_php_extension, clients_pooler_typescript, clients_pooler_python, clients_pooler_rust, conformance, dbspec, dbspec_apply, dbspec_go, dbspec_php, dbspec_php_extension, dbspec_typescript, dbspec_python, dbspec_rust, markdown_go, markdown_php, markdown_php_extension, markdown_typescript, markdown_python, markdown_rust, mariadb_go, mariadb_php, mariadb_php_extension, mariadb_typescript, mariadb_python, mariadb_rust, feature_performance, feature_verify_rust, feature_verify_other, feature_helpers, stress_mysql, stress_pg_sqlite, python]
-    # Every setup step has an id that scripts/check/ci-setup.mts maps to what it
-    # installs, and runs whatever the earlier steps did (if: !cancelled()), so
-    # one failed install never hides another. The step group-needs writes the
-    # needs of the targets of the group (contracts/check-inputs.json) as step
-    # outputs, and a setup step runs only when the group needs what it
-    # installs; make repo-check requires the condition of each step that
-    # scripts/check/ci-setup.mts declares. make orm-check runs after all of them
-    # and reads their results (ORM_CI_SETUP): a target that needs what a
-    # failed or skipped step installs is recorded as not-run with that step,
-    # and every other target runs. A failed step fails the job. The checkout
-    # and Node are what the runner itself needs.
-    steps: &group-steps
-      # The kit tools read the commit graph, so the checkout carries the full
-      # commit graph.
+        include: ${{ fromJSON(needs.plan.outputs.groups) }}
+    steps:
+      # The kit tools read the commit graph, so the checkout carries the full commit graph.
       - uses: actions/checkout@v5
-        id: checkout
         with:
           fetch-depth: 0
-      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
-      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
-      - name: hashes of the lock files
-        id: locks
-        if: ${{ !cancelled() }}
-        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
-      # mise.toml declares the one Node release of the checks, locally and
-      # here; make repo-check requires it. make ts-min-check runs the
-      # TypeScript client on the lowest release of package.json engines.node.
-      - uses: actions/setup-node@v7
-        id: node
-        if: ${{ !cancelled() }}
-        with:
-          node-version-file: mise.toml
-          package-manager-cache: false
-      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
+      # The caches of the locked installs, keyed by the hashes of their lock files (B3-4); setup-node keeps its own cache
+      # off (scripts/repo/node.mts).
       - name: cache of the npm packages
-        id: cache-npm
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
-      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+          key: npm-packages-${{ runner.os }}-${{ needs.plan.outputs.npm }}
       - name: cache of the tools of mise.toml
-        id: cache-tools
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
-      # The Go modules are restored by the hash of every go.sum (B3-4).
+          key: tools-${{ runner.os }}-${{ needs.plan.outputs.tools }}
       - name: cache of the Go modules
-        id: cache-go
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ steps.locks.outputs.go }}
-      # The composer packages are restored by the hash of every composer.lock (B3-4).
+          key: go-modules-${{ runner.os }}-${{ needs.plan.outputs.go }}
       - name: cache of the composer packages
-        id: cache-composer
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/composer
-          key: composer-packages-${{ runner.os }}-${{ steps.locks.outputs.composer }}
-      # The uv packages are restored by the hash of every uv.lock (B3-4).
+          key: composer-packages-${{ runner.os }}-${{ needs.plan.outputs.composer }}
       - name: cache of the uv packages
-        id: cache-uv
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/uv
-          key: uv-packages-${{ runner.os }}-${{ steps.locks.outputs.uv }}
+          key: uv-packages-${{ runner.os }}-${{ needs.plan.outputs.uv }}
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
-        id: kit-bootstrap
-        if: ${{ !cancelled() }}
-      - name: setup of the CI group
-        id: group-needs
-        if: ${{ !cancelled() }}
-        run: make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"
-      - name: TypeScript of the interface extractor
-        id: interfaces-typescript
-        if: ${{ !cancelled() && steps.group-needs.outputs.interfaces-typescript == 'true' }}
-        run: make orm-install-interfaces-typescript
-      # make install-tools checks for the PHP version declared by the checkout before installing its other tools.
+      # make php-min-check runs the PHP client unit tests on the lowest release of require.php in
+      # legacy/packages/php/composer.json; setup-php installs it first, and the PHP of .php-version after it becomes php on
+      # PATH. A group sets up PHP when a target of it needs PHP (matrix.php of make ci-plan).
       - uses: shivammathur/setup-php@v2
-        id: php-bootstrap
-        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
+        if: ${{ matrix.php }}
         with:
-          php-version-file: .php-version
+          php-version: ${{ needs.plan.outputs.php_min }}
+          extensions: pdo_sqlite, openssl
+          # mise.toml declares the one Composer release of the checks (http:composer).
           tools: composer:2.10.3
           coverage: none
-      # Toolchain-check (static) uses the full declared tool inventory. Other groups install only the selected Go runner
-      # and the runtimes their declared needs use.
-      - name: tools of mise.toml
-        id: go
-        if: ${{ !cancelled() }}
-        env:
-          CI_GROUP_PHP: ${{ steps.group-needs.outputs.php }}
-          CI_GROUP_PYTHON: ${{ steps.group-needs.outputs.python }}
-        run: make ci-install-tools GROUP=${{ matrix.group }}
-      # check-run builds the Go lease runner in every group; it needs only x/sys
-      # from the Go workspace. Runtime groups that declare Go work also install
-      # the full module set and generated models below.
-      - name: Go module of the check runner
-        id: go-lease-modules
-        if: ${{ !cancelled() }}
-        run: make orm-install-go-lease
-      - name: Go modules
-        id: go-modules
-        if: ${{ !cancelled() && steps.group-needs.outputs.go == 'true' }}
-        run: make orm-install-go
-      # The markdown-conformance-check/<runtime> groups run each native client
-      # on the flowmark build that tests/markdown/flowmark.version pins;
-      # make orm-install-flowmark installs it.
-      - name: flowmark build of tests/markdown/flowmark.version
-        id: flowmark
-        if: ${{ !cancelled() && steps.group-needs.outputs.flowmark == 'true' }}
-        run: make orm-install-flowmark
-      - name: Rust toolchain of rust-toolchain.toml
-        id: rust
-        if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
-        # rustup installs the channel and components of rust-toolchain.toml.
-        run: make orm-install-rust-toolchain
+      # .php-version declares the PHP release of the checks, locally and here. The checks run PHP without a debugger or
+      # coverage driver, as the local PHP does; Xdebug changes the ratios of the hot-path gate.
+      - uses: shivammathur/setup-php@v2
+        if: ${{ matrix.php }}
+        with:
+          php-version-file: .php-version
+          extensions: pdo_mysql, pdo_pgsql, pgsql, pdo_sqlite, openssl
+          tools: composer:2.10.3
+          coverage: none
+      # The build cache of the Rust targets, for a group whose targets need Rust (matrix.rust of make ci-plan).
       - uses: Swatinem/rust-cache@v2
-        id: rust-cache
-        if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
+        if: ${{ matrix.rust }}
         with:
           workspaces: |
             packages/rust -> target
             benchmarks/rust -> target
             packages/rust/testing/interfaces -> target
-      # make orm-check runs cargo offline on the crates of every Cargo.lock that make orm-install-rust-crates downloads; it runs
-      # after the cache is restored, since the restored registry replaces crates downloaded before it.
-      - name: Rust crates
-        id: rust-crates
-        if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
-        run: make orm-install-rust-crates
-      # make orm-install-python builds the venv from the Python of mise.toml (the interpreter of make python-venv), so CI and a
-      # local check use the same interpreter; setup-python is not used.
-      - name: Python client dependencies
-        id: orm-install-python
-        if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
-        run: make orm-install-python
-      - name: lowest PHP release of the PHP client
-        # make php-min-check runs the PHP client unit tests on the lowest release
-        # of require.php in legacy/packages/php/composer.json; setup-php installs it
-        # first, and the PHP of .php-version after it becomes php on PATH.
-        id: php-min
-        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
-        run: make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"
-      - uses: shivammathur/setup-php@v2
-        id: php-min-release
-        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
-        with:
-          php-version: ${{ steps.php-min.outputs.version }}
-          extensions: pdo_sqlite, openssl
-          # mise.toml declares the one Composer release of the checks (http:composer).
-          tools: composer:2.10.3
-          coverage: none
-      # .php-version declares the PHP release of the checks, locally and here.
-      - uses: shivammathur/setup-php@v2
-        id: php
-        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
-        with:
-          php-version-file: .php-version
-          extensions: pdo_mysql, pdo_pgsql, pgsql, pdo_sqlite, openssl
-          tools: composer:2.10.3
-          # The checks run PHP without a debugger or coverage driver, as the local
-          # PHP does; Xdebug changes the ratios of the hot-path gate.
-          coverage: none
-      - name: install PHP dependencies
-        id: composer
-        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
-        run: make orm-install-php
-      - name: tools of the PHP extension build
-        id: php-extension-tools
-        if: ${{ !cancelled() && steps.group-needs.outputs.php-extension-tools == 'true' }}
-        # PHP-extension targets build polyspec_orm with phpize; this also installs
-        # the pinned arginfo generator and parser through Kit's shared installer.
-        run: make orm-install-php-extension-tools
-      - name: programs of the database servers
-        id: server-programs
-        if: ${{ !cancelled() && steps.group-needs.outputs.server-programs == 'true' }}
-        # scripts/ci/server-programs.mts installs the programs from which make
-        # orm-test-servers starts the servers; in a group of the MariaDB
-        # servers (output mariadb) it installs the MariaDB packages instead,
-        # from which make orm-test-mariadb starts them.
-        run: make orm-install-server-programs MARIADB=${{ steps.group-needs.outputs.mariadb }}
-      - name: database servers
-        # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
-        # the databases orm_test, orm_tools and orm_bench, and the environment
-        # file .runtime/servers/env that the database checks read. make orm-check
-        # records the targets that need the servers as not-run with this failure
-        # and runs every other target.
-        id: servers
-        if: ${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}
-        run: make orm-test-servers
-      - name: make orm-check
-        # The targets CI_TARGETS_<group> of the group through the runner of the
-        # local checks, with its own bench and decimal databases when a target
-        # needs them; make repo-check fails when the groups omit or repeat a
-        # target of CHECK_TARGETS, or this workflow runs one of them or a
-        # verification command of the feature checks again. The run never
-        # stops at a failure: every target runs unless a setup step it needs
-        # failed, and the step fails when a target failed or did not run. The
-        # report of the run is .runtime/check/ci_<run id>_<attempt>_<group>/report.
-        if: ${{ !cancelled() }}
-        env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
-          ORM_CI_SETUP: ${{ toJSON(steps) }}
-        run: make check-run GROUP=${{ matrix.group }}
-      # The summary of the run, also of a runner that did not finish, as the job
-      # summary and in the report, with the run record and the server logs; then
-      # the report of this run id alone, so no file of an earlier run is
-      # collected. make repo-check allows exactly these two steps after make
-      # check.
-      - name: summary
-        if: ${{ !cancelled() }}
-        env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
-        run: node scripts/check/summary.mts
+      # make ci-test runs the setup steps that the targets of the group need, stopping at the first failure, then make
+      # check-run GROUP=<group>, which records a target that needs what a failed or skipped setup step installs as not-run and
+      # runs every other target, then the summary, also of a runner that did not finish, as the job summary. The report of the
+      # run is .runtime/check/ci_<run id>_<attempt>_<group>/report.
+      - run: make ci-test GROUP=${{ matrix.group }}
+      # The report of this run id alone, so no file of an earlier run is collected.
       - name: report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -313,77 +170,95 @@ jobs:
           if-no-files-found: error
 
   # The group preflight of the Makefile (CI_TARGETS_preflight): the checks of the structure of the repository, which every other
-  # job needs, so a defect they find ends the run in this job before any suite starts (T428). It runs the steps of the job test
-  # (the anchor group-steps), so group-needs installs only what its targets declare (contracts/check-inputs.json).
+  # job needs, so a defect they find ends the run in this job before any suite starts (T428). It provisions the runner as the
+  # job test does, for its own group (the output preflight of make ci-plan).
   preflight:
+    needs: [plan]
     runs-on: ubuntu-26.04-arm
     strategy:
       matrix:
-        group: [preflight]
-    steps: *group-steps
-
-
-  docs:
-    needs: [preflight]
-    runs-on: ubuntu-26.04-arm
-    env:
-      VITEPRESS_BASE: /orm/
-    # The documentation checks of the site that docs-pages.yml publishes, with
-    # its base path. Every step has an id and runs whatever the earlier steps
-    # did (if: !cancelled()); make docs-ci records a target whose setup step
-    # failed as not-run, and the report is uploaded under !cancelled().
+        include: ${{ fromJSON(needs.plan.outputs.preflight) }}
     steps:
       - uses: actions/checkout@v5
-        id: checkout
-      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
-      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
-      - name: hashes of the lock files
-        id: locks
-        if: ${{ !cancelled() }}
-        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v7
-        id: node
-        if: ${{ !cancelled() }}
         with:
-          node-version-file: mise.toml
-          package-manager-cache: false
-      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
+          fetch-depth: 0
       - name: cache of the npm packages
-        id: cache-npm
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
-      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+          key: npm-packages-${{ runner.os }}-${{ needs.plan.outputs.npm }}
       - name: cache of the tools of mise.toml
-        id: cache-tools
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
-      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
+          key: tools-${{ runner.os }}-${{ needs.plan.outputs.tools }}
+      - name: cache of the Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-modules-${{ runner.os }}-${{ needs.plan.outputs.go }}
+      - name: cache of the composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-packages-${{ runner.os }}-${{ needs.plan.outputs.composer }}
+      - name: cache of the uv packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-packages-${{ runner.os }}-${{ needs.plan.outputs.uv }}
       - uses: ./.github/actions/kit-bootstrap
-        id: kit-bootstrap
+      - uses: shivammathur/setup-php@v2
+        if: ${{ matrix.php }}
+        with:
+          php-version: ${{ needs.plan.outputs.php_min }}
+          extensions: pdo_sqlite, openssl
+          tools: composer:2.10.3
+          coverage: none
+      - uses: shivammathur/setup-php@v2
+        if: ${{ matrix.php }}
+        with:
+          php-version-file: .php-version
+          extensions: pdo_mysql, pdo_pgsql, pgsql, pdo_sqlite, openssl
+          tools: composer:2.10.3
+          coverage: none
+      - uses: Swatinem/rust-cache@v2
+        if: ${{ matrix.rust }}
+        with:
+          workspaces: |
+            packages/rust -> target
+            benchmarks/rust -> target
+            packages/rust/testing/interfaces -> target
+      - run: make ci-preflight
+      - name: report
         if: ${{ !cancelled() }}
-      - name: Go of mise.toml
-        id: go
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=go
-      # docs-verify-idempotent builds docs/.vitepress/dist twice and compares
-      # every byte, and docs-site-check builds it and reads its pages and links
-      # with Node. make docs-ci runs the two through the runner of make orm-check,
-      # also after a failed one, and writes the log of each and a summary to
-      # the report of this run id, which the next step uploads whatever the
-      # result.
-      - name: documentation checks
-        id: docs
-        if: ${{ !cancelled() }}
-        env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-docs
-          ORM_CI_SETUP: ${{ toJSON(steps) }}
-        run: make docs-ci
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/
+          if-no-files-found: error
+
+  # The documentation checks of the site that docs-pages.yml publishes, with its base path (make ci-docs): docs-verify-idempotent
+  # builds docs/.vitepress/dist twice and compares every byte, and docs-site-check builds it and reads its pages and links with
+  # Node. make docs-ci runs the two through the runner of make orm-check, also after a failed one, and writes the log of each
+  # and a summary to the report of this run id, which the last step uploads whatever the result.
+  docs:
+    needs: [plan, preflight]
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - name: cache of the npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-packages-${{ runner.os }}-${{ needs.plan.outputs.npm }}
+      - name: cache of the tools of mise.toml
+        uses: actions/cache@v4
+        with:
+          path: var/tools
+          key: tools-${{ runner.os }}-${{ needs.plan.outputs.tools }}
+      - uses: ./.github/actions/kit-bootstrap
+      - run: make ci-docs
       - name: report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -392,116 +267,43 @@ jobs:
           path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_docs/report/
           if-no-files-found: error
 
-  # The VS Code integration test of the dbspec extension: the editor fixtures through
+  # The VS Code integration test of the dbspec extension (make ci-editor): the editor fixtures through
   # vscode.provideDocumentSemanticTokens inside the VS Code that make orm-install-vscode installs (kit's installer, at the
   # minimum release of packages/dbspec-vscode). VS Code needs a display, so the test runs on a virtual X server.
   editor:
-    needs: [preflight]
+    needs: [plan, preflight]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
-        id: checkout
-      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
-      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
-      - name: hashes of the lock files
-        id: locks
-        if: ${{ !cancelled() }}
-        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v7
-        id: node
-        if: ${{ !cancelled() }}
-        with:
-          node-version-file: mise.toml
-          package-manager-cache: false
-      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
       - name: cache of the npm packages
-        id: cache-npm
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
-      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
+          key: npm-packages-${{ runner.os }}-${{ needs.plan.outputs.npm }}
       - name: cache of the tools of mise.toml
-        id: cache-tools
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: var/tools
-          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
-      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
-      - uses: ./.github/actions/kit-bootstrap
-        id: kit-bootstrap
-        if: ${{ !cancelled() }}
-      - name: tools of mise.toml
-        id: go
-        if: ${{ !cancelled() }}
-        run: make install-tools TOOLS=go
+          key: tools-${{ runner.os }}-${{ needs.plan.outputs.tools }}
       # dbspec-vscode-check builds the shared lease runner; it uses only x/sys from the Go client module.
-      # The Go modules are restored by the hash of every go.sum (B3-4).
       - name: cache of the Go modules
-        id: cache-go
-        if: ${{ !cancelled() }}
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: go-modules-${{ runner.os }}-${{ steps.locks.outputs.go }}
-      - name: Go lease module of the check runner
-        id: go-lease-modules
-        if: ${{ !cancelled() }}
-        run: make orm-install-go-lease
-      - name: VS Code of the integration test
-        id: vscode
-        if: ${{ !cancelled() }}
-        run: make orm-install-vscode
-      - name: VS Code integration test
-        id: integration
-        if: ${{ !cancelled() }}
-        run: make ci-vscode-integration
+          key: go-modules-${{ runner.os }}-${{ needs.plan.outputs.go }}
+      - uses: ./.github/actions/kit-bootstrap
+      - run: make ci-editor
 
-  # The one check of this workflow that the ruleset of main requires: it runs
-  # after every other job, also after a failed or cancelled one (if: always()),
-  # and passes only when each job of needs succeeded, every CI group of test
-  # included. make repo-check requires that it is the last job and that needs
-  # lists every other job.
+  # The one check of this workflow that the release requires: it runs after every other job, also after a failed or
+  # cancelled one (if: always()), and passes only when each job of needs succeeded, every CI group of test included. make
+  # repo-check requires that it is the last job and that needs lists every other job.
   ci-passed:
     if: ${{ always() }}
-    needs: [preflight, kit, assets, test, docs, editor]
+    needs: [plan, preflight, kit, assets, test, docs, editor]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
-      # The cache keys are the hashes of the tracked lock files, computed once after the checkout: actions/cache evaluates
-      # its key again after the last step, where hashFiles would read the workspace as the job left it (CI run 42784034583).
-      - name: hashes of the lock files
-        id: locks
-        if: ${{ !cancelled() }}
-        run: make --no-print-directory ci-lock-hashes >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: mise.toml
-          package-manager-cache: false
-      # The npm packages are restored by the hash of every package-lock.json (B3-4); setup-node keeps its own cache off (scripts/repo/node.mts).
-      - name: cache of the npm packages
-        id: cache-npm
-        if: ${{ !cancelled() }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-packages-${{ runner.os }}-${{ steps.locks.outputs.npm }}
-      # The tools that make install-tools puts under var/tools are restored by the lock files that name them (B3-4).
-      - name: cache of the tools of mise.toml
-        id: cache-tools
-        if: ${{ !cancelled() }}
-        uses: actions/cache@v4
-        with:
-          path: var/tools
-          key: tools-${{ runner.os }}-${{ steps.locks.outputs.tools }}
-      # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the locked kit package and the packages.
       - uses: ./.github/actions/kit-bootstrap
-        id: kit-bootstrap
-        if: ${{ !cancelled() }}
-      - name: every job passed
-        if: ${{ !cancelled() }}
-        env:
+      - env:
           RESULTS: ${{ toJSON(needs) }}
         run: make ci-passed FAIL_SKIPPED=1
