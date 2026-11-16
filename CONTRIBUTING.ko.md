@@ -164,6 +164,8 @@ runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fus
 
 공통 contract, generated artifact, language client, example, structure check를 함께 갱신한다. 특정 client에만 공개된 기능은 미완료로 처리한다.
 
+Go binding `packages/go`는 혼자 release되는 자기 module이며, root의 `go.work`는 그것을 적지 않는다. 그 workspace는 `legacy/packages/go`, `tests`, `examples`를 묶는다. 그래서 `packages/go`는 `make test-go-bindings`가 하듯 혼자 검사한다. `packages/go`에서 `GOWORK=off`로, crate `polyspec-orm-go`의 static library를 `CGO_LDFLAGS`에 두고 그 test tag와 함께 돌린다(`cd packages/go && GOWORK=off go vet ./...`). root에서 `go vet ./packages/go/...`는 그 directory를 거부한다. workspace의 어느 module도 그것을 가지지 않기 때문이다.
+
 ## Commit message
 
 동작을 나타내는 짧은 영문 명령형 제목을 사용한다. 예: `Implement root IN chunking`. 하나의 commit에는 하나의 변경 범위만 둔다.

@@ -163,6 +163,8 @@ Three values are given by the one who runs, for the machine, and this repository
 
 Update the shared contract, generated artifacts, language clients, examples, and structure checks together. A client-only public feature is incomplete.
 
+The Go binding `packages/go` is a module of its own, released alone, and the `go.work` of the root does not list it: that workspace joins `legacy/packages/go`, `tests` and `examples`. So `packages/go` is checked alone, as `make test-go-bindings` does it: `GOWORK=off`, with the static library of the crate `polyspec-orm-go` in `CGO_LDFLAGS` and its test tags, from `packages/go` (`cd packages/go && GOWORK=off go vet ./...`). `go vet ./packages/go/...` at the root refuses the directory, since no module of the workspace holds it.
+
 ## Commit messages
 
 Use a short English imperative subject that states the action, for example `Implement root IN chunking`. Keep each commit focused.
