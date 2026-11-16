@@ -2027,6 +2027,107 @@
         "kind": "rollback_failed",
         "message": "rollback_failed: the rollback failed after the callback failed: connection_lost: error communicating with database: expected to read 5 bytes, got 0 bytes at EOF"
       }
+    },
+    {
+      "id": "a_commit_that_ends_the_session",
+      "rule": "SVC-8",
+      "service": {
+        "id": "postgres"
+      },
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg_commit\n\ntable service_pg_commit_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:bc098380f521cd41b49e9e9f8c32277ccc9afa67bc8b8f51a935942029f846b6"
+            }
+          },
+          "entity": "service_pg_commit_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_pg_commit\n\ntable service_pg_commit_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:bc098380f521cd41b49e9e9f8c32277ccc9afa67bc8b8f51a935942029f846b6"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE IF NOT EXISTS service_pg_commit_row (id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO service_pg_commit_row VALUES (2, 'gone', '2026-01-01 00:00:00') ON CONFLICT DO NOTHING\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE OR REPLACE FUNCTION service_pg_end_session() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_terminate_backend(pg_backend_pid()); RETURN NULL; END $$\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"DO $$ BEGIN PERFORM pg_advisory_xact_lock(hashtext('service_pg_commit_row')); IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'service_pg_commit_end') THEN CREATE CONSTRAINT TRIGGER service_pg_commit_end AFTER INSERT OR UPDATE ON service_pg_commit_row DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION service_pg_end_session(); END IF; END $$\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "id",
+              "value": {
+                "kind": "int",
+                "value": 2
+              }
+            }
+          },
+          {
+            "call": "query.set",
+            "args": {
+              "column": "label",
+              "value": {
+                "kind": "text",
+                "value": "x"
+              }
+            }
+          }
+        ]
+      },
+      "raises": {
+        "category": "store",
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
+      }
     }
   ],
   "db.execute.service": [
