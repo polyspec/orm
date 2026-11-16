@@ -1486,7 +1486,12 @@ caseTest('every cargo starts through the cargo link of kit, and the rules of car
     unit('x', 'node scripts/cargo-link.mts . build --locked'),
     unit('x', 'node tests/cargo-test.mts a -- cargo test --locked'),
     unit('x', 'PATH="$HOME/.cargo/bin:$PATH" node scripts/cargo-link.mts . test --no-run'),
-  ]), [own('cargo build --locked'), own('env A=1 cargo +nightly fmt --check')]);
+    // The cargo runner of kit run-tests starts cargo through the cargo link of kit (K1266, kit 0.0.116).
+    unit('x', 'node node_modules/@polyspec/kit/dist/run-tests.mjs cargo --cwd packages/rust -- --locked -p a'),
+    unit('x', 'node kit/dist/runtime-targets.mjs test --runner cargo --roots packages/rust -- --workspace'),
+    unit('x', 'node kit/run-tests.$(if $(wildcard kit/link.mts),mts,mjs) cargo --cwd packages/rust -- --locked'),
+    unit('x', 'node run-tests.mjs.bak; cargo build'),
+  ]), [own('cargo build --locked'), own('env A=1 cargo +nightly fmt --check'), own('cargo build')]);
   assert.deepEqual(unlinkedCargoSourceErrors({
     'scripts/a.mts': "spawn('cargo', ['build']);\nconst b = ['--', 'cargo', 'check'];\nif (word === 'cargo') {}\nconst c = { format: 'cargo' };\nconst d = ['tests/cargo-test.mts', 'x', '--', 'cargo', 'test'];\n// spawn('cargo')\n",
     'scripts/cargo-link.mts': "spawn('cargo', []);\n",

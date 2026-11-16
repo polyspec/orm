@@ -622,6 +622,10 @@ export function unlinkedCargoErrors(units: Unit[]): string[] {
         if (!cargo) continue;
         const described = /\bcargo-test\.mts\b/.exec(segment);
         if (described && described.index < cargo.index) continue;
+        // The cargo runner of kit run-tests, which runtime-targets starts as --runner cargo, starts cargo through the cargo link
+        // of kit (K1266, kit 0.0.116): the word names the runner, and the runner is the link.
+        const before = segment.slice(0, cargo.index + cargo[0].search(/\S/));
+        if (/(?:\brun-tests\.(?:mjs|mts|\$\(KIT_EXT\)|\$\(if .*,mts,mjs\))|--runner)\s+$/.test(before)) continue;
         errors.push(`${name} starts cargo itself; start it through the cargo link, node scripts/cargo-link.mts <dir> <cargo arguments> ($(CARGO_LINK) in the Makefile): ${segment}`);
       }
   return errors;
