@@ -58,6 +58,7 @@ impl Error {
     }
 
     /// An error of `kind` with an optional cause.
+    #[cfg(feature = "runtime")]
     pub(crate) fn with_optional_source(kind: Kind, message: impl Into<String>, source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>) -> Error {
         match source {
             Some(source) => Error::with_source(kind, message, source),
@@ -108,6 +109,7 @@ impl Error {
     }
 
     /// The `rollback_failed` error of a callback that failed with an error of orm.
+    #[cfg(feature = "runtime")]
     pub(crate) fn rollback_failed_of(callback: Error, rollback: Error) -> Error {
         Error::rollback_failed(CallbackFailure::Kind(callback), rollback)
     }
@@ -190,6 +192,7 @@ impl Error {
     }
 
     /// The same error with another kind and its message, keeping its cause.
+    #[cfg(feature = "runtime")]
     pub(crate) fn rekind(self, kind: Kind) -> Error {
         Error { kind, ..self }
     }

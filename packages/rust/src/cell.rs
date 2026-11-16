@@ -2,10 +2,13 @@
 //! neither the host type nor the value (INT-163).
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Timelike};
+#[cfg(feature = "runtime")]
 use polyspec_orm_schema::dbspec::Type;
 
 use crate::value::Val;
-use crate::{Error, Result};
+use crate::Error;
+#[cfg(feature = "runtime")]
+use crate::Result;
 
 /// The message of a cell that its column type does not hold, one per column type in every client (COD-1).
 pub(crate) fn cell_message(column_type: &str) -> String {
@@ -222,6 +225,7 @@ fn fraction_digits(fraction: &[u8], precision: u8) -> Option<String> {
 }
 
 /// A time(p) cell as HH:MM:SS text with exactly p fraction digits (COD-1, DIA-24).
+#[cfg(feature = "runtime")]
 pub(crate) fn time_cell(value: &Val, precision: u8) -> Option<String> {
     let text = match value {
         Val::Str(s) => s.as_bytes(),
@@ -278,6 +282,7 @@ pub(crate) fn datetime_cell(value: &Val, precision: u8) -> Option<NaiveDateTime>
 }
 
 /// Whether `text` is the lower-case canonical text of a uuid: 32 lower-case hex digits in the groups 8-4-4-4-12 (DIA-27).
+#[cfg(feature = "runtime")]
 pub(crate) fn is_canonical_uuid(text: &str) -> bool {
     let b = text.as_bytes();
     b.len() == 36
@@ -287,6 +292,7 @@ pub(crate) fn is_canonical_uuid(text: &str) -> bool {
 /// A uuid cell as its lower-case canonical text (DIA-27): on PostgreSQL, which reads it as `CAST(col AS text)`, that
 /// text (`text` is true), and on MySQL, MariaDB, SQLite and flowmark its 16 bytes. Any other cell is refused with the
 /// message of the uuid type (COD-1).
+#[cfg(feature = "runtime")]
 pub(crate) fn uuid_cell(value: &Val, text: bool) -> Result<String> {
     match value {
         Val::Bytes(bytes) if !text && bytes.len() == 16 => Ok(polyspec_orm_schema::dbspec::uuid_text(bytes)),
@@ -301,6 +307,7 @@ pub(crate) fn uuid_cell(value: &Val, text: bool) -> Result<String> {
 
 /// The 16 bytes that the 32 digits of the canonical text `text` of a uuid write in their order, two digits to a byte
 /// (DIA-27); the text is checked before (PRT-67), so another text is CODEC_ENCODE.
+#[cfg(feature = "runtime")]
 pub(crate) fn uuid_bytes(text: &str) -> Result<Vec<u8>> {
     let refused = || Error::new(crate::Kind::CodecEncode, "uuid value is not a lower-case canonical uuid");
     if !is_canonical_uuid(text) {
@@ -311,6 +318,7 @@ pub(crate) fn uuid_bytes(text: &str) -> Result<Vec<u8>> {
 
 /// The cell of a declared model column as the value its column type holds, or the refusal of its type (COD-1, COD-69).
 /// A declared integer column refuses a stored text, which only a text protocol's bytes may carry.
+#[cfg(feature = "runtime")]
 pub(crate) fn declared_cell(ty: &Type, value: Val) -> Result<Val> {
     if matches!(value, Val::Null) {
         return Ok(value);
@@ -351,6 +359,7 @@ pub(crate) fn declared_cell(ty: &Type, value: Val) -> Result<Val> {
 /// exact integer of its split cells on SQLite and markdown, and a sum of a column that holds a value which its type does not
 /// hold is refused by that column (DIA-218, PRT-84); a decimal is its exact text of its scale, and another cell is read as
 /// `added_cell` reads it.
+#[cfg(feature = "runtime")]
 pub(crate) fn added_column(col: &crate::plan::OutCol, value: Val, row: &[Val]) -> Result<Val> {
     use crate::aggregate::{non_integer_refusal, split_sum, Split};
     let mut value = value;
@@ -390,6 +399,7 @@ pub(crate) fn added_column(col: &crate::plan::OutCol, value: Val, row: &[Val]) -
 /// The exact decimal text of scale fraction digits of a decimal added column cell: SQLite and markdown store a decimal as its
 /// integer times 10^scale (DIA-25), and MySQL and PostgreSQL send its text, of at most scale fraction digits, which is padded
 /// to them (INT-160). A precision other than 0, that of a column that is not a sum, bounds its digits.
+#[cfg(feature = "runtime")]
 fn added_decimal(value: &Val, precision: u8, scale: u8) -> Option<String> {
     match value {
         Val::I64(n) => decimal_of_digits(*n < 0, &n.unsigned_abs().to_string(), precision, scale),
@@ -403,6 +413,7 @@ fn added_decimal(value: &Val, precision: u8, scale: u8) -> Option<String> {
 }
 
 /// The exact decimal text of scale fraction digits of the decimal text `-?[0-9]+(\.[0-9]+)?` of at most scale fraction digits.
+#[cfg(feature = "runtime")]
 fn decimal_of_text(text: &str, precision: u8, scale: u8) -> Option<String> {
     let (negative, unsigned) = match text.strip_prefix('-') {
         Some(rest) => (true, rest),
@@ -423,6 +434,7 @@ fn decimal_of_text(text: &str, precision: u8, scale: u8) -> Option<String> {
 
 /// The decimal text of scale fraction digits of the value whose sign is negative and whose digits are those of the value
 /// times 10^scale; None past a precision other than 0.
+#[cfg(feature = "runtime")]
 fn decimal_of_digits(negative: bool, digits: &str, precision: u8, scale: u8) -> Option<String> {
     let digits = digits.trim_start_matches('0');
     if precision > 0 && digits.len() > usize::from(precision) {
@@ -437,6 +449,7 @@ fn decimal_of_digits(negative: bool, digits: &str, precision: u8, scale: u8) -> 
 
 /// The cell of an added column by the type its plan column states (INT-160): an integer takes the exact digits of a
 /// stored text too, a datetime has six fraction digits, and another type keeps the driver value.
+#[cfg(feature = "runtime")]
 pub(crate) fn added_cell(column_type: &str, value: Val) -> Result<Val> {
     if matches!(value, Val::Null) {
         return Ok(value);

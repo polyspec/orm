@@ -200,7 +200,6 @@ pub(crate) fn avg_value(field: &Field, sum: &Val, count: &Val) -> Result<Option<
 /// The error of a sum or average statement: PostgreSQL refuses an f64 sum beyond the finite range with SQLSTATE 22003, and
 /// MySQL refuses it so through the planned addition of 0, which is the nonfinite scalar that the other databases return, so it
 /// is CODEC_DECODE with the text of that scalar and the driver error as its cause (DIA-216).
-#[cfg(feature = "runtime")]
 pub(crate) fn range_error(error: Error) -> Error {
     let out_of_range =
         error.kind() == crate::Kind::Driver && error.driver_error().and_then(sqlx::Error::as_database_error).and_then(|d| d.code()).as_deref() == Some("22003");

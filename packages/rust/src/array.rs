@@ -1,5 +1,6 @@
 //! The array form of a model, a collection and a group row (COD-27).
 
+#[cfg(feature = "runtime")]
 use crate::value::Val;
 use indexmap::IndexMap;
 
@@ -28,6 +29,7 @@ static NULL: ArrayValue = ArrayValue::Null;
 
 impl ArrayValue {
     /// The value of a column: a date or datetime is its text in the form of the value model, as in every runtime.
+    #[cfg(feature = "runtime")]
     pub(crate) fn of(value: &Val) -> ArrayValue {
         match value {
             Val::Null => ArrayValue::Null,

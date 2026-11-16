@@ -171,6 +171,7 @@ impl Schema {
 
     /// The runtime model of the schema to register. If the text does not hash to the declared hash, then
     /// before any statement it is CONFIG; if the text is not a manifest, it is SCHEMA_INVALID.
+    #[cfg(feature = "runtime")]
     pub(crate) fn registered(&self) -> Result<Arc<Manifest>> {
         self.manifest().map_err(|e| match e {
             error if error.kind() == crate::Kind::SchemaHashMismatch => Error::config(format!("invalid schema manifest: {}", error.text())),
@@ -179,6 +180,7 @@ impl Schema {
     }
 
     /// A reference that shares this schema: its texts and its runtime model, when it is built (CORE-80).
+    #[cfg(feature = "runtime")]
     pub(crate) fn shared(&self) -> SchemaRef {
         SchemaRef::Shared(Arc::new(self.clone()))
     }

@@ -1,17 +1,15 @@
 //! The Rust ORM runtime. Generated models record requests; this crate plans
 //! them into SQL for the connection's database (cached by request shape), runs
 //! the statements with sqlx, and assembles models.
-#![cfg_attr(
-    not(feature = "runtime"),
-    allow(dead_code, reason = "CORE-134: without the feature runtime the helpers that only execution calls have no caller")
-)]
 
+#[cfg(feature = "runtime")]
 mod aggregate;
 #[cfg(feature = "runtime")]
 pub mod args;
 mod array;
 #[cfg(feature = "runtime")]
 mod bind_check;
+#[cfg(feature = "runtime")]
 mod canonical;
 mod cell;
 #[cfg(feature = "runtime")]
@@ -166,6 +164,7 @@ pub(crate) enum MySqlServer {
     MariaDb,
 }
 
+#[cfg(feature = "runtime")]
 impl MySqlServer {
     /// The server that a `VERSION()` names: one that contains `-MariaDB` is MariaDB, and any other is MySQL (DIA-201).
     pub(crate) fn of_version(version: &str) -> MySqlServer {

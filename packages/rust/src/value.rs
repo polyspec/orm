@@ -235,6 +235,7 @@ fn decode_value(message: impl Into<String>) -> crate::Error {
 }
 
 /// The CODEC_DECODE of a cell with message, keeping the failure that found it.
+#[cfg(feature = "runtime")]
 fn decode_value_by(message: impl Into<String>, cause: impl std::error::Error + Send + Sync + 'static) -> crate::Error {
     crate::Error::with_source(crate::Kind::CodecDecode, message, Box::new(cause))
 }
@@ -309,6 +310,7 @@ impl Val {
 
     /// Convert a numeric database aggregate to finite binary64. Aggregate terminals return
     /// an approximate floating result; ordinary value conversion remains lossless.
+    #[cfg(feature = "runtime")]
     pub(crate) fn as_aggregate_f64(&self) -> crate::Result<f64> {
         match self {
             Val::F64(value) if value.is_finite() => Ok(*value),
