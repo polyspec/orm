@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: d21d74088402cc647a7600a11d032c4d21d305b0ed1d01b78f17b847cc564450 -->
+<!-- source-sha256: 9a5e504bb20103d1c7dc0dd82b0b4f2b2b142d0f5223ba76688ccbd90a92f0e6 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `legacy/packages/go/engine/ir/ir.go`와 `legacy/packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -8,7 +8,7 @@
 
 ```json
 {
-  "ir_version": 1,
+  "ir_version": 2,
   "manifest_hash": "sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785",
   "kind": "one | all | count | group_count | sum | avg | paginate | lookahead_paginate | group_lookahead_paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
@@ -91,6 +91,7 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op": "in | not_in", "sub": Sub}
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
+      | {"conn", "op": "none"}                                          // ir_version 2 (PRT-92)
 Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
 Sub   = {"query": Query, "column": "user_seq", "agg": "sum | count"}
 ```
@@ -143,6 +144,14 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 뺀다: root와 각 subquery는 `WHERE`에서, 각 join child는 `ON` 조건에서 빼므로 left join은 null child를 주며, 각 relation은 자기 statement에서 뺀다. soft delete한 행과 맞는 요청은 `restore`뿐이다(conformance vector `joins_soft_deleted`). 모델 메서드 `restore`는 set 값을 `set`으로 보내고 `where`는 보내지 않으며, 이 step을 실행한 뒤 hook이 남긴 요청에서 planner가 고른 key의 값으로 행을 읽는다([사용법](../operations/usage.ko.md#restore-a-soft-deleted-row)).
 
 - **PRT-91** Restore 분석은 key 선택과 assignment 분류를 쓰기 검증과 분리한다. 호출 시점 요청에 이 절의 key 선택 규칙을 적용한다. 완전한 primary key가 우선이고, 그렇지 않으면 이름 순서에서 첫 완전한 unique key다. Key 컬럼은 schema 순서, assignment는 중복 컬럼을 포함한 요청 set 순서를 유지한다. 선택한 key 컬럼과 매개변수 값 key 조건으로 소비하지 않은 set 컬럼을 보고한다. 분석과 planner는 같은 분류기를 부르며, planner는 그다음 기존 검증으로 primary, identity, soft-delete, audit 등 허용되지 않은 할당을 거절한다. 분석은 쓰기를 허가하지 않으며 매개변수 범위, 값 타입, 할당 권한은 검사하지 않아 hook가 해당 할당을 먼저 분류하고 거절할 수 있다. 요청 형태 오류, 알 수 없는 entity나 assignment 컬럼, soft delete가 없는 table, 최상위 restore 조건 사이의 or, 불완전한 key는 기존 코드와 메시지로 거절한다. Restore가 아닌 kind는 `IR_INVALID` `restore analysis requires a restore request`다. 호출은 bind 값을 읽거나 매개변수 번호를 바꾸지 않고 요청을 유지한다. 반환 목록은 독립적이므로 목록 수정이 요청, 등록 schema, 다음 결과를 바꿀 수 없다. 동적 client는 manifest hash를 찾기 전에 기존 Request record shape를 검사한다. hash가 없거나 null이면 빈 typed string과 같은 미등록 빈 hash 결과가 나오며 분석이 등록된 hash를 채우지 않는다. Go와 Rust의 hash는 string type이므로 배열은 공개 method 입력 type에 들어가지 않는다.
+- **PRT-92** `{"conn", "op": "none"}`은 어떤 행도 만족하지 않는 predicate다. planner는 모든 dialect에서 `1 = 0`으로
+  쓰고, 다른 항목처럼 `conn`으로 잇는다. `not`인 group 안에서는 group과 함께 부정되므로 `NOT (none)`은 모든 행에서
+  참이다. `update`, `delete`, `restore`의 `where`에서 조건으로 세며, 그때 바뀌는 행은 없다. 이 op는 요청 언어를
+  바꾸므로 이 protocol의 요청은 `ir_version` 2다(T563). 다른 `ir_version`의 요청은 `VERSION_MISMATCH`다. 이 규칙은
+  `ir_version` 1을 대체한다. `ir_version` 1은 `legacy/packages/`의 언어 구현에서 계속 유지된다: 그 구현은 1을
+  선언하고, 2의 요청을 `VERSION_MISMATCH`로 거부하며, `ir_version` 1을 유지하는 `legacy/tests/`와
+  `legacy/contracts/fixtures/`의 고정 사본을 돈다(CORE-1). `tests/ir/`와 `contracts/fixtures/`는 `ir_version` 2의
+  요청을 담는다.
 
 ### 1.6 적재 {#_1-6-load}
 

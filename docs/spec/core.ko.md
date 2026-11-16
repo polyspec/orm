@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 498121b8a3a1b3c2258446cee51b06b0aeb93bb65e569a001425a3abc1086970 -->
+<!-- source-sha256: 36e0fb587889af1a96a13a5236e5b3d5e695f27da074f9f2ab94bb9de82bef4e -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -288,6 +288,12 @@
   아닌 이름, 열이 허용하지 않는 연산자, key 수와 다른 값의 수는 `config`이고, 생성된 모델의 builder 오류처럼 다음
   terminal이 돌려준다. `order_by(spec)`는 `SeqDescAndLabelAsc` 같은 이름의 순서를 더하며 key마다 열과 `Asc`나
   `Desc`이고, 같은 crate의 `parse_order`가 읽는다.
+- **CORE-137** `where_none(connector)`는 어떤 행도 만족하지 않는 조건을 더한다. 허용된 값 목록이 빈 호출자가 raw
+  SQL 없이 어떤 행도 읽거나 세거나 쓰지 않게 하기 위한 것이다(T563). `connector`는 CORE-82의 연결어인 `""`, `And`,
+  `Or` 중 하나다: `""`와 `And`는 조건을 앞선 조건에 `and`로, `Or`는 `or`로 잇는다. 첫 조건은 CORE-82처럼 연결어를
+  갖지 않는다. 다른 글은 다음 terminal에서 `config`이고 메시지는 `where_none takes "", "And" or "Or", not <text>`이다.
+  이 조건은 `ir_version` 2 요청의 predicate `none`이다(PRT-92): `get`과 `get_by`는 행을 찾지 못하고, `gets`는 빈 `Collection`을,
+  `get_count`는 0을 돌려준다. 모든 데이터베이스에서 `X And none`은 어떤 행도 고르지 않고 `X Or none`은 `X`의 행을 고른다.
 - **CORE-83** terminal `get`, `gets`, `get_count`, `get_query`는 생성된 모델의 terminal처럼 질의를 실행하고,
   `get_by(chain, values)`, `gets_by(chain, values)`, `get_count_by(chain, values)`는 그 chain의 조건을 `and`로 이어
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을

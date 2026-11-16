@@ -351,6 +351,13 @@ implementation is eligible for removal on that evidence.
   operator that its column does not allow and a number of values other than the number of keys are `config`, which
   the next terminal returns, as it returns a builder error of a generated model. `order_by(spec)` adds the order of a
   name such as `SeqDescAndLabelAsc`, each key a column and `Asc` or `Desc`, read by `parse_order` of the same crate.
+- **CORE-137** `where_none(connector)` adds a condition that no row satisfies, so that a caller whose list of
+  allowed values is empty reads, counts and writes no row without raw SQL (T563). `connector` is `""`, `And` or
+  `Or`, the connector words of CORE-82: `""` and `And` join the condition to the conditions before it with `and`,
+  and `Or` with `or`; a first condition takes no connector, as in CORE-82. Any other text is `config` at the next
+  terminal, with the message `where_none takes "", "And" or "Or", not <text>`. The condition is the predicate
+  `none` of a request of `ir_version` 2 (PRT-92): `get` and `get_by` find no row, `gets` returns an empty `Collection`,
+  `get_count` returns 0, `X And none` selects no row and `X Or none` selects the rows of `X`, on every database.
 - **CORE-83** The terminals `get`, `gets`, `get_count` and `get_query` run the query as the terminals of a generated
   model do, and `get_by(chain, values)`, `gets_by(chain, values)` and `get_count_by(chain, values)` run it with the
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same

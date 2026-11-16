@@ -7,7 +7,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
 
 ```json
 {
-  "ir_version": 1,
+  "ir_version": 2,
   "manifest_hash": "sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785",
   "kind": "one | all | count | group_count | sum | avg | paginate | lookahead_paginate | group_lookahead_paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
@@ -90,6 +90,7 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op": "in | not_in", "sub": Sub}
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
+      | {"conn", "op": "none"}                                          // ir_version 2 (PRT-92)
 Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
 Sub   = {"query": Query, "column": "user_seq", "agg": "sum | count"}
 ```
@@ -142,6 +143,14 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 The step writes the new values, clears the soft delete column and, on a table with an `audit` setting, writes the audit column; like a soft delete it does not assign the `updated` column. A row that is not deleted and a missing row match no row, so the statement changes nothing, the new values included. A request on a table without `soft_delete` fails with `IR_INVALID`. Reads always exclude soft-deleted rows: the root and each subquery in their `WHERE`, each join child in its `ON` condition, so that a left join gives a null child, and each relation in its own statement; `restore` is the only request that matches one (the conformance vector `joins_soft_deleted`). The model method `restore` sends its set values as the `set` and no `where`, runs the step and then reads the row by the values of the key the planner picked from the request as the hook left it ([usage](../operations/usage.md#restore-a-soft-deleted-row)).
 
 - **PRT-91** Restore analysis separates key selection and assignment classification from write validation. It applies the key-selection rule of this section to the request as it is at the call: a complete primary key wins, otherwise the first complete unique key in name order; key columns keep their schema order, and assignments keep the order of the request set, including repeated columns. It reports the selected key columns and the set columns not consumed as parameter-valued key conditions. Analysis and the planner call one classifier; the planner then refuses illegal primary, identity, soft-delete, audit and other assignments through its ordinary validation. Analysis does not authorize a write and does not check parameter bounds, value types or assignment permissions; a hook can classify and refuse such an assignment first. It still refuses malformed request shapes, an unknown entity or assignment column, a table without soft delete, an or between top-level restore conditions and an incomplete key with their existing codes and messages. A non-restore kind is `IR_INVALID` `restore analysis requires a restore request`. The call reads no bound values, renumbers no parameter and leaves the request unchanged. The returned lists are independent, so modifying one cannot change a request, registered schema or a later result. Dynamic clients check the existing Request record shape before looking up its manifest hash. An absent or null hash has the same unregistered empty-hash result as an empty typed string; the analysis never supplies a registered hash. Go and Rust take a typed string hash, so an array is outside their public method input type.
+- **PRT-92** `{"conn", "op": "none"}` is a predicate that no row satisfies; the planner writes it as `1 = 0` on every
+  dialect, joined by its `conn` as any other item. In a group with `not` it is negated with the group, so `NOT (none)`
+  holds for every row. It counts as a condition of the `where` of an `update`, `delete` and `restore`, which then
+  change no row. The op changes the request language, so the request of this protocol is `ir_version` 2 (T563); a
+  request of another `ir_version` is `VERSION_MISMATCH`. This replaces `ir_version` 1, which keeps holding for the
+  language implementations under `legacy/packages/`: they declare 1, refuse a request of 2 with `VERSION_MISMATCH`,
+  and run the fixed copies of `legacy/tests/` and `legacy/contracts/fixtures/` (CORE-1), which keep `ir_version` 1.
+  `tests/ir/` and `contracts/fixtures/` hold requests of `ir_version` 2.
 
 ### 1.6 Load
 
