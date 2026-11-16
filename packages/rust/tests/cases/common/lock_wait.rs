@@ -12,9 +12,9 @@
 
 use std::sync::OnceLock;
 
+use crate::or_panic::OrPanic;
 use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
-use crate::or_panic::OrPanic;
 use tokio::sync::broadcast;
 
 static LOCK_WAITS: OnceLock<broadcast::Sender<String>> = OnceLock::new();

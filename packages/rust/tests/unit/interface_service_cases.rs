@@ -20,7 +20,9 @@ const FILE: &str = "contracts/interface/service.json";
 fn variable(name: &str, service: &str) -> Result<String, String> {
     match std::env::var(name) {
         Ok(value) if !value.is_empty() => Ok(value),
-        _ => Err(format!("the service {service} needs the variable {name}; run make interface-service-cases-rust, which reads the servers of make orm-test-servers")),
+        _ => Err(format!(
+            "the service {service} needs the variable {name}; run make interface-service-cases-rust, which reads the servers of make orm-test-servers"
+        )),
     }
 }
 
@@ -76,10 +78,8 @@ async fn run_service_case(member: &str, case: &Value, services: &[Value], failur
         assert!(["id", "setup", "check"].contains(&key.as_str()), "{what}: a service has no key {key}");
     }
     let name = service.get("id").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: the service names its id"));
-    let declared = services
-        .iter()
-        .find(|declared| declared["id"].as_str() == Some(name))
-        .unwrap_or_else(|| panic!("{what}: the contract declares no service {name}"));
+    let declared =
+        services.iter().find(|declared| declared["id"].as_str() == Some(name)).unwrap_or_else(|| panic!("{what}: the contract declares no service {name}"));
     let address = match variable(declared["address"].as_str().unwrap_or_else(|| panic!("{name}: the service names its address")), name) {
         Ok(address) => address,
         Err(error) => {

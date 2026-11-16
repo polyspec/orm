@@ -14,9 +14,9 @@ use serde::Deserializer as _;
 use serde_json::value::RawValue;
 use std::collections::BTreeMap;
 #[cfg(any(unix, windows))]
-use std::collections::HashSet;
-#[cfg(any(unix, windows))]
 use std::collections::HashMap;
+#[cfg(any(unix, windows))]
+use std::collections::HashSet;
 #[cfg(any(unix, windows))]
 use std::ffi::{OsStr, OsString};
 use std::fmt;

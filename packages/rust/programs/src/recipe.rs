@@ -4898,7 +4898,8 @@ mod database {
             if idle.is_some() || lifetime.is_some() {
                 // A connection with an idle bound or a lifetime opens without the models of the case: a pool op reads its counts, and utils.run takes no model.
                 let bound = |value: Option<u64>| u32::try_from(value.unwrap_or(0)).map_err(|e| Failure::Step(e.to_string()));
-                let options = polyspec_orm::Config { pool_idle_size: Some(bound(idle)?), pool_lifetime_ms: Some(bound(lifetime)?), ..polyspec_orm::Config::default() };
+                let options =
+                    polyspec_orm::Config { pool_idle_size: Some(bound(idle)?), pool_lifetime_ms: Some(bound(lifetime)?), ..polyspec_orm::Config::default() };
                 let db = Db::connect(&dsn, pool_size, options).await.map_err(|e| Failure::Step(e.to_string()))?;
                 context.models.adopt(name, db);
                 return Ok(Output::fields(json!({})));

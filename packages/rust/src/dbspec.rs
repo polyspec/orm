@@ -15,6 +15,6 @@ pub use apply::{
     apply, effect_holds, effect_query, finalize, recover, rollback, ApplyClock, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, ApplyEventKind,
     ApplyEvents,
 };
-pub use polyspec_orm_schema::dbspec::*;
 #[cfg(feature = "runtime")]
 pub use introspect::*;
+pub use polyspec_orm_schema::dbspec::*;

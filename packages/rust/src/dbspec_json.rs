@@ -11,9 +11,9 @@ use base64::Engine as _;
 use polyspec_orm_schema::dbspec::json::{diagnostic_to_json, document_from_json, document_to_json, position_to_json, type_from_json};
 use serde_json::{json, Value};
 
-use crate::dbspec::{self, Diagnostic, Document};
 #[cfg(any(unix, windows))]
 use crate::dbspec::SetFile;
+use crate::dbspec::{self, Diagnostic, Document};
 use crate::schema::Manifest;
 use crate::{Error, Result};
 

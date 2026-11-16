@@ -100,7 +100,7 @@ fn no_condition_value(what: &str) -> Error {
 
 impl OrmValue {
     /// The value of the cell `cell` of the column `field` (CORE-62): the type of the column decides the kind.
-#[cfg(feature = "runtime")]
+    #[cfg(feature = "runtime")]
     pub fn of_column(field: &Field, cell: Val) -> Result<OrmValue> {
         Ok(match cell {
             Val::Null => OrmValue::Null,
@@ -124,7 +124,7 @@ impl OrmValue {
     }
 
     /// The parameter of a value that is one value of a statement, or `None` for a value that is none.
-#[cfg(feature = "runtime")]
+    #[cfg(feature = "runtime")]
     pub(crate) fn scalar(self) -> std::result::Result<Param, OrmValue> {
         Ok(match self {
             OrmValue::Null => Param::Null,
@@ -138,7 +138,7 @@ impl OrmValue {
     }
 
     /// The name of the kind of a value that a condition does not take.
-#[cfg(feature = "runtime")]
+    #[cfg(feature = "runtime")]
     fn refused_kind(&self) -> &'static str {
         match self {
             OrmValue::Json(_) => "a JSON value",
@@ -149,13 +149,13 @@ impl OrmValue {
     }
 
     /// One value of a list of values.
-#[cfg(feature = "runtime")]
+    #[cfg(feature = "runtime")]
     fn item(self) -> Result<Param> {
         self.scalar().map_err(|refused| no_condition_value(refused.refused_kind()))
     }
 
     /// The condition value of a key whose operator is `op` (CORE-82).
-#[cfg(feature = "runtime")]
+    #[cfg(feature = "runtime")]
     pub(crate) fn into_arg(self, op: &str) -> Result<crate::core::Arg> {
         use crate::args::Value;
         use crate::core::Arg;

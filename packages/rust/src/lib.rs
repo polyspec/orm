@@ -72,15 +72,15 @@ mod test_support;
 pub mod utils;
 pub mod value;
 
-/// The boundary types of `Config` and of the audit values, `OrderedMap`, `KeyedMap`, `Key` and `Failure`, which Rust
-/// code names to build them (CORE-131).
-pub use binding_core;
 #[cfg(feature = "runtime")]
 pub use args::{
     date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
     seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
 };
 pub use array::ArrayValue;
+/// The boundary types of `Config` and of the audit values, `OrderedMap`, `KeyedMap`, `Key` and `Failure`, which Rust
+/// code names to build them (CORE-131).
+pub use binding_core;
 pub use chrono;
 #[cfg(feature = "runtime")]
 pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
@@ -88,8 +88,8 @@ pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, L
 pub use core::Core;
 #[cfg(feature = "runtime")]
 pub use db::{
-    AuditResult, AuditSource, Config, Connect, Db, DbStats, Execute, HookFuture, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION,
-    DEFAULT_BLIND_INDEX_KEY, DEFAULT_PLAN_CACHE_SIZE, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS, DEFAULT_POOL_IDLE_SIZE, DEFAULT_POOL_LIFETIME_MS,
+    AuditResult, AuditSource, Config, Connect, Db, DbStats, Execute, HookFuture, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY,
+    DEFAULT_AES_VERSION, DEFAULT_BLIND_INDEX_KEY, DEFAULT_PLAN_CACHE_SIZE, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS, DEFAULT_POOL_IDLE_SIZE, DEFAULT_POOL_LIFETIME_MS,
     DEFAULT_STATEMENT_CACHE_SIZE, DEFAULT_STATEMENT_TIMEOUT_MS,
 };
 pub use engine::Dialect;

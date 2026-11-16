@@ -65,7 +65,10 @@ pub type AuditMap = binding_core::OrderedMap<crate::OrmValue>;
 fn audit_values(map: &AuditMap) -> Result<AuditValues> {
     map.iter()
         .map(|(column, value)| {
-            let param = value.clone().scalar().map_err(|_refused| Error::new(crate::Kind::CodecEncode, format!("the audit value {column} is no value of a statement")))?;
+            let param = value
+                .clone()
+                .scalar()
+                .map_err(|_refused| Error::new(crate::Kind::CodecEncode, format!("the audit value {column} is no value of a statement")))?;
             Ok((column.to_owned(), param))
         })
         .collect()
