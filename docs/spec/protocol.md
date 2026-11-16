@@ -153,11 +153,14 @@ The step writes the new values, clears the soft delete column and, on a table wi
   `tests/ir/` and `contracts/fixtures/` hold requests of `ir_version` 2.
 - **PRT-93** The `WHERE` of a statement joins its conditions with `AND`: the key list of a relation, the soft-delete
   column of a table with a `soft_delete` setting, the top-level `where` group, the `where` groups of the joins that no
-  `joined` item places, the expected revision, and the deleted-row condition of a restore. A top-level group that
-  holds `or` at its top level is written in parentheses when it is joined to another condition, so that the other
-  conditions hold for every row that the group selects: a read of a soft-deleted table with `a OR b` reads no
-  soft-deleted row, and an update, delete or restore with `a OR b` writes none that its other conditions exclude
-  (T572). A top-level group with no other condition is written without parentheses.
+  `joined` item places, and the expected revision. A top-level group that holds `or` at its top level is written in
+  parentheses when it is joined to another condition, so that the other conditions hold for every row that the group
+  selects: a read of a soft-deleted table with `a OR b` reads no soft-deleted row, and an update or delete with
+  `a OR b` writes none that its soft-delete column or expected revision excludes (T572). A top-level group with no
+  other condition is written without parentheses. The other conditions are already parenthesized: a top-level group
+  with `not` is written `NOT (...)`; the `where` group of a relation query, which follows its key list, and the
+  `where` group of a join are rendered as nested groups; and the `where` of a restore joins with `and` only (PRT-91),
+  so `or` there is `ir_invalid` (T572-1).
 
 ### 1.6 Load
 

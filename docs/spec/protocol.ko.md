@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 95894270755ab7944f6117eee7622aabbd133ed483540808c8a4e9a8a2eb59ec -->
+<!-- source-sha256: 2b4c5a03f55f34d4b475e9e95e7ed9bf760b3135b55bf92becc0533311b43789 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `legacy/packages/go/engine/ir/ir.go`와 `legacy/packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -153,10 +153,13 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
   `legacy/contracts/fixtures/`의 고정 사본을 돈다(CORE-1). `tests/ir/`와 `contracts/fixtures/`는 `ir_version` 2의
   요청을 담는다.
 - **PRT-93** 문장의 `WHERE`는 조건들을 `AND`로 잇는다: relation의 key 목록, `soft_delete` 설정을 가진 table의 soft
-  delete 열, 최상위 `where` group, `joined` 항목이 자리를 정하지 않은 join의 `where` group, 기대 revision, restore의
-  삭제된 행 조건이다. 최상위에 `or`를 가진 최상위 group은 다른 조건과 이어질 때 괄호 안에 쓴다. 그래야 다른 조건이
-  group이 고른 모든 행에 적용된다: soft delete table을 `a OR b`로 읽으면 soft delete된 행을 읽지 않고, `a OR b`인
-  update, delete, restore는 다른 조건이 제외한 행을 쓰지 않는다(T572). 다른 조건이 없는 최상위 group은 괄호 없이 쓴다.
+  delete 열, 최상위 `where` group, `joined` 항목이 자리를 정하지 않은 join의 `where` group, 기대 revision이다. 최상위에
+  `or`를 가진 최상위 group은 다른 조건과 이어질 때 괄호 안에 쓴다. 그래야 다른 조건이 group이 고른 모든 행에 적용된다:
+  soft delete table을 `a OR b`로 읽으면 soft delete된 행을 읽지 않고, `a OR b`인 update와 delete는 soft delete 열이나
+  기대 revision이 제외한 행을 쓰지 않는다(T572). 다른 조건이 없는 최상위 group은 괄호 없이 쓴다. 다른 조건은 이미 괄호
+  안에 있다: `not`인 최상위 group은 `NOT (...)`로 쓰고, key 목록 뒤에 오는 relation query의 `where` group과 join의
+  `where` group은 중첩 group으로 쓰며, restore의 `where`는 `and`로만 잇기 때문에(PRT-91) 거기서 `or`는 `ir_invalid`다
+  (T572-1).
 
 ### 1.6 적재 {#_1-6-load}
 

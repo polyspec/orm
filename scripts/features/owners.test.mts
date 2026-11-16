@@ -110,9 +110,10 @@ caseTest('a shared helper selects its own check and no feature', async () => {
 });
 
 caseTest('a fixture selects the units whose declared data names it', async () => {
-  // The coverage of schema_definition renders audit.dbs from tests/dbspec/schema-definition.json.
+  // The coverage of schema_definition renders audit.dbs from tests/dbspec/schema-definition.json, and the planner compiles
+  // its audited soft-delete table in tests/planner/compile.json (T572-1).
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
-  assert.deepEqual(ids(owners), ['schema_definition', 'constraints_and_relations']);
+  assert.deepEqual(ids(owners), ['schema_definition', 'planner', 'constraints_and_relations']);
   const [first] = owners;
   assert.ok(first);
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by tests/dbspec/schema-definition.json)']);

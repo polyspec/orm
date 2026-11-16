@@ -14069,6 +14069,1841 @@
      }
     }
    ]
+  },
+  {
+   "id": "planner_soft_delete_or_all",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "soft_record",
+      "kind": "all",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 1,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND (`a`.`seq` = ? OR `a`.`seq` > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND (\"a\".\"seq\" = $1 OR \"a\".\"seq\" > $2)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND (\"a\".\"seq\" = ? OR \"a\".\"seq\" > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_or_count",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "soft_record",
+      "kind": "count",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 1,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND (`a`.`seq` = ? OR `a`.`seq` > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND (\"a\".\"seq\" = $1 OR \"a\".\"seq\" > $2)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND (\"a\".\"seq\" = ? OR \"a\".\"seq\" > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_not_or_count",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "soft_record",
+      "kind": "count",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "group": {
+          "not": true,
+          "items": [
+           {
+            "pred": {
+             "column": "seq",
+             "op": "eq",
+             "p": 0
+            }
+           },
+           {
+            "pred": {
+             "column": "seq",
+             "op": "gt",
+             "p": 1,
+             "conn": "or"
+            }
+           }
+          ]
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND NOT (`a`.`seq` = ? OR `a`.`seq` > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND NOT (\"a\".\"seq\" = $1 OR \"a\".\"seq\" > $2)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND NOT (\"a\".\"seq\" = ? OR \"a\".\"seq\" > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_or_update",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "soft_record",
+      "kind": "update",
+      "n_params": 3,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       }
+      ],
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 1
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 2,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE `soft_record` SET `name` = ? WHERE (`soft_record`.`seq` = ? OR `soft_record`.`seq` > ?) AND `soft_record`.`deleted_at` IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"soft_record\" SET \"name\" = $1 WHERE (\"soft_record\".\"seq\" = $2 OR \"soft_record\".\"seq\" > $3) AND \"soft_record\".\"deleted_at\" IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"soft_record\" SET \"name\" = ? WHERE (\"soft_record\".\"seq\" = ? OR \"soft_record\".\"seq\" > ?) AND \"soft_record\".\"deleted_at\" IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_or_update_optimistic",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "soft_record",
+      "kind": "update",
+      "n_params": 4,
+      "set": [
+       {
+        "column": "name",
+        "p": 0
+       }
+      ],
+      "optimistic": {
+       "column": "name",
+       "p": 3
+      },
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 1
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 2,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "param": 3,
+            "type": "varchar"
+           }
+          ],
+          "sql": "UPDATE `soft_record` SET `name` = ? WHERE (`soft_record`.`seq` = ? OR `soft_record`.`seq` > ?) AND `soft_record`.`name` = ? AND `soft_record`.`deleted_at` IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "param": 3,
+            "type": "varchar"
+           }
+          ],
+          "sql": "UPDATE \"soft_record\" SET \"name\" = $1 WHERE (\"soft_record\".\"seq\" = $2 OR \"soft_record\".\"seq\" > $3) AND \"soft_record\".\"name\" = $4 AND \"soft_record\".\"deleted_at\" IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "param": 3,
+            "type": "varchar"
+           }
+          ],
+          "sql": "UPDATE \"soft_record\" SET \"name\" = ? WHERE (\"soft_record\".\"seq\" = ? OR \"soft_record\".\"seq\" > ?) AND \"soft_record\".\"name\" = ? AND \"soft_record\".\"deleted_at\" IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_or_delete",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "soft_record",
+      "kind": "delete",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 1,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE `soft_record` SET `deleted_at` = CURRENT_TIMESTAMP(6) WHERE (`soft_record`.`seq` = ? OR `soft_record`.`seq` > ?) AND `soft_record`.`deleted_at` IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "now",
+            "precision": 6,
+            "type": "datetime"
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = $1 WHERE (\"soft_record\".\"seq\" = $2 OR \"soft_record\".\"seq\" > $3) AND \"soft_record\".\"deleted_at\" IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "now",
+            "precision": 6,
+            "type": "datetime"
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = ? WHERE (\"soft_record\".\"seq\" = ? OR \"soft_record\".\"seq\" > ?) AND \"soft_record\".\"deleted_at\" IS NULL",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_or_restore",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "soft_record",
+      "kind": "restore",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 1,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "error": "ir_invalid",
+       "message": "ir_invalid: restore of soft_record joins the conditions of its where with and"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_or_relation",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "user",
+      "kind": "all",
+      "n_params": 2,
+      "relations": [
+       {
+        "keys": [
+         {
+          "left": "seq",
+          "right": "seq"
+         }
+        ],
+        "kind": "many",
+        "query": {
+         "entity": "soft_record",
+         "where": {
+          "items": [
+           {
+            "pred": {
+             "column": "seq",
+             "op": "eq",
+             "p": 0
+            }
+           },
+           {
+            "pred": {
+             "column": "seq",
+             "op": "gt",
+             "p": 1,
+             "conn": "or"
+            }
+           }
+          ]
+         }
+        },
+        "rel": "records"
+       }
+      ],
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a`",
+          "tables": [
+           "user"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`seq` IN (?) AND `a`.`deleted_at` IS NULL AND (`a`.`seq` = ? OR `a`.`seq` > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\"",
+          "tables": [
+           "user"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"seq\" IN ($1) AND \"a\".\"deleted_at\" IS NULL AND (\"a\".\"seq\" = $2 OR \"a\".\"seq\" > $3)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\"",
+          "tables": [
+           "user"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"seq\" IN (?) AND \"a\".\"deleted_at\" IS NULL AND (\"a\".\"seq\" = ? OR \"a\".\"seq\" > ?)",
+          "tables": [
+           "soft_record"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_soft_delete_or_join_where",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "entity": "user",
+      "kind": "all",
+      "n_params": 2,
+      "columns": {
+       "add": [
+        "name"
+       ],
+       "mode": "none"
+      },
+      "joins": [
+       {
+        "kind": "inner",
+        "left": "seq",
+        "query": {
+         "entity": "soft_record",
+         "where": {
+          "items": [
+           {
+            "pred": {
+             "column": "seq",
+             "op": "eq",
+             "p": 0
+            }
+           },
+           {
+            "pred": {
+             "column": "seq",
+             "op": "gt",
+             "p": 1,
+             "conn": "or"
+            }
+           }
+          ]
+         }
+        },
+        "rel": "record",
+        "right": "seq"
+       }
+      ],
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `record`.`seq` AS `record__seq`, `record`.`name` AS `record__name`, `record`.`deleted_at` AS `record__deleted_at` FROM `user` AS `a` INNER JOIN `soft_record` AS `record` ON `a`.`seq` = `record`.`seq` AND `record`.`deleted_at` IS NULL WHERE (`record`.`seq` = ? OR `record`.`seq` > ?)",
+          "tables": [
+           "soft_record",
+           "user"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" INNER JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL WHERE (\"record\".\"seq\" = $1 OR \"record\".\"seq\" > $2)",
+          "tables": [
+           "soft_record",
+           "user"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" INNER JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL WHERE (\"record\".\"seq\" = ? OR \"record\".\"seq\" > ?)",
+          "tables": [
+           "soft_record",
+           "user"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_audited_soft_delete_or_update",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/audit.dbs",
+     "input": {
+      "entity": "item",
+      "kind": "update",
+      "n_params": 3,
+      "set": [
+       {
+        "column": "title",
+        "p": 0
+       }
+      ],
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 1
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 2,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "audit",
+            "name": "audit",
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE `item` SET `title` = ?, `audit_seq` = ? WHERE (`item`.`seq` = ? OR `item`.`seq` > ?) AND `item`.`deleted_at` IS NULL",
+          "tables": [
+           "item"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "audit",
+            "name": "audit",
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"item\" SET \"title\" = $1, \"audit_seq\" = $2 WHERE (\"item\".\"seq\" = $3 OR \"item\".\"seq\" > $4) AND \"item\".\"deleted_at\" IS NULL",
+          "tables": [
+           "item"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "not_null": true,
+            "param": 0,
+            "type": "varchar"
+           },
+           {
+            "from": "audit",
+            "name": "audit",
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"item\" SET \"title\" = ?, \"audit_seq\" = ? WHERE (\"item\".\"seq\" = ? OR \"item\".\"seq\" > ?) AND \"item\".\"deleted_at\" IS NULL",
+          "tables": [
+           "item"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_audited_soft_delete_or_delete",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16",
+    "PRT-93"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/audit.dbs",
+     "input": {
+      "entity": "item",
+      "kind": "delete",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "seq",
+          "op": "eq",
+          "p": 0
+         }
+        },
+        {
+         "pred": {
+          "column": "seq",
+          "op": "gt",
+          "p": 1,
+          "conn": "or"
+         }
+        }
+       ]
+      },
+      "ir_version": 2
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "audit",
+            "name": "audit",
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE `item` SET `deleted_at` = CURRENT_TIMESTAMP(6), `audit_seq` = ? WHERE (`item`.`seq` = ? OR `item`.`seq` > ?) AND `item`.`deleted_at` IS NULL",
+          "tables": [
+           "item"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "now",
+            "precision": 6,
+            "type": "datetime"
+           },
+           {
+            "from": "audit",
+            "name": "audit",
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"item\" SET \"deleted_at\" = $1, \"audit_seq\" = $2 WHERE (\"item\".\"seq\" = $3 OR \"item\".\"seq\" > $4) AND \"item\".\"deleted_at\" IS NULL",
+          "tables": [
+           "item"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "now",
+            "precision": 6,
+            "type": "datetime"
+           },
+           {
+            "from": "audit",
+            "name": "audit",
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "UPDATE \"item\" SET \"deleted_at\" = ?, \"audit_seq\" = ? WHERE (\"item\".\"seq\" = ? OR \"item\".\"seq\" > ?) AND \"item\".\"deleted_at\" IS NULL",
+          "tables": [
+           "item"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
   }
  ]
 }

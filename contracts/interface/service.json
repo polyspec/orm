@@ -577,6 +577,210 @@
       ]
     },
     "result": 2
+  },
+  {
+    "id": "a_condition_joined_by_or_reads_no_soft_deleted_row_mysql",
+    "rule": "PRT-93",
+    "service": {
+      "id": "mysql",
+      "setup": {
+        "service": "ORM_TEST_MYSQL_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": 2
+  },
+  {
+    "id": "a_condition_joined_by_or_reads_no_soft_deleted_row_postgres",
+    "rule": "PRT-93",
+    "service": {
+      "id": "postgres",
+      "setup": {
+        "service": "ORM_TEST_POSTGRES_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": 2
   }
   ],
   "query.get_by.service": [
@@ -1063,7 +1267,225 @@
         "kind": "connection_lost",
         "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
-    }
+    },
+  {
+    "id": "a_condition_joined_by_or_counts_no_soft_deleted_row_mysql",
+    "rule": "PRT-93",
+    "service": {
+      "id": "mysql",
+      "setup": {
+        "service": "ORM_TEST_MYSQL_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "chain": "Id",
+    "values": [
+      {
+        "kind": "int",
+        "value": 2
+      }
+    ],
+    "result": 0
+  },
+  {
+    "id": "a_condition_joined_by_or_counts_no_soft_deleted_row_postgres",
+    "rule": "PRT-93",
+    "service": {
+      "id": "postgres",
+      "setup": {
+        "service": "ORM_TEST_POSTGRES_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "chain": "Id",
+    "values": [
+      {
+        "kind": "int",
+        "value": 2
+      }
+    ],
+    "result": 0
+  }
   ],
   "query.create.service": [
     {
@@ -1641,7 +2063,833 @@
         "kind": "connection_lost",
         "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
-    }
+    },
+  {
+    "id": "a_condition_joined_by_or_updates_no_soft_deleted_row_mysql",
+    "rule": "PRT-93",
+    "service": {
+      "id": "mysql",
+      "setup": {
+        "service": "ORM_TEST_MYSQL_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "id",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "qty",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": null,
+    "with": {
+      "check": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+            }
+          },
+          "entity": "service_or_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "after": [
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndQty",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "int",
+              "value": 1
+            }
+          ]
+        },
+        "result": 1
+      },
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndDeletedAt",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "text",
+              "value": "2026-01-01 00:00:00"
+            }
+          ]
+        },
+        "result": 1
+      }
+    ]
+  },
+  {
+    "id": "a_revision_and_a_condition_joined_by_or_update_no_soft_deleted_row_mysql",
+    "rule": "PRT-93",
+    "service": {
+      "id": "mysql",
+      "setup": {
+        "service": "ORM_TEST_MYSQL_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "id",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "qty",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.expect_revision",
+          "args": {
+            "column": "rev",
+            "revision": 1
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "raises": {
+      "kind": "revision_changed",
+      "category": "state",
+      "message": "revision_changed: the row's rev is not 1 or the row does not meet the conditions"
+    },
+    "with": {
+      "check": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+            }
+          },
+          "entity": "service_or_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "after": [
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndQty",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "int",
+              "value": 1
+            }
+          ]
+        },
+        "result": 1
+      },
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndDeletedAt",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "text",
+              "value": "2026-01-01 00:00:00"
+            }
+          ]
+        },
+        "result": 1
+      }
+    ]
+  },
+  {
+    "id": "a_condition_joined_by_or_updates_no_soft_deleted_row_postgres",
+    "rule": "PRT-93",
+    "service": {
+      "id": "postgres",
+      "setup": {
+        "service": "ORM_TEST_POSTGRES_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "id",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "qty",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": null,
+    "with": {
+      "check": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+            }
+          },
+          "entity": "service_or_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "after": [
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndQty",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "int",
+              "value": 1
+            }
+          ]
+        },
+        "result": 1
+      },
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndDeletedAt",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "text",
+              "value": "2026-01-01 00:00:00"
+            }
+          ]
+        },
+        "result": 1
+      }
+    ]
+  },
+  {
+    "id": "a_revision_and_a_condition_joined_by_or_update_no_soft_deleted_row_postgres",
+    "rule": "PRT-93",
+    "service": {
+      "id": "postgres",
+      "setup": {
+        "service": "ORM_TEST_POSTGRES_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "id",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "qty",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.expect_revision",
+          "args": {
+            "column": "rev",
+            "revision": 1
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "raises": {
+      "kind": "revision_changed",
+      "category": "state",
+      "message": "revision_changed: the row's rev is not 1 or the row does not meet the conditions"
+    },
+    "with": {
+      "check": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+            }
+          },
+          "entity": "service_or_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "after": [
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndQty",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "int",
+              "value": 1
+            }
+          ]
+        },
+        "result": 1
+      },
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndDeletedAt",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "text",
+              "value": "2026-01-01 00:00:00"
+            }
+          ]
+        },
+        "result": 1
+      }
+    ]
+  }
   ],
   "query.delete.service": [
     {
@@ -1905,7 +3153,389 @@
         "kind": "connection_lost",
         "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
-    }
+    },
+  {
+    "id": "a_condition_joined_by_or_deletes_no_soft_deleted_row_mysql",
+    "rule": "PRT-93",
+    "service": {
+      "id": "mysql",
+      "setup": {
+        "service": "ORM_TEST_MYSQL_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "id",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": null,
+    "with": {
+      "check": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+            }
+          },
+          "entity": "service_or_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "after": [
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndQty",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "int",
+              "value": 1
+            }
+          ]
+        },
+        "result": 1
+      },
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndDeletedAt",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "text",
+              "value": "2026-01-01 00:00:00"
+            }
+          ]
+        },
+        "result": 1
+      }
+    ]
+  },
+  {
+    "id": "a_condition_joined_by_or_deletes_no_soft_deleted_row_postgres",
+    "rule": "PRT-93",
+    "service": {
+      "id": "postgres",
+      "setup": {
+        "service": "ORM_TEST_POSTGRES_DSN",
+        "table": "service_or_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, qty INT NOT NULL, rev BIGINT NOT NULL, deleted_at TIMESTAMP(6) NULL",
+        "rows": [
+          [
+            1,
+            1,
+            1,
+            null
+          ],
+          [
+            2,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ],
+          [
+            3,
+            1,
+            1,
+            null
+          ],
+          [
+            4,
+            1,
+            1,
+            "2026-01-01 00:00:00"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+          }
+        },
+        "entity": "service_or_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:3fe373028596b3c0e35f3483dc111b43810377a5fb6d37dc10a38e16abc23b9d"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.set",
+          "args": {
+            "column": "id",
+            "value": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "Id",
+            "values": [
+              {
+                "kind": "int",
+                "value": 100
+              }
+            ]
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": null,
+    "with": {
+      "check": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+            }
+          },
+          "entity": "service_or_row"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "service": "address"
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 service_or\n\ntable service_or_row {\n  id i64\n  qty i32\n  rev i64\n  deleted_at datetime(6) null\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:70e1cc2d99ec140d3748115d05be8826b410a7382b22a09677d5afa9b44d0e20"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "after": [
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndQty",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "int",
+              "value": 1
+            }
+          ]
+        },
+        "result": 1
+      },
+      {
+        "on": "check",
+        "call": "query.get_count_by",
+        "args": {
+          "chain": "IdAndDeletedAt",
+          "values": [
+            {
+              "kind": "int",
+              "value": 2
+            },
+            {
+              "kind": "text",
+              "value": "2026-01-01 00:00:00"
+            }
+          ]
+        },
+        "result": 1
+      }
+    ]
+  }
   ],
   "query.restore.service": [
     {
