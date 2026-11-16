@@ -697,6 +697,13 @@ impl<'m> Validator<'m> {
 
     fn pred(&self, at: At<'_, 'm>, p: &ir::Pred) -> Result<()> {
         let ent = at.node.ent.ok_or_else(|| err(crate::Kind::EntityUnknown, at.node.name.clone()))?;
+        if p.op == "none" {
+            // The predicate that no row satisfies names no column and holds no value (PRT-92).
+            if !p.column.is_empty() || p.p.is_some() || !p.ps.is_empty() || p.r#ref.is_some() || p.r#fn.is_some() || p.value.is_some() || !p.cols.is_empty() || p.sub.is_some() {
+                return Err(err(crate::Kind::IrInvalid, "none takes no column and no value"));
+            }
+            return Ok(());
+        }
         self.params(&p.ps)?;
         if let Some(i) = p.p {
             self.params(&[i])?;

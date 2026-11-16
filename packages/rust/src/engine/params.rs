@@ -113,6 +113,9 @@ impl<'m> ParamUses<'m> {
         if let Some(sub) = &p.sub {
             self.query(&sub.query, None)?;
         }
+        if p.op == "none" {
+            return Ok(());
+        }
         if p.op == "tuple_in" || p.op == "tuple_not_in" {
             if !p.cols.is_empty() {
                 for (k, &i) in p.ps.iter().enumerate() {

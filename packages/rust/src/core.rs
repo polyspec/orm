@@ -451,6 +451,11 @@ impl Core {
         }
     }
 
+    /// Adds the predicate `none`, which no row satisfies (PRT-92).
+    pub(crate) fn add_none(&mut self, conn: &'static str) {
+        self.add(conn, CondKind::Pred(PredSpec { column: String::new(), op: "none", value: PredValue::None }));
+    }
+
     /// Adds the condition that the column equals value. restore builds the key condition the same way as the eq condition of read.
     pub(crate) fn add_eq(&mut self, conn: &'static str, column: &str, value: Param) {
         self.add(conn, CondKind::Pred(PredSpec { column: column.to_owned(), op: "eq", value: PredValue::One(value) }));

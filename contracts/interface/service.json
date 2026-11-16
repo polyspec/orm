@@ -281,7 +281,303 @@
         "kind": "connection_lost",
         "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
-    }
+    },
+  {
+    "id": "where_none_selects_no_row_mysql",
+    "rule": "CORE-137",
+    "service": {
+      "id": "mysql",
+      "setup": {
+        "service": "ORM_TEST_MYSQL_DSN",
+        "table": "service_none_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+        "rows": [
+          [
+            1,
+            "a"
+          ],
+          [
+            2,
+            "b"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+          }
+        },
+        "entity": "service_none_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where_none",
+          "args": {
+            "connector": ""
+          }
+        }
+      ]
+    },
+    "result": 0
+  },
+  {
+    "id": "a_condition_joined_by_or_to_where_none_selects_its_rows_mysql",
+    "rule": "CORE-137",
+    "service": {
+      "id": "mysql",
+      "setup": {
+        "service": "ORM_TEST_MYSQL_DSN",
+        "table": "service_none_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+        "rows": [
+          [
+            1,
+            "a"
+          ],
+          [
+            2,
+            "b"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+          }
+        },
+        "entity": "service_none_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where_none",
+          "args": {
+            "connector": ""
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": 2
+  },
+  {
+    "id": "where_none_selects_no_row_postgres",
+    "rule": "CORE-137",
+    "service": {
+      "id": "postgres",
+      "setup": {
+        "service": "ORM_TEST_POSTGRES_DSN",
+        "table": "service_none_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+        "rows": [
+          [
+            1,
+            "a"
+          ],
+          [
+            2,
+            "b"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+          }
+        },
+        "entity": "service_none_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where_none",
+          "args": {
+            "connector": ""
+          }
+        }
+      ]
+    },
+    "result": 0
+  },
+  {
+    "id": "a_condition_joined_by_or_to_where_none_selects_its_rows_postgres",
+    "rule": "CORE-137",
+    "service": {
+      "id": "postgres",
+      "setup": {
+        "service": "ORM_TEST_POSTGRES_DSN",
+        "table": "service_none_row",
+        "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
+        "rows": [
+          [
+            1,
+            "a"
+          ],
+          [
+            2,
+            "b"
+          ]
+        ]
+      }
+    },
+    "receiver": {
+      "new": "query.new",
+      "args": {
+        "schema": {
+          "new": "schema.load",
+          "args": {
+            "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+            "external_text": "",
+            "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+          }
+        },
+        "entity": "service_none_row"
+      },
+      "then": [
+        {
+          "call": "query.connect",
+          "args": {
+            "connection": {
+              "new": "db.connect_schema",
+              "args": {
+                "dsn": {
+                  "service": "address"
+                },
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 service_none\n\ntable service_none_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:7ea5578825c29ab13b09bcdf92f20b87a8afa7b936ed46460d39f4ab912bb1bf"
+                  }
+                },
+                "pool_size": 1,
+                "cfg": {}
+              }
+            }
+          }
+        },
+        {
+          "call": "query.where_none",
+          "args": {
+            "connector": ""
+          }
+        },
+        {
+          "call": "query.where",
+          "args": {
+            "chain": "OrGtId",
+            "values": [
+              {
+                "kind": "int",
+                "value": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "result": 2
+  }
   ],
   "query.get_by.service": [
     {

@@ -626,6 +626,10 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.where_chain(&text(args, "chain", member), &orm_values(args, "values", member)?);
             Returned::Value(Value::Null)
         }
+        ("query.where_none", Some(Instance::Query(query))) => {
+            query.where_none(&text(args, "connector", member));
+            Returned::Value(Value::Null)
+        }
         ("query.value", Some(Instance::Query(query))) => Returned::Value(case_value(&query.value(&text(args, "column", member))?, member)),
         ("query.get_by", Some(Instance::Query(query))) => match query.get_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await? {
             Some(row) => Returned::Instance(Instance::Query(Box::new(row))),

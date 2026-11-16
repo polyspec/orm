@@ -1010,6 +1010,8 @@ impl<'m> Planner<'m> {
     fn render_pred(&self, b: &mut Builder, root: &Scope<'_>, s: &Scope<'_>, pr: &ir::Pred) -> Result<String> {
         let p = || pr.p.ok_or_else(|| err(crate::Kind::IrInvalid, format!("{} {}.{} needs a value (p)", pr.op, s.ent.name, pr.column)));
         match pr.op.as_str() {
+            // The predicate that no row satisfies, the same text on every dialect (PRT-92).
+            "none" => return Ok("1 = 0".to_owned()),
             "tuple_in" | "tuple_not_in" => {
                 let cols = self.qualified(s, &pr.cols);
                 let mut rows = Vec::new();

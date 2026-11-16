@@ -61,6 +61,19 @@ impl Query {
         self.chain(connector, name, values.to_vec());
     }
 
+    /// Adds a condition that no row satisfies, the predicate `none` of the request (CORE-137, PRT-92). `connector` is
+    /// `""`, `And` or `Or`, the connector words of CORE-82: `""` and `And` join it with `and` and `Or` with `or`. Any
+    /// other text fails the query with `config` at the next terminal.
+    pub fn where_none(&mut self, connector: &str) {
+        let conn = match connector {
+            "" => "",
+            "And" => "and",
+            "Or" => "or",
+            other => return self.core.fail(format!("where_none takes \"\", \"And\" or \"Or\", not {other}")),
+        };
+        self.core.add_none(conn);
+    }
+
     /// Adds the condition that the column of the chain name `chain`, one key with no operator or with `Ne`, is in, or
     /// with `Ne` is not in, the rows of the subquery `query`, which reads one column that `add_column` added (CORE-90).
     /// A name that starts with `And` or `Or` joins the condition to the conditions before it with that connector. A

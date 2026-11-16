@@ -3309,6 +3309,31 @@
           }
         },
         {
+          "id": "query.where_none",
+          "name": [
+            "where",
+            "none"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "connector"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::where_none",
+            "receiver": "&mut self"
+          }
+        },
+        {
           "id": "query.order_by",
           "name": [
             "order",
@@ -5134,6 +5159,11 @@
       "member": "query.where",
       "file": "contracts/interface/core.json",
       "group": "query.where"
+    },
+    {
+      "member": "query.where_none",
+      "file": "contracts/interface/core.json",
+      "group": "query.where_none"
     },
     {
       "member": "query.order_by",
