@@ -15,7 +15,7 @@ import { registerDatabaseCases } from './database-case-tests.mjs';
 import { schemaOf } from './schema_of.mjs';
 import { loadDatabaseCaseFixture } from './database-case-fixture.mjs';
 
-const { text: refusalText, model: RefusedRow, deadline: CASE_DEADLINE_MS, state, check, raised } =
+const { text: refusalText, model: RefusedRow, state, check, raised } =
   await loadDatabaseCaseFixture('refusal.dbs', 'refused_row');
 const row = (db, amount) => { const m = new RefusedRow().connect(db); m[CORE].setValue('amount', amount); return m; };
 
@@ -56,7 +56,7 @@ async function checkRefused(dsn) {
 
 const cases = { trigger_refused: triggerRefused, check_refused: checkRefused };
 registerDatabaseCases({
-  feature: 'driver-error', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
+  feature: 'driver-error', cases, withDatabase: withCaseDatabase,
   getFailures: () => state.failures, setCurrent: value => { state.current = value; },
   runCase: (run, _name, _driver, database) => run(database.dsn),
 });

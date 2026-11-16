@@ -11,7 +11,6 @@ caseTest('registers selected database cases in dialect order and runs their fixt
     cases: { first: 'first-run', second: 'second-run' },
     args: ['second'],
     environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost', ORM_TEST_POSTGRES_DSN: 'postgres://user:pass@localhost' },
-    deadline: 5000,
     getFailures: () => failures,
     setCurrent: current => events.push(`current:${current}`),
     withDatabase: async (driver, step, body) => {
@@ -20,13 +19,13 @@ caseTest('registers selected database cases in dialect order and runs their fixt
       await body({ dsn: `${driver}:dsn` });
     },
     runCase: async (run, name, driver, database) => events.push(`${run}:${name}:${driver}:${database.dsn}`),
-    register: (name, deadline, body) => registrations.push({ name, deadline, body }),
+    register: (name, body) => registrations.push({ name, body }),
   });
 
-  assert.deepEqual(registrations.map(({ name, deadline }) => [name, deadline]), [
-    ['sample/second/sqlite', 5000],
-    ['sample/second/mysql', 5000],
-    ['sample/second/postgres', 5000],
+  assert.deepEqual(registrations.map(({ name }) => name), [
+    'sample/second/sqlite',
+    'sample/second/mysql',
+    'sample/second/postgres',
   ]);
   for (const registration of registrations) await registration.body({ step: message => events.push(`step:${message}`) });
   assert.deepEqual(events, [
@@ -38,14 +37,14 @@ caseTest('registers selected database cases in dialect order and runs their fixt
 
 caseTest('rejects selected database cases that do not exist', () => {
   assert.throws(() => registerDatabaseCases({
-    feature: 'sample', cases: {}, args: ['missing'], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost', ORM_TEST_POSTGRES_DSN: 'postgres://user:pass@localhost' }, deadline: 5000,
+    feature: 'sample', cases: {}, args: ['missing'], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost', ORM_TEST_POSTGRES_DSN: 'postgres://user:pass@localhost' },
     withDatabase: async () => {}, getFailures: () => 0, setCurrent: () => {}, runCase: () => {}, register: () => {},
   }), { message: 'unknown case missing' });
 });
 
 caseTest('names a missing database DSN and the target that provides it', () => {
   assert.throws(() => registerDatabaseCases({
-    feature: 'sample', cases: {}, args: [], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost' }, deadline: 5000,
+    feature: 'sample', cases: {}, args: [], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost' },
     withDatabase: async () => {}, getFailures: () => 0, setCurrent: () => {}, runCase: () => {}, register: () => {},
   }), { message: 'ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers' });
 });
@@ -54,9 +53,9 @@ caseTest('fails a database case when one of its assertions fails', async () => {
   let failures = 0;
   let run;
   registerDatabaseCases({
-    feature: 'sample', cases: { first: () => {} }, args: ['first'], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost', ORM_TEST_POSTGRES_DSN: 'postgres://user:pass@localhost' }, deadline: 5000,
+    feature: 'sample', cases: { first: () => {} }, args: ['first'], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost', ORM_TEST_POSTGRES_DSN: 'postgres://user:pass@localhost' },
     getFailures: () => failures, setCurrent: () => {}, withDatabase: async (_driver, _step, body) => body({}),
-    runCase: () => { failures++; }, register: (_name, _deadline, body) => { run = body; },
+    runCase: () => { failures++; }, register: (_name, body) => { run = body; },
   });
   await assert.rejects(run({ step: () => {} }), { message: '1 check(s) failed; each FAIL line above names one' });
 });

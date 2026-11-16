@@ -6,8 +6,6 @@ import { registerDatabaseCases } from './database-case-tests.mjs';
 import { createFailureCheck } from './check-state.mjs';
 import { runStatementRunnerRefusals } from './statement-runner-run.mjs';
 
-// CASE_DEADLINE_MS is the deadline of one case: it connects, runs a statement outside and inside a transaction, and disconnects.
-const CASE_DEADLINE_MS = 60_000;
 let failures = 0;
 let current = '';
 const check = createFailureCheck(() => current, () => { failures++; });
@@ -26,7 +24,7 @@ const cases = {
   statement_runner_refusals: statementRunnerRefusals,
 };
 registerDatabaseCases({
-  feature: 'statement-runner', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
+  feature: 'statement-runner', cases, withDatabase: withCaseDatabase,
   getFailures: () => failures,
   setCurrent: /** @type {(value: string) => void} */ (value => { current = value; }),
   runCase: /** @type {(run: (driver: string, dsn: string) => Promise<void>, _name: string, driver: string, database: { dsn: string }) => Promise<void>} */ ((run, _name, driver, database) => run(driver, database.dsn)),
