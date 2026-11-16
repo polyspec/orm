@@ -30,7 +30,7 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors, tools } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, unlinkedCargoErrors, unlinkedCargoSourceErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors, tools } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -1474,6 +1474,26 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
     unit('x', '"${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a'),
   ]), [build('node tests/run-long.mts b -- cargo build --locked'),
     'x runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.mts): "${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a']);
+});
+
+// The link case (T531): every cargo starts through the cargo link of kit, and a rule that reads a cargo call reads one through it.
+caseTest('every cargo starts through the cargo link of kit, and the rules of cargo read a call through it', () => {
+  const unit = (name: string, command: string) => ({ name, commands: [command], dialect: 'sh' as const });
+  const own = (segment: string) => `x starts cargo itself; start it through the cargo link, node scripts/cargo-link.mts <dir> <cargo arguments> ($(CARGO_LINK) in the Makefile): ${segment}`;
+  assert.deepEqual(unlinkedCargoErrors([
+    unit('x', 'cargo build --locked'),
+    unit('x', 'env A=1 cargo +nightly fmt --check'),
+    unit('x', 'node scripts/cargo-link.mts . build --locked'),
+    unit('x', 'node tests/cargo-test.mts a -- cargo test --locked'),
+    unit('x', 'PATH="$HOME/.cargo/bin:$PATH" node scripts/cargo-link.mts . test --no-run'),
+  ]), [own('cargo build --locked'), own('env A=1 cargo +nightly fmt --check')]);
+  assert.deepEqual(unlinkedCargoSourceErrors({
+    'scripts/a.mts': "spawn('cargo', ['build']);\nconst b = ['--', 'cargo', 'check'];\nif (word === 'cargo') {}\nconst c = { format: 'cargo' };\nconst d = ['tests/cargo-test.mts', 'x', '--', 'cargo', 'test'];\n// spawn('cargo')\n",
+    'scripts/cargo-link.mts': "spawn('cargo', []);\n",
+  }), ["scripts/a.mts:1 starts cargo by its name; start it with cargoLink of scripts/cargo-link.mts: spawn('cargo', ['build']);",
+    "scripts/a.mts:2 starts cargo by its name; start it with cargoLink of scripts/cargo-link.mts: const b = ['--', 'cargo', 'check'];"]);
+  // The lease rule reads a build through the link as a build.
+  assert.equal(unleasedCargoErrors([unit('x', 'node tests/run-long.mts b -- node scripts/cargo-link.mts . build --locked')]).length, 1);
 });
 
 // The TypeScript reading case checks the repository's Makefile, a minimal Makefile, and a file.

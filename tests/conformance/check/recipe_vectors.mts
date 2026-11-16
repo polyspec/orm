@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseJsonValue, readJsonFile, type Json } from '../../../scripts/json/schema.mts';
+import { cargoLink } from '../../../scripts/cargo-link.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 const RECIPE = 'contracts/fixtures/conformance_verification/conformance_verification.json';
@@ -290,7 +291,7 @@ export function runnerCommand(language: string, dsn: string, names: string[], en
     'php-extension': () => ['php', ['-d', `extension=${env.POLYSPEC_ORM_EXTENSION ?? ''}`, 'legacy/packages/php/testing/conformance/runner.php', ...flags]],
     typescript: () => ['node', ['legacy/packages/ts/testing/conformance/runner_typescript.mts', ...flags]],
     python: () => [env.ORM_PYTHON ?? '', ['legacy/packages/python/testing/conformance/runner_python.py', '--models', env.ORM_PYTHON_MODELS ?? '', ...flags]],
-    rust: () => [env.LEASE ?? '', ['run', env.CARGO_LEASES ?? '', 'exclusive', '--wait', '--', 'cargo', 'run', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--bin', 'conformance', '--', ...flags]],
+    rust: () => [env.LEASE ?? '', ['run', env.CARGO_LEASES ?? '', 'exclusive', '--wait', '--', ...cargoLink(), 'run', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--bin', 'conformance', '--', ...flags]],
   };
   const command = commands[language];
   if (command === undefined) throw new Error(`unsupported language ${JSON.stringify(language)}`);

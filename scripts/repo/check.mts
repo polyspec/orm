@@ -14,7 +14,7 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, unlinkedCargoErrors, unlinkedCargoSourceErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { nativeTestErrors } from './native-tests.mts';
 import { caseRunnerTests, readTree as readRecipeTree } from '../features/recipe-runners.mts';
@@ -146,6 +146,9 @@ failures.push(...goRunErrors([...expandedRecipes, ...featureUnits, ...allPackage
   ...Object.entries(workflows).flatMap(([path, workflow]) => workflowSteps(workflow).map(step => ({ name: `${path} step "${step.name}"`, commands: [step.run], dialect: 'workflow' as const })))]));
 // Commands outside the Makefile also build only under a lease in the shared Rust target directory, and do not run the program there.
 failures.push(...unleasedCargoErrors([...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
+// Every cargo starts through the cargo link of kit (scripts/cargo-link.mts), so a linked checkout builds the crates of .links (T531).
+failures.push(...unlinkedCargoErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
+failures.push(...unlinkedCargoSourceErrors(Object.fromEntries(tracked.filter(path => /\.m?[jt]s$/.test(path) && !/\.test\.m?[jt]s$/.test(path) && !path.startsWith('node_modules/')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // The rules of Go source (a Go test starts its case, cargo under its lease, no os.Exit after a defer, no runtime.Caller, no
 // failure on a measured time) are the analyzers of tests/analyzers, which make go-vet-check/orm runs with go vet.
 // A failure message for a missing run condition states the cause and the way to fix it together.

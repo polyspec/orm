@@ -367,7 +367,9 @@ const rustPrograms = (tree: Tree, crates: ReturnType<typeof rustCrates>, scope: 
 });
 
 const checkRust = (tree: Tree, words: string[], cwd: string, report: Report) => {
-  const start = words.findIndex((word, index) => word === 'cargo' && ['test', '+'].some(() => words.slice(index + 1, index + 3).includes('test')));
+  // `cargo-link.mts <dir>` starts cargo through the link (scripts/cargo-link.mts), and its subcommand follows the directory.
+  const start = words.findIndex((word, index) => word === 'cargo' && words.slice(index + 1, index + 3).includes('test')
+    || /(?:^|\/)cargo-link\.mts$/.test(word) && words.slice(index + 2, index + 4).includes('test'));
   if (start < 0) return;
   const args = words.slice(words.indexOf('test', start) + 1);
   const crates = rustCrates(tree);

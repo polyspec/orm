@@ -332,7 +332,7 @@ build-php: ## A PHP library has no build step; offline
 build-python: ## Build the Python package with uv build; offline
 	$(RUN_LONG) python-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots legacy/packages/python -- $(UV) build
 build-rust: lease-tool ## Build the Rust workspace with cargo build; offline
-	$(RUN_LONG) rust-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/rust -- $(CARGO_LEASED) cargo build --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS)
+	$(RUN_LONG) rust-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) build --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS)
 build-ts: ## Build the TypeScript package with tsc; offline
 	$(RUN_LONG) typescript-build/runtime -- $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) build --roots legacy/packages/ts -- node_modules/.bin/tsc -p tsconfig.build.json
 # The unit tests of a runtime with the name filter CASES=<pattern>, with the runner arguments that kit 0.0.98 passed (kit K1094,
@@ -387,7 +387,7 @@ BINDING_ENV := PHP=$(KIT_TOOLS)/bin/php PHP_CONFIG=$(KIT_TOOLS)/bin/php-config
 # Each build of a binding crate runs under RUN_LONG and the lease of the shared target directory, and a program that a
 # recipe runs is the copy in RUN_TARGET of its run (CARGO_COPY); the tests of the binding crates run through CARGO_TEST.
 lint-bindings: bindings lease-tool
-	$(RUN_LONG) rust-clippy/bindings -- $(CARGO_LEASED) env $(BINDING_ENV) cargo clippy --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --all-targets --features panic-test -- -D warnings
+	$(RUN_LONG) rust-clippy/bindings -- $(CARGO_LEASED) env $(BINDING_ENV) $(CARGO_LINK) clippy --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --all-targets --features panic-test -- -D warnings
 test-bindings: bindings lease-tool
 	$(BINDING_ENV) $(CARGO_TEST) test-bindings -- cargo test --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --features panic-test
 
@@ -406,9 +406,9 @@ NODE_PLATFORM_DIR := $(CURDIR)/var/node-platform
 node-package: bindings lease-tool
 	@test -n "$(WASM_BINDGEN)" || { echo "node-package: set WASM_BINDGEN to the wasm-bindgen CLI of release $(WASM_BINDGEN_RELEASE)"; exit 1; }
 	test "$$($(WASM_BINDGEN) --version)" = "wasm-bindgen $(WASM_BINDGEN_RELEASE)"
-	$(RUN_LONG) rust-build/orm-wasm -- $(CARGO_COPY) wasm32-unknown-unknown/debug/polyspec_orm_wasm.wasm -- cargo build --locked -p polyspec-orm-wasm --target wasm32-unknown-unknown --features panic-test
+	$(RUN_LONG) rust-build/orm-wasm -- $(CARGO_COPY) wasm32-unknown-unknown/debug/polyspec_orm_wasm.wasm -- $(CARGO_LINK) build --locked -p polyspec-orm-wasm --target wasm32-unknown-unknown --features panic-test
 	$(WASM_BINDGEN) --target web --out-dir packages/ts/wasm/generated --out-name orm_wasm $(RUN_TARGET)/wasm32-unknown-unknown/debug/polyspec_orm_wasm.wasm
-	$(RUN_LONG) rust-build/orm-node -- $(CARGO_COPY) debug/libpolyspec_orm_node.$(CDYLIB) -- cargo build --locked -p polyspec-orm-node --features panic-test
+	$(RUN_LONG) rust-build/orm-node -- $(CARGO_COPY) debug/libpolyspec_orm_node.$(CDYLIB) -- $(CARGO_LINK) build --locked -p polyspec-orm-node --features panic-test
 	rm -rf var/node var/node-platform
 	mkdir -p $(NODE_PACKAGE_DIR) $(NODE_PLATFORM_DIR)
 	cp $(RUN_TARGET)/debug/libpolyspec_orm_node.$(CDYLIB) $(NODE_PLATFORM_DIR)/orm.$(NODE_PLATFORM).node
@@ -435,7 +435,7 @@ GO_BINDING_RELEASE = $(shell sed -n 's/^go \(.*\)$$/\1/p' packages/go/go.mod)
 GO_BINDING_ENV = GOWORK=off GOTOOLCHAIN=local CGO_LDFLAGS=-L$(RUN_TARGET)/debug GOFLAGS=-tags=polyspec_panic_test,polyspec_codec_test
 test-go-bindings: bindings lease-tool
 	test "$$($(GO_BINDING_ENV) $(GO) env GOVERSION)" = "go$(GO_BINDING_RELEASE)"
-	$(RUN_LONG) rust-build/orm-go -- $(CARGO_COPY) debug/libpolyspec_orm_go.a -- cargo build --locked -p polyspec-orm-go --features panic-test,codec-test
+	$(RUN_LONG) rust-build/orm-go -- $(CARGO_COPY) debug/libpolyspec_orm_go.a -- $(CARGO_LINK) build --locked -p polyspec-orm-go --features panic-test,codec-test
 	test -z "$$(cd packages/go && $(GOFMT) -l .)"
 	cd packages/go && $(GO_BINDING_ENV) $(GO) vet ./...
 	cd packages/go && $(GO_BINDING_ENV) $(GO) test -count=1 -v ./...
@@ -466,7 +466,7 @@ test-binding-python: bindings
 # The generated tests of the PHP binding on the PHPUnit of vendor-php, with the extension of the crate polyspec-orm-php-ext built
 # with its test features for the PHP of .php-version (BINDING_ENV) and copied into the RUN_TARGET of the run.
 test-binding-php: bindings lease-tool php-vendor-check
-	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) cargo build --locked -p polyspec-orm-php-ext --features panic-test
+	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) $(CARGO_LINK) build --locked -p polyspec-orm-php-ext --features panic-test
 	$(RUN_TESTS) phpunit --php-extension $(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) -- packages/php-ext/generated/tests
 	rm -rf $(RUN_DIR)
 
@@ -774,10 +774,11 @@ CARGO_TEST = node $(abspath tests/cargo-test.mts)
 RUN_DIR = $(abspath .runtime/run)/$@-$$PPID
 RUN_TARGET = $(RUN_DIR)/target
 CARGO_COPY = $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(RUN_TARGET)
-# CARGO_SIBLINGS runs cargo in packages/rust through kit's cargo link (K448-5). A recipe that builds the crates runs it in place
-# of a bare cargo build, which link-check refuses. It names no checkout: cargo builds the polyspec crates of the checkouts that the
-# link declaration (.links, K869) names, and of their released tags without one.
-CARGO_SIBLINGS = $(NODE) $(abspath $(KIT))/link.$(KIT_EXT) cargo $(abspath packages/rust)
+# CARGO_LINK starts cargo in the directory of the recipe line through the cargo link of kit (scripts/cargo-link.mts, K448-5, T531):
+# every cargo of a recipe starts through it, and make repo-check fails on one that starts otherwise. It names no checkout: cargo
+# builds the polyspec crates of the checkouts that the link declaration (.links, K869) names, against a copy of the lock under
+# var/link/cargo, and of their released tags on the tracked lock without one.
+CARGO_LINK = $(NODE) $(abspath scripts/cargo-link.mts) .
 # HOLD_TYPESCRIPT holds the TypeScript build output of this checkout (the dist of legacy/packages/ts and the generated models) as one holder for the
 # lifetime of the make process. Targets that build and write that output get it on their first line,
 # so they do not change output that another run's build is still writing. If another run holds it, it waits for the directory change notice. If an ancestor
@@ -1046,8 +1047,8 @@ go-test-check/cross-runtime: typescript-current python-venv-check php-vendor-che
 	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_INTROSPECT_TABLES)
-	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
-	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
+	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
+	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 
 # testcase-check checks that each language's shared case report prints, in this order, the start of each case (RUN, deadline), its steps (STEP),
@@ -1239,7 +1240,7 @@ interface-service-cases-rust:
 # The core without its feature runtime compiles for wasm32-unknown-unknown, the target of the WASM binding, which builds
 # the core with no feature (docs/spec/core.md CORE-134, binding I-1).
 rust-wasm-core-check: lease-tool
-	$(RUN_LONG) rust-wasm-core-check -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm --no-default-features --target wasm32-unknown-unknown -- -D warnings
+	$(RUN_LONG) rust-wasm-core-check -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked -p polyspec-orm --no-default-features --target wasm32-unknown-unknown -- -D warnings
 
 dbspec-lock-rust-check:
 	cd packages/rust &&$(CARGO_TEST) dbspec-lock-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib sqlite_lock_result_tests -- --nocapture
@@ -1397,8 +1398,8 @@ dbspec-compare-check/prepare: typescript-current python-venv-check php-vendor-ch
 	$(READ_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_COMPARE_TABLES)
-	$(RUN_LONG) rust-build/dbspec_compare --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-schema --example dbspec_compare --example dbspec_stress
-	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
+	$(RUN_LONG) rust-build/dbspec_compare --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-schema --example dbspec_compare --example dbspec_stress
+	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PHP_MODE=extension ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/compare/runners.test.mts
@@ -1435,7 +1436,7 @@ dbspec-stress-bench/typescript: dbspec-stress-bench/prepare typescript-current
 	$(NODE) --test legacy/packages/ts/tests/dbspec-stress.mjs
 	$(NODE) --test legacy/packages/ts/tests/dbspec-stress.mjs
 dbspec-stress-bench/rust: dbspec-stress-bench/prepare
-	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
+	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
@@ -3695,30 +3696,30 @@ collection-recipe-check/php-extension: php-vendor-check build-php-ext
 # formatted by cargo fmt.
 rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
 rust-fmt-check/clients:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd packages/rust -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd packages/rust -- $(CARGO_LINK) fmt --all --check
 rust-fmt-check/bench:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd benchmarks/rust -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd benchmarks/rust -- $(CARGO_LINK) fmt --all --check
 rust-fmt-check/interfaces:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd packages/rust/testing/interfaces -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd packages/rust/testing/interfaces -- $(CARGO_LINK) fmt --all --check
 
 # rust-lock-check fails when a tracked Cargo.lock does not hold what its manifest asks (T371): cargo reads each workspace of
 # RUST_CRATE_MANIFESTS with --locked, which refuses a lock that it would have to change, and --offline, so it reads the crates that
 # orm-install-rust-crates downloaded and fetches nothing.
 rust-lock-check:
-	sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" cargo +$(PHYSICAL_RUST_TOOLCHAIN) metadata --locked --offline --format-version 1 --manifest-path "$$m" > /dev/null; echo "ok - $$m"; done'
+	sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) metadata --locked --offline --format-version 1 --manifest-path "$$m" > /dev/null; echo "ok - $$m"; done'
 
 rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- node scripts/check-rust-150.mts
 
 rust-check: rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults
 rust-check/check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd packages/rust -- $(CARGO_LEASED) cargo check --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS)
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) check --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS)
 rust-check/clippy: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd packages/rust -- $(CARGO_LEASED) cargo clippy --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --all-targets -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --all-targets -- -D warnings
 rust-check/clippy-live-db: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd packages/rust -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm-build --all-targets --features live-db -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked -p polyspec-orm-build --all-targets --features live-db -- -D warnings
 rust-check/clippy-test-faults: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd packages/rust -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm --all-targets --features test-faults -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked -p polyspec-orm --all-targets --features test-faults -- -D warnings
 
 # install downloads what the checks read: the Composer packages, the Rust toolchain and the crates of every Cargo.lock, the
 # Go modules, the lowest Node of ts-min-check, and the error code files of orm-codes. CI bootstraps
@@ -3812,7 +3813,7 @@ orm-install-rust-toolchain:
 # RUST_CRATE_MANIFESTS lists the workspace manifests of the tracked Cargo.lock files; cargo fetch --locked downloads each workspace's crates.
 RUST_CRATE_MANIFESTS = benchmarks/rust/Cargo.toml Cargo.toml packages/rust/testing/interfaces/Cargo.toml
 orm-install-rust-crates:
-	$(ONLINE) sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" cargo +$(PHYSICAL_RUST_TOOLCHAIN) fetch --locked --manifest-path "$$m"; done'
+	$(ONLINE) sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) fetch --locked --manifest-path "$$m"; done'
 # GO_MODELS_FILE declares the entries of the Go models that orm-gen generates (P34: generated output is never tracked): one orm-gen
 # argument line per package, read by go-models and go-model-check (legacy/packages/go/models.txt). go-models writes them, and it is the last
 # step of orm-install-go, after the modules are downloaded, so every Go check finds them. go-model-check runs orm-gen gen --check
@@ -3901,7 +3902,7 @@ rust-driver-check:
 # of examples/complex and the Go, PHP, Rust, TypeScript and Python programs of examples/thin-slice on the seeded bench database.
 # The PHP examples load the Composer autoloader; Python runs on the orm-install-python venv.
 example-check: php-vendor-check python-venv-check
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- $(CARGO_SIBLINGS) build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- $(CARGO_LINK) build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) ./examples -run '^(TestExampleOutputsAreIdentical|TestExamplesRequireBenchDSN)$$' -count=1
 	rm -rf $(RUN_DIR)
 
@@ -3914,8 +3915,8 @@ timing-check: typescript-current
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -o @OUT@ ./legacy/packages/go/engine/dbspec
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_SIBLINGS) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_LINK) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) test --locked --offline -p polyspec-orm-schema --no-run
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
@@ -3978,7 +3979,7 @@ WORKSPACE ?= packages/rust
 .PHONY: clippy-crate
 clippy-crate: lease-tool ## Clippy of the package CRATE with the lint-rust flags, in the Cargo workspace WORKSPACE; offline once the crates are downloaded
 	test -n "$(CRATE)" || { echo "clippy-crate: CRATE is required; run make clippy-crate CRATE=<crate>, which selects the package to lint" >&2; exit 2; }
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) clippy-crate --cwd $(WORKSPACE) -- $(CARGO_LEASED) cargo clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) clippy-crate --cwd $(WORKSPACE) -- $(CARGO_LEASED) $(CARGO_LINK) clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason
 
 # group-rows-phpstan-check runs PHPStan at level 9 over the fixture of KSTD-5-53: a row of GroupRows is typed as GroupRow for its
 # caller, so calling its method on each row passes; a mixed row fails it.

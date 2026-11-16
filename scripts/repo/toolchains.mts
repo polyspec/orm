@@ -14,6 +14,14 @@ import { makeRecipes } from './testcases.mts';
 import { readWorkflow, actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
 import { recipeLines, workflowCommands } from './recipes.mts';
 
+// cargoArgs are the arguments of cargo in a command: of `cargo`, and of `node scripts/cargo-link.mts <dir>`, which starts cargo
+// through the cargo link (T531); undefined when the command starts no cargo.
+const cargoArgs = (command: { name: string | undefined; args: string[] }): string[] | undefined => {
+  if (command.name === 'cargo') return command.args;
+  const link = command.args.findIndex(arg => /(?:^|\/)cargo-link\.mts$/.test(arg));
+  return /(?:^|\/)node$/.test(command.name ?? '') && link === 0 ? command.args.slice(2) : undefined;
+};
+
 // MINIMUM_SCRIPT is the script that prints the lowest release of composer.json's require.php.
 const MINIMUM_SCRIPT = 'node scripts/php/php-min.mts';
 // MINIMUM_OUTPUT is the input of the setup-php step that installs that release: the output php_min of the job plan, which the
@@ -170,10 +178,10 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
         errors.push(`${path} chooses a Rust toolchain with ${action}; rust-toolchain.toml declares it`);
     if (runs(workflow, makefile, command => command.assigns.includes('RUSTUP_TOOLCHAIN') ||
           (command.name === 'rustup' && (command.args[0] === 'default' || (command.args.join(' ').startsWith('toolchain install ')))) ||
-          (command.name === 'cargo' && (command.args[0] ?? '').startsWith('+'))) ||
+          (cargoArgs(command)?.[0] ?? '').startsWith('+')) ||
         environment(workflow).has('RUSTUP_TOOLCHAIN'))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
-    const usesRust = runs(workflow, makefile, command => command.name === 'cargo') || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
+    const usesRust = runs(workflow, makefile, command => cargoArgs(command) !== undefined) || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
     // CI's steps run make targets, so `rustup toolchain install` without arguments is in the recipe of make orm-install-rust-toolchain.
     const installsRust = runs(workflow, makefile, installsToolchain) ||
       (runs(workflow, makefile, command => makes(command, 'orm-install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));

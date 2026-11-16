@@ -11,6 +11,7 @@ import { stopGroup } from '../../../scripts/check/step.mts';
 import { stepLines, type Step } from '../../testcase.mts';
 import { byteOrder } from './json.mts';
 import type { Symbols } from './manifest.mts';
+import { cargoLink } from '../../../scripts/cargo-link.mts';
 
 const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/interface-symbols.schema.json');
 
@@ -154,7 +155,7 @@ export async function buildRust(step: Step, root: string, directory: string): Pr
   const lines = stepLines(step);
   step(`run cargo build --locked --manifest-path ${manifest} under the target lease`);
   const output = await run(lease, ['run', leases, 'exclusive', '--wait', '--', 'node', join(root, 'scripts', 'cargo-build-copy.mts'),
-    directory, 'debug/polyspec-orm-interface-symbols', '--', 'cargo', 'build', '--locked', '--manifest-path', manifest], { onOutput: chunk => lines.write(chunk) });
+    directory, 'debug/polyspec-orm-interface-symbols', '--', ...cargoLink(), 'build', '--locked', '--manifest-path', manifest], { onOutput: chunk => lines.write(chunk) });
   lines.flush();
   if (output.code !== 0) throw new Error(`cargo build: ${exitText(output)}`);
   const executable = join(directory, 'debug', 'polyspec-orm-interface-symbols');

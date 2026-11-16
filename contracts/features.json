@@ -7937,7 +7937,7 @@
         },
         {
           "id": "conformance-runner-rust-build",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/conformance --cwd packages/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo build --locked -p polyspec-orm-tests --bin conformance",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/conformance --cwd packages/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- node \"$PWD/scripts/cargo-link.mts\" . build --locked -p polyspec-orm-tests --bin conformance",
           "shard": "rust",
           "inputs": [
             "packages/rust/programs/src/conformance.rs",
@@ -10101,7 +10101,7 @@
         "packages/rust/programs/tests/all/main.rs"
       ],
       "tests": [],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/test-helpers -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\""
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/test-helpers -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- node scripts/cargo-link.mts . test --no-run --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\""
     },
     {
       "id": "error-codes",

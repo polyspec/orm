@@ -159,6 +159,10 @@ Three values are given by the one who runs, for the machine, and this repository
 
 `make orm-test-container-check` tests these rules against a stand-in `bay` that each test writes, so it needs no container and no image.
 
+## Linked checkouts
+
+The links of `.links` reach Rust through the cargo link of kit: every cargo of a recipe, a verification command and a script starts through `scripts/cargo-link.mts` (`$(CARGO_LINK)` in the `Makefile`), which builds a polyspec crate of a checkout that `.links` names from that checkout, against a copy of the lock under `var/link/cargo`, so the tracked `Cargo.lock` stays as it is and `--locked` holds. Without `.links` cargo runs as given. `make repo-check` fails on a cargo that starts otherwise. A patch of `.cargo/config.toml` is no link.
+
 ## Interface changes
 
 Update the shared contract, generated artifacts, language clients, examples, and structure checks together. A client-only public feature is incomplete.

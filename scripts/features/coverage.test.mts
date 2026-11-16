@@ -12,6 +12,7 @@ import { testDirectoryOf } from './packages.mts';
 import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, programCaseModules, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readImplementations } from '../json/formats.mts';
+import { cargoLink } from '../cargo-link.mts';
 
 // Synthetic manifests claim a language by a test in the first root of that implementation (contracts/implementations.json).
 const implementations = readImplementations(new URL('../../contracts/implementations.json', import.meta.url).pathname);
@@ -269,7 +270,7 @@ caseTest('Rust coverage uses the workspace manifest and applies only supported f
     cargoFeaturesForPackage(project, schema, requestedFeatures),
     ['--test', 'dbspec_rules'],
   ), [
-    'cargo', 'test', '--no-run', '--manifest-path', workspaceManifest, '--package', 'polyspec-orm-schema',
+    ...cargoLink(), 'test', '--no-run', '--manifest-path', workspaceManifest, '--package', 'polyspec-orm-schema',
     '--test', 'dbspec_rules', '--message-format=json-render-diagnostics',
   ]);
 });

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { type Dialect, segments } from './shell.mts';
+import { CARGO_CALL } from '../cargo-link.mts';
 
 /**
  * A unit of commands that run in order: a Makefile recipe, a script or a verification command. dialect is the language
@@ -153,9 +154,9 @@ export const tools: [string, RegExp][] = [
   ['go generate', /(?:^|[\s/])go\s+generate\b/],
   ['go vet', /(?:^|[\s/])go\s+vet\b/],
   ['go build', /(?:^|[\s/])go\s+build\b/],
-  ['cargo build', /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy)\b/],
+  ['cargo build', new RegExp(String.raw`${CARGO_CALL}(?:build|check|clippy)\b`)],
 ];
-const noRun = /\bcargo\s+(?:\+\S+\s+)?test\b(?=.*\s--no-run\b)/;
+const noRun = new RegExp(String.raw`${CARGO_CALL}test\b(?=.*\s--no-run\b)`);
 // longRunner is the runner that runs long-running work without a deadline, with step logs.
 const longRunner = /(?:\brun-long\.mts|\$\(RUN_LONG\)|\$\(TSC_BUILD\))/;
 // deadlineForms is the form that puts a deadline on the whole command: tests/run-case.mjs (Makefile's
@@ -188,7 +189,7 @@ export function deadline(segment: string, before = segment.length): string | und
 // cargoArguments returns the arguments of `cargo test` in the segment before `--`, without `--no-run` and the toolchain (`+x`).
 // It checks whether the build and the run use the same test binary.
 function cargoArguments(segment: string): string | undefined {
-  const match = /\bcargo\s+(?:\+\S+\s+)?test\b(.*)$/.exec(segment);
+  const match = new RegExp(String.raw`${CARGO_CALL}test\b(.*)$`).exec(segment);
   if (!match) return undefined;
   const before = (match[1] ?? '').split(/\s--(?:\s|$)/)[0] ?? '';
   return before.trim().split(/\s+/).filter(token => token && token !== '--no-run').join(' ');
@@ -437,7 +438,7 @@ export function sharedTargetErrors(makefile: string): string[] {
   for (const { name, commands, dialect } of makeRecipes(makefile))
     for (const command of commands)
       for (const segment of segments(command, dialect)) {
-        const cargo = /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy|test\b(?=.*\s--no-run\b))/.exec(segment);
+        const cargo = new RegExp(String.raw`${CARGO_CALL}(?:build|check|clippy|test\b(?=.*\s--no-run\b))`).exec(segment);
         if (!cargo) continue;
         const leased = /\$\((?:CARGO_LEASED|CARGO_COPY)\)/.exec(segment);
         if (!leased || leased.index > cargo.index)
@@ -598,13 +599,48 @@ export function unleasedCargoErrors(units: Unit[]): string[] {
     for (const command of commands)
       for (const segment of segments(command, dialect)) {
         if (/\bcargo-test\.mts\b/.test(segment)) continue;
-        const cargo = /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy|test\b(?=.*\s--no-run\b))/.exec(segment);
+        const cargo = new RegExp(String.raw`${CARGO_CALL}(?:build|check|clippy|test\b(?=.*\s--no-run\b))`).exec(segment);
         const leased = /"?\$\{?LEASE(?::\?[^}]*)?\}?"?\s+run\b/.exec(segment);
         if (cargo && (!leased || leased.index > cargo.index))
           errors.push(`${name} builds into the shared Rust target directory without its lease; run the build under "$LEASE" run "$CARGO_LEASES" exclusive --wait --: ${segment}`);
         if (/\$\{CARGO_TARGET_DIR[^}]*\}\/|\$CARGO_TARGET_DIR\//.test(segment))
           errors.push(`${name} runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.mts): ${segment}`);
       }
+  return errors;
+}
+
+// unlinkedCargoErrors returns one error for each segment of a command (a recipe, a verification command, a package.json script,
+// a shell script) that starts cargo itself (T531). cargo starts only through scripts/cargo-link.mts, the cargo link of kit, so a
+// polyspec crate of a checkout that .links names is built from it; a cargo that starts otherwise builds the released tag in a
+// linked checkout. `node tests/cargo-test.mts <name> -- cargo test ...` names the command that cargo-test.mts starts through the link.
+export function unlinkedCargoErrors(units: Unit[]): string[] {
+  const errors: string[] = [];
+  for (const { name, commands, dialect } of units)
+    for (const command of commands)
+      for (const segment of segments(command, dialect)) {
+        const cargo = /(?:^|[\s;&|(])cargo\s+(?:\+\S+\s+)?[a-z-]/.exec(segment);
+        if (!cargo) continue;
+        const described = /\bcargo-test\.mts\b/.exec(segment);
+        if (described && described.index < cargo.index) continue;
+        errors.push(`${name} starts cargo itself; start it through the cargo link, node scripts/cargo-link.mts <dir> <cargo arguments> ($(CARGO_LINK) in the Makefile): ${segment}`);
+      }
+  return errors;
+}
+
+// unlinkedCargoSourceErrors returns one error for each line of a TypeScript or JavaScript source (no test) that starts cargo
+// by its name (T531): a string 'cargo' as a program or an element of an argument list. It starts cargo with cargoLink of
+// scripts/cargo-link.mts instead. A line that hands the command to tests/cargo-test.mts names it, and the comparisons and
+// the keys that read the word 'cargo' start nothing.
+export function unlinkedCargoSourceErrors(files: Record<string, string>): string[] {
+  const errors: string[] = [];
+  for (const [path, text] of Object.entries(files)) {
+    if (path === 'scripts/cargo-link.mts') continue;
+    text.split('\n').forEach((line, index) => {
+      if (/^\s*(?:\/\/|\*)/.test(line) || /\bcargo-test\.mts\b/.test(line)) return;
+      if (/(?<![=:|]\s*)(?<![=:|])['"]cargo['"](?=\s*[,)\]])/.test(line))
+        errors.push(`${path}:${index + 1} starts cargo by its name; start it with cargoLink of scripts/cargo-link.mts: ${line.trim()}`);
+    });
+  }
   return errors;
 }
 

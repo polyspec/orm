@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
+import { cargoLink } from './cargo-link.mts';
 
 const root = resolve(import.meta.dirname, '..');
 const required = (name: string): string => {
@@ -46,7 +47,7 @@ polyspec-orm-build = { path = "${root}/packages/rust/build" }
   copyFileSync(join(root, 'Cargo.lock'), join(work, 'crate/Cargo.lock'));
   // The generated crate shares the target directory of the workspace, so orm and its dependencies are not compiled
   // again; it builds into the shared Rust target directory and so under its lease.
-  const checked = spawnSync(lease, ['run', leases, 'exclusive', '--wait', '--', 'cargo', 'check', '--manifest-path', join(work, 'crate/Cargo.toml')], {
+  const checked = spawnSync(lease, ['run', leases, 'exclusive', '--wait', '--', ...cargoLink(root), 'check', '--manifest-path', join(work, 'crate/Cargo.toml')], {
     cwd: root, stdio: 'inherit', env: { ...process.env, CARGO_TARGET_DIR: target, PATH: `${join(homedir(), '.cargo/bin')}${delimiter}${process.env['PATH'] ?? ''}` },
   });
   if (checked.status !== 0) process.exitCode = checked.status ?? 1;

@@ -7,6 +7,7 @@ import { CI_SETUP, STEP_OUTPUT } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
 import { jobRuns, makeCall, reached, recipeCommands, recipeLines, type JobRun } from './recipes.mts';
+import { CARGO_CALL } from '../cargo-link.mts';
 
 // The database server check of the CI workflow. The database check of make orm-check reads the variables in .runtime/servers/env that make orm-test-servers
 // (scripts/test-servers.mts) wrote, so the recipe of the group job starts the servers with the same definition, and no
@@ -518,7 +519,7 @@ export function runnerIdentity(segment: string): string | undefined {
   if (/^node\s+tests\/go-run\.mts\b/.test(command)) return undefined;
   if (/^(?:go\s+test|node\s+tests\/go-test\.mts)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';
-  if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';
+  if (new RegExp(String.raw`^(?:\S*node\s+)?${CARGO_CALL}test\b`).test(command)) return 'cargo test';
   // PHPUnit of the development root (`php [-d ...] vendor-php/bin/phpunit ... <file>`) runs PHP tests.
   const phpunit = /^(?:\S*php\s+(?:-d\s+\S+\s+|-\S+\s+)*)?(vendor-php\/bin\/phpunit)\b/.exec(command);
   if (phpunit) return `phpunit ${phpunit[1]}`;
@@ -756,7 +757,7 @@ function testRun(segment: string): boolean {
   // Leading environment variable assignments are dropped.
   const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S)*\s+)+/, '');
   // lint checks (clippy, go vet, and the rustfmt and gofmt checks) are also checks that stop the lines after them when they fail.
-  if (/(?:^|\s)cargo\s+(?:\+\S+\s+)?clippy\b|(?:^|\s)go\s+vet\b|(?:^|\s)cargo\s+(?:\+\S+\s+)?fmt\b.*--check|(?:^|\s)gofmt\s+-l\b/.test(command)) return true;
+  if (new RegExp(String.raw`${CARGO_CALL}clippy\b|(?:^|\s)go\s+vet\b|${CARGO_CALL}fmt\b.*--check|(?:^|\s)gofmt\s+-l\b`).test(command)) return true;
   const identity = runnerIdentity(command);
   if (!identity) return false;
   if (/\s-c(?:\s|$)|\s--no-run\b|(?:^|\s)>\s*\S|node_modules\//.test(command)) return false;

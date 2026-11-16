@@ -25,6 +25,7 @@ import { runLong, stepLines, type Step } from './testcase.mts';
 import { cloneFile } from '../scripts/clone-file.mts';
 import { parseCargoMessage } from '../scripts/json/formats.mts';
 import { readJsonFile } from '../scripts/json/schema.mts';
+import { cargoLink } from '../scripts/cargo-link.mts';
 
 /** binaries.json of a --copy run: the copied test binaries and the copied package programs by name. */
 export type Binaries = { tests: { executable: string; manifestDir: string; target: string; copy: string }[]; programs: Record<string, string> };
@@ -187,7 +188,7 @@ async function main() {
     let built = false;
     const passed = await runLong(`rust-build/${name}`, async ({ step }) => {
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, new URL(import.meta.url).pathname, '--copy', runDir, '--',
-        ...cargo, 'test', '--no-run', '--message-format=json-render-diagnostics', ...options], {}, step);
+        ...cargoLink(), ...cargo.slice(1), 'test', '--no-run', '--message-format=json-render-diagnostics', ...options], {}, step);
       if (result.code !== 0) throw new Error(`cargo test --no-run exited with ${result.code}`);
       step('exit 0');
       built = true;

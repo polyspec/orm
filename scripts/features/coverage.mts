@@ -12,6 +12,7 @@ import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseRecipeCases } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
+import { cargoLink } from '../cargo-link.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
@@ -658,7 +659,7 @@ export function cargoModuleFilter(targets: CargoTarget[], testPath: string): str
 
 /** Builds only the selected package's Rust test targets from the canonical workspace manifest. */
 export function cargoBuildArgs(workspaceManifestPath: string, packageName: string, features: string[], targetArgs: string[]): string[] {
-  return ['cargo', 'test', '--no-run', '--manifest-path', workspaceManifestPath, '--package', packageName,
+  return [...cargoLink(), 'test', '--no-run', '--manifest-path', workspaceManifestPath, '--package', packageName,
     ...features, ...targetArgs, '--message-format=json-render-diagnostics'];
 }
 async function buildCargo(plans: Plans, directory: string, builds: Builds, build: Build): Promise<void> {
@@ -678,7 +679,7 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const { LEASE: lease, CARGO_LEASES: leases } = process.env;
       if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
       const manifestPath = resolve(crate, 'Cargo.toml');
-      const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', manifestPath], crate, process.env, step, 10_000_000);
+      const metadata = await run(cargoLink()[0], [...cargoLink().slice(1), 'metadata', '--no-deps', '--format-version=1', '--manifest-path', manifestPath], crate, process.env, step, 10_000_000);
       if (metadata.error) throw new Error(`cargo metadata: ${metadata.error}`);
       const project = cargoMetadataOf(metadata.stdout ?? '');
       const selectedPackage = project.packages?.find(packageInfo => resolve(packageInfo.manifest_path) === manifestPath);

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { runCase } from '../../tests/testcase.mts';
 import { readJsonFile } from '../json/schema.mts';
+import { cargoLink } from '../cargo-link.mts';
 
 type Fixture = {
   id: string;
@@ -79,7 +80,8 @@ const selectedFixtures = fixtures.filter(fixture => selected.has(fixture.id));
 function check(id: string, source: string, aborted: AbortSignal): Promise<{ status: number | null; signal: NodeJS.Signals | null; messages: CompilerMessage[] }> {
   return new Promise((resolveRun, rejectRun) => {
     const stdio: ['ignore', 'pipe', 'pipe'] = ['ignore', 'pipe', 'pipe'];
-    const child = spawn('cargo', [`+${selectedToolchain}`, 'check', '--locked', '--offline', '--message-format=json', '--manifest-path', manifest,
+    const [program, ...link] = cargoLink();
+    const child = spawn(program, [...link, `+${selectedToolchain}`, 'check', '--locked', '--offline', '--message-format=json', '--manifest-path', manifest,
       '-p', 'polyspec-orm-tests', '--example', id, '--features', selectedFeatures], {
       cwd: root,
       env: isolatedEnvironment({

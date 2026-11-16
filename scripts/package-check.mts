@@ -8,6 +8,7 @@ import { delimiter, join, resolve } from 'node:path';
 import { keepAll, render, run, variable, type Command } from './check/commands.mts';
 import { parseNpmPack } from './json/formats.mts';
 import { errorMessage } from '../tests/errors.mts';
+import { cargoLink } from './cargo-link.mts';
 
 const root = resolve(import.meta.dirname, '..');
 const version = readFileSync(join(root, 'VERSION'), 'utf8').trim();
@@ -23,7 +24,7 @@ const COMPOSER: Command = { program: 'composer', args: ['validate', `--working-d
 // crate instead of with cargo package; it builds into the shared Rust target directory and so under its lease. The crate
 // takes the lock of the client, as a consumer pins it: the checks run offline (CARGO_NET_OFFLINE), and without a lock cargo
 // resolves a git dependency by its tag, which the fetched git database need not hold.
-const CARGO: Command = { program: variable('LEASE'), args: ['run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--', 'cargo', 'check', '--manifest-path', join(rust, 'Cargo.toml'), '--quiet'], cwd: root };
+const CARGO: Command = { program: variable('LEASE'), args: ['run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--', ...cargoLink(), 'check', '--manifest-path', join(rust, 'Cargo.toml'), '--quiet'], cwd: root };
 const GO: Command[] = [
   { program: 'go', args: ['mod', 'init', 'example.com/orm-external-check'], cwd: go },
   { program: 'go', args: ['mod', 'edit', '-replace', `github.com/polyspec/orm/legacy/packages/go=${join(root, 'legacy/packages/go')}`], cwd: go },

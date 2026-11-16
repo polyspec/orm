@@ -17,6 +17,7 @@ import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readdirSync
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
+import { cargoLink } from '../cargo-link.mts';
 
 /** One step of a check run as its record holds it. */
 export type StepRecord = { name: string; status: string; elapsed?: number; started?: string | null; ended?: string | null; failures?: string[]; reportErrors?: string[]; warnings?: string[]; reason?: string; log?: string; disk?: Record<string, number>; truncated?: number | null };
@@ -174,7 +175,7 @@ export function writeEnvironment(root: string, report: string, extra: Record<str
     `node ${process.version}`,
     `go ${command('go', ['version'])}`,
     `php ${command('php', ['--version'])}`,
-    `cargo ${command('cargo', ['--version'])}`,
+    `cargo ${command(cargoLink()[0], [...cargoLink().slice(1), '--version'])}`,
     `mysqld ${command('mysqld', ['--version'])}`,
     `postgres ${command('postgres', ['--version'])}`,
     `disk ${command('df', ['-h', root]).trim()}`,

@@ -160,6 +160,10 @@ runner는 `lld`로 link한다(Linux target에 `rustflags = ["-C", "link-arg=-fus
 
 `make orm-test-container-check`는 이 규칙을 각 test가 쓰는 대역 `bay`로 시험하므로 container도 image도 필요하지 않다.
 
+## 연결된 checkout
+
+`.links`의 연결은 kit의 cargo link를 거쳐 Rust에 닿는다. recipe, 검증 명령, script의 모든 cargo는 `scripts/cargo-link.mts`(`Makefile`에서는 `$(CARGO_LINK)`)로 시작한다. 그것은 `.links`가 적은 checkout의 polyspec crate를 그 checkout에서, `var/link/cargo` 아래의 lock 사본에 대해 build한다. 그래서 추적되는 `Cargo.lock`은 그대로이고 `--locked`가 성립한다. `.links`가 없으면 cargo는 주어진 대로 돈다. `make repo-check`는 다른 방법으로 시작한 cargo에서 실패한다. `.cargo/config.toml`의 patch는 연결이 아니다.
+
 ## Interface 변경
 
 공통 contract, generated artifact, language client, example, structure check를 함께 갱신한다. 특정 client에만 공개된 기능은 미완료로 처리한다.
