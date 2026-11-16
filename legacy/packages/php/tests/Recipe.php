@@ -3121,10 +3121,23 @@ final class Recipe
             case 'transaction.attempts':
                 return ['value' => ['int' => (string) $context['attempts']]];
             case 'clock.read':
-                // The client writes the reading of this clock, cut to the microsecond, so both edges are the
-                // reading itself: a value written between two readings lies between their texts (FCV-4).
+                // The clock that the write on the connection takes, so both edges are the reading itself: on MySQL
+                // and MariaDB the server clock, read on the connection in its UTC session; elsewhere the client writes
+                // the wall clock cut to the microsecond. A value written between two readings lies between their texts
+                // (FCV-4).
                 if (!in_array($s['edge'], ['lower', 'upper'], true)) {
                     Assert::fail('clock.read has no edge ' . json_encode($s['edge']));
+                }
+                if (self::dialectOf($context) === 'mysql') {
+                    $rows = self::connectionOf($s, $context)->utils()->run(
+                        static fn (TxFrame $frame): array => $frame->run(
+                            'utility',
+                            [],
+                            "SELECT DATE_FORMAT(CURRENT_TIMESTAMP(6), '%Y-%m-%d %H:%i:%s.%f')",
+                            []
+                        )
+                    );
+                    return ['value' => ['text' => (string) array_values($rows[0])[0]]];
                 }
                 return ['value' => ['text' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
                     ->format('Y-m-d H:i:s.u')]];

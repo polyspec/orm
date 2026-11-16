@@ -65667,6 +65667,7 @@
     },
     {
      "op": "clock.read",
+     "connection": "db",
      "edge": "lower",
      "as": "before"
     },
@@ -65706,6 +65707,7 @@
     },
     {
      "op": "clock.read",
+     "connection": "db",
      "edge": "upper",
      "as": "after"
     },
@@ -98426,6 +98428,7 @@
     },
     {
      "op": "clock.read",
+     "connection": "db",
      "edge": "lower",
      "as": "before"
     },
@@ -98591,6 +98594,7 @@
     },
     {
      "op": "clock.read",
+     "connection": "db",
      "edge": "upper",
      "as": "after"
     },
@@ -98692,6 +98696,7 @@
     },
     {
      "op": "clock.read",
+     "connection": "db",
      "edge": "lower",
      "as": "before"
     },
@@ -98953,6 +98958,7 @@
     },
     {
      "op": "clock.read",
+     "connection": "db",
      "edge": "upper",
      "as": "after"
     },

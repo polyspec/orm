@@ -1823,8 +1823,16 @@ Object.assign(OPS, {
   'transaction.attempts': (_, context) => ({ value: { int: String(context.attempts) } }),
   // A client write takes wallMicros, which stays within the millisecond that Date.now reports, so that millisecond
   // bounds it: its first microsecond below and its last above (FCV-4).
-  'clock.read': s => {
+  // The clock that the write on the connection takes (FCV-4): on MySQL and MariaDB the server clock, read on the
+  // connection in its UTC session, which both edges are; elsewhere the wall clock in milliseconds, whose upper edge is
+  // the last microsecond of the millisecond.
+  'clock.read': async (s, context) => {
     if (s.edge !== 'lower' && s.edge !== 'upper') throw new Error(`clock.read has no edge ${s.edge}`);
+    if (dialectOf(context) === 'mysql') {
+      const { rows } = await connectionOf(s, context).utils().run(frame =>
+        frame.run('utility', [], "SELECT DATE_FORMAT(CURRENT_TIMESTAMP(6), '%Y-%m-%d %H:%i:%s.%f')", []));
+      return { value: { text: String(rows[0][0]) } };
+    }
     const text = new Date().toISOString().slice(0, 23).replace('T', ' ');
     return { value: { text: `${text}${s.edge === 'upper' ? '999' : '000'}` } };
   },

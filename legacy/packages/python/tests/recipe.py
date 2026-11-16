@@ -4321,11 +4321,22 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
-def _op_clock_read(step: dict, _context: dict) -> dict:
-    """A client write takes wall_micros, which stays within 999 microseconds above the wall clock it reads, so
-    the reading bounds it below and the reading plus 999 above (FCV-4)."""
+def _op_clock_read(step: dict, context: dict) -> dict:
+    """The clock that the write on the connection takes (FCV-4). On MySQL and MariaDB the write takes the server
+    clock, read on the connection in its UTC session, so both edges are the reading itself. Elsewhere a client write
+    takes wall_micros, which stays within 999 microseconds above the wall clock it reads, so the reading bounds it
+    below and the reading plus 999 above."""
     if step["edge"] not in ("lower", "upper"):
         raise AssertionError(f"clock.read has no edge {step['edge']}")
+    if _dialect_of(context) == "mysql":
+        [[reading]] = _connection_of(step, context).utils().run(
+            lambda frame: frame.run(
+                "SELECT CURRENT_TIMESTAMP(6)", [], kind="utility", tables=[]
+            )
+        )["rows"]
+        if isinstance(reading, datetime):
+            reading = reading.strftime("%Y-%m-%d %H:%M:%S.%f")
+        return {"value": {"text": str(reading)}}
     micros = time.time_ns() // 1000 + (999 if step["edge"] == "upper" else 0)
     seconds, fraction = divmod(micros, 1_000_000)
     return {

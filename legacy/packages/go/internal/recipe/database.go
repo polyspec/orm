@@ -1415,7 +1415,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	case "transaction.attempts":
 		return countOutcome(int64(c.attempts)), nil
 	case "clock.read":
-		return clockRead(s.k("edge").Edge)
+		return clockRead(s, c)
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
 	case "dbspec.introspect":
@@ -1930,13 +1930,42 @@ func indexOf(names []string, name string) int {
 	return -1
 }
 
-// clockRead reads the wall clock as the client does, cut to the microsecond the client writes, so both edges are
-// the reading itself: a value written between two readings lies between their texts (FCV-4).
-func clockRead(edge string) (outcome, error) {
+// clockRead reads the clock that the write on the connection takes, so both edges are the reading itself: on MySQL
+// and MariaDB the server clock, read on the connection in its UTC session; elsewhere the wall clock, cut to the
+// microsecond the client writes. A value written between two readings lies between their texts (FCV-4).
+func clockRead(s databaseStep, c *databaseContext) (outcome, error) {
+	edge := s.k("edge").Edge
 	if edge != "lower" && edge != "upper" {
 		return outcome{}, fmt.Errorf("clock.read has no edge %q", edge)
 	}
 	text := time.Now().UTC().Format("2006-01-02 15:04:05.000000")
+	if dialectOf(c.database) == "mysql" {
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		err = db.Utils().Run(func(frame *orm.TxFrame) error {
+			result, err := frame.Run(orm.KindUtility, nil, "SELECT DATE_FORMAT(CURRENT_TIMESTAMP(6), '%Y-%m-%d %H:%i:%s.%f')")
+			if err != nil {
+				return err
+			}
+			if len(result.Rows) != 1 || len(result.Rows[0]) != 1 {
+				return fmt.Errorf("clock.read: the server clock returned %v", result.Rows)
+			}
+			switch cell := result.Rows[0][0].(type) {
+			case string:
+				text = cell
+			case []byte:
+				text = string(cell)
+			default:
+				return fmt.Errorf("clock.read: the server clock is a %T", cell)
+			}
+			return nil
+		})
+		if err != nil {
+			return outcome{}, err
+		}
+	}
 	return outcome{fields: map[string]any{"value": map[string]any{"text": text}}}, nil
 }
 

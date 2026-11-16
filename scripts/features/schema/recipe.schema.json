@@ -8277,15 +8277,20 @@
         "required": [
           "op",
           "edge",
-          "as"
+          "as",
+          "connection"
         ],
         "additionalProperties": false,
         "properties": {
           "op": {
             "const": "clock.read"
           },
+          "connection": {
+            "description": "The connection of the write that the read bounds: on MySQL and MariaDB the read is the clock of its server, which the write takes (DIA-18); on PostgreSQL and SQLite the wall clock of the runtime.",
+            "$ref": "#/$defs/name"
+          },
           "edge": {
-            "description": "Which side of a write this read bounds: lower gives the reading of the wall clock, upper the latest value the client can write from that reading.",
+            "description": "Which side of a write this read bounds: lower gives the reading of the clock, upper the latest value that the write can take from that reading.",
             "enum": [
               "lower",
               "upper"

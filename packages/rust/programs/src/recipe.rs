@@ -4251,9 +4251,18 @@ mod database {
                 return transaction_step(&db, &name, step, &steps, fail, catalog, context).await;
             }
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
-            // The client writes the reading of this clock, cut to the microsecond, so both edges are the reading
-            // itself: a value written between two readings lies between their texts (FCV-4).
+            // The clock that the write on the connection takes, so both edges are the reading itself: on MySQL and
+            // MariaDB the server clock, read on the connection in its UTC session; elsewhere the client writes the
+            // wall clock cut to the microsecond. A value written between two readings lies between their texts (FCV-4).
             "clock.read" => match crate::recipe_reads::read(step, "edge")["edge"].as_str() {
+                Some("lower" | "upper") if dialect_of(context.database) == "mysql" => {
+                    let db = connection_db(step, context).map_err(fault)?;
+                    let rows = frame_rows(&db, "SELECT DATE_FORMAT(CURRENT_TIMESTAMP(6), '%Y-%m-%d %H:%i:%s.%f')").await.map_err(orm)?;
+                    match rows.first().and_then(|row| row.first()) {
+                        Some(polyspec_orm::Val::Text(text)) => Output::fields(json!({ "value": { "text": text } })),
+                        other => return Err(fault(format!("clock.read: the server clock is {other:?}"))),
+                    }
+                }
                 Some("lower" | "upper") => Output::fields(json!({ "value": {
                     "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } })),

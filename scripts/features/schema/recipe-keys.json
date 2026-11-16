@@ -881,6 +881,7 @@
     ],
     "clock.read": [
       "as",
+      "connection",
       "edge",
       "op"
     ],
