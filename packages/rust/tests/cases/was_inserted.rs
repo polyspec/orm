@@ -67,7 +67,7 @@ async fn postgres_waiter(dsn: &str, db: &Db) {
         .await
         .or_panic(|e| format!("postgres: {e}"));
     assert!(waiting, "postgres: the waiting backend is reported while the transaction holds the row");
-    waiter.await.expect("the waiter ends").unwrap_or_else(|e| panic!("postgres: the waiting update: {e}"));
+    waiter.await.expect("the waiter ends").or_panic(|e| format!("postgres: the waiting update: {e}"));
 }
 
 async fn bounded(driver: &str) {

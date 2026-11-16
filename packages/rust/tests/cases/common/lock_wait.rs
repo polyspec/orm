@@ -14,6 +14,7 @@ use std::sync::OnceLock;
 
 use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
+use crate::or_panic::OrPanic;
 use tokio::sync::broadcast;
 
 static LOCK_WAITS: OnceLock<broadcast::Sender<String>> = OnceLock::new();
@@ -35,7 +36,7 @@ impl log::Log for LockWaitLogger {
         if message.contains("still waiting for") {
             if let Some(sender) = LOCK_WAITS.get() {
                 // An error means that no waiter is subscribed, and a message that no waiter reads is left.
-                let _woken: usize = sender.send(message).unwrap_or(0);
+                if let Err(_unread) = sender.send(message) {}
             }
         }
     }
@@ -96,9 +97,9 @@ pub async fn probe_waits(driver: &str, dsn: &str, statement: &str) {
             let separator = if dsn.contains('?') { '&' } else { '?' };
             let probe = Db::connect(&format!("{dsn}{separator}_pragma=busy_timeout(1000)"), 1, polyspec_orm::Config::default())
                 .await
-                .unwrap_or_else(|e| panic!("{driver}: open the probe: {e}"));
+                .or_panic(|e| format!("{driver}: open the probe: {e}"));
             let Pool::Sqlite(pool) = probe.pool() else { panic!("{driver}: the probe is not a SQLite pool") };
-            let mut conn = pool.acquire().await.unwrap_or_else(|e| panic!("{driver}: acquire the probe: {e}"));
+            let mut conn = pool.acquire().await.or_panic(|e| format!("{driver}: acquire the probe: {e}"));
             let ended = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(&mut *conn).await;
             let code = ended.as_ref().err().and_then(|e| e.as_database_error()).and_then(|e| e.code()).map(|code| code.into_owned());
             assert_eq!(code.as_deref(), Some("5"), "{driver}: the probe {statement} ended with {ended:?}, not with SQLITE_BUSY");
@@ -106,11 +107,11 @@ pub async fn probe_waits(driver: &str, dsn: &str, statement: &str) {
             probe.close_async().await;
         }
         "mysql" | "mariadb" => {
-            let probe = Db::connect(dsn, 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: open the probe: {e}"));
+            let probe = Db::connect(dsn, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: open the probe: {e}"));
             let Pool::MySql(pool) = probe.pool() else { panic!("{driver}: the probe is not a MySQL pool") };
-            let mut conn = pool.acquire().await.unwrap_or_else(|e| panic!("{driver}: acquire the probe: {e}"));
+            let mut conn = pool.acquire().await.or_panic(|e| format!("{driver}: acquire the probe: {e}"));
             for setting in ["SET SESSION lock_wait_timeout = 1", "SET SESSION innodb_lock_wait_timeout = 1"] {
-                sqlx::raw_sql(setting).execute(&mut *conn).await.unwrap_or_else(|e| panic!("{driver}: {setting}: {e}"));
+                sqlx::raw_sql(setting).execute(&mut *conn).await.or_panic(|e| format!("{driver}: {setting}: {e}"));
             }
             let ended = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(&mut *conn).await;
             let number = ended
