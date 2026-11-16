@@ -198,7 +198,10 @@ const mysqlHealth = ['mysqladmin', 'ping', '--host=127.0.0.1', '--protocol=TCP',
 const postgresHealth = ['pg_isready', '--host=127.0.0.1', '--username=orm', '--dbname=postgres'];
 const mariadbHealth = ['healthcheck.sh', '--connect', '--innodb_initialized'];
 // A pooler of a container reaches the primary from the address of its own container, which no account of
-// ORM_ACCOUNTS_SQL names, so the primary also has the user orm of every host.
+// ORM_ACCOUNTS_SQL names, so the primary also has the user orm of every host (T537). The address is the one that the
+// network of the machine gives the container at its start, so no account can name it before; and the image already
+// opens root of every host without a password (MYSQL_ALLOW_EMPTY_PASSWORD, MARIADB_ALLOW_EMPTY_ROOT_PASSWORD), so an account
+// of a narrower host would protect nothing.
 const DATABASES_SQL = `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL} CREATE USER IF NOT EXISTS 'orm'@'%' IDENTIFIED BY 'orm'; GRANT ALL ON *.* TO 'orm'@'%';`;
 const postgresEnvironment = { POSTGRES_USER: 'orm', POSTGRES_HOST_AUTH_METHOD: 'trust', POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C' };
 
