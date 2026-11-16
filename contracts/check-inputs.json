@@ -5671,6 +5671,18 @@
         "tests/go.sum",
         "legacy/packages/go/testcase/**"
       ]
+    },
+    "rust-wasm-core-check": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "Makefile",
+        "Cargo.lock",
+        "packages/rust/Cargo.toml",
+        "packages/rust/src/**"
+      ]
     }
   },
   "paths": {

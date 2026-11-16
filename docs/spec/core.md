@@ -565,6 +565,16 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   `Db::connect_schema` as one step `Io`; they call no language code, and their result is the result of the native
   form. Why: a `Config` holds the function `audit_source`, so the binding counts these members among those that reach
   language code (GN-6q) and drives them as machines.
+- **CORE-134** The crate `polyspec-orm` has the feature `runtime`, on by default, which holds what executes statements:
+  sqlx, the network and multi-thread runtime of tokio, rustls, AES-GCM, and the modules that open a connection, run a
+  statement, a transaction or a query, read a catalog or apply a dbspec through one. The contract builds the core for
+  the target `wasm` with no feature (`core.features` `{"wasm": []}`, binding I-1), so the WASM module compiles for
+  `wasm32-unknown-unknown`, whose browser has no platform I/O (binding GN-4b). The target `wasm` holds the units
+  `orm`, `error_kind`, `value`, `integer_value`, `float_value`, `dbspec` and `runtime_model`, the dbspec editing
+  operations; every other unit has `only` without `wasm` and the reason CORE-134 (binding Q-4). Why: the dbspec
+  operations are what the editors run in the browser (plan OM-1.2, F-15), and a member that needs a connection has no
+  database to reach there; a declared target set keeps the coverage of each target true, where a mask of cases or a
+  stub that raises would not (T493-8).
 - **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
   names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
   instance value, and a failure states its kind, its category and its whole message (CORE-12). The calls of `after`

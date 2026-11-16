@@ -477,6 +477,15 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   GN-6ab). 이 machine은 borrow `value`(GN-6h)로 받은 schema를 포함해 자기 인자를 소유하고, `Db::connect`와 `Db::connect_schema`를 `Io` step
   하나로 실행한다. 언어 코드는 부르지 않으며, 결과는 native 형식의 결과다. 이유: `Config`가 함수 `audit_source`를
   가지므로, binding은 이 member를 언어 코드에 닿는 member로 세고(GN-6q) machine으로 구동한다.
+- **CORE-134** crate `polyspec-orm`은 기본으로 켜진 feature `runtime`을 가진다. 이 feature는 statement를 실행하는
+  것을 담는다: sqlx, tokio의 network와 multi-thread runtime, rustls, AES-GCM, 그리고 연결을 열거나, statement,
+  transaction, query를 실행하거나, 연결로 catalog를 읽거나 dbspec을 적용하는 module이다. 계약은 target `wasm`의 core를
+  feature 없이 build한다(`core.features` `{"wasm": []}`, binding I-1). 그래서 WASM module은 browser에 platform I/O가
+  없는 `wasm32-unknown-unknown`에서 compile된다(binding GN-4b). target `wasm`은 dbspec 편집 연산인 unit `orm`,
+  `error_kind`, `value`, `integer_value`, `float_value`, `dbspec`, `runtime_model`을 담는다. 다른 모든 unit은 `wasm`을
+  뺀 `only`와 이유 CORE-134를 가진다(binding Q-4). 이유: dbspec 연산은 editor가 browser에서 실행하는 것이고(plan
+  OM-1.2, F-15), 연결이 필요한 member는 거기서 닿을 database가 없다. 선언된 target 집합은 각 target의 coverage를
+  사실대로 두지만, case를 가리는 mask나 오류를 내는 stub은 그렇지 않다(T493-8).
 - **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
   형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
   전체(CORE-12)를 적는다. `after`의 호출은 method를 부른 뒤의 receiver를 관찰하고, 각각 `{call, args, result}`다.
