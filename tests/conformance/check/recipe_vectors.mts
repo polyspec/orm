@@ -164,10 +164,25 @@ const SEED_SHAPES: Record<string, (steps: Json[]) => Json> = {
 };
 
 /**
- * The kind of a code of the catalog: its lower-case form (CORE-10). A state contract states the code that the language
- * implementations return, in capitals, and a shared recipe case states the kind (CORE-3), so the two name one error.
+ * The kinds of the error catalog of the core: the variants of `errors.kinds` of packages/rust/interface.json in snake case
+ * (CORE-10).
  */
-const kindOfCode = (code: string): string | undefined => (/^[A-Z][A-Z0-9_]*$/.test(code) ? code.toLowerCase() : undefined);
+const CATALOG_KINDS: ReadonlySet<string> = new Set((() => {
+  const contract = parseJsonValue(readFileSync(resolve(import.meta.dirname, '../../../packages/rust/interface.json'), 'utf8'));
+  const kinds = (contract as { errors?: { kinds?: { variant?: unknown }[] } }).errors?.kinds ?? [];
+  return kinds.flatMap(({ variant }) => typeof variant === 'string'
+    ? [(variant.split('::').at(-1) ?? '').replace(/(?<!^)([A-Z])/g, '_$1').toLowerCase()] : []);
+})());
+
+/**
+ * The kind of a code of the catalog: its lower-case form (CORE-10), and undefined for a text in capitals that is no code of
+ * the catalog. A state contract states the code that the language implementations return, in capitals, and a shared recipe
+ * case states the kind (CORE-3), so the two name one error; a text that names no error of the catalog stays a text.
+ */
+const kindOfCode = (code: string): string | undefined => {
+  const kind = /^[A-Z][A-Z0-9_]*$/.test(code) ? code.toLowerCase() : undefined;
+  return kind !== undefined && CATALOG_KINDS.has(kind) ? kind : undefined;
+};
 
 const isNumber = (value: Json): boolean => typeof value === 'number' || (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value));
 

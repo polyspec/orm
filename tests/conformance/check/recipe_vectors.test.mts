@@ -139,4 +139,6 @@ caseTest('a body result that names the code of a kind in capitals matches the ki
   compareOutput('php/sqlite/hex_malformed', { result: { odd_length: 'CODEC_DECODE', white_space: 'CODEC_DECODE' }, statements: [] }, want);
   assert.throws(() => compareOutput('php/sqlite/hex_malformed', { result: { odd_length: 'CONFIG', white_space: 'CODEC_DECODE' }, statements: [] }, want));
   assert.throws(() => compareOutput('php/sqlite/hex_malformed', { result: { odd_length: 'codec_decode', white_space: 'Codec_decode' }, statements: [] }, want));
+  // A text in capitals that is no code of the catalog stays a text, and does not match a lower-case text of the expect.
+  assert.throws(() => compareOutput('x', { result: { label: 'NOT_A_KIND' }, statements: [] }, { result: { label: 'not_a_kind' }, statements: [] }));
 });
