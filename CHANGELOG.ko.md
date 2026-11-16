@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4f73f6ea7871dde832184c9228fe26c23068ff62d62a2c0cfe5c77d8e85a92e0 -->
+<!-- source-sha256: dbff96e18ac5079bf74bf33178c4a76d62a23ad92d3009b8158468950fd495f8 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm은 binding 0.0.17과 json 0.0.34로 빌드한다(T576): Cargo, npm, Go pin이 그 release를 이름하고, 각 lock은 `polyspec-binding-core` 하나와 `polyspec-json` 하나를 가지며, packages/go의 생성된 Go 파일 `zz_generated_*.go`는 binding GN-3대로 추적되고, `scripts/repo/pin-deps.mts`가 pin을 쓴다.
 - 연결은 `beforeTransaction`(Go `BeforeTransaction`, Python과 Rust `before_transaction`)으로 hook를 등록하며, 모든 client는 `transaction`이 연결이나 그 handle에서 여는 가장 바깥 transaction마다, transaction이 connection을 잡거나 statement를 보내기 전에 그 hook를 부르고 TypeScript와 Rust에서는 기다립니다. 등록은 hook를 지우는 함수를 돌려줍니다. 그래서 hook는 호출의 read 뒤, write transaction 전에 다른 연결에서 row를 commit할 수 있으며, SQLite에서는 `BEGIN IMMEDIATE`가 write lock을 잡기 전입니다. hook의 오류는 transaction을 시작 전에 끝내며 바뀌지 않고 다시 실행되지 않습니다(T557, INT-190).
 - 연결의 `transactionActive`(Go `TransactionActive`, Python과 Rust `transaction_active`)로 호출한 execution flow에 그 연결의 transaction이 활성인지 알려 주므로, 호출자는 transaction 안에서 데이터베이스 밖의 작업을 거절할 수 있습니다. 여섯 client 모두 기존 transaction stack만 읽으며 statement를 보내거나 hook을 부르거나 driver에 묻지 않습니다(T556, INT-189).
 - 연결의 `analyzeRestore`로 현재 restore 요청에서 선택한 key와 새 assignment 컬럼을 쓰기 검증 전에 구분합니다. 여섯 client의 공개 분석과 planner가 같은 classifier를 쓰며, 분석은 statement를 보내거나 hook을 부르지 않습니다(T555, INT-188, PRT-91).

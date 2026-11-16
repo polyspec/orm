@@ -2729,7 +2729,7 @@ fn encode(styles: &[String], raw: &Value, bound: &HashMap<String, Outcome>) -> R
     }
     // An ordered-json value holds at most the levels its parser reads, so a value nested deeper is the common value, the
     // one Rust value that holds it (COD-70 `json-depth`).
-    if styles.iter().any(|s| s == "json") && u64::try_from(depth(raw)).is_ok_and(|levels| levels <= polyspec_json::MAX_DEPTH) {
+    if styles.iter().any(|s| s == "json") && i64::try_from(depth(raw)).is_ok_and(|levels| levels <= polyspec_json::MAX_DEPTH) {
         return Ok(ordered(&json_text(raw)?));
     }
     Ok(codec::encode(&stages, StyledValue::Value(&to_value(raw)?)))

@@ -385,9 +385,9 @@ test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; o
 .PHONY: bindings bindings-check lint-bindings test-bindings node-package test-wasm test-go-bindings
 BINDING := $(CURDIR)/node_modules/.bin/binding
 bindings:
-	$(NODE) $(BINDING) generate --root $(CURDIR)
+	$(NODE) $(BINDING) generate --root $(CURDIR) --cargo "$(CARGO_LINK)"
 bindings-check:
-	$(NODE) $(BINDING) check $(CURDIR)/packages/rust/interface.json
+	$(NODE) $(BINDING) check $(CURDIR)/packages/rust/interface.json --cargo "$(CARGO_LINK)"
 # The lint and the tests of the binding crates, after make bindings writes their generated folders. The PHP extension
 # crate builds against the headers of the PHP of .php-version, whose php-config ext-php-rs reads.
 BINDING_ENV := PHP=$(KIT_TOOLS)/bin/php PHP_CONFIG=$(KIT_TOOLS)/bin/php-config
@@ -1885,7 +1885,7 @@ comment-language-check/run:
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	$(RUN_TESTS) node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/pin-deps.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
 repo-check/run:
 	$(NODE) scripts/repo/check.mts
 
