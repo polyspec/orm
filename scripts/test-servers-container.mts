@@ -568,10 +568,12 @@ ${SH_FUNCTIONS}
 // service after a failed bay up are also report/bay-up-servers.log, so a report shows the cause of a failed start. bay
 // starts the services one after another in the order of their dependencies and waits for the healthcheck of each before
 // it creates the next, so a service after the one that failed has no container, and its logs name none.
-function runFile(at: At, list: readonly Kind[], services: readonly Service[], steps: readonly Step[], host: (service: string) => string, variables: Record<string, string>, command: readonly string[] | undefined): string {
+// The command of the run runs in the root of the checkout, where TEST_ENV and MARIADB_ENV name servers.env, as the job
+// check does in the runner, so that RUN='make <target>' runs the target of the checkout on these servers (T510).
+function runFile(at: At, list: readonly Kind[], services: readonly Service[], steps: readonly Step[], host: (service: string) => string, variables: Record<string, string>, command: readonly string[] | undefined, root: string): string {
   const environment = exports(variables);
   const check = command === undefined ? ['say "this directory was written without a command; write a run with make orm-test-container-run"', 'exit 2']
-    : [`at "the command of the run"`, `beside sh -c '. "$1/servers.env" && shift && exec "$@"' sh "$dir" ${words(command)}`, 'status=$?'];
+    : [`at "the command of the run"`, `beside sh -c 'cd "$2" && export TEST_ENV="$1/servers.env" MARIADB_ENV="$1/servers.env" && . "$1/servers.env" && shift 2 && exec "$@"' sh "$dir" ${quote(root)} ${words(command)}`, 'status=$?'];
   const logs = services.map(service => `    say "the last lines of the service ${service.name}:"; b logs -n 50 ${quote(service.name)} 2>&1 | tee -a "$dir/report/bay-up-servers.log" >&2`).join('\n');
   // The address of the primary of each kind, address_<kind>, which the variables of that kind name.
   const addresses = list.map(kind => `  resolved=$(b exec ${quote(kind)} getent ahostsv4 ${quote(host(kind))}) || failed "$?" ${quote(`bay exec ${kind} getent ahostsv4 ${host(kind)}`)}
@@ -1002,7 +1004,7 @@ function write(list: readonly Kind[], context: Context, form: Form, command: rea
     // variables that they name alike, the lease folder and the query of SQLite.
     const variables: Record<string, string> = Object.assign({}, ...list.map(kind => SERVERS[kind].variables({ host, ipv4: `\${address_${kind}}`, authority: place.authority(stated), other: place.other, leases: place.leases })));
     const steps = list.flatMap(kind => SERVERS[kind].steps(host));
-    if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, list, services, steps, host, variables, command));
+    if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, list, services, steps, host, variables, command, context.root));
     else {
       if (command === undefined) throw new TestServerError('test-servers-container: a run in the runner needs a command');
       writeFileSync(join(at.dir, 'run.sh'), jobRunFile(at, list, extra.cache));

@@ -384,6 +384,14 @@ caseTest('a run on the host removes its project when its command ends, fails or 
     assert.deepEqual(verbs(stand).filter(verb => verb === 'up' || verb === 'down'), ['up', 'down', 'up', 'down', 'up', 'down', 'up', 'down'], 'a run does not remove its project with bay down');
   }));
 
+caseTest('a run on the host runs its command in the root of the checkout, where TEST_ENV and MARIADB_ENV name its servers.env (BAY12.1, T510)', () =>
+  withOneCheckout(async (_dir, _stand, context) => {
+    const node = process.execPath;
+    const root = realpathSync(context.root);
+    const probe = `const fs = require('node:fs'); const env = process.env.TEST_ENV ?? ''; if (fs.realpathSync(process.cwd()) !== ${JSON.stringify(root)}) process.exit(5); if (!/[/]servers[.]env$/.test(env) || process.env.MARIADB_ENV !== env || !fs.readFileSync(env, 'utf8').includes('ORM_TEST_MYSQL_DSN')) process.exit(6)`;
+    assert.deepEqual(await run('mysql', [node, '-e', probe], context), { code: 0, signal: null }, 'the command does not run in the root of the checkout (5) or TEST_ENV and MARIADB_ENV do not name servers.env (6)');
+  }));
+
 caseTest('two runs of one kind in one checkout have a project each, and a second start of a kind is refused (BAY1)', () =>
   withOneCheckout(async (dir, stand, context) => {
     const node = process.execPath;

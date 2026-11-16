@@ -75,7 +75,7 @@ A client database case does not use the database that `ORM_TEST_MYSQL_DSN` or `O
 |---|---|
 | `compose.yaml` | The services of the servers; in the form of the runner a copy of `compose.run.yaml`, from which the script reads the plan |
 | `run.sh` | The steps of the run: `sh run.sh` is the whole run and `sh run.sh down` removes the project; in the form of the host `sh run.sh up` starts the servers and writes `servers.env`, and in the form of the runner `sh run.sh add <part>` queues the job of a part and prints its ID and `sh run.sh wait <part>` follows it to its end; `sh run.sh pull` downloads the images |
-| `servers.env` | The variables of the started servers, which `run.sh` writes in the form of the host and `job-check.sh` in the form of the runner |
+| `servers.env` | The variables of the started servers, which `run.sh` writes in the form of the host and `job-check.sh` in the form of the runner. The command of a run runs in the root of the checkout with these variables, and `TEST_ENV` and `MARIADB_ENV` name this file, in both forms, so that `RUN='make <target>'` runs the target of the checkout on these servers |
 | `tls/other-ca.pem` | The second CA of the TLS cases, which signs nothing |
 | `<service>-init/` | The initialization files of a service |
 | `runner-setup.sh`, `build.sh`, `check.sh`, `repo.bundle` | The form of the runner: its installation, the build command, the command of the run, and the commit of the run |

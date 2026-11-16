@@ -74,7 +74,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 |---|---|
 | `compose.yaml` | server의 service. runner 형태에서는 script가 plan을 읽는 `compose.run.yaml`의 복사본이다 |
 | `run.sh` | run의 단계. `sh run.sh`는 run 전체이고 `sh run.sh down`은 project를 제거한다. host 형태에서 `sh run.sh up`은 server를 시작하고 `servers.env`를 쓰며, runner 형태에서 `sh run.sh add <part>`는 part의 job을 queue에 넣고 그 ID를 출력하고, `sh run.sh wait <part>`는 그 job을 끝까지 따라간다. `sh run.sh pull`은 image를 download한다 |
-| `servers.env` | 시작된 server의 변수. host 형태에서는 `run.sh`가, runner 형태에서는 `job-check.sh`가 쓴다 |
+| `servers.env` | 시작된 server의 변수. host 형태에서는 `run.sh`가, runner 형태에서는 `job-check.sh`가 쓴다. 두 형태 모두에서 run의 명령은 이 변수를 가지고 checkout의 root에서 돌며, `TEST_ENV`와 `MARIADB_ENV`는 이 파일을 가리킨다. 그래서 `RUN='make <target>'`은 checkout의 target을 이 server들로 돌린다 |
 | `tls/other-ca.pem` | TLS case의 두 번째 CA. 아무것도 서명하지 않는다 |
 | `<service>-init/` | service의 초기화 file |
 | `runner-setup.sh`, `build.sh`, `check.sh`, `repo.bundle` | runner 형태: 설치, build command, run의 command, run의 commit |
