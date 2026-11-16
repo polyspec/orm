@@ -1,3 +1,4 @@
+#include "validator.h"
 /*
  * Polyspec\Orm\Db of the PHP library (packages/php/src/Db.php) in C: the connection (its PDO handle, driver, registered sets,
  * statement cache, statement event subscribers and request hook) and the statement path (select, scalarOf, paginate, writeOf,
@@ -3815,6 +3816,11 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
         db_throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
         return false;
     }
+    if (aget(ir, "require_match") != NULL && zend_is_true(aget(ir, "require_match")) && n == 0) {
+        zval_ptr_dtor(&id);
+        db_throw_orm("NO_ROWS", "the %s of %s matched no row", Z_STRVAL_P(aget(ir, "kind")), Z_STRVAL_P(aget(ir, "entity")));
+        return false;
+    }
     if (!record_inserted(frame, r, &id)) {
         zval_ptr_dtor(&id);
         return false;
@@ -4042,6 +4048,41 @@ static bool subscribe_impl(zval *self, zval *subscriber, zval *out)
      * template is not used again, so it is freed here rather than leaked per subscribe. */
     pefree(unsub, 1);
     return true;
+}
+
+/* Db::beforeTransaction: the hook joins the before-transaction hooks of the connection under the next number (INT-190). The
+ * returned closure removes that hook; it is made as the closure of subscribe is. */
+ZEND_NAMED_FUNCTION(db_remove_before_transaction)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zend_long id = (zend_long)(uintptr_t)EX(func)->internal_function.reserved[0];
+    zval *self = &EX(This);
+    zval *hooks = array_prop(rd(self, "state"), "beforeTransactionHooks");
+    zend_hash_index_del(Z_ARRVAL_P(hooks), (zend_ulong)id);
+}
+
+static void before_transaction_impl(zval *self, zval *hook, zval *out)
+{
+    zval *state = rd(self, "state");
+    zend_long id = as_long(rd(state, "beforeTransactionSeq"));
+    zval next;
+    ZVAL_LONG(&next, id + 1);
+    wr(state, "beforeTransactionSeq", &next);
+    zval *hooks = array_prop(state, "beforeTransactionHooks");
+    zval copy;
+    ZVAL_COPY(&copy, hook);
+    zend_hash_index_update(Z_ARRVAL_P(hooks), (zend_ulong)id, &copy);
+    zend_internal_function *remove = pemalloc(sizeof(zend_internal_function), 1);
+    memset(remove, 0, sizeof(zend_internal_function));
+    remove->type = ZEND_INTERNAL_FUNCTION;
+    remove->fn_flags = ZEND_ACC_PUBLIC;
+    remove->scope = Z_OBJCE_P(self);
+    remove->function_name = zend_string_init_interned("removeBeforeTransaction", sizeof("removeBeforeTransaction") - 1, 1);
+    remove->handler = db_remove_before_transaction;
+    remove->reserved[0] = (void *)(uintptr_t)id;
+    zend_create_fake_closure(out, (zend_function *)remove, Z_OBJCE_P(self), Z_OBJCE_P(self), self);
+    /* zend_create_fake_closure copies the function into the closure, so the template is freed here. */
+    pefree(remove, 1);
 }
 
 static zend_long insert_parts_batch(zend_long rows, zend_long batch, zval *out)
@@ -4316,6 +4357,27 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     }
 }
 
+ZEND_METHOD(Polyspec_Orm_Db, analyzeRestore)
+{
+    zval *request;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(request)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *state = rd(ZEND_THIS, "state");
+    if (as_bool(rd(state, "closed"))) { db_throw_orm("CONFIG", "database is closed"); RETURN_THROWS(); }
+    if (!validator_restore_analysis_shape(request)) RETURN_THROWS();
+    zval *hash = zend_hash_str_find(Z_ARRVAL_P(request), "manifest_hash", sizeof("manifest_hash") - 1);
+    zval *sets = rd(state, "sets");
+    if (hash == NULL || Z_TYPE_P(hash) != IS_STRING || sets == NULL || Z_TYPE_P(sets) != IS_ARRAY || zend_symtable_find(Z_ARRVAL_P(sets), Z_STR_P(hash)) == NULL) {
+        db_throw_orm("SCHEMA_HASH_MISMATCH", "restore analysis manifest %s is not registered on this connection", hash != NULL && Z_TYPE_P(hash) == IS_STRING ? Z_STRVAL_P(hash) : ""); RETURN_THROWS();
+    }
+    zval model;
+    if (!registered_model(ZEND_THIS, hash, &model)) RETURN_THROWS();
+    bool ok = validator_restore_analysis(&model, request, return_value);
+    zval_ptr_dtor(&model);
+    if (!ok) RETURN_THROWS();
+}
+
 ZEND_METHOD(Polyspec_Orm_Db, withRequestHook)
 {
     zval *hook;
@@ -4414,6 +4476,15 @@ ZEND_METHOD(Polyspec_Orm_Db, subscribe)
 
 
 /* Db::setListener(open) and Db::listener(): the opener of the LISTEN connections, which DbState keeps (docs/spec/dialects.md DIA-194). */
+ZEND_METHOD(Polyspec_Orm_Db, beforeTransaction)
+{
+    zval *hook;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(hook, zend_ce_closure)
+    ZEND_PARSE_PARAMETERS_END();
+    before_transaction_impl(ZEND_THIS, hook, return_value);
+}
+
 ZEND_METHOD(Polyspec_Orm_Db, setListener)
 {
     zval *opener;
@@ -5070,6 +5141,26 @@ static zval *active_for(zval *db)
     return NULL;
 }
 
+/* Db::transactionActive (INT-189): whether a transaction of the connection that has not ended is active in the calling
+ * execution flow, from the frames of the request; a frame of another flow is not active for it, and no statement runs. */
+ZEND_METHOD(Polyspec_Orm_Db, transactionActive)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval *state = rd(ZEND_THIS, "state");
+    if (as_bool(rd(state, "closed"))) { db_throw_orm("CONFIG", "database is closed"); RETURN_THROWS(); }
+    zval flow;
+    if (!current_flow(&flow)) RETURN_THROWS();
+    for (size_t i = g_nframes; i > 0; i--) {
+        zval *fstate = rd(rd(&g_frames[i - 1], "db"), "state");
+        if (Z_OBJ_P(fstate) == Z_OBJ_P(state) && same_flow(&g_frames[i - 1], &flow)) {
+            zval_ptr_dtor(&flow);
+            RETURN_BOOL(!as_bool(rd(&g_frames[i - 1], "finished")));
+        }
+    }
+    zval_ptr_dtor(&flow);
+    RETURN_FALSE;
+}
+
 /* Makes the rollback error: OrmException::rollback(cause, rollback). Throws it. */
 static void throw_rollback(zval *cause, zval *rollback)
 {
@@ -5579,12 +5670,9 @@ static bool make_tx_frame(zval *self, zval *state, zval *out, bool read_only, co
 static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out)
 {
     zval *state = rd(self, "state");
+    /* A before-transaction hook may have closed the connection (INT-190). */
     if (as_bool(rd(state, "closed"))) {
         db_throw_orm("CONFIG", "database is closed");
-        return false;
-    }
-    if (timeout > 0 && !is_str(rd(self, "driver"), "postgres")) {
-        db_throw_orm("CAPABILITY_UNSUPPORTED", "transaction timeoutMs is supported only by postgres");
         return false;
     }
     /* The upper-case level of the isolation: underscores become spaces. */
@@ -6175,6 +6263,51 @@ static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callb
 
 /* Db::transaction: the callback runs in a transaction of the connection; a transaction of the same connection inside an active one
  * is a savepoint and accepts only the retry option. A DEADLOCK is retried up to retry times, with a growing back-off. */
+/* The checks of an attempt of an outermost transaction, then the before-transaction hooks registered now, in registration
+ * order, each called with read_only (INT-190). It runs before the transaction takes the connection or sends a
+ * statement, the SQLite row lock table included; the error of a hook is left pending unchanged and no later hook runs. */
+static bool before_begin(zval *self, bool read_only, zend_long timeout)
+{
+    zval *state = rd(self, "state");
+    if (as_bool(rd(state, "closed"))) {
+        db_throw_orm("CONFIG", "database is closed");
+        return false;
+    }
+    if (timeout > 0 && !is_str(rd(self, "driver"), "postgres")) {
+        db_throw_orm("CAPABILITY_UNSUPPORTED", "transaction timeoutMs is supported only by postgres");
+        return false;
+    }
+    zval *list = rd(state, "beforeTransactionHooks");
+    if (acount(list) == 0) {
+        return true;
+    }
+    /* A copy of the list: a hook that registers or removes a hook changes the next transaction only. */
+    HashTable *copy = zend_array_dup(Z_ARRVAL_P(list));
+    bool ok = true;
+    zval arg;
+    ZVAL_BOOL(&arg, read_only);
+    zval *hook;
+    ZEND_HASH_FOREACH_VAL(copy, hook)
+    {
+        zval ret;
+        ZVAL_UNDEF(&ret);
+        bool called = call_user_function(NULL, NULL, hook, &ret, 1, &arg) == SUCCESS;
+        zval_ptr_dtor(&ret);
+        if (EG(exception) != NULL) {
+            ok = false;
+            break;
+        }
+        if (!called) {
+            db_throw_orm("INTERNAL", "a before-transaction hook could not be called");
+            ok = false;
+            break;
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    zend_array_destroy(copy);
+    return ok;
+}
+
 static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback callback, void *context,
     const char *isolation, bool read_only, zend_long timeout, zend_long retry, zval *audit, zval *out)
 {
@@ -6229,6 +6362,13 @@ static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback call
         return kept;
     }
     for (zend_long attempt = 0;; attempt++) {
+        /* Outside the retry: the error of a hook ends the transaction unchanged, DEADLOCK included (INT-190). */
+        if (!before_begin(self, read_only, timeout)) {
+            if (has_record) {
+                zval_ptr_dtor(&record);
+            }
+            return false;
+        }
         if (run_transaction(self, fn, callback, context, isolation, read_only, timeout, has_record ? &record : NULL, out)) {
             if (has_record) {
                 zval_ptr_dtor(&record);

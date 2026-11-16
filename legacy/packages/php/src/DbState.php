@@ -64,6 +64,12 @@ final class DbState
      */
     public array $subscribers = [];
     public int $subscriberSeq = 0;
+    /**
+     * @var array<int, \Closure(bool): void> The before-transaction hooks (INT-190). In registration order; the key is
+     *      the registration number.
+     */
+    public array $beforeTransactionHooks = [];
+    public int $beforeTransactionSeq = 0;
     /** The connection's outermost transaction number. Increases by one for each outermost begin. */
     public int $transactions = 0;
     /**

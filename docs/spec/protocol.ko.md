@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: c98597796048815f7d82d84c2cd0c8c4b0f02ec24c4974bc68a16b4276aafc6d -->
+<!-- source-sha256: d21d74088402cc647a7600a11d032c4d21d305b0ed1d01b78f17b847cc564450 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `legacy/packages/go/engine/ir/ir.go`와 `legacy/packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -130,6 +130,8 @@ primary key나 identity 컬럼을 할당하는 `update`는 `IR_INVALID`("cannot 
 - **PRT-81** default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. 다만 PostgreSQL과 SQLite의 `default now` 컬럼은 `now` slot을 bind한다(PRT-33). default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다.
 - **PRT-82** planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다. 문장은 요청 `set`의 컬럼을 요청 순서로 쓰고 이어서 planner가 할당하는 컬럼을 쓴다. `insert`는 AES 키 버전, audit 컬럼, bind하는 `default now` 컬럼(컬럼 순서)이고, `update`는 AES 키 버전, `updated` 컬럼, audit 컬럼이며, soft delete는 soft delete 컬럼 다음에 audit 컬럼을 쓴다.
 
+- **PRT-90** 요청은 `update`, `delete`, `restore`에 `require_match: true`를 둘 수 있다. Request hook 뒤 main write의 최종 predicate와 일치한 행이 0이면 `NO_ROWS`, `the <kind> of <entity> matched no row`로 실패한다. 같은 값을 쓰더라도 행과 일치하는 update는 CFG-10의 found-row 의미에 따라 성공하며, soft delete는 main update와 일치한 행의 수를 사용한다. 결과를 추측하려고 write 앞뒤에 read를 더하지 않는다. Write의 audit guard는 거절 전에 0으로 정산하므로 거절된 zero-match write 자체의 audit record를 남기지 않는다. Flag는 boolean이며 생략하거나 false이면 기존 write 동작을 유지한다. Insert와 duplicate-update insert를 포함한 다른 kind에서 true이면 `IR_INVALID`, `require_match is only valid on update, delete or restore`로 실패한다. Driver 오류와 optimistic-lock 거절이 먼저이며, 그 밖에는 match 거절이 model의 expected-revision 검사보다 먼저다. 할당이 없어 요청을 만들기 전에 반환하는 update는 그대로이며 hook을 호출하지 않는다. Flag는 정확히 한 행이 아니라 하나 이상의 일치를 요구하며 test 전용 last-write counter가 아닌 최종 write의 일치 수를 사용한다.
+
 ### 1.5 Restore
 
 `restore` 요청은 `soft_delete` setting이 있는 테이블([dbspec](dbspec.ko.md#settings))에서 soft delete한 행 하나를 지정한다. `set`은 그 행의 값이며 `update` 할당과 같은 규칙을 따르고, `where`는 `and`로 이은 조건이다. `where`의 두 item 사이의 `or`는 `IR_INVALID`로 실패한다. planner는 request hook 뒤에 key를 고른다: 매개변수(`p`)를 가진 `set` 값과 `where` item 중 함수, 값 함수, ref, subquery 없이 매개변수를 가진 컬럼의 `eq` predicate가 컬럼의 값을 주며, 그 값들이 primary key의 모든 컬럼을 덮으면 primary key가, 아니면 컬럼을 모두 덮는 첫 unique key(이름 순서)가 key다. key 컬럼의 `set` 값은 `where` 뒤에 `set`의 순서로 그 컬럼의 `eq` 조건이 되고, 다른 `set` 값은 restore와 함께 쓰는 새 값이다. `where`의 다른 조건은 restore를 더 좁히며, key가 여전히 행을 많아야 하나로 정하므로 request hook은 `update`처럼 restore에 조건을 더할 수 있다. 값이 어떤 key도 덮지 않는 요청은 `IR_INVALID`로 실패하며, primary key, identity, soft delete 컬럼의 새 값도 그렇다. `optimistic`은 없다. plan은 `main` step 하나다. unique key (`team_id`, `member_id`)에서 `team_id`, `member_id`, `note`의 `set`이면:
@@ -139,6 +141,8 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 ```
 
 이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 뺀다: root와 각 subquery는 `WHERE`에서, 각 join child는 `ON` 조건에서 빼므로 left join은 null child를 주며, 각 relation은 자기 statement에서 뺀다. soft delete한 행과 맞는 요청은 `restore`뿐이다(conformance vector `joins_soft_deleted`). 모델 메서드 `restore`는 set 값을 `set`으로 보내고 `where`는 보내지 않으며, 이 step을 실행한 뒤 hook이 남긴 요청에서 planner가 고른 key의 값으로 행을 읽는다([사용법](../operations/usage.ko.md#restore-a-soft-deleted-row)).
+
+- **PRT-91** Restore 분석은 key 선택과 assignment 분류를 쓰기 검증과 분리한다. 호출 시점 요청에 이 절의 key 선택 규칙을 적용한다. 완전한 primary key가 우선이고, 그렇지 않으면 이름 순서에서 첫 완전한 unique key다. Key 컬럼은 schema 순서, assignment는 중복 컬럼을 포함한 요청 set 순서를 유지한다. 선택한 key 컬럼과 매개변수 값 key 조건으로 소비하지 않은 set 컬럼을 보고한다. 분석과 planner는 같은 분류기를 부르며, planner는 그다음 기존 검증으로 primary, identity, soft-delete, audit 등 허용되지 않은 할당을 거절한다. 분석은 쓰기를 허가하지 않으며 매개변수 범위, 값 타입, 할당 권한은 검사하지 않아 hook가 해당 할당을 먼저 분류하고 거절할 수 있다. 요청 형태 오류, 알 수 없는 entity나 assignment 컬럼, soft delete가 없는 table, 최상위 restore 조건 사이의 or, 불완전한 key는 기존 코드와 메시지로 거절한다. Restore가 아닌 kind는 `IR_INVALID` `restore analysis requires a restore request`다. 호출은 bind 값을 읽거나 매개변수 번호를 바꾸지 않고 요청을 유지한다. 반환 목록은 독립적이므로 목록 수정이 요청, 등록 schema, 다음 결과를 바꿀 수 없다. 동적 client는 manifest hash를 찾기 전에 기존 Request record shape를 검사한다. hash가 없거나 null이면 빈 typed string과 같은 미등록 빈 hash 결과가 나오며 분석이 등록된 hash를 채우지 않는다. Go와 Rust의 hash는 string type이므로 배열은 공개 method 입력 type에 들어가지 않는다.
 
 ### 1.6 적재 {#_1-6-load}
 

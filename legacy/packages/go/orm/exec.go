@@ -1464,6 +1464,9 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	if r.ir.Kind == "update" && r.ir.Optimistic != nil && affected == 0 {
 		return nil, 0, &ir.Error{Code: CodeOptimisticLock, Msg: "the row changed after it was read"}
 	}
+	if r.ir.RequireMatch && affected == 0 {
+		return nil, 0, &ir.Error{Code: CodeNoRows, Msg: "the " + r.ir.Kind + " of " + r.ir.Entity + " matched no row"}
+	}
 	return lastID, affected, nil
 }
 

@@ -432,7 +432,7 @@ static const field_t REQUEST_FIELDS[] = {
     {"relations", "list<Relation>"}, {"order", "list<Order>"}, {"group_by", "list<string>"},
     {"limit", "Limit"}, {"force_index", "string"}, {"lock", "string"}, {"key_by", "string"}, {"flatten", "bool"},
     {"limit_per_parent", "int"}, {"if_parent", "IfParent"}, {"no_cascade_delete", "bool"},
-    {"ir_version", "int"}, {"manifest_hash", "string"}, {"kind", "string"}, {"load", "bool"}, {"set", "list<Assign>"},
+    {"ir_version", "int"}, {"manifest_hash", "string"}, {"kind", "string"}, {"load", "bool"}, {"require_match", "bool"}, {"set", "list<Assign>"},
     {"on_duplicate", "list<Assign>"}, {"rows", "list<list<int>>"}, {"optimistic", "Optimist"}, {"agg", "string"}, {"n_params", "int"},
 };
 static const field_t COLUMNS_FIELDS[] = {{"mode", "string"}, {"add", "list<string>"}, {"remove", "list<string>"}, {"fn", "map<ColFunc>"}, {"sub", "map<Sub>"}};
@@ -902,7 +902,7 @@ static bool covered(HashTable *valued, HashTable *columns)
 }
 
 /* Validator::restoreKey: the parts of a restore: its key, its where, and its new values. */
-static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
+static bool classify_restore(vctx *c, HashTable *ent, HashTable *r, zval *ret)
 {
     const char *ename = str(c, ent, "entity", "");
     zval *sd = orm_hash_value(ent, "soft_delete", sizeof("soft_delete") - 1, true);
@@ -1013,11 +1013,6 @@ static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
         }
         HashTable *col;
         TRY(col_of(c, ent, column, &col));
-        if ((col != NULL && flag(col, "pk"))
-            || zv_eq_str(orm_hash_value(ent, "identity", sizeof("identity") - 1, true), column)
-            || zv_eq_str(orm_hash_value(ent, "soft_delete", sizeof("soft_delete") - 1, true), column)) {
-            return fail(IR_INVALID, "restore cannot assign %s", column);
-        }
         zval cp;
         ZVAL_COPY(&cp, a);
         zend_hash_next_index_insert(Z_ARRVAL_P(set_out), &cp);
@@ -1036,6 +1031,85 @@ static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
     add_assoc_zval(ret, "where", &where);
     add_assoc_zval(ret, "set", &setz);
     return true;
+}
+
+/* One classifier is shared with metadata analysis; write restrictions remain here. */
+static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
+{
+    TRY(classify_restore(c, ent, r, ret));
+    HashTable *set = arr_or_empty(ha(orm_hash_value(Z_ARRVAL_P(ret), "set", sizeof("set") - 1, true)));
+    zval *a;
+    ZEND_HASH_FOREACH_VAL(set, a) {
+        const char *column = str(c, Z_ARRVAL_P(a), "column", "");
+        HashTable *col;
+        TRY(col_of(c, ent, column, &col));
+        if ((col != NULL && flag(col, "pk"))
+            || zv_eq_str(orm_hash_value(ent, "identity", sizeof("identity") - 1, true), column)
+            || zv_eq_str(orm_hash_value(ent, "soft_delete", sizeof("soft_delete") - 1, true), column)) {
+            zval_ptr_dtor(ret);
+            ZVAL_UNDEF(ret);
+            return fail(IR_INVALID, "restore cannot assign %s", column);
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+static bool analyze_restore(vctx *c, zval *request, zval *ret)
+{
+    TRY(shape(c, "Request", request, ""));
+    HashTable *r = Z_ARRVAL_P(request);
+    zval *version = orm_hash_value(r, "ir_version", sizeof("ir_version") - 1, true);
+    if (version == NULL || Z_TYPE_P(version) != IS_LONG || Z_LVAL_P(version) != 1) {
+        return fail("VERSION_MISMATCH", "ir_version %s, engine 1", version != NULL ? sv(c, version) : "0");
+    }
+    if (!streq(str(c, r, "kind", ""), "restore")) return fail(IR_INVALID, "restore analysis requires a restore request");
+    const char *name = str(c, r, "entity", "");
+    HashTable *ent = entity_named(c, name);
+    if (ent == NULL) return fail("ENTITY_UNKNOWN", "%s", name);
+    zval *a;
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(r, "set", sizeof("set") - 1, true))), a) {
+        HashTable *col;
+        const char *column = str(c, Z_ARRVAL_P(a), "column", "");
+        TRY(col_of(c, ent, column, &col));
+        if (col == NULL) return fail("COLUMN_UNKNOWN", "%s.%s", name, column);
+    } ZEND_HASH_FOREACH_END();
+    zval parts;
+    ZVAL_UNDEF(&parts);
+    TRY(classify_restore(c, ent, r, &parts));
+    array_init(ret);
+    zval key, assignments;
+    ZVAL_COPY(&key, orm_hash_value(Z_ARRVAL(parts), "key", sizeof("key") - 1, true));
+    array_init(&assignments);
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(Z_ARRVAL(parts), "set", sizeof("set") - 1, true))), a) {
+        zval column;
+        ZVAL_COPY(&column, orm_hash_value(Z_ARRVAL_P(a), "column", sizeof("column") - 1, true));
+        add_next_index_zval(&assignments, &column);
+    } ZEND_HASH_FOREACH_END();
+    add_assoc_zval(ret, "key", &key);
+    add_assoc_zval(ret, "assignments", &assignments);
+    zval_ptr_dtor(&parts);
+    return true;
+}
+
+bool validator_restore_analysis_shape(zval *request)
+{
+    vctx c;
+    ctx_init(&c, NULL);
+    bool ok = shape(&c, "Request", request, "");
+    release(&c);
+    return ok;
+}
+
+bool validator_restore_analysis(zval *model, zval *request, zval *ret)
+{
+    vctx c;
+    ctx_init(&c, NULL);
+    zval rv;
+    zval *entities = zend_read_property(Z_OBJCE_P(model), Z_OBJ_P(model), "entities", sizeof("entities") - 1, true, &rv);
+    c.entities = ha(entities);
+    bool ok = analyze_restore(&c, request, ret);
+    release(&c);
+    return ok;
 }
 
 bool validator_restore_key(HashTable *ent, HashTable *r, zval *ret)
@@ -1917,6 +1991,9 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
     const char *owned[] = {"insert", "update", "delete", "restore", "restart_identity"};
     if (target != NULL && flag(target, "external") && IN(kind, owned)) {
         return fail("CONFIG", "%s is owned by another document set", str(c, target, "table", ""));
+    }
+    if (flag(r, "require_match") && !streq(kind, "update") && !streq(kind, "delete") && !streq(kind, "restore")) {
+        return fail(IR_INVALID, "require_match is only valid on update, delete or restore");
     }
     if (flag(r, "load") && (!streq(kind, "insert") || has_items(ha(orm_hash_value(r, "on_duplicate", sizeof("on_duplicate") - 1, true))))) {
         return fail(IR_INVALID, "load is only valid on insert without on_duplicate");

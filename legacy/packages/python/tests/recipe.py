@@ -4,6 +4,7 @@
 # output of its own.
 import atexit
 import contextlib
+import copy
 import dataclasses
 import json
 import math
@@ -2785,6 +2786,8 @@ def _run_case_on(
         "closers": closers,
         "fields": {},
         "records": [],
+        # The transaction hook records of transaction_hook.install, separate from the request hook records (INT-190).
+        "transaction_hook_records": [],
         "hook_bases": {},
     }
     try:
@@ -4738,7 +4741,9 @@ def _install_hook(step: dict, context: dict) -> None:
             if not _kind_matches(a["kinds"], query["kind"]):
                 continue
             action = a["action"]
-            if action == "scope":
+            if action == "require_match":
+                query["require_match"] = True
+            elif action == "scope":
                 if a["nested"]:
                     _scope_tree(query, a["column"], a["value"], add_param)
                 else:
@@ -4804,6 +4809,49 @@ def _install_hook(step: dict, context: dict) -> None:
     context["bound"][target] = base.with_request_hook(hook)
 
 
+def _op_transaction_active(step: dict, context: dict) -> dict:
+    db = _connection_of(step, context)
+    if step.get("closed", False):
+        db.close()
+    flow = step.get("flow")
+    if flow is None:
+        return {"value": {"bool": db.transaction_active()}}
+    if flow != "other":
+        raise ValueError(f"transaction.active has no flow {flow}")
+    # A thread of its own is another execution flow (INT-189); its result or its error is read after it ends.
+    answer: dict = {}
+
+    def other_flow() -> None:
+        try:
+            answer["value"] = db.transaction_active()
+        except BaseException as error:  # noqa: BLE001 - the error is raised again in the case thread
+            answer["error"] = error
+
+    thread = threading.Thread(target=other_flow)
+    thread.start()
+    thread.join()
+    if "error" in answer:
+        raise answer["error"]
+    return {"value": {"bool": answer["value"]}}
+
+
+def _op_restore_analyze(step: dict, context: dict) -> dict:
+    request = copy.deepcopy(step["request"])
+    request.setdefault("manifest_hash", context["schema"].manifest_hash)
+    before = copy.deepcopy(request)
+    result = _connection_of(step, context).analyze_restore(request)
+    if step.get("mutate_return", False):
+        if result["key"]:
+            result["key"][0] = "changed"
+        if result["assignments"]:
+            result["assignments"][0] = "changed"
+        result["key"].append("changed")
+        result["assignments"].append("changed")
+        result = _connection_of(step, context).analyze_restore(request)
+    _expect_equal(request, before, "restore analysis keeps its request unchanged")
+    return {"json": result}
+
+
 def _op_hook_install(step: dict, context: dict) -> dict:
     _install_hook(step, context)
     return {"bind": context["bound"][step["as"]]} if "as" in step else {}
@@ -4826,6 +4874,49 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
         for record in records
     ]
     return {"value": {"array": listed}, "counts": counts}
+
+
+def _op_transaction_hook_install(step: dict, context: dict) -> dict:
+    """transaction_hook.install (FCV-4, INT-190): one hook registered by the public before_transaction; each call
+    records its name and read_only, runs its steps and then fails with the code of fail when it is set."""
+    # The fields are read when the hook is installed, since the hook runs after the step ends.
+    name = step["as"]
+    steps = step.get("steps") or []
+    fail = step.get("fail")
+
+    def hook(read_only: bool) -> None:
+        context["transaction_hook_records"].append(
+            {"hook": name, "read_only": read_only}
+        )
+        for nested in steps:
+            _run_database_step(nested, context)
+        if fail is not None:
+            raise OrmError(fail, "before-transaction hook refused")
+
+    return {"bind": _connection_of(step, context).before_transaction(hook)}
+
+
+def _op_transaction_hook_remove(step: dict, context: dict) -> dict:
+    """transaction_hook.remove (FCV-4, INT-190): calls the remove function bound to ref."""
+    _bound_value(step["ref"], context)()
+    return {}
+
+
+def _op_transaction_hook_records(_step: dict, context: dict) -> dict:
+    """transaction_hook.records (FCV-4, INT-190): the transaction hook records in the order of the calls."""
+    return {
+        "value": {
+            "array": [
+                {
+                    "object": [
+                        ["hook", {"text": record["hook"]}],
+                        ["read_only", {"bool": record["read_only"]}],
+                    ]
+                }
+                for record in context["transaction_hook_records"]
+            ]
+        }
+    }
 
 
 def _keyring(raw: dict) -> AesKeyring:
@@ -4950,8 +5041,13 @@ _DATABASE_OPS = {
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,
     "events.captured": _op_events_captured,
+    "restore.analyze": _op_restore_analyze,
+    "transaction.active": _op_transaction_active,
     "hook.install": _op_hook_install,
     "hook.records": _op_hook_records,
+    "transaction_hook.install": _op_transaction_hook_install,
+    "transaction_hook.remove": _op_transaction_hook_remove,
+    "transaction_hook.records": _op_transaction_hook_records,
     "utils.aes_status": _op_aes_status,
     "utils.aes_rotate": _op_aes_rotate,
 }

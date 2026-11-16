@@ -113,6 +113,7 @@
       "as",
       "audit_source",
       "dsn",
+      "only",
       "op",
       "pool_idle_size",
       "pool_lifetime_ms",
@@ -876,6 +877,35 @@
       "op"
     ],
     "hook.records": [
+      "expect",
+      "op"
+    ],
+    "restore.analyze": [
+      "connection",
+      "expect",
+      "mutate_return",
+      "op",
+      "request"
+    ],
+    "transaction.active": [
+      "closed",
+      "connection",
+      "expect",
+      "flow",
+      "op"
+    ],
+    "transaction_hook.install": [
+      "as",
+      "connection",
+      "fail",
+      "op",
+      "steps"
+    ],
+    "transaction_hook.remove": [
+      "op",
+      "ref"
+    ],
+    "transaction_hook.records": [
       "expect",
       "op"
     ],

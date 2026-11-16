@@ -48,3 +48,20 @@ caseTest('transaction flow: overlapping statements on the transaction connection
     if (!codes.includes('CONFIG')) throw new Error(`two overlapping statements of one transaction gave ${JSON.stringify(codes)}, without CONFIG`);
   } finally { await db.close(); }
 });
+
+// Requirements: INT-190, CFG-9.
+caseTest('transaction flow: a cancellation handle shares the before-transaction hooks of its connection', DATABASE, async () => {
+  const db = await database('before-transaction');
+  try {
+    const signalled = db.withSignal(new AbortController().signal);
+    const calls = [];
+    db.beforeTransaction(readOnly => { calls.push(['connection', readOnly]); });
+    // A hook registered on the connection is called for a transaction begun on the handle.
+    await signalled.transaction(() => {}, { retry: 0 });
+    signalled.beforeTransaction(async readOnly => { calls.push(['handle', readOnly]); });
+    // A hook registered on the handle is called for a transaction begun on the connection, after the hook registered first.
+    await db.transaction(() => {}, { retry: 0, readOnly: true });
+    const want = [['connection', false], ['connection', true], ['handle', true]];
+    if (JSON.stringify(calls) !== JSON.stringify(want)) throw new Error(`the hooks were called as ${JSON.stringify(calls)}, want ${JSON.stringify(want)}`);
+  } finally { await db.close(); }
+});

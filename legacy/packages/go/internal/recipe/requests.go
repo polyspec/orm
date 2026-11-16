@@ -85,6 +85,103 @@ func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
 // requestOp runs the request hook and AES ops of FCV-4, or OP_UNKNOWN for an op that it does not name.
 func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 	switch s.k("op").Op {
+	case "restore.analyze":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		var request ir.Request
+		if err := json.Unmarshal(s.k("request").Request, &request); err != nil {
+			return outcome{}, err
+		}
+		var members map[string]json.RawMessage
+		if err := json.Unmarshal(s.k("request").Request, &members); err != nil {
+			return outcome{}, err
+		}
+		if _, present := members["manifest_hash"]; !present {
+			request.ManifestHash = c.schema.Hash
+		}
+		before, err := json.Marshal(request)
+		if err != nil {
+			return outcome{}, err
+		}
+		result, err := db.AnalyzeRestore(&request)
+		if err != nil {
+			return outcome{}, err
+		}
+		if s.k("mutate_return").MutateReturn {
+			if len(result.Key) > 0 {
+				result.Key[0] = "changed"
+			}
+			if len(result.Assignments) > 0 {
+				result.Assignments[0] = "changed"
+			}
+			result.Key = append(result.Key, "changed")
+			result.Assignments = append(result.Assignments, "changed")
+			result, err = db.AnalyzeRestore(&request)
+			if err != nil {
+				return outcome{}, err
+			}
+		}
+		after, err := json.Marshal(request)
+		if err != nil {
+			return outcome{}, err
+		}
+		if string(before) != string(after) {
+			return outcome{}, fmt.Errorf("restore analysis changed its request")
+		}
+		return jsonOutcome(map[string]any{"key": result.Key, "assignments": result.Assignments}), nil
+	case "transaction.active":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		if s.k("closed").Closed {
+			if err := db.Close(); err != nil {
+				return outcome{}, err
+			}
+		}
+		var active bool
+		switch flow := s.k("flow").Flow; flow {
+		case "":
+			active, err = db.TransactionActive()
+		case "other":
+			type answer struct {
+				active bool
+				err    error
+			}
+			done := make(chan answer, 1)
+			go func() {
+				active, err := db.TransactionActive()
+				done <- answer{active, err}
+			}()
+			got := <-done
+			active, err = got.active, got.err
+		default:
+			return outcome{}, fmt.Errorf("transaction.active has no flow %q", flow)
+		}
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(active), nil
+	case "transaction_hook.install":
+		return c.installTransactionHook(s)
+	case "transaction_hook.remove":
+		remove, err := boundAPI[*transactionHookRemoval](s.k("ref").Ref, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		remove.remove()
+		return okOutcome(), nil
+	case "transaction_hook.records":
+		list := []any{}
+		for _, r := range c.transactionHooks {
+			list = append(list, map[string]any{"object": []any{
+				[]any{"hook", map[string]any{"text": r.hook}},
+				[]any{"read_only", map[string]any{"bool": r.readOnly}},
+			}})
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"array": list}}}, nil
 	case "hook.install":
 		return c.installHook(s)
 	case "hook.records":
@@ -193,6 +290,49 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 }
 
+// transactionHookRecord is one call of a hook that transaction_hook.install registered (INT-190, transaction_hook.records).
+type transactionHookRecord struct {
+	hook     string
+	readOnly bool
+}
+
+// transactionHookRemoval is the function that removes a hook of transaction_hook.install, bound to its as.
+type transactionHookRemoval struct{ remove func() }
+
+// installTransactionHook registers one hook of INT-190 on the connection of s with the public BeforeTransaction. Each call
+// records its name and readOnly, runs the steps of s in order, each with its own expect, and then fails with the error of
+// the code of fail, when s names one (FCV-4).
+func (c *databaseContext) installTransactionHook(s databaseStep) (outcome, error) {
+	db, err := connectionOf(s, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	name := s.k("as").As
+	if name == "" {
+		return outcome{}, fmt.Errorf("transaction_hook.install names no as")
+	}
+	if s.k("fail").Fail.set {
+		return outcome{}, fmt.Errorf("transaction_hook.install takes the error code of its failure as fail, not true")
+	}
+	steps, code := s.k("steps").Steps, s.k("fail").Fail.code
+	remove, err := db.BeforeTransaction(func(_ context.Context, readOnly bool) error {
+		c.transactionHooks = append(c.transactionHooks, transactionHookRecord{hook: name, readOnly: readOnly})
+		if err := runNested(steps, c); err != nil {
+			return err
+		}
+		if code != "" {
+			return &ir.Error{Code: code, Msg: "before-transaction hook refused"}
+		}
+		return nil
+	})
+	if err != nil {
+		return outcome{}, err
+	}
+	out := okOutcome()
+	out.api = &transactionHookRemoval{remove: remove}
+	return out, nil
+}
+
 // hookAction is one action of hook.install, with its value converted once.
 type hookAction struct {
 	action string
@@ -264,6 +404,8 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 				continue
 			}
 			switch a.action {
+			case "require_match":
+				r.RequireMatch = true
 			case "scope":
 				if a.nested {
 					scopeTree(&r.Query, a.column, a.value, addParam)

@@ -35,3 +35,19 @@ table hook_upsert {
     store document table
   }
 }
+
+table hook_partition {
+  scope_id i64
+  id i64
+  alternate_code varchar(32)
+  label varchar(32)
+  note varchar(32) null
+  deleted_at datetime(6) null
+  primary key (scope_id, id)
+  unique z_label (label)
+  unique a_alternate (alternate_code)
+  settings {
+    store document table
+    soft_delete deleted_at
+  }
+}

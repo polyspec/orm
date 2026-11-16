@@ -106,4 +106,35 @@ final class QueryCancellationNativeTest extends TestCase
             $root->close();
         }
     }
+
+    // Requirements: INT-190, CFG-9.
+    public function testNativeBeforeTransactionHooksAreSharedWithACancellationHandle(): void
+    {
+        $root = new Db(Sqlite::connect('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $handle = $root->withCancellation(new Cancellation());
+        $calls = [];
+        try {
+            $removeRoot = $root->beforeTransaction(static function (bool $readOnly) use (&$calls): void {
+                $calls[] = ['root', $readOnly];
+            });
+            $handle->transaction(static fn(): bool => true, retry: 0);
+            self::assertSame(
+                [['root', false]],
+                $calls,
+                'a hook of the connection runs before a transaction of its cancellation handle'
+            );
+            $removeRoot();
+            $handle->beforeTransaction(static function (bool $readOnly) use (&$calls): void {
+                $calls[] = ['handle', $readOnly];
+            });
+            $root->transaction(static fn(): bool => true, readOnly: true, retry: 0);
+            self::assertSame(
+                [['root', false], ['handle', true]],
+                $calls,
+                'a hook of a cancellation handle runs before a transaction of its connection'
+            );
+        } finally {
+            $root->close();
+        }
+    }
 }

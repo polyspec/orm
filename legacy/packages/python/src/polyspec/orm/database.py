@@ -40,6 +40,7 @@ from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
 from polyspec.orm.engine import Engine
+from polyspec.orm.engine.validate import analyze_restore, restore_analysis_shape
 from polyspec.orm.aes import _stored_version
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
@@ -56,7 +57,7 @@ from polyspec.orm.model import Model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
 from polyspec.orm.schema import Schema
-from typing import Callable, TypeVar
+from typing import Callable, TypedDict, TypeVar
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
 from polyspec.orm.dbspec.parse import goq
@@ -1755,6 +1756,13 @@ def _active_for(db: "Db") -> TxFrame | None:
     return _ACTIVE.get(id(db.root()))
 
 
+class RestoreAnalysis(TypedDict):
+    """Selected restore key and new assignment columns (INT188)."""
+
+    key: list[str]
+    assignments: list[str]
+
+
 # Request hook: receives each request of a handle just before it is planned and returns the request to plan. The second argument, add_param(value),
 # appends value to the end of the request parameters and returns its index; the third argument is a read-only
 # tuple of the parameters the request bound (docs/operations/usage.md "Request hook").
@@ -1774,6 +1782,8 @@ class _Shared:
         "last_affected",
         "pool",
         "held",
+        "transaction_hooks",
+        "transaction_hooks_lock",
     )
 
     def __init__(self):
@@ -1789,6 +1799,10 @@ class _Shared:
         # The connections of the Db, and the connection a thread holds for a sequence of statements.
         self.pool = None
         self.held = threading.local()
+        # The hooks of before_transaction in registration order (INT-190). A registration or a removal replaces the
+        # tuple under the lock, so a transaction reads the hooks registered at that moment without the lock.
+        self.transaction_hooks: tuple = ()
+        self.transaction_hooks_lock = threading.Lock()
 
 
 DEFAULT_POOL_SIZE = 10
@@ -2245,6 +2259,28 @@ class Db:
         handle._root = self.root()
         return handle
 
+    def analyze_restore(self, request: IRRequest) -> RestoreAnalysis:
+        """Classifies restore columns without statements, hooks or write validation (INT188)."""
+        if self.closed:
+            raise OrmError(codes.CONFIG, "database is closed")
+        restore_analysis_shape(request)
+        manifest_hash = request.get("manifest_hash") or ""
+        engine = self.engines.get(manifest_hash)
+        if engine is None:
+            raise OrmError(
+                codes.SCHEMA_HASH_MISMATCH,
+                f"restore analysis manifest {manifest_hash} is not registered on this connection",
+            )
+        return analyze_restore(engine.model, request)
+
+    def transaction_active(self) -> bool:
+        """Whether a transaction of this connection that has not ended is active in the calling thread; sends no
+        statement (INT189)."""
+        if self.closed:
+            raise OrmError(codes.CONFIG, "database is closed")
+        frame = _active_for(self)
+        return frame is not None and not frame.finished
+
     def with_future(self, future: asyncio.Future) -> Db:
         """Returns a handle whose active statements are interrupted when future is cancelled."""
         if not isinstance(future, asyncio.Future):
@@ -2253,6 +2289,30 @@ class Db:
         handle._root = self.root()
         handle._cancellation = _FutureCancellation(future)
         return handle
+
+    def before_transaction(self, hook: Callable[[bool], None]) -> Callable[[], None]:
+        """Registers hook on the connection, shared by every handle of it, and returns the function that removes it
+        (INT-190). Before every outermost transaction that transaction begins on the connection or a handle of it,
+        each attempt of the retry included, the client calls the hooks registered at that moment in registration
+        order with whether the transaction is read-only, before the transaction takes a connection or sends a
+        statement. An error of a hook ends the transaction before it begins and is raised unchanged."""
+        if not callable(hook):
+            raise OrmError(codes.CONFIG, "before_transaction takes a callable")
+        shared = self._shared
+        # Each registration has its own entry, so a hook registered twice is removed one registration at a time.
+        entry = (hook,)
+        with shared.transaction_hooks_lock:
+            shared.transaction_hooks = (*shared.transaction_hooks, entry)
+
+        def remove() -> None:
+            with shared.transaction_hooks_lock:
+                shared.transaction_hooks = tuple(
+                    registered
+                    for registered in shared.transaction_hooks
+                    if registered is not entry
+                )
+
+        return remove
 
     def root(self) -> Db:
         """The connection this handle was derived from; a connection returns itself."""
@@ -2552,8 +2612,15 @@ class Db:
                     "accepts only the retry option",
                 )
             return self._savepoint(outer, callback)
+        read_only = bool(options.get("readOnly"))
         attempt = 0
         while True:
+            if self._shared.closed:
+                raise OrmError(codes.CONFIG, "database is closed")
+            # The hooks of INT-190 run at the start of each attempt, before the transaction takes a connection or
+            # sends a statement; an error of a hook is raised unchanged, outside the retry of INT-43.
+            for (hook,) in self._shared.transaction_hooks:
+                hook(read_only)
             try:
                 return self._run(
                     callback,
@@ -3649,6 +3716,11 @@ def write(ex: Executor, request: dict, params, after_hook=None):
             and result["affected"] == 0
         ):
             raise OrmError(codes.OPTIMISTIC_LOCK, "the row changed after it was read")
+        if request.get("require_match") and result["affected"] == 0:
+            raise OrmError(
+                codes.NO_ROWS,
+                f"the {request['kind']} of {request['entity']} matched no row",
+            )
         insert_id = result["insert_id"]
         identity_id = (
             int(insert_id)

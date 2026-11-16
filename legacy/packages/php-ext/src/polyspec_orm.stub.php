@@ -841,6 +841,8 @@ final class DbState
     public array $sets = [];
     public array $subscribers = [];
     public int $subscriberSeq = 0;
+    public array $beforeTransactionHooks = [];
+    public int $beforeTransactionSeq = 0;
     public int $transactions = 0;
     public bool $rowLockReady = false;
 }
@@ -1689,6 +1691,10 @@ final class Db
     public function stats(): Stats {}
     public function close(): void {}
     public function withRequestHook(\Closure $hook): Db {}
+    public function analyzeRestore(array $request): array {}
+    public function transactionActive(): bool {}
+    /** Registers a hook called before every outermost transaction of the connection, at each attempt; returns its remover (INT-190). */
+    public function beforeTransaction(\Closure $hook): \Closure {}
     public function withCancellation(Cancellation $cancellation): Db {}
     public function subscribe(\Closure $subscriber): \Closure {}
     /** @internal */

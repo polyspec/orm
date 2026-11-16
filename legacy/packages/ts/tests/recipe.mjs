@@ -2,6 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { isUtf8 } from 'node:buffer';
 import { execFile } from 'node:child_process';
 import { chmodSync, appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
@@ -709,7 +710,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], transactionHooks: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path, guard };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -825,6 +826,9 @@ async function connectRelay(dsn) {
   });
   return relay;
 }
+
+// The asynchronous context of the module load, outside every transaction callback: transaction.active runs its other flow here.
+const OUTSIDE_FLOW = AsyncLocalStorage.snapshot();
 
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
@@ -1195,6 +1199,47 @@ const OPS = {
   async 'utils.aes_rotate'(s, context) {
     const rotated = await connectionOf(s, context).utils().aes().rotate(coreModel(s.model, context).connect(connectionOf(s, context)), aesKeyring(s.keyring));
     return { value: { int: String(rotated) } };
+  },
+  async 'transaction.active'(s, context) {
+    const db = connectionOf(s, context);
+    if (s.closed === true) await db.close();
+    if (s.flow === undefined) return { value: { bool: db.transactionActive() } };
+    if (s.flow !== 'other') throw new Error(`transaction.active has no flow ${s.flow}`);
+    // An asynchronous context that did not start inside the transaction callback (INT-189).
+    return { value: { bool: OUTSIDE_FLOW(() => db.transactionActive()) } };
+  },
+  // A hook of INT-190: each call records its name and readOnly, runs its steps, and then fails when the step names a code.
+  // The hook is asynchronous, and the client awaits it before it calls the next hook.
+  'transaction_hook.install'(s, context) {
+    // The fields are read when the hook is registered, so a step whose hook is never called still reads them.
+    const { as, steps = [], fail } = s;
+    const remove = connectionOf(s, context).beforeTransaction(async readOnly => {
+      context.transactionHooks.push({ hook: as, readOnly });
+      await runNested(steps, context);
+      if (fail !== undefined) throw new OrmError(fail, 'before-transaction hook refused');
+    });
+    return { bind: remove };
+  },
+  'transaction_hook.remove'(s, context) {
+    refOf(s.ref, context)();
+    return okValue;
+  },
+  'transaction_hook.records'(_, context) {
+    return { value: { array: context.transactionHooks.map(record => ({ object: [['hook', { text: record.hook }], ['read_only', { bool: record.readOnly }]] })) } };
+  },
+  'restore.analyze'(s, context) {
+    const request = { ...structuredClone(s.request), manifest_hash: s.request.manifest_hash ?? context.schema.manifestHash };
+    const before = structuredClone(request);
+    let result = connectionOf(s, context).analyzeRestore(request);
+    if (s.mutate_return === true) {
+      if (result.key.length > 0) result.key[0] = 'changed';
+      if (result.assignments.length > 0) result.assignments[0] = 'changed';
+      result.key.push('changed');
+      result.assignments.push('changed');
+      result = connectionOf(s, context).analyzeRestore(request);
+    }
+    assert.deepEqual(request, before, 'restore analysis keeps its request unchanged');
+    return { json: result };
   },
   'hook.install'(s, context) {
     const hooked = installHook(s, context);
@@ -2437,6 +2482,9 @@ function installHook(s, context) {
     for (const a of actions) {
       if (!kindMatches(a.kinds, query.kind)) continue;
       switch (a.action) {
+        case 'require_match':
+          query.require_match = true;
+          break;
         case 'scope':
           if (a.nested) scopeTree(query, a.column, a.value, addParam);
           else andWhere(query, equalPred(addParam, a.column, a.value));

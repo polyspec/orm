@@ -134,6 +134,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/RequestHookMysqlRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookMariadbRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookPostgresRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookSqliteRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/RestoreAnalysisShapeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookMarkdownRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ParameterChunkingMysqlTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ParameterChunkingMariadbTest.php';

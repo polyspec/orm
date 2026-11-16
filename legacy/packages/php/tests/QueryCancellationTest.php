@@ -102,4 +102,36 @@ final class QueryCancellationTest extends TestCase
             $otherRoot->close();
         }
     }
+
+    // Requirements: INT-190, CFG-9.
+    public function testBeforeTransactionHooksAreSharedWithACancellationHandle(): void
+    {
+        $pdo = Sqlite::connect('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $root = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $handle = $root->withCancellation(new Cancellation());
+        $calls = [];
+        try {
+            $removeRoot = $root->beforeTransaction(static function (bool $readOnly) use (&$calls): void {
+                $calls[] = ['root', $readOnly];
+            });
+            $handle->transaction(static fn(): bool => true, retry: 0);
+            self::assertSame(
+                [['root', false]],
+                $calls,
+                'a hook of the connection runs before a transaction of its cancellation handle'
+            );
+            $removeRoot();
+            $handle->beforeTransaction(static function (bool $readOnly) use (&$calls): void {
+                $calls[] = ['handle', $readOnly];
+            });
+            $root->transaction(static fn(): bool => true, readOnly: true, retry: 0);
+            self::assertSame(
+                [['root', false], ['handle', true]],
+                $calls,
+                'a hook of a cancellation handle runs before a transaction of its connection'
+            );
+        } finally {
+            $root->close();
+        }
+    }
 }

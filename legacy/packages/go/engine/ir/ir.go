@@ -28,9 +28,11 @@ type Request struct {
 	Query
 	// Load means insert loads a row under the stored key as it is: it takes the value of the identity column,
 	// and requires that value if the table has an identity. It is not used with on_duplicate.
-	Load        bool     `json:"load,omitempty"`
-	Set         []Assign `json:"set,omitempty"`
-	OnDuplicate []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
+	Load bool `json:"load,omitempty"`
+	// RequireMatch refuses a final update, delete or restore matching no row (PRT-90).
+	RequireMatch bool     `json:"require_match,omitempty"`
+	Set          []Assign `json:"set,omitempty"`
+	OnDuplicate  []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
 	// Rows holds the parameters of each additional inserted row, in the
 	// column order of Set. Every Set item is then a value assignment.
 	Rows       [][]int   `json:"rows,omitempty"`
@@ -399,6 +401,9 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 			return errf("CONFIG", "%s is owned by another document set", ent.Table)
 		}
 	}
+	if r.RequireMatch && r.Kind != "update" && r.Kind != "delete" && r.Kind != "restore" {
+		return errf("IR_INVALID", "require_match is only valid on update, delete or restore")
+	}
 	if r.Load && (r.Kind != "insert" || len(r.OnDuplicate) > 0) {
 		return errf("IR_INVALID", "load is only valid on insert without on_duplicate")
 	}
@@ -637,7 +642,7 @@ type RestoreParts struct {
 // in name order that they cover. A set value of a key column becomes a condition, every other set value
 // is a new value, and the where keeps its other conditions, which narrow the restore further; the key
 // still names at most one row.
-func RestoreKey(ent *runtimemodel.Entity, r *Request) (RestoreParts, error) {
+func classifyRestore(ent *runtimemodel.Entity, r *Request) (RestoreParts, error) {
 	if ent.SoftDelete == "" {
 		return RestoreParts{}, errf("IR_INVALID", "restore of %s, which has no soft_delete setting", ent.Name)
 	}
@@ -683,9 +688,6 @@ func RestoreKey(ent *runtimemodel.Entity, r *Request) (RestoreParts, error) {
 			continue
 		}
 		// The key and the soft delete column are the table's own: a restore clears the latter itself.
-		if c := ent.Field(a.Column); c.PrimaryKey || c.Identity || a.Column == ent.SoftDelete {
-			return RestoreParts{}, errf("IR_INVALID", "restore cannot assign %s", a.Column)
-		}
 		parts.Set = append(parts.Set, a)
 	}
 	return parts, nil
@@ -1294,4 +1296,41 @@ func joinedRefs(g *Group, joined map[string]*Join, seen map[string]bool) error {
 		}
 	}
 	return nil
+}
+
+// AnalyzeRestore classifies columns without applying write assignment restrictions (PRT91).
+func AnalyzeRestore(m *runtimemodel.Model, r *Request) (RestoreParts, error) {
+	if r == nil {
+		return RestoreParts{}, errf("IR_INVALID", "object required")
+	}
+	if r.IRVersion != Version {
+		return RestoreParts{}, errf("VERSION_MISMATCH", "ir_version %d, engine %d", r.IRVersion, Version)
+	}
+	if r.Kind != "restore" {
+		return RestoreParts{}, errf("IR_INVALID", "restore analysis requires a restore request")
+	}
+	ent := m.Entities[r.Entity]
+	if ent == nil {
+		return RestoreParts{}, errf("ENTITY_UNKNOWN", "%s", r.Entity)
+	}
+	for _, a := range r.Set {
+		if ent.Field(a.Column) == nil {
+			return RestoreParts{}, errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, a.Column)
+		}
+	}
+	return classifyRestore(ent, r)
+}
+
+// RestoreKey shares classification with analysis, then checks write assignment restrictions.
+func RestoreKey(ent *runtimemodel.Entity, r *Request) (RestoreParts, error) {
+	parts, err := classifyRestore(ent, r)
+	if err != nil {
+		return RestoreParts{}, err
+	}
+	for _, a := range parts.Set {
+		if c := ent.Field(a.Column); c.PrimaryKey || c.Identity || a.Column == ent.SoftDelete {
+			return RestoreParts{}, errf("IR_INVALID", "restore cannot assign %s", a.Column)
+		}
+	}
+	return parts, nil
 }

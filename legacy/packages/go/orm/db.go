@@ -135,6 +135,9 @@ type dbMutable struct {
 	// subs holds the connection's statement event subscribers and the transaction number.
 	subs subscribers
 
+	// txHooks holds the hooks of BeforeTransaction that every handle of the connection shares (INT-190).
+	txHooks transactionHooks
+
 	// rollbackFault is the test fault that FailNextRollback sets. Only builds with the build tag
 	// ormtest can set it.
 	rollbackFault atomic.Bool
@@ -462,6 +465,50 @@ func (d *DB) WithRequestHook(hook RequestHook) *DB {
 	handle.hook = hook
 	handle.root = d.Root()
 	return &handle
+}
+
+// RestoreAnalysis identifies the selected key and new assignments (INT188).
+type RestoreAnalysis struct {
+	Key         []string
+	Assignments []string
+}
+
+// AnalyzeRestore classifies a registered restore without running statements or hooks.
+func (d *DB) AnalyzeRestore(r *ir.Request) (RestoreAnalysis, error) {
+	if d.m.closed.Load() {
+		return RestoreAnalysis{}, configErr("database is closed")
+	}
+	if r == nil {
+		return RestoreAnalysis{}, &ir.Error{Code: CodeIrInvalid, Msg: "object required"}
+	}
+	d.m.engineMu.RLock()
+	eng := d.m.engines[r.ManifestHash]
+	d.m.engineMu.RUnlock()
+	if eng == nil {
+		return RestoreAnalysis{}, &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("restore analysis manifest %s is not registered on this connection", r.ManifestHash)}
+	}
+	parts, err := ir.AnalyzeRestore(eng.M, r)
+	if err != nil {
+		return RestoreAnalysis{}, err
+	}
+	result := RestoreAnalysis{Key: append([]string{}, parts.Key...), Assignments: []string{}}
+	for _, a := range parts.Set {
+		result.Assignments = append(result.Assignments, a.Column)
+	}
+	return result, nil
+}
+
+// TransactionActive reports whether a transaction of this connection that has not ended is active in the calling goroutine
+// (INT-189). It reads the transaction stack of the goroutine and sends no statement.
+func (d *DB) TransactionActive() (bool, error) {
+	if d.m.closed.Load() {
+		return false, configErr("database is closed")
+	}
+	t, err := activeFor(d)
+	if err != nil {
+		return false, err
+	}
+	return t != nil && !t.finished.Load(), nil
 }
 
 // Root returns the connection a handle was derived from, so two handles of one

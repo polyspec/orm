@@ -30,6 +30,8 @@ export interface Request extends RequestQuery {
    * table with identity, requires that value. Not used together with on_duplicate.
    */
   load?: boolean;
+  /** Require the final update, delete or restore predicate to match a row (PRT-90). */
+  require_match?: boolean;
   set?: Assignment[];
   on_duplicate?: Assignment[];
   rows?: number[][];

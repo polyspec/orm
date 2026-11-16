@@ -369,8 +369,8 @@ class MarkdownPoolDriver implements DriverPool {
       this.pool.release(s);
     }
   }
-  public async reserve(): Promise<DriverSession> {
-    return new MarkdownDriverSession(await this.pool.acquire(undefined), this.pool);
+  public async reserve(_shared = false, signal?: AbortSignal): Promise<DriverSession> {
+    return new MarkdownDriverSession(await this.pool.acquire(signal), this.pool);
   }
   public stats(): PoolStats { return this.pool.stats(); }
   public async close(): Promise<void> { this.pool.close(); }
@@ -387,8 +387,8 @@ class MarkdownDriverSession implements DriverSession {
   public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     return observed(this.name, sql, done, 'statement', () => execute(this.s, sql, params, signal));
   }
-  public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
-    return observed(this.name, sql, done, 'statement', () => execute(this.s, sql, params, undefined));
+  public control(sql: string, params: readonly DriverValue[], done: StatementDone, signal?: AbortSignal): Promise<DriverResult> {
+    return observed(this.name, sql, done, 'statement', () => execute(this.s, sql, params, signal));
   }
   public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
     return observed(this.name, sql, done, 'statement', () => scan(this.s, sql, params, sink));
