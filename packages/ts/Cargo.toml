@@ -17,6 +17,7 @@ crate-type = ["cdylib"]
 panic-test = []
 fault-test = ["polyspec-orm/fault-test"]
 codec-test = []
+thread-test = []
 thrown-count-test = []
 
 [build-dependencies]
