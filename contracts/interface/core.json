@@ -3686,12 +3686,12 @@
     {
       "id": "minimum",
       "rule": "CORE-124",
-      "value": "-9223372036854775808"
+      "value": -9223372036854775808
     },
     {
       "id": "maximum",
       "rule": "CORE-124",
-      "value": "9223372036854775807"
+      "value": 9223372036854775807
     }
   ],
   "integer_value.value": [
@@ -3723,10 +3723,10 @@
       "receiver": {
         "new": "integer_value.constructor",
         "args": {
-          "value": "-9223372036854775808"
+          "value": -9223372036854775808
         }
       },
-      "result": "-9223372036854775808"
+      "result": -9223372036854775808
     },
     {
       "id": "maximum",
@@ -3734,10 +3734,10 @@
       "receiver": {
         "new": "integer_value.constructor",
         "args": {
-          "value": "9223372036854775807"
+          "value": 9223372036854775807
         }
       },
-      "result": "9223372036854775807"
+      "result": 9223372036854775807
     }
   ],
   "float_value.constructor": [

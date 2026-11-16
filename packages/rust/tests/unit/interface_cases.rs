@@ -168,13 +168,8 @@ fn int(value: &Value, what: &str) -> i32 {
 
 /// A signed 64-bit case value: decimal text when it is outside the safe native-number range (binding G-5).
 fn int64(value: &Value, what: &str) -> i64 {
-    if let Some(value) = value.as_i64() {
-        value
-    } else if let Some(text) = value.as_str() {
-        text.parse().or_panic(|error| format!("{what}: {text} is no int64: {error}"))
-    } else {
-        panic!("{what}: the value is no integer and no decimal text")
-    }
+    let Some(value) = value.as_i64() else { panic!("{what}: the value is no JSON integer of int64") };
+    value
 }
 
 fn returned_integer(value: i64) -> Value {
@@ -491,7 +486,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             let value = int64(field(args, "value", member), member);
             Returned::Instance(Instance::Integer(IntegerValue::new(value)))
         }
-        ("integer_value.value", Some(Instance::Integer(value))) => Returned::Value(returned_integer(value.value())),
+        ("integer_value.value", Some(Instance::Integer(value))) => Returned::Value(Value::from(value.value())),
         ("float_value.constructor", None) => {
             let value = field(args, "value", member).as_f64().unwrap_or_else(|| panic!("{member}: value is no float"));
             Returned::Instance(Instance::Float(FloatValue::new(value)))
