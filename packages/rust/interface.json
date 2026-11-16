@@ -49,6 +49,10 @@
     }
   },
   "errors": {
+    "code": {
+      "error": "polyspec_orm::Error",
+      "path": "polyspec_orm::Error::kind"
+    },
     "classes": {
       "value": {
         "php": "Polyspec\\Orm\\OrmValueError",
@@ -85,12 +89,6 @@
         "python": "ORMInternalError",
         "node": "OrmInternalError",
         "wasm": "OrmInternalError"
-      },
-      "io": {
-        "php": "Polyspec\\Orm\\OrmIoError",
-        "python": "ORMIoError",
-        "node": "OrmIoError",
-        "wasm": "OrmIoError"
       }
     },
     "fixed": [
