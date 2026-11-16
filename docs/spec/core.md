@@ -56,10 +56,10 @@ implementation is eligible for removal on that evidence.
 
 ## Errors
 
-- **CORE-6** The interface contract declares a class for every error category of the binding boundary, including `io`
-  for an I/O failure of that boundary. Its class is `Polyspec\Orm\OrmIoError` in PHP, `ORMIoError` in Python and
+- **CORE-6** The interface contract declares a class for every error category of the binding layer, including `io`
+  for an I/O failure of that layer. Its class is `Polyspec\Orm\OrmIoError` in PHP, `ORMIoError` in Python and
   `OrmIoError` in Node and WASM, and preserves the failure's kind and message. The mapping is
-  required even when none of the core's kinds belongs to that category, because the boundary can raise its own failure.
+  required even when none of the core's kinds belongs to that category, because the binding layer can raise its own failure.
 - **CORE-10** An error of the core has one kind of the closed enum `polyspec_orm::Kind`. The kinds, their categories and
   their meanings are the table of [errors](errors.md). A kind is the lower-case snake form of a code of the catalog
   (`NO_ROWS` is `no_rows`). This replaces INT-65 and INT-89 for the core: the bindings expose the kinds as the enum
@@ -583,8 +583,8 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   failed rollback (`legacy/packages/python/tests/test_rollback_fault.py`, `legacy/packages/php/tests/RollbackTest.php`).
 - **CORE-136** The case runner of the core (`packages/rust/tests/unit/interface_cases.rs`) takes the named instances of
   binding GN-13pa: the values of `with`, made after the receiver; `names` of a function fixture, which names its argument
-  for the steps of the inner fixtures; a step and a call of `after` with `"on": "<name>"`; an argument `{"bound":
-  "<name>"}`; and a step with `raises`, after which the next step runs (GN-13o). The JSON of the core keeps no key order,
+  for the steps of the inner fixtures; a step and a call of `after` with `"on": "<name>"`; an argument
+  `{"bound": "<name>"}`; and a step with `raises`, after which the next step runs (GN-13o). The JSON of the core keeps no key order,
   so a value of `with` names no other value. The cases of `db.transaction` give `transaction_ended` to a query connected
   to the handle of the callback and called after the callback returned (CORE-23), and `busy` to a statement of the handle
   while a savepoint callback of the handle runs (CORE-22).

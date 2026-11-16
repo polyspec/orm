@@ -49,10 +49,10 @@
 
 ## 오류
 
-- **CORE-6** interface contract는 binding 경계의 I/O 실패를 나타내는 `io`를 포함하여 그 경계의 모든 error category에
+- **CORE-6** interface contract는 binding 층의 I/O 실패를 나타내는 `io`를 포함하여 그 층의 모든 error category에
   class를 선언한다. 그 class는 PHP의 `Polyspec\Orm\OrmIoError`, Python의 `ORMIoError`, Node와 WASM의
   `OrmIoError`이며 실패의 kind와 message를 보존한다. core의 kind 중 그 category에 속하는 것이
-  없어도 경계가 자기 실패를 낼 수 있으므로 이 연결이 필요하다.
+  없어도 binding 층이 자기 실패를 raise할 수 있으므로 이 연결이 필요하다.
 - **CORE-10** 코어의 오류는 닫힌 enum `polyspec_orm::Kind`의 kind 하나를 가진다. kind와 category와 뜻은
   [errors](errors.md)의 표다. kind는 카탈로그 코드의 소문자 snake 형태다(`NO_ROWS`는 `no_rows`). 코어에서는 INT-65와
   INT-89를 대체한다: 바인딩은 kind를 계약의 enum `ErrorKind`로, 모든 오류를 그 category의 클래스(CORE-11)로 내고, 어느
@@ -442,7 +442,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   취소는 이미 실행한 statement를 되돌릴 수 없다.
 
 `Db::execute_text_machine`은 구현되었으며 native 실행 artifact 세 case를 통과한다. contract는 이 소유 constructor를
-`machine: true`로 가리킨다. 커밋된 native machine owner는 execute artifact 4개, transaction/savepoint/close artifact 18개, 준비 artifact 2개, 기존 dbspec 일치 3개를 포함한 27개 case에서 실패와 skip 없이 통과한다. 이 member의 생성된 binding runtime 검증은 끝나지 않았다.
+`machine: true`로 표시한다. 커밋된 native machine owner는 execute artifact 4개, transaction/savepoint/close artifact 18개, 준비 artifact 2개, 기존 dbspec 일치 3개를 포함한 27개 case에서 실패와 skip 없이 통과한다. 이 member의 생성된 binding runtime 검증은 끝나지 않았다.
 
 - **CORE-128** SQLite row-lock-table 준비가 성공하면 CREATE statement를 실행한 실제 connection lease를 준비 완료 전에 반환한다. 따라서 독립된 operation이 없을 때 완료한 transaction-opening I/O는 의도한 transaction lease만 보유한다. 취소나 오류는 반환하지 않은 준비 lease를 폐기한다. 이 규칙은 pool 소유권에 관한 것이며 SQLite worker 종료 수신을 뜻하지 않는다. 준비는 statement 관찰 전에 연결을 얻는다. 연결 획득 실패(`closed` 또는 `pool_timeout`)는 SQL을 보내거나 statement event를 발행하지 않으며 server 오류 변환이나 subscriber 오류 대체를 거치지 않는다. INT-91이 전송부터 결과까지 측정하므로 statement elapsed는 pool 연결 대기를 제외한다.
 
@@ -485,17 +485,17 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `error_kind`, `value`, `integer_value`, `float_value`, `dbspec`, `runtime_model`을 담는다. 다른 모든 unit은 `wasm`을
   뺀 `only`와 이유 CORE-134를 가진다(binding Q-4). 이유: dbspec 연산은 editor가 browser에서 실행하는 것이고(plan
   OM-1.2, F-15), 연결이 필요한 member는 거기서 닿을 database가 없다. 선언된 target 집합은 각 target의 coverage를
-  사실대로 두지만, case를 가리는 mask나 오류를 내는 stub은 그렇지 않다(T493-8).
+  사실대로 적지만, case를 가리는 mask나 오류를 내는 stub은 그렇지 않다(T493-8).
 - **CORE-135** `db.transaction`의 kind `rollback_failed`는 callback이 실패한 transaction의 rollback이 driver에서
   실패할 때만 생기며, case의 어떤 입력도 그것을 만들지 못한다. 그래서 core는 그 rollback 뒤에 fault injection point
   `orm.rollback`(`polyspec_orm::fault::ROLLBACK`, `broken`으로 주입, binding G-5, point의 형식은 CORE-121)을 둔다.
   그 자리는 rollback을 실패로 보고하여 callback 오류와 rollback 오류를 가진 `rollback_failed`를 raise한다(CORE-25).
   legacy client는 같은 실패를 실패한 rollback의 test entry point로 시험한다
   (`legacy/packages/python/tests/test_rollback_fault.py`, `legacy/packages/php/tests/RollbackTest.php`).
-- **CORE-136** core의 case runner(`packages/rust/tests/unit/interface_cases.rs`)는 binding GN-13pa의 이름 붙은
+- **CORE-136** core의 case runner(`packages/rust/tests/unit/interface_cases.rs`)는 binding GN-13pa의 이름 있는
   instance를 받는다. receiver 다음에 만들어지는 `with`의 값, 안쪽 fixture의 step을 위해 자기 인자에 이름을 붙이는
   function fixture의 `names`, `"on": "<name>"`을 가진 step과 `after`의 호출, 인자 `{"bound": "<name>"}`, 그리고
-  `raises`를 가진 step이다. `raises`를 가진 step 다음에는 다음 step이 돈다(GN-13o). core의 JSON은 key 순서를 지키지
+  `raises`를 가진 step이다. `raises`를 가진 step 다음에는 다음 step이 실행된다(GN-13o). core의 JSON은 key 순서를 지키지
   않으므로 `with`의 값은 다른 값을 이름하지 않는다. `db.transaction`의 case는 callback의 handle에 connect되어 callback이
   돌아온 뒤 호출되는 query에 `transaction_ended`를 주고(CORE-23), handle의 savepoint callback이 도는 동안 그 handle의
   statement에 `busy`를 준다(CORE-22).
@@ -515,14 +515,14 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
 - **CORE-130** 계약의 member의 `raises`는 그 member의 경로가 돌려주는 kind만 이름한다. 읽기 `get_count`,
   `get_count_by`, `get_by`는 `SELECT` 하나를 보내고 `read_only`를 포함한 쓰기의 kind를 내지 않는다. `condition_not_met`의 조건은 insert만
   검사하므로 `update`, `delete`, `restore`는 그것을 내지 않는다. `restore`는 지워지지 않은 행을 그대로 돌려주므로
-  `row_not_deleted`는 `restore_or_create`만 낸다. `restore_or_create`는 복원한 행을 자기 transaction에서 읽으므로
+  `row_not_deleted`는 `restore_or_create`만 raise한다. `restore_or_create`는 복원한 행을 자기 transaction에서 읽으므로
   `no_rows`를 내지 않는다. `db.execute`는 `Db`에서 실행되어 `Tx`만 내는 `busy`와 `transaction_ended`를 내지 않는다. `Query`의 어떤 member도 `column_unknown`을 내지 않는다.
   builder가 terminal이 entity를 읽기 전에 모르는 열을 `config`로 거부하기 때문이다(CORE-82). `db.connect`와
   `db.connect_schema`는 `capability_unsupported`를 내지 않는다. core는 link한 SQLite가 3.46 이상임을 build 때
-  단언하므로(DSL-150) 어떤 연결도 더 오래된 SQLite를 만나지 않는다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,
+  확인하므로(DSL-150) 어떤 연결도 더 오래된 SQLite를 만나지 않는다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,
   그것은 manifest가 아닌 텍스트를 연결 전에 거부한다. `get_count`와 `get_count_by`는 행 잠금에 `lock_not_available`이
-  아니라 `ir_invalid`를 낸다. 요청의 검증이 count의 잠금을 거부하기 때문이다(`packages/rust/src/engine/validate.rs`).
-  `restore_or_create`는 실패 뒤 transaction을 되돌릴 수 없을 때, 서버가 끝낸 session에서처럼, `rollback_failed`를 낸다.
+  아니라 `ir_invalid`를 raise한다. 요청의 검증이 count의 잠금을 거부하기 때문이다(`packages/rust/src/engine/validate.rs`).
+  `restore_or_create`는 실패 뒤 transaction을 되돌릴 수 없을 때, 서버가 끝낸 session에서처럼, `rollback_failed`를 raise한다.
 - **CORE-121** 코어는 어떤 입력도 닿지 않는 category `internal`의 분기에 fault injection point를 두어, 계약의 case가
   그 point를 설정하고 그 분기가 일으키는 오류의 kind, category, message를 확인하게 한다(binding G-5, X-1). point는
   module `polyspec_orm::fault`의 상수를 받는 `binding_core::fault::point!`다. point는 코어의 feature `fault-test`가

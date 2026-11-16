@@ -53,7 +53,7 @@ state.
   `PgDatabaseError`). `restore_or_create` then raises `rollback_failed`, because its transaction cannot roll back on the ended session. Why:
   a session that the state program ended between the calls is replaced by the pool before
   the next statement, so only a statement that ends its own session reaches the kind.
-- **SVC-9** The case of `deadlock` on PostgreSQL tests the conversion of the kind at the boundary of the bindings:
+- **SVC-9** The case of `deadlock` on PostgreSQL tests the conversion of the kind in the bindings:
   `db.execute` runs a `DO` block that raises SQLSTATE 40P01, so the server returns the error of a deadlock and the core
   maps it to `deadlock` through the mapping of every statement (`packages/rust/src/lib.rs`, the mapping of
   `PgDatabaseError`; DIA-201). Why: a deadlock of two sessions needs a second session that waits while the call of the
