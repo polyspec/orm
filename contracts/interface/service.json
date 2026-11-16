@@ -2459,7 +2459,8 @@
             },
             {
               "on": "q",
-              "call": "query.for_update_no_wait"
+              "call": "query.for_update_no_wait",
+              "args": {}
             },
             {
               "on": "q",
