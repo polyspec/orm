@@ -1,5 +1,5 @@
 <!-- doc-id: spec-flowmark-surface -->
-<!-- source-sha256: a5739565caa38d7cf5084e1956c44b05c68d45aa7bba5ff40c42a98b8fb9dc3f -->
+<!-- source-sha256: 60619b40f601f0290880bb9eb5a8a4430d503ed3881d435c3b2285f571d4cd94 -->
 # flowmark가 쓰는 orm의 표면
 
 [English](flowmark-surface.md)
@@ -254,8 +254,8 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   `dbspec::operator_allowed_for_field`를 부른다). model에 없는 entity는 `entity_unknown`이고, entity에 없는 열은
   `column_unknown`이다. 이 member는 legacy 모듈에서 field의 pointer를 받는 `OpAllowed`를 전달한다. 구현되지
   않았다.
-- **FMS-36** `orm.ir_version`은 상수 1, 곧 코어가 검증하는 요청 형식의 버전이고, `engine/ir`의 상수 `Version`을
-  전달한다. `orm.value_function_unit(name)`은 상대 value function의 간격의 단위인 `second`, `minute`, `hour`, `day`,
+- **FMS-36** `orm.ir_version`은 상수 2, 곧 코어가 검증하는 요청 형식의 버전이다(PRT-92). 이것이 전달하던
+  `engine/ir`의 상수 `Version`은 legacy 모듈에서 1로 남는다(CORE-1). `orm.value_function_unit(name)`은 상대 value function의 간격의 단위인 `second`, `minute`, `hour`, `day`,
   `month` 가운데 하나를 돌려주고, 다른 이름에는 아무것도 돌려주지 않는다. flowmark가 이름별로 읽는 map인
   `engine/dialect`의 변수 `ValueFunctionUnits`를 전달한다. 이 member들은 구현되지 않았다. 그 상수는
   `polyspec_orm::ir::VERSION`이고 `polyspec_orm::IR_VERSION`이기도 하며, 그 함수는

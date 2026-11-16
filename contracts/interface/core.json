@@ -2388,7 +2388,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "result": null
     },
     {
@@ -2432,11 +2432,11 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":3,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "raises": {
         "kind": "version_mismatch",
         "category": "value",
-        "message": "version_mismatch: ir_version 2, engine 1"
+        "message": "version_mismatch: ir_version 3, engine 2"
       }
     },
     {
@@ -2448,7 +2448,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "raises": {
         "kind": "schema_hash_mismatch",
         "category": "value",
@@ -2464,7 +2464,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
       "raises": {
         "kind": "entity_unknown",
         "category": "value",
@@ -2480,7 +2480,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
       "raises": {
         "kind": "column_unknown",
         "category": "value",
@@ -2496,7 +2496,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
       "raises": {
         "kind": "index_unknown",
         "category": "value",
@@ -2512,7 +2512,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
       "raises": {
         "kind": "column_alias_conflict",
         "category": "value",
@@ -2528,7 +2528,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
       "raises": {
         "kind": "function_unknown",
         "category": "value",
@@ -2544,7 +2544,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
       "raises": {
         "kind": "operator_not_allowed",
         "category": "value",
@@ -2560,7 +2560,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
       "raises": {
         "kind": "or_at_group_start",
         "category": "value",
@@ -2576,7 +2576,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
       "raises": {
         "kind": "empty_in",
         "category": "value",
@@ -2592,7 +2592,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
       "raises": {
         "kind": "entity_not_joined",
         "category": "value",
@@ -2608,7 +2608,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
       "raises": {
         "kind": "limit_in_relation",
         "category": "value",
@@ -2624,7 +2624,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":true}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"delete\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"delete\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
       "raises": {
         "kind": "config",
         "category": "value",
@@ -2642,7 +2642,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
       "result": "[[{\"column\":\"seq\",\"length\":0,\"null\":false,\"precision\":0,\"scale\":0,\"type\":\"i64\"}]]"
     },
     {
@@ -2670,11 +2670,11 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":3,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "raises": {
         "kind": "version_mismatch",
         "category": "value",
-        "message": "version_mismatch: ir_version 2, engine 1"
+        "message": "version_mismatch: ir_version 3, engine 2"
       }
     },
     {
@@ -2686,7 +2686,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "raises": {
         "kind": "schema_hash_mismatch",
         "category": "value",
@@ -2702,7 +2702,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
       "raises": {
         "kind": "entity_unknown",
         "category": "value",
@@ -2718,7 +2718,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
       "raises": {
         "kind": "column_unknown",
         "category": "value",
@@ -2734,7 +2734,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
       "raises": {
         "kind": "index_unknown",
         "category": "value",
@@ -2750,7 +2750,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
       "raises": {
         "kind": "column_alias_conflict",
         "category": "value",
@@ -2766,7 +2766,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
       "raises": {
         "kind": "function_unknown",
         "category": "value",
@@ -2782,7 +2782,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
       "raises": {
         "kind": "operator_not_allowed",
         "category": "value",
@@ -2798,7 +2798,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
       "raises": {
         "kind": "or_at_group_start",
         "category": "value",
@@ -2814,7 +2814,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
       "raises": {
         "kind": "empty_in",
         "category": "value",
@@ -2830,7 +2830,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
       "raises": {
         "kind": "entity_not_joined",
         "category": "value",
@@ -2846,7 +2846,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
       "raises": {
         "kind": "limit_in_relation",
         "category": "value",
@@ -2862,7 +2862,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":true}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"delete\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"delete\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
       "raises": {
         "kind": "config",
         "category": "value",
@@ -2880,7 +2880,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"note\",\"n_params\":0}",
       "raises": {
         "kind": "ir_invalid",
         "category": "value",
@@ -2896,7 +2896,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"nobody\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"nobody\",\"n_params\":0}",
       "raises": {
         "kind": "entity_unknown",
         "category": "value",
@@ -2912,7 +2912,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"deleted_ts\",\"type\":{\"kind\":\"datetime\",\"precision\":6},\"nullable\":true,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false,\"soft_delete\":\"deleted_ts\"}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"note\",\"n_params\":2,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]},\"set\":[{\"column\":\"nothing\",\"p\":1}]}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"restore\",\"entity\":\"note\",\"n_params\":2,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]},\"set\":[{\"column\":\"nothing\",\"p\":1}]}",
       "raises": {
         "kind": "column_unknown",
         "category": "value",
@@ -2930,7 +2930,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "dialect": "oracle",
       "raises": {
         "kind": "config",
@@ -2964,12 +2964,12 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":3,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "dialect": "sqlite",
       "raises": {
         "kind": "version_mismatch",
         "category": "value",
-        "message": "version_mismatch: ir_version 2, engine 1"
+        "message": "version_mismatch: ir_version 3, engine 2"
       }
     },
     {
@@ -2981,7 +2981,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"x\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "dialect": "sqlite",
       "raises": {
         "kind": "schema_hash_mismatch",
@@ -2998,7 +2998,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"nobody\",\"n_params\":0}",
       "dialect": "sqlite",
       "raises": {
         "kind": "entity_unknown",
@@ -3015,7 +3015,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"nothing\",\"op\":\"eq\",\"p\":0}}]}}",
       "dialect": "sqlite",
       "raises": {
         "kind": "column_unknown",
@@ -3032,7 +3032,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"force_index\":\"nope\"}",
       "dialect": "sqlite",
       "raises": {
         "kind": "index_unknown",
@@ -3049,7 +3049,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"columns\":{\"fn\":{\"label\":{\"column\":\"seq\",\"fn\":{\"name\":\"year\"}}}}}",
       "dialect": "sqlite",
       "raises": {
         "kind": "column_alias_conflict",
@@ -3066,7 +3066,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"label\",\"op\":\"eq\",\"value\":{\"name\":\"nope\"}}}]}}",
       "dialect": "sqlite",
       "raises": {
         "kind": "function_unknown",
@@ -3083,7 +3083,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"contains\",\"p\":0}}]}}",
       "dialect": "sqlite",
       "raises": {
         "kind": "operator_not_allowed",
@@ -3100,7 +3100,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":1,\"where\":{\"items\":[{\"pred\":{\"conn\":\"or\",\"column\":\"seq\",\"op\":\"eq\",\"p\":0}}]}}",
       "dialect": "sqlite",
       "raises": {
         "kind": "or_at_group_start",
@@ -3117,7 +3117,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"in\",\"ps\":[]}}]}}",
       "dialect": "sqlite",
       "raises": {
         "kind": "empty_in",
@@ -3134,7 +3134,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"where\":{\"items\":[{\"pred\":{\"column\":\"seq\",\"op\":\"eq_col\",\"ref\":{\"path\":\"other\",\"column\":\"seq\"}}}]}}",
       "dialect": "sqlite",
       "raises": {
         "kind": "entity_not_joined",
@@ -3151,7 +3151,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0,\"relations\":[{\"rel\":\"kids\",\"kind\":\"many\",\"keys\":[{\"left\":\"seq\",\"right\":\"seq\"}],\"query\":{\"entity\":\"note\",\"limit\":{\"offset\":0,\"count\":1}}}]}",
       "dialect": "sqlite",
       "raises": {
         "kind": "limit_in_relation",
@@ -3168,7 +3168,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[\"aes\"]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "dialect": "sqlite",
       "raises": {
         "kind": "schema_invalid",
@@ -3185,7 +3185,7 @@
           "model": "{\"manifest_hash\":\"h\",\"entities\":[{\"name\":\"note\",\"table\":\"note\",\"fields\":[{\"name\":\"seq\",\"type\":{\"kind\":\"i64\"},\"nullable\":false,\"identity\":false,\"primary_key\":true,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]},{\"name\":\"label\",\"type\":{\"kind\":\"varchar\",\"length\":32},\"nullable\":false,\"identity\":false,\"primary_key\":false,\"foreign_key\":false,\"select_explicit\":false,\"codec\":[]}],\"primary_key\":[\"seq\"],\"uniques\":[],\"indexes\":[],\"foreign_keys\":[],\"immutable\":false,\"external\":false}]}"
         }
       },
-      "request": "{\"ir_version\":1,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"h\",\"kind\":\"all\",\"entity\":\"note\",\"n_params\":0}",
       "dialect": "sqlite",
       "faults": [
         {

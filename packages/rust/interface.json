@@ -544,7 +544,7 @@
           "kind": "constant",
           "visibility": "public",
           "type": "uint",
-          "value": 1,
+          "value": 2,
           "core": "polyspec_orm::IR_VERSION"
         },
         {

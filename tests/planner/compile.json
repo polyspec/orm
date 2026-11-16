@@ -120,7 +120,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "limit": {
        "count": 3,
@@ -301,7 +301,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -431,7 +431,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -561,7 +561,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -691,7 +691,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -769,7 +769,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -850,7 +850,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "soft_record",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restore",
       "n_params": 1,
       "where": {
@@ -977,7 +977,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "soft_record",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restore",
       "n_params": 1,
       "where": {
@@ -1055,7 +1055,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "soft_record",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restore",
       "n_params": 2,
       "set": [
@@ -1202,7 +1202,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "soft_record",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restore",
       "n_params": 2,
       "set": [
@@ -1353,7 +1353,7 @@
      "schema": "../../contracts/fixtures/restore_keys.dbs",
      "input": {
       "entity": "badge",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restore",
       "n_params": 3,
       "set": [
@@ -1519,7 +1519,7 @@
      "schema": "../../contracts/fixtures/restore_keys.dbs",
      "input": {
       "entity": "badge",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restore",
       "n_params": 3,
       "set": [
@@ -1688,7 +1688,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "relations": [
@@ -1879,7 +1879,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 8,
       "where": {
@@ -2241,7 +2241,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "update",
       "n_params": 5,
       "optimistic": {
@@ -2513,7 +2513,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 8,
       "set": [
@@ -2851,7 +2851,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "time_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -2981,7 +2981,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "time_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 2,
       "set": [
@@ -3134,7 +3134,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "uuid_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -3261,7 +3261,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "uuid_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 1,
       "set": [
@@ -3386,7 +3386,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "clock_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -3623,7 +3623,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "clock_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 1,
       "set": [
@@ -3781,7 +3781,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "composite_account",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "relations": [
@@ -3946,7 +3946,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 3,
       "where": {
@@ -4126,7 +4126,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -4205,7 +4205,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -4284,7 +4284,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -4363,7 +4363,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "joins": [
        {
         "kind": "inner",
@@ -4516,7 +4516,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0,
       "relations": [
@@ -4612,7 +4612,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0,
       "relations": [
@@ -4708,7 +4708,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0,
       "relations": [
@@ -4804,7 +4804,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0,
       "where": {
@@ -4918,7 +4918,7 @@
       "group_by": [
        "service_seq"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0
      },
@@ -5019,7 +5019,7 @@
       "group_by": [
        "service_seq"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "group_count",
       "n_params": 0,
       "order": [
@@ -5126,7 +5126,7 @@
       "group_by": [
        "created_ts"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "group_count",
       "n_params": 0,
       "order": [
@@ -5235,7 +5235,7 @@
       "group_by": [
        "service_seq"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "group_count",
       "n_params": 0,
       "order": [
@@ -5341,7 +5341,7 @@
       "group_by": [
        "service_seq"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0
      },
@@ -5412,7 +5412,7 @@
       "group_by": [
        "service_seq"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "sum",
       "n_params": 0
      },
@@ -5482,7 +5482,7 @@
       "group_by": [
        "service_seq"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "joins": [
        {
         "kind": "inner",
@@ -5563,7 +5563,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0,
       "where": {
@@ -5653,7 +5653,7 @@
       "group_by": [
        "service_seq"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "group_count",
       "n_params": 0,
       "order": [
@@ -5725,7 +5725,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "relations": [
@@ -5808,7 +5808,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "key_by": "",
       "kind": "all",
       "n_params": 0
@@ -5907,7 +5907,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "service_region",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 3,
       "set": [
@@ -6057,7 +6057,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "service_region",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 3,
       "set": [
@@ -6134,7 +6134,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "service_region",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 3,
       "set": [
@@ -6211,7 +6211,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -6322,7 +6322,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -6402,7 +6402,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -6482,7 +6482,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -6562,7 +6562,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -6673,7 +6673,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -6753,7 +6753,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -6836,7 +6836,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "joins": [
        {
         "kind": "inner",
@@ -6914,7 +6914,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "relations": [
@@ -6996,7 +6996,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 5,
       "on_duplicate": [
@@ -7337,7 +7337,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 5,
       "on_duplicate": [
@@ -7448,7 +7448,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 5,
       "on_duplicate": [
@@ -7551,7 +7551,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "service_region",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 5,
       "on_duplicate": [
@@ -7640,7 +7640,7 @@
        "mode": "none"
       },
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "order": [
@@ -7753,7 +7753,7 @@
        "mode": "none"
       },
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "order": [
@@ -7866,7 +7866,7 @@
        "mode": "none"
       },
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "order": [
@@ -7975,7 +7975,7 @@
       "group_by": [
        "description"
       ],
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "group_count",
       "n_params": 0,
       "order": [
@@ -8079,7 +8079,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "relations": [
@@ -8279,7 +8279,7 @@
        }
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1
      },
@@ -8409,7 +8409,7 @@
        }
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1
      },
@@ -8509,7 +8509,7 @@
        }
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1
      },
@@ -8576,7 +8576,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0,
       "where": {
@@ -8674,7 +8674,7 @@
        "mode": "none"
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "joins": [
        {
@@ -8792,7 +8792,7 @@
        "mode": "none"
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "joins": [
        {
@@ -8910,7 +8910,7 @@
        "mode": "none"
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "joins": [
        {
@@ -9058,7 +9058,7 @@
       },
       "entity": "service_region",
       "force_index": "ix_service_region_service",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "limit": {
        "count": 1,
@@ -9160,7 +9160,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0,
       "where": {
@@ -9277,7 +9277,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -9407,7 +9407,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -9488,7 +9488,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 1,
       "where": {
@@ -9566,7 +9566,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "count",
       "n_params": 0,
       "where": {
@@ -9680,7 +9680,7 @@
        "mode": "none"
       },
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "joins": [
        {
         "kind": "left",
@@ -9897,7 +9897,7 @@
        "mode": "none"
       },
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "joins": [
        {
         "kind": "left",
@@ -10070,7 +10070,7 @@
      "schema": "../../contracts/fixtures/ip_hex.dbs",
      "input": {
       "entity": "ip",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 1,
       "set": [
@@ -10198,7 +10198,7 @@
      "schema": "../../contracts/fixtures/ip_hex.dbs",
      "input": {
       "entity": "ip",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 0
      },
@@ -10296,7 +10296,7 @@
      "schema": "../../contracts/fixtures/ip_hex.dbs",
      "input": {
       "entity": "ip",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -10426,7 +10426,7 @@
      "schema": "../../contracts/fixtures/ip_hex.dbs",
      "input": {
       "entity": "hex_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -10556,7 +10556,7 @@
      "schema": "../../contracts/fixtures/aes_chain.dbs",
      "input": {
       "entity": "aes_hex_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -10686,7 +10686,7 @@
      "schema": "../../contracts/fixtures/aes_chain.dbs",
      "input": {
       "entity": "hex_aes_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -10816,7 +10816,7 @@
      "schema": "../../contracts/fixtures/aes_chain.dbs",
      "input": {
       "entity": "json_aes_cell",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1,
       "where": {
@@ -10851,7 +10851,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 3,
       "where": {
@@ -10931,7 +10931,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 2,
       "where": {
@@ -10997,7 +10997,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 2,
       "where": {
@@ -11053,7 +11053,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 2,
       "relations": [
@@ -11130,7 +11130,7 @@
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "update",
       "n_params": 3,
       "optimistic": {
@@ -11230,7 +11230,7 @@
         5
        ]
       ],
-      "ir_version": 1
+      "ir_version": 2
      },
      "expect": {
       "none": {
@@ -11491,7 +11491,7 @@
         "p": 0
        }
       ],
-      "ir_version": 1
+      "ir_version": 2
      },
      "expect": {
       "none": {
@@ -11580,7 +11580,7 @@
      "input": {
       "entity": "record",
       "kind": "insert",
-      "ir_version": 1,
+      "ir_version": 2,
       "n_params": 3,
       "set": [
        {
@@ -11609,7 +11609,7 @@
      "input": {
       "entity": "record",
       "kind": "insert",
-      "ir_version": 1,
+      "ir_version": 2,
       "n_params": 2,
       "set": [
        {
@@ -11638,7 +11638,7 @@
      "input": {
       "entity": "record",
       "kind": "insert",
-      "ir_version": 1,
+      "ir_version": 2,
       "n_params": 1,
       "set": [
        {
@@ -11694,7 +11694,7 @@
         "p": 3
        }
       ],
-      "ir_version": 1
+      "ir_version": 2
      },
      "expect": {
       "none": {
@@ -11848,7 +11848,7 @@
         "p": 2
        }
       ],
-      "ir_version": 1
+      "ir_version": 2
      },
      "expect": {
       "none": {
@@ -12016,7 +12016,7 @@
         "p": 4
        }
       ],
-      "ir_version": 1
+      "ir_version": 2
      },
      "expect": {
       "none": {
@@ -12183,7 +12183,7 @@
      "input": {
       "entity": "record",
       "kind": "insert",
-      "ir_version": 1,
+      "ir_version": 2,
       "n_params": 4,
       "set": [
        {
@@ -12218,7 +12218,7 @@
      "input": {
       "entity": "record",
       "kind": "insert",
-      "ir_version": 1,
+      "ir_version": 2,
       "n_params": 3,
       "set": [
        {
@@ -12253,7 +12253,7 @@
      "input": {
       "entity": "record",
       "kind": "insert",
-      "ir_version": 1,
+      "ir_version": 2,
       "n_params": 2,
       "set": [
        {
@@ -12339,7 +12339,7 @@
        }
       },
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1
      },
@@ -12387,7 +12387,7 @@
        }
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1
      },
@@ -12436,7 +12436,7 @@
        }
       },
       "entity": "user",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "all",
       "n_params": 1
      },
@@ -12467,7 +12467,7 @@
      "op": "planner.columns",
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "one",
       "entity": "author",
       "n_params": 1,
@@ -12505,7 +12505,7 @@
      "op": "planner.columns",
      "schema": "../../contracts/fixtures/bench/bench.dbs",
      "input": {
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "one",
       "entity": "author",
       "n_params": 1,
@@ -12571,7 +12571,7 @@
         "p": 3
        }
       ],
-      "ir_version": 1
+      "ir_version": 2
      },
      "expect": {
       "none": {
@@ -12754,7 +12754,7 @@
        "mode": "none"
       },
       "entity": "author",
-      "ir_version": 1,
+      "ir_version": 2,
       "joins": [
        {
         "kind": "left",
@@ -12896,7 +12896,7 @@
      "schema": "../../contracts/fixtures/complex_query/complex_query.dbs",
      "input": {
       "entity": "product",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "paginate",
       "limit": {
        "count_p": 2,
@@ -13123,7 +13123,7 @@
      "schema": "../../contracts/fixtures/complex_query/complex_query.dbs",
      "input": {
       "entity": "product",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "paginate",
       "limit": {
        "count_p": 2,
@@ -13349,7 +13349,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "load": true,
       "n_params": 2,
@@ -13463,7 +13463,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "load": true,
       "n_params": 4,
@@ -13622,7 +13622,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_note",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "load": true,
       "n_params": 2,
@@ -13736,7 +13736,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "n_params": 2,
       "set": [
@@ -13777,7 +13777,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "load": true,
       "n_params": 1,
@@ -13815,7 +13815,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "load": true,
       "n_params": 1,
@@ -13857,7 +13857,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "update",
       "load": true,
       "n_params": 2,
@@ -13906,7 +13906,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "insert",
       "load": true,
       "n_params": 2,
@@ -13954,7 +13954,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restart_identity",
       "n_params": 0
      },
@@ -14015,7 +14015,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_note",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restart_identity",
       "n_params": 0
      },
@@ -14046,7 +14046,7 @@
      "schema": "../../contracts/fixtures/identity_load.dbs",
      "input": {
       "entity": "load_probe",
-      "ir_version": 1,
+      "ir_version": 2,
       "kind": "restart_identity",
       "n_params": 1,
       "where": {

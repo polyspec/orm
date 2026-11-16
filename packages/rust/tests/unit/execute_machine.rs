@@ -31,7 +31,7 @@ fn compiled_insert(path: &str, entity: &str, columns: &[&str]) -> String {
     let model = crate::testing::ir_request::schema(path);
     let assigned: Vec<_> = columns.iter().enumerate().map(|(param, column)| serde_json::json!({"column": column, "p": param})).collect();
     let request = serde_json::json!({
-        "ir_version": 1, "manifest_hash": model.manifest_hash,
+        "ir_version": 2, "manifest_hash": model.manifest_hash,
         "kind": "insert", "entity": entity, "set": assigned, "n_params": columns.len(),
     });
     let plan: serde_json::Value =

@@ -21,7 +21,7 @@
           "schema": "runtime-model.dbs",
           "assemble_types": true,
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "note",
             "kind": "all",
             "n_params": 0
@@ -99,7 +99,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "note",
             "kind": "update",
             "n_params": 2,
@@ -204,7 +204,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "note",
             "kind": "insert",
             "n_params": 2,
@@ -317,7 +317,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "note",
             "kind": "insert",
             "n_params": 1,
@@ -347,7 +347,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "item",
             "kind": "insert",
             "n_params": 1,
@@ -448,7 +448,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "item",
             "kind": "update",
             "n_params": 2,
@@ -576,7 +576,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "item",
             "kind": "delete",
             "n_params": 1,
@@ -684,7 +684,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "item",
             "kind": "insert",
             "n_params": 2,
@@ -717,7 +717,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "note",
             "kind": "all",
             "n_params": 2,
@@ -820,7 +820,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "note",
             "kind": "insert",
             "n_params": 4,
@@ -987,7 +987,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "note",
             "kind": "insert",
             "n_params": 3,
@@ -1115,7 +1115,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "stamped",
             "kind": "update",
             "n_params": 2,
@@ -1251,7 +1251,7 @@
           "op": "planner.compile",
           "schema": "runtime-model.dbs",
           "input": {
-            "ir_version": 1,
+            "ir_version": 2,
             "entity": "stamped",
             "kind": "insert",
             "n_params": 1,

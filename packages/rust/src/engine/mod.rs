@@ -70,7 +70,7 @@ mod tests {
             query: Box::new(ir::Query { entity: entity.into(), relations, ..Default::default() }),
         };
         let request = ir::Request {
-            ir_version: 1,
+            ir_version: crate::ir::VERSION,
             manifest_hash: set.manifest_hash.clone(),
             kind: "paginate".into(),
             query: ir::Query {
@@ -110,7 +110,7 @@ mod tests {
         let _case = polyspec_orm_testcase::case!();
         let (set, manifest) = bench_fixture();
         let request = |keys: &[(&str, &str)]| ir::Request {
-            ir_version: 1,
+            ir_version: crate::ir::VERSION,
             manifest_hash: set.manifest_hash.clone(),
             kind: "all".into(),
             query: ir::Query {
@@ -160,7 +160,7 @@ mod tests {
             })
         };
         let request = |kind: &str, entity: &str, set: Vec<ir::Assign>, on_duplicate: Vec<ir::Assign>, where_: Option<ir::Group>, n_params: usize| ir::Request {
-            ir_version: 1,
+            ir_version: crate::ir::VERSION,
             manifest_hash: manifest.manifest_hash.clone(),
             kind: kind.into(),
             query: ir::Query { entity: entity.into(), where_, ..Default::default() },
@@ -207,7 +207,7 @@ mod tests {
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
         let insert = |rows: Vec<Vec<usize>>, n_params: usize| ir::Request {
-            ir_version: 1,
+            ir_version: crate::ir::VERSION,
             manifest_hash: manifest.manifest_hash.clone(),
             kind: "insert".into(),
             query: ir::Query { entity: "clock_event".into(), ..Default::default() },
@@ -249,7 +249,7 @@ mod tests {
         let _case = polyspec_orm_testcase::case!();
         let m = restore_manifest();
         let request = ir::Request {
-            ir_version: 1,
+            ir_version: crate::ir::VERSION,
             manifest_hash: m.manifest_hash.clone(),
             kind: "all".into(),
             query: ir::Query { entity: "tag".into(), limit: Some(ir::Limit::Params { offset_p: 0, count_p: 1 }), ..Default::default() },
@@ -286,7 +286,7 @@ mod tests {
             })
             .collect();
         ir::Request {
-            ir_version: 1,
+            ir_version: crate::ir::VERSION,
             manifest_hash: m.manifest_hash.clone(),
             kind: "restore".into(),
             query: ir::Query { entity: entity.into(), where_: Some(ir::Group { items, ..Default::default() }), ..Default::default() },

@@ -256,8 +256,8 @@ fn the_functions_of_documents_give_the_values_of_dbspec() {
 #[test]
 fn a_text_that_is_no_request_of_the_form_is_ir_invalid() {
     let _case = polyspec_orm_testcase::case!();
-    let read = Request::from_json(r#"{"ir_version": 1, "manifest_hash": "h", "kind": "all", "entity": "author", "n_params": 0}"#).expect("a request");
-    assert_eq!((read.ir_version, read.kind.as_str(), read.query.entity.as_str()), (1, "all", "author"));
+    let read = Request::from_json(r#"{"ir_version": 2, "manifest_hash": "h", "kind": "all", "entity": "author", "n_params": 0}"#).expect("a request");
+    assert_eq!((read.ir_version, read.kind.as_str(), read.query.entity.as_str()), (2, "all", "author"));
     assert!(Request::from_json("{}").is_ok(), "an absent member has its default");
     for (text, message) in [
         ("[]", "request is no object"),
@@ -281,7 +281,7 @@ fn a_text_that_is_no_request_of_the_form_is_ir_invalid() {
     for text in [r#"{} {}"#, r#"{"n_params": 1.5}"#, r#"{"kind": 1}"#, "", "{"] {
         assert_eq!(failure(Request::from_json(text), text).kind(), Kind::IrInvalid, "{text}");
     }
-    assert_eq!(crate::IR_VERSION, 1);
+    assert_eq!(crate::IR_VERSION, 2);
     assert_eq!(engine::value_function_unit("days_ago"), Some("day"));
     assert_eq!(engine::value_function_unit("now"), None);
 }
@@ -418,7 +418,7 @@ fn a_model_validates_a_request_text_as_the_validation_does() {
     assert!(!manifest.operator_allowed("author", "seq", "contains").expect("a column of author"), "an integer column takes no contains");
     assert_eq!(failure(manifest.operator_allowed("nobody", "seq", "eq"), "an entity that the model does not have").kind(), Kind::EntityUnknown);
     assert_eq!(failure(manifest.operator_allowed("author", "nothing", "eq"), "a column that the entity does not have").kind(), Kind::ColumnUnknown);
-    let newer = json!({"ir_version": 2, "manifest_hash": manifest.manifest_hash, "kind": "all", "entity": "author", "n_params": 0});
+    let newer = json!({"ir_version": 3, "manifest_hash": manifest.manifest_hash, "kind": "all", "entity": "author", "n_params": 0});
     assert_eq!(failure(manifest.validate(&newer.to_string()), "a request of another version").kind(), Kind::VersionMismatch);
 }
 
@@ -521,7 +521,7 @@ async fn execute_text_runs_a_step_that_compile_wrote() {
     db.utils().schema().install(&schema).await.expect("install");
 
     let insert = json!({
-        "ir_version": 1,
+        "ir_version": 2,
         "manifest_hash": set.manifest_hash,
         "kind": "insert",
         "entity": "note",

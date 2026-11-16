@@ -17,7 +17,7 @@
           "schema": "default-select-set.dbs",
           "input": {
             "entity": "note",
-            "ir_version": 1,
+            "ir_version": 2,
             "kind": "all",
             "n_params": 0
           },

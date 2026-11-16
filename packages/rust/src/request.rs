@@ -27,7 +27,7 @@ impl Req {
         let schema = schema.into();
         Req {
             ir: ir::Request {
-                ir_version: 1,
+                ir_version: crate::ir::VERSION,
                 manifest_hash: schema.hash().to_owned(),
                 kind: kind.to_owned(),
                 query: ir::Query { entity: entity.to_owned(), ..Default::default() },
@@ -489,7 +489,7 @@ mod page_parameter_tests {
 
     fn request() -> ir::Request {
         ir::Request {
-            ir_version: 1,
+            ir_version: crate::ir::VERSION,
             manifest_hash: "manifest".into(),
             kind: "all".into(),
             query: ir::Query { entity: "probe".into(), limit: Some(ir::Limit::Params { offset_p: 0, count_p: 1 }), ..Default::default() },

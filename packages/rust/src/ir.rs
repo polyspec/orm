@@ -263,8 +263,9 @@ pub struct Optimist {
     pub p: usize,
 }
 
-/// The version of the request form that the core validates (docs/spec/flowmark-surface.md FMS-36).
-pub const VERSION: u32 = 1;
+/// The version of the request form that the core validates (docs/spec/flowmark-surface.md FMS-36); 2 since the predicate
+/// `none` (docs/spec/protocol.md PRT-92).
+pub const VERSION: u32 = 2;
 
 impl Request {
     /// The request of its JSON text (FMS-31). An absent member of the form has its default, except a member of a limit.

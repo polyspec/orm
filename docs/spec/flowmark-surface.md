@@ -266,8 +266,8 @@ hold for every member that this document names.
   `dbspec::operator_allowed_for_field`). An entity that the model does not have is `entity_unknown`, and a column that
   the entity does not have is `column_unknown`. The member carries `OpAllowed`, which takes a pointer to a field in the
   legacy module. Not implemented.
-- **FMS-36** `orm.ir_version` is the constant 1, the version of the request form that the core validates; it carries
-  the constant `Version` of `engine/ir`. `orm.value_function_unit(name)` returns the unit of the interval of a
+- **FMS-36** `orm.ir_version` is the constant 2, the version of the request form that the core validates (PRT-92);
+  the constant `Version` of `engine/ir` that it carried stays 1 in the legacy module (CORE-1). `orm.value_function_unit(name)` returns the unit of the interval of a
   relative value function, `second`, `minute`, `hour`, `day` or `month`, or nothing for another name; it carries the
   variable `ValueFunctionUnits` of `engine/dialect`, a map that flowmark reads by name. The members are not implemented; the constant is
   `polyspec_orm::ir::VERSION`, also `polyspec_orm::IR_VERSION`, and the function is
