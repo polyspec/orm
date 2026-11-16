@@ -3025,7 +3025,7 @@ CLI_PREFIX ?= $(HOME)/.local
 # CLI_PREFIX without a symbolic link (scripts/install-cli.mts): a copy of both packages and a script that runs node
 # with the copied entry. Put $(CLI_PREFIX)/bin on PATH; uninstall-cli removes the copy and the script.
 .PHONY: orm-install-cli uninstall-cli
-orm-install-cli: lease-tool orm-codes-typescript
+orm-install-cli: lease-tool orm-codes-typescript bindings
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -3036,7 +3036,7 @@ uninstall-cli:
 
 # orm-install-cli-check installs dbspec-fmt into a temporary prefix with scripts/install-cli.mts, runs it and uninstalls it
 # (tests/cli/install-cli.test.mts); the install reads the registry.
-orm-install-cli-check: lease-tool orm-codes-typescript
+orm-install-cli-check: lease-tool orm-codes-typescript bindings
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build

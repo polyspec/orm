@@ -12,7 +12,8 @@ export type PackageManifest = {
   peerDependencies?: Record<string, string>; overrides?: Record<string, unknown>; kit?: { copies?: Record<string, string> };
 };
 /** The fields of an npm lock that the scripts read. */
-export type NpmLock = { lockfileVersion?: 3; packages: Record<string, { version?: string; optional?: boolean; link?: boolean; resolved?: string }> };
+export type NpmLock = { lockfileVersion?: 3; packages: Record<string, NpmLockEntry> };
+export type NpmLockEntry = { version?: string; optional?: boolean; link?: boolean; resolved?: string; integrity?: string; os?: string[]; cpu?: string[]; libc?: string[] };
 /** The fields of composer.json that the scripts read. */
 export type ComposerManifest = { name?: string; version?: string; require?: Record<string, string>; 'require-dev'?: Record<string, string>; config?: { 'vendor-dir'?: string } };
 /** The fields of composer.lock or vendor/composer/installed.json that the scripts read. */
