@@ -1781,6 +1781,11 @@ pub async fn delete<M: AnyModel + Clone>(m: &M, recursive: bool) -> Result<()> {
 /// Deletes the row of `m`, on `unit` when given (the unit of a recursive delete) or else on the connection of `m`.
 pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&Connection>) -> Result<()> {
     let c = m.core_dyn();
+    // The children go before the row, so conditions on the row could not keep them (CORE-138). It is refused before any
+    // statement, and before the connection is read.
+    if recursive && !c.where_.items.is_empty() && c.row.as_ref().is_some_and(|row| row.related.values().any(|rel| rel.cascade)) {
+        return Err(config("a recursive delete of a row with cascading relations takes no conditions"));
+    }
     // In a unit, every statement runs on the connection of the unit and never on the one of the model, which a running
     // savepoint makes busy (CORE-21).
     let (ex, conn) = match unit {
@@ -1791,10 +1796,6 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&
         None => (terminal(c)?, c.conn.clone()),
     };
     if recursive {
-        // The children go before the row, so conditions on the row could not keep them (CORE-138).
-        if !c.where_.items.is_empty() && c.row.as_ref().is_some_and(|row| row.related.values().any(|rel| rel.cascade)) {
-            return Err(config("a recursive delete of a row with cascading relations takes no conditions"));
-        }
         if let Some(row) = &c.row {
             for rel in row.related.values() {
                 if !rel.cascade {
@@ -2173,5 +2174,52 @@ mod split_plan_tests {
         polyspec_orm_testcase::step(format_args!("the widest plan of the connection binds {widest} slots"));
         assert!(widest <= bind_limit("sqlite"), "a plan of the split count binds {widest} slots, over the SQLite limit of {}", bind_limit("sqlite"));
         db.close_async().await;
+    }
+}
+
+#[cfg(test)]
+mod conditioned_recursive_delete_tests {
+    // A recursive delete deletes the cascading children before the row, so conditions on the row could not keep them:
+    // the delete of such a row with conditions is config before any statement (CORE-138). Collection::delete(true)
+    // reaches it for each row (collection.rs), and no contract member deletes recursively.
+    use super::{collect_boxed, delete_row, new_boxed, Core, Entity, Model, Related, RelatedValue, RowState, Schema, Val};
+    use crate::Result;
+
+    static SCHEMA: Schema =
+        Schema::new(include_str!("../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
+    static EVENT: Entity = Entity { name: "clock_event", schema: &SCHEMA, new: new_boxed::<Event>, collect: collect_boxed::<Event> };
+
+    test_model!(Event, EVENT);
+
+    fn loaded(cascade: bool) -> Event {
+        let mut core = Core::new(&EVENT);
+        let mut row = RowState { loaded: true, ..Default::default() };
+        row.related.insert("children".to_owned(), Related { value: RelatedValue::One(None), cascade, flat: false });
+        core.row = Some(row);
+        Event(core)
+    }
+
+    #[tokio::test]
+    async fn a_recursive_delete_with_conditions_of_a_row_with_cascading_relations_is_config() {
+        let _case = polyspec_orm_testcase::case!();
+        let mut event = loaded(true);
+        event.0.add_none("");
+        let error = delete_row(&event, true, None).await.expect_err("the delete is refused");
+        assert_eq!(error.to_string(), "config: a recursive delete of a row with cascading relations takes no conditions");
+    }
+
+    #[tokio::test]
+    async fn the_refusal_needs_conditions_cascading_relations_and_a_recursive_delete() {
+        let _case = polyspec_orm_testcase::case!();
+        let refused = "config: a recursive delete of a row with cascading relations takes no conditions";
+        let mut kept = loaded(false);
+        kept.0.add_none("");
+        let mut plain = loaded(true);
+        plain.0.add_none("");
+        for (what, model, recursive) in [("no cascade", &kept, true), ("no conditions", &loaded(true), true), ("not recursive", &plain, false)] {
+            // Each goes on to read the connection, which the case does not give.
+            let error = delete_row(model, recursive, None).await.expect_err("no connection");
+            assert_ne!(error.to_string(), refused, "{what}");
+        }
     }
 }
