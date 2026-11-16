@@ -428,6 +428,18 @@ static bool setting_zrecords(zval *self, zend_string *column, bool *ok)
     return true;
 }
 
+/* Setting::codecStageMeaning is the stage that a codec stage name means, as codec_stage_meaning of parse.c states it
+ * (DBS-185), with the method of the PHP library. */
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, codecStageMeaning)
+{
+    zend_string *stage;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(stage)
+    ZEND_PARSE_PARAMETERS_END();
+    str meaning = codec_stage_meaning((str){ZSTR_VAL(stage), ZSTR_LEN(stage)});
+    RETURN_STRINGL(meaning.s, meaning.n);
+}
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, records)
 {
     zend_string *column;

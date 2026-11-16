@@ -56,6 +56,9 @@ typedef struct {
     size_t n;
 } str;
 
+/* codec_stage_meaning is the stage that a codec stage name means (DBS-185); parse.c holds it. */
+str codec_stage_meaning(str stage);
+
 #define SL(lit) ((str){(lit), sizeof(lit) - 1})
 #define SNULL ((str){NULL, 0})
 

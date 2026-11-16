@@ -39,7 +39,7 @@ static const char *const codec_stages[] = {"ordered_json", "aes", "hex", "gz", "
 /* codec_stage_meaning is the stage that a codec stage name means: json, the name of the stage ordered_json in the core,
  * means ordered_json, with the same encoding, and any other name means itself (DBS-185). A document keeps the name that
  * it was written with, so its canonical text and its manifest hash are those of the document as written. */
-static str codec_stage_meaning(str stage) {
+str codec_stage_meaning(str stage) {
     return str_eqc(stage, "json") ? SL("ordered_json") : stage;
 }
 static const char *const fk_actions[] = {"restrict", "cascade", "set_null", NULL};

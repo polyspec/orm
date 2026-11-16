@@ -193,6 +193,8 @@ final class Setting
 
     public function __construct(string $kind, array $arguments, array $comments = [], ?array $exclude = null, ?array $include = null) {}
 
+    public static function codecStageMeaning(string $stage): string {}
+
     public function records(string $column): bool {}
 
     public function excluded(Table $table): array {}
