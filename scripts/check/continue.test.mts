@@ -64,7 +64,8 @@ caseTest('the PHP lane of client-db-test runs every test after a failed one and 
     const expected = await declared('scripts/client-db-test.mts', 'php');
     assert.equal(expected[0], 'php vendor-php/bin/phpunit --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ModelTest.php');
     assert.deepEqual(f.ran(), expected);
-    assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php vendor-php\/bin\/phpunit --configuration packages\/php\/phpunit\.xml\.dist packages\/php\/tests\/ModelTest\.php \(exit 3\)/);
+    // The failure names the command that the script declares, so the expectation is that command.
+    assert.ok(result.stderr.includes(`client-db-test: the php lane failed:\n  ${expected[0]} (exit 3)`), result.stderr);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
   }
@@ -79,7 +80,7 @@ caseTest('the TypeScript SQLite tests run every test after a failed one and name
     const expected = await declared('scripts/typescript/sqlite-test.mts', 'node');
     assert.equal(expected[1], 'node legacy/packages/ts/tests/model.mjs');
     assert.deepEqual(f.ran(), expected);
-    assert.match(result.stderr, /sqlite-test: failed:\n {2}node packages\/ts\/tests\/model\.mjs \(exit 3\)/);
+    assert.ok(result.stderr.includes(`sqlite-test: failed:\n  ${expected[1]} (exit 3)`), result.stderr);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
   }
