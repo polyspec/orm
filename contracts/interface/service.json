@@ -2374,6 +2374,125 @@
         "kind": "lock_not_available",
         "message": "lock_not_available: could not obtain lock on row in relation \"service_pg_row\" (SQLSTATE 55P03)"
       }
+    },
+    {
+      "id": "a_get_by_row_lock_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "service": "address"
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "with": {
+        "q": {
+          "new": "query.new",
+          "args": {
+            "schema": {
+              "new": "schema.load",
+              "args": {
+                "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+                "external_text": "",
+                "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+              }
+            },
+            "entity": "service_pg_row"
+          }
+        }
+      },
+      "callback": {
+        "function": {
+          "names": [
+            "tx"
+          ],
+          "calls": [
+            {
+              "on": "q",
+              "call": "query.connect",
+              "args": {
+                "connection": {
+                  "bound": "tx"
+                }
+              }
+            },
+            {
+              "on": "q",
+              "call": "query.for_update_no_wait"
+            },
+            {
+              "on": "q",
+              "call": "query.get_by",
+              "args": {
+                "chain": "Id",
+                "values": [
+                  {
+                    "kind": "int",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "lock_not_available",
+        "message": "lock_not_available: could not obtain lock on row in relation \"service_pg_row\" (SQLSTATE 55P03)"
+      }
     }
   ]
 }
