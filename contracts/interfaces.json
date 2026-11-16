@@ -2257,19 +2257,19 @@
       "state": "Classifies a registered restore into independent key and assignment column lists using the write planner classifier, without statements, hooks, transaction changes, parameter bounds or assignment permission validation (INT-188, PRT-91)",
       "native": {
         "go": {
-          "symbol": "packages/go/orm/db.go::DB.AnalyzeRestore",
+          "symbol": "legacy/packages/go/orm/db.go::DB.AnalyzeRestore",
           "signature": "receiver=*DB func(r *ir.Request) (RestoreAnalysis, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::analyzeRestore",
+          "symbol": "legacy/packages/php/src/Db.php::Polyspec\\Orm\\Db::analyzeRestore",
           "signature": "public function analyzeRestore(array $request): array"
         },
         "typescript": {
-          "symbol": "packages/ts/src/database.ts::Db.analyzeRestore",
+          "symbol": "legacy/packages/ts/src/database.ts::Db.analyzeRestore",
           "signature": "public analyzeRestore(request: Request): RestoreAnalysis"
         },
         "python": {
-          "symbol": "packages/python/src/polyspec/orm/database.py::Db.analyze_restore",
+          "symbol": "legacy/packages/python/src/polyspec/orm/database.py::Db.analyze_restore",
           "signature": "def analyze_restore(self, request: IRRequest) -> RestoreAnalysis"
         },
         "rust": {
@@ -2277,7 +2277,7 @@
           "signature": "pub fn analyze_restore(&self, request: &crate::ir::Request) -> Result<RestoreAnalysis>"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::analyzeRestore",
+          "symbol": "legacy/packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::analyzeRestore",
           "signature": "public function analyzeRestore(array $request): array"
         }
       },
@@ -2293,19 +2293,19 @@
       "state": "Reports whether a transaction of the connection that has not ended is active in the calling execution flow, from the existing transaction stack of the flow, without statements, request hooks, driver calls or a state of its own; a handle answers as its connection, and a closed connection is CONFIG (INT-189)",
       "native": {
         "go": {
-          "symbol": "packages/go/orm/db.go::DB.TransactionActive",
+          "symbol": "legacy/packages/go/orm/db.go::DB.TransactionActive",
           "signature": "receiver=*DB func() (bool, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::transactionActive",
+          "symbol": "legacy/packages/php/src/Db.php::Polyspec\\Orm\\Db::transactionActive",
           "signature": "public function transactionActive(): bool"
         },
         "typescript": {
-          "symbol": "packages/ts/src/database.ts::Db.transactionActive",
+          "symbol": "legacy/packages/ts/src/database.ts::Db.transactionActive",
           "signature": "public transactionActive(): boolean"
         },
         "python": {
-          "symbol": "packages/python/src/polyspec/orm/database.py::Db.transaction_active",
+          "symbol": "legacy/packages/python/src/polyspec/orm/database.py::Db.transaction_active",
           "signature": "def transaction_active(self) -> bool"
         },
         "rust": {
@@ -2313,7 +2313,7 @@
           "signature": "pub fn transaction_active(&self) -> Result<bool>"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::transactionActive",
+          "symbol": "legacy/packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::transactionActive",
           "signature": "public function transactionActive(): bool"
         }
       },
@@ -2331,19 +2331,19 @@
       "state": "Registers a hook that the client calls, in registration order and with readOnly, before each outermost transaction that transaction begins on the connection or a handle of it, every attempt, utils().run outside a transaction and a model terminal in a transaction of its own included, before the transaction takes a connection or sends a statement; a client whose calls return a promise or a future awaits the hook, an error of a hook ends the transaction before it begins and is returned unchanged, and the returned value removes the hook (INT-190)",
       "native": {
         "go": {
-          "symbol": "packages/go/orm/tx.go::DB.BeforeTransaction",
+          "symbol": "legacy/packages/go/orm/tx.go::DB.BeforeTransaction",
           "signature": "receiver=*DB func(hook func(ctx context.Context, readOnly bool) error) (remove func(), err error)"
         },
         "php": {
-          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::beforeTransaction",
+          "symbol": "legacy/packages/php/src/Db.php::Polyspec\\Orm\\Db::beforeTransaction",
           "signature": "public function beforeTransaction(Closure $hook): Closure"
         },
         "typescript": {
-          "symbol": "packages/ts/src/database.ts::Db.beforeTransaction",
+          "symbol": "legacy/packages/ts/src/database.ts::Db.beforeTransaction",
           "signature": "public beforeTransaction(hook: (readOnly: boolean) => void | Promise<void>): () => void"
         },
         "python": {
-          "symbol": "packages/python/src/polyspec/orm/database.py::Db.before_transaction",
+          "symbol": "legacy/packages/python/src/polyspec/orm/database.py::Db.before_transaction",
           "signature": "def before_transaction(self, hook: Callable[[bool], None]) -> Callable[[], None]"
         },
         "rust": {
@@ -2351,7 +2351,7 @@
           "signature": "pub fn before_transaction(&self, hook: impl Fn(bool) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static) -> BeforeTransactionHook"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::beforeTransaction",
+          "symbol": "legacy/packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::beforeTransaction",
           "signature": "public function beforeTransaction(Closure $hook): Closure"
         }
       },
