@@ -760,11 +760,11 @@ export const ORM_ACCOUNTS_SQL = ['127.0.0.1', 'localhost']
 // proxysqlConfig declares the two settings a client relies on when it stops reading a result (CFG-34, CFG-35).
 export function proxysqlConfig(p: Paths, ports: Ports): string {
   return proxysqlConfigOf({ data: p.proxysqlData, admin: p.sockets.proxysqlAdmin, adminPgsql: p.sockets.proxysqlAdminPgsql, pgsql: p.sockets.proxysqlPgsql,
-    port: ports.proxysql, backend: ports.mysql, serverVersion: '8.4.0' });
+    listen: '127.0.0.1', port: ports.proxysql, backendHost: '127.0.0.1', backend: ports.mysql, serverVersion: '8.4.0' });
 }
 
-/** The places of one ProxySQL: its data folder, its three Unix sockets, its client port, the port of its one backend and the version it reports. */
-export type ProxysqlPlaces = { data: string; admin: string; adminPgsql: string; pgsql: string; port: number; backend: number; serverVersion: string };
+/** The places of one ProxySQL: its data folder, its three Unix sockets, the address and the port of its client interface, the host and the port of its one backend and the version it reports. */
+export type ProxysqlPlaces = { data: string; admin: string; adminPgsql: string; pgsql: string; listen: string; port: number; backendHost: string; backend: number; serverVersion: string };
 
 // proxysqlConfigOf is the configuration of a ProxySQL at <places>; the ProxySQL of the MySQL servers and that of the MariaDB servers
 // differ only in their places and the server version they report.
@@ -780,7 +780,7 @@ admin_variables=
 }
 mysql_variables=
 {
-  interfaces="127.0.0.1:${places.port}"
+  interfaces="${places.listen}:${places.port}"
   threads=2
   monitor_enabled=false
   server_version="${places.serverVersion}"
@@ -794,7 +794,7 @@ pgsql_variables=
 }
 mysql_servers=
 (
-  { address="127.0.0.1", port=${places.backend}, hostgroup=0, max_connections=${PROXYSQL_BACKEND_CONNECTIONS} }
+  { address="${places.backendHost}", port=${places.backend}, hostgroup=0, max_connections=${PROXYSQL_BACKEND_CONNECTIONS} }
 )
 mysql_users=
 (
@@ -814,6 +814,32 @@ async function startProxysql(p: Paths, ports: Ports): Promise<void> {
   console.log(`test-servers: ProxySQL on 127.0.0.1:${ports.proxysql}`);
 }
 
+/** PGBOUNCER_USERS is the users file of a PgBouncer: the user orm, whom auth_type trust admits without a password. */
+export const PGBOUNCER_USERS = '"orm" ""\n';
+
+/** The places of one PgBouncer: the host and the port of its backend, the address and the port it listens on, and its users file. */
+export type PgbouncerPlaces = { backendHost: string; backend: number; listen: string; port: number; authFile: string };
+
+// pgbouncerConfigOf is the pgbouncer.ini of a PgBouncer at <places>; the native one and that of a container differ only in their places.
+export function pgbouncerConfigOf(places: PgbouncerPlaces): string {
+  return `[databases]
+* = host=${places.backendHost} port=${places.backend}
+
+[pgbouncer]
+listen_addr = ${places.listen}
+listen_port = ${places.port}
+unix_socket_dir =
+auth_type = trust
+auth_file = ${places.authFile}
+pool_mode = transaction
+default_pool_size = 4
+max_client_conn = 500
+max_prepared_statements = 200
+track_extra_parameters = statement_timeout
+server_tls_sslmode = disable
+`;
+}
+
 // startPgbouncer pools the connections to the PostgreSQL primary in transaction mode over at most four server
 // connections per database. PgBouncer keeps the protocol-level prepared statements of each client and sets
 // the tracked parameters of the client, including statement_timeout sent as a startup parameter, on every server
@@ -822,23 +848,8 @@ async function startProxysql(p: Paths, ports: Ports): Promise<void> {
 // of a pooled session reads the link of PgBouncer, so a plain DSN through it reads the plain link that the client has
 // (CFG-47).
 async function startPgbouncer(p: Paths, ports: Ports): Promise<void> {
-  writeFileSync(join(p.dir, 'pgbouncer-users.txt'), '"orm" ""\n');
-  writeFileSync(join(p.dir, 'pgbouncer.ini'), `[databases]
-* = host=127.0.0.1 port=${ports.postgres}
-
-[pgbouncer]
-listen_addr = 127.0.0.1
-listen_port = ${ports.pgbouncer}
-unix_socket_dir =
-auth_type = trust
-auth_file = ${p.dir}/pgbouncer-users.txt
-pool_mode = transaction
-default_pool_size = 4
-max_client_conn = 500
-max_prepared_statements = 200
-track_extra_parameters = statement_timeout
-server_tls_sslmode = disable
-`);
+  writeFileSync(join(p.dir, 'pgbouncer-users.txt'), PGBOUNCER_USERS);
+  writeFileSync(join(p.dir, 'pgbouncer.ini'), pgbouncerConfigOf({ backendHost: '127.0.0.1', backend: ports.postgres, listen: '127.0.0.1', port: ports.pgbouncer, authFile: `${p.dir}/pgbouncer-users.txt` }));
   // PgBouncer logs "process up" after it listens on its sockets.
   await startLogged(p.dir, 'pgbouncer', 'process up', 'pgbouncer', [join(p.dir, 'pgbouncer.ini')]);
   console.log(`test-servers: PgBouncer on 127.0.0.1:${ports.pgbouncer}`);

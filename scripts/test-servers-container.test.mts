@@ -3,14 +3,14 @@
 // The stand-in takes the project name from the option -p and keeps one file per project under its state directory: up
 // records the project, down removes that file, plan --json prints the host name of each service with a suffix of the
 // stand-in alone and the path of its authority, so a script that holds a suffix of its own fails, images reports each
-// image, exec getent prints an address, another exec and logs print one line, and version prints the schema version.
+// image, exec and logs print one line, and version prints the schema version.
 // Each call is a line of calls.log. The stand-in starts no process that stays, so nothing outlives a test (HR-87). Each
 // test names two checkouts by two directories of its own. A test runs sh, the stand-in and openssl, which issues the
 // second CA of each start, as child processes, and ends when they end.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, watch, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { dirname, join } from 'node:path';
 import { caseTest, withTemporaryDirectory } from '../tests/testcase.mts';
@@ -18,9 +18,8 @@ import { isolatedEnvironment } from '../tests/environment.mts';
 import { installBay, kinds, pull, remote, remove, run, start, type Context } from './test-servers-container.mts';
 import { ORM_ACCOUNTS_SQL } from './test-servers.mts';
 
-// ADDRESS is the IPv4 address that the stand-in bay resolves every host name to, SUFFIX the suffix of its host names,
-// which no bay has, and AUTHORITY the path that it reports for the certificate of its authority.
-const ADDRESS = '192.168.64.9';
+// SUFFIX is the suffix of the host names of the stand-in bay, which no bay has, and AUTHORITY the path that it reports
+// for the certificate of its authority.
 const SUFFIX = 'stand-in.test';
 const AUTHORITY = '/stand-in/authority.crt';
 // VERSION is the version that the stand-in bay reports: that of a build of a machine, which no release has.
@@ -123,8 +122,6 @@ else if (is('images')) {
   } else if (service === 'check') {
     if (existsSync(${JSON.stringify(stand.upFails)})) exitCode = 1;
     else {
-      // Each service setup-<kind> writes the address of the primary of its kind.
-      for (const each of services()) if (each.name.startsWith('setup-')) writeFileSync('address-' + each.name.slice('setup-'.length), ${JSON.stringify(ADDRESS)} + '\\n');
       exitCode = existsSync(${JSON.stringify(stand.checkFails)}) ? 5 : 0;
       writeFileSync('report/status', exitCode + '\\n');
       writeFileSync('report/check.log', 'the output of the command\\n');
@@ -138,9 +135,7 @@ else if (is('pull')) { if (services().length === 0) fail('compose.yaml has no se
 else if (command === 'logs') console.log('the last lines of ' + rest.at(-1));
 else if (command === 'exec') {
   if (!existsSync(project)) fail('the project is not up');
-  // getent ahostsv4 prints IPv4 addresses alone; getent hosts prints the IPv6 address of a service first.
-  if (rest[1] === 'getent') console.log(rest[2] === 'ahostsv4' ? ${JSON.stringify(ADDRESS)} + '  STREAM ' + rest.at(-1) + '\\n' + ${JSON.stringify(ADDRESS)} + '  DGRAM' : 'fd36:4b09::62d7 ' + rest.at(-1));
-  else if (existsSync(${JSON.stringify(stand.execFails)})) { console.error('ERROR 1045: the statement failed'); process.exit(7); }
+  if (existsSync(${JSON.stringify(stand.execFails)})) { console.error('ERROR 1045: the statement failed'); process.exit(7); }
 } else fail('unknown command ' + command, 2);
 `);
   chmodSync(stand.bay, 0o755);
@@ -164,9 +159,8 @@ function calls(stand: StandIn): Call[] {
 const commands = (stand: StandIn) => calls(stand).filter(call => call.args[0] === '-p').map(call => call.args.slice(call.args[2] === '-f' ? 4 : 2).join(' '));
 // verbs are the first argument of each of those calls.
 const verbs = (stand: StandIn) => commands(stand).map(command => command.split(' ')[0]);
-// steps are the commands that prepared a started server: each exec but the one that reads the address of the primary
-// and those of the runner.
-const steps = (stand: StandIn, project?: string) => calls(stand).filter(call => call.args[2] === 'exec' && call.args[4] !== 'getent' && call.args[3] !== 'runner' && (project === undefined || call.args[1] === project)).map(call => call.args.slice(3));
+// steps are the commands that prepared a started server: each exec but those of the runner.
+const steps = (stand: StandIn, project?: string) => calls(stand).filter(call => call.args[2] === 'exec' && call.args[3] !== 'runner' && (project === undefined || call.args[1] === project)).map(call => call.args.slice(3));
 
 // removing runs the body of a test and then removes the projects of its checkouts, also when the body fails.
 async function removing(contexts: Context[], body: () => Promise<void>): Promise<void> {
@@ -272,45 +266,71 @@ caseTest('a start of MySQL has a service for each server on a tmpfs, the certifi
     const variables = await start('mysql', context);
     const project = only(context.root);
     const text = compose(context.root, project);
-    assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica'], 'the project of a start on the host has another service than one per server');
-    assert.deepEqual([...text.matchAll(/^ {4}image: "(.*)"$/gm)].map(match => /^docker\.io\/library\/mysql@sha256:[0-9a-f]{64}$/.test(match[1] ?? '')), [true, true], 'an image is not pinned by its digest');
-    assert.equal([...text.matchAll(/^ {4}expose: \["3306"\]$/gm)].length, 2);
+    assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql'], 'the project of a start on the host has another service than one per server and pooler');
+    assert.deepEqual([...text.matchAll(/^ {4}image: "(.*)"$/gm)].map(match => /^docker\.io\/(library\/mysql|proxysql\/proxysql)@sha256:[0-9a-f]{64}$/.exec(match[1] ?? '')?.[1]),
+      ['library/mysql', 'library/mysql', 'library/mysql', 'proxysql/proxysql'], 'an image is not pinned by its digest');
+    assert.equal([...text.matchAll(/^ {4}expose: \["3306"\]$/gm)].length, 3);
     assert.ok(!/^\s*ports:/m.test(text), 'a service publishes a port');
-    assert.equal([...text.matchAll(/^ {4}tmpfs: \["\/var\/lib\/mysql"\]$/gm)].length, 2, 'the data of a server is not on a tmpfs');
-    assert.ok(!/^\s*volumes:/m.test(text), 'a MySQL service mounts a file of the host');
+    assert.equal([...text.matchAll(/^ {4}tmpfs: \["\/var\/lib\/mysql"\]$/gm)].length, 3, 'the data of a server is not on a tmpfs');
+    // The replica mounts the folder tls of the run, the pooler its configuration, and no other service mounts a folder.
+    assert.deepEqual([...text.matchAll(/^ {4}volumes: (.*)$/gm)].map(match => match[1]), ['["./tls:/orm-tls:ro"]', '["./proxysql-conf:/orm-conf:ro"]'], 'a MySQL service mounts another folder');
+    // The replica presents the mismatch certificate, which the test CA signed and which names orm-mismatch.invalid.
+    const replica = text.slice(text.indexOf('  mysql-replica:\n'), text.indexOf('  mysql-privilege:\n'));
+    for (const option of ['--ssl-ca=/orm-tls/ca.pem', '--ssl-cert=/orm-tls/mismatch-cert.pem', '--ssl-key=/orm-tls/mismatch-key.pem']) assert.ok(replica.includes(`"${option}"`), `the replica does not take ${option}`);
+    const tls = join(containers(context.root), project, 'tls');
+    const names = spawnSync('openssl', ['x509', '-noout', '-ext', 'subjectAltName', '-in', join(tls, 'mismatch-cert.pem')], { encoding: 'utf8' });
+    assert.match(names.stdout, /DNS:orm-mismatch\.invalid/, `the mismatch certificate names another host: ${names.stdout}${names.stderr}`);
+    for (const each of ['mismatch-cert.pem', 'mismatch-key.pem']) assert.equal(statSync(join(tls, each)).mode & 0o777, 0o644, `${each} is not readable by the server of the replica`);
+    // The privilege probe server takes the arguments of the native one: binary logging with trust-function-creators off.
+    const privilege = text.slice(text.indexOf('  mysql-privilege:\n'), text.indexOf('  proxysql:\n'));
+    for (const option of ['--log-bin=binlog', '--log-bin-trust-function-creators=OFF', '--server-id=3']) assert.ok(privilege.includes(`"${option}"`), `the privilege probe server does not take ${option}`);
+    assert.ok(!privilege.includes('--ssl-'), 'the privilege probe server takes TLS options, which the native one has not');
+    // ProxySQL starts after a healthy primary with the configuration of the native one, whose backend is the primary
+    // by its planned name, and its readiness program pings it as the user orm.
+    const pooler = text.slice(text.indexOf('  proxysql:\n'));
+    assert.match(pooler, /^ {4}command: \["proxysql", "--foreground", "--initial", "--no-version-check", "-c", "\/orm-conf\/proxysql\.cnf", "-D", "\/var\/lib\/proxysql"\]$/m);
+    assert.match(pooler, /^ {4}depends_on:\n {6}mysql:\n {8}condition: "service_healthy"$/m, 'ProxySQL does not wait for a healthy primary');
+    assert.match(pooler, /^ {6}test: \["CMD", "mysqladmin", "ping", "--host=127\.0\.0\.1", "--port=6033", "--protocol=TCP", "--user=orm", "--password=orm", "--silent"\]$/m);
+    const proxysqlConfig = file(context.root, project, 'proxysql-conf/proxysql.cnf');
+    for (const part of ['interfaces="0.0.0.0:6033"', `{ address="${project}-mysql.${SUFFIX}", port=3306, hostgroup=0, max_connections=4 }`, 'server_version="8.4.0"', 'datadir="/var/lib/proxysql"', 'mysql_ifaces="/tmp/'])
+      assert.ok(proxysqlConfig.includes(part), `proxysql.cnf misses ${part}: ${proxysqlConfig}`);
+    assert.equal(statSync(join(containers(context.root), project, 'proxysql-conf/proxysql.cnf')).mode & 0o777, 0o644);
     // The healthcheck runs the readiness program of the server over TCP; start_period declares the initialization
     // of the image, and the count of probes after it is within what bay accepts (1 to 100).
-    assert.equal([...text.matchAll(/^ {6}test: \["CMD", "mysqladmin", "ping", "--host=127\.0\.0\.1", "--protocol=TCP", "--silent"\]\n {6}interval: "1s"\n {6}timeout: "5s"\n {6}retries: 10\n {6}start_period: "600s"$/gm)].length, 2, 'a server has no healthcheck with mysqladmin ping over TCP and a start period');
-    // Each server presents the certificate that bay gives its container.
-    for (const option of ['--ssl-ca=/etc/bay/tls/ca.pem', '--ssl-cert=/etc/bay/tls/cert.pem', '--ssl-key=/etc/bay/tls/key.pem']) assert.equal(text.split(`"${option}"`).length, 3, `a server does not take ${option}`);
+    assert.equal([...text.matchAll(/^ {6}test: \["CMD", "mysqladmin", "ping", "--host=127\.0\.0\.1", "--protocol=TCP", "--silent"\]\n {6}interval: "1s"\n {6}timeout: "5s"\n {6}retries: 10\n {6}start_period: "600s"$/gm)].length, 3, 'a server has no healthcheck with mysqladmin ping over TCP and a start period');
+    // The primary presents the certificate that bay gives its container.
+    for (const option of ['--ssl-ca=/etc/bay/tls/ca.pem', '--ssl-cert=/etc/bay/tls/cert.pem', '--ssl-key=/etc/bay/tls/key.pem']) assert.equal(text.split(`"${option}"`).length, 2, `the primary does not take ${option}`);
     assert.ok(text.includes('"--skip-replica-start"'), 'the replica starts its replication before the primary reset its binary log');
-    // The DSNs name each server by the host name of the plan of bay, and the mismatch DSN by the address that the
-    // container of the primary resolves that name to.
+    // The DSNs name each server by the host name of the plan of bay, and the mismatch DSN names the replica and the test CA.
     const host = `${project}-mysql.${SUFFIX}`;
     assert.equal(variables['ORM_TEST_MYSQL_DSN'], `mysql://root@${host}:3306/orm_test`);
     assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], `mysql://root@${project}-mysql-replica.${SUFFIX}:3306/orm_test`);
     assert.equal(variables['ORM_TEST_MYSQL_TLS_DSN'], `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${AUTHORITY}`);
-    assert.equal(variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'], `mysql://root@${ADDRESS}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${AUTHORITY}`);
+    assert.equal(variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'], `mysql://root@${project}-mysql-replica.${SUFFIX}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${join(containers(context.root), project, 'tls/ca.pem')}`);
+    assert.equal(variables['ORM_TEST_PROXYSQL_DSN'], `mysql://orm:orm@${project}-proxysql.${SUFFIX}:6033/orm_test`);
+    assert.equal(variables['ORM_TEST_MYSQL_PRIVILEGE_DSN'], `mysql://root@${project}-mysql-privilege.${SUFFIX}:3306/orm_test`);
+    assert.equal(variables['ORM_TEST_MYSQL_PRIVILEGE_LEASES'], `${join(containers(context.root), 'leases')}/mysql-privilege`);
     const other = join(containers(context.root), project, 'tls/other-ca.pem');
     assert.equal(variables['ORM_TEST_MYSQL_TLS_OTHER_CA_DSN'], `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${other}`);
     assert.ok(existsSync(other), 'the second CA of the TLS cases is not issued');
     assert.ok(!('ORM_TEST_MYSQL_SOCKET' in variables), 'the environment names a Unix socket, which bay does not publish');
     assert.match(readFileSync(join(containers(context.root), 'mysql.env'), 'utf8'), new RegExp(`^export ORM_TEST_MYSQL_DSN='mysql://root@${host}:3306/orm_test'$`, 'm'));
     // The script reads the plan; run.sh then asks for the images, starts without a pull, runs each step in its
-    // started server, and reads the address of the primary.
+    // started server.
     const ran = commands(stand);
     assert.deepEqual(ran.slice(0, 3), ['plan --json', 'images', 'up -no-pull']);
     assert.deepEqual(steps(stand).map(step => [step[0], step.at(-1)?.split(';')[0]]), [
       ['mysql', 'RESET BINARY LOGS AND GTIDS'],
       ['mysql-replica', `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1`],
       ['mysql', 'CREATE DATABASE orm_test'],
+      ['mysql-privilege', 'CREATE DATABASE orm_test'],
     ], 'the replica does not follow the primary from its reset binary log before the databases are created');
     const [, follow, databases] = steps(stand).map(step => step.at(-1) ?? '');
     for (const statement of ['START REPLICA', 'SET GLOBAL super_read_only = ON']) assert.ok(follow?.includes(statement), `the replica misses ${statement}: ${follow}`);
     // The replica sets nothing that the native replica does not set (a catalog row change no longer reads partial_revokes, T426-2).
     assert.ok(follow?.endsWith('SET GLOBAL super_read_only = ON'), `the replica sets more than the native replica does: ${follow}`);
     assert.ok(databases?.includes('CREATE DATABASE orm_tools') && databases.includes(ORM_ACCOUNTS_SQL), `the primary has no databases and accounts of the user orm: ${databases}`);
-    assert.equal(ran.at(-1), `exec mysql getent ahostsv4 ${host}`);
+    assert.ok(!ran.some(command => command.includes('getent')), 'run.sh resolves an address');
     assert.equal(ran.length, 7, `the start ran another command of bay: ${ran.join(' | ')}`);
     // run.sh is a file of sh that names no other program of the host than bay, no timer and no JSON.
     const script = file(context.root, project, 'run.sh');
@@ -325,14 +345,31 @@ caseTest('the starts of PostgreSQL and MariaDB run the readiness program of thei
       const variables = await start('postgres', postgres);
       const project = only(postgres.root);
       const text = compose(postgres.root, project);
-      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['postgres', 'postgres-replica']);
+      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['postgres', 'postgres-replica', 'pgbouncer']);
       assert.equal([...text.matchAll(/^ {6}test: \["CMD", "pg_isready", "--host=127\.0\.0\.1", "--username=orm", "--dbname=postgres"\]$/gm)].length, 2);
-      assert.match(text, /^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"$/m, 'the standby does not wait for a healthy primary');
+      assert.equal([...text.matchAll(/^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"$/gm)].length, 2, 'the standby or PgBouncer does not wait for a healthy primary');
+      // PgBouncer runs the pinned image with the configuration of the native one, whose backend is the primary by its
+      // planned name, and its readiness program asks its admin database.
+      const pgbouncer = text.slice(text.indexOf('  pgbouncer:\n'));
+      assert.match(pgbouncer, /^ {4}image: "docker\.io\/edoburu\/pgbouncer@sha256:[0-9a-f]{64}"$/m, 'PgBouncer is not pinned by its digest');
+      assert.match(pgbouncer, /^ {4}command: \["pgbouncer", "\/orm-conf\/pgbouncer\.ini"\]$/m);
+      assert.match(pgbouncer, /^ {4}volumes: \["\.\/pgbouncer-conf:\/orm-conf:ro"\]$/m);
+      assert.match(pgbouncer, /^ {6}test: \["CMD", "pg_isready", "--host=127\.0\.0\.1", "--port=6432", "--username=orm", "--dbname=pgbouncer"\]$/m);
+      assert.ok(!pgbouncer.includes('tmpfs:'), 'PgBouncer has a data directory');
+      const ini = file(postgres.root, project, 'pgbouncer-conf/pgbouncer.ini');
+      for (const part of [`* = host=${project}-postgres.${SUFFIX} port=5432`, 'listen_addr = 0.0.0.0', 'listen_port = 6432', 'auth_file = /orm-conf/pgbouncer-users.txt', 'pool_mode = transaction', 'server_tls_sslmode = disable'])
+        assert.ok(ini.includes(part), `pgbouncer.ini misses ${part}: ${ini}`);
+      assert.equal(file(postgres.root, project, 'pgbouncer-conf/pgbouncer-users.txt'), '"orm" ""\n');
+      assert.equal(variables['ORM_TEST_PGBOUNCER_DSN'], `postgres://orm@${project}-pgbouncer.${SUFFIX}:6432/orm_test`);
+      // The standby presents the mismatch certificate, and its key is copied for the user postgres.
+      const standby = text.slice(text.indexOf('  postgres-replica:\n'), text.indexOf('  pgbouncer:\n'));
+      assert.ok(standby.includes('install -m 0600 -o postgres -g postgres /orm-tls/mismatch-key.pem') && standby.includes('"ssl_cert_file=/orm-tls/mismatch-cert.pem"') && standby.includes('"./tls:/orm-tls:ro"'), standby);
+      assert.equal(variables['ORM_TEST_POSTGRES_TLS_MISMATCH_DSN'], `postgres://orm@${project}-postgres-replica.${SUFFIX}:5432/orm_test?sslmode=verify-full&sslrootcert=${join(containers(postgres.root), project, 'tls/ca.pem')}`);
       assert.equal([...text.matchAll(/^ {4}tmpfs: \["\/var\/lib\/postgresql\/data"\]$/gm)].length, 2);
       // Compose reads $NAME in a value as a variable of the environment of bay, so a dollar sign of a command is written twice.
       assert.ok(text.includes('exec docker-entrypoint.sh \\"$$@\\"'), 'the command of PostgreSQL keeps a single dollar sign');
       assert.ok(!/(^|[^$])\$([^$]|$)/m.test(text), 'the Compose file has a dollar sign that is not escaped');
-      assert.ok(text.includes('/etc/bay/tls/key.pem') && text.includes('ssl_cert_file=/etc/bay/tls/cert.pem'), 'PostgreSQL does not present the certificate of bay');
+      assert.ok(text.includes('/etc/bay/tls/key.pem') && text.includes('ssl_cert_file=/etc/bay/tls/cert.pem'), 'the PostgreSQL primary does not present the certificate of bay');
       // The standby copies the primary by the host name that bay plans for it.
       assert.ok(text.includes(`host=${project}-postgres.${SUFFIX} port=5432 user=orm application_name=orm_replica`), 'the standby does not copy the primary by its planned name');
       // The rule that lets the standby connect is in place before the primary accepts connections, since bay up starts the standby.
@@ -346,13 +383,26 @@ caseTest('the starts of PostgreSQL and MariaDB run the readiness program of thei
       const mariadbVariables = await start('mariadb', mariadb);
       const mariadbProject = only(mariadb.root);
       const mariadbText = compose(mariadb.root, mariadbProject);
-      assert.deepEqual([...mariadbText.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mariadb']);
-      assert.match(mariadbText, /^ {6}test: \["CMD", "healthcheck\.sh", "--connect", "--innodb_initialized"\]$/m);
+      assert.deepEqual([...mariadbText.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mariadb', 'mariadb-privilege', 'mariadb-mismatch', 'mariadb-proxysql']);
+      assert.equal([...mariadbText.matchAll(/^ {6}test: \["CMD", "healthcheck\.sh", "--connect", "--innodb_initialized"\]$/gm)].length, 3);
+      const mariadbOf = (name: string, next?: string) => mariadbText.slice(mariadbText.indexOf(`  ${name}:\n`), next === undefined ? undefined : mariadbText.indexOf(`  ${next}:\n`));
+      for (const option of ['--log-bin=binlog', '--log-bin-trust-function-creators=OFF', '--server-id=3']) assert.ok(mariadbOf('mariadb-privilege', 'mariadb-mismatch').includes(`"${option}"`), `the MariaDB privilege probe server does not take ${option}`);
+      const mismatchServer = mariadbOf('mariadb-mismatch', 'mariadb-proxysql');
+      for (const part of ['"--ssl-cert=/orm-tls/mismatch-cert.pem"', '"--ssl-key=/orm-tls/mismatch-key.pem"', '"--innodb-buffer-pool-size=64M"', '"./tls:/orm-tls:ro"']) assert.ok(mismatchServer.includes(part), `mariadb-mismatch misses ${part}`);
+      const mariadbPooler = mariadbOf('mariadb-proxysql');
+      assert.match(mariadbPooler, /^ {4}image: "docker\.io\/proxysql\/proxysql@sha256:[0-9a-f]{64}"$/m);
+      assert.match(mariadbPooler, /^ {4}depends_on:\n {6}mariadb:\n {8}condition: "service_healthy"$/m);
+      assert.match(mariadbPooler, /^ {4}volumes: \["\.\/mariadb-proxysql-conf:\/orm-conf:ro"\]$/m);
+      const mariadbConfig = file(mariadb.root, mariadbProject, 'mariadb-proxysql-conf/proxysql.cnf');
+      assert.ok(mariadbConfig.includes(`{ address="${mariadbProject}-mariadb.${SUFFIX}", port=3306,`) && /server_version="\d+\.\d+\.\d+-MariaDB"/.test(mariadbConfig), mariadbConfig);
       const mariadbSteps = steps(stand, mariadbProject);
-      assert.deepEqual(mariadbSteps.map(step => step.slice(0, 2)), [['mariadb', 'mariadb']]);
+      assert.deepEqual(mariadbSteps.map(step => [...step.slice(0, 2), step.at(-1)?.split(';')[0]]), [['mariadb', 'mariadb', 'CREATE DATABASE orm_test'], ['mariadb-privilege', 'mariadb', 'CREATE DATABASE orm_test']]);
       assert.ok(mariadbSteps[0]?.at(-1)?.includes(ORM_ACCOUNTS_SQL), 'the MariaDB primary has no accounts of the user orm');
       assert.equal(mariadbVariables['ORM_TEST_MARIADB_DSN'], `mysql://root@${mariadbProject}-mariadb.${SUFFIX}:3306/orm_test`);
       assert.ok(!('ORM_TEST_MARIADB_SOCKET' in mariadbVariables));
+      assert.equal(mariadbVariables['ORM_TEST_MARIADB_TLS_MISMATCH_DSN'], `mysql://root@${mariadbProject}-mariadb-mismatch.${SUFFIX}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${join(containers(mariadb.root), mariadbProject, 'tls/ca.pem')}`);
+      assert.equal(mariadbVariables['ORM_TEST_MARIADB_PRIVILEGE_DSN'], `mysql://root@${mariadbProject}-mariadb-privilege.${SUFFIX}:3306/orm_test`);
+      assert.equal(mariadbVariables['ORM_TEST_MARIADB_PROXYSQL_DSN'], `mysql://orm:orm@${mariadbProject}-mariadb-proxysql.${SUFFIX}:6033/orm_test`);
     });
   }));
 
@@ -411,7 +461,7 @@ caseTest('a start whose bay up fails prints the last lines of each service and r
   withOneCheckout(async (dir, stand, context) => {
     writeFileSync(stand.upFails, '');
     await assert.rejects(start('mysql', context), /bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1/);
-    assert.deepEqual(commands(stand), ['plan --json', 'images', 'up -no-pull', 'logs -n 50 mysql', 'logs -n 50 mysql-replica', 'down']);
+    assert.deepEqual(commands(stand), ['plan --json', 'images', 'up -no-pull', 'logs -n 50 mysql', 'logs -n 50 mysql-replica', 'logs -n 50 mysql-privilege', 'logs -n 50 proxysql', 'down']);
     assert.deepEqual(readdirSync(stand.state), [], 'a failed start leaves its project');
     assert.deepEqual(projects(context.root), [], 'a failed start leaves the directory of its project');
     assert.ok(!existsSync(join(containers(context.root), 'mysql.env')), 'a failed start leaves an environment file');
@@ -479,11 +529,11 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       // The part check has the servers, the one-shot service setup after each server is healthy, and the job check
       // after setup; the part build has the job build alone, so no server holds memory during the build.
       const text = file(context.root, project, 'compose.run.yaml');
-      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'setup-mysql', 'check']);
+      assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'setup-mysql', 'check']);
       assert.deepEqual([...file(context.root, project, 'compose.build.yaml').matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['build']);
       const setupService = text.slice(text.indexOf('  setup-mysql:\n'), text.indexOf('  check:\n'));
       assert.match(setupService, /^ {4}command: \["sh", "\/orm-run\/setup-mysql\.sh"\]$/m);
-      assert.match(setupService, /^ {4}depends_on:\n {6}mysql:\n {8}condition: "service_healthy"\n {6}mysql-replica:\n {8}condition: "service_healthy"$/m);
+      assert.match(setupService, /^ {4}depends_on:\n {6}mysql:\n {8}condition: "service_healthy"\n {6}mysql-replica:\n {8}condition: "service_healthy"\n {6}mysql-privilege:\n {8}condition: "service_healthy"\n {6}proxysql:\n {8}condition: "service_healthy"$/m);
       const check = text.slice(text.indexOf('  check:\n'));
       assert.match(check, /^ {4}image: "docker\.io\/library\/debian@sha256:[0-9a-f]{64}"$/m, 'the runner is not a pinned Debian image');
       assert.match(check, /^ {4}command: \["sh", "\/orm-run\/job-check\.sh"\]$/m);
@@ -494,14 +544,13 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       assert.match(check, /^ {4}volumes: \[".:\/orm-run"\]$/m);
       assert.ok(!text.includes(context.root), 'a service mounts the checkout of the host');
       assert.match(check, /^ {6}HOME: "\/orm-run\/home"\n {6}CARGO_HOME: "\/orm-run\/cargo"\n {6}RUSTUP_HOME: "\/orm-run\/rustup"$/m, 'the home and the tools of the runner are not below the directory of the run');
-      // setup prepares the servers with the client of the image over TCP, in the order of the native servers, and
-      // writes the address of the primary.
+      // setup prepares the servers with the client of the image over TCP, in the order of the native servers.
       const setup = file(context.root, project, 'setup-mysql.sh');
       const host = (service: string) => `${project}-${service}.${SUFFIX}`;
-      const order = [`'mysql' '-h' '${host('mysql')}' '-uroot' '-e' 'RESET BINARY LOGS AND GTIDS'`, `'mysql' '-h' '${host('mysql-replica')}' '-uroot' '-e' 'CHANGE REPLICATION SOURCE TO`, `'mysql' '-h' '${host('mysql')}' '-uroot' '-e' 'CREATE DATABASE orm_test;`, `getent ahostsv4 '${host('mysql')}'`];
+      const order = [`'mysql' '-h' '${host('mysql')}' '-uroot' '-e' 'RESET BINARY LOGS AND GTIDS'`, `'mysql' '-h' '${host('mysql-replica')}' '-uroot' '-e' 'CHANGE REPLICATION SOURCE TO`, `'mysql' '-h' '${host('mysql')}' '-uroot' '-e' 'CREATE DATABASE orm_test;`, `'mysql' '-h' '${host('mysql-privilege')}' '-uroot' '-e' 'CREATE DATABASE orm_test'`];
       const at = order.map(part => setup.indexOf(part));
       assert.ok(at.every(index => index >= 0) && at.every((index, position) => position === 0 || index > (at[position - 1] ?? 0)), `setup.sh does not prepare the servers in the order of the native servers: ${setup}`);
-      assert.ok(setup.includes('> "$run/address-mysql.tmp"') && setup.includes('mv "$run/address-mysql.tmp" "$run/address-mysql"'), 'setup-mysql.sh writes no address of the primary');
+      assert.ok(!setup.includes('getent') && !setup.includes('address'), 'setup-mysql.sh resolves an address');
       // The installation pins its packages and files, links with lld through the cargo configuration of the runner
       // alone, clones the bundle and follows the first installation of the repository.
       const installation = file(context.root, project, 'runner-setup.sh');
@@ -537,14 +586,16 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       assert.equal(bundled.status, 0, `repo.bundle is no bundle of the commit: ${bundled.stderr}`);
       assert.ok(file(context.root, project, 'check.sh').includes(`( 'make' 'CASES=a '\\''quoted'\\'' case' 'test-rust' )`), 'check.sh does not run the command of the run as it was given');
       // job-check.sh writes the variables, which name the directory of the run by its mount, the authority by the path
-      // where bay mounts it and the mismatch DSN by the address that setup.sh wrote.
+      // where bay mounts it, and the mismatch DSN names the replica and the test CA by the mount.
       const jobCheck = file(context.root, project, 'job-check.sh');
       assert.ok(jobCheck.includes(`export ORM_TEST_MYSQL_TLS_DSN='mysql://root@${host('mysql')}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=/stand-in/mounted-authority.pem'`), jobCheck);
-      assert.ok(jobCheck.includes('ssl-ca=/orm-run/tls/other-ca.pem') && jobCheck.includes(`export ORM_TEST_SERVERS_LEASES='/orm-run/leases'`) && jobCheck.includes('@${address_mysql}:3306/'), jobCheck);
+      assert.ok(jobCheck.includes('ssl-ca=/orm-run/tls/other-ca.pem') && jobCheck.includes(`export ORM_TEST_SERVERS_LEASES='/orm-run/leases'`), jobCheck);
+      assert.ok(jobCheck.includes(`export ORM_TEST_MYSQL_TLS_MISMATCH_DSN='mysql://root@${host('mysql-replica')}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=/orm-run/tls/ca.pem'`), jobCheck);
+      assert.ok(!jobCheck.includes('address'), `job-check.sh reads an address: ${jobCheck}`);
       // run.sh queues build and then check, each by its key, follows each, and records what bay records of it.
       const followed = (id: string) => [`job logs -f -timeout 24h ${id}`, `job wait -timeout 24h ${id}`, `job logs ${id}`, `job show -json ${id}`];
       assert.deepEqual(commands(stand).filter(command => !command.startsWith('plan')), ['images', `job add -json -key ${project}-build build`, ...followed('job-1'), 'images', `job add -json -key ${project}-check check`, ...followed('job-2')]);
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'setup-mysql', 'check']]);
+      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'setup-mysql', 'check']]);
       assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).service, 'check');
       const stepsLog = file(context.root, project, 'report/steps.log');
       for (const step of ['the job build (job-1)', 'the job check (job-2)']) assert.ok(stepsLog.includes(` ${step}`), `steps.log has no time of ${step}: ${stepsLog}`);
@@ -611,7 +662,6 @@ caseTest('a run with a cache keeps the downloads of its tools in the cache and i
       if (!keep) rmSync(join(copy, 'keep'));
       // The clone holds what the run wrote into it, the build output of cargo among it, which the end removes with the clone.
       for (const name of ['repo/written', 'home', 'cargo/bin', 'rustup', 'node/bin']) mkdirSync(join(copy, name), { recursive: true });
-      for (const name of ['address-mysql']) writeFileSync(join(copy, name), '192.0.2.1\n');
       writeFileSync(join(copy, 'build.sh'), 'exit 0\n');
       writeFileSync(join(copy, script), `exit ${status}\n`);
       writeFileSync(join(copy, job), file(context.root, project, job).replace(/^run=\/orm-run$/m, `run='${copy}'`));
@@ -634,42 +684,41 @@ caseTest('a run of several kinds is one project with the servers, the steps and 
       assert.throws(() => kinds(refused), /is mysql, postgres, mariadb or sqlite|a kind with a server|more than once/, refused);
 
     // In the form of the host one run starts the servers of each kind, runs the steps of each kind in the container of
-    // its server, and gives its command the variables of each kind, with the address of the primary of each kind.
+    // its server, and gives its command the variables of each kind, whose mismatch DSN names the replica of the kind.
     const has = ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_MYSQL_REPLICA_DSN', 'ORM_TEST_POSTGRES_DSN', 'ORM_TEST_POSTGRES_REPLICA_DSN'].map(name => `process.env.${name}`).join(' && ');
-    const mismatch = `process.env.ORM_TEST_MYSQL_TLS_MISMATCH_DSN.includes('@${ADDRESS}:3306/') && process.env.ORM_TEST_POSTGRES_TLS_MISMATCH_DSN.includes('@${ADDRESS}:5432/')`;
+    const mismatch = `process.env.ORM_TEST_MYSQL_TLS_MISMATCH_DSN.includes('-mysql-replica.${SUFFIX}:3306/') && process.env.ORM_TEST_POSTGRES_TLS_MISMATCH_DSN.includes('-postgres-replica.${SUFFIX}:5432/')`;
     const ended = await run(['mysql', 'postgres'], [process.execPath, '-e', `process.exit(${has} && ${mismatch} ? 0 : 9)`], context, { keep: true });
     assert.deepEqual(ended, { code: 0, signal: null }, 'the command of a run of two kinds lacks the variables of a kind');
     const host = only(context.root);
-    assert.deepEqual([...compose(context.root, host).matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'postgres', 'postgres-replica']);
-    assert.deepEqual(steps(stand, host).map(step => step[0]), ['mysql', 'mysql-replica', 'mysql', 'postgres'], 'the steps of each kind did not run in the containers of its servers');
-    assert.ok(commands(stand).includes(`exec mysql getent ahostsv4 ${host}-mysql.${SUFFIX}`) && commands(stand).includes(`exec postgres getent ahostsv4 ${host}-postgres.${SUFFIX}`), 'the address of the primary of a kind was not read');
+    assert.deepEqual([...compose(context.root, host).matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'postgres', 'postgres-replica', 'pgbouncer']);
+    assert.deepEqual(steps(stand, host).map(step => step[0]), ['mysql', 'mysql-replica', 'mysql', 'mysql-privilege', 'postgres'], 'the steps of each kind did not run in the containers of its servers');
     // The servers of a container take the smaller caches that the documentation states.
     const services = compose(context.root, host);
-    assert.equal([...services.matchAll(/"--innodb-buffer-pool-size=64M"/g)].length, 2, 'a MySQL server takes another buffer pool');
+    assert.equal([...services.matchAll(/"--innodb-buffer-pool-size=64M"/g)].length, 3, 'a MySQL server takes another buffer pool');
     assert.equal([...services.matchAll(/"shared_buffers=32MB"/g)].length, 2, 'a PostgreSQL server takes other shared buffers');
     remove(context);
 
     // In the form of the runner each kind has its service setup-<kind> of the image of that kind, the job check waits
-    // for each, and job-check.sh writes the variables of each kind with the address that each setup wrote.
+    // for each, and job-check.sh writes the variables of each kind.
     committed(context);
     writeFileSync(stand.ups, '');
     assert.deepEqual(await run(['mysql', 'postgres'], ['make', 'client-db-check'], context, { runner: true, keep: true }), { code: 0, signal: null });
     const project = only(context.root);
     const text = file(context.root, project, 'compose.run.yaml');
-    assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'postgres', 'postgres-replica', 'setup-mysql', 'setup-postgres', 'check']);
+    assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'postgres', 'postgres-replica', 'pgbouncer', 'setup-mysql', 'setup-postgres', 'check']);
     const setupOf = (kind: string, next: string) => text.slice(text.indexOf(`  setup-${kind}:\n`), text.indexOf(`  ${next}:\n`));
     const images = JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).images;
     assert.ok(setupOf('mysql', 'setup-postgres').includes(`image: "${images.mysql.reference}"`) && setupOf('postgres', 'check').includes(`image: "${images.postgres.reference}"`), 'a setup does not run the client of the image of its kind');
-    assert.match(setupOf('postgres', 'check'), /^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"\n {6}postgres-replica:\n {8}condition: "service_healthy"$/m);
+    assert.match(setupOf('postgres', 'check'), /^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"\n {6}postgres-replica:\n {8}condition: "service_healthy"\n {6}pgbouncer:\n {8}condition: "service_healthy"$/m);
     assert.match(text.slice(text.indexOf('  check:\n')), /^ {4}depends_on:\n {6}setup-mysql:\n {8}condition: "service_completed_successfully"\n {6}setup-postgres:\n {8}condition: "service_completed_successfully"$/m);
     const jobCheck = file(context.root, project, 'job-check.sh');
-    for (const part of ['read -r address_mysql < "$run/address-mysql"', 'read -r address_postgres < "$run/address-postgres"', '@${address_mysql}:3306/', '@${address_postgres}:5432/', "export ORM_TEST_MYSQL_DSN=", "export ORM_TEST_POSTGRES_DSN="])
+    for (const part of ['-mysql-replica.', '-postgres-replica.', 'ssl-ca=/orm-run/tls/ca.pem', 'sslrootcert=/orm-run/tls/ca.pem', "export ORM_TEST_MYSQL_DSN=", "export ORM_TEST_POSTGRES_DSN=", "export ORM_TEST_PROXYSQL_DSN=", "export ORM_TEST_PGBOUNCER_DSN="])
       assert.ok(jobCheck.includes(part), `job-check.sh misses ${part}: ${jobCheck}`);
     // A target that reads the environment file of the servers reads servers.env.
     const checkSh = file(context.root, project, 'check.sh');
     assert.ok(checkSh.includes(`export TEST_ENV="$run/servers.env" MARIADB_ENV="$run/servers.env"`), checkSh);
     assertShReads(join(containers(context.root), project), ['run.sh', 'setup-mysql.sh', 'setup-postgres.sh', 'job-check.sh', 'check.sh']);
-    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'postgres', 'postgres-replica', 'setup-mysql', 'setup-postgres', 'check']]);
+    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'postgres', 'postgres-replica', 'pgbouncer', 'setup-mysql', 'setup-postgres', 'check']]);
     assert.equal(file(context.root, project, 'report/status'), '0\n');
   }));
 
@@ -830,10 +879,10 @@ caseTest('a run in the runner with a build command builds in the job build, befo
     assert.ok(!file(context.root, project, 'build.sh').includes('servers.env'), 'the build reads the variables of servers that are not up');
     const jobBuild = file(context.root, project, 'job-build.sh');
     assert.ok(jobBuild.indexOf('sh "$run/runner-setup.sh"') < jobBuild.indexOf('sh "$run/build.sh"') && jobBuild.includes('at "the build command"'), jobBuild);
-    // The jobs are a setting of the cargo of the runner, and each limit is the mem_limit of its services.
+    // The jobs are a setting of the cargo of the runner, and each limit is the mem_limit of its services: the server limit is that of each server and each pooler.
     assert.match(file(context.root, project, 'runner-setup.sh'), /^\[build\]\njobs = 2$/m);
     const text = file(context.root, project, 'compose.run.yaml');
-    assert.deepEqual([...text.matchAll(/^ {4}mem_limit: "(.*)"$/gm)].map(match => match[1]), ['700m', '700m', '2600m']);
+    assert.deepEqual([...text.matchAll(/^ {4}mem_limit: "(.*)"$/gm)].map(match => match[1]), ['700m', '700m', '700m', '700m', '2600m']);
     assert.match(file(context.root, project, 'compose.build.yaml'), /^services:\n {2}build:\n(?: {4}.*\n)* {4}mem_limit: "2600m"\n/);
     for (const name of ['run.sh', 'build.sh', 'job-build.sh']) assert.equal(spawnSync('/bin/sh', ['-n', join(containers(context.root), project, name)]).status, 0, `sh does not read ${name}`);
 

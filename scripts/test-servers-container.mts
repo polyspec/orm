@@ -3,8 +3,9 @@
 // in containers", BAY1, BAY12). The servers are a Compose project that the program bay runs, on Apple container on macOS
 // and on Docker on Linux, from the images that config/containers.json pins by their digests. It is the container form of
 // the servers of scripts/test-servers.mts: a server takes the settings of the native primary (time zone, lower-case table
-// names, binary log retention, InnoDB log space, and for PostgreSQL its WAL and its synchronous standby), and MySQL and
-// PostgreSQL have a replica as a second service of the project.
+// names, binary log retention, InnoDB log space, and for PostgreSQL its WAL and its synchronous standby). MySQL and
+// PostgreSQL have a replica, MySQL a ProxySQL and PostgreSQL a PgBouncer in front of the primary, and MySQL and MariaDB a
+// privilege probe server; MariaDB has a ProxySQL and a server that presents the mismatch certificate in place of a replica.
 //
 //   node scripts/test-servers-container.mts start <mysql|postgres|mariadb>
 //   node scripts/test-servers-container.mts run <kinds> [--runner] [--keep] -- <command> [argument...]
@@ -27,8 +28,9 @@
 //
 // What a file of the directory names is read when the directory is written, from the bay of the machine that runs it:
 // bay plan --json gives the host name of each service and the authority of its certificate, so this script holds no
-// form and no suffix of a host name and run.sh needs no JSON. The IPv4 address of the mismatch DSN is known only after
-// the start; run.sh reads it from the resolver of the container of the primary.
+// form and no suffix of a host name and run.sh needs no JSON. The mismatch DSN of a kind names the host name of the
+// server that presents the certificate of the test CA of the run, which names orm-mismatch.invalid, and the test CA, as
+// the native mismatch DSN does.
 //
 // A run has one of two forms, which the directory records and which does not change while it runs. In the form of the
 // host the command of the run is a process of the host with the variables of the servers, for the results of the host
@@ -39,16 +41,20 @@
 // each server, the runner form with the client of the image over TCP in the one-shot service setup.
 //
 // start writes .runtime/containers/<kind>.env and refuses a kind that is started in the checkout; run removes its
-// project when its command ends or fails, or when the run gets SIGINT, SIGTERM or SIGHUP. No pooler is started, and bay
-// publishes no Unix socket on the host; their variables are absent from servers.env, and a check that reads one fails
-// naming the variable. A check through a Unix socket would run in the container of its server, where the socket is,
-// and the jobs of bay run no command there, so no run has one (BAY8).
+// project when its command ends or fails, or when the run gets SIGINT, SIGTERM or SIGHUP. The poolers are services of
+// the project, and their DSNs are variables of servers.env. bay publishes no Unix socket on the host, so the socket
+// variables are absent from servers.env, and a check that reads one fails naming the variable. A check through a Unix
+// socket would run in the container of its server, where the socket is, and the jobs of bay run no command there, so no
+// run has one (BAY8).
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { errorCode } from '../tests/errors.mts';
-import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, ORM_ACCOUNTS_SQL, POSTGRES_PREPARED, POSTGRES_WAL, TestServerError } from './test-servers.mts';
+import { MARIADB_VERSION } from './mariadb-build.mts';
+import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, MYSQL_TLS_SERVER_NAMES, ORM_ACCOUNTS_SQL, PGBOUNCER_USERS, pgbouncerConfigOf,
+  POSTGRES_PREPARED, POSTGRES_WAL, proxysqlConfigOf, TestServerError } from './test-servers.mts';
+import { MARIADBD_MYSQL_DEFAULTS, MARIADBD_PERFORMANCE_SCHEMA, MARIADBD_PRIVILEGE_BINLOG, MARIADBD_STORAGE } from './test-servers-mariadb.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
 // SCHEMA is the contract schema version of bay that this script and its run.sh are written for. A run takes the bay of
@@ -58,12 +64,18 @@ const SCHEMA = 1;
 // folder whose files an image runs once when it initializes its data directory.
 const BAY_TLS = '/etc/bay/tls';
 const INIT_MOUNT = '/docker-entrypoint-initdb.d';
+// TLS_MOUNT is the folder where a server that presents the mismatch certificate mounts the folder tls of the run, and
+// CONF_MOUNT the folder where a pooler mounts the folder of its configuration.
+const TLS_MOUNT = '/orm-tls';
+const CONF_MOUNT = '/orm-conf';
 // POSTGRES_KEY is the copy of the key of the PostgreSQL server in the container, outside its data directory.
 const POSTGRES_KEY = '/var/lib/postgresql/orm-tls-key.pem';
 // RUN_MOUNT is the directory of the run in the runner.
 const RUN_MOUNT = '/orm-run';
 
 type Kind = 'mysql' | 'postgres' | 'mariadb';
+// Image is a key of the images of config/containers.json.
+type Image = Kind | 'proxysql' | 'pgbouncer' | 'runner';
 // Form is where the command of a run runs: a process of the host, or bay exec in the service runner.
 type Form = 'host' | 'runner';
 
@@ -83,17 +95,24 @@ function folders(root: string): Folders {
 // Yaml is a value of the Compose file: a string, a number, a boolean, a list of strings, or a mapping of such values.
 type Yaml = string | number | boolean | readonly string[] | { readonly [key: string]: Yaml };
 
-// Service is a service of the project of a start. data is the data directory of the image, which a tmpfs replaces, so
-// the data ends with the container; init is a file of the initialization directory of the image, for a setting that
-// must hold before the server accepts its first connection; health is the readiness program of the server, which runs
-// in the container; after is the service that must be healthy before this one starts.
+// Volume is a folder of the directory of the run that a service mounts read-only: source is its name in the directory,
+// target the folder in the container, and files the files that write puts in it, which a folder that another step of
+// write fills has not.
+interface Volume { source: string; target: string; files?: readonly { file: string; text: string }[] }
+
+// Service is a service of the project of a start. image is the key of its image, the kind of the service without it;
+// data is the data directory of the image, which a tmpfs replaces, so the data ends with the container; volumes are the
+// folders it mounts, such as a folder of the initialization directory of the image, for a setting that must hold before
+// the server accepts its first connection, or the configuration of a pooler; health is the readiness program of the
+// service, which runs in the container; after is the service that must be healthy before this one starts.
 interface Service {
   name: string;
+  image?: Image;
   port: number;
-  data: string;
+  data?: string;
   command: string[];
   environment: Record<string, string>;
-  init?: { file: string; text: string };
+  volumes?: readonly Volume[];
   health: string[];
   after?: string;
 }
@@ -107,10 +126,10 @@ const placed = (list: readonly Kind[], host: (service: string) => string): Place
 // Step is a command that prepares a started server: it runs in the container of its service after bay up returned.
 interface Step { service: string; command: string[] }
 
-// Endpoint is where the checks reach the servers of a project: the host name of each service by its name, the text
-// that run.sh replaces with the IPv4 address of the primary, the authority that signed the certificates of the servers,
-// the second CA, which signed nothing, and the lease folder.
-interface Endpoint { host: (service: string) => string; ipv4: string; authority: string; other: string; leases: string }
+// Endpoint is where the checks reach the servers of a project: the host name of each service by its name, the authority
+// that signed the certificates of bay, the test CA, which signed the mismatch certificate, the second CA, which signed
+// nothing, and the lease folder.
+interface Endpoint { host: (service: string) => string; authority: string; test: string; other: string; leases: string }
 
 interface Server {
   // services are the services of the kind, the primary first; host is the host name of a service of the project.
@@ -122,58 +141,94 @@ interface Server {
 
 const mysqlTls = (ca: string, host: string) => `mysql://root@${host}:3306/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${ca}`;
 const postgresTls = (ca: string, host: string) => `postgres://orm@${host}:5432/orm_test?sslmode=verify-full&sslrootcert=${ca}`;
-// A MySQL or MariaDB server presents the certificate that bay mounts in its container.
+// A MySQL or MariaDB server presents the certificate that bay mounts in its container. The server of a mismatch DSN
+// presents the mismatch certificate of the folder tls of the run, which names orm-mismatch.invalid and which the test CA
+// signed, as the native replica does (MYSQL_TLS_SERVER_NAMES).
 const mysqlTlsOptions = [`--ssl-ca=${BAY_TLS}/ca.pem`, `--ssl-cert=${BAY_TLS}/cert.pem`, `--ssl-key=${BAY_TLS}/key.pem`];
+const mismatchTlsOptions = [`--ssl-ca=${TLS_MOUNT}/ca.pem`, `--ssl-cert=${TLS_MOUNT}/mismatch-cert.pem`, `--ssl-key=${TLS_MOUNT}/mismatch-key.pem`];
+const TLS_VOLUME: Volume = { source: 'tls', target: TLS_MOUNT };
 
 // SMALL_BUFFER_POOL and SMALL_SHARED_BUFFERS are the caches of a server of a container, half and a quarter of the
-// defaults of 128 MiB, so that the four servers of mysql,postgres fit with a job of the runner on a machine of 3.7 GiB whose
-// jobs have a limit of 2800 MB (CONTRIBUTING.md "The memory settings of the servers"). Each case creates its own small
+// defaults of 128 MiB. With them the four servers that mysql,postgres had before its privilege probe server and its two
+// poolers fit with a job of the runner on a machine of 3.7 GiB whose jobs have a limit of 2800 MB; mysql,postgres now
+// starts five servers and two poolers, whose fit on that machine is not measured (CONTRIBUTING.md "The memory settings
+// of the servers"). Each case creates its own small
 // database, and a cache only keeps pages in memory, so its size changes no result.
 const SMALL_BUFFER_POOL = ['--innodb-buffer-pool-size=64M'];
 const SMALL_SHARED_BUFFERS = ['-c', 'shared_buffers=32MB'];
 
 // The MySQL and the MariaDB server take the options of the native primary (scripts/test-servers.mts).
 const mysqlOptions = ['--secure-file-priv=NULL', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MYSQLD_BINLOG, ...MYSQLD_STORAGE];
-const mysqlArguments = (serverId: number) => ['mysqld', '--mysqlx=OFF', ...mysqlOptions, ...SMALL_BUFFER_POOL, `--server-id=${serverId}`, ...mysqlTlsOptions];
+const mysqlArguments = (serverId: number, tls: readonly string[] = mysqlTlsOptions) => ['mysqld', '--mysqlx=OFF', ...mysqlOptions, ...SMALL_BUFFER_POOL, `--server-id=${serverId}`, ...tls];
+// The privilege probe servers take the arguments of the native ones (mysqlPrivilegeArguments, mariadbdArguments of the
+// role privilege): a writable server whose binary log has trust-function-creators off. The MariaDB one presents the
+// certificate of bay, which the MariaDB client of setup-mariadb.sh verifies; the native one has no TLS files.
+const mysqlPrivilegeArguments = ['mysqld', '--mysqlx=OFF', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MYSQLD_PRIVILEGE_BINLOG, ...MYSQLD_STORAGE, ...SMALL_BUFFER_POOL, '--server-id=3'];
+const mariadbPrivilegeArguments = ['mariadbd', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MARIADBD_PRIVILEGE_BINLOG, ...MARIADBD_STORAGE, ...MARIADBD_PERFORMANCE_SCHEMA, ...MARIADBD_MYSQL_DEFAULTS,
+  ...SMALL_BUFFER_POOL, '--server-id=3', ...mysqlTlsOptions];
+
+// A pooler reads its configuration from the folder <service>-conf of the run, which it mounts at CONF_MOUNT. ProxySQL
+// takes the configuration of proxysqlConfigOf, the native one, with its client interface on every address of the
+// container and its backend at the host name of the primary; its admin and PostgreSQL interfaces are Unix sockets of the
+// container. PgBouncer takes the configuration of pgbouncerConfigOf in the same way.
+const conf = (service: string, files: readonly { file: string; text: string }[]): Volume => ({ source: `${service}-conf`, target: CONF_MOUNT, files });
+const PROXYSQL_DATA = '/var/lib/proxysql';
+const proxysql = (name: string, backendHost: string, serverVersion: string, after: string): Service => ({
+  name, image: 'proxysql', port: 6033, data: PROXYSQL_DATA, environment: {}, after,
+  command: ['proxysql', '--foreground', '--initial', '--no-version-check', '-c', `${CONF_MOUNT}/proxysql.cnf`, '-D', PROXYSQL_DATA],
+  volumes: [conf(name, [{ file: 'proxysql.cnf', text: proxysqlConfigOf({ data: PROXYSQL_DATA, admin: '/tmp/proxysql_admin.sock', adminPgsql: '/tmp/proxysql_admin_pgsql.sock', pgsql: '/tmp/proxysql_pgsql.sock',
+    listen: '0.0.0.0', port: 6033, backendHost, backend: 3306, serverVersion }) }])],
+  health: ['mysqladmin', 'ping', '--host=127.0.0.1', '--port=6033', '--protocol=TCP', '--user=orm', '--password=orm', '--silent'],
+});
 
 // The PostgreSQL servers take the settings of postgresArguments of scripts/test-servers.mts; the primary names the replica
 // as its synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
 // PostgreSQL refuses a key that another user than its own can read, and bay mounts a key that every user of the
 // container reads, so the key is copied for the user postgres first.
-const postgresKey = `install -m 0600 -o postgres -g postgres ${BAY_TLS}/key.pem ${POSTGRES_KEY}`;
-const postgresSettings = ['-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'ssl=on', '-c', `ssl_cert_file=${BAY_TLS}/cert.pem`, '-c', `ssl_key_file=${POSTGRES_KEY}`,
+// The replica presents the mismatch certificate in place of that of bay.
+const postgresKey = (key: string) => `install -m 0600 -o postgres -g postgres ${key} ${POSTGRES_KEY}`;
+const postgresSettings = (cert: string) => ['-c', `timezone=${SERVER_TIME_ZONE}`, '-c', 'ssl=on', '-c', `ssl_cert_file=${cert}`, '-c', `ssl_key_file=${POSTGRES_KEY}`,
   ...[...POSTGRES_WAL, ...POSTGRES_PREPARED].flatMap(setting => ['-c', setting]), ...SMALL_SHARED_BUFFERS];
 
 // The temporary server that an image starts to initialize a data directory listens only on its socket, so each readiness
 // program connects over TCP on 127.0.0.1 and succeeds only for the server that the checks reach.
 const mysqlHealth = ['mysqladmin', 'ping', '--host=127.0.0.1', '--protocol=TCP', '--silent'];
 const postgresHealth = ['pg_isready', '--host=127.0.0.1', '--username=orm', '--dbname=postgres'];
-const DATABASES_SQL = `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL}`;
+const mariadbHealth = ['healthcheck.sh', '--connect', '--innodb_initialized'];
+// A pooler of a container reaches the primary from the address of its own container, which no account of
+// ORM_ACCOUNTS_SQL names, so the primary also has the user orm of every host.
+const DATABASES_SQL = `CREATE DATABASE orm_test; CREATE DATABASE orm_tools; ${ORM_ACCOUNTS_SQL} CREATE USER IF NOT EXISTS 'orm'@'%' IDENTIFIED BY 'orm'; GRANT ALL ON *.* TO 'orm'@'%';`;
 const postgresEnvironment = { POSTGRES_USER: 'orm', POSTGRES_HOST_AUTH_METHOD: 'trust', POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C' };
 
 const SERVERS: Record<Kind, Server> = {
   mysql: {
-    services: () => [
+    services: host => [
       { name: 'mysql', port: 3306, data: '/var/lib/mysql', command: mysqlArguments(1), environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes' }, health: mysqlHealth },
-      { name: 'mysql-replica', port: 3306, data: '/var/lib/mysql', command: [...mysqlArguments(2), '--skip-replica-start'], environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes' }, health: mysqlHealth },
+      { name: 'mysql-replica', port: 3306, data: '/var/lib/mysql', command: [...mysqlArguments(2, mismatchTlsOptions), '--skip-replica-start'], environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes' }, volumes: [TLS_VOLUME], health: mysqlHealth },
+      { name: 'mysql-privilege', port: 3306, data: '/var/lib/mysql', command: mysqlPrivilegeArguments, environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes' }, health: mysqlHealth },
+      proxysql('proxysql', host('mysql'), '8.4.0', 'mysql'),
     ],
     // The order of the native servers: the primary resets its binary log, which holds the initialization of its image,
     // that the image of the replica ran as well; the replica then follows the primary from the first file of that log and
     // is read-only; and the primary creates the databases and the accounts of the user orm, which the replica applies. Each step needs a server that accepts
-    // connections and changes what a running server does, so none is a file of the initialization of the image.
+    // connections and changes what a running server does, so none is a file of the initialization of the image. The
+    // privilege probe server creates its database, as the native one does.
     steps: host => [
       { service: 'mysql', command: ['mysql', '-uroot', '-e', 'RESET BINARY LOGS AND GTIDS'] },
       { service: 'mysql-replica', command: ['mysql', '-uroot', '-e',
         `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host('mysql')}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1; START REPLICA; SET GLOBAL super_read_only = ON`] },
       { service: 'mysql', command: ['mysql', '-uroot', '-e', DATABASES_SQL] },
+      { service: 'mysql-privilege', command: ['mysql', '-uroot', '-e', 'CREATE DATABASE orm_test'] },
     ],
-    variables: ({ host, ipv4, authority, other, leases }) => {
+    variables: ({ host, authority, test, other, leases }) => {
       const mysql = `mysql://root@${host('mysql')}:3306`;
       return {
         ORM_TEST_MYSQL_DSN: `${mysql}/orm_test`, ORM_TEST_MYSQL_SERVER_DSN: `${mysql}/orm_test`, ORM_TOOLS_MYSQL_DSN: `${mysql}/orm_tools`,
         ORM_RUN_MYSQL_DSN: `${mysql}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
-        ORM_TEST_MYSQL_TLS_DSN: mysqlTls(authority, host('mysql')), ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: mysqlTls(other, host('mysql')), ORM_TEST_MYSQL_TLS_MISMATCH_DSN: mysqlTls(authority, ipv4),
+        ORM_TEST_MYSQL_TLS_DSN: mysqlTls(authority, host('mysql')), ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: mysqlTls(other, host('mysql')), ORM_TEST_MYSQL_TLS_MISMATCH_DSN: mysqlTls(test, host('mysql-replica')),
         ORM_TEST_MYSQL_REPLICA_DSN: `mysql://root@${host('mysql-replica')}:3306/orm_test`,
+        ORM_TEST_PROXYSQL_DSN: `mysql://orm:orm@${host('proxysql')}:6033/orm_test`,
+        ORM_TEST_MYSQL_PRIVILEGE_DSN: `mysql://root@${host('mysql-privilege')}:3306/orm_test`, ORM_TEST_MYSQL_PRIVILEGE_LEASES: `${leases}/mysql-privilege`,
       };
     },
   },
@@ -183,46 +238,65 @@ const SERVERS: Record<Kind, Server> = {
       // lets the role orm replicate is a file of the initialization of the image, because bay up starts the standby as
       // soon as the primary is healthy, before a step of this script can run.
       { name: 'postgres', port: 5432, data: '/var/lib/postgresql/data', environment: postgresEnvironment, health: postgresHealth,
-        command: ['sh', '-c', `${postgresKey} && exec docker-entrypoint.sh "$@"`, 'sh',
-          'postgres', ...postgresSettings, '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'],
-        init: { file: 'orm.sh', text: `echo 'host replication orm all trust' >> "$PGDATA/pg_hba.conf"\n` } },
+        command: ['sh', '-c', `${postgresKey(`${BAY_TLS}/key.pem`)} && exec docker-entrypoint.sh "$@"`, 'sh',
+          'postgres', ...postgresSettings(`${BAY_TLS}/cert.pem`), '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'],
+        volumes: [{ source: 'postgres-init', target: INIT_MOUNT, files: [{ file: 'orm.sh', text: `echo 'host replication orm all trust' >> "$PGDATA/pg_hba.conf"\n` }] }] },
       // The standby is a pg_basebackup of the healthy primary into the empty data directory, and the image skips its
       // initialization for that directory; -R writes the standby configuration with the application_name that
       // synchronous_standby_names lists, and -C -S creates the slot orm_replica, as postgresBaseBackupArguments does.
-      { name: 'postgres-replica', port: 5432, data: '/var/lib/postgresql/data', environment: postgresEnvironment, health: postgresHealth, after: 'postgres',
-        command: ['sh', '-c', `${postgresKey} && chown postgres:postgres "$PGDATA" && chmod 0700 "$PGDATA" && gosu postgres pg_basebackup -D "$PGDATA" -R -C -S orm_replica -X stream -d 'host=${host('postgres')} port=5432 user=orm application_name=orm_replica' && exec docker-entrypoint.sh "$@"`, 'sh',
-          'postgres', ...postgresSettings] },
+      { name: 'postgres-replica', port: 5432, data: '/var/lib/postgresql/data', environment: postgresEnvironment, health: postgresHealth, after: 'postgres', volumes: [TLS_VOLUME],
+        command: ['sh', '-c', `${postgresKey(`${TLS_MOUNT}/mismatch-key.pem`)} && chown postgres:postgres "$PGDATA" && chmod 0700 "$PGDATA" && gosu postgres pg_basebackup -D "$PGDATA" -R -C -S orm_replica -X stream -d 'host=${host('postgres')} port=5432 user=orm application_name=orm_replica' && exec docker-entrypoint.sh "$@"`, 'sh',
+          'postgres', ...postgresSettings(`${TLS_MOUNT}/mismatch-cert.pem`)] },
+      // The image runs PgBouncer as its user 70, and its entrypoint runs the command that it is given.
+      { name: 'pgbouncer', image: 'pgbouncer', port: 6432, environment: {}, after: 'postgres',
+        command: ['pgbouncer', `${CONF_MOUNT}/pgbouncer.ini`],
+        volumes: [conf('pgbouncer', [{ file: 'pgbouncer.ini', text: pgbouncerConfigOf({ backendHost: host('postgres'), backend: 5432, listen: '0.0.0.0', port: 6432, authFile: `${CONF_MOUNT}/pgbouncer-users.txt` }) },
+          { file: 'pgbouncer-users.txt', text: PGBOUNCER_USERS }])],
+        health: ['pg_isready', '--host=127.0.0.1', '--port=6432', '--username=orm', '--dbname=pgbouncer'] },
     ],
     // The primary creates the databases after the standby follows it, as the native primary does.
     steps: () => [{ service: 'postgres', command: ['psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', 'orm', '-d', 'postgres', '-c', 'CREATE DATABASE orm_test', '-c', 'CREATE DATABASE orm_tools'] }],
-    variables: ({ host, ipv4, authority, other, leases }) => {
+    variables: ({ host, authority, test, other, leases }) => {
       const postgres = `postgres://orm@${host('postgres')}:5432`;
       return {
         ORM_TEST_POSTGRES_DSN: `${postgres}/orm_test`, ORM_TEST_POSTGRES_SERVER_DSN: `${postgres}/orm_test`, ORM_TOOLS_POSTGRES_DSN: `${postgres}/orm_tools`,
         ORM_RUN_POSTGRES_DSN: `${postgres}/orm_run?timezone=%2B00:00`, ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00', ORM_TEST_SERVERS_LEASES: leases,
-        ORM_TEST_POSTGRES_TLS_DSN: postgresTls(authority, host('postgres')), ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(other, host('postgres')), ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(authority, ipv4),
+        ORM_TEST_POSTGRES_TLS_DSN: postgresTls(authority, host('postgres')), ORM_TEST_POSTGRES_TLS_OTHER_CA_DSN: postgresTls(other, host('postgres')), ORM_TEST_POSTGRES_TLS_MISMATCH_DSN: postgresTls(test, host('postgres-replica')),
         ORM_TEST_POSTGRES_REPLICA_DSN: `postgres://orm@${host('postgres-replica')}:5432/orm_test`,
+        ORM_TEST_PGBOUNCER_DSN: `postgres://orm@${host('pgbouncer')}:6432/orm_test`,
       };
     },
   },
   mariadb: {
-    // healthcheck.sh is the readiness program of the image; --connect requires a connection over TCP.
-    services: () => [
+    // healthcheck.sh is the readiness program of the image; --connect requires a connection over TCP. MariaDB has no
+    // replica in a container, so the server mariadb-mismatch presents the mismatch certificate.
+    services: host => [
       { name: 'mariadb', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', ...mysqlOptions, ...SMALL_BUFFER_POOL, '--server-id=1', ...mysqlTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' },
-        health: ['healthcheck.sh', '--connect', '--innodb_initialized'] },
+        health: mariadbHealth },
+      { name: 'mariadb-privilege', port: 3306, data: '/var/lib/mysql', command: mariadbPrivilegeArguments, environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' }, health: mariadbHealth },
+      { name: 'mariadb-mismatch', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', ...SMALL_BUFFER_POOL, ...mismatchTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' }, volumes: [TLS_VOLUME],
+        health: mariadbHealth },
+      proxysql('mariadb-proxysql', host('mariadb'), `${MARIADB_VERSION}-MariaDB`, 'mariadb'),
     ],
-    steps: () => [{ service: 'mariadb', command: ['mariadb', '-uroot', '-e', DATABASES_SQL] }],
-    variables: ({ host, ipv4, authority, other, leases }) => {
+    steps: () => [
+      { service: 'mariadb', command: ['mariadb', '-uroot', '-e', DATABASES_SQL] },
+      { service: 'mariadb-privilege', command: ['mariadb', '-uroot', '-e', 'CREATE DATABASE orm_test'] },
+    ],
+    variables: ({ host, authority, test, other, leases }) => {
       const mariadb = `mysql://root@${host('mariadb')}:3306`;
       return {
         ORM_TEST_MARIADB_DSN: `${mariadb}/orm_test`, ORM_TEST_MARIADB_SERVER_DSN: `${mariadb}/orm_test`, ORM_TOOLS_MARIADB_DSN: `${mariadb}/orm_tools`, ORM_TEST_MARIADB_LEASES: leases,
-        ORM_TEST_MARIADB_TLS_DSN: mysqlTls(authority, host('mariadb')), ORM_TEST_MARIADB_TLS_OTHER_CA_DSN: mysqlTls(other, host('mariadb')), ORM_TEST_MARIADB_TLS_MISMATCH_DSN: mysqlTls(authority, ipv4),
+        ORM_TEST_MARIADB_TLS_DSN: mysqlTls(authority, host('mariadb')), ORM_TEST_MARIADB_TLS_OTHER_CA_DSN: mysqlTls(other, host('mariadb')), ORM_TEST_MARIADB_TLS_MISMATCH_DSN: mysqlTls(test, host('mariadb-mismatch')),
+        ORM_TEST_MARIADB_PRIVILEGE_DSN: `mysql://root@${host('mariadb-privilege')}:3306/orm_test`,
+        ORM_TEST_MARIADB_PROXYSQL_DSN: `mysql://orm:orm@${host('mariadb-proxysql')}:6033/orm_test`,
       };
     },
   },
 };
 
 const KINDS: readonly Kind[] = ['mysql', 'postgres', 'mariadb'];
+// IMAGES are the keys of the images of config/containers.json.
+const IMAGES: readonly Image[] = [...KINDS, 'proxysql', 'pgbouncer', 'runner'];
 
 function isKind(text: string | undefined): text is Kind {
   return text === 'mysql' || text === 'postgres' || text === 'mariadb';
@@ -254,7 +328,7 @@ function field(value: unknown, name: string): unknown {
   return isRecord(value) ? value[name] : undefined;
 }
 
-function image(kind: Kind | 'runner'): string {
+function image(kind: Image): string {
   const file = join(REPOSITORY, 'config/containers.json');
   const reference = field(field(field(JSON.parse(readFileSync(file, 'utf8')), 'images'), kind), 'reference');
   if (typeof reference !== 'string' || !/@sha256:[0-9a-f]{64}$/.test(reference)) throw new TestServerError(`test-servers-container: ${file} pins no image of ${kind} by its digest`);
@@ -389,8 +463,9 @@ function nodeVersion(): string {
   return version;
 }
 
-// composeFile is the Compose file of a project: one service per server, with the pinned image, the port of the server in
-// expose and no key ports, so no port of the host is published, and the data directory of the image on a tmpfs. A
+// composeFile is the Compose file of a project: one service per server and per pooler, with the pinned image, the port
+// of the service in expose and no key ports, so no port of the host is published, the data directory of the image, where
+// it has one, on a tmpfs, and the folders of the run that the service mounts read-only. A
 // healthcheck is the bound of bay for a start, in the file on purpose. start_period declares the time in which the image
 // initializes its data directory, minutes on a loaded machine, during which a failed probe is not counted; after it,
 // retries probes a second apart fail the start, and a container that stops fails it at once.
@@ -440,12 +515,12 @@ function composeFile(list: readonly Kind[], services: readonly Placed[], part: P
   return yaml({
     services: {
       ...Object.fromEntries(servers.map(service => [service.name, {
-        image: image(service.kind),
+        image: image(service.image ?? service.kind),
         command: service.command,
         expose: [String(service.port)],
         environment: { TZ: SERVER_TIME_ZONE, ...service.environment },
-        tmpfs: [service.data],
-        ...(service.init ? { volumes: [`./${service.name}-init:${INIT_MOUNT}:ro`] } : {}),
+        ...(service.data === undefined ? {} : { tmpfs: [service.data] }),
+        ...(service.volumes === undefined ? {} : { volumes: service.volumes.map(volume => `./${volume.source}:${volume.target}:ro`) }),
         cpus: '4',
         mem_limit: limits.server ?? '4g',
         ...(service.after === undefined ? {} : { depends_on: { [service.after]: { condition: 'service_healthy' } } }),
@@ -487,11 +562,11 @@ function checked(limits: Limits, extra: Extra, form: Form): void {
 const quote = (word: string) => `'${word.replaceAll("'", "'\\''")}'`;
 const words = (command: readonly string[]) => command.map(quote).join(' ');
 
-// exports are the lines of servers.env: each variable as a word of sh in single quotes, except ${address_<kind>}, the
-// address of the primary of a kind, and ${dir}, which the file that writes servers.env replaces.
+// exports are the lines of servers.env: each variable as a word of sh in single quotes, except ${dir}, which the file
+// that writes servers.env replaces.
 function exports(variables: Record<string, string>): string[] {
   return Object.entries(variables).map(([name, value]) => {
-    if (/['\n\r\\`]/.test(value) || /\$(?!\{(?:address_(?:mysql|postgres|mariadb)|dir)\})/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a character that run.sh does not write: ${value}`);
+    if (/['\n\r\\`]/.test(value) || /\$(?!\{dir\})/.test(value)) throw new TestServerError(`test-servers-container: ${name} holds a character that run.sh does not write: ${value}`);
     return `export ${name}='${value}'`;
   });
 }
@@ -560,8 +635,7 @@ ${SH_FUNCTIONS}
 // the run. The parts: up checks bay and the images, starts the servers, runs the steps that prepare them and writes
 // servers.env; down removes the project and writes the file removed; pull downloads the images; and no part is the
 // whole run, which also runs the command of the run and removes the project at its end, at a failed step and on SIGINT,
-// SIGTERM and SIGHUP. The address of the mismatch DSN is the first word that getent ahostsv4, which prints IPv4
-// addresses alone, prints for the host name of the primary in the container of the primary.
+// SIGTERM and SIGHUP.
 //
 // run.sh writes the time of each step to its output and to report/steps.log, with the step and the status of a step that
 // failed. The output of bay up, which names the service that failed and why, and the last lines of the log of each
@@ -570,18 +644,11 @@ ${SH_FUNCTIONS}
 // it creates the next, so a service after the one that failed has no container, and its logs name none.
 // The command of the run runs in the root of the checkout, where TEST_ENV and MARIADB_ENV name servers.env, as the job
 // check does in the runner, so that RUN='make <target>' runs the target of the checkout on these servers (T510).
-function runFile(at: At, list: readonly Kind[], services: readonly Service[], steps: readonly Step[], host: (service: string) => string, variables: Record<string, string>, command: readonly string[] | undefined, root: string): string {
+function runFile(at: At, list: readonly Kind[], services: readonly Service[], steps: readonly Step[], variables: Record<string, string>, command: readonly string[] | undefined, root: string): string {
   const environment = exports(variables);
   const check = command === undefined ? ['say "this directory was written without a command; write a run with make orm-test-container-run"', 'exit 2']
     : [`at "the command of the run"`, `beside sh -c 'cd "$2" && export TEST_ENV="$1/servers.env" MARIADB_ENV="$1/servers.env" && . "$1/servers.env" && shift 2 && exec "$@"' sh "$dir" ${quote(root)} ${words(command)}`, 'status=$?'];
   const logs = services.map(service => `    say "the last lines of the service ${service.name}:"; b logs -n 50 ${quote(service.name)} 2>&1 | tee -a "$dir/report/bay-up-servers.log" >&2`).join('\n');
-  // The address of the primary of each kind, address_<kind>, which the variables of that kind name.
-  const addresses = list.map(kind => `  resolved=$(b exec ${quote(kind)} getent ahostsv4 ${quote(host(kind))}) || failed "$?" ${quote(`bay exec ${kind} getent ahostsv4 ${host(kind)}`)}
-  address_${kind}=\${resolved%%[!0-9.]*}
-  case "$address_${kind}" in
-    *.*.*.*) ;;
-    *) say "the host name ${host(kind)} of the plan has no IPv4 address in the container of ${kind}: $resolved"; failed 1 "the address of the primary of ${kind}" ;;
-  esac`).join('\n');
   return `${head(at, list, 'host', `#   sh run.sh         the whole run: the servers, the command of the run, and the removal of the project
 #   sh run.sh up      start the servers and write servers.env
 #   sh run.sh down    remove the project
@@ -612,7 +679,6 @@ ${logs}
     failed "$status" "bay up"
   }
 ${steps.map(step => `  at ${quote(`bay exec ${step.service} ${step.command[0] ?? ''}`)}\n  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${quote(`bay exec ${step.service} ${step.command.join(' ')}`)}`).join('\n')}
-${addresses}
   cat > "$dir/servers.env.tmp" <<ENVIRONMENT
 ${environment.join('\n')}
 ENVIRONMENT
@@ -768,9 +834,8 @@ const WAIT = '24h';
 // serverSetupFile is setup-<kind>.sh, which the one-shot service setup-<kind> runs in a container of the image of the
 // servers of the kind after each of them is healthy, before the job check. It runs the steps of the kind with the client of the image over TCP to
 // the host name of each service, which the plan names; a MariaDB client verifies the certificate of the server, so it
-// names the authority that bay mounts. It writes the IPv4 address of the primary, the first word that getent ahostsv4
-// prints for its host name, to the file address-<kind>, which job-check.sh writes into servers.env. Its output is also
-// report/setup-<kind>.log, and the time of each step is in report/steps.log.
+// names the authority that bay mounts. Its output is also report/setup-<kind>.log, and the time of each step is in
+// report/steps.log.
 function serverSetupFile(kind: Kind, steps: readonly Step[], host: (service: string) => string): string {
   const tcp = (step: Step) => {
     const [program = '', ...rest] = step.command;
@@ -786,14 +851,6 @@ at() { printf '%s %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$run/re
 steps() {
   set -e
 ${steps.map(step => `  at ${quote(`setup: ${tcp(step).slice(0, 3).join(' ')}`)}\n  ${words(tcp(step))}`).join('\n')}
-  resolved=$(getent ahostsv4 ${quote(host(kind))})
-  address=\${resolved%%[!0-9.]*}
-  case "$address" in
-    *.*.*.*) ;;
-    *) echo "setup-${kind}.sh: the host name ${host(kind)} of the plan has no IPv4 address: $resolved" >&2; exit 1 ;;
-  esac
-  printf '%s\\n' "$address" > "$run/address-${kind}.tmp"
-  mv "$run/address-${kind}.tmp" "$run/address-${kind}"
 }
 { (steps); echo "$?" > "$run/report/setup-${kind}-status"; } 2>&1 | tee -a "$run/report/setup-${kind}.log"
 exit "$(cat "$run/report/setup-${kind}-status")"
@@ -825,14 +882,12 @@ sh "$run/build.sh" || { status=$?; at "the build command exited with $status"; e
 ` : ''}`;
 }
 
-// jobCheckFile is job-check.sh, the command of the job check: it writes servers.env with the address of the primary of
-// each kind that its setup-<kind>.sh found, and runs check.sh.
-function jobCheckFile(list: readonly Kind[], variables: Record<string, string>): string {
+// jobCheckFile is job-check.sh, the command of the job check: it writes servers.env and runs check.sh.
+function jobCheckFile(variables: Record<string, string>): string {
   return `#!/bin/sh
 # job-check.sh: the job check of the run in the runner, written by scripts/test-servers-container.mts.
 run=${RUN_MOUNT}
 at() { printf '%s %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$run/report/steps.log"; }
-${list.map(kind => `read -r address_${kind} < "$run/address-${kind}" || { echo "job-check.sh: setup-${kind}.sh wrote no address of the primary of ${kind}" >&2; exit 1; }`).join('\n')}
 cat > "$run/servers.env.tmp" <<ENVIRONMENT
 ${exports(variables).join('\n')}
 ENVIRONMENT
@@ -971,10 +1026,10 @@ type Plan = (at: At) => string;
 
 // write writes the directory of a run and returns its project. The plan is that of the machine that runs the directory,
 // so the Compose file is written once for the plan, with no host name, and once with the host names of the plan, which
-// the standby of PostgreSQL and the steps of setup.sh name. A write that fails removes the directory. name is the
+// the standby of PostgreSQL, the poolers and the steps of setup.sh name. A write that fails removes the directory. name is the
 // project; without it, the project is orm-<checkout>-<8 random hexadecimal digits>, so that the runs of a checkout do
 // not share one.
-function write(list: readonly Kind[], context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; other: string; authority: (planned: Planned) => string }, limits: Limits = {}, extra: Extra = {}, name = `orm-${checkout(context.root)}-${randomBytes(4).toString('hex')}`): Written {
+function write(list: readonly Kind[], context: Context, form: Form, command: readonly string[] | undefined, plan: Plan, place: { leases: string; test: string; other: string; authority: (planned: Planned) => string }, limits: Limits = {}, extra: Extra = {}, name = `orm-${checkout(context.root)}-${randomBytes(4).toString('hex')}`): Written {
   checked(limits, extra, form);
   const dirs = folders(context.root);
   mkdirSync(dirs.leases, { recursive: true });
@@ -989,22 +1044,33 @@ function write(list: readonly Kind[], context: Context, form: Form, command: rea
     const stated = planned(plan(at), first);
     const { host } = stated;
     const services = placed(list, host);
-    for (const service of services) {
-      if (!service.init) continue;
-      const init = join(at.dir, `${service.name}-init`);
-      mkdirSync(init);
-      chmodSync(init, 0o755);
-      writeFileSync(join(init, service.init.file), service.init.text);
-      chmodSync(join(init, service.init.file), 0o644);
+    // The user of a server of an image is not the user who writes the run, so each folder that a service mounts and each
+    // file in it is readable by every user.
+    for (const volume of services.flatMap(service => service.volumes ?? [])) {
+      if (volume.files === undefined) continue;
+      const folder = join(at.dir, volume.source);
+      mkdirSync(folder);
+      chmodSync(folder, 0o755);
+      for (const each of volume.files) {
+        writeFileSync(join(folder, each.file), each.text);
+        chmodSync(join(folder, each.file), 0o644);
+      }
     }
     writeFileSync(file, composeFile(list, services, part, limits, extra.cache));
-    // The second CA signs nothing: the DSN that names it fails the chain of the certificate of the server.
-    issueTls(join(at.dir, 'tls'), []);
-    // The variables of each kind, whose mismatch DSN names the address of the primary of that kind; the kinds share the
-    // variables that they name alike, the lease folder and the query of SQLite.
-    const variables: Record<string, string> = Object.assign({}, ...list.map(kind => SERVERS[kind].variables({ host, ipv4: `\${address_${kind}}`, authority: place.authority(stated), other: place.other, leases: place.leases })));
+    // The test CA signs the mismatch certificate, which names orm-mismatch.invalid, as the certificate of the native
+    // replica does; the second CA signs nothing, so the DSN that names it fails the chain of the certificate of the server.
+    // openssl writes each key readable by its owner alone, and the server that presents the mismatch certificate reads it
+    // as the user of its image, so the folder, the certificate and its key are readable by every user; the PostgreSQL
+    // replica copies the key for its user postgres.
+    const tls = join(at.dir, 'tls');
+    issueTls(tls, [['mismatch', MYSQL_TLS_SERVER_NAMES.mysqlReplica]]);
+    chmodSync(tls, 0o755);
+    for (const each of ['ca.pem', 'mismatch-cert.pem', 'mismatch-key.pem']) chmodSync(join(tls, each), 0o644);
+    // The variables of each kind; the kinds share the variables that they name alike, the lease folder and the query of
+    // SQLite.
+    const variables: Record<string, string> = Object.assign({}, ...list.map(kind => SERVERS[kind].variables({ host, authority: place.authority(stated), test: place.test, other: place.other, leases: place.leases })));
     const steps = list.flatMap(kind => SERVERS[kind].steps(host));
-    if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, list, services, steps, host, variables, command, context.root));
+    if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, list, services, steps, variables, command, context.root));
     else {
       if (command === undefined) throw new TestServerError('test-servers-container: a run in the runner needs a command');
       writeFileSync(join(at.dir, 'run.sh'), jobRunFile(at, list, extra.cache));
@@ -1016,7 +1082,7 @@ function write(list: readonly Kind[], context: Context, form: Form, command: rea
       writeFileSync(join(at.dir, 'runner-setup.sh'), setupFile(extra.jobs));
       for (const kind of list) writeFileSync(join(at.dir, `setup-${kind}.sh`), serverSetupFile(kind, SERVERS[kind].steps(host), host));
       writeFileSync(join(at.dir, 'job-build.sh'), jobBuildFile(extra.build !== undefined));
-      writeFileSync(join(at.dir, 'job-check.sh'), jobCheckFile(list, variables));
+      writeFileSync(join(at.dir, 'job-check.sh'), jobCheckFile(variables));
       writeFileSync(join(at.dir, 'check.sh'), checkFile(command));
       if (extra.build !== undefined) writeFileSync(join(at.dir, 'build.sh'), buildFile(extra.build));
       bundle(context.root, join(at.dir, 'repo.bundle'));
@@ -1031,8 +1097,8 @@ function write(list: readonly Kind[], context: Context, form: Form, command: rea
 // hostPlace and RUNNER_PLACE are where the variables of each form name the files of a run: the host names the directory
 // by the variable dir of run.sh and the authority by its path on the machine, the runner names the directory by its
 // mount and the authority by the path where bay mounts it in a container.
-const hostPlace = (leases: string) => ({ leases, other: '${dir}/tls/other-ca.pem', authority: (stated: Planned) => stated.authority });
-const RUNNER_PLACE = { leases: `${RUN_MOUNT}/leases`, other: `${RUN_MOUNT}/tls/other-ca.pem`, authority: (stated: Planned) => stated.mounted };
+const hostPlace = (leases: string) => ({ leases, test: '${dir}/tls/ca.pem', other: '${dir}/tls/other-ca.pem', authority: (stated: Planned) => stated.authority });
+const RUNNER_PLACE = { leases: `${RUN_MOUNT}/leases`, test: `${RUN_MOUNT}/tls/ca.pem`, other: `${RUN_MOUNT}/tls/other-ca.pem`, authority: (stated: Planned) => stated.mounted };
 
 // bundle writes the commit of the checkout as a Git bundle, which the runner clones; the host of the run needs no git.
 // A run in the runner is a run of that commit, so a checkout whose tracked files differ from it is refused.
@@ -1319,7 +1385,7 @@ export function pull(context: Context): void {
   const at: At = { name, dir: join(dir, name) };
   mkdirSync(at.dir);
   try {
-    writeFileSync(join(at.dir, 'compose.yaml'), yaml({ services: Object.fromEntries([...KINDS, 'runner' as const].map(each => [each, { image: image(each) }])) }));
+    writeFileSync(join(at.dir, 'compose.yaml'), yaml({ services: Object.fromEntries(IMAGES.map(each => [each, { image: image(each) }])) }));
     const pulled = bay(context, ['pull'], at);
     process.stderr.write(`${pulled.stdout}${pulled.stderr}`);
     if (pulled.status !== 0) throw new TestServerError(`test-servers-container: bay pull of the images of config/containers.json exited with ${pulled.status ?? pulled.signal}`);

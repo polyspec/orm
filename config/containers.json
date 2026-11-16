@@ -1,5 +1,5 @@
 {
-  "comment": "The images of the test database servers and of the service runner that make orm-test-container starts as a Compose project of bay (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds. make orm-install-container-images pulls them with bay pull, and no start pulls one. runner declares the x-bay.timeout of each job of the runner, the longest one run of a job may take, and what runner-setup.sh installs in the runner: the packages of Debian, and the sha256 of the node tarball of mise.toml and of rustup-init for each processor that uname -m names. bay pins the release of bay that CI installs: its version, the address of its files, and the sha256 of the archive of each platform from SHA256SUMS of that release; make orm-install-bay installs it into var/tools/bay, and no run reads it.",
+  "comment": "The images of the test database servers, of their poolers ProxySQL and PgBouncer, and of the service runner that make orm-test-container starts as a Compose project of bay (scripts/test-servers-container.mts). Each image is pinned by the digest of its index; version names the release the digest holds; that of proxysql and of pgbouncer is the release that CI runs. make orm-install-container-images pulls them with bay pull, and no start pulls one. runner declares the x-bay.timeout of each job of the runner, the longest one run of a job may take, and what runner-setup.sh installs in the runner: the packages of Debian, and the sha256 of the node tarball of mise.toml and of rustup-init for each processor that uname -m names. bay pins the release of bay that CI installs: its version, the address of its files, and the sha256 of the archive of each platform from SHA256SUMS of that release; make orm-install-bay installs it into var/tools/bay, and no run reads it.",
   "images": {
     "mysql": {
       "version": "8.4.11",
@@ -12,6 +12,14 @@
     "mariadb": {
       "version": "11.8.6",
       "reference": "docker.io/library/mariadb@sha256:78a5047d3ba33975f183f183c2464cc7f1eab13ec8667e57cc9a5821d6da7577"
+    },
+    "proxysql": {
+      "version": "3.0.9",
+      "reference": "docker.io/proxysql/proxysql@sha256:aa5aab1e4d82dcad5a7de45f683345eedee9c1b81f6307c0e69e357201d65ff9"
+    },
+    "pgbouncer": {
+      "version": "1.26.1",
+      "reference": "docker.io/edoburu/pgbouncer@sha256:488422e38cff912895d0d65d8963fcd306e6ac589a724398b6eb8e294e94d624"
     },
     "runner": {
       "version": "trixie",

@@ -208,7 +208,7 @@ async function startServers(p: Paths, ports: MariadbPorts): Promise<void> {
   const data = join(p.dir, 'mariadb-proxysql');
   mkdirSync(data, { recursive: true });
   writeFileSync(join(p.dir, 'mariadb-proxysql.cnf'), proxysqlConfigOf({ data, admin: p.sockets.mariadbProxysqlAdmin, adminPgsql: p.sockets.mariadbProxysqlAdminPgsql,
-    pgsql: p.sockets.mariadbProxysqlPgsql, port: ports.proxysql, backend: ports.mariadb, serverVersion: `${MARIADB_VERSION}-MariaDB` }));
+    pgsql: p.sockets.mariadbProxysqlPgsql, listen: '127.0.0.1', port: ports.proxysql, backendHost: '127.0.0.1', backend: ports.mariadb, serverVersion: `${MARIADB_VERSION}-MariaDB` }));
   // ProxySQL logs the consulting notice after its listeners are bound.
   await startLogged(p.dir, 'mariadb-proxysql', 'For consultancy visit', 'proxysql', ['--foreground', '--initial', '--no-version-check', '-c', join(p.dir, 'mariadb-proxysql.cnf'), '-D', data]);
   console.log(`test-servers: the ProxySQL of MariaDB on 127.0.0.1:${ports.proxysql}`);
