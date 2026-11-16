@@ -5778,6 +5778,20 @@
       }
     },
     {
+      "member": "db.transaction",
+      "file": "contracts/interface/service.json",
+      "group": "db.transaction.service",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "SVC-2"
+      }
+    },
+    {
       "member": "db.execute",
       "file": "contracts/interface/service.json",
       "group": "db.execute.service",

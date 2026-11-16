@@ -2239,6 +2239,141 @@
         "kind": "lock_not_available",
         "message": "lock_not_available: could not obtain lock on row in relation \"service_pg_row\" (SQLSTATE 55P03)"
       }
+    },
+    {
+      "id": "a_statement_whose_server_reports_a_deadlock",
+      "note": "It tests the conversion of the kind deadlock at the boundary of the bindings: the server returns SQLSTATE 40P01 and the error passes the mapping of the core. The deadlock of two waiting sessions is tested by the recipe op transaction.deadlock of the legacy clients and the tests of the core.",
+      "rule": "SVC-9",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ]
+        }
+      },
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "service": "address"
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"DO $$ BEGIN RAISE EXCEPTION 'deadlock' USING ERRCODE = '40P01'; END $$\",\"tables\":[],\"bind_slots\":[]}",
+      "params": [],
+      "raises": {
+        "category": "store",
+        "kind": "deadlock",
+        "message": "deadlock: deadlock (SQLSTATE 40P01)"
+      }
+    }
+  ],
+  "db.transaction.service": [
+    {
+      "id": "a_row_lock_that_a_prepared_transaction_holds",
+      "rule": "SVC-4",
+      "service": {
+        "id": "postgres",
+        "setup": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "table": "service_pg_row",
+          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32), deleted_at TIMESTAMP(6) NULL",
+          "rows": [
+            [
+              1,
+              "held",
+              null
+            ],
+            [
+              2,
+              "gone",
+              "2026-01-01 00:00:00"
+            ]
+          ],
+          "hold": {
+            "where": "id IN (1, 2)",
+            "column": "label",
+            "mode": "update"
+          }
+        },
+        "check": {
+          "service": "ORM_TEST_POSTGRES_DSN",
+          "release": true
+        }
+      },
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "service": "address"
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 service_pg\n\ntable service_pg_row {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable service_pg_gone {\n  id i64\n  label varchar(32)\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fb61c9a6b8e0da6eff64de2da40b6e0b2aeffb037ffafae3d4e9b63316a2159d"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SELECT id FROM service_pg_row WHERE id = 1 FOR UPDATE NOWAIT\",\"tables\":[],\"bind_slots\":[]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "lock_not_available",
+        "message": "lock_not_available: could not obtain lock on row in relation \"service_pg_row\" (SQLSTATE 55P03)"
+      }
     }
   ]
 }

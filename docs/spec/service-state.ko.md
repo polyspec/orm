@@ -45,6 +45,12 @@
   값은 호출 전에 `db.execute`로 기본 표, 그 행, view를 만든다. 서버는 SQLSTATE 57P01로 session을 끝내고, 코어는 그것을
   `connection_lost`로 바꾼다(`packages/rust/src/lib.rs`의 `PgDatabaseError` 대응). 이때 `restore_or_create`는 끝난 session에서 transaction을 되돌릴 수 없어 `rollback_failed`를 낸다. 이유: state program이 호출 사이에
   끝낸 session은 다음 문장 전에 pool이 바꾸므로, 자기 session을 끝내는 문장만 그 kind에 닿는다.
+- **SVC-9** PostgreSQL의 `deadlock` case는 binding 경계에서 kind의 변환을 시험한다. `db.execute`가 SQLSTATE 40P01을
+  raise하는 `DO` block을 실행하므로 server는 deadlock 오류를 돌려주고, core는 모든 statement의 mapping
+  (`packages/rust/src/lib.rs`의 `PgDatabaseError` mapping, DIA-201)으로 그것을 `deadlock`으로 바꾼다. 이유: 두 세션의
+  deadlock에는 case의 call이 도는 동안 기다리는 두 번째 세션이 필요한데 그런 case 형식은 없고(SVC-4는 row를 잡기만
+  하고 기다리지 않는다), 생성 코드는 kind를 경로마다 한 번 변환한다(binding B2.376). 기다리는 두 세션의 deadlock은
+  legacy client의 recipe op `transaction.deadlock`과 core의 시험이 시험한다.
 - **SVC-7** 코어는 `contracts/interface/service.json`의 case를 `packages/rust/tests/unit/interface_service_cases.rs`의
   시험 `the_core_passes_the_service_cases_of_its_contract`에서 실행의 서버로 실행한다(`make
   interface-service-cases-rust`). 그 scope는 `rust:<member>:<case id>:`다. service의 변수가 정해지지 않으면 시험은
