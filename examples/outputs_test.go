@@ -41,7 +41,7 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 			if name == "thin-slice" {
 				// The TypeScript and Python programs run on the Node and the venv interpreter that orm-install-python makes.
 				tsOut := runExample(t, c, "ts", "node", filepath.Join(name, "ts", "main.mts"))
-				python, err := filepath.Abs(filepath.Join(pythonRoot, "packages", "python", ".venv", "bin", "python"))
+				python, err := filepath.Abs(filepath.Join(pythonRoot, "legacy", "packages", "python", ".venv", "bin", "python"))
 				if err != nil {
 					t.Fatal(err)
 				}
