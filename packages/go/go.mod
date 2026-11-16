@@ -3,4 +3,4 @@ module github.com/polyspec/orm/packages/go
 
 go 1.27.3
 
-require github.com/polyspec/json/packages/go v0.0.30
+require github.com/polyspec/json/packages/go v0.0.31

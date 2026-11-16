@@ -20,8 +20,8 @@ thrown-count-test = []
 
 [dependencies]
 polyspec-orm = { path = "../../../rust" }
-polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.10", features = ["construct", "lock", "driver"] }
-polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.30" }
+polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.13", features = ["construct", "lock", "driver"] }
+polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.31" }
 
 [lints]
 workspace = true
