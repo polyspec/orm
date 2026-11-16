@@ -55,6 +55,56 @@ thread_local! {
     static ROOT: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
     /// The databases that the case opened, which the case closes when it ends.
     static OPENED: RefCell<Vec<Db>> = const { RefCell::new(Vec::new()) };
+    /// The named instances of the case (binding GN-13pa): the values of `with` and the arguments that `names` of a function
+    /// fixture names, which a step calls with `"on": "<name>"` and gives as `{"bound": "<name>"}`.
+    static NAMED: RefCell<BTreeMap<String, Instance>> = const { RefCell::new(BTreeMap::new()) };
+}
+
+/// Another handle of a named instance for an argument `{"bound"}`: a database and a transaction handle share their state, and
+/// a query is copied.
+fn share(instance: &Instance, what: &str) -> Instance {
+    match instance {
+        Instance::Db(db) => Instance::Db(db.clone()),
+        Instance::Tx(tx) => Instance::Tx(tx.clone()),
+        Instance::Query(query) => Instance::Query(query.clone()),
+        _ => panic!("{what}: a named instance is a db, a tx or a query"),
+    }
+}
+
+/// The instance that the name `name` holds (binding GN-13pa).
+fn bound(name: &str, what: &str) -> Instance {
+    NAMED.with_borrow(|named| named.get(name).map(|instance| share(instance, what))).unwrap_or_else(|| panic!("{what}: no instance is named {name}"))
+}
+
+/// Gives the name `name` to `instance`; a name is snake_case, never `receiver`, and given once (binding GN-13pa).
+fn name(name: &str, instance: Instance, what: &str) {
+    assert!(
+        !name.is_empty() && name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') && name != "receiver",
+        "{what}: the name {name} is snake_case and not receiver"
+    );
+    let given = NAMED.with_borrow_mut(|named| named.insert(name.to_owned(), instance));
+    assert!(given.is_none(), "{what}: the name {name} is given once");
+}
+
+/// Calls `member` on the named instance `on`. The instance leaves its name for the call and takes it again after it, so
+/// what the call changes in it stays: a query is a value, while a database and a transaction handle share their state.
+async fn call_on(on: &str, member: &str, args: &Map<String, Value>, what: &str) -> Result<Returned, Error> {
+    let query = NAMED.with_borrow(|named| matches!(named.get(on), Some(Instance::Query(_))));
+    if !query {
+        // A database or a transaction handle stays named while it is called, so a callback of the call can call it again.
+        return Box::pin(call(member, Some(&mut bound(on, what)), args)).await;
+    }
+    let mut target = NAMED.with_borrow_mut(|named| named.remove(on)).unwrap_or_else(|| panic!("{what}: no instance is named {on}"));
+    let returned = Box::pin(call(member, Some(&mut target), args)).await;
+    NAMED.with_borrow_mut(|named| named.insert(on.to_owned(), target));
+    returned
+}
+
+/// Compares the kind that a step raised with the `raises` of the step, whose given fields the raise holds (binding GN-13o).
+fn step_raised(step: &str, raises: &Value, error: &Error, what: &str) -> Option<String> {
+    let raised = serde_json::json!({"kind": error.kind().as_str(), "category": error.category().as_str(), "message": error.to_string()});
+    let expected = raises.as_object().unwrap_or_else(|| panic!("{what}: raises of the step {step} is an object"));
+    (!expected.iter().all(|(key, value)| raised.get(key) == Some(value))).then(|| format!("{what}: the step {step} expects {raises}, and it raised {raised}"))
 }
 
 /// The directory of the case that runs.
@@ -364,18 +414,51 @@ async fn run_function(fixture: Value, argument: Instance, what: String) -> Resul
     let function = fixture.get("function").and_then(Value::as_object).unwrap_or_else(|| panic!("{what}: a function value is {{function}}"));
     let mut argument = argument;
     let empty = Map::new();
-    for step in function.get("calls").and_then(Value::as_array).map_or(&[][..], Vec::as_slice) {
-        assert_eq!(step.get("on").and_then(Value::as_str), Some("0"), "{what}: a step of a function is on its argument 0");
-        let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a step of a function names call"));
-        let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {name} is no object")));
-        let returned = Box::pin(call(name, Some(&mut argument), args)).await?;
-        if let Some(expected) = step.get("result") {
-            match returned {
-                Returned::Value(value) => assert_eq!(&value, expected, "{what}: the step {name} of the function"),
-                Returned::Instance(_) => panic!("{what}: the step {name} of the function returns an instance"),
+    // names gives the argument its name, which an inner function fixture calls (binding GN-13n); the name ends with the function.
+    let names: Vec<String> = function
+        .get("names")
+        .and_then(Value::as_array)
+        .map_or(Vec::new(), |names| names.iter().map(|name| name.as_str().unwrap_or_else(|| panic!("{what}: a name of names is a text")).to_owned()).collect());
+    assert!(names.len() <= 1, "{what}: names names the one argument of the function");
+    for given in &names {
+        name(given, share(&argument, &what), &what);
+    }
+    let ran = async {
+        for step in function.get("calls").and_then(Value::as_array).map_or(&[][..], Vec::as_slice) {
+            let on = step.get("on").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a step of a function names on"));
+            let call_name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a step of a function names call"));
+            let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {call_name} is no object")));
+            let returned = match on {
+                "0" => Box::pin(call(call_name, Some(&mut argument), args)).await,
+                other => call_on(other, call_name, args, &what).await,
+            };
+            // A step that raises the kind of its raises is followed by the next step (binding GN-13o).
+            let returned = match (returned, step.get("raises")) {
+                (Err(error), Some(raises)) => {
+                    if let Some(failure) = step_raised(call_name, raises, &error, &what) {
+                        panic!("{failure}");
+                    }
+                    continue;
+                }
+                (Ok(_), Some(raises)) => panic!("{what}: the step {call_name} succeeded, and it expects {raises}"),
+                (returned, None) => returned?,
+            };
+            if let Some(expected) = step.get("result") {
+                match returned {
+                    Returned::Value(value) => assert_eq!(&value, expected, "{what}: the step {call_name} of the function"),
+                    Returned::Instance(_) => panic!("{what}: the step {call_name} of the function returns an instance"),
+                }
             }
         }
+        Ok::<(), Error>(())
     }
+    .await;
+    NAMED.with_borrow_mut(|named| {
+        for given in &names {
+            named.remove(given);
+        }
+    });
+    ran?;
     match (function.get("result"), function.get("raise")) {
         (Some(result), None) => Ok(result.clone()),
         (None, Some(raise)) if raise == "exception" => Err(Error::config(CALLBACK_RAISED)),
@@ -689,6 +772,10 @@ async fn instance(value: &Value, what: &str) -> Instance {
 /// Makes an instance value, or names the call of its preparation that failed.
 async fn made(value: &Value, what: &str) -> Result<Instance, String> {
     let made = value.as_object().unwrap_or_else(|| panic!("{what}: an instance value is an object"));
+    if let Some(name) = made.get("bound") {
+        assert_eq!(made.len(), 1, "{what}: a bound value is {{bound}} alone");
+        return Ok(bound(name.as_str().unwrap_or_else(|| panic!("{what}: bound names a name")), what));
+    }
     let member = made.get("new").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an instance value names its member in new"));
     let empty = Map::new();
     let args = made.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args is no object")));
@@ -729,7 +816,7 @@ impl<F: Future> Future for Faulted<F> {
 }
 
 /// The keys of a case that are no parameter of its member (binding G-5).
-const RESERVED: [&str; 9] = ["id", "note", "rule", "raises", "result", "receiver", "after", "faults", "@files"];
+const RESERVED: [&str; 10] = ["id", "note", "rule", "raises", "result", "receiver", "with", "after", "faults", "@files"];
 
 /// Runs one case of `member` and adds to `failures` each difference between what the case states and what the member did:
 /// the test runs every case to its end and then names every case that failed (HR-86 of the checks, CORE-71).
@@ -760,6 +847,7 @@ pub(crate) async fn run_case(member: &str, case: &Value, failures: &mut Vec<Stri
         }
     }
     run_case_in(member, fields, &what, failures).await;
+    NAMED.with_borrow_mut(BTreeMap::clear);
     for db in OPENED.with_borrow_mut(std::mem::take) {
         db.close_async().await;
     }
@@ -783,6 +871,22 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
         },
         None => None,
     };
+    // with names the instances of the case after its receiver (binding GN-13pa). The JSON of the core keeps no key order, so
+    // no value of with names another: then their order is not observable.
+    if let Some(with) = fields.get("with") {
+        assert!(receiver.is_some(), "{what}: the member has no receiver, so the case names no with");
+        for (given, value) in with.as_object().unwrap_or_else(|| panic!("{what}: with is an object")) {
+            assert!(!value.to_string().contains("\"bound\""), "{what}: the value {given} of with names no other value");
+            match made(value, &what).await {
+                Ok(instance) => name(given, instance, &what),
+                Err(failure) => {
+                    failures.push(failure);
+                    NAMED.with_borrow_mut(BTreeMap::clear);
+                    return;
+                }
+            }
+        }
+    }
     let outcome = match fields.get("faults") {
         Some(faults) => {
             // The faults of a case are armed for the call of its member alone, as a generated binding test arms them
@@ -845,16 +949,26 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
     for step in after {
         let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an after step names call"));
         for key in step.as_object().unwrap_or_else(|| panic!("{what}: an after step is an object")).keys() {
-            assert!(["call", "args", "result"].contains(&key.as_str()), "{what}: an after step has no key {key}");
+            assert!(["on", "call", "args", "result", "raises"].contains(&key.as_str()), "{what}: an after step has no key {key}");
         }
         let args = step.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args of {name} is no object")));
-        let target = receiver.as_mut().unwrap_or_else(|| panic!("{what}: the case has no receiver to observe"));
-        match call(name, Some(target), args).await {
-            Ok(Returned::Value(value)) => assert_eq!(Some(&value), step.get("result"), "{what}: after {name}"),
-            Ok(Returned::Instance(_)) => panic!("{what}: after {name} returns an instance"),
-            Err(error) => panic!("{what}: after {name} failed: {error}"),
+        let returned = match step.get("on").and_then(Value::as_str) {
+            Some(on) => call_on(on, name, args, &what).await,
+            None => call(name, Some(receiver.as_mut().unwrap_or_else(|| panic!("{what}: the case has no receiver to observe"))), args).await,
+        };
+        match (returned, step.get("raises")) {
+            (Err(error), Some(raises)) => {
+                if let Some(failure) = step_raised(name, raises, &error, &what) {
+                    failures.push(failure);
+                }
+            }
+            (Ok(_), Some(raises)) => failures.push(format!("{what}: after {name} succeeded, and it expects {raises}")),
+            (Ok(Returned::Value(value)), None) => assert_eq!(Some(&value), step.get("result"), "{what}: after {name}"),
+            (Ok(Returned::Instance(_)), None) => panic!("{what}: after {name} returns an instance"),
+            (Err(error), None) => panic!("{what}: after {name} failed: {error}"),
         }
     }
+    NAMED.with_borrow_mut(BTreeMap::clear);
     drop((receiver, result));
 }
 

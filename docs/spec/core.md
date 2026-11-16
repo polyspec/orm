@@ -581,6 +581,13 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   after that rollback, where the rollback is reported as failed, which raises `rollback_failed` with the callback error
   and the rollback error (CORE-25). The legacy clients test the same failure through their test entry point of a
   failed rollback (`legacy/packages/python/tests/test_rollback_fault.py`, `legacy/packages/php/tests/RollbackTest.php`).
+- **CORE-136** The case runner of the core (`packages/rust/tests/unit/interface_cases.rs`) takes the named instances of
+  binding GN-13pa: the values of `with`, made after the receiver; `names` of a function fixture, which names its argument
+  for the steps of the inner fixtures; a step and a call of `after` with `"on": "<name>"`; an argument `{"bound":
+  "<name>"}`; and a step with `raises`, after which the next step runs (GN-13o). The JSON of the core keeps no key order,
+  so a value of `with` names no other value. The cases of `db.transaction` give `transaction_ended` to a query connected
+  to the handle of the callback and called after the callback returned (CORE-23), and `busy` to a statement of the handle
+  while a savepoint callback of the handle runs (CORE-22).
 - **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
   names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
   instance value, and a failure states its kind, its category and its whole message (CORE-12). The calls of `after`

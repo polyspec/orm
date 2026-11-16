@@ -492,6 +492,13 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   그 자리는 rollback을 실패로 보고하여 callback 오류와 rollback 오류를 가진 `rollback_failed`를 raise한다(CORE-25).
   legacy client는 같은 실패를 실패한 rollback의 test entry point로 시험한다
   (`legacy/packages/python/tests/test_rollback_fault.py`, `legacy/packages/php/tests/RollbackTest.php`).
+- **CORE-136** core의 case runner(`packages/rust/tests/unit/interface_cases.rs`)는 binding GN-13pa의 이름 붙은
+  instance를 받는다. receiver 다음에 만들어지는 `with`의 값, 안쪽 fixture의 step을 위해 자기 인자에 이름을 붙이는
+  function fixture의 `names`, `"on": "<name>"`을 가진 step과 `after`의 호출, 인자 `{"bound": "<name>"}`, 그리고
+  `raises`를 가진 step이다. `raises`를 가진 step 다음에는 다음 step이 돈다(GN-13o). core의 JSON은 key 순서를 지키지
+  않으므로 `with`의 값은 다른 값을 이름하지 않는다. `db.transaction`의 case는 callback의 handle에 connect되어 callback이
+  돌아온 뒤 호출되는 query에 `transaction_ended`를 주고(CORE-23), handle의 savepoint callback이 도는 동안 그 handle의
+  statement에 `busy`를 준다(CORE-22).
 - **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
   형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
   전체(CORE-12)를 적는다. `after`의 호출은 method를 부른 뒤의 receiver를 관찰하고, 각각 `{call, args, result}`다.
