@@ -26,8 +26,9 @@
 //
 // LEASE and STOP_PROCESS are the Go programs that the Makefile builds (tests/lease, tests/stop-process): Node has no
 // cross-process lease and no exit event of a process that is not its child.
-import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process';
-import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
+import { type ChildProcess, spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process';
+import type { Writable } from 'node:stream';
+import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createHash, X509Certificate } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
@@ -502,56 +503,83 @@ function mysqlTimezones(p: Paths, port: number): void {
   run('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', 'mysql'], { stdio: ['pipe', 'inherit', 'inherit'], input: tables.stdout });
 }
 
+// logReader starts the reader of the output of one server, in a new session so that it lives as long as its server (T501-1).
+// The reader is one awk process: it appends each line of `input` to log and flushes it, gives each line to the starting
+// process on its standard output until a line contains `line`, and then only appends, so a server that writes after its
+// start gets no SIGPIPE. Readiness is a line read from that pipe, and a server that ends first is the end of the pipe;
+// neither is a change event of the log, which on macOS stopped under load, so a start waited forever. `ready` is true
+// when the ready line was read and false when the output ended first. The reader ends when every writer of `input` has
+// ended, so it does not outlive its server (HR-87). `attached` closes the copy of `input` of this process once the server
+// holds it; `release` closes the pipe of this process after the start settled.
+export interface LogReader {
+  readonly child: ChildProcess;
+  readonly input: Writable;
+  readonly ready: Promise<boolean>;
+  attached(): void;
+  lines(each: (text: string) => void): void;
+  release(): void;
+}
+
+const LOG_READER = '{ print >> ENVIRON["LOG"]; fflush(ENVIRON["LOG"]) } !ready { print; fflush() } !ready && index($0, ENVIRON["READY_LINE"]) { ready = 1 }';
+
+export function logReader(log: string, line: string): LogReader {
+  const child = spawn('awk', [LOG_READER], { detached: true, stdio: ['pipe', 'pipe', 'ignore'], env: { PATH: process.env.PATH ?? '/usr/bin:/bin', LOG: log, READY_LINE: line } });
+  const output = child.stdout!;
+  let pending = '', seen = false, each: ((text: string) => void) | undefined, settle: (value: boolean) => void = () => {};
+  const buffered: string[] = [];
+  const ready = new Promise<boolean>(resolveReady => { settle = resolveReady; });
+  const give = (text: string) => {
+    if (seen) return;
+    if (each) each(text); else buffered.push(text);
+    if (text.includes(line)) { seen = true; settle(true); }
+  };
+  output.setEncoding('utf8');
+  output.on('data', (chunk: string) => {
+    const parts = (pending + chunk).split('\n');
+    pending = parts.pop() ?? '';
+    for (const text of parts) give(text);
+  });
+  output.once('end', () => { if (pending !== '') give(pending); pending = ''; settle(seen); });
+  return {
+    child, input: child.stdin!, ready,
+    attached: () => { child.stdin!.destroy(); },
+    lines: next => { each = next; for (const text of buffered.splice(0)) next(text); },
+    release: () => { output.destroy(); child.unref(); },
+  };
+}
+
 // startLogged runs a server in a new session (spawn's detached, setsid on POSIX: the server outlives the command that
 // started it and several runs share it, so ending the process group of the starting command does not reach it), with
-// its output appended to <dir>/<name>.log and its process id in <dir>/<name>.pid. Starting a server is a long operation:
-// it has no deadline, and its result is an observed event (docs/spec/feature-coverage.md FCV-18). The log is read on each
-// change event of the file, and once when the server has started, after the watcher is attached, so a line that is already
-// written is seen; each line before the ready line is shown on stderr as "test-servers: <name>: <line>". It resolves when
-// the server logs a line that contains <line>, and fails when the server exits first, naming the server and the last lines
-// of its log. It names what it waits for when it starts.
+// its output appended to <dir>/<name>.log by its logReader and its process id in <dir>/<name>.pid. Starting a server is a
+// long operation: it has no deadline, and its result is an observed event (docs/spec/feature-coverage.md FCV-18), the end
+// of the pipes of its reader. Each line before the ready line is shown on stderr as "test-servers: <name>: <line>". It
+// resolves when the server logs a line that contains <line>, and fails when the output of the server ends first, naming
+// the server and the last lines of its log. It names what it waits for when it starts.
 //
 // A start is cancelled by `cancel`, or by SIGINT or SIGTERM of this process while it waits: the server is asked to end
 // (SIGTERM to its group), the start waits for its exit with no time limit, and it fails with the cancellation and its log.
 // No SIGKILL is sent. A request that cannot be sent is kept beside the cancellation.
 export function startLogged(dir: string, name: string, line: string, command: string, args: string[], env?: NodeJS.ProcessEnv, cancel?: AbortSignal): Promise<void> {
   const log = join(dir, `${name}.log`);
-  const fd = openSync(log, 'a');
-  // The server's lines start at the size of the log before the server starts: read after the spawn, the size could
-  // already hold its first lines, and a ready line written before it would never be read.
-  let offset = statSync(log).size, pending = '', done = false;
-  const child = spawn(command, args, { detached: true, stdio: ['ignore', fd, fd], env });
-  closeSync(fd);
+  const reader = logReader(log, line);
+  const child = spawn(command, args, { detached: true, stdio: ['ignore', reader.input, reader.input], env });
+  reader.attached();
   process.stderr.write(`test-servers: ${name}: waits for the line '${line}' with no time limit; its log is ${log}\n`);
   return new Promise((resolveStart, rejectStart) => {
-    const reader = openSync(log, 'r');
-    let cancelling = false;
+    let cancelling = false, done = false;
     const interrupted = (signal: NodeJS.Signals) => { void cancelStart(`this process got ${signal}`); };
     const aborted = () => { void cancelStart(cancel?.reason instanceof Error ? cancel.reason.message : String(cancel?.reason)); };
     const finish = (error?: TestServerError) => {
       if (done) return;
       done = true;
-      watcher.close();
       cancel?.removeEventListener('abort', aborted);
       process.removeListener('SIGINT', interrupted);
       process.removeListener('SIGTERM', interrupted);
-      closeSync(reader);
+      reader.release();
       child.unref();
       if (error) rejectStart(error); else resolveStart();
     };
-    const read = () => {
-      if (done || cancelling) return;
-      const chunk = Buffer.alloc(65536);
-      for (let n; (n = readSync(reader, chunk, 0, chunk.length, offset)) > 0; offset += n) pending += chunk.subarray(0, n).toString('utf8');
-      const lines = pending.split('\n');
-      pending = lines.pop() ?? '';
-      for (const text of lines) {
-        if (done || cancelling) return;
-        process.stderr.write(`test-servers: ${name}: ${text}\n`);
-        if (text.includes(line)) finish();
-      }
-    };
-    const watcher = watch(log, read);
+    reader.lines(text => { if (!done && !cancelling) process.stderr.write(`test-servers: ${name}: ${text}\n`); });
     // A cancelled start asks its server to end and fails when the server has exited, with the cancellation and the log.
     const cancelStart = async (reason: string) => {
       if (done || cancelling) return;
@@ -584,11 +612,10 @@ export function startLogged(dir: string, name: string, line: string, command: st
     process.once('SIGINT', interrupted);
     process.once('SIGTERM', interrupted);
     child.on('error', error => { if (!cancelling) finish(new TestServerError(`test-servers: ${name}: ${error.message}`)); });
-    child.on('spawn', () => { writeFileSync(join(dir, `${name}.pid`), `${child.pid}\n`); read(); });
-    child.on('exit', () => {
+    child.on('spawn', () => { writeFileSync(join(dir, `${name}.pid`), `${child.pid}\n`); });
+    void reader.ready.then(seen => {
       if (done || cancelling) return;
-      read();
-      if (pending !== '') { const last = pending; pending = ''; process.stderr.write(`test-servers: ${name}: ${last}\n`); if (last.includes(line)) finish(); }
+      if (seen) { finish(); return; }
       const tail = readFileSync(log, 'utf8').split('\n').filter((text, index, all) => index < all.length - 1 || text !== '').slice(-20).join('\n');
       finish(new TestServerError(`test-servers: ${name} exited before it logged '${line}'; last lines of ${log}:\n${tail}`));
     });

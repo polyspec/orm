@@ -10,7 +10,7 @@ import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest } from '../tests/testcase.mts';
 import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
 import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
-import { environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError, TLS_SERVERS, type Paths } from './test-servers.mts';
+import { environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, logReader, startLogged, stopEarlierStart, stopPid, TestServerError, TLS_SERVERS, type Paths } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -792,12 +792,12 @@ caseTest('startLogged keeps the cancellation and the failure of its request, and
       assert.deepEqual(sent, ['SIGTERM'], 'one request, and no SIGKILL after it');
       const countAtSettle = forwarded.length;
       const offset = statSync(join(dir, 'blocked.log')).size;
-      await new Promise<void>(resolveLate => {
-        const late = watch(join(dir, 'blocked.log'), () => {
-          if (statSync(join(dir, 'blocked.log')).size > offset) { late.close(); closeLateWatcher = undefined; resolveLate(); }
-        });
-        closeLateWatcher = () => late.close();
-        if (statSync(join(dir, 'blocked.log')).size > offset) { late.close(); closeLateWatcher = undefined; resolveLate(); }
+      // A later line of the log is read by tail, whose first byte past the offset is the event (fs.watch lost events on macOS).
+      await new Promise<void>((resolveLate, rejectLate) => {
+        const late = spawn('tail', ['-c', `+${offset + 1}`, '-f', join(dir, 'blocked.log')], { stdio: ['ignore', 'pipe', 'inherit'] });
+        closeLateWatcher = () => { late.kill('SIGTERM'); };
+        late.once('error', rejectLate);
+        late.stdout.once('data', () => { late.kill('SIGTERM'); closeLateWatcher = undefined; resolveLate(); });
       });
       assert.equal(forwarded.length, countAtSettle, 'the log watcher forwarded output after the start settled');
     });
@@ -808,12 +808,53 @@ caseTest('startLogged keeps the cancellation and the failure of its request, and
   }
 });
 
-caseTest('startLogged resolves when the ready line is written at once, before its watcher is attached', async () => {
+caseTest('startLogged resolves when the ready line is written at once, before the start reads its pipe', async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   try {
     await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], isolatedEnvironment());
   } finally {
     cleanupStartedChild(dir, 'early');
+  }
+});
+
+// logReader learns that a server is ready from a pipe, not from the events of a file (T501-1): on macOS the change events
+// of a log stopped under load and a start waited forever. The reader appends the output of the server to its log, gives
+// its lines until the ready line on its pipe, and keeps appending until the server ends, so the server gets no SIGPIPE; it
+// ends with the server and leaves no process behind (HR-87).
+caseTest('logReader reports the ready line by its pipe and ends with its server', async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-logreader-')));
+  const log = join(dir, 'server.log');
+  try {
+    const reader = logReader(log, 'ready-now');
+    const lines: string[] = [];
+    const server = spawn(process.execPath, ['-e', "console.log('before'); console.log('ready-now'); process.stdin.resume(); process.stdin.on('end', () => { for (let i = 0; i < 2000; i++) console.log('after ' + i); process.exit(0); });"], { stdio: ['pipe', reader.input, reader.input] });
+    reader.attached();
+    reader.lines(text => lines.push(text));
+    assert.equal(await reader.ready, true, 'the reader reports the ready line');
+    assert.deepEqual(lines, ['before', 'ready-now']);
+    const readerExit = new Promise<number | null>(resolveExit => reader.child.once('exit', code => resolveExit(code)));
+    const serverExit = new Promise<number | null>(resolveExit => server.once('exit', code => resolveExit(code)));
+    server.stdin?.end();
+    assert.equal(await serverExit, 0, 'the server wrote after the ready line without SIGPIPE');
+    assert.equal(await readerExit, 0, 'the reader ended with its server');
+    assert.match(readFileSync(log, 'utf8'), /before\nready-now\n(after \d+\n){2000}$/);
+    const left = spawnSync('ps', ['-A', '-o', 'pid=,pgid='], { encoding: 'utf8' }).stdout.split('\n').filter(row => row.trim().split(/\s+/)[1] === String(reader.child.pid));
+    assert.deepEqual(left, [], 'no process of the reader is left');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+caseTest('logReader reports a server that ended before its ready line', async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-logreader-')));
+  try {
+    const reader = logReader(join(dir, 'server.log'), 'never');
+    spawn(process.execPath, ['-e', "console.log('only line')"], { stdio: ['ignore', reader.input, reader.input] });
+    reader.attached();
+    reader.lines(() => {});
+    assert.equal(await reader.ready, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 
