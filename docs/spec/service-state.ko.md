@@ -1,5 +1,5 @@
 <!-- doc-id: service-state -->
-<!-- source-sha256: e9555a5d11ef854bfdd5a8f846508eb5f7f1e8349ec26cdca8858473784087e0 -->
+<!-- source-sha256: 9b8b3ab6363eabe853aa8f04f59560a6b82c3e56e485adcbc9bc205a953e9d2e -->
 # 인터페이스 case의 service
 
 [English](service-state.md)
@@ -43,7 +43,7 @@
   `pg_terminate_backend(pg_backend_pid())`를 실행하고, `query`의 member는 view `service_pg_gone`을 읽거나 쓴다. 그
   view의 조건은 행마다 그 함수를 부르고, `WITH CHECK OPTION`이 insert에도 그 조건을 적용한다. case의 `db` instance
   값은 호출 전에 `db.execute`로 기본 표, 그 행, view를 만든다. 서버는 SQLSTATE 57P01로 session을 끝내고, 코어는 그것을
-  `connection_lost`로 바꾼다(`packages/rust/src/lib.rs`의 `PgDatabaseError` 대응). 이유: state program이 호출 사이에
+  `connection_lost`로 바꾼다(`packages/rust/src/lib.rs`의 `PgDatabaseError` 대응). 이때 `restore_or_create`는 끝난 session에서 transaction을 되돌릴 수 없어 `rollback_failed`를 낸다. 이유: state program이 호출 사이에
   끝낸 session은 다음 문장 전에 pool이 바꾸므로, 자기 session을 끝내는 문장만 그 kind에 닿는다.
 - **SVC-7** 코어는 `contracts/interface/service.json`의 case를 `packages/rust/tests/unit/interface_service_cases.rs`의
   시험 `the_core_passes_the_service_cases_of_its_contract`에서 실행의 서버로 실행한다(`make

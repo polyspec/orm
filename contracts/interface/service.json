@@ -186,97 +186,9 @@
         ]
       },
       "raises": {
-        "kind": "lock_not_available",
-        "category": "store",
-        "message": "lock_not_available: Statement aborted because lock(s) could not be acquired immediately and NOWAIT is set."
-      }
-    },
-    {
-      "id": "row_lock_statement_timeout",
-      "rule": "SVC-4",
-      "service": {
-        "id": "mysql",
-        "setup": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "table": "service_lock_row",
-          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
-          "rows": [
-            [
-              1,
-              "held"
-            ]
-          ],
-          "hold": {
-            "where": "id = 1",
-            "column": "label",
-            "mode": "update"
-          }
-        },
-        "check": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "release": true
-        }
-      },
-      "receiver": {
-        "new": "query.new",
-        "args": {
-          "schema": {
-            "new": "schema.load",
-            "args": {
-              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
-              "external_text": "",
-              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
-            }
-          },
-          "entity": "service_lock_row"
-        },
-        "then": [
-          {
-            "call": "query.connect",
-            "args": {
-              "connection": {
-                "new": "db.connect_schema",
-                "args": {
-                  "dsn": {
-                    "service": "address"
-                  },
-                  "schema": {
-                    "new": "schema.load",
-                    "args": {
-                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
-                      "external_text": "",
-                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
-                    }
-                  },
-                  "pool_size": 1,
-                  "cfg": {
-                    "statement_timeout_ms": 100
-                  }
-                }
-              }
-            }
-          },
-          {
-            "call": "query.where",
-            "args": {
-              "chain": "Id",
-              "values": [
-                {
-                  "kind": "int",
-                  "value": 1
-                }
-              ]
-            }
-          },
-          {
-            "call": "query.for_update"
-          }
-        ]
-      },
-      "raises": {
-        "kind": "canceled",
-        "category": "store",
-        "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
+        "category": "value",
+        "kind": "ir_invalid",
+        "message": "ir_invalid: row lock is only valid on one or all"
       }
     },
     {
@@ -365,9 +277,9 @@
         ]
       },
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     }
   ],
@@ -421,7 +333,7 @@
           }
         ]
       },
-      "chain": "Id",
+      "chain": "Seq",
       "values": [
         {
           "kind": "int",
@@ -510,92 +422,9 @@
         }
       ],
       "raises": {
-        "kind": "lock_not_available",
-        "category": "store",
-        "message": "lock_not_available: Statement aborted because lock(s) could not be acquired immediately and NOWAIT is set."
-      }
-    },
-    {
-      "id": "row_lock_statement_timeout",
-      "rule": "SVC-4",
-      "service": {
-        "id": "mysql",
-        "setup": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "table": "service_lock_row",
-          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
-          "rows": [
-            [
-              1,
-              "held"
-            ]
-          ],
-          "hold": {
-            "where": "id = 1",
-            "column": "label",
-            "mode": "update"
-          }
-        },
-        "check": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "release": true
-        }
-      },
-      "receiver": {
-        "new": "query.new",
-        "args": {
-          "schema": {
-            "new": "schema.load",
-            "args": {
-              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
-              "external_text": "",
-              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
-            }
-          },
-          "entity": "service_lock_row"
-        },
-        "then": [
-          {
-            "call": "query.connect",
-            "args": {
-              "connection": {
-                "new": "db.connect_schema",
-                "args": {
-                  "dsn": {
-                    "service": "address"
-                  },
-                  "schema": {
-                    "new": "schema.load",
-                    "args": {
-                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
-                      "external_text": "",
-                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
-                    }
-                  },
-                  "pool_size": 1,
-                  "cfg": {
-                    "statement_timeout_ms": 100
-                  }
-                }
-              }
-            }
-          },
-          {
-            "call": "query.for_update"
-          }
-        ]
-      },
-      "chain": "Id",
-      "values": [
-        {
-          "kind": "int",
-          "value": 1
-        }
-      ],
-      "raises": {
-        "kind": "canceled",
-        "category": "store",
-        "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
+        "category": "value",
+        "kind": "config",
+        "message": "config: row locks are allowed only inside a transaction"
       }
     },
     {
@@ -691,9 +520,9 @@
         }
       ],
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     }
   ],
@@ -747,7 +576,7 @@
           }
         ]
       },
-      "chain": "Id",
+      "chain": "Seq",
       "values": [
         {
           "kind": "int",
@@ -836,92 +665,9 @@
         }
       ],
       "raises": {
-        "kind": "lock_not_available",
-        "category": "store",
-        "message": "lock_not_available: Statement aborted because lock(s) could not be acquired immediately and NOWAIT is set."
-      }
-    },
-    {
-      "id": "row_lock_statement_timeout",
-      "rule": "SVC-4",
-      "service": {
-        "id": "mysql",
-        "setup": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "table": "service_lock_row",
-          "columns": "id BIGINT NOT NULL PRIMARY KEY, label VARCHAR(32)",
-          "rows": [
-            [
-              1,
-              "held"
-            ]
-          ],
-          "hold": {
-            "where": "id = 1",
-            "column": "label",
-            "mode": "update"
-          }
-        },
-        "check": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "release": true
-        }
-      },
-      "receiver": {
-        "new": "query.new",
-        "args": {
-          "schema": {
-            "new": "schema.load",
-            "args": {
-              "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
-              "external_text": "",
-              "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
-            }
-          },
-          "entity": "service_lock_row"
-        },
-        "then": [
-          {
-            "call": "query.connect",
-            "args": {
-              "connection": {
-                "new": "db.connect_schema",
-                "args": {
-                  "dsn": {
-                    "service": "address"
-                  },
-                  "schema": {
-                    "new": "schema.load",
-                    "args": {
-                      "manifest_text": "dbspec 1 service_lock\n\ntable service_lock_row {\n  id i64\n  label varchar(32)\n  primary key (id)\n}\n",
-                      "external_text": "",
-                      "manifest_hash": "sha256:0f4ffaa3b8dcbf5c5a533ef71dfb35cc3c2276b22b1ee8bbec0f554c22e781eb"
-                    }
-                  },
-                  "pool_size": 1,
-                  "cfg": {
-                    "statement_timeout_ms": 100
-                  }
-                }
-              }
-            }
-          },
-          {
-            "call": "query.for_update"
-          }
-        ]
-      },
-      "chain": "Id",
-      "values": [
-        {
-          "kind": "int",
-          "value": 1
-        }
-      ],
-      "raises": {
-        "kind": "canceled",
-        "category": "store",
-        "message": "canceled: Query execution was interrupted, maximum statement execution time exceeded"
+        "category": "value",
+        "kind": "ir_invalid",
+        "message": "ir_invalid: row lock is only valid on one or all"
       }
     },
     {
@@ -1017,9 +763,9 @@
         }
       ],
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     }
   ],
@@ -1190,9 +936,9 @@
         ]
       },
       "raises": {
-        "kind": "lock_not_available",
         "category": "store",
-        "message": "?"
+        "kind": "lock_not_available",
+        "message": "lock_not_available: canceling statement due to lock timeout (SQLSTATE 55P03)"
       }
     },
     {
@@ -1301,9 +1047,9 @@
         ]
       },
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     }
   ],
@@ -1366,15 +1112,13 @@
             }
           },
           {
-            "call": "query.where",
+            "call": "query.set",
             "args": {
-              "chain": "Seq",
-              "values": [
-                {
-                  "kind": "int",
-                  "value": 1
-                }
-              ]
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
             }
           }
         ]
@@ -1486,9 +1230,9 @@
         ]
       },
       "raises": {
-        "kind": "lock_not_available",
         "category": "store",
-        "message": "?"
+        "kind": "lock_not_available",
+        "message": "lock_not_available: canceling statement due to lock timeout (SQLSTATE 55P03)"
       }
     },
     {
@@ -1597,9 +1341,9 @@
         ]
       },
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     }
   ],
@@ -1652,15 +1396,13 @@
             }
           },
           {
-            "call": "query.where",
+            "call": "query.set",
             "args": {
-              "chain": "Seq",
-              "values": [
-                {
-                  "kind": "int",
-                  "value": 1
-                }
-              ]
+              "column": "seq",
+              "value": {
+                "kind": "int",
+                "value": 1
+              }
             }
           }
         ]
@@ -1762,9 +1504,9 @@
         ]
       },
       "raises": {
-        "kind": "lock_not_available",
         "category": "store",
-        "message": "?"
+        "kind": "lock_not_available",
+        "message": "lock_not_available: canceling statement due to lock timeout (SQLSTATE 55P03)"
       }
     },
     {
@@ -1863,89 +1605,14 @@
         ]
       },
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     }
   ],
   "query.restore.service": [
     {
-      "id": "missing_table",
-      "rule": "SVC-7",
-      "service": {
-        "id": "mysql",
-        "check": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "absent": "service_absent_event"
-        }
-      },
-      "receiver": {
-        "new": "query.new",
-        "args": {
-          "schema": {
-            "new": "schema.load",
-            "args": {
-              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
-              "external_text": "",
-              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
-            }
-          },
-          "entity": "service_absent_event"
-        },
-        "then": [
-          {
-            "call": "query.connect",
-            "args": {
-              "connection": {
-                "new": "db.connect_schema",
-                "args": {
-                  "dsn": {
-                    "service": "address"
-                  },
-                  "schema": {
-                    "new": "schema.load",
-                    "args": {
-                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
-                      "external_text": "",
-                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
-                    }
-                  },
-                  "pool_size": 1,
-                  "cfg": {}
-                }
-              }
-            }
-          },
-          {
-            "call": "query.set",
-            "args": {
-              "column": "seq",
-              "value": {
-                "kind": "int",
-                "value": 1
-              }
-            }
-          },
-          {
-            "call": "query.set",
-            "args": {
-              "column": "label",
-              "value": {
-                "kind": "text",
-                "value": "x"
-              }
-            }
-          }
-        ]
-      },
-      "raises": {
-        "kind": "driver",
-        "category": "store",
-        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
-      }
-    },
-    {
       "id": "a_row_that_a_prepared_transaction_holds",
       "rule": "SVC-4",
       "service": {
@@ -2036,9 +1703,9 @@
         ]
       },
       "raises": {
-        "kind": "lock_not_available",
         "category": "store",
-        "message": "?"
+        "kind": "lock_not_available",
+        "message": "lock_not_available: canceling statement due to lock timeout (SQLSTATE 55P03)"
       }
     },
     {
@@ -2137,89 +1804,14 @@
         ]
       },
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     }
   ],
   "query.restore_or_create.service": [
     {
-      "id": "missing_table",
-      "rule": "SVC-7",
-      "service": {
-        "id": "mysql",
-        "check": {
-          "service": "ORM_TEST_MYSQL_DSN",
-          "absent": "service_absent_event"
-        }
-      },
-      "receiver": {
-        "new": "query.new",
-        "args": {
-          "schema": {
-            "new": "schema.load",
-            "args": {
-              "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
-              "external_text": "",
-              "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
-            }
-          },
-          "entity": "service_absent_event"
-        },
-        "then": [
-          {
-            "call": "query.connect",
-            "args": {
-              "connection": {
-                "new": "db.connect_schema",
-                "args": {
-                  "dsn": {
-                    "service": "address"
-                  },
-                  "schema": {
-                    "new": "schema.load",
-                    "args": {
-                      "manifest_text": "dbspec 1 service_absent\n\ntable service_absent_event {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n",
-                      "external_text": "",
-                      "manifest_hash": "sha256:a4462375503ee212b4994f649b830d67a18f9554ebe559ac8e1ed7e9864736ab"
-                    }
-                  },
-                  "pool_size": 1,
-                  "cfg": {}
-                }
-              }
-            }
-          },
-          {
-            "call": "query.set",
-            "args": {
-              "column": "seq",
-              "value": {
-                "kind": "int",
-                "value": 1
-              }
-            }
-          },
-          {
-            "call": "query.set",
-            "args": {
-              "column": "label",
-              "value": {
-                "kind": "text",
-                "value": "x"
-              }
-            }
-          }
-        ]
-      },
-      "raises": {
-        "kind": "driver",
-        "category": "store",
-        "message": "driver: error returned from database: 1146 (42S02): Table 'orm_test.service_absent_event' doesn't exist"
-      }
-    },
-    {
       "id": "a_row_that_a_prepared_transaction_holds",
       "rule": "SVC-4",
       "service": {
@@ -2320,9 +1912,9 @@
         ]
       },
       "raises": {
-        "kind": "lock_not_available",
         "category": "store",
-        "message": "?"
+        "kind": "lock_not_available",
+        "message": "lock_not_available: canceling statement due to lock timeout (SQLSTATE 55P03)"
       }
     },
     {
@@ -2431,9 +2023,9 @@
         ]
       },
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "rollback_failed",
+        "message": "rollback_failed: the rollback failed after the callback failed: connection_lost: error communicating with database: expected to read 5 bytes, got 0 bytes at EOF"
       }
     }
   ],
@@ -2483,9 +2075,9 @@
       "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SELECT pg_terminate_backend(pg_backend_pid())\",\"tables\":[],\"bind_slots\":[]}",
       "params": [],
       "raises": {
-        "kind": "connection_lost",
         "category": "store",
-        "message": "?"
+        "kind": "connection_lost",
+        "message": "connection_lost: terminating connection due to administrator command (SQLSTATE 57P01)"
       }
     },
     {
@@ -2542,9 +2134,9 @@
       "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"SELECT id FROM service_pg_row WHERE id = 1 FOR UPDATE NOWAIT\",\"tables\":[],\"bind_slots\":[]}",
       "params": [],
       "raises": {
-        "kind": "lock_not_available",
         "category": "store",
-        "message": "?"
+        "kind": "lock_not_available",
+        "message": "lock_not_available: could not obtain lock on row in relation \"service_pg_row\" (SQLSTATE 55P03)"
       }
     }
   ]

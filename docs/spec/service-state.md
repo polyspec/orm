@@ -50,7 +50,8 @@ state.
   condition calls it for each row and which `WITH CHECK OPTION` applies to an insert too. The instance value of the
   `db` of the case creates the base table, its rows and the view with `db.execute` before the call. The server ends the
   session with SQLSTATE 57P01, which the core maps to `connection_lost` (`packages/rust/src/lib.rs`, the mapping of
-  `PgDatabaseError`). Why: a session that the state program ended between the calls is replaced by the pool before
+  `PgDatabaseError`). `restore_or_create` then raises `rollback_failed`, because its transaction cannot roll back on the ended session. Why:
+  a session that the state program ended between the calls is replaced by the pool before
   the next statement, so only a statement that ends its own session reaches the kind.
 - **SVC-7** The core runs the cases of `contracts/interface/service.json` in the test
   `the_core_passes_the_service_cases_of_its_contract` of `packages/rust/tests/unit/interface_service_cases.rs`, whose

@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 44528ac6ac013eeebcf819a60a76694d23a3e7abc31ac8d9586f768e85aace8c -->
+<!-- source-sha256: 498121b8a3a1b3c2258446cee51b06b0aeb93bb65e569a001425a3abc1086970 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -480,7 +480,9 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   builder가 terminal이 entity를 읽기 전에 모르는 열을 `config`로 거부하기 때문이다(CORE-82). `db.connect`와
   `db.connect_schema`는 `capability_unsupported`를 내지 않는다. 묶인 SQLite가 연결이 거부하는 유일한 경우인 3.46보다
   새롭기 때문이다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,
-  그것은 manifest가 아닌 텍스트를 연결 전에 거부한다.
+  그것은 manifest가 아닌 텍스트를 연결 전에 거부한다. `get_count`와 `get_count_by`는 행 잠금에 `lock_not_available`이
+  아니라 `ir_invalid`를 낸다. 요청의 검증이 count의 잠금을 거부하기 때문이다(`packages/rust/src/engine/validate.rs`).
+  `restore_or_create`는 실패 뒤 transaction을 되돌릴 수 없을 때, 서버가 끝낸 session에서처럼, `rollback_failed`를 낸다.
 - **CORE-121** 코어는 어떤 입력도 닿지 않는 category `internal`의 분기에 fault injection point를 두어, 계약의 case가
   그 point를 설정하고 그 분기가 일으키는 오류의 kind, category, message를 확인하게 한다(binding G-5, X-1). point는
   module `polyspec_orm::fault`의 상수를 받는 `binding_core::fault::point!`다. point는 코어의 feature `fault-test`가
