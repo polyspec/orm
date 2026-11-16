@@ -132,3 +132,11 @@ caseTest('a changed statement kind or result of a state contract is a difference
   assert.notDeepEqual(sequenceDifferences({ ...sequence, statements: (sequence.statements ?? []).slice(1) }, held, 'sqlite'), [], 'a missing statement');
   assert.notDeepEqual(sequenceDifferences({ ...sequence, expected: [false, 1, 1, 'runner', true, 0] }, held, 'sqlite'), [], 'a changed result');
 });
+
+caseTest('a body result that names the code of a kind in capitals matches the kind of the expect', () => {
+  // A language implementation returns the code of its catalog in capitals, and a recipe case states the kind (CORE-3, CORE-10).
+  const want = { result: { odd_length: 'codec_decode', white_space: 'codec_decode' }, statements: [] };
+  compareOutput('php/sqlite/hex_malformed', { result: { odd_length: 'CODEC_DECODE', white_space: 'CODEC_DECODE' }, statements: [] }, want);
+  assert.throws(() => compareOutput('php/sqlite/hex_malformed', { result: { odd_length: 'CONFIG', white_space: 'CODEC_DECODE' }, statements: [] }, want));
+  assert.throws(() => compareOutput('php/sqlite/hex_malformed', { result: { odd_length: 'codec_decode', white_space: 'Codec_decode' }, statements: [] }, want));
+});

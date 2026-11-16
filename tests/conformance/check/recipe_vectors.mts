@@ -257,9 +257,20 @@ export function sequenceDifferences(sequence: Sequence, recipeCase: Case, databa
   return [...out, ...resultValueDifferences(sequence.id, sequence.expected ?? null, recipeCase, database)];
 }
 
+/**
+ * The result of a body with each code of the catalog in capitals that stands where the expect states its kind replaced by
+ * that kind: a language implementation returns the code, and a recipe case states the kind (CORE-3, CORE-10).
+ */
+function codesAsKinds(got: Json, want: Json): Json {
+  if (typeof got === 'string' && typeof want === 'string') return kindOfCode(got) === want ? want : got;
+  if (Array.isArray(got) && Array.isArray(want)) return got.map((item, index) => codesAsKinds(item, want[index] ?? null));
+  if (isObject(got) && isObject(want)) return Object.fromEntries(Object.entries(got).map(([name, value]) => [name, codesAsKinds(value, want[name] ?? null)]));
+  return got;
+}
+
 /** Each statement of a body against the fields that the statement of the expect states. */
 export function compareOutput(name: string, got: Output, want: Output): void {
-  assert.deepEqual(got.result, want.result, `${name}: the result differs from its expect`);
+  assert.deepEqual(codesAsKinds(got.result, want.result), want.result, `${name}: the result differs from its expect`);
   assert.equal(got.statements.length, want.statements.length, `${name}: the number of statements differs from its expect`);
   for (const [index, statement] of want.statements.entries()) {
     const fields = record(statement);
