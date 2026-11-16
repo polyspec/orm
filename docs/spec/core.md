@@ -542,7 +542,7 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle, and `Collection`,
   `Page` and `LookaheadPage` take the type of a generated model, so they and the members that return them (`get`,
   `gets`, `gets_by`) are not declared either.
-- **CORE-130** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which
+- **CORE-133** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which
   runs `Tx::execute_text` as `Db::execute_text_machine` runs `Db::execute_text` (CORE-127): the step and the
   parameters are read as `db.execute` reads them, and the statement runs in the transaction of the handle. Why: a
   callback of `db.transaction` reaches its transaction only through the handle, so a statement of the callback needs a

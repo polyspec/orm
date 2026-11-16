@@ -458,7 +458,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
   `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의
   타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다.
-- **CORE-130** member `tx.execute`는 `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`이다. 이것은
+- **CORE-133** member `tx.execute`는 `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`이다. 이것은
   `Db::execute_text_machine`이 `Db::execute_text`를 실행하듯 `Tx::execute_text`를 실행한다(CORE-127). step과 parameter는
   `db.execute`가 읽는 대로 읽고, 문장은 handle의 트랜잭션에서 실행된다. 이유: `db.transaction`의 callback은 handle로만
   자기 트랜잭션에 닿으므로, callback의 문장에는 `tx`의 member가 필요하다.
