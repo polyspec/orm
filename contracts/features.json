@@ -99,7 +99,6 @@
         "legacy/packages/php-ext/tests/MysqlSessionNativeTest.php",
         "legacy/packages/ts/tests/sqlite-version.test.mjs",
         "legacy/packages/go/orm/mysqlonly/mysqlonly_test.go",
-        "packages/rust/src/db/sqlite_version_tests.rs",
         "legacy/packages/php/tests/PgsqlPdoAdapterCases.php",
         "legacy/packages/php/tests/PgsqlPdoAdapterTest.php",
         "legacy/packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",

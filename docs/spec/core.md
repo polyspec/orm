@@ -609,8 +609,8 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   restored row in its own transaction and does not raise `no_rows`; `db.execute` runs on the `Db` and raises neither
   `busy` nor `transaction_ended`, which only a `Tx` raises. No member of `Query` raises `column_unknown`: the builder
   refuses an unknown column with `config` (CORE-82) before a terminal reads the entity. `db.connect` and
-  `db.connect_schema` do not raise `capability_unsupported`: the bundled SQLite is newer than 3.46, the one version that
-  the connection refuses. `db.connect_schema` does not raise `schema_invalid`: a schema of the contract is made by
+  `db.connect_schema` do not raise `capability_unsupported`: the core asserts at its build that the SQLite it links is
+  3.46 or newer (DSL-150), so no connection meets an older one. `db.connect_schema` does not raise `schema_invalid`: a schema of the contract is made by
   `Schema::load`, which refuses a text that is no manifest before any connection. `get_count` and `get_count_by` raise
   `ir_invalid` and not `lock_not_available` for a row lock: the validation of the request refuses a lock on a count
   (`packages/rust/src/engine/validate.rs`). `restore_or_create` raises `rollback_failed` when its transaction cannot

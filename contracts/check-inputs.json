@@ -743,18 +743,6 @@
         "legacy/packages/ts/tests/sqlite-version.test.mjs"
       ]
     },
-    "sqlite-version-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/rust/src/db.rs",
-        "packages/rust/src/db/sqlite_version_tests.rs"
-      ]
-    },
     "split-read-plan-check": {
       "scope": "owner",
       "needs": [

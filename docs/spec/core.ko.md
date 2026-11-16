@@ -518,8 +518,8 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `row_not_deleted`는 `restore_or_create`만 낸다. `restore_or_create`는 복원한 행을 자기 transaction에서 읽으므로
   `no_rows`를 내지 않는다. `db.execute`는 `Db`에서 실행되어 `Tx`만 내는 `busy`와 `transaction_ended`를 내지 않는다. `Query`의 어떤 member도 `column_unknown`을 내지 않는다.
   builder가 terminal이 entity를 읽기 전에 모르는 열을 `config`로 거부하기 때문이다(CORE-82). `db.connect`와
-  `db.connect_schema`는 `capability_unsupported`를 내지 않는다. 묶인 SQLite가 연결이 거부하는 유일한 경우인 3.46보다
-  새롭기 때문이다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,
+  `db.connect_schema`는 `capability_unsupported`를 내지 않는다. core는 link한 SQLite가 3.46 이상임을 build 때
+  단언하므로(DSL-150) 어떤 연결도 더 오래된 SQLite를 만나지 않는다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,
   그것은 manifest가 아닌 텍스트를 연결 전에 거부한다. `get_count`와 `get_count_by`는 행 잠금에 `lock_not_available`이
   아니라 `ir_invalid`를 낸다. 요청의 검증이 count의 잠금을 거부하기 때문이다(`packages/rust/src/engine/validate.rs`).
   `restore_or_create`는 실패 뒤 transaction을 되돌릴 수 없을 때, 서버가 끝낸 session에서처럼, `rollback_failed`를 낸다.

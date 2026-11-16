@@ -759,10 +759,6 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, acqu
 mod execute_machine_tests;
 
 #[cfg(test)]
-#[path = "db/sqlite_version_tests.rs"]
-mod sqlite_version_tests;
-
-#[cfg(test)]
 #[path = "db/sqlite_row_lock_restore_tests.rs"]
 mod sqlite_row_lock_restore_tests;
 
@@ -778,34 +774,9 @@ mod pool_stats_tests;
 #[path = "../tests/unit/time_precision.rs"]
 mod time_precision_tests;
 
-fn parse_sqlite_version(version: &str) -> Result<(u32, u32, u32)> {
-    let text = format!(
-        "SQLite library version {version} is invalid; expected three or four decimal components that each fit u32",
-        version = polyspec_orm_schema::message::Quoted(&version)
-    );
-    let invalid = || Error::internal(text.clone());
-    let parts: Vec<&str> = version.split('.').collect();
-    if parts.len() != 3 && parts.len() != 4 {
-        return Err(invalid());
-    }
-    let mut numbers = Vec::with_capacity(parts.len());
-    for part in parts {
-        if part.is_empty() || !part.bytes().all(|byte| byte.is_ascii_digit()) {
-            return Err(invalid());
-        }
-        // Digits beyond u32 are the one failure of the parse here; its error follows the message (INT-187).
-        numbers.push(part.parse::<u32>().map_err(|error| Error::internal(format!("{text}: {error}")))?);
-    }
-    Ok((numbers[0], numbers[1], numbers[2]))
-}
-
-fn check_sqlite_version(version: &str) -> Result<()> {
-    let parsed = parse_sqlite_version(version)?;
-    if parsed < (3, 46, 0) {
-        return Err(Error::new(crate::Kind::CapabilityUnsupported, format!("SQLite {version} is older than 3.46")));
-    }
-    Ok(())
-}
+// The core links the SQLite that sqlx bundles: the feature `sqlite` of sqlx takes `sqlite-bundled`, which no crate above it
+// can remove. The build asserts that it is 3.46 or newer (DSL-150), so a connection reads no version and refuses none.
+const _: () = assert!(libsqlite3_sys::SQLITE_VERSION_NUMBER >= 3_046_000, "the SQLite that sqlx bundles is older than 3.46 (DSL-150)");
 
 trait SqliteRowLockSequenceOps {
     async fn set_nowait(&mut self) -> Result<()>;
@@ -1002,15 +973,6 @@ impl Db {
             // SQLite has no session timeout: its bound is the busy_timeout of the DSN (CFG-6), which the
             // statement timeout leaves as it is.
             ConnectOptions::Sqlite(o) => {
-                // The version of the SQLite library bundled by sqlx. No statement asking for it is sent.
-                let raw_version = libsqlite3_sys::SQLITE_VERSION;
-                let version = raw_version.to_str().map_err(|error| {
-                    Error::internal(format!(
-                        "SQLite library version bytes {} are not UTF-8: {error}",
-                        polyspec_orm_schema::message::quote_bytes(raw_version.to_bytes())
-                    ))
-                })?;
-                check_sqlite_version(version)?;
                 let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, cfg.pool_acquire_timeout_ms, &owner)
                     .connect_with(o.statement_cache_capacity(cache))
                     .await?;
