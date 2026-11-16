@@ -14,6 +14,11 @@ import { environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TL
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
+// A case that starts a child stops it with STOP_PROCESS. Without it the file fails before any case starts a child, so
+// no child outlives the run of the file (HR-87, T529): a cleanup that cannot stop its child would leave it running.
+const STOP_PROCESS = process.env.STOP_PROCESS;
+if (!STOP_PROCESS) throw new Error('STOP_PROCESS is unset; run make orm-test-servers-check, which builds it');
+
 // The storage settings of the servers (KSTD-5-88-5), read from the module so that a missing one fails its assertion.
 const { MYSQLD_STORAGE, POSTGRES_WAL, postgresArguments } = servers;
 
@@ -24,9 +29,7 @@ const processState = (pid: number): string => spawnSync('ps', ['-o', 'stat=', '-
 const exited = (pid: number): boolean => { const state = processState(pid); return state === '' || state.startsWith('Z'); };
 
 function killAndWait(pid: number): void {
-  const stop = process.env.STOP_PROCESS;
-  assert.ok(stop, 'STOP_PROCESS is unset; run make orm-test-servers-check, which builds it');
-  const result = spawnSync(stop, ['KILL', String(pid)], { encoding: 'utf8', env: isolatedEnvironment() });
+  const result = spawnSync(STOP_PROCESS, ['KILL', String(pid)], { encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, result.stderr);
 }
 
@@ -806,6 +809,18 @@ caseTest('startLogged keeps the cancellation and the failure of its request, and
     process.kill = originalKill;
     cleanupStartedChild(dir, 'blocked');
   }
+});
+
+caseTest('a run of this file without STOP_PROCESS fails before a case starts a child, and leaves no child (HR-87, T529)', () => {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  delete env['STOP_PROCESS'];
+  // A nested node --test reports to the runner that started it while NODE_TEST_CONTEXT is set, and exits with 0.
+  delete env['NODE_TEST_CONTEXT'];
+  const run = spawnSync(process.execPath, ['--test', '--test-name-pattern=ready line is written at once', import.meta.filename], { encoding: 'utf8', env });
+  assert.notEqual(run.status, 0, 'the run without STOP_PROCESS passed');
+  assert.match(`${run.stdout}${run.stderr}`, /STOP_PROCESS is unset/);
+  const left = spawnSync('pgrep', ['-f', "console.log\\('ready-at-once'\\)"], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(left, '', `the run without STOP_PROCESS left the child ${left}`);
 });
 
 caseTest('startLogged resolves when the ready line is written at once, before the start reads its pipe', async () => {
