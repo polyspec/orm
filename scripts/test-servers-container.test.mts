@@ -356,7 +356,8 @@ caseTest('the starts of PostgreSQL and MariaDB run the readiness program of thei
       // planned name, and its readiness program asks its admin database.
       const pgbouncer = text.slice(text.indexOf('  pgbouncer:\n'));
       assert.match(pgbouncer, /^ {4}image: "docker\.io\/edoburu\/pgbouncer@sha256:[0-9a-f]{64}"$/m, 'PgBouncer is not pinned by its digest');
-      assert.match(pgbouncer, /^ {4}command: \["pgbouncer", "\/orm-conf\/pgbouncer\.ini"\]$/m);
+      // The entrypoint of the image writes a configuration of its own, so the service runs pgbouncer itself.
+      assert.match(pgbouncer, /^ {4}entrypoint: \["pgbouncer"\]\n {4}command: \["\/orm-conf\/pgbouncer\.ini"\]$/m);
       assert.match(pgbouncer, /^ {4}volumes: \["\.\/pgbouncer-conf:\/orm-conf:ro"\]$/m);
       assert.match(pgbouncer, /^ {6}test: \["CMD", "pg_isready", "--host=127\.0\.0\.1", "--port=6432", "--username=orm", "--dbname=pgbouncer"\]$/m);
       assert.ok(!pgbouncer.includes('tmpfs:'), 'PgBouncer has a data directory');

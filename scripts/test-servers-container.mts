@@ -104,12 +104,14 @@ interface Volume { source: string; target: string; files?: readonly { file: stri
 // data is the data directory of the image, which a tmpfs replaces, so the data ends with the container; volumes are the
 // folders it mounts, such as a folder of the initialization directory of the image, for a setting that must hold before
 // the server accepts its first connection, or the configuration of a pooler; health is the readiness program of the
-// service, which runs in the container; after is the service that must be healthy before this one starts.
+// service, which runs in the container; after is the service that must be healthy before this one starts; entrypoint
+// replaces the entrypoint of the image, for an image whose entrypoint writes a configuration of its own.
 interface Service {
   name: string;
   image?: Image;
   port: number;
   data?: string;
+  entrypoint?: string[];
   command: string[];
   environment: Record<string, string>;
   volumes?: readonly Volume[];
@@ -250,9 +252,10 @@ const SERVERS: Record<Kind, Server> = {
       { name: 'postgres-replica', port: 5432, data: '/var/lib/postgresql/data', environment: postgresEnvironment, health: postgresHealth, after: 'postgres', volumes: [TLS_VOLUME],
         command: ['sh', '-c', `${postgresKey(`${TLS_MOUNT}/mismatch-key.pem`)} && chown postgres:postgres "$PGDATA" && chmod 0700 "$PGDATA" && gosu postgres pg_basebackup -D "$PGDATA" -R -C -S orm_replica -X stream -d 'host=${host('postgres')} port=5432 user=orm application_name=orm_replica' && exec docker-entrypoint.sh "$@"`, 'sh',
           'postgres', ...postgresSettings(`${TLS_MOUNT}/mismatch-cert.pem`)] },
-      // The image runs PgBouncer as its user 70, and its entrypoint runs the command that it is given.
+      // The image runs PgBouncer as its user 70. Its entrypoint writes /etc/pgbouncer/pgbouncer.ini from variables and
+      // fails without DB_HOST, so the service runs pgbouncer itself with the configuration of the native one.
       { name: 'pgbouncer', image: 'pgbouncer', port: 6432, environment: {}, after: 'postgres',
-        command: ['pgbouncer', `${CONF_MOUNT}/pgbouncer.ini`],
+        entrypoint: ['pgbouncer'], command: [`${CONF_MOUNT}/pgbouncer.ini`],
         volumes: [conf('pgbouncer', [{ file: 'pgbouncer.ini', text: pgbouncerConfigOf({ backendHost: host('postgres'), backend: 5432, listen: '0.0.0.0', port: 6432, authFile: `${CONF_MOUNT}/pgbouncer-users.txt` }) },
           { file: 'pgbouncer-users.txt', text: PGBOUNCER_USERS }])],
         health: ['pg_isready', '--host=127.0.0.1', '--port=6432', '--username=orm', '--dbname=pgbouncer'] },
@@ -520,6 +523,7 @@ function composeFile(list: readonly Kind[], services: readonly Placed[], part: P
     services: {
       ...Object.fromEntries(servers.map(service => [service.name, {
         image: image(service.image ?? service.kind),
+        ...(service.entrypoint === undefined ? {} : { entrypoint: service.entrypoint }),
         command: service.command,
         expose: [String(service.port)],
         environment: { TZ: SERVER_TIME_ZONE, ...service.environment },
