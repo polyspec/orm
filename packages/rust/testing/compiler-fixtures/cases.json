@@ -32,7 +32,7 @@
       "PLN-19"
     ],
     "expect": "success",
-    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.transaction(|_tx: polyspec_orm::Tx| async { Ok::<(), polyspec_orm::Error>(()) }, polyspec_orm::TransactionOptions::default()); }\n"
+    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.transaction_async(|_tx: polyspec_orm::Tx| async { Ok::<(), polyspec_orm::Error>(()) }, polyspec_orm::TransactionOptions::default()); }\n"
   },
   {
     "id": "generated-private-field-e0616",
