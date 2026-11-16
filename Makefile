@@ -1217,7 +1217,7 @@ dbspec-lock-python-check: python-venv-check
 # scripts/service-state.mts (docs/spec/service-state.md SVC-7, binding GN-13j).
 # The cases of contracts/interface/core.json that the core runs without a server (docs/spec/core.md CORE-71).
 .PHONY: interface-cases-rust
-interface-cases-rust:
+interface-cases-rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) interface-cases-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib interface_cases::the_core_passes_the_cases_of_its_contract -- --exact --nocapture
 
 .PHONY: interface-service-cases-rust
