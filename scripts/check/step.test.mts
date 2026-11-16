@@ -249,7 +249,12 @@ caseTest('an interrupted runner waits for the cleanup of its step before it exit
     const first = runStep(process.execPath, ['-e', ${JSON.stringify(stepScript)}], options).then(() => 'passed', error => 'failed: ' + error.message);
     process.on('SIGTERM', () => { runStep('true', [], options).then(() => console.log('second: admitted'), error => console.log('second: ' + error.message)); });
     console.log('first: ' + await first);
-  `], { stdio: ['ignore', 'pipe', 'pipe'], env: isolatedEnvironment() });
+  `], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    // The runner of the case keeps its temporary entries in the folder of the case (T548): its step places Node's compile
+    // cache under TMPDIR, which would otherwise be the temporary directory of the step that runs this case.
+    env: isolatedEnvironment({ TMPDIR: root }),
+  });
   try {
     let out = '';
     let err = '';
