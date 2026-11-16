@@ -14280,6 +14280,2058 @@
         "kind": "closed",
         "message": "closed: database is closed"
       }
+    },
+    {
+      "id": "a_statement_runs_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "result": {
+        "kind": "text",
+        "value": "done"
+      }
+    },
+    {
+      "id": "a_statement_runs_in_a_savepoint",
+      "rule": "CORE-21",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.savepoint",
+              "args": {
+                "callback": {
+                  "function": {
+                    "calls": [
+                      {
+                        "on": "0",
+                        "call": "tx.execute",
+                        "args": {
+                          "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}",
+                          "params": []
+                        }
+                      }
+                    ],
+                    "result": {
+                      "kind": "text",
+                      "value": "done"
+                    }
+                  }
+                }
+              },
+              "result": {
+                "kind": "text",
+                "value": "done"
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "result": {
+        "kind": "text",
+        "value": "done"
+      }
+    },
+    {
+      "id": "a_text_that_is_no_step_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "not json",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "value",
+        "kind": "config",
+        "message": "config: the step is no JSON text: expected ident at line 1 column 2"
+      }
+    },
+    {
+      "id": "a_list_parameter_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}",
+                "params": [
+                  {
+                    "kind": "list",
+                    "value": []
+                  }
+                ]
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "value",
+        "kind": "codec_encode",
+        "message": "codec_encode: the parameter 0 of execute is no value of a statement"
+      }
+    },
+    {
+      "id": "a_parameter_past_the_list_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES (?)\",\"tables\":[\"owner\"],\"bind_slots\":[{\"from\":\"param\",\"param\":0}]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "value",
+        "kind": "ir_invalid",
+        "message": "ir_invalid: bind slot 0 reads parameter 0, but execute has 0 parameters"
+      }
+    },
+    {
+      "id": "a_duplicate_key_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (code, qty, rev) VALUES ('live', 1, 1)\",\"tables\":[],\"bind_slots\":[]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "duplicate_key",
+        "message": "duplicate_key: UNIQUE constraint failed: item.code (SQLITE_CONSTRAINT_UNIQUE)"
+      }
+    },
+    {
+      "id": "a_duplicate_key_in_a_savepoint",
+      "rule": "CORE-21",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.savepoint",
+              "args": {
+                "callback": {
+                  "function": {
+                    "calls": [
+                      {
+                        "on": "0",
+                        "call": "tx.execute",
+                        "args": {
+                          "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (code, qty, rev) VALUES ('live', 1, 1)\",\"tables\":[],\"bind_slots\":[]}",
+                          "params": []
+                        }
+                      }
+                    ],
+                    "result": {
+                      "kind": "text",
+                      "value": "done"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "duplicate_key",
+        "message": "duplicate_key: UNIQUE constraint failed: item.code (SQLITE_CONSTRAINT_UNIQUE)"
+      }
+    },
+    {
+      "id": "a_missing_parent_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (code, owner_id, qty, rev) VALUES ('new', 9, 1, 1)\",\"tables\":[],\"bind_slots\":[]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "foreign_key",
+        "message": "foreign_key: FOREIGN KEY constraint failed (SQLITE_CONSTRAINT_FOREIGNKEY)"
+      }
+    },
+    {
+      "id": "a_missing_parent_in_a_savepoint",
+      "rule": "CORE-21",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.savepoint",
+              "args": {
+                "callback": {
+                  "function": {
+                    "calls": [
+                      {
+                        "on": "0",
+                        "call": "tx.execute",
+                        "args": {
+                          "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (code, owner_id, qty, rev) VALUES ('new', 9, 1, 1)\",\"tables\":[],\"bind_slots\":[]}",
+                          "params": []
+                        }
+                      }
+                    ],
+                    "result": {
+                      "kind": "text",
+                      "value": "done"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "foreign_key",
+        "message": "foreign_key: FOREIGN KEY constraint failed (SQLITE_CONSTRAINT_FOREIGNKEY)"
+      }
+    },
+    {
+      "id": "a_failed_check_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (code, qty, rev) VALUES ('new', -1, 1)\",\"tables\":[],\"bind_slots\":[]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "constraint",
+        "message": "constraint: CHECK constraint failed: ck_item_qty (SQLITE_CONSTRAINT_CHECK)"
+      }
+    },
+    {
+      "id": "a_failed_check_in_a_savepoint",
+      "rule": "CORE-21",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.savepoint",
+              "args": {
+                "callback": {
+                  "function": {
+                    "calls": [
+                      {
+                        "on": "0",
+                        "call": "tx.execute",
+                        "args": {
+                          "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (code, qty, rev) VALUES ('new', -1, 1)\",\"tables\":[],\"bind_slots\":[]}",
+                          "params": []
+                        }
+                      }
+                    ],
+                    "result": {
+                      "kind": "text",
+                      "value": "done"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "constraint",
+        "message": "constraint: CHECK constraint failed: ck_item_qty (SQLITE_CONSTRAINT_CHECK)"
+      }
+    },
+    {
+      "id": "a_read_only_database_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"PRAGMA query_only = 1\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "read_only",
+        "message": "read_only: attempt to write a readonly database (SQLITE_READONLY)"
+      }
+    },
+    {
+      "id": "a_read_only_database_in_a_savepoint",
+      "rule": "CORE-21",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"PRAGMA query_only = 1\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.savepoint",
+              "args": {
+                "callback": {
+                  "function": {
+                    "calls": [
+                      {
+                        "on": "0",
+                        "call": "tx.execute",
+                        "args": {
+                          "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}",
+                          "params": []
+                        }
+                      }
+                    ],
+                    "result": {
+                      "kind": "text",
+                      "value": "done"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "read_only",
+        "message": "read_only: attempt to write a readonly database (SQLITE_READONLY)"
+      }
+    },
+    {
+      "id": "a_statement_that_the_database_refuses_in_a_transaction",
+      "rule": "CORE-133",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.execute",
+              "args": {
+                "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO nothing (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}",
+                "params": []
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "driver",
+        "message": "driver: near \"nothing\": syntax error (SQLITE_ERROR)"
+      }
+    },
+    {
+      "id": "a_statement_that_the_database_refuses_in_a_savepoint",
+      "rule": "CORE-21",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          },
+          {
+            "call": "db.execute",
+            "args": {
+              "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+              "params": []
+            }
+          }
+        ]
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.savepoint",
+              "args": {
+                "callback": {
+                  "function": {
+                    "calls": [
+                      {
+                        "on": "0",
+                        "call": "tx.execute",
+                        "args": {
+                          "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO nothing (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}",
+                          "params": []
+                        }
+                      }
+                    ],
+                    "result": {
+                      "kind": "text",
+                      "value": "done"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "raises": {
+        "category": "store",
+        "kind": "driver",
+        "message": "driver: near \"nothing\": syntax error (SQLITE_ERROR)"
+      }
     }
   ],
   "step_runner.new": [

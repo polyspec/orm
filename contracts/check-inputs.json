@@ -5683,6 +5683,17 @@
         "packages/rust/Cargo.toml",
         "packages/rust/src/**"
       ]
+    },
+    "interface-cases-rust": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "contracts/interface/core.json",
+        "packages/rust/interface.json",
+        "packages/rust/tests/unit/interface_cases.rs"
+      ]
     }
   },
   "paths": {

@@ -1754,6 +1754,8 @@
           },
           "raises": [
             "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::IrInvalid",
             "polyspec_orm::Kind::CapabilityUnsupported",
             "polyspec_orm::Kind::RollbackFailed",
             "polyspec_orm::Kind::Internal",

@@ -338,7 +338,7 @@ async fn connection(value: &Value, what: &str) -> Connection {
 fn transaction_options(value: &Value, member: &str) -> TransactionOptions {
     let fields = value.as_object().unwrap_or_else(|| panic!("{member}: options is no record"));
     for name in fields.keys() {
-        assert!(["isolation", "read_only", "timeout_ms", "retry"].contains(&name.as_str()), "{member}: options has no field {name}");
+        assert!(["isolation", "read_only", "timeout_ms", "retry", "audit"].contains(&name.as_str()), "{member}: options has no field {name}");
     }
     let given = |name: &str| fields.get(name).unwrap_or_else(|| panic!("{member}: options gives no {name}")).clone();
     let isolation = match given("isolation").as_str() {
@@ -351,6 +351,8 @@ fn transaction_options(value: &Value, member: &str) -> TransactionOptions {
     };
     let ms = given("timeout_ms").as_u64();
     let retry = given("retry").as_u64().map(|n| u32::try_from(n).or_panic(|error| format!("{member}: retry {n} does not fit u32: {error}")));
+    // The cases give no audit values (INT-44): an audit of a case is null.
+    assert!(given("audit").is_null(), "{member}: options gives audit values, which no case of the core reads");
     TransactionOptions { isolation, read_only: given("read_only").as_bool(), timeout_ms: ms, retry, audit: None }
 }
 
@@ -588,6 +590,10 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             let options = transaction_options(field(args, "options", member), member);
             let what = format!("{member}: callback");
             Returned::Value(db.transaction_async(|tx| run_function(fixture.clone(), Instance::Tx(tx), what.clone()), options).await?)
+        }
+        ("tx.execute", Some(Instance::Tx(tx))) => {
+            tx.execute_text(&text(args, "step", member), orm_values(args, "params", member)?).await?;
+            Returned::Value(Value::Null)
         }
         ("tx.savepoint", Some(Instance::Tx(tx))) => {
             let fixture = field(args, "callback", member).clone();
