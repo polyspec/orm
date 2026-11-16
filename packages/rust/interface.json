@@ -465,6 +465,18 @@
       ],
       "reason": "CORE-121",
       "place": "polyspec_orm::Manifest::compile"
+    },
+    {
+      "id": "rollback",
+      "core": "polyspec_orm::fault::ROLLBACK",
+      "inject": [
+        "broken"
+      ],
+      "fills": [
+        "rollback_failed"
+      ],
+      "reason": "CORE-135",
+      "place": "polyspec_orm::Db::transaction"
     }
   ],
   "units": [

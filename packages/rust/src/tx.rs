@@ -976,7 +976,8 @@ async fn take_inner(tx: &TxShared) -> Result<TxInner> {
 /// is reported as failed with `FAULT` (`polyspec_orm::testing::fail_next_rollback`, feature
 /// `test-faults`).
 fn rollback_fault(db: &Db) -> Result<()> {
-    if db.inner.rollback_fault.swap(false, Ordering::AcqRel) {
+    // The fault injection point orm.rollback of the contract (CORE-135) reports the rollback as failed in the same way.
+    if db.inner.rollback_fault.swap(false, Ordering::AcqRel) || binding_core::fault::point!(crate::fault::ROLLBACK).is_some() {
         return Err(Error::new(crate::Kind::Fault, "test fault: the rollback of the transaction ran and is reported as failed"));
     }
     Ok(())

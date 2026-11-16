@@ -575,6 +575,12 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   operations are what the editors run in the browser (plan OM-1.2, F-15), and a member that needs a connection has no
   database to reach there; a declared target set keeps the coverage of each target true, where a mask of cases or a
   stub that raises would not (T493-8).
+- **CORE-135** The kind `rollback_failed` of `db.transaction` arises only when the rollback of a transaction whose
+  callback failed fails on the driver, which no input of a case makes, so the core holds the fault injection point
+  `orm.rollback` (`polyspec_orm::fault::ROLLBACK`, injected as `broken`; binding G-5, CORE-121 for the form of a point)
+  after that rollback, where the rollback is reported as failed, which raises `rollback_failed` with the callback error
+  and the rollback error (CORE-25). The legacy clients test the same failure through their test entry point of a
+  failed rollback (`legacy/packages/python/tests/test_rollback_fault.py`, `legacy/packages/php/tests/RollbackTest.php`).
 - **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
   names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
   instance value, and a failure states its kind, its category and its whole message (CORE-12). The calls of `after`

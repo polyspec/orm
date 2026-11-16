@@ -35,6 +35,9 @@ pub mod fault {
     /// A column of the rows of a step that the plan does not project: the kind `internal`, which no input reaches.
     #[doc(hidden)]
     pub const INTERNAL: &str = "orm.internal";
+    /// The rollback of a transaction whose callback failed, reported as failed: the kind `rollback_failed` (CORE-135).
+    #[doc(hidden)]
+    pub const ROLLBACK: &str = "orm.rollback";
 }
 pub mod ir;
 mod kind;

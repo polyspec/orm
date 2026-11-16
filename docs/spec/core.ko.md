@@ -486,6 +486,12 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   뺀 `only`와 이유 CORE-134를 가진다(binding Q-4). 이유: dbspec 연산은 editor가 browser에서 실행하는 것이고(plan
   OM-1.2, F-15), 연결이 필요한 member는 거기서 닿을 database가 없다. 선언된 target 집합은 각 target의 coverage를
   사실대로 두지만, case를 가리는 mask나 오류를 내는 stub은 그렇지 않다(T493-8).
+- **CORE-135** `db.transaction`의 kind `rollback_failed`는 callback이 실패한 transaction의 rollback이 driver에서
+  실패할 때만 생기며, case의 어떤 입력도 그것을 만들지 못한다. 그래서 core는 그 rollback 뒤에 fault injection point
+  `orm.rollback`(`polyspec_orm::fault::ROLLBACK`, `broken`으로 주입, binding G-5, point의 형식은 CORE-121)을 둔다.
+  그 자리는 rollback을 실패로 보고하여 callback 오류와 rollback 오류를 가진 `rollback_failed`를 raise한다(CORE-25).
+  legacy client는 같은 실패를 실패한 rollback의 test entry point로 시험한다
+  (`legacy/packages/python/tests/test_rollback_fault.py`, `legacy/packages/php/tests/RollbackTest.php`).
 - **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
   형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
   전체(CORE-12)를 적는다. `after`의 호출은 method를 부른 뒤의 receiver를 관찰하고, 각각 `{call, args, result}`다.
