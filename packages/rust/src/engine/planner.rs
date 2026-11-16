@@ -386,6 +386,25 @@ fn placed_joins(g: &ir::Group, out: &mut Vec<String>) {
     }
 }
 
+/// Whether an item after the first of the top level of `g` joins with `or`.
+fn has_top_or(g: &ir::Group) -> bool {
+    g.items.iter().skip(1).any(|item| match item {
+        ir::Item::Pred { pred } => pred.conn == "or",
+        ir::Item::Group { group } => group.conn == "or",
+        ir::Item::Joined { joined } => joined.conn == "or",
+    })
+}
+
+/// Writes the top-level group at `top.0` of the conditions of a WHERE in parentheses when it holds `or` at its top level
+/// (`top.1`) and the WHERE joins it by AND to another condition (T572).
+fn parenthesize_joined(where_: &mut [String], top: Option<(usize, bool)>) {
+    if let Some((at, true)) = top {
+        if where_.len() > 1 {
+            where_[at] = format!("({})", where_[at]);
+        }
+    }
+}
+
 fn has_where(g: &Option<ir::Group>) -> bool {
     g.as_ref().map(|g| !g.items.is_empty()).unwrap_or(false)
 }
@@ -582,10 +601,13 @@ impl<'m> Planner<'m> {
         if let Some(soft_delete) = &root.ent.soft_delete {
             where_.push(format!("{} IS NULL", self.qcol(root, soft_delete)));
         }
+        let mut top = None;
         if let Some(g) = q.where_.as_ref().filter(|g| !g.items.is_empty()) {
+            top = Some((where_.len(), has_top_or(g) && !g.not && rc.is_none()));
             where_.push(self.render_group(&mut b, root, root, g, rc.is_none())?);
         }
         self.collect_join_where(&mut b, root, root, &mut where_)?;
+        parenthesize_joined(&mut where_, top);
         if !where_.is_empty() {
             sb.push_str(" WHERE ");
             sb.push_str(&where_.join(" AND "));
@@ -953,6 +975,14 @@ impl<'m> Planner<'m> {
         Ok(())
     }
 
+    /// Renders the top-level group `g` of a statement whose WHERE joins it by AND to other conditions when `joined`: a
+    /// group that holds `or` at its top level is then written in parentheses, so that the other conditions, such as the
+    /// soft-delete column of the entity, hold for every row that the group selects (T572).
+    fn render_top(&self, b: &mut Builder, root: &Scope<'_>, s: &Scope<'_>, g: &ir::Group, joined: bool) -> Result<String> {
+        let text = self.render_group(b, root, s, g, true)?;
+        Ok(if joined && !g.not && has_top_or(g) { format!("({text})") } else { text })
+    }
+
     /// Renders a group; `top` omits the outer parentheses.
     fn render_group(&self, b: &mut Builder, root: &Scope<'_>, s: &Scope<'_>, g: &ir::Group, top: bool) -> Result<String> {
         let mut parts = Vec::new();
@@ -1188,10 +1218,13 @@ impl<'m> Planner<'m> {
         if let Some(soft_delete) = &root.ent.soft_delete {
             where_.push(format!("{} IS NULL", self.qcol(root, soft_delete)));
         }
+        let mut top = None;
         if let Some(w) = sub.query.where_.as_ref().filter(|g| !g.items.is_empty()) {
+            top = Some((where_.len(), has_top_or(w) && !w.not));
             where_.push(self.render_group(b, root, root, w, true)?);
         }
         self.collect_join_where(b, root, root, &mut where_)?;
+        parenthesize_joined(&mut where_, top);
         if !where_.is_empty() {
             sb.push_str(" WHERE ");
             sb.push_str(&where_.join(" AND "));
@@ -1500,7 +1533,7 @@ impl<'m> Planner<'m> {
             sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
         }
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(crate::Kind::IrInvalid, "update without where"))?;
-        let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
+        let mut where_ = self.render_top(&mut b, &root, &root, w, r.optimistic.is_some() || ent.soft_delete.is_some())?;
         if let Some(o) = &r.optimistic {
             let ph = b.col_param(o.p, self.column_of(ent, &o.column)?, "");
             where_.push_str(&format!(" AND {} = {ph}", self.qcol(&root, &o.column)));
@@ -1529,7 +1562,7 @@ impl<'m> Planner<'m> {
             }
         }
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(crate::Kind::IrInvalid, "delete without where"))?;
-        let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
+        let mut where_ = self.render_top(&mut b, &root, &root, w, ent.soft_delete.is_some())?;
         let sql = match &ent.soft_delete {
             Some(soft_delete) => {
                 where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, soft_delete)));
@@ -1561,7 +1594,7 @@ impl<'m> Planner<'m> {
         if !audited.is_empty() {
             sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
         }
-        let mut where_ = self.render_group(&mut b, &root, &root, &parts.where_, true)?;
+        let mut where_ = self.render_top(&mut b, &root, &root, &parts.where_, true)?;
         where_.push_str(&format!(" AND {} IS NOT NULL", self.qcol(&root, soft_delete)));
         let sql = format!("UPDATE {} SET {} WHERE {where_}", b.table(&ent.table), sets.join(", "));
         b.checked()?;

@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 9a5e504bb20103d1c7dc0dd82b0b4f2b2b142d0f5223ba76688ccbd90a92f0e6 -->
+<!-- source-sha256: 95894270755ab7944f6117eee7622aabbd133ed483540808c8a4e9a8a2eb59ec -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `legacy/packages/go/engine/ir/ir.go`와 `legacy/packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -152,6 +152,11 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
   선언하고, 2의 요청을 `VERSION_MISMATCH`로 거부하며, `ir_version` 1을 유지하는 `legacy/tests/`와
   `legacy/contracts/fixtures/`의 고정 사본을 돈다(CORE-1). `tests/ir/`와 `contracts/fixtures/`는 `ir_version` 2의
   요청을 담는다.
+- **PRT-93** 문장의 `WHERE`는 조건들을 `AND`로 잇는다: relation의 key 목록, `soft_delete` 설정을 가진 table의 soft
+  delete 열, 최상위 `where` group, `joined` 항목이 자리를 정하지 않은 join의 `where` group, 기대 revision, restore의
+  삭제된 행 조건이다. 최상위에 `or`를 가진 최상위 group은 다른 조건과 이어질 때 괄호 안에 쓴다. 그래야 다른 조건이
+  group이 고른 모든 행에 적용된다: soft delete table을 `a OR b`로 읽으면 soft delete된 행을 읽지 않고, `a OR b`인
+  update, delete, restore는 다른 조건이 제외한 행을 쓰지 않는다(T572). 다른 조건이 없는 최상위 group은 괄호 없이 쓴다.
 
 ### 1.6 적재 {#_1-6-load}
 
