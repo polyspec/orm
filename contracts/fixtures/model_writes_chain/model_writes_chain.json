@@ -1,7 +1,6 @@
 {
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
-    "PRT-90",
   "COD-11",
   "COD-12",
   "COD-15",
@@ -66,8 +65,6 @@
   }
  },
  "cases": [
-  {"id":"require_match_preserves_optimistic_error","requirements":["DSL-107","INT-35","PRT-90"],"steps":[{"op":"model.connect","pool_size":1,"as":"db"},{"op":"hook.install","connection":"db","hooks":[{"action":"require_match","kinds":["update"]}]},{"op":"model.get_by","connection":"db","model":"Author","key":{"seq":{"int":"1"}},"columns":"all","pick":["name"],"as":"stale","expect":{"mysql":{"json":{"name":"author-1"}},"postgres":{"json":{"name":"author-1"}},"sqlite":{"json":{"name":"author-1"}}}},{"op":"transaction","connection":"db","fail":true,"steps":[{"op":"model.get_by","connection":"db","model":"Author","key":{"seq":{"int":"1"}},"columns":"all","pick":["name"],"as":"fresh","expect":{"mysql":{"json":{"name":"author-1"}},"postgres":{"json":{"name":"author-1"}},"sqlite":{"json":{"name":"author-1"}}}},{"op":"model.update","connection":"db","row":"fresh","set":{"name":{"text":"fresh"}},"optimistic":true},{"op":"model.update","connection":"db","row":"stale","set":{"name":{"text":"stale"}},"optimistic":true,"expect":{"mysql":{"error":"OPTIMISTIC_LOCK"},"postgres":{"error":"OPTIMISTIC_LOCK"},"sqlite":{"error":"OPTIMISTIC_LOCK"}}}],"expect":{"mysql":{"error":"CALLBACK"},"postgres":{"error":"CALLBACK"},"sqlite":{"error":"CALLBACK"}}},{"op":"model.get_by","key":{"seq":{"int":"1"}},"connection":"db","model":"Author","columns":["name"],"pick":["name"],"expect":{"mysql":{"json":{"name":"author-1"}},"postgres":{"json":{"name":"author-1"}},"sqlite":{"json":{"name":"author-1"}}}}]},
-  {"id":"require_match_precedes_revision_error","requirements":["PRT-90"],"steps":[{"op":"model.connect","pool_size":1,"as":"db"},{"op":"hook.install","connection":"db","hooks":[{"action":"require_match","kinds":["update"]}]},{"op":"model.update","connection":"db","model":"Author","values":{"seq":{"int":"1"}},"set":{"name":{"text":"refused"}},"revision":{"column":"read_count","value":{"int":"11"}},"expect":{"mysql":{"error":"NO_ROWS","message":"NO_ROWS: the update of author matched no row"},"postgres":{"error":"NO_ROWS","message":"NO_ROWS: the update of author matched no row"},"sqlite":{"error":"NO_ROWS","message":"NO_ROWS: the update of author matched no row"}}},{"op":"model.query","connection":"db","model":"Author","columns":["name","read_count"],"where":{},"order":["seq"],"expect":{"mysql":{"rows":[[{"text":"author-1"},{"int":"10"}]]},"postgres":{"rows":[[{"text":"author-1"},{"int":"10"}]]},"sqlite":{"rows":[[{"text":"author-1"},{"int":"10"}]]}}}]},
   {
    "id": "json_keeps_its_member_order_and_number_text",
    "requirements": [

@@ -4,13 +4,13 @@ import { readFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { caseTest, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../../tests/testcase.mts';
 import { OrmError } from '../dist/index.js';
 import { connect as connectFixture, MANIFEST_HASH } from '../dist/models/models.js';
 
 const cases = JSON.parse(readFileSync(new URL('../../../tests/ir/restore-analysis-shape.json', import.meta.url)));
 for (const fixture of cases) {
-  caseTest(`restore_analysis_shape/${fixture.id}`, DATABASE, async () => {
+  caseTest(`restore_analysis_shape/${fixture.id}`, async () => {
     const directory = await mkdtemp(join(tmpdir(), 'orm-restore-shape-'));
     const db = await connectFixture(`sqlite://${join(directory, 'shape.sqlite')}`);
     const request = structuredClone(fixture.request);
