@@ -29,18 +29,19 @@ const VERSION = 'v0.0.0-stand-in+dirty';
 // ssh finds it on PATH; the directory of the projects that it holds; and the files that change what it does: while
 // upFails exists, an up records its project and exits with 1, and the job check fails as its servers would; while absent
 // exists, images reports each image as missing and up -no-pull and job add fail before they record anything; while
-// execFails exists, a step of a server exits with 7; while schema exists, version reports its text as the schema
+// execFails exists, a step of a server exits with 7; a step that reads the state of a privilege probe server prints
+// the state of the native server, and while stateDiffers exists, another state; while schema exists, version reports its text as the schema
 // version, and while release exists, its text as the version of bay; while checkFails exists, the command of the job
 // check exits with 5, and while buildFails exists, the build command of the job build exits with 6. A job runs when it
 // is added, and a job added again with its key is returned and does not run; while unended exists, a job added is
 // queued and does not end, and its wait exits with 1 as a wait that ends before its job does. ups.log has the services of each up and
 // each job.
-interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; schema: string; release: string; checkFails: string; buildFails: string; unended: string; ups: string }
+interface StandIn { bay: string; state: string; calls: string; upFails: string; absent: string; execFails: string; stateDiffers: string; schema: string; release: string; checkFails: string; buildFails: string; unended: string; ups: string }
 
 function standIn(dir: string): StandIn {
   const stand: StandIn = {
     bay: join(dir, 'bin/bay'), state: join(dir, 'projects'), calls: join(dir, 'calls.log'),
-    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), unended: join(dir, 'unended'), ups: join(dir, 'ups.log'),
+    upFails: join(dir, 'up-fails'), absent: join(dir, 'absent'), execFails: join(dir, 'exec-fails'), stateDiffers: join(dir, 'state-differs'), schema: join(dir, 'schema'), release: join(dir, 'release-version'), checkFails: join(dir, 'check-fails'), buildFails: join(dir, 'build-fails'), unended: join(dir, 'unended'), ups: join(dir, 'ups.log'),
   };
   mkdirSync(stand.state, { recursive: true });
   mkdirSync(dirname(stand.bay), { recursive: true });
@@ -136,6 +137,8 @@ else if (command === 'logs') console.log('the last lines of ' + rest.at(-1));
 else if (command === 'exec') {
   if (!existsSync(project)) fail('the project is not up');
   if (existsSync(${JSON.stringify(stand.execFails)})) { console.error('ERROR 1045: the statement failed'); process.exit(7); }
+  const sql = rest.at(-1) ?? '';
+  if (sql.startsWith('SELECT @@log_bin')) console.log(existsSync(${JSON.stringify(stand.stateDiffers)}) ? '1\\t1\\t0' : sql.includes('@@super_read_only') ? '1\\t0\\t0\\t0' : '1\\t0\\t0');
 } else fail('unknown command ' + command, 2);
 `);
   chmodSync(stand.bay, 0o755);
@@ -324,6 +327,7 @@ caseTest('a start of MySQL has a service for each server on a tmpfs, the certifi
       ['mysql-replica', `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1`],
       ['mysql', 'CREATE DATABASE orm_test'],
       ['mysql-privilege', 'CREATE DATABASE orm_test'],
+      ['mysql-privilege', 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only, @@super_read_only'],
     ], 'the replica does not follow the primary from its reset binary log before the databases are created');
     const [, follow, databases] = steps(stand).map(step => step.at(-1) ?? '');
     for (const statement of ['START REPLICA', 'SET GLOBAL super_read_only = ON']) assert.ok(follow?.includes(statement), `the replica misses ${statement}: ${follow}`);
@@ -331,7 +335,7 @@ caseTest('a start of MySQL has a service for each server on a tmpfs, the certifi
     assert.ok(follow?.endsWith('SET GLOBAL super_read_only = ON'), `the replica sets more than the native replica does: ${follow}`);
     assert.ok(databases?.includes('CREATE DATABASE orm_tools') && databases.includes(ORM_ACCOUNTS_SQL), `the primary has no databases and accounts of the user orm: ${databases}`);
     assert.ok(!ran.some(command => command.includes('getent')), 'run.sh resolves an address');
-    assert.equal(ran.length, 7, `the start ran another command of bay: ${ran.join(' | ')}`);
+    assert.equal(ran.length, 8, `the start ran another command of bay: ${ran.join(' | ')}`);
     // run.sh is a file of sh that names no other program of the host than bay, no timer and no JSON.
     const script = file(context.root, project, 'run.sh');
     assert.ok(script.startsWith('#!/bin/sh\n') && !/\bnode\b|\bjq\b|\bsleep\b|--json/.test(script), 'run.sh needs another program than sh and bay, waits by a timer, or reads JSON');
@@ -396,7 +400,7 @@ caseTest('the starts of PostgreSQL and MariaDB run the readiness program of thei
       const mariadbConfig = file(mariadb.root, mariadbProject, 'mariadb-proxysql-conf/proxysql.cnf');
       assert.ok(mariadbConfig.includes(`{ address="${mariadbProject}-mariadb.${SUFFIX}", port=3306,`) && /server_version="\d+\.\d+\.\d+-MariaDB"/.test(mariadbConfig), mariadbConfig);
       const mariadbSteps = steps(stand, mariadbProject);
-      assert.deepEqual(mariadbSteps.map(step => [...step.slice(0, 2), step.at(-1)?.split(';')[0]]), [['mariadb', 'mariadb', 'CREATE DATABASE orm_test'], ['mariadb-privilege', 'mariadb', 'CREATE DATABASE orm_test']]);
+      assert.deepEqual(mariadbSteps.map(step => [...step.slice(0, 2), step.at(-1)?.split(';')[0]]), [['mariadb', 'mariadb', 'CREATE DATABASE orm_test'], ['mariadb-privilege', 'mariadb', 'CREATE DATABASE orm_test'], ['mariadb-privilege', 'mariadb', 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only']]);
       assert.ok(mariadbSteps[0]?.at(-1)?.includes(ORM_ACCOUNTS_SQL), 'the MariaDB primary has no accounts of the user orm');
       assert.equal(mariadbVariables['ORM_TEST_MARIADB_DSN'], `mysql://root@${mariadbProject}-mariadb.${SUFFIX}:3306/orm_test`);
       assert.ok(!('ORM_TEST_MARIADB_SOCKET' in mariadbVariables));
@@ -473,6 +477,14 @@ caseTest('a start whose bay up fails prints the last lines of each service and r
     for (const part of ['bay: service mysql stopped during healthcheck', 'the last lines of mysql\n', 'the last lines of mysql-replica\n']) assert.ok(output.includes(part), `report/bay-up-servers.log misses ${part}: ${output}`);
     assert.equal(file(context.root, project, 'report/bay-up-servers.status'), '1\n');
     assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ bay up of orm-[0-9a-f]{12}-[0-9a-f]{8} exited with 1$/m);
+  }));
+
+caseTest('a start whose privilege probe server answers another state than the native one fails naming it and removes its project (BAY9, T523)', () =>
+  withOneCheckout(async (dir, stand, context) => {
+    writeFileSync(stand.stateDiffers, '');
+    await assert.rejects(start('mysql', context), /mysql-privilege answered 1\t1\t0, not the state 1\t0\t0\t0/);
+    assert.equal(verbs(stand).at(-1), 'down');
+    assert.deepEqual(projects(context.root), []);
   }));
 
 caseTest('a start whose step fails in a started server names the step and its status and removes its project (BAY9)', () =>
@@ -691,7 +703,7 @@ caseTest('a run of several kinds is one project with the servers, the steps and 
     assert.deepEqual(ended, { code: 0, signal: null }, 'the command of a run of two kinds lacks the variables of a kind');
     const host = only(context.root);
     assert.deepEqual([...compose(context.root, host).matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'postgres', 'postgres-replica', 'pgbouncer']);
-    assert.deepEqual(steps(stand, host).map(step => step[0]), ['mysql', 'mysql-replica', 'mysql', 'mysql-privilege', 'postgres'], 'the steps of each kind did not run in the containers of its servers');
+    assert.deepEqual(steps(stand, host).map(step => step[0]), ['mysql', 'mysql-replica', 'mysql', 'mysql-privilege', 'mysql-privilege', 'postgres'], 'the steps of each kind did not run in the containers of its servers');
     // The servers of a container take the smaller caches that the documentation states.
     const services = compose(context.root, host);
     assert.equal([...services.matchAll(/"--innodb-buffer-pool-size=64M"/g)].length, 3, 'a MySQL server takes another buffer pool');

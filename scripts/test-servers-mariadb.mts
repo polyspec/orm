@@ -139,8 +139,8 @@ function mariadbReplicaStopped(port: number): string | undefined {
 
 // PRIVILEGE_STATE is what the privilege probe server answers to PRIVILEGE_STATE_SQL: binary logging on, trust-function-creators
 // off and a writable server, the state that mysqlPrivilegeReady requires of the MySQL one.
-const PRIVILEGE_STATE_SQL = 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only';
-const PRIVILEGE_STATE = '1\t0\t0';
+export const PRIVILEGE_STATE_SQL = 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only';
+export const PRIVILEGE_STATE = '1\t0\t0';
 
 function mariadbPrivilegeState(port: number): string {
   const checked = spawnSync('mariadb', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', 'orm_test',

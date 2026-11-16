@@ -52,9 +52,9 @@ import { chmodSync, closeSync, copyFileSync, existsSync, mkdirSync, openSync, re
 import { join, resolve } from 'node:path';
 import { errorCode } from '../tests/errors.mts';
 import { MARIADB_VERSION } from './mariadb-build.mts';
-import { holdExclusiveLease, issueTls, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, MYSQL_TLS_SERVER_NAMES, ORM_ACCOUNTS_SQL, PGBOUNCER_USERS, pgbouncerConfigOf,
+import { holdExclusiveLease, issueTls, MYSQL_PRIVILEGE_STATE, MYSQL_PRIVILEGE_STATE_SQL, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, MYSQL_TLS_SERVER_NAMES, ORM_ACCOUNTS_SQL, PGBOUNCER_USERS, pgbouncerConfigOf,
   POSTGRES_PREPARED, POSTGRES_WAL, proxysqlConfigOf, TestServerError } from './test-servers.mts';
-import { MARIADBD_MYSQL_DEFAULTS, MARIADBD_PERFORMANCE_SCHEMA, MARIADBD_PRIVILEGE_BINLOG, MARIADBD_STORAGE } from './test-servers-mariadb.mts';
+import { MARIADBD_MYSQL_DEFAULTS, MARIADBD_PERFORMANCE_SCHEMA, MARIADBD_PRIVILEGE_BINLOG, MARIADBD_STORAGE, PRIVILEGE_STATE, PRIVILEGE_STATE_SQL } from './test-servers-mariadb.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
 // SCHEMA is the contract schema version of bay that this script and its run.sh are written for. A run takes the bay of
@@ -124,7 +124,9 @@ type Placed = Service & { kind: Kind };
 const placed = (list: readonly Kind[], host: (service: string) => string): Placed[] => list.flatMap(kind => SERVERS[kind].services(host).map(service => ({ ...service, kind })));
 
 // Step is a command that prepares a started server: it runs in the container of its service after bay up returned.
-interface Step { service: string; command: string[] }
+// expect is the output that the command prints, a line without its end, when the step checks the state of its server:
+// another output fails the step, as the native start fails a server that answers another state.
+interface Step { service: string; command: string[]; expect?: string }
 
 // Endpoint is where the checks reach the servers of a project: the host name of each service by its name, the authority
 // that signed the certificates of bay, the test CA, which signed the mismatch certificate, the second CA, which signed
@@ -219,6 +221,7 @@ const SERVERS: Record<Kind, Server> = {
         `CHANGE REPLICATION SOURCE TO SOURCE_HOST='${host('mysql')}', SOURCE_PORT=3306, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1; START REPLICA; SET GLOBAL super_read_only = ON`] },
       { service: 'mysql', command: ['mysql', '-uroot', '-e', DATABASES_SQL] },
       { service: 'mysql-privilege', command: ['mysql', '-uroot', '-e', 'CREATE DATABASE orm_test'] },
+      { service: 'mysql-privilege', command: ['mysql', '-uroot', '-N', '-B', 'orm_test', '-e', MYSQL_PRIVILEGE_STATE_SQL], expect: MYSQL_PRIVILEGE_STATE },
     ],
     variables: ({ host, authority, test, other, leases }) => {
       const mysql = `mysql://root@${host('mysql')}:3306`;
@@ -281,6 +284,7 @@ const SERVERS: Record<Kind, Server> = {
     steps: () => [
       { service: 'mariadb', command: ['mariadb', '-uroot', '-e', DATABASES_SQL] },
       { service: 'mariadb-privilege', command: ['mariadb', '-uroot', '-e', 'CREATE DATABASE orm_test'] },
+      { service: 'mariadb-privilege', command: ['mariadb', '-uroot', '-N', '-B', 'orm_test', '-e', PRIVILEGE_STATE_SQL], expect: PRIVILEGE_STATE },
     ],
     variables: ({ host, authority, test, other, leases }) => {
       const mariadb = `mysql://root@${host('mariadb')}:3306`;
@@ -678,7 +682,12 @@ up() {
 ${logs}
     failed "$status" "bay up"
   }
-${steps.map(step => `  at ${quote(`bay exec ${step.service} ${step.command[0] ?? ''}`)}\n  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${quote(`bay exec ${step.service} ${step.command.join(' ')}`)}`).join('\n')}
+${steps.map(step => {
+    const what = quote(`bay exec ${step.service} ${step.command.join(' ')}`);
+    const at = `  at ${quote(`bay exec ${step.service} ${step.command[0] ?? ''}`)}\n`;
+    if (step.expect === undefined) return `${at}  b exec ${quote(step.service)} ${words(step.command)} >&2 || failed "$?" ${what}`;
+    return `${at}  answer=$(b exec ${quote(step.service)} ${words(step.command)}) || failed "$?" ${what}\n  [ "$answer" = ${quote(step.expect)} ] || { say "${step.service} answered $answer, not the state "${quote(step.expect)}; failed 1 ${what}; }`;
+  }).join('\n')}
   cat > "$dir/servers.env.tmp" <<ENVIRONMENT
 ${environment.join('\n')}
 ENVIRONMENT
@@ -850,7 +859,11 @@ mkdir -p "$run/report"
 at() { printf '%s %s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$run/report/steps.log"; }
 steps() {
   set -e
-${steps.map(step => `  at ${quote(`setup: ${tcp(step).slice(0, 3).join(' ')}`)}\n  ${words(tcp(step))}`).join('\n')}
+${steps.map(step => {
+  const at = `  at ${quote(`setup: ${tcp(step).slice(0, 3).join(' ')}`)}\n`;
+  if (step.expect === undefined) return `${at}  ${words(tcp(step))}`;
+  return `${at}  answer=$(${words(tcp(step))})\n  [ "$answer" = ${quote(step.expect)} ] || { echo "setup-${kind}.sh: ${step.service} answered $answer, not the state "${quote(step.expect)} >&2; exit 1; }`;
+}).join('\n')}
 }
 { (steps); echo "$?" > "$run/report/setup-${kind}-status"; } 2>&1 | tee -a "$run/report/setup-${kind}.log"
 exit "$(cat "$run/report/setup-${kind}-status")"

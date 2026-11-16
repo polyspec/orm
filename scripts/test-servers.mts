@@ -133,6 +133,10 @@ export const MYSQL_LOWER_CASE = 1;
 export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=ON'];
 // The dialect privilege probe needs binary logging with trust-function-creators disabled. It runs on a separate writable
 // server so this setting never changes the shared primary or the read-only replica.
+// MYSQL_PRIVILEGE_STATE is what the privilege probe server answers to MYSQL_PRIVILEGE_STATE_SQL: binary logging on,
+// trust-function-creators off, and the server writable; the native and the container form check it after the start.
+export const MYSQL_PRIVILEGE_STATE_SQL = 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only, @@super_read_only';
+export const MYSQL_PRIVILEGE_STATE = '1\t0\t0\t0';
 export const MYSQLD_PRIVILEGE_BINLOG = ['--log-bin=binlog', '--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=OFF'];
 // MYSQLD_STORAGE is the InnoDB log space of both mysqld. The redo log takes innodb_redo_log_capacity as files from the
 // start (100 MiB by default); 16 MiB holds the largest transaction of the checks with room to spare, and a smaller
@@ -454,8 +458,8 @@ function mysqlPrivilegeReady(p: Paths): boolean {
   const port = mysqlPrivilegePort(p);
   if (port === undefined || !pidRunning(p.mysqlPrivilegePid)) return false;
   const checked = spawnSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', 'orm_test',
-    '-e', 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only, @@super_read_only'], { encoding: 'utf8' });
-  return checked.status === 0 && checked.stdout.trim() === '1\t0\t0\t0';
+    '-e', MYSQL_PRIVILEGE_STATE_SQL], { encoding: 'utf8' });
+  return checked.status === 0 && checked.stdout.trim() === MYSQL_PRIVILEGE_STATE;
 }
 
 function startMysqlPrivilege(p: Paths): void {
@@ -483,8 +487,8 @@ function startMysqlPrivilege(p: Paths): void {
     run('mysqld', mysqlPrivilegeArguments(p, port));
     mysqlAt(port, 'CREATE DATABASE orm_test');
     const checked = spawnSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', 'orm_test',
-      '-e', 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only, @@super_read_only'], { encoding: 'utf8' });
-    if (checked.status !== 0 || checked.stdout.trim() !== '1\t0\t0\t0')
+      '-e', MYSQL_PRIVILEGE_STATE_SQL], { encoding: 'utf8' });
+    if (checked.status !== 0 || checked.stdout.trim() !== MYSQL_PRIVILEGE_STATE)
       throw new TestServerError(`test-servers: MySQL privilege probe server reports ${checked.stdout.trim() || checked.stderr.trim() || `exit ${checked.status}`}; want binary logging on, log_bin_trust_function_creators=0 and a writable server`);
     writeFileSync(tmp, `export ORM_TEST_MYSQL_PRIVILEGE_DSN='mysql://root@127.0.0.1:${port}/orm_test'\nexport ORM_TEST_MYSQL_PRIVILEGE_LEASES='${p.mysqlPrivilegeLeases}'\n`);
     renameSync(tmp, p.mysqlPrivilegeEnv);
