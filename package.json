@@ -33,7 +33,7 @@
     "@napi-rs/cli": "3.10.12",
     "@polyspec/binding": "https://github.com/polyspec/binding/releases/download/v0.0.13/polyspec-binding-0.0.13.tgz",
     "@polyspec/json": "https://github.com/polyspec/json/releases/download/v0.0.31/polyspec-json-0.0.31.tgz",
-    "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.114/polyspec-kit-0.0.114.tgz",
+    "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.116/polyspec-kit-0.0.116.tgz",
     "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.25/polyspec-ordered-json-0.0.25.tgz",
     "@types/mdast": "4.0.4",
     "@types/node": "26.6.5",
