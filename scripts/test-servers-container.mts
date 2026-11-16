@@ -54,7 +54,7 @@ import { errorCode } from '../tests/errors.mts';
 import { MARIADB_VERSION } from './mariadb-build.mts';
 import { holdExclusiveLease, issueTls, MYSQL_PRIVILEGE_STATE, MYSQL_PRIVILEGE_STATE_SQL, SERVER_TIME_ZONE, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQLD_STORAGE, MYSQL_LOWER_CASE, MYSQL_TLS_SERVER_NAMES, ORM_ACCOUNTS_SQL, PGBOUNCER_USERS, pgbouncerConfigOf,
   POSTGRES_PREPARED, POSTGRES_WAL, proxysqlConfigOf, TestServerError } from './test-servers.mts';
-import { MARIADBD_MYSQL_DEFAULTS, MARIADBD_PERFORMANCE_SCHEMA, MARIADBD_PRIVILEGE_BINLOG, MARIADBD_STORAGE, PRIVILEGE_STATE, PRIVILEGE_STATE_SQL } from './test-servers-mariadb.mts';
+import { MARIADBD_BINLOG, MARIADBD_MYSQL_DEFAULTS, MARIADBD_PERFORMANCE_SCHEMA, MARIADBD_PRIVILEGE_BINLOG, MARIADBD_STORAGE, PRIVILEGE_STATE, PRIVILEGE_STATE_SQL } from './test-servers-mariadb.mts';
 
 const REPOSITORY = resolve(import.meta.dirname, '..');
 // SCHEMA is the contract schema version of bay that this script and its run.sh are written for. A run takes the bay of
@@ -151,6 +151,10 @@ const postgresTls = (ca: string, host: string) => `postgres://orm@${host}:5432/o
 const mysqlTlsOptions = [`--ssl-ca=${BAY_TLS}/ca.pem`, `--ssl-cert=${BAY_TLS}/cert.pem`, `--ssl-key=${BAY_TLS}/key.pem`];
 const mismatchTlsOptions = [`--ssl-ca=${TLS_MOUNT}/ca.pem`, `--ssl-cert=${TLS_MOUNT}/mismatch-cert.pem`, `--ssl-key=${TLS_MOUNT}/mismatch-key.pem`];
 const TLS_VOLUME: Volume = { source: 'tls', target: TLS_MOUNT };
+// FILES_VOLUME is the secure_file_priv of a MariaDB server: an empty folder that the server reads only, since MariaDB has no
+// NULL of it, as the native servers name a folder of their own (mariadbdArguments); MySQL takes --secure-file-priv=NULL.
+const FILES_VOLUME: Volume = { source: 'mariadb-files', target: '/orm-files', files: [] };
+const MARIADB_FILES = `--secure-file-priv=${FILES_VOLUME.target}`;
 
 // SMALL_BUFFER_POOL and SMALL_SHARED_BUFFERS are the caches of a server of a container, half and a quarter of the
 // defaults of 128 MiB; the memory that the services of a run use on the machine that runs the DB groups is measured in
@@ -166,7 +170,9 @@ const mysqlArguments = (serverId: number, tls: readonly string[] = mysqlTlsOptio
 // role privilege): a writable server whose binary log has trust-function-creators off. The MariaDB one presents the
 // certificate of bay, which the MariaDB client of setup-mariadb.sh verifies; the native one has no TLS files.
 const mysqlPrivilegeArguments = ['mysqld', '--mysqlx=OFF', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MYSQLD_PRIVILEGE_BINLOG, ...MYSQLD_STORAGE, ...SMALL_BUFFER_POOL, '--server-id=3'];
-const mariadbPrivilegeArguments = ['mariadbd', `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MARIADBD_PRIVILEGE_BINLOG, ...MARIADBD_STORAGE, ...MARIADBD_PERFORMANCE_SCHEMA, ...MARIADBD_MYSQL_DEFAULTS,
+const mariadbPrimaryArguments = ['mariadbd', MARIADB_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MARIADBD_BINLOG, ...MARIADBD_STORAGE, ...MARIADBD_PERFORMANCE_SCHEMA, ...MARIADBD_MYSQL_DEFAULTS,
+  ...SMALL_BUFFER_POOL, '--server-id=1', ...mysqlTlsOptions];
+const mariadbPrivilegeArguments = ['mariadbd', MARIADB_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`, ...MARIADBD_PRIVILEGE_BINLOG, ...MARIADBD_STORAGE, ...MARIADBD_PERFORMANCE_SCHEMA, ...MARIADBD_MYSQL_DEFAULTS,
   ...SMALL_BUFFER_POOL, '--server-id=3', ...mysqlTlsOptions];
 
 // A pooler reads its configuration from the folder <service>-conf of the run, which it mounts at CONF_MOUNT. ProxySQL
@@ -278,10 +284,12 @@ const SERVERS: Record<Kind, Server> = {
     // healthcheck.sh is the readiness program of the image; --connect requires a connection over TCP. MariaDB has no
     // replica in a container, so the server mariadb-mismatch presents the mismatch certificate.
     services: host => [
-      { name: 'mariadb', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', ...mysqlOptions, ...SMALL_BUFFER_POOL, '--server-id=1', ...mysqlTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' },
-        health: mariadbHealth },
-      { name: 'mariadb-privilege', port: 3306, data: '/var/lib/mysql', command: mariadbPrivilegeArguments, environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' }, health: mariadbHealth },
-      { name: 'mariadb-mismatch', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', ...SMALL_BUFFER_POOL, ...mismatchTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' }, volumes: [TLS_VOLUME],
+      // The primary takes the arguments of the native one (mariadbdArguments of the role primary), which name the MariaDB
+      // forms of the binary log and the redo log (T540).
+      { name: 'mariadb', port: 3306, data: '/var/lib/mysql', command: mariadbPrimaryArguments, environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' },
+        volumes: [FILES_VOLUME], health: mariadbHealth },
+      { name: 'mariadb-privilege', port: 3306, data: '/var/lib/mysql', command: mariadbPrivilegeArguments, environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' }, volumes: [FILES_VOLUME], health: mariadbHealth },
+      { name: 'mariadb-mismatch', port: 3306, data: '/var/lib/mysql', command: ['mariadbd', MARIADB_FILES, ...SMALL_BUFFER_POOL, ...mismatchTlsOptions], environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: '1' }, volumes: [TLS_VOLUME, FILES_VOLUME],
         health: mariadbHealth },
       proxysql('mariadb-proxysql', host('mariadb'), `${MARIADB_VERSION}-MariaDB`, 'mariadb'),
     ],
@@ -1066,8 +1074,9 @@ function write(list: readonly Kind[], context: Context, form: Form, command: rea
     // file in it is readable by every user.
     for (const volume of services.flatMap(service => service.volumes ?? [])) {
       if (volume.files === undefined) continue;
+      // Several services mount one folder, such as the files folder of the MariaDB servers.
       const folder = join(at.dir, volume.source);
-      mkdirSync(folder);
+      mkdirSync(folder, { recursive: true });
       chmodSync(folder, 0o755);
       for (const each of volume.files) {
         writeFileSync(join(folder, each.file), each.text);
