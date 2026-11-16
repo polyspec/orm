@@ -4,8 +4,10 @@
 
 use binding_core::{BytesOut, Failure, FloatOut, Handle, HostText, HostValue, HostValues, IntOut, MapOut, OutValue, OutValues, ValueKind, ValueType};
 use indexmap::IndexMap;
+#[cfg(feature = "runtime")]
 use polyspec_orm_schema::dbspec::{Field, Type};
 
+#[cfg(feature = "runtime")]
 use crate::value::{Param, Val};
 use crate::{Error, Kind, Result};
 
@@ -91,12 +93,14 @@ fn no_value(what: &str) -> Failure<Error> {
 }
 
 /// The refusal of an `orm_value` that a condition does not take (CORE-82).
+#[cfg(feature = "runtime")]
 fn no_condition_value(what: &str) -> Error {
     Error::new(Kind::CodecEncode, format!("the value of a condition is {what}"))
 }
 
 impl OrmValue {
     /// The value of the cell `cell` of the column `field` (CORE-62): the type of the column decides the kind.
+#[cfg(feature = "runtime")]
     pub fn of_column(field: &Field, cell: Val) -> Result<OrmValue> {
         Ok(match cell {
             Val::Null => OrmValue::Null,
@@ -120,6 +124,7 @@ impl OrmValue {
     }
 
     /// The parameter of a value that is one value of a statement, or `None` for a value that is none.
+#[cfg(feature = "runtime")]
     pub(crate) fn scalar(self) -> std::result::Result<Param, OrmValue> {
         Ok(match self {
             OrmValue::Null => Param::Null,
@@ -133,6 +138,7 @@ impl OrmValue {
     }
 
     /// The name of the kind of a value that a condition does not take.
+#[cfg(feature = "runtime")]
     fn refused_kind(&self) -> &'static str {
         match self {
             OrmValue::Json(_) => "a JSON value",
@@ -143,11 +149,13 @@ impl OrmValue {
     }
 
     /// One value of a list of values.
+#[cfg(feature = "runtime")]
     fn item(self) -> Result<Param> {
         self.scalar().map_err(|refused| no_condition_value(refused.refused_kind()))
     }
 
     /// The condition value of a key whose operator is `op` (CORE-82).
+#[cfg(feature = "runtime")]
     pub(crate) fn into_arg(self, op: &str) -> Result<crate::core::Arg> {
         use crate::args::Value;
         use crate::core::Arg;
@@ -180,6 +188,7 @@ impl OrmValue {
 }
 
 /// The value of a column after a style stage other than `json`, in the kinds of CORE-62.
+#[cfg(feature = "runtime")]
 fn styled(value: serde_json::Value) -> Result<OrmValue> {
     Ok(match value {
         serde_json::Value::Null => OrmValue::Null,
@@ -439,6 +448,7 @@ impl OutValues for Children<'_> {
 
 /// The parameter of a value of a codec function (docs/spec/flowmark-surface.md FMS-50): a text, bytes or null. Another
 /// kind is `codec_encode`.
+#[cfg(feature = "runtime")]
 fn codec_value(value: OrmValue) -> Result<Param> {
     match value {
         OrmValue::Null => Ok(Param::Null),
@@ -449,6 +459,7 @@ fn codec_value(value: OrmValue) -> Result<Param> {
 }
 
 /// The cell of a codec function (FMS-50): a text, bytes or null. Another kind is `codec_decode`.
+#[cfg(feature = "runtime")]
 fn codec_cell(cell: OrmValue) -> Result<Val> {
     match cell {
         OrmValue::Null => Ok(Val::Null),
@@ -460,6 +471,7 @@ fn codec_cell(cell: OrmValue) -> Result<Val> {
 
 /// The value that a codec function decoded: the value of the stage `json` is a JSON value, the value of another value
 /// stage has the kinds of CORE-62, and a cell without a value stage is its text or its bytes.
+#[cfg(feature = "runtime")]
 fn decoded(value: Val) -> Result<OrmValue> {
     Ok(match value {
         Val::Null => OrmValue::Null,
@@ -475,6 +487,7 @@ fn decoded(value: Val) -> Result<OrmValue> {
 
 /// Decodes the stored cell `cell` through the codec stages `stages`, in write order, as `codec::decode` does (FMS-50).
 /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+#[cfg(feature = "runtime")]
 pub fn decode(stages: &[String], cell: &OrmValue) -> Result<OrmValue> {
     decoded(crate::codec::decode(stages, &codec_cell(cell.clone())?)?)
 }
@@ -482,6 +495,7 @@ pub fn decode(stages: &[String], cell: &OrmValue) -> Result<OrmValue> {
 /// Applies the host stages `aes`, `hex` and `ip` of `stages` to `value` in write order with the AES key `key`, as
 /// `codec::host_encode` does (FMS-50): the result is a text after `hex` and bytes otherwise, and null stays null.
 /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+#[cfg(feature = "runtime")]
 pub fn host_encode(value: &OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
     match crate::codec::host_encode(&codec_value(value.clone())?, stages, key)? {
         Param::Null => Ok(OrmValue::Null),
@@ -493,12 +507,14 @@ pub fn host_encode(value: &OrmValue, stages: &[String], key: &str) -> Result<Orm
 
 /// Undoes the host stages `stages` on the cell `cell` with the AES key `key`, as `codec::host_decode` does (FMS-50).
 /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+#[cfg(feature = "runtime")]
 pub fn host_decode(cell: &OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
     decoded(crate::codec::host_decode(&codec_cell(cell.clone())?, stages, key)?)
 }
 
 /// The blind index of `value` with the key `key`, as `codec::blind_index` does (FMS-50).
 /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+#[cfg(feature = "runtime")]
 pub fn blind_index(value: &OrmValue, key: &str) -> Result<String> {
     crate::codec::blind_index(&codec_value(value.clone())?, key)
 }

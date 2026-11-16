@@ -3,7 +3,10 @@
   "library": "orm",
   "core": {
     "crate": "polyspec-orm",
-    "path": "packages/rust"
+    "path": "packages/rust",
+    "features": {
+      "wasm": []
+    }
   },
   "targets": [
     "php",
@@ -485,7 +488,16 @@
           "visibility": "public",
           "type": "uint",
           "value": 3,
-          "core": "polyspec_orm::DEFAULT_RETRY"
+          "core": "polyspec_orm::DEFAULT_RETRY",
+          "only": {
+            "targets": [
+              "php",
+              "python",
+              "node",
+              "go"
+            ],
+            "reason": "CORE-134"
+          }
         },
         {
           "id": "default_pool_acquire_timeout_ms",
@@ -500,7 +512,16 @@
           "visibility": "public",
           "type": "uint",
           "value": 30000,
-          "core": "polyspec_orm::DEFAULT_POOL_ACQUIRE_TIMEOUT_MS"
+          "core": "polyspec_orm::DEFAULT_POOL_ACQUIRE_TIMEOUT_MS",
+          "only": {
+            "targets": [
+              "php",
+              "python",
+              "node",
+              "go"
+            ],
+            "reason": "CORE-134"
+          }
         },
         {
           "id": "ir_version",
@@ -1181,6 +1202,15 @@
       "kind": "enum",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::Isolation",
       "variants": [
         {
@@ -1222,6 +1252,15 @@
       "kind": "record",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::DbStats",
       "fields": [
         {
@@ -1267,6 +1306,15 @@
       "kind": "record",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::Config",
       "fields": [
         {
@@ -1426,6 +1474,15 @@
       "kind": "record",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::TransactionOptions",
       "fields": [
         {
@@ -1497,6 +1554,15 @@
       "kind": "interface",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::Connection",
       "members": []
     },
@@ -1509,6 +1575,15 @@
       "kind": "class",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::Db",
       "constructible": false,
       "final": true,
@@ -1853,6 +1928,15 @@
       "kind": "class",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::Tx",
       "constructible": false,
       "final": true,
@@ -1982,6 +2066,15 @@
       "kind": "class",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::AesKeyring",
       "final": true,
       "members": [
@@ -2066,6 +2159,15 @@
       "kind": "class",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::Schema",
       "constructible": false,
       "final": true,
@@ -3063,6 +3165,15 @@
       "kind": "class",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::Query",
       "constructible": false,
       "final": true,
@@ -4055,6 +4166,15 @@
       "kind": "class",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "core_type": "polyspec_orm::StepRunner",
       "constructible": false,
       "final": true,
@@ -4635,6 +4755,15 @@
       "kind": "functions",
       "visibility": "public",
       "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
       "members": [
         {
           "id": "codec.decode",

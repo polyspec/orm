@@ -1,23 +1,35 @@
 //! The Rust ORM runtime. Generated models record requests; this crate plans
 //! them into SQL for the connection's database (cached by request shape), runs
 //! the statements with sqlx, and assembles models.
+#![cfg_attr(
+    not(feature = "runtime"),
+    allow(dead_code, reason = "CORE-134: without the feature runtime the helpers that only execution calls have no caller")
+)]
 
 mod aggregate;
+#[cfg(feature = "runtime")]
 pub mod args;
 mod array;
+#[cfg(feature = "runtime")]
 mod bind_check;
 mod canonical;
 mod cell;
+#[cfg(feature = "runtime")]
 pub mod codec;
+#[cfg(feature = "runtime")]
 pub mod collection;
+#[cfg(feature = "runtime")]
 pub mod core;
+#[cfg(feature = "runtime")]
 pub mod db;
 pub mod dbspec;
 pub mod dbspec_json;
 pub mod decimal;
+#[cfg(feature = "runtime")]
 mod driver;
 pub mod engine;
 mod error;
+#[cfg(feature = "runtime")]
 pub mod events;
 /// The fault injection points of the crate (binding design G-5, X-1; docs/spec/core.md CORE-121), which `faults` of the
 /// interface contract names. A point does nothing unless the feature `fault-test` is on.
@@ -28,38 +40,52 @@ pub mod fault {
 }
 pub mod ir;
 mod kind;
+#[cfg(feature = "runtime")]
 pub mod listen;
+#[cfg(feature = "runtime")]
 pub mod markdown;
+#[cfg(feature = "runtime")]
 pub mod model;
 pub mod orm_value;
 pub mod plan;
+#[cfg(feature = "runtime")]
 pub mod query;
+#[cfg(feature = "runtime")]
 mod request;
+#[cfg(feature = "runtime")]
 pub mod row;
 pub mod schema;
+#[cfg(feature = "runtime")]
 mod sqlite_codes;
+#[cfg(feature = "runtime")]
 pub mod step;
 #[cfg(feature = "test-faults")]
 pub mod testing;
+#[cfg(feature = "runtime")]
 pub mod tx;
 
 #[cfg(test)]
 #[path = "../tests/common/test_support.rs"]
 mod test_support;
+#[cfg(feature = "runtime")]
 pub mod utils;
 pub mod value;
 
 /// The boundary types of `Config` and of the audit values, `OrderedMap`, `KeyedMap`, `Key` and `Failure`, which Rust
 /// code names to build them (CORE-131).
 pub use binding_core;
+#[cfg(feature = "runtime")]
 pub use args::{
     date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
     seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
 };
 pub use array::ArrayValue;
 pub use chrono;
+#[cfg(feature = "runtime")]
 pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
+#[cfg(feature = "runtime")]
 pub use core::Core;
+#[cfg(feature = "runtime")]
 pub use db::{
     AuditResult, AuditSource, Config, Connect, Db, DbStats, Execute, HookFuture, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION,
     DEFAULT_BLIND_INDEX_KEY, DEFAULT_PLAN_CACHE_SIZE, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS, DEFAULT_POOL_IDLE_SIZE, DEFAULT_POOL_LIFETIME_MS,
@@ -67,23 +93,30 @@ pub use db::{
 };
 pub use engine::Dialect;
 pub use error::{CallbackFailure, Error};
+#[cfg(feature = "runtime")]
 pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};
 pub use ir::VERSION as IR_VERSION;
 pub use kind::Kind;
+#[cfg(feature = "runtime")]
 pub use model::{AnyModel, Entity, EntityRef, LoadedEntity, Model};
 pub use orm_value::{BytesValue, FloatValue, IntegerValue, JsonValue, MapValue, OrmValue};
 pub use polyspec_json;
+#[cfg(feature = "runtime")]
 pub use query::Query;
 pub use schema::{Manifest, Schema, SchemaRef};
 pub use serde;
 pub use serde_json;
+#[cfg(feature = "runtime")]
 pub use step::StepRunner;
+#[cfg(feature = "runtime")]
 pub use tx::{transaction_conflict, Close, Connection, Isolation, Savepoint, SavepointIo, Transaction, TransactionIo, TransactionOptions, Tx, DEFAULT_RETRY};
+#[cfg(feature = "runtime")]
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
 pub use value::{Param, StyledValue, Val};
 
 /// The catalog code of a MySQL error number that the catalog names (docs/spec/errors.yaml), or None for any other number.
 /// MySQL 1205 (a lock wait timeout) is the expiry of the write bound of CFG-6, so it is CANCELED like 1317 and 3024.
+#[cfg(feature = "runtime")]
 fn mysql_code(number: u16) -> Option<Kind> {
     Some(match number {
         3572 => Kind::LockNotAvailable,
@@ -102,6 +135,7 @@ fn mysql_code(number: u16) -> Option<Kind> {
 
 /// The catalog code of a MariaDB error number (DIA-201), which MariaDB numbers otherwise than MySQL above 1999: it has no
 /// 3572, 3819, 3024 or 4031 of MySQL; its 4025 is ER_CONSTRAINT_FAILED and its 1969 ER_STATEMENT_TIMEOUT.
+#[cfg(feature = "runtime")]
 fn mariadb_code(number: u16) -> Option<Kind> {
     Some(match number {
         1213 => Kind::Deadlock,
@@ -117,6 +151,7 @@ fn mariadb_code(number: u16) -> Option<Kind> {
 /// The catalog code of a MariaDB error `number` with SQLSTATE `state` of a statement that took the row lock `lock`, empty for
 /// none (DIA-201, DIA-209): 1205 of a `*_nowait` lock is LOCK_NOT_AVAILABLE, and every other error is read by MariaDB's
 /// table, SQLSTATE 40001 is DEADLOCK, and any other is DRIVER.
+#[cfg(feature = "runtime")]
 fn mariadb_statement_code(number: u16, state: Option<&str>, lock: &str) -> Kind {
     if number == 1205 && matches!(lock, "update_nowait" | "share_nowait") {
         return Kind::LockNotAvailable;
@@ -152,6 +187,7 @@ impl MySqlServer {
     }
 }
 
+#[cfg(feature = "runtime")]
 impl Error {
     /// The error with the code that the table of its server gives a MySQL error number (DIA-201): `From<sqlx::Error>` reads
     /// a number by MySQL's table, so on MariaDB a database error of a mysql connection is read again by MariaDB's. `lock` is
@@ -186,6 +222,7 @@ impl Error {
 /// 25P03 / 57P01 / 57P02 / 57P05, and an I/O error of an open connection's socket (end of stream, reset, aborted,
 /// broken pipe, not connected) — maps to CONNECTION_LOST. Every other driver error, such as a write that a trigger refuses, maps to DRIVER with the
 /// driver message. Each keeps the driver error as its source.
+#[cfg(feature = "runtime")]
 impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
         use sqlx::error::DatabaseError as _;
@@ -290,6 +327,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Reports SQLITE_BUSY or one of its extended codes.
 /// The ORM code of a SQLite extended result code `n`, from the message of the driver error.
+#[cfg(feature = "runtime")]
 fn sqlite_extended_code(n: i64, message: &str) -> Kind {
     match (n & 0xff, n) {
         (_, 2067) | (_, 1555) => Kind::DuplicateKey,
@@ -303,6 +341,7 @@ fn sqlite_extended_code(n: i64, message: &str) -> Kind {
     }
 }
 
+#[cfg(feature = "runtime")]
 pub(crate) fn sqlite_busy(e: &sqlx::Error) -> Result<bool> {
     use sqlx::error::DatabaseError as _;
     // A flowmark server states SQLite's result code of a statement (docs/spec/protocol.md PRT-71).

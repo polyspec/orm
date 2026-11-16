@@ -20,6 +20,10 @@ test-faults = []
 # The fault injection points of `polyspec_orm::fault`, which `faults` of the interface contract names (binding G-5, X-1;
 # CORE-121): the feature compiles their arming, and a generated binding crate turns it on for its tests alone.
 fault-test = ["polyspec-binding-core/fault-test"]
+# What executes statements: the drivers, the connections, the transactions, the catalog reads and the AES codec. The
+# WASM binding builds the core without it (docs/spec/core.md CORE-134, binding I-1).
+runtime = ["dep:rustls", "dep:sqlx", "dep:libsqlite3-sys", "dep:tokio", "dep:whoami", "dep:rand", "dep:aes-gcm"]
+default = ["runtime"]
 
 [dependencies]
 # The boundary types that the generated bindings and this core share: the failure of a function that calls back
@@ -29,12 +33,12 @@ fault-test = ["polyspec-binding-core/fault-test"]
 polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.13" }
 polyspec-orm-schema = { version = "=0.0.33", path = "schema" }
 polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.31" }
-rustls = { version = "0.23", default-features = false, features = ["std"] }
-sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "json", "ipnet"] }
+rustls = { version = "0.23", default-features = false, features = ["std"], optional = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "json", "ipnet"], optional = true }
 # The SQLite library bundled with sqlx. The connection does not ask for that version via SQL; it reads it from this crate.
-libsqlite3-sys = "0.37"
+libsqlite3-sys = { version = "0.37", optional = true }
 regex = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"], optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
 indexmap = "2"
@@ -42,12 +46,12 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 url = "2"
 # sqlx-postgres uses whoami without its std feature, which reports the OS user
 # as "anonymous"; a DSN without a user must connect as the OS user.
-whoami = "2"
-rand = "0.10"
+whoami = { version = "2", optional = true }
+rand = { version = "0.10", optional = true }
 flate2 = "1"
 futures-util = "0.3"
 base64 = "0.22"
-aes-gcm = { version = "0.10", features = ["std"] }
+aes-gcm = { version = "0.10", features = ["std"], optional = true }
 sha2 = "0.10"
 hmac = "0.12"
 # The YAML writer. The yaml stage reads with the YAML reader of orm and no library (docs/spec/codec.md COD-74), so only

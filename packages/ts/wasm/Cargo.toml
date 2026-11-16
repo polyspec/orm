@@ -19,12 +19,11 @@ codec-test = []
 thrown-count-test = []
 
 [dependencies]
-polyspec-orm = { path = "../../rust" }
+polyspec-orm = { path = "../../rust", default-features = false, features = [] }
 polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.13", features = ["construct", "lock"] }
 polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.31" }
 wasm-bindgen = "=0.2.130"
 js-sys = "=0.3.107"
-wasm-bindgen-futures = "=0.4.80"
 
 [lints]
 workspace = true

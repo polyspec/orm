@@ -3,13 +3,17 @@
 //! function that finds a diagnostic does not fail: its result is the object of its value or
 //! `{"diagnostics": [..]}` (FMS-15). A text that is not of its form is `config`, with a message that names the member.
 
+#[cfg(any(unix, windows))]
 use std::path::Path;
 
+#[cfg(any(unix, windows))]
 use base64::Engine as _;
 use polyspec_orm_schema::dbspec::json::{diagnostic_to_json, document_from_json, document_to_json, position_to_json, type_from_json};
 use serde_json::{json, Value};
 
-use crate::dbspec::{self, Diagnostic, Document, SetFile};
+use crate::dbspec::{self, Diagnostic, Document};
+#[cfg(any(unix, windows))]
+use crate::dbspec::SetFile;
 use crate::schema::Manifest;
 use crate::{Error, Result};
 
@@ -30,6 +34,7 @@ fn documents_of(documents: &str) -> Result<Vec<Document>> {
 }
 
 /// The text of a path of a set; a path that is no Unicode text has no JSON text, so it is `config` (FMS-20, FMS-61).
+#[cfg(any(unix, windows))]
 fn path_text(path: &Path, set: &Path) -> Result<String> {
     match path.to_str() {
         Some(text) => Ok(text.to_owned()),
@@ -41,6 +46,7 @@ fn path_text(path: &Path, set: &Path) -> Result<String> {
 /// `{"documents": [<file>, ..], "external": [<file>, ..]}` with each file as its joined path and its bytes in base64
 /// with padding, or `{"errors": [<error>, ..]}`. The function reads files, so it takes the token of a member that waits
 /// for blocking I/O (CORE-27), which the caller of the member gives.
+#[cfg(any(unix, windows))]
 pub fn read_set(_io: binding_core::Io, path: &Path) -> Result<String> {
     let files = |files: &[SetFile]| -> Result<Vec<Value>> {
         files

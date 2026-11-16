@@ -6,15 +6,27 @@
 //! (step 3), and the read of each file with its identity from the same handle (step 4). Steps 1
 //! and 2 stop at their first error; steps 3 and 4 report each path that breaks them.
 
+#[cfg(any(unix, windows))]
 use serde::de::{self, MapAccess, Visitor};
+#[cfg(any(unix, windows))]
 use serde::Deserializer as _;
+#[cfg(any(unix, windows))]
 use serde_json::value::RawValue;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
+#[cfg(any(unix, windows))]
+use std::collections::HashSet;
+#[cfg(any(unix, windows))]
+use std::collections::HashMap;
+#[cfg(any(unix, windows))]
 use std::ffi::{OsStr, OsString};
 use std::fmt;
+#[cfg(any(unix, windows))]
 use std::fs::File;
+#[cfg(any(unix, windows))]
 use std::io::Read;
-use std::path::{Path, PathBuf};
+#[cfg(any(unix, windows))]
+use std::path::Path;
+use std::path::PathBuf;
 
 /// The name of every set file.
 pub const SET_FILE_NAME: &str = "dbspec-set.json";
@@ -40,6 +52,7 @@ pub const RULE_SET_PATH: &str = "set.path";
 pub const RULE_SET_DUPLICATE: &str = "set.duplicate";
 
 /// The deepest nesting of the set file's JSON, the object counting as one level.
+#[cfg(any(unix, windows))]
 const MAX_DEPTH: usize = 64;
 
 /// One listed file: its joined path (the set file's prefix followed by the written path) and its
@@ -75,12 +88,14 @@ impl fmt::Display for SetError {
 
 impl std::error::Error for SetError {}
 
+#[cfg(any(unix, windows))]
 fn error(rule: &'static str, path: &Path, message: String) -> SetError {
     SetError { rule: rule.to_owned(), path: path.to_path_buf(), message }
 }
 
 /// Reads the set file at `path` and every file it lists, or returns every error in the order of
 /// the specification: by step, then by path, `documents` first and then `external`.
+#[cfg(any(unix, windows))]
 pub fn read_set(path: &Path) -> Result<Set, Vec<SetError>> {
     let mut tree = Tree::default();
     let (prefix, bytes) = set_file(&mut tree, path).map_err(|e| vec![e])?;
@@ -134,6 +149,7 @@ pub fn read_set(path: &Path) -> Result<Set, Vec<SetError>> {
     }
 }
 
+#[cfg(any(unix, windows))]
 fn read_with_identity(path: &Path) -> std::io::Result<(Vec<u8>, same_file::Handle)> {
     let mut file = File::open(path)?;
     let mut bytes = Vec::new();
@@ -143,6 +159,7 @@ fn read_with_identity(path: &Path) -> std::io::Result<(Vec<u8>, same_file::Handl
 
 /// Step 1: the set file's name, its root and the file itself, examined without following a
 /// symbolic link, then the file's bytes read from one handle. Returns the prefix and the bytes.
+#[cfg(any(unix, windows))]
 fn set_file(tree: &mut Tree, path: &Path) -> Result<(OsString, Vec<u8>), SetError> {
     let shown = path.display();
     let (prefix, last) = platform::split_last(path.as_os_str());
@@ -179,6 +196,7 @@ fn set_file(tree: &mut Tree, path: &Path) -> Result<(OsString, Vec<u8>), SetErro
 }
 
 /// The kind of a path examined without following a symbolic link.
+#[cfg(any(unix, windows))]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Kind {
     Symlink,
@@ -188,6 +206,7 @@ enum Kind {
 }
 
 /// The examined components and listed directories of one read, so that each is examined once.
+#[cfg(any(unix, windows))]
 #[derive(Default)]
 struct Tree {
     kinds: HashMap<OsString, Result<Kind, String>>,
@@ -195,6 +214,7 @@ struct Tree {
 }
 
 /// The kind of an entry whose metadata is `meta`.
+#[cfg(any(unix, windows))]
 fn kind_of(meta: &std::fs::Metadata) -> Kind {
     let kind = meta.file_type();
     if kind.is_symlink() {
@@ -208,6 +228,7 @@ fn kind_of(meta: &std::fs::Metadata) -> Kind {
     }
 }
 
+#[cfg(any(unix, windows))]
 impl Tree {
     /// `lstat`: on Windows the standard library reports a reparse point whose tag is a name
     /// surrogate (a symbolic link or a junction) as a symbolic link.
@@ -279,6 +300,7 @@ impl Tree {
 }
 
 /// The two lists of a valid set file, as written.
+#[cfg(any(unix, windows))]
 struct Lists {
     documents: Vec<String>,
     external: Vec<String>,
@@ -287,6 +309,7 @@ struct Lists {
 /// Step 2 (DBS-13): the bytes have no byte order mark and are UTF-8; they are one JSON text, which the JSON parser
 /// judges with its own error; it is one object, nested at most 64 levels deep, with no lone surrogate escaped and no key
 /// twice in any object; then the keys, `schema`, `documents` and `external`. Stops at the first error.
+#[cfg(any(unix, windows))]
 fn parse(bytes: &[u8], path: &Path) -> Result<Lists, SetError> {
     let shown = path.display();
     let json = |message: &str| error(RULE_SET_JSON, path, format!("{shown}: {message}"));
@@ -351,12 +374,14 @@ fn parse(bytes: &[u8], path: &Path) -> Result<Lists, SetError> {
 
 /// Whether the raw JSON value is a number whose value, read as an IEEE 754 double, is 1. A number
 /// beyond the range of a double parses as infinity and is not 1.
+#[cfg(any(unix, windows))]
 fn schema_is_one(raw: &str) -> bool {
     raw.starts_with(|c: char| c == '-' || c.is_ascii_digit()) && raw.parse::<f64>() == Ok(1.0)
 }
 
 /// What the scan of a valid JSON text found: a container nested deeper than [`MAX_DEPTH`], a lone surrogate escaped in a
 /// string, and the first key, in text order, that appears twice in its object.
+#[cfg(any(unix, windows))]
 struct Scan {
     too_deep: bool,
     lone_surrogate: bool,
@@ -365,6 +390,7 @@ struct Scan {
 
 /// Scans a text that the JSON parser accepted, without recursion, so that a text of any depth is judged; None when its
 /// value is not an object. The object counts as one level.
+#[cfg(any(unix, windows))]
 fn scan(text: &str) -> Option<Scan> {
     let bytes = text.as_bytes();
     let mut at = bytes.iter().position(|b| !b" \t\r\n".contains(b))?;
@@ -413,6 +439,7 @@ fn scan(text: &str) -> Option<Scan> {
 
 /// Decodes the JSON string that starts at the quote at `start` of a valid JSON text: its text, whether it escapes a lone
 /// surrogate (written as U+FFFD in the text), and the position after its closing quote.
+#[cfg(any(unix, windows))]
 fn json_string(bytes: &[u8], start: usize) -> (String, bool, usize) {
     // The JSON parser accepted the text, so four hexadecimal digits follow each \u.
     let hex = |at: usize| bytes[at..at + 4].iter().fold(0, |unit, &b| unit * 16 + char::from(b).to_digit(16).unwrap_or(0));
@@ -460,8 +487,10 @@ fn json_string(bytes: &[u8], start: usize) -> (String, bool, usize) {
 
 /// The serde visitor of the top object of a scanned text: its pairs, each value kept raw, so that a number is not
 /// converted.
+#[cfg(any(unix, windows))]
 struct TopObject;
 
+#[cfg(any(unix, windows))]
 impl<'de> Visitor<'de> for TopObject {
     type Value = Vec<(String, &'de RawValue)>;
 
@@ -480,6 +509,7 @@ impl<'de> Visitor<'de> for TopObject {
 
 /// The normal form of a written path, or the reason it has none, the first problem of the first segment that has one
 /// (DBS-18a). An `external` path may begin with `..` segments; a `documents` path has none.
+#[cfg(any(unix, windows))]
 fn normal_form(written: &str, external: bool) -> Result<(), String> {
     let mut leading = external;
     let segments: Vec<&str> = written.split('/').collect();
@@ -502,6 +532,7 @@ fn normal_form(written: &str, external: bool) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(any(unix, windows))]
 fn segment_form(segment: &str) -> Result<(), String> {
     if segment == "." {
         return Err("has a . segment".into());
@@ -520,6 +551,7 @@ fn segment_form(segment: &str) -> Result<(), String> {
 }
 
 /// Whether `base` is, ignoring ASCII case, a device name of Windows.
+#[cfg(any(unix, windows))]
 fn device(base: &str) -> bool {
     if ["CON", "PRN", "AUX", "NUL"].iter().any(|d| base.eq_ignore_ascii_case(d)) {
         return true;

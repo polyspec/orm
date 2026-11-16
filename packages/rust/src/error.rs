@@ -29,6 +29,7 @@ enum Detail {
 enum Source {
     None,
     /// The error of the driver (CORE-13).
+    #[cfg(feature = "runtime")]
     Driver(sqlx::Error),
     /// Another library failure under the error, such as the failure under a codec stage text (COD-41).
     Other(Box<dyn std::error::Error + Send + Sync + 'static>),
@@ -65,6 +66,7 @@ impl Error {
     }
 
     /// An error of the driver with the kind of its code and the driver error as its cause (CORE-13).
+    #[cfg(feature = "runtime")]
     pub(crate) fn driver(kind: Kind, message: impl Into<String>, source: sqlx::Error) -> Error {
         Error { kind, message: message.into(), source: Source::Driver(source), detail: Detail::None }
     }
@@ -172,6 +174,7 @@ impl Error {
     }
 
     /// The error of the driver that caused the error, or `None`.
+    #[cfg(feature = "runtime")]
     #[must_use]
     pub fn driver_error(&self) -> Option<&sqlx::Error> {
         match &self.source {
@@ -215,6 +218,7 @@ impl std::error::Error for Error {
         match (&self.detail, &self.source) {
             (Detail::Cleanup { primary, .. }, _) => Some(primary.as_ref()),
             (Detail::RollbackFailed { rollback, .. }, _) => Some(rollback.as_ref()),
+            #[cfg(feature = "runtime")]
             (Detail::None, Source::Driver(error)) => Some(error),
             (Detail::None, Source::Other(error)) => Some(error.as_ref()),
             (Detail::None, Source::None) => None,
