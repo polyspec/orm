@@ -4,18 +4,10 @@
 ## Required workflow
 
 1. Read `AGENTS.md` when it is present and read the relevant files in `contracts/features.json`. A
-   fresh checkout has no Makefile targets until kit is installed, since the Makefile includes it, so the first step runs
-   `npm ci` with the npm that `devEngines` of `package.json` names, from outside the checkout, because the npm of the
-   machine refuses another version inside it:
-
-   ```sh
-   root="$PWD"
-   version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
-   (cd "${TMPDIR:-/tmp}" && npm exec --yes --package="npm@$version" -- sh -c "cd '$root' && npm ci --ignore-scripts --allow-remote=root")
-   ```
-
-   Then `make install-tools TOOLS=npm` installs the npm of `mise.toml`, and `make link` (or `make install-packages`) takes the
-   packages. Then run `make install` once: it downloads what the checks read (npm, Composer and Go dependencies, the Rust
+   new checkout or worktree starts with `make bootstrap`: it installs the locked kit package with the npm that
+   `devEngines` of `package.json` names, from outside the checkout, because the npm of the machine refuses another version
+   inside it, then the npm of `mise.toml` with `make install-tools TOOLS=npm` and the packages with `make install-packages`
+   (`make link` takes the linked checkouts of `.links` instead). Then run `make install` once: it downloads what the checks read (npm, Composer and Go dependencies, the Rust
    toolchain and crates, the lowest Node), and the checks run offline, so a missing download fails
    with `run make install`.
 2. Add a reproducing test for a predicted or observed defect.

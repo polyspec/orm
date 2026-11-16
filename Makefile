@@ -182,6 +182,17 @@ install-kit: ## Install mise, the node and npm of mise.toml, the packages, the t
 # The home and the cache of the Composer that install-tools and install-symbols run, the folders of var/tools that kit 0.0.98
 # set (kit K1095).
 COMPOSER_TOOL_ENV = COMPOSER_HOME=$(CURDIR)/var/tools/composer/home COMPOSER_CACHE_DIR=$(CURDIR)/var/tools/composer/cache
+# bootstrap starts a new checkout or worktree, whose node_modules has no kit yet, so no target that runs a utility of
+# kit works (T513): it installs the locked packages of package-lock.json with the npm that devEngines of package.json
+# names, from outside the checkout, since the npm of the machine refuses another version inside it (K938-1), then the
+# npm of mise.toml and the packages, the steps of .github/actions/kit-bootstrap.
+.PHONY: bootstrap
+bootstrap: ## Start a new checkout: the locked kit package, then the npm of mise.toml and the packages; ONLINE
+	root="$(CURDIR)" && version="$$($(BOOTSTRAP_NODE) -p 'require("./package.json").devEngines.packageManager.version')" && \
+	  cd "$${TMPDIR:-/tmp}" && npm_config_cache="$$root/var/bootstrap/npm-cache" $(ONLINE) npm exec --yes --package="npm@$$version" -- \
+	  npm --prefix "$$root" ci --ignore-scripts
+	$(MAKE) --no-print-directory install-tools TOOLS=npm
+	$(MAKE) --no-print-directory install-packages
 install-tools: ## Install every locked tool of mise.toml, or the tools that TOOLS names; TOOLS=npm runs the bootstrap; ONLINE
 ifeq ($(TOOLS),npm)
 	$(ONLINE) $(BOOTSTRAP_NODE) $(KIT)/bootstrap/bootstrap.$(KIT_EXT)

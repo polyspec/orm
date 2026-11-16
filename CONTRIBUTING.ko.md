@@ -4,17 +4,11 @@
 
 ## 필수 작업 순서
 
-1. `AGENTS.md`가 있으면 읽고 `contracts/features.json`에서 관련 경로를 읽는다. Makefile이 kit을
-   include하므로 새 checkout에는 kit을 설치하기 전까지 Makefile target이 없다. 그래서 첫 단계는 `package.json`의 `devEngines`가 이름하는 npm으로
-   checkout 밖에서 `npm ci`를 실행한다. checkout 안에서는 machine의 npm이 다른 버전을 거부하기 때문이다.
-
-   ```sh
-   root="$PWD"
-   version="$(node -p 'require("./package.json").devEngines.packageManager.version')"
-   (cd "${TMPDIR:-/tmp}" && npm exec --yes --package="npm@$version" -- sh -c "cd '$root' && npm ci --ignore-scripts --allow-remote=root")
-   ```
-
-   그다음 `make install-tools TOOLS=npm`이 `mise.toml`의 npm을 설치하고, `make link`(또는 `make install-packages`)가 package를 받는다.
+1. `AGENTS.md`가 있으면 읽고 `contracts/features.json`에서 관련 경로를 읽는다.
+   새 checkout이나 worktree는 `make bootstrap`으로 시작한다. 그것은 `package.json`의 `devEngines`가 이름하는 npm으로
+   checkout 밖에서 잠긴 kit package를 설치하고(checkout 안에서는 machine의 npm이 다른 버전을 거부한다), 그다음
+   `make install-tools TOOLS=npm`으로 `mise.toml`의 npm을, `make install-packages`로 package를 설치한다(`make link`는 대신
+   `.links`의 연결된 checkout을 받는다).
    그다음 `make install`을 한 번
    실행한다. 그것은 검사가 읽는 것(npm, Composer, Go 의존성, Rust toolchain과 crate, 가장 낮은 Node)을
    download하고, 검사는 offline으로 실행되므로 빠진 download는 `run make install`과 함께 실패한다.
