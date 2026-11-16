@@ -455,7 +455,7 @@ test-binding-python: bindings
 # The generated tests of the PHP binding on the PHPUnit of vendor-php, with the extension of the crate polyspec-orm-php-ext built
 # with its test features for the PHP of .php-version (BINDING_ENV) and copied into the RUN_TARGET of the run.
 test-binding-php: bindings lease-tool php-vendor-check
-	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) cargo build --locked -p polyspec-orm-php-ext --features panic-test,case-test
+	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) cargo build --locked -p polyspec-orm-php-ext --features panic-test
 	$(RUN_TESTS) phpunit --php-extension $(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) -- packages/php-ext/generated/tests
 	rm -rf $(RUN_DIR)
 

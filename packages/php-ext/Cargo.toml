@@ -17,7 +17,6 @@ doctest = false
 
 [features]
 panic-test = []
-case-test = []
 fault-test = ["polyspec-orm/fault-test"]
 codec-test = []
 thrown-count-test = []

@@ -5041,7 +5041,11 @@
     {
       "alias": "orm_value",
       "file": "contracts/interface/core.json",
-      "group": "orm_value"
+      "group": "orm_value",
+      "only": {
+        "targets": ["python", "node", "wasm", "go"],
+        "reason": "CORE-123"
+      }
     },
     {
       "member": "orm.value_function_unit",
