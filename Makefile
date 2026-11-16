@@ -140,7 +140,14 @@ MISE_ENVIRONMENT := MISE_DATA_DIR MISE_CACHE_DIR MISE_STATE_DIR MISE_CONFIG_DIR 
 # kit 0.0.98's run-tests dropped NODE_TEST_CONTEXT, so a node --test that a recipe starts from inside a node test runs as
 # its own run, not as a child of that test (kit K1094); no recipe passes it on.
 unexport NODE_TEST_CONTEXT
-export PATH := $(KIT_TOOLS)/bin:$(KIT_TOOLS)/mise/shims:$(PATH)
+# POSTGRES_BIN is the folder of the PostgreSQL 17 programs (initdb, pg_ctl, postgres, pg_basebackup) where the packages of the
+# machine keep them off PATH (T550): /usr/lib/postgresql/17/bin of the Debian packages that make orm-install-server-programs
+# installs on Linux, empty elsewhere, where the package manager puts them on PATH. The install reads it and checks the programs
+# there, and every recipe finds them through PATH, so the step that installs and the step that starts the servers read one
+# declaration, in one process or in two.
+POSTGRES_BIN ?= $(if $(filter Linux,$(shell uname -s)),/usr/lib/postgresql/17/bin)
+export POSTGRES_BIN
+export PATH := $(KIT_TOOLS)/bin:$(KIT_TOOLS)/mise/shims:$(if $(POSTGRES_BIN),$(POSTGRES_BIN):)$(PATH)
 # KIT_WORKTREE is set in a linked worktree, whose main checkout is another folder; CARGO_PROFILE_DEV_DEBUG reads it.
 KIT_GIT_COMMON := $(abspath $(shell git rev-parse --git-common-dir 2>/dev/null))
 KIT_MAIN_CHECKOUT := $(realpath $(patsubst %/.git,%,$(filter %/.git,$(KIT_GIT_COMMON))))

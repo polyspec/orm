@@ -11,10 +11,11 @@
 // family, from which make orm-test-mariadb starts the MariaDB servers and the ProxySQL in front of the primary, and no MySQL,
 // PostgreSQL or PgBouncer.
 // The image loads an AppArmor profile for /usr/sbin/mysqld that allows only /var/lib/mysql; it is removed because the
-// servers keep their data in .runtime/servers. In a GitHub Actions job the PostgreSQL bin directory is added to GITHUB_PATH.
+// servers keep their data in .runtime/servers. The PostgreSQL programs are in POSTGRES_BIN, which the Makefile declares and
+// puts on the PATH of every recipe (T550); the script checks them there.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 
 const PROXYSQL = 'https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/noble/proxysql_3.0.9-ubuntu24_arm64.deb';
 const PROXYSQL_SHA256 = 'e12b272107f1ac65ae8a9f9015a9c696b7b2f78b6ad35f84b5ce086449eb2a0f';
@@ -74,8 +75,8 @@ if (spawnSync('sudo', ['grep', '-qs', '^/usr/sbin/mysqld ', '/sys/kernel/securit
 const mysqld = spawnSync('sh', ['-c', 'command -v mysqld'], { encoding: 'utf8' }).stdout.trim();
 if (mysqld !== '/usr/sbin/mysqld') fail(`mysqld on PATH is ${JSON.stringify(mysqld)}, not /usr/sbin/mysqld`);
 version('mysqld', ['--version']);
-version('/usr/lib/postgresql/17/bin/postgres', ['--version']);
+const postgresBin = process.env['POSTGRES_BIN'];
+if (!postgresBin) fail('POSTGRES_BIN is not set; run make orm-install-server-programs, whose Makefile declares it');
+version(`${postgresBin}/postgres`, ['--version']);
 version('pgbouncer', ['--version']);
 version('sqlite3', ['--version']);
-const githubPath = process.env['GITHUB_PATH'];
-if (githubPath) appendFileSync(githubPath, '/usr/lib/postgresql/17/bin\n');
