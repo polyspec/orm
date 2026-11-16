@@ -153,10 +153,8 @@ const mismatchTlsOptions = [`--ssl-ca=${TLS_MOUNT}/ca.pem`, `--ssl-cert=${TLS_MO
 const TLS_VOLUME: Volume = { source: 'tls', target: TLS_MOUNT };
 
 // SMALL_BUFFER_POOL and SMALL_SHARED_BUFFERS are the caches of a server of a container, half and a quarter of the
-// defaults of 128 MiB. With them the four servers that mysql,postgres had before its privilege probe server and its two
-// poolers fit with a job of the runner on a machine of 3.7 GiB whose jobs have a limit of 2800 MB; mysql,postgres now
-// starts five servers and two poolers, whose fit on that machine is not measured (CONTRIBUTING.md "The memory settings
-// of the servers"). Each case creates its own small
+// defaults of 128 MiB; the memory that the services of a run use on the machine that runs the DB groups is measured in
+// CONTRIBUTING.md "The memory settings of the servers". Each case creates its own small
 // database, and a cache only keeps pages in memory, so its size changes no result.
 const SMALL_BUFFER_POOL = ['--innodb-buffer-pool-size=64M'];
 const SMALL_SHARED_BUFFERS = ['-c', 'shared_buffers=32MB'];
