@@ -37,7 +37,11 @@ pub fn connected<M: Model>(db: &Db) -> M {
 /// An audit source that provides the actor as an audit value.
 pub fn audit_source(actor: &str) -> polyspec_orm::AuditSource {
     let actor = actor.to_owned();
-    std::sync::Arc::new(move || Ok(vec![("actor".to_owned(), Param::from(actor.as_str()))]))
+    Box::new(move || {
+        let mut values = polyspec_orm::binding_core::OrderedMap::new();
+        values.insert("actor".to_owned(), polyspec_orm::OrmValue::Text(actor.clone()));
+        Ok(values)
+    })
 }
 
 /// A connection setting that provides the actor as an audit value.
@@ -111,7 +115,11 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
     let db = &adb;
     let options = |actor: Option<&str>| polyspec_orm::TransactionOptions {
         retry: Some(0),
-        audit: actor.map(|actor| vec![("actor".to_owned(), polyspec_orm::Param::from(actor))]),
+        audit: actor.map(|actor| {
+            let mut values = polyspec_orm::binding_core::OrderedMap::new();
+            values.insert("actor".to_owned(), polyspec_orm::OrmValue::Text(actor.to_owned()));
+            values
+        }),
         ..Default::default()
     };
     let seq = adb

@@ -233,12 +233,12 @@ async fn connect_driver(dsn: &str, config: &Value, database: &str) -> Result<Str
         })
         .collect::<Result<_, (String, String)>>()?;
     let options = polyspec_orm::Config {
-        pool_idle_size: field("pool_idle_size")?,
-        pool_lifetime_ms: field("pool_lifetime_ms")?,
-        statement_timeout_ms: field("statement_timeout_ms")?,
-        aes_key: config["aes_key"].as_str().unwrap_or_default().to_owned(),
-        aes_version: config["aes_version"].as_i64().map_or(polyspec_orm::Config::default().aes_version, |version| version as i32),
-        aes_keys,
+        pool_idle_size: Some(field("pool_idle_size")?),
+        pool_lifetime_ms: Some(field("pool_lifetime_ms")?),
+        statement_timeout_ms: Some(field("statement_timeout_ms")?),
+        aes_key: Some(config["aes_key"].as_str().unwrap_or_default().to_owned()),
+        aes_version: config["aes_version"].as_i64().map(|version| version as i32),
+        aes_keys: Some(keyed_versions(aes_keys)),
         ..polyspec_orm::Config::default()
     };
     match polyspec_orm::Db::connect(dsn, field("pool_size")?, options).await {
@@ -1009,7 +1009,7 @@ fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
     }
     let current = crate::recipe_reads::read(step, "keyring")["keyring"]["current"].as_i64().ok_or("the keyring has no current version")?;
     let current = i32::try_from(current).map_err(|error| error.to_string())?;
-    match (polyspec_orm::AesKeyring::new(keys, current), expect["error"].as_str()) {
+    match (polyspec_orm::AesKeyring::new(&keyed_versions(keys), current), expect["error"].as_str()) {
         (Err(error), Some(code)) if error.code() == code => Ok(()),
         (Err(error), _) => Err(format!("the keyring returned {error}, want {expect}")),
         (Ok(_), Some(code)) => Err(format!("the keyring was built, want {code}")),
@@ -3756,7 +3756,11 @@ mod database {
         }
         if crate::recipe_reads::read(step, "audit").get("audit").is_some() {
             let values = audit_values(&crate::recipe_reads::read(step, "audit")["audit"])?;
-            options.audit = Some(values.into_iter().map(|(column, value)| (column, polyspec_orm::Param::from(value))).collect());
+            let mut map = polyspec_orm::binding_core::OrderedMap::new();
+            for (column, value) in values {
+                map.insert(column, polyspec_orm::OrmValue::Text(value));
+            }
+            options.audit = Some(map);
         }
         Ok((options, named))
     }
@@ -4116,7 +4120,7 @@ mod database {
 
     /// The bench model reads the bind_cell row by its key, with the keys of the bench set: its body is SQL NULL or the text.
     async fn read_bind_cell(dsn: &str, seq: i64) -> Result<Value, String> {
-        let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+        let config = polyspec_orm::Config { aes_key: Some("bench-salt".into()), blind_index_key: Some("bench-blind-index".into()), ..Default::default() };
         let db = model::connect(dsn, 1, config).await.map_err(|e| e.to_string())?;
         let body = match model::BindCell::new().connect(&db).seq(seq).get().await {
             Ok(Some(row)) => row.get_body().map(|body| body.map(str::to_owned)).map_err(|e| e.to_string()),
@@ -4894,7 +4898,7 @@ mod database {
             if idle.is_some() || lifetime.is_some() {
                 // A connection with an idle bound or a lifetime opens without the models of the case: a pool op reads its counts, and utils.run takes no model.
                 let bound = |value: Option<u64>| u32::try_from(value.unwrap_or(0)).map_err(|e| Failure::Step(e.to_string()));
-                let options = polyspec_orm::Config { pool_idle_size: bound(idle)?, pool_lifetime_ms: bound(lifetime)?, ..polyspec_orm::Config::default() };
+                let options = polyspec_orm::Config { pool_idle_size: Some(bound(idle)?), pool_lifetime_ms: Some(bound(lifetime)?), ..polyspec_orm::Config::default() };
                 let db = Db::connect(&dsn, pool_size, options).await.map_err(|e| Failure::Step(e.to_string()))?;
                 context.models.adopt(name, db);
                 return Ok(Output::fields(json!({})));
@@ -7441,7 +7445,7 @@ mod tables {
         }
 
         async fn connect_bounded(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, ms: u32) -> Result<Value, ModelError> {
-            let config = Config { statement_timeout_ms: ms, ..bench_config() };
+            let config = Config { statement_timeout_ms: Some(ms), ..bench_config() };
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
@@ -7455,17 +7459,17 @@ mod tables {
             keyring: &Value,
         ) -> Result<Value, ModelError> {
             let (keys, current) = keyring_spec(keyring)?;
-            let config = Config { aes_version: current, aes_keys: keys, ..Config::default() };
+            let config = Config { aes_version: Some(current), aes_keys: Some(crate::recipe::keyed_versions(keys)), ..Config::default() };
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
 
         async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, ModelError> {
             let source: polyspec_orm::AuditSource = if source["fail"].as_bool() == Some(true) {
-                Arc::new(|| Err(crate::recipe_error::runner_error("callback", "the audit source failed")))
+                Box::new(|| Err(polyspec_orm::binding_core::Failure::Kind(crate::recipe_error::runner_error("callback", "the audit source failed"))))
             } else {
-                let values = pairs(&source["values"])?;
-                Arc::new(move || Ok(values.clone()))
+                let values = crate::recipe::audit_map(pairs(&source["values"])?)?;
+                Box::new(move || Ok(values.clone()))
             };
             let config = Config { audit_source: Some(source), ..bench_config() };
             self.bases.remove(name);
@@ -7976,6 +7980,36 @@ mod tables {
     /// The public keyring of a recipe step, which validates it as the API does.
     fn keyring_of(raw: &Value) -> Result<AesKeyring, ModelError> {
         let (keys, current) = keyring_spec(raw)?;
-        AesKeyring::new(keys, current).map_err(orm)
+        AesKeyring::new(&crate::recipe::keyed_versions(keys), current).map_err(orm)
     }
+}
+
+/// The key ring of a `Config` from versions and keys (CORE-131).
+pub(crate) fn keyed_versions(keys: std::collections::BTreeMap<i32, String>) -> polyspec_orm::binding_core::KeyedMap<String> {
+    let mut ring = polyspec_orm::binding_core::KeyedMap::new();
+    for (version, key) in keys {
+        ring.insert(polyspec_orm::binding_core::Key::Int(i64::from(version)), key);
+    }
+    ring
+}
+
+/// The audit values of an audit source of a recipe as `orm_value` (CORE-131): a date and a date-time are their canonical
+/// texts (CORE-62).
+pub(crate) fn audit_map(values: Vec<(String, polyspec_orm::Param)>) -> Result<polyspec_orm::binding_core::OrderedMap<polyspec_orm::OrmValue>, String> {
+    use polyspec_orm::{OrmValue, Param};
+    let mut map = polyspec_orm::binding_core::OrderedMap::new();
+    for (column, value) in values {
+        let value = match value {
+            Param::Null => OrmValue::Null,
+            Param::Bool(flag) => OrmValue::Bool(flag),
+            Param::I64(n) => OrmValue::Int64(n),
+            Param::F64(x) => OrmValue::Float(x),
+            Param::Str(text) => OrmValue::Text(text),
+            Param::Bytes(bytes) => OrmValue::Bytes(bytes),
+            Param::DateTime(at) => OrmValue::Text(at.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
+            Param::Date(day) => OrmValue::Text(day.format("%Y-%m-%d").to_string()),
+        };
+        map.insert(column, value);
+    }
+    Ok(map)
 }

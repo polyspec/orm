@@ -16,7 +16,6 @@ use super::{
     TransactionOptions, Tx, TxShared, DEFAULT_RETRY,
 };
 use crate::events::{KIND_RELEASE, KIND_SAVEPOINT};
-use crate::value::Param;
 use crate::{Db, Error, Kind, Result};
 
 /// What the callback of a machine returned, and what a machine of a callback ends with (CORE-102).
@@ -27,6 +26,8 @@ type Outcome = std::result::Result<Passthrough, Failure<Error>>;
 enum Stage {
     /// Nothing is sent.
     Start,
+    /// The driver calls the audit source before the first `BEGIN` (CORE-131).
+    Source,
     /// The opening is awaited.
     Opening,
     /// The driver calls the callback.
@@ -76,8 +77,10 @@ pub struct Transaction<F> {
     read_only: bool,
     timeout_ms: Option<u64>,
     retry: u32,
-    /// The audit values of the options until the first step reads the audit source.
-    audit: Option<Vec<(String, Param)>>,
+    /// The audit values of the options until the step `Source` reads the audit source.
+    audit: Option<super::AuditMap>,
+    /// The audit record that the call of the source made, until the machine reads it.
+    sourced: Option<std::result::Result<AuditInsert, Failure<Error>>>,
     record: Option<Arc<AuditInsert>>,
     attempt: u32,
     stage: Stage,
@@ -105,6 +108,7 @@ impl<F> Transaction<F> {
             timeout_ms: timeout_ms.filter(|ms| *ms > 0),
             retry: retry.unwrap_or(DEFAULT_RETRY),
             audit,
+            sourced: None,
             record: None,
             attempt: 0,
             stage: Stage::Start,
@@ -198,15 +202,22 @@ where
     fn resume(&mut self, io: Option<TransactionIo>) -> Step<TransactionIo, Outcome> {
         match (self.stage, io.map(|io| io.0)) {
             (Stage::Start, None) => {
-                // The audit source is called once, before the transaction starts.
-                if let Some(values) = self.audit.take() {
-                    match audit_record(&self.db, &values) {
-                        Ok(record) => self.record = Some(Arc::new(record)),
-                        Err(error) => return self.end(Err(Failure::Kind(error))),
-                    }
+                // The audit source is called once, before the transaction starts, on the thread that drives the
+                // machine, because a source of a language may be called only there (CORE-131).
+                if self.audit.is_some() {
+                    self.stage = Stage::Source;
+                    return Step::Call;
                 }
                 self.open()
             }
+            (Stage::Source, None) => match self.sourced.take() {
+                Some(Ok(record)) => {
+                    self.record = Some(Arc::new(record));
+                    self.open()
+                }
+                Some(Err(failure)) => self.end(Err(failure)),
+                None => self.end(Err(out_of_order("a transaction", Stage::Source))),
+            },
             (Stage::Opening, Some(TransactionOutput::Opened(Ok(shared)))) => {
                 // Each attempt starts with the pending record and no inserted audit.
                 match lock(&shared.pending_audit) {
@@ -257,6 +268,17 @@ where
     }
 
     fn call(&mut self) {
+        if self.stage == Stage::Source {
+            if let Some(values) = self.audit.take() {
+                // A panic of the source is the error `internal`, as a panic of the callback is (CORE-26).
+                let db = &self.db;
+                self.sourced = Some(match std::panic::catch_unwind(AssertUnwindSafe(|| audit_record(db, &values))) {
+                    Ok(sourced) => sourced,
+                    Err(payload) => Err(Failure::Kind(panicked(payload))),
+                });
+            }
+            return;
+        }
         if self.stage != Stage::Call {
             return;
         }

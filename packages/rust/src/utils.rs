@@ -541,7 +541,10 @@ pub struct AesKeyring {
 }
 
 impl AesKeyring {
-    pub fn new(keys: BTreeMap<i32, String>, current: i32) -> Result<Self> {
+    /// The key ring of `keys`, whose keys are integers of `i32`, with the version `current` (CORE-131).
+    /// The argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub fn new(keys: &binding_core::KeyedMap<String>, current: i32) -> Result<Self> {
+        let keys = crate::db::key_ring(keys)?;
         if keys.iter().any(|(version, key)| *version < 1 || key.is_empty()) {
             return Err(Error::config("aes key list holds an invalid version or an empty key"));
         }

@@ -480,29 +480,29 @@ fn the_codec_functions_take_and_give_orm_value() {
         (text("secret"), vec!["aes", "hex"]),
     ] {
         let stages = stages(&names);
-        let cell = host_encode(value.clone(), &stages, "key").or_panic(|error| format!("{names:?}: {error}"));
+        let cell = host_encode(&value.clone(), &stages, "key").or_panic(|error| format!("{names:?}: {error}"));
         assert_ne!(cell, value, "{names:?}");
-        assert_eq!(host_decode(cell, &stages, "key").or_panic(|error| format!("{names:?}: {error}")), value, "{names:?}");
+        assert_eq!(host_decode(&cell, &stages, "key").or_panic(|error| format!("{names:?}: {error}")), value, "{names:?}");
     }
-    assert_eq!(host_encode(OrmValue::Null, &stages(&["hex"]), "").expect("null"), OrmValue::Null);
-    assert_eq!(host_decode(OrmValue::Null, &stages(&["hex"]), "").expect("null"), OrmValue::Null);
+    assert_eq!(host_encode(&OrmValue::Null, &stages(&["hex"]), "").expect("null"), OrmValue::Null);
+    assert_eq!(host_decode(&OrmValue::Null, &stages(&["hex"]), "").expect("null"), OrmValue::Null);
 
     let want = crate::codec::blind_index(&Param::Str("a@x".into()), "key").expect("the index of the codec");
-    assert_eq!(blind_index(text("a@x"), "key").expect("the index"), want);
-    assert_eq!(blind_index(OrmValue::Bytes(b"a@x".to_vec()), "key").expect("the index"), want);
+    assert_eq!(blind_index(&text("a@x"), "key").expect("the index"), want);
+    assert_eq!(blind_index(&OrmValue::Bytes(b"a@x".to_vec()), "key").expect("the index"), want);
 
-    assert_eq!(decode(&stages(&["base64"]), text("aGk=")).expect("base64"), text("hi"));
-    match decode(&stages(&["json"]), text(r#"{"b":1,"a":[true,null]}"#)).expect("json") {
+    assert_eq!(decode(&stages(&["base64"]), &text("aGk=")).expect("base64"), text("hi"));
+    match decode(&stages(&["json"]), &text(r#"{"b":1,"a":[true,null]}"#)).expect("json") {
         OrmValue::Json(value) => assert_eq!(value.value().to_string(), r#"{"b":1,"a":[true,null]}"#),
         other => panic!("the stage json gave {other:?}"),
     }
-    assert_eq!(decode(&stages(&["json"]), OrmValue::Null).expect("null"), OrmValue::Null);
+    assert_eq!(decode(&stages(&["json"]), &OrmValue::Null).expect("null"), OrmValue::Null);
 
     for refused in [OrmValue::List(Vec::new()), OrmValue::Int(1), OrmValue::Bool(true)] {
-        assert_eq!(failure(host_encode(refused.clone(), &stages(&["hex"]), ""), "a value of another kind").kind(), Kind::CodecEncode, "{refused:?}");
-        assert_eq!(failure(blind_index(refused.clone(), "key"), "a value of another kind").kind(), Kind::CodecEncode, "{refused:?}");
-        assert_eq!(failure(host_decode(refused.clone(), &stages(&["hex"]), ""), "a cell of another kind").kind(), Kind::CodecDecode, "{refused:?}");
-        assert_eq!(failure(decode(&stages(&["json"]), refused.clone()), "a cell of another kind").kind(), Kind::CodecDecode, "{refused:?}");
+        assert_eq!(failure(host_encode(&refused.clone(), &stages(&["hex"]), ""), "a value of another kind").kind(), Kind::CodecEncode, "{refused:?}");
+        assert_eq!(failure(blind_index(&refused.clone(), "key"), "a value of another kind").kind(), Kind::CodecEncode, "{refused:?}");
+        assert_eq!(failure(host_decode(&refused.clone(), &stages(&["hex"]), ""), "a cell of another kind").kind(), Kind::CodecDecode, "{refused:?}");
+        assert_eq!(failure(decode(&stages(&["json"]), &refused.clone()), "a cell of another kind").kind(), Kind::CodecDecode, "{refused:?}");
     }
 }
 

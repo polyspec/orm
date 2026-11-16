@@ -75,7 +75,7 @@ async fn pool_discards_ended_idle_connection() {
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let server_dsn = database.related_dsn(&require_dsn(&format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase())));
-        let db = Db::connect(&server_dsn, 1, polyspec_orm::Config { pool_idle_size: 1, ..polyspec_orm::Config::default() })
+        let db = Db::connect(&server_dsn, 1, polyspec_orm::Config { pool_idle_size: Some(1), ..polyspec_orm::Config::default() })
             .await
             .or_panic(|e| format!("{driver}: connect pool: {e}"));
         assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: warm pool: {e}")));
@@ -222,7 +222,7 @@ async fn statement_waits(driver: &str, dsn: &str, waits: Option<&mut LockWaits>)
 // Requirements: CFG-6, CFG-36.
 fn statement_timeout_negative_is_unrepresentable() {
     let _case = polyspec_orm_testcase::case!();
-    let timeout: u32 = polyspec_orm::Config::default().statement_timeout_ms;
+    let timeout: u32 = polyspec_orm::DEFAULT_STATEMENT_TIMEOUT_MS;
     assert_eq!(timeout, 0);
 }
 

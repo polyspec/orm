@@ -474,14 +474,16 @@ fn decoded(value: Val) -> Result<OrmValue> {
 }
 
 /// Decodes the stored cell `cell` through the codec stages `stages`, in write order, as `codec::decode` does (FMS-50).
-pub fn decode(stages: &[String], cell: OrmValue) -> Result<OrmValue> {
-    decoded(crate::codec::decode(stages, &codec_cell(cell)?)?)
+/// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+pub fn decode(stages: &[String], cell: &OrmValue) -> Result<OrmValue> {
+    decoded(crate::codec::decode(stages, &codec_cell(cell.clone())?)?)
 }
 
 /// Applies the host stages `aes`, `hex` and `ip` of `stages` to `value` in write order with the AES key `key`, as
 /// `codec::host_encode` does (FMS-50): the result is a text after `hex` and bytes otherwise, and null stays null.
-pub fn host_encode(value: OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
-    match crate::codec::host_encode(&codec_value(value)?, stages, key)? {
+/// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+pub fn host_encode(value: &OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
+    match crate::codec::host_encode(&codec_value(value.clone())?, stages, key)? {
         Param::Null => Ok(OrmValue::Null),
         Param::Str(text) => Ok(OrmValue::Text(text)),
         Param::Bytes(bytes) => Ok(OrmValue::Bytes(bytes)),
@@ -490,13 +492,15 @@ pub fn host_encode(value: OrmValue, stages: &[String], key: &str) -> Result<OrmV
 }
 
 /// Undoes the host stages `stages` on the cell `cell` with the AES key `key`, as `codec::host_decode` does (FMS-50).
-pub fn host_decode(cell: OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
-    decoded(crate::codec::host_decode(&codec_cell(cell)?, stages, key)?)
+/// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+pub fn host_decode(cell: &OrmValue, stages: &[String], key: &str) -> Result<OrmValue> {
+    decoded(crate::codec::host_decode(&codec_cell(cell.clone())?, stages, key)?)
 }
 
 /// The blind index of `value` with the key `key`, as `codec::blind_index` does (FMS-50).
-pub fn blind_index(value: OrmValue, key: &str) -> Result<String> {
-    crate::codec::blind_index(&codec_value(value)?, key)
+/// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+pub fn blind_index(value: &OrmValue, key: &str) -> Result<String> {
+    crate::codec::blind_index(&codec_value(value.clone())?, key)
 }
 
 #[cfg(test)]

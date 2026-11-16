@@ -88,9 +88,9 @@ async fn main() {
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
     let config = polyspec_orm::Config {
-        aes_key: "bench-salt".into(),
-        blind_index_key: "bench-blind-index".into(),
-        audit_source: Some(Arc::new(|| Ok(Vec::new()))),
+        aes_key: Some("bench-salt".into()),
+        blind_index_key: Some("bench-blind-index".into()),
+        audit_source: Some(Box::new(|| Ok(polyspec_orm::binding_core::OrderedMap::new()))),
         ..Default::default()
     };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");

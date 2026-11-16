@@ -255,7 +255,7 @@ async fn coverage_hot_path_gate_for(expected: &str) {
     };
     assert!(dsn.starts_with(scheme), "the bench DSN scheme differs from {expected}");
 
-    let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+    let config = polyspec_orm::Config { aes_key: Some("bench-salt".into()), blind_index_key: Some("bench-blind-index".into()), ..Default::default() };
     let db = crate::model::connect(&dsn, 1, config).await.expect("client connection");
     let native = Native::connect(expected, &dsn).await;
     for workload in [Workload::Pk, Workload::List100] {

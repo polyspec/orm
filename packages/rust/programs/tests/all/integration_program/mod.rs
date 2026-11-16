@@ -141,7 +141,7 @@ impl Drop for NamesItsWait {
 }
 
 fn config() -> polyspec_orm::Config {
-    polyspec_orm::Config { aes_key: "test-aes-key".into(), blind_index_key: "test-blind-key".into(), ..Default::default() }
+    polyspec_orm::Config { aes_key: Some("test-aes-key".into()), blind_index_key: Some("test-blind-key".into()), ..Default::default() }
 }
 
 // Requirements: DBS-114.

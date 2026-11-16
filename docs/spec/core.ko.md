@@ -454,11 +454,29 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   타입이 계약의 타입인 unit과 member만 선언한다. 값 alias `orm_value`(CORE-62)와 그것을 받거나 돌려주는 `Query`의
   member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. CORE-85~CORE-91의 `Query` member와 CORE-92, CORE-93의
   class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
-  않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다), `Tx::execute`(plan step),
-  `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Config`의 field
-  `audit_source`(함수), `TransactionOptions`의 field `audit`, `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
+  않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다),
+  `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
   `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의
   타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다.
+- **CORE-130** member `tx.execute`는 `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`이다. 이것은
+  `Db::execute_text_machine`이 `Db::execute_text`를 실행하듯 `Tx::execute_text`를 실행한다(CORE-127). step과 parameter는
+  `db.execute`가 읽는 대로 읽고, 문장은 handle의 트랜잭션에서 실행된다. 이유: `db.transaction`의 callback은 handle로만
+  자기 트랜잭션에 닿으므로, callback의 문장에는 `tx`의 member가 필요하다.
+- **CORE-131** 계약의 record `config`는 `Config`이다. 기본값이 있는 field는 `Option<T>`이고, 빠진 field는 `None`을
+  받는다(binding GN-6i). `Db::connect`와 `Db::connect_schema`는 각 `None`을 그 field의 `default_core`가 이름하는 상수로
+  정하고, `aes_keys`는 정수 key의 `KeyedMap<String>`이다. 연결은 이것을 key ring으로 읽고, `i32`가 아닌 key는
+  `config`로 거절한다. field `audit_source`는 CFG-8의 audit 값을 `OrderedMap<OrmValue>`로 돌려주는 parameter 없는
+  함수의 `Option`, 곧 `Box<dyn Fn() -> Result<OrderedMap<OrmValue>, Failure<Error>> + Send + Sync>`이다(binding GN-6z).
+  연결은 이것을 `Arc`에 보관한다. `TransactionOptions`의 field `audit`는 `Option<OrderedMap<OrmValue>>`이다(INT-44). 각
+  audit 값은 `orm_value`의 scalar이고, 다른 값은 `codec_encode`이다. `db.transaction`의 machine은 `BEGIN`을 보내기 전에
+  자기를 구동하는 thread에서 `Call` step으로 source를 부르고(CORE-103), raise한 source는 그 실패를 바꾸지 않고
+  트랜잭션을 끝낸다. 이유: binding은 계약의 field만으로 record를 만들고 기본값이 있는 field를 `None`으로 주며, 언어의
+  함수는 그 언어 코드의 thread에서만 부를 수 있다.
+- **CORE-132** member `db.connect`와 `db.connect_schema`는 machine `Db::connect_machine(dsn: String, pool_size: u32,
+  cfg: Config)`와 `Db::connect_schema_machine(dsn: String, schema: Schema, pool_size: u32, cfg: Config)`이다(binding
+  GN-6ab). 이 machine은 borrow `value`(GN-6h)로 받은 schema를 포함해 자기 인자를 소유하고, `Db::connect`와 `Db::connect_schema`를 `Io` step
+  하나로 실행한다. 언어 코드는 부르지 않으며, 결과는 native 형식의 결과다. 이유: `Config`가 함수 `audit_source`를
+  가지므로, binding은 이 member를 언어 코드에 닿는 member로 세고(GN-6q) machine으로 구동한다.
 - **CORE-71** 계약의 case는 계약의 `cases`가 이름하는 `contracts/interface/core.json`의 group이며 binding의 case
   형식을 따른다: case의 키는 그 member의 parameter이고, receiver는 인스턴스 값이며, 실패는 kind, category, message
   전체(CORE-12)를 적는다. `after`의 호출은 method를 부른 뒤의 receiver를 관찰하고, 각각 `{call, args, result}`다.

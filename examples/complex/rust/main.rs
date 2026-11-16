@@ -29,8 +29,8 @@ fn shortest_number(v: f64) -> serde_json::Result<serde_json::Number> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = polyspec_orm::Config {
-        aes_key: "bench-salt".into(),
-        blind_index_key: "bench-blind-index".into(),
+        aes_key: Some("bench-salt".into()),
+        blind_index_key: Some("bench-blind-index".into()),
         ..Default::default()
     };
     let db = model::connect(&dsn(), 4, config).await?;

@@ -54,7 +54,7 @@ async fn the_memory_of_a_loaded_schema_returns_with_its_last_owner() {
     let db = clock_db(&scratch, &schema).await;
     let mut query = Query::new(&schema, "clock_event").expect("query");
     query.connect(Connection::from(&db));
-    query.where_chain("GtSeq", vec![int(1)]);
+    query.where_chain("GtSeq", &[int(1)]);
     let rows = query.gets().await.expect("gets");
     let row = query.get().await.expect("get").expect("a row");
     assert_eq!(rows.len(), 2);
@@ -114,7 +114,7 @@ async fn a_chain_that_the_entity_does_not_have_is_config_at_the_terminal() {
         ("LkSeq", vec![int(1)], "config: LkSeq: clock_event.seq does not accept the lk operator"),
     ] {
         let mut query = Query::new(&schema, "clock_event").expect("query");
-        query.where_chain(chain, args);
+        query.where_chain(chain, &args);
         let error = query.get_count().await.expect_err("a refused chain");
         assert_eq!(error.to_string(), message, "chain {chain:?}");
     }
@@ -135,7 +135,7 @@ async fn where_and_order_by_select_and_order_the_rows() {
     let mut query = Query::new(&schema, "clock_event").expect("query");
     query.connect(Connection::from(&db));
     assert_eq!(query.get_count().await.expect("count of every row"), 3);
-    query.where_chain("GtSeq", vec![int(1)]);
+    query.where_chain("GtSeq", &[int(1)]);
     query.order_by("SeqDesc");
     assert_eq!(query.get_count().await.expect("count"), 2, "seq > 1");
     let rows = query.gets().await.expect("gets");
@@ -145,7 +145,7 @@ async fn where_and_order_by_select_and_order_the_rows() {
     assert_eq!(first.entity(), "clock_event");
     assert_eq!(first.value("seq").expect("seq"), int(3), "the integer of an i64 column is int64");
     // A connector at the start of the name joins the chain to the conditions before it.
-    query.where_chain("OrLabel", vec![text("first")]);
+    query.where_chain("OrLabel", &[text("first")]);
     assert_eq!(query.get_count().await.expect("count"), 3, "seq > 1 or label = first");
     let statement = query.get_query().await.expect("statement");
     assert!(statement.sql.contains(" OR "), "the statement joins the two conditions with OR: {}", statement.sql);
@@ -161,12 +161,12 @@ async fn a_terminal_with_a_chain_leaves_the_query_unchanged() {
     let db = clock_db(&scratch, &schema).await;
     let mut query = Query::new(&schema, "clock_event").expect("query");
     query.connect(Connection::from(&db));
-    query.where_chain("GtSeq", vec![int(1)]);
-    assert_eq!(query.get_count_by("Label", vec![text("third")]).await.expect("count by"), 1, "seq > 1 and label = third");
+    query.where_chain("GtSeq", &[int(1)]);
+    assert_eq!(query.get_count_by("Label", &[text("third")]).await.expect("count by"), 1, "seq > 1 and label = third");
     assert_eq!(query.gets_by("LtSeq", vec![int(3)]).await.expect("gets by").len(), 1, "seq > 1 and seq < 3");
-    let row = query.get_by("Label", vec![text("second")]).await.expect("get by").expect("a row");
+    let row = query.get_by("Label", &[text("second")]).await.expect("get by").expect("a row");
     assert_eq!(row.value("seq").expect("seq"), int(2));
-    assert!(query.get_by("Label", vec![text("first")]).await.expect("get by").is_none(), "seq > 1 and label = first matches no row");
+    assert!(query.get_by("Label", &[text("first")]).await.expect("get by").is_none(), "seq > 1 and label = first matches no row");
     assert_eq!(query.get_count().await.expect("count"), 2, "the query keeps only its own condition");
     db.close_async().await;
 }
@@ -183,7 +183,7 @@ async fn value_names_a_column_that_the_row_read() {
     let error = query.value("label").expect_err("a query that read no row");
     assert_eq!(error.to_string(), "column_unselected: clock_event.label was not loaded or assigned");
     query.connect(Connection::from(&db));
-    let row = query.get_by("Seq", vec![int(1)]).await.expect("get by").expect("a row");
+    let row = query.get_by("Seq", &[int(1)]).await.expect("get by").expect("a row");
     assert_eq!(row.value("label").expect("label"), text("first"));
     let error = row.value("missing").expect_err("no column of the entity");
     assert_eq!(error.to_string(), "column_unknown: clock_event.missing");

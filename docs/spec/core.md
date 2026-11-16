@@ -537,12 +537,34 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   `get_count_by`. The members of `Query` of CORE-85 to CORE-91 and the class `StepRunner` of CORE-92 and CORE-93 are
   declared; the cases of `StepRunner` run on a SQLite database (CORE-129). The units and members of
   [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
-  are borrowed texts and a row is a list of cells with no column), `Tx::execute` (a plan step), `Db::subscribe` (an
-  event that borrows its statement), `Db::with_request_hook` (the request of the protocol), the field `audit_source`
-  of `Config` (a function), the field `audit` of `TransactionOptions`, `Key`, `GroupRow`, `GroupRows` and `Statement`
+  are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
+  event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
   (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle, and `Collection`,
   `Page` and `LookaheadPage` take the type of a generated model, so they and the members that return them (`get`,
   `gets`, `gets_by`) are not declared either.
+- **CORE-130** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which
+  runs `Tx::execute_text` as `Db::execute_text_machine` runs `Db::execute_text` (CORE-127): the step and the
+  parameters are read as `db.execute` reads them, and the statement runs in the transaction of the handle. Why: a
+  callback of `db.transaction` reaches its transaction only through the handle, so a statement of the callback needs a
+  member of `tx`.
+- **CORE-131** The record `config` of the contract is `Config`, whose fields with a default are `Option<T>` and take
+  `None` for a field that was left out (binding GN-6i): `Db::connect` and `Db::connect_schema` resolve each `None` to
+  the constant that `default_core` of the field names, and `aes_keys` is a `KeyedMap<String>` of integer keys, which
+  the connection reads as its key ring and refuses with `config` for a key that is no `i32`. The field `audit_source` is
+  an `Option` of a function without parameters that returns the audit values of CFG-8 as an `OrderedMap<OrmValue>`,
+  `Box<dyn Fn() -> Result<OrderedMap<OrmValue>, Failure<Error>> + Send + Sync>` (binding GN-6z); the connection keeps it
+  in an `Arc`. The field `audit` of `TransactionOptions` is an `Option<OrderedMap<OrmValue>>` (INT-44). Each audit value
+  is a scalar of `orm_value`, and any other value is `codec_encode`. The machine of `db.transaction` calls the source in
+  a step `Call`, on the thread that drives it, before it sends `BEGIN` (CORE-103), and a source that raised ends the
+  transaction with that failure unchanged. Why: the binding builds a record from the fields of the contract alone and
+  gives a field with a default as `None`, and a function of the language may only be called on the thread of its
+  language code.
+- **CORE-132** The members `db.connect` and `db.connect_schema` are the machines `Db::connect_machine(dsn: String,
+  pool_size: u32, cfg: Config)` and `Db::connect_schema_machine(dsn: String, schema: Schema, pool_size: u32, cfg:
+  Config)` (binding GN-6ab), which own their arguments, the schema by the borrow `value` (GN-6h) among them, and run `Db::connect` and
+  `Db::connect_schema` as one step `Io`; they call no language code, and their result is the result of the native
+  form. Why: a `Config` holds the function `audit_source`, so the binding counts these members among those that reach
+  language code (GN-6q) and drives them as machines.
 - **CORE-71** The cases of the contract are the groups of `contracts/interface/core.json` that `cases` of the contract
   names, in the case form of the bindings: the keys of a case are the parameters of its member, a receiver is an
   instance value, and a failure states its kind, its category and its whole message (CORE-12). The calls of `after`

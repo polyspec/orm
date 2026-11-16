@@ -29,8 +29,8 @@ async fn main() -> polyspec_orm::Result<()> {
     let last: Arc<Mutex<(String, Vec<Param>)>> = Arc::new(Mutex::new((String::new(), Vec::new())));
     let hook = last.clone();
     let config = polyspec_orm::Config {
-        aes_key: AES_KEY.into(),
-        blind_index_key: "bench-blind-index".into(),
+        aes_key: Some(AES_KEY.into()),
+        blind_index_key: Some("bench-blind-index".into()),
         ..Default::default()
     };
     let db = model::connect(&dsn(), 1, config).await?;

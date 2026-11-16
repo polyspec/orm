@@ -57,6 +57,29 @@ pub(crate) struct AuditKey {
 /// The transaction's audit values: column names and values of the audit record table.
 type AuditValues = Vec<(String, Param)>;
 
+/// The audit values of the options and of the source, column names to `orm_value` (CORE-131, INT-44).
+pub type AuditMap = binding_core::OrderedMap<crate::OrmValue>;
+
+/// The statement values of audit values: each is a scalar of `orm_value`, and any other value is `codec_encode`
+/// (CORE-131).
+fn audit_values(map: &AuditMap) -> Result<AuditValues> {
+    map.iter()
+        .map(|(column, value)| {
+            let param = value.clone().scalar().map_err(|_refused| Error::new(crate::Kind::CodecEncode, format!("the audit value {column} is no value of a statement")))?;
+            Ok((column.to_owned(), param))
+        })
+        .collect()
+}
+
+/// The error of a failure of the audit source in a transaction that Rust code awaits, whose source raises no exception
+/// of a language.
+fn native_failure(failure: binding_core::Failure<Error>) -> Error {
+    match failure {
+        binding_core::Failure::Kind(error) => error,
+        other => Error::internal(format!("the audit source raised a failure of a language in a transaction of Rust code: {other:?}")),
+    }
+}
+
 /// The audit record the transaction inserts: the schema of the registered set that has the record table as an entity, that entity, and the column
 /// name-ordered values.
 pub(crate) struct AuditInsert {
@@ -70,8 +93,16 @@ pub(crate) struct AuditInsert {
 /// must be registered on the connection. If there is no audit source, or no or several record tables, or a value key
 /// is not a column of that table, or the primary key is not a single column, it is CONFIG; a source's error is returned as is.
 /// The source is called here once, before the transaction starts.
-fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
-    let Some(source) = &db.inner.cfg.audit_source else {
+/// A source that raised gives its failure unchanged (CORE-131).
+fn audit_record(db: &Db, values: &AuditMap) -> std::result::Result<AuditInsert, binding_core::Failure<Error>> {
+    let (source, schema, entity) = audit_target(db).map_err(binding_core::Failure::Kind)?;
+    let given = source()?;
+    audit_merge(schema, entity, &given, values).map_err(binding_core::Failure::Kind)
+}
+
+/// The audit source of the connection and the schema and the entity of its one audit record table.
+fn audit_target(db: &Db) -> Result<(crate::db::SharedAuditSource, SchemaRef, polyspec_orm_schema::dbspec::Entity)> {
+    let Some(source) = db.inner.cfg.audit_source.clone() else {
         return Err(Error::config("the transaction has audit values but the connection has no audit source: set Config::audit_source"));
     };
     let schemas: Vec<SchemaRef> = db.inner.schemas.read().unwrap().clone();
@@ -107,9 +138,15 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     if entity.primary_key.len() != 1 {
         return Err(Error::config(format!("the audit record table {} needs a primary key of one column", entity.table)));
     }
-    let given = source()?;
+    Ok((source, schema, entity))
+}
+
+/// The audit record of the values of the source and of the transaction, whose value wins for the same column.
+fn audit_merge(schema: SchemaRef, entity: polyspec_orm_schema::dbspec::Entity, given: &AuditMap, values: &AuditMap) -> Result<AuditInsert> {
+    let given = audit_values(given)?;
+    let values = audit_values(values)?;
     let mut merged: Vec<(String, Param)> = Vec::new();
-    for set in [&given, values] {
+    for set in [&given, &values] {
         let mut sorted: Vec<&(String, Param)> = set.iter().collect();
         sorted.sort_by(|a, b| a.0.cmp(&b.0));
         for (column, value) in sorted {
@@ -483,6 +520,19 @@ impl Tx {
         crate::db::execute_step(self.executor()?, step, params).await
     }
 
+    /// Runs one statement of a plan that reads no rows in the transaction, as `Db::execute_text` does on the pool, with
+    /// the step as the JSON text of its form and the parameters as `orm_value` (CORE-70).
+    pub async fn execute_text(&self, step: &str, params: Vec<crate::OrmValue>) -> Result<()> {
+        let (step, params) = crate::db::step_text(step, params)?;
+        self.execute(&step, &params).await
+    }
+
+    /// Owns the compiled-step text and parameter values in one I/O machine, as `Db::execute_text_machine` does: the
+    /// binding member `tx.execute` (CORE-70, CORE-127).
+    pub fn execute_text_machine(self, step: String, params: Vec<crate::OrmValue>) -> crate::Execute {
+        crate::Execute::new(crate::db::machine_target_tx(self), step, params)
+    }
+
     /// Runs `callback` in a savepoint of the transaction and passes it the handle of the savepoint (CORE-21). A callback
     /// that succeeds releases the savepoint. A callback that fails or panics reverts the work after the savepoint and
     /// releases it, and its failure is returned unchanged; when the savepoint cannot be ended too, the result is
@@ -610,7 +660,7 @@ pub struct TransactionOptions {
     /// How many times a callback that failed with `deadlock` runs again (INT-43, CORE-24); absent is 3.
     pub retry: Option<u32>,
     /// The audit values of the unit of work (INT-44).
-    pub audit: Option<Vec<(String, Param)>>,
+    pub audit: Option<AuditMap>,
 }
 
 /// The number of retries of a transaction whose options state none (INT-43).
@@ -641,7 +691,7 @@ impl Db {
             Some(n) => n,
             None => DEFAULT_RETRY,
         };
-        let record = audit.as_ref().map(|values| audit_record(self, values)).transpose()?.map(Arc::new);
+        let record = audit.as_ref().map(|values| audit_record(self, values)).transpose().map_err(native_failure)?.map(Arc::new);
         let mut attempt = 0u32;
         loop {
             let shared = Arc::new(begin(self, isolation, read_only, timeout_ms).await?);
@@ -1105,7 +1155,7 @@ mod tests {
     async fn an_exhausted_pool_is_pool_timeout_and_a_closed_one_is_closed() {
         let _case = polyspec_orm_testcase::case!();
         let tmp = Scratch::new("orm-pool-timeout");
-        let config = crate::Config { pool_acquire_timeout_ms: 200, ..crate::Config::default() };
+        let config = crate::Config { pool_acquire_timeout_ms: Some(200), ..crate::Config::default() };
         let db = Db::connect(&format!("sqlite://{}", tmp.join("pool.sqlite").display()), 1, config).await.expect("connect");
         let other = db.clone();
         let inside = db

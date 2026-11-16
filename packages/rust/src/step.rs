@@ -68,15 +68,17 @@ impl StepOptions {
             StepIsolation::Serializable => Isolation::Serializable,
         });
         let audit = match self.audit {
-            Some(values) => Some(
-                values
-                    .into_iter()
-                    .map(|(column, value)| match value.0.scalar() {
-                        Ok(param) => Ok((column, param)),
-                        Err(_refused) => Err(Error::new(Kind::CodecEncode, format!("the audit value of {column} is no value of a column"))),
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-            ),
+            Some(values) => {
+                let mut map = binding_core::OrderedMap::new();
+                for (column, value) in values {
+                    // A value that is no scalar is refused here, before the transaction, with the message of the step.
+                    if value.0.clone().scalar().is_err() {
+                        return Err(Error::new(Kind::CodecEncode, format!("the audit value of {column} is no value of a column")));
+                    }
+                    map.insert(column, value.0);
+                }
+                Some(map)
+            }
             None => None,
         };
         Ok(TransactionOptions { isolation, read_only: self.read_only, timeout_ms: self.timeout_ms, retry: Some(0), audit })
@@ -379,7 +381,7 @@ fn build(schema: &Schema, tree: QueryTree) -> Result<Query> {
     let mut query = Query::new(schema, &tree.entity)?;
     for call in tree.calls {
         match call {
-            Call::Where { chain, values } => query.where_chain(&chain, values.into_iter().map(|value| value.0).collect()),
+            Call::Where { chain, values } => query.where_chain(&chain, &values.into_iter().map(|value| value.0).collect::<Vec<_>>()),
             Call::WhereIn { chain, query: sub } => query.where_in(&chain, build(schema, sub)?),
             Call::OrderBy { spec } => query.order_by(&spec),
             Call::Limit { offset, count } => query.limit(offset, count),
@@ -396,7 +398,7 @@ fn build(schema: &Schema, tree: QueryTree) -> Result<Query> {
             Call::Alias { name } => query.alias(&name),
             Call::Relation { query: child } => query.relation(build(schema, child)?),
             Call::Relations { query: child } => query.relations(build(schema, child)?),
-            Call::Set { column, value } => query.set(&column, value.0),
+            Call::Set { column, value } => query.set(&column, &value.0),
             Call::ExpectRevision { column, revision } => query.expect_revision(&column, revision),
         }
     }

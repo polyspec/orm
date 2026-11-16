@@ -193,7 +193,7 @@ pub fn bench_dispatcher<M: BenchModels>(schema: &'static Schema, models: M) -> B
 
 /// The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 pub fn bench_config() -> Config {
-    Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() }
+    Config { aes_key: Some("bench-salt".into()), blind_index_key: Some("bench-blind-index".into()), ..Default::default() }
 }
 
 impl<M: BenchModels> CaseModels for Bench<M> {

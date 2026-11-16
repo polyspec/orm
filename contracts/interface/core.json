@@ -13471,7 +13471,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": null,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "result": {
         "kind": "text",
@@ -13609,7 +13610,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": null,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "result": {
         "kind": "text",
@@ -13724,7 +13726,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": null,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "raises": "callback"
     },
@@ -13839,7 +13842,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": 10,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "raises": {
         "category": "value",
@@ -13965,7 +13969,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": null,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "raises": {
         "category": "store",
@@ -14013,7 +14018,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": null,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "raises": {
         "category": "store",
@@ -14143,7 +14149,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": null,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "raises": {
         "category": "store",
@@ -14265,7 +14272,8 @@
         "isolation": null,
         "read_only": null,
         "timeout_ms": null,
-        "retry": null
+        "retry": null,
+        "audit": null
       },
       "raises": {
         "category": "type",

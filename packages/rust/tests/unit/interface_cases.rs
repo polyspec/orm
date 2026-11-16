@@ -184,16 +184,22 @@ fn config(value: &Value, member: &str) -> Config {
                 .or_panic(|error| format!("{what} does not fit u32: {error}"))
         };
         match name.as_str() {
-            "aes_key" => cfg.aes_key = value.as_str().unwrap_or_else(|| panic!("{what} is no text")).to_owned(),
-            "blind_index_key" => cfg.blind_index_key = value.as_str().unwrap_or_else(|| panic!("{what} is no text")).to_owned(),
-            "aes_version" => cfg.aes_version = int(value, &what),
-            "aes_keys" => cfg.aes_keys = keyed_texts(value, &what),
-            "plan_cache_size" => cfg.plan_cache_size = size(),
-            "statement_cache_size" => cfg.statement_cache_size = size(),
-            "statement_timeout_ms" => cfg.statement_timeout_ms = ms(),
-            "pool_idle_size" => cfg.pool_idle_size = ms(),
-            "pool_lifetime_ms" => cfg.pool_lifetime_ms = ms(),
-            "pool_acquire_timeout_ms" => cfg.pool_acquire_timeout_ms = ms(),
+            "aes_key" => cfg.aes_key = Some(value.as_str().unwrap_or_else(|| panic!("{what} is no text")).to_owned()),
+            "blind_index_key" => cfg.blind_index_key = Some(value.as_str().unwrap_or_else(|| panic!("{what} is no text")).to_owned()),
+            "aes_version" => cfg.aes_version = Some(int(value, &what)),
+            "aes_keys" => {
+                let mut keys = binding_core::KeyedMap::new();
+                for (version, key) in keyed_texts(value, &what) {
+                    keys.insert(binding_core::Key::Int(i64::from(version)), key);
+                }
+                cfg.aes_keys = Some(keys);
+            }
+            "plan_cache_size" => cfg.plan_cache_size = Some(size()),
+            "statement_cache_size" => cfg.statement_cache_size = Some(size()),
+            "statement_timeout_ms" => cfg.statement_timeout_ms = Some(ms()),
+            "pool_idle_size" => cfg.pool_idle_size = Some(ms()),
+            "pool_lifetime_ms" => cfg.pool_lifetime_ms = Some(ms()),
+            "pool_acquire_timeout_ms" => cfg.pool_acquire_timeout_ms = Some(ms()),
             other => panic!("{member}: cfg has no field {other}"),
         }
     }
@@ -406,7 +412,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Returned::Instance(Instance::Float(FloatValue::new(value)))
         }
         ("float_value.value", Some(Instance::Float(value))) => Returned::Value(Value::from(value.value())),
-        ("bytes_value.constructor", None) => Returned::Instance(Instance::Bytes(BytesValue::new(bytes(args, "value", member)))),
+        ("bytes_value.constructor", None) => Returned::Instance(Instance::Bytes(BytesValue::new(&bytes(args, "value", member)))),
         ("bytes_value.value", Some(Instance::Bytes(value))) => {
             Returned::Value(serde_json::json!({"hex": value.value().iter().map(|byte| format!("{byte:02x}")).collect::<String>()}))
         }
@@ -416,7 +422,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             for (key, value) in entries {
                 assert!(values.insert(key.clone(), orm_value(value, member)?).is_none(), "{member}: repeated key {key}");
             }
-            Returned::Instance(Instance::Map(MapValue::new(values)))
+            Returned::Instance(Instance::Map(MapValue::new(&values)))
         }
         ("map_value.entries", Some(Instance::Map(value))) => {
             Returned::Value(value.entries().iter().map(|(key, value)| (key.to_owned(), case_value(value, member))).collect::<Map<String, Value>>().into())
@@ -512,7 +518,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             _ => panic!("{member}: query is no query"),
         },
         ("query.set", Some(Instance::Query(query))) => {
-            query.set(&text(args, "column", member), orm_value(field(args, "value", member), member)?);
+            query.set(&text(args, "column", member), &orm_value(field(args, "value", member), member)?);
             Returned::Value(Value::Null)
         }
         ("query.expect_revision", Some(Instance::Query(query))) => {
@@ -537,16 +543,16 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         }
         ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
         ("query.where", Some(Instance::Query(query))) => {
-            query.where_chain(&text(args, "chain", member), orm_values(args, "values", member)?);
+            query.where_chain(&text(args, "chain", member), &orm_values(args, "values", member)?);
             Returned::Value(Value::Null)
         }
         ("query.value", Some(Instance::Query(query))) => Returned::Value(case_value(&query.value(&text(args, "column", member))?, member)),
-        ("query.get_by", Some(Instance::Query(query))) => match query.get_by(&text(args, "chain", member), orm_values(args, "values", member)?).await? {
+        ("query.get_by", Some(Instance::Query(query))) => match query.get_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await? {
             Some(row) => Returned::Instance(Instance::Query(Box::new(row))),
             None => Returned::Value(Value::Null),
         },
         ("query.get_count_by", Some(Instance::Query(query))) => {
-            Returned::Value(Value::from(query.get_count_by(&text(args, "chain", member), orm_values(args, "values", member)?).await?))
+            Returned::Value(Value::from(query.get_count_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?))
         }
         ("db.connect", None) => {
             opened(Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?)
@@ -605,7 +611,13 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Returned::Value(Value::from(crate::dbspec_json::read_set(binding_core::Io::for_generated_call(), &path)?))
         }
         ("aes_keyring.constructor", None) => Returned::Instance(Instance::Keyring(AesKeyring::new(
-            keyed_texts(field(args, "keys", member), member),
+            &{
+                let mut keys = binding_core::KeyedMap::new();
+                for (version, key) in keyed_texts(field(args, "keys", member), member) {
+                    keys.insert(binding_core::Key::Int(i64::from(version)), key);
+                }
+                keys
+            },
             int(field(args, "current", member), member),
         )?)),
         ("aes_keyring.current", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.current())),
@@ -641,18 +653,18 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         )?)),
         ("codec.decode", None) => {
             let cell = orm_value(field(args, "cell", member), member)?;
-            Returned::Value(case_value(&crate::orm_value::decode(&texts(args, "stages", member), cell)?, member))
+            Returned::Value(case_value(&crate::orm_value::decode(&texts(args, "stages", member), &cell)?, member))
         }
         ("codec.host_encode", None) => {
             let value = orm_value(field(args, "value", member), member)?;
-            Returned::Value(case_value(&crate::orm_value::host_encode(value, &texts(args, "stages", member), &text(args, "key", member))?, member))
+            Returned::Value(case_value(&crate::orm_value::host_encode(&value, &texts(args, "stages", member), &text(args, "key", member))?, member))
         }
         ("codec.host_decode", None) => {
             let cell = orm_value(field(args, "cell", member), member)?;
-            Returned::Value(case_value(&crate::orm_value::host_decode(cell, &texts(args, "stages", member), &text(args, "key", member))?, member))
+            Returned::Value(case_value(&crate::orm_value::host_decode(&cell, &texts(args, "stages", member), &text(args, "key", member))?, member))
         }
         ("codec.blind_index", None) => {
-            Returned::Value(Value::from(crate::orm_value::blind_index(orm_value(field(args, "value", member), member)?, &text(args, "key", member))?))
+            Returned::Value(Value::from(crate::orm_value::blind_index(&orm_value(field(args, "value", member), member)?, &text(args, "key", member))?))
         }
         (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
         (other, None) => panic!("the case runner calls no member {other} without a receiver"),

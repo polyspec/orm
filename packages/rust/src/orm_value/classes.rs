@@ -46,9 +46,10 @@ pub struct BytesValue(Vec<u8>);
 
 impl BytesValue {
     /// Keeps every byte, including empty and valid UTF-8 content.
+    /// The argument is borrowed, as a generated binding passes it (binding design T-1).
     #[must_use]
-    pub fn new(value: Vec<u8>) -> Self {
-        Self(value)
+    pub fn new(value: &[u8]) -> Self {
+        Self(value.to_vec())
     }
 
     /// A native copy of the held bytes, so reading does not change the class.
@@ -64,9 +65,10 @@ pub struct MapValue(OrderedMap<OrmValue>);
 
 impl MapValue {
     /// Keeps the text keys in their insertion order, independently of their numeric shape.
+    /// The argument is borrowed, as a generated binding passes it (binding design T-1).
     #[must_use]
-    pub fn new(entries: OrderedMap<OrmValue>) -> Self {
-        Self(entries)
+    pub fn new(entries: &OrderedMap<OrmValue>) -> Self {
+        Self(entries.clone())
     }
 
     /// A native copy of the entries, retaining the order and the kinds of their values.

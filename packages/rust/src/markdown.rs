@@ -694,7 +694,7 @@ impl MarkdownPool {
 
 /// Opens the pool of a markdown connection. Connects one session to check that the server accepts the corpus and token, and
 /// puts it in the pool. A statement timeout leaves the statements as it leaves them on SQLite, whose bound is the busy timeout.
-pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &crate::Config) -> Result<Arc<MarkdownPool>> {
+pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &crate::db::Settings) -> Result<Arc<MarkdownPool>> {
     let pool = MarkdownPool::new(dsn, size, idle, cfg.pool_lifetime_ms);
     drop(pool.acquire().await?);
     Ok(pool)

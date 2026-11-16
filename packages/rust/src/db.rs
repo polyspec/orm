@@ -28,14 +28,22 @@ use crate::value::Param;
 use crate::{Error, Result};
 
 mod machine;
-pub use machine::Execute;
+pub use machine::{Connect, Execute};
 
 /// The audit source of a connection: it returns the audit values of the
 /// current request, column names and values of the audit record table, such as
 /// the account and the request id. A transaction with `audit(values)` calls it
 /// once before it begins; an error fails the transaction. The ORM writes no
 /// audit value of its own.
-pub type AuditSource = Arc<dyn Fn() -> Result<Vec<(String, Param)>> + Send + Sync>;
+///
+/// Its values are scalars of `orm_value`, and a source that raised ends the transaction with that failure (CORE-131).
+pub type AuditSource = Box<dyn Fn() -> AuditResult + Send + Sync>;
+
+/// What an audit source returns: the audit values, or the failure of the source (CORE-131).
+pub type AuditResult = std::result::Result<binding_core::OrderedMap<crate::OrmValue>, binding_core::Failure<Error>>;
+
+/// The audit source that an open connection keeps and that its transactions share.
+pub(crate) type SharedAuditSource = Arc<dyn Fn() -> AuditResult + Send + Sync>;
 
 /// The future of a [`RequestHook`]: the client awaits it before it plans the request (INT-78), so that a hook can read
 /// on another connection between two requests.
@@ -92,48 +100,74 @@ pub const DEFAULT_STATEMENT_TIMEOUT_MS: u32 = 0;
 pub const DEFAULT_POOL_IDLE_SIZE: u32 = 0;
 pub const DEFAULT_POOL_LIFETIME_MS: u32 = 0;
 
-/// The connection configuration: declared, never discovered.
-#[derive(Clone)]
+/// The connection configuration: declared, never discovered. A field that is `None` takes the default that its
+/// constant names when the connection opens (CORE-131, binding GN-6i).
+#[derive(Default)]
 pub struct Config {
     /// Key of aes_version for aes writes; empty takes `aes_keys[aes_version]`
-    /// when a key ring is configured.
-    pub aes_key: String,
-    pub blind_index_key: String,
-    pub aes_version: i32,
-    pub aes_keys: BTreeMap<i32, String>,
-    pub plan_cache_size: usize,
-    pub statement_cache_size: usize,
+    /// when a key ring is configured. The default is [`DEFAULT_AES_KEY`].
+    pub aes_key: Option<String>,
+    /// The default is [`DEFAULT_BLIND_INDEX_KEY`].
+    pub blind_index_key: Option<String>,
+    /// The default is [`DEFAULT_AES_VERSION`].
+    pub aes_version: Option<i32>,
+    /// The key ring by version, whose keys are integers of `i32`; the default is empty.
+    pub aes_keys: Option<binding_core::KeyedMap<String>>,
+    /// The default is [`DEFAULT_PLAN_CACHE_SIZE`].
+    pub plan_cache_size: Option<usize>,
+    /// The default is [`DEFAULT_STATEMENT_CACHE_SIZE`].
+    pub statement_cache_size: Option<usize>,
     /// Bound of every statement of the connection in milliseconds; zero keeps
-    /// the server default.
-    pub statement_timeout_ms: u32,
-    /// Maximum idle connections of the pool; zero keeps up to the pool size.
-    pub pool_idle_size: u32,
+    /// the server default. The default is [`DEFAULT_STATEMENT_TIMEOUT_MS`].
+    pub statement_timeout_ms: Option<u32>,
+    /// Maximum idle connections of the pool; zero keeps up to the pool size. The default is [`DEFAULT_POOL_IDLE_SIZE`].
+    pub pool_idle_size: Option<u32>,
     /// Lifetime of a pool connection in milliseconds; zero sets no lifetime
-    /// (CFG-5).
-    pub pool_lifetime_ms: u32,
+    /// (CFG-5). The default is [`DEFAULT_POOL_LIFETIME_MS`].
+    pub pool_lifetime_ms: Option<u32>,
     /// The bound of the wait for a connection of the pool in milliseconds; a longer wait fails with `pool_timeout`
     /// (CORE-30). The default is [`DEFAULT_POOL_ACQUIRE_TIMEOUT_MS`].
-    pub pool_acquire_timeout_ms: u32,
+    pub pool_acquire_timeout_ms: Option<u32>,
     /// The audit values of the transactions that record an audit; `None`
     /// fails such a transaction with CONFIG.
     pub audit_source: Option<AuditSource>,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            aes_key: DEFAULT_AES_KEY.to_owned(),
-            blind_index_key: DEFAULT_BLIND_INDEX_KEY.to_owned(),
-            aes_version: DEFAULT_AES_VERSION,
-            aes_keys: BTreeMap::new(),
-            statement_timeout_ms: DEFAULT_STATEMENT_TIMEOUT_MS,
-            pool_idle_size: DEFAULT_POOL_IDLE_SIZE,
-            pool_lifetime_ms: DEFAULT_POOL_LIFETIME_MS,
-            pool_acquire_timeout_ms: DEFAULT_POOL_ACQUIRE_TIMEOUT_MS,
-            plan_cache_size: DEFAULT_PLAN_CACHE_SIZE,
-            statement_cache_size: DEFAULT_STATEMENT_CACHE_SIZE,
-            audit_source: None,
-        }
+/// The settings of an open connection: its [`Config`] with every default resolved.
+pub(crate) struct Settings {
+    pub(crate) aes_key: String,
+    pub(crate) blind_index_key: String,
+    pub(crate) aes_version: i32,
+    pub(crate) aes_keys: BTreeMap<i32, String>,
+    pub(crate) plan_cache_size: usize,
+    pub(crate) statement_cache_size: usize,
+    pub(crate) statement_timeout_ms: u32,
+    pub(crate) pool_idle_size: u32,
+    pub(crate) pool_lifetime_ms: u32,
+    pub(crate) pool_acquire_timeout_ms: u32,
+    pub(crate) audit_source: Option<SharedAuditSource>,
+}
+
+impl Settings {
+    /// Resolves each field that is `None` to its default; a key of the key ring that is no `i32` is `config`.
+    fn of(cfg: Config) -> Result<Settings> {
+        let aes_keys = match &cfg.aes_keys {
+            Some(keys) => key_ring(keys)?,
+            None => BTreeMap::new(),
+        };
+        Ok(Settings {
+            aes_key: cfg.aes_key.unwrap_or_else(|| DEFAULT_AES_KEY.to_owned()),
+            blind_index_key: cfg.blind_index_key.unwrap_or_else(|| DEFAULT_BLIND_INDEX_KEY.to_owned()),
+            aes_version: cfg.aes_version.unwrap_or(DEFAULT_AES_VERSION),
+            aes_keys,
+            plan_cache_size: cfg.plan_cache_size.unwrap_or(DEFAULT_PLAN_CACHE_SIZE),
+            statement_cache_size: cfg.statement_cache_size.unwrap_or(DEFAULT_STATEMENT_CACHE_SIZE),
+            statement_timeout_ms: cfg.statement_timeout_ms.unwrap_or(DEFAULT_STATEMENT_TIMEOUT_MS),
+            pool_idle_size: cfg.pool_idle_size.unwrap_or(DEFAULT_POOL_IDLE_SIZE),
+            pool_lifetime_ms: cfg.pool_lifetime_ms.unwrap_or(DEFAULT_POOL_LIFETIME_MS),
+            pool_acquire_timeout_ms: cfg.pool_acquire_timeout_ms.unwrap_or(DEFAULT_POOL_ACQUIRE_TIMEOUT_MS),
+            audit_source: cfg.audit_source.map(Arc::from),
+        })
     }
 }
 
@@ -618,7 +652,7 @@ pub(crate) struct DbInner {
     /// The server of a mysql connection, read once by `VERSION()` when the connection opens, never by the handshake (DIA-201);
     /// MySQL on every other database.
     pub(crate) server: crate::MySqlServer,
-    pub(crate) cfg: Config,
+    pub(crate) cfg: Settings,
     pub(crate) zone: Zone,
     plans: Mutex<HashMap<u64, Arc<Plan>>>,
     plan_order: Mutex<VecDeque<u64>>,
@@ -857,6 +891,16 @@ impl Db {
         Ok(db)
     }
 
+    /// `connect_schema` as a machine that owns its arguments, the member `db.connect_schema` of the contract (CORE-132).
+    pub fn connect_schema_machine(dsn: String, schema: Schema, pool_size: u32, cfg: Config) -> Connect {
+        Connect::new(dsn, Some(schema), pool_size, cfg)
+    }
+
+    /// `connect` as a machine that owns its arguments, the member `db.connect` of the contract (CORE-132).
+    pub fn connect_machine(dsn: String, pool_size: u32, cfg: Config) -> Connect {
+        Connect::new(dsn, None, pool_size, cfg)
+    }
+
     /// Registers a set of the schema on this connection. Registering the same set again changes nothing.
     pub(crate) fn register(&self, schema: &Schema) -> Result<()> {
         schema.registered()?;
@@ -870,7 +914,8 @@ impl Db {
     /// `pool_size` open connections; zero uses 10. The connection has no set
     /// registered: a model request on it fails with SCHEMA_HASH_MISMATCH until
     /// `install` registers the set of the model.
-    pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db> {
+    pub async fn connect(dsn: &str, pool_size: u32, cfg: Config) -> Result<Db> {
+        let mut cfg = Settings::of(cfg)?;
         if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
             return Err(Error::config("cache sizes must be positive"));
         }
@@ -1496,22 +1541,14 @@ impl Db {
     /// Owns the compiled-step text and parameter values in one I/O machine (CORE-127). Native Rust callers may still
     /// await `execute_text`; this constructor gives the binding an operation whose future can outlive its driver.
     pub fn execute_text_machine(self, step: String, params: Vec<crate::OrmValue>) -> Execute {
-        Execute::new(self, step, params)
+        Execute::new(machine::Target::Db(self), step, params)
     }
 
     /// Runs one statement of a plan that reads no rows, as `execute` does, with the step as the JSON text of its form
     /// and the parameters as `orm_value` (docs/spec/flowmark-surface.md FMS-42). A text that is no step of the form is
     /// `config`, and a list, a map or a JSON value among `params` is `codec_encode`.
     pub async fn execute_text(&self, step: &str, params: Vec<crate::OrmValue>) -> Result<()> {
-        let value: serde_json::Value = serde_json::from_str(step).map_err(|error| Error::config(format!("the step is no JSON text: {error}")))?;
-        let step = Step::from_json(&value)?;
-        let params = params
-            .into_iter()
-            .enumerate()
-            .map(|(index, value)| {
-                value.scalar().map_err(|_refused| Error::new(crate::Kind::CodecEncode, format!("the parameter {index} of execute is no value of a statement")))
-            })
-            .collect::<Result<Vec<Param>>>()?;
+        let (step, params) = step_text(step, params)?;
         self.execute(&step, &params).await
     }
 
@@ -1857,3 +1894,35 @@ fn invalid_time_text(col_type: &str) -> Error {
 #[cfg(test)]
 #[path = "../tests/unit/cancel.rs"]
 mod cancel_tests;
+
+/// The step and the parameters of `execute_text` (docs/spec/flowmark-surface.md FMS-42): a text that is no step of the
+/// form is `config`, and a list, a map or a JSON value among `params` is `codec_encode`.
+pub(crate) fn step_text(step: &str, params: Vec<crate::OrmValue>) -> Result<(Step, Vec<Param>)> {
+    let value: serde_json::Value = serde_json::from_str(step).map_err(|error| Error::config(format!("the step is no JSON text: {error}")))?;
+    let step = Step::from_json(&value)?;
+    let params = params
+        .into_iter()
+        .enumerate()
+        .map(|(index, value)| {
+            value.scalar().map_err(|_refused| Error::new(crate::Kind::CodecEncode, format!("the parameter {index} of execute is no value of a statement")))
+        })
+        .collect::<Result<Vec<Param>>>()?;
+    Ok((step, params))
+}
+
+/// The target of the machine of `Tx::execute_text_machine`.
+pub(crate) fn machine_target_tx(tx: crate::Tx) -> machine::Target {
+    machine::Target::Tx(tx)
+}
+
+/// The key ring of a `KeyedMap` of keys by version: a key that is no integer of `i32` is `config` (CORE-131).
+pub(crate) fn key_ring(keys: &binding_core::KeyedMap<String>) -> Result<BTreeMap<i32, String>> {
+    let mut ring = BTreeMap::new();
+    for (key, value) in keys.iter() {
+        let invalid = || Error::config("aes key list holds an invalid version or an empty key");
+        let binding_core::Key::Int(n) = key else { return Err(invalid()) };
+        let version = i32::try_from(*n).map_err(|_overflow| invalid())?;
+        ring.insert(version, value.clone());
+    }
+    Ok(ring)
+}

@@ -1390,6 +1390,29 @@
             "const": "default_pool_acquire_timeout_ms"
           },
           "default_core": "polyspec_orm::DEFAULT_POOL_ACQUIRE_TIMEOUT_MS"
+        },
+        {
+          "name": [
+            "audit",
+            "source"
+          ],
+          "type": {
+            "optional": {
+              "function": {
+                "parameters": [],
+                "returns": {
+                  "map": {
+                    "unit": "orm_value"
+                  }
+                },
+                "async_allowed": false
+              }
+            }
+          },
+          "default": {
+            "literal": null
+          },
+          "reason": "CFG-8"
         }
       ]
     },
@@ -1448,6 +1471,20 @@
           },
           "required": true,
           "reason": "INT-43"
+        },
+        {
+          "name": [
+            "audit"
+          ],
+          "type": {
+            "optional": {
+              "map": {
+                "unit": "orm_value"
+              }
+            }
+          },
+          "required": true,
+          "reason": "INT-44"
         }
       ]
     },
@@ -1526,7 +1563,9 @@
           ],
           "wait": "async_driver",
           "core": {
-            "path": "polyspec_orm::Db::connect"
+            "path": "polyspec_orm::Db::connect_machine",
+            "machine": true,
+            "result": true
           }
         },
         {
@@ -1713,7 +1752,7 @@
                 "unit": "schema"
               },
               "required": true,
-              "core": "&"
+              "core": "value"
             },
             {
               "name": [
@@ -1745,7 +1784,9 @@
           ],
           "wait": "async_driver",
           "core": {
-            "path": "polyspec_orm::Db::connect_schema"
+            "path": "polyspec_orm::Db::connect_schema_machine",
+            "machine": true,
+            "result": true
           }
         },
         {
@@ -1821,6 +1862,59 @@
         }
       ],
       "members": [
+        {
+          "id": "tx.execute",
+          "name": [
+            "execute"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "step"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "params"
+              ],
+              "type": {
+                "list": {
+                  "unit": "orm_value"
+                }
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Tx::execute_text_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
         {
           "id": "tx.savepoint",
           "name": [

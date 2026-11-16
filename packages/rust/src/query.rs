@@ -55,9 +55,10 @@ impl Query {
     /// Adds the conditions of the chain name `chain`, one value of `values` per key (CORE-82). A name that starts with
     /// `And` or `Or` joins its first condition to the conditions before it with that connector. A refused name or
     /// number of values is `config` at the next terminal.
-    pub fn where_chain(&mut self, chain: &str, values: Vec<OrmValue>) {
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub fn where_chain(&mut self, chain: &str, values: &[OrmValue]) {
         let (connector, name) = split_connector(chain);
-        self.chain(connector, name, values);
+        self.chain(connector, name, values.to_vec());
     }
 
     /// Adds the condition that the column of the chain name `chain`, one key with no operator or with `Ne`, is in, or
@@ -263,11 +264,12 @@ impl Query {
     /// Assigns `value` to the column `column` for the next write (CORE-91). A name that is no column of the entity is
     /// `config` and a list or a map is `codec_encode`, each at the next terminal; the column decides at the write whether
     /// it takes any other value (CORE-62).
-    pub fn set(&mut self, column: &str, value: OrmValue) {
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub fn set(&mut self, column: &str, value: &OrmValue) {
         if !self.known_column(column) {
             return;
         }
-        match value {
+        match value.clone() {
             OrmValue::Json(json) => self.core.set_ordered(column, json.value().clone()),
             other => match other.scalar() {
                 Ok(param) => self.core.set(column, param),
@@ -352,8 +354,9 @@ impl Query {
     }
 
     /// `get` with the conditions of `chain` joined by `and`; the query does not change (CORE-83).
-    pub async fn get_by(&self, chain: &str, values: Vec<OrmValue>) -> Result<Option<Query>> {
-        self.by(chain, values).get().await
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub async fn get_by(&self, chain: &str, values: &[OrmValue]) -> Result<Option<Query>> {
+        self.by(chain, values.to_vec()).get().await
     }
 
     /// `gets` with the conditions of `chain` joined by `and`; the query does not change (CORE-83).
@@ -362,8 +365,9 @@ impl Query {
     }
 
     /// `get_count` with the conditions of `chain` joined by `and`; the query does not change (CORE-83).
-    pub async fn get_count_by(&self, chain: &str, values: Vec<OrmValue>) -> Result<i64> {
-        self.by(chain, values).get_count().await
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub async fn get_count_by(&self, chain: &str, values: &[OrmValue]) -> Result<i64> {
+        self.by(chain, values.to_vec()).get_count().await
     }
 
     /// The value of the column `column` of a row as `orm_value` (CORE-62, CORE-83): a name that is no column of the entity is `column_unknown`,
