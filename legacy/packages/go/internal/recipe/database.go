@@ -1939,11 +1939,12 @@ func clockRead(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{}, fmt.Errorf("clock.read has no edge %q", edge)
 	}
 	text := time.Now().UTC().Format("2006-01-02 15:04:05.000000")
+	// The step names its connection on every database, so each reads it.
+	db, err := connectionOf(s, c)
+	if err != nil {
+		return outcome{}, err
+	}
 	if dialectOf(c.database) == "mysql" {
-		db, err := connectionOf(s, c)
-		if err != nil {
-			return outcome{}, err
-		}
 		err = db.Utils().Run(func(frame *orm.TxFrame) error {
 			result, err := frame.Run(orm.KindUtility, nil, "SELECT DATE_FORMAT(CURRENT_TIMESTAMP(6), '%Y-%m-%d %H:%i:%s.%f')")
 			if err != nil {

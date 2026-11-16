@@ -4328,8 +4328,10 @@ def _op_clock_read(step: dict, context: dict) -> dict:
     below and the reading plus 999 above."""
     if step["edge"] not in ("lower", "upper"):
         raise AssertionError(f"clock.read has no edge {step['edge']}")
+    # The step names its connection on every database, so each reads it.
+    db = _connection_of(step, context)
     if _dialect_of(context) == "mysql":
-        [[reading]] = _connection_of(step, context).utils().run(
+        [[reading]] = db.utils().run(
             lambda frame: frame.run(
                 "SELECT CURRENT_TIMESTAMP(6)", [], kind="utility", tables=[]
             )

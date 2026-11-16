@@ -4259,13 +4259,17 @@ mod database {
                     let db = connection_db(step, context).map_err(fault)?;
                     let rows = frame_rows(&db, "SELECT DATE_FORMAT(CURRENT_TIMESTAMP(6), '%Y-%m-%d %H:%i:%s.%f')").await.map_err(orm)?;
                     match rows.first().and_then(|row| row.first()) {
-                        Some(polyspec_orm::Val::Text(text)) => Output::fields(json!({ "value": { "text": text } })),
+                        Some(polyspec_orm::Val::Str(text)) => Output::fields(json!({ "value": { "text": text } })),
                         other => return Err(fault(format!("clock.read: the server clock is {other:?}"))),
                     }
                 }
-                Some("lower" | "upper") => Output::fields(json!({ "value": {
-                    "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
-                } })),
+                Some("lower" | "upper") => {
+                    // The step names its connection on every database, so each reads it.
+                    connection_db(step, context).map_err(fault)?;
+                    Output::fields(json!({ "value": {
+                        "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                    } }))
+                }
                 other => return Err(fault(format!("clock.read has no edge {other:?}"))),
             },
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.

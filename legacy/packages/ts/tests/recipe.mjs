@@ -1828,8 +1828,10 @@ Object.assign(OPS, {
   // the last microsecond of the millisecond.
   'clock.read': async (s, context) => {
     if (s.edge !== 'lower' && s.edge !== 'upper') throw new Error(`clock.read has no edge ${s.edge}`);
+    // The step names its connection on every database, so each reads it.
+    const db = connectionOf(s, context);
     if (dialectOf(context) === 'mysql') {
-      const { rows } = await connectionOf(s, context).utils().run(frame =>
+      const { rows } = await db.utils().run(frame =>
         frame.run('utility', [], "SELECT DATE_FORMAT(CURRENT_TIMESTAMP(6), '%Y-%m-%d %H:%i:%s.%f')", []));
       return { value: { text: String(rows[0][0]) } };
     }

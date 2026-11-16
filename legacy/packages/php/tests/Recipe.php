@@ -3128,8 +3128,10 @@ final class Recipe
                 if (!in_array($s['edge'], ['lower', 'upper'], true)) {
                     Assert::fail('clock.read has no edge ' . json_encode($s['edge']));
                 }
+                // The step names its connection on every database, so each reads it.
+                $db = self::connectionOf($s, $context);
                 if (self::dialectOf($context) === 'mysql') {
-                    $rows = self::connectionOf($s, $context)->utils()->run(
+                    $rows = $db->utils()->run(
                         static fn (TxFrame $frame): array => $frame->run(
                             'utility',
                             [],
