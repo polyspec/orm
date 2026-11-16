@@ -849,7 +849,6 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
 });
 
 caseTest('the Rust test recipe gives Kit one libtest thread option', async () => {
-  const root = repository.pathname;
   const recipe = /^dbspec-verify-errors-rust-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(text('Makefile'))?.[1];
   assert.ok(recipe, 'the Rust test recipe exists');
   const command = recipe.split('\n').find(line => line.includes('$(RUN_TESTS) cargo --cwd packages/rust -- '));
@@ -861,6 +860,12 @@ caseTest('the Rust test recipe gives Kit one libtest thread option', async () =>
   try {
     const stubDirectory = join(directory, 'bin');
     mkdirSync(stubDirectory);
+    // The case runs in a work tree of its own (T544), a git root of no link declaration, so the cargo link of kit runs the
+    // stub as given whether or not the checkout declares links: the case makes what it reads.
+    const root = join(directory, 'tree');
+    mkdirSync(join(root, 'packages/rust'), { recursive: true });
+    const init = spawnSync('git', ['init', '--quiet', root], { encoding: 'utf8', env: isolatedEnvironment() });
+    assert.equal(init.status, 0, init.stderr);
     const argumentsFile = join(directory, 'arguments.json');
     const stub = join(stubDirectory, 'cargo');
     writeFileSync(stub, [
@@ -884,7 +889,9 @@ caseTest('the Rust test recipe gives Kit one libtest thread option', async () =>
       ], {
         cwd: root,
         env: isolatedEnvironment({
-          PATH: `${stubDirectory}:${process.env.PATH ?? ''}`,
+          // The recipe names the stub as its cargo (CARGO, as the template does, T28.99), so the case holds with or without
+          // a link declaration: the stub is not a cargo on PATH that a link would ask.
+          CARGO: stub,
           CARGO_STUB_ARGUMENTS: argumentsFile,
         }),
         stdio: ['ignore', 'pipe', 'pipe'],
