@@ -1567,6 +1567,7 @@ pub async fn update<M: AnyModel + Clone>(m: &mut M, optimistic: bool) -> Result<
         return Ok(());
     }
     key_where(&mut req, &ent, &keys);
+    crate::request::write_condition(&mut req, c)?;
     let revision = revision_guard(c, &ent, &mut req, true, optimistic)?;
     let column = ent.updated.clone().unwrap_or_default();
     if optimistic {
@@ -1790,6 +1791,10 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&
         None => (terminal(c)?, c.conn.clone()),
     };
     if recursive {
+        // The children go before the row, so conditions on the row could not keep them (CORE-138).
+        if !c.where_.items.is_empty() && c.row.as_ref().is_some_and(|row| row.related.values().any(|rel| rel.cascade)) {
+            return Err(config("a recursive delete of a row with cascading relations takes no conditions"));
+        }
         if let Some(row) = &c.row {
             for rel in row.related.values() {
                 if !rel.cascade {
@@ -1811,6 +1816,7 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&
     let mut req = write_req(c, "delete");
     let keys = key_values(c, &ent)?;
     key_where(&mut req, &ent, &keys);
+    crate::request::write_condition(&mut req, c)?;
     let revision = revision_guard(c, &ent, &mut req, false, false)?;
     req.ir.n_params = req.params.len();
     let (_, affected) = write(&ex, &conn, &mut req).await?;
@@ -1846,6 +1852,10 @@ fn revision_guard(c: &Core, ent: &dbspec::Entity, req: &mut Req, update: bool, o
 /// Fails with REVISION_CHANGED when a write with an expected revision matched no row.
 fn revision_checked(c: &Core, column: Option<&str>, affected: u64) -> Result<()> {
     match (column, &c.expected_revision) {
+        // With conditions, one statement cannot tell the revision from them (CORE-138).
+        (Some(column), Some((_, revision))) if affected == 0 && !c.where_.items.is_empty() => {
+            Err(Error::new(crate::Kind::RevisionChanged, format!("the row's {column} is not {revision} or the row does not meet the conditions")))
+        }
         (Some(column), Some((_, revision))) if affected == 0 => Err(Error::new(crate::Kind::RevisionChanged, format!("the row's {column} is not {revision}"))),
         _ => Ok(()),
     }

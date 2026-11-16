@@ -416,6 +416,16 @@ implementation is eligible for removal on that evidence.
   `<column> is not a column of <entity>`, a list or a map is `codec_encode` with the message `the value of a column is a list` or `a map`, and a
   value that the column cannot take is `codec_encode` at the write (CORE-62). A write fails with the kind of its
   cause, such as `duplicate_key` (CORE-10).
+- **CORE-138** The conditions of a `Query` (`where`, `where_in`, `where_none`; CORE-82, CORE-137) also hold for its
+  `update` and `delete` (CORE-91): the statement writes the row of the key only while the row meets them, and joins
+  them to the key with `and`, so a query with `where_none` writes no row. The key still names the one row, and
+  `expect_revision` and the soft-delete column join as before (PRT-93). A write that changed no row is not an error, except under `expect_revision`, where it stays
+  `revision_changed` (CORE-91), since one statement cannot tell the revision from the conditions: its message then
+  reads `the row's <column> is not <revision> or the row does not meet the conditions`.
+  A recursive delete deletes the cascading children before the row, so one with conditions on a row that has
+  cascading relations is `config`: `a recursive delete of a row with cascading relations takes no conditions`.
+  The language implementations (legacy/) wrote every row that the conditions selected, a write of a set; the core writes
+  one row of its key, under its conditions (T563-3).
 - **CORE-92** The `Db` step is a query of the core of another library, held as data, that a host runs with orm without a
   judgement of its own: `StepRunner::new(schema, connection)` runs its steps on `connection` and `run(step)` takes one
   step as JSON text and returns its outcome as JSON text. A query step is

@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 36e0fb587889af1a96a13a5236e5b3d5e695f27da074f9f2ab94bb9de82bef4e -->
+<!-- source-sha256: 25cacf319f3fbb30184e34db98ba2d6268b8285ed17475188c4df3925d5d820d -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -347,6 +347,14 @@
   `<column> is not a column of <entity>`이며, list나 map은 `codec_encode`이고 메시지는 `the value of a column is a list`나 `a map`이고,
   열이 받을 수 없는 값은 쓰기에서 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그
   원인의 kind로 실패한다(CORE-10).
+- **CORE-138** `Query`의 조건(`where`, `where_in`, `where_none`; CORE-82, CORE-137)은 그 `update`와 `delete`(CORE-91)에도
+  적용된다: 문장은 key의 행이 조건을 만족할 때만 그 행을 쓰고, 조건을 key에 `and`로 잇는다. 그래서 `where_none`을 가진
+  query는 어떤 행도 쓰지 않는다. key는 여전히 한 행을 가리키고, `expect_revision`과 soft delete 열은 전처럼 이어진다
+  (PRT-93). 아무 행도 바꾸지 않은 쓰기는 오류가 아니다. 다만 `expect_revision` 아래에서는 `revision_changed`로
+  남는다(CORE-91). 한 문장으로는 revision과 조건을 구별할 수 없기 때문이다. 그때 메시지는 `the row's <column> is not
+  <revision> or the row does not meet the conditions`다. 재귀 delete는 cascade 자식을 행보다 먼저 지우므로, cascade relation을 가진 행에 조건을 둔 재귀 delete는
+  `config`다: `a recursive delete of a row with cascading relations takes no conditions`. 언어 구현(legacy/)은 조건이 고른 모든 행을 쓰는 집합 쓰기였다.
+  core는 key의 한 행을 그 조건 아래에서 쓴다(T563-3).
 - **CORE-92** `Db` step은 다른 library의 코어가 데이터로 가진 질의이고, host는 자기 판단 없이 그것을 orm으로 실행한다:
   `StepRunner::new(schema, connection)`는 그 step을 `connection`에서 실행하고, `run(step)`은 step 하나를 JSON 텍스트로
   받아 그 결과를 JSON 텍스트로 돌려준다. 질의 step은 `{"kind": "query", "query": <query>, "terminal": <terminal>}`이다.
