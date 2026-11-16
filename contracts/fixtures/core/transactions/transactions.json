@@ -336,6 +336,7 @@
         "CFG-15",
         "CORE-25"
       ],
+      "databases_differ": "The rollback fails because the server ends the session of the transaction, which SQLite, a file without a server, has not (CFG-15).",
       "only": [
         "mysql",
         "postgres"
@@ -411,6 +412,7 @@
         "CORE-25",
         "DIA-201"
       ],
+      "databases_differ": "The idle limit is a server's own setting, wait_timeout on MySQL and idle_in_transaction_session_timeout on PostgreSQL, and SQLite has no server to end a connection, so its transaction commits both rows (CFG-15, DIA-201).",
       "steps": [
         {
           "op": "model.connect",
@@ -608,6 +610,7 @@
         "CFG-15",
         "CORE-25"
       ],
+      "databases_differ": "The rollback fails because the server ends the session of the transaction, which SQLite, a file without a server, has not (CFG-15).",
       "only": [
         "mysql",
         "postgres"

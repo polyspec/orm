@@ -13,6 +13,7 @@
         "INT-39",
         "DSL-119"
       ],
+      "databases_differ": "The statement events record the SQL that each dialect renders, with its quoting, its placeholders and LIMIT form, which set the order of the binds, its RETURNING or LAST_INSERT_ID and its begin statement (DIA-1, DIA-2, DIA-8, DIA-221).",
       "steps": [
         {
           "op": "model.connect",
