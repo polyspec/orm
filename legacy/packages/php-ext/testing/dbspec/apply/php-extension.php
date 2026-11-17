@@ -15,8 +15,9 @@ declare(strict_types=1);
 // Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php
 // <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plan-cases.json>
 
-require __DIR__ . '/../../../../../vendor-php/autoload.php';
-require __DIR__ . '/../../../../../tests/dbspec/input.php';
+require_once dirname(__DIR__, 4) . '/php/tests/repository_root.php';
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
+require ormRepositoryRoot() . '/tests/dbspec/input.php';
 require __DIR__ . '/../../../../php/tests/dbspec_plan_cases.php';
 require __DIR__ . '/../../../../php/testing/dbspec/apply/runner.php';
 

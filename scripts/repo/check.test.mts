@@ -32,7 +32,7 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, unlinkedCargoErrors, unlinkedCargoSourceErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors, tools } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, unlinkedCargoErrors, unlinkedCargoSourceErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, movedPathErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors, tools } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -2077,6 +2077,29 @@ caseTest('every PHP and TypeScript test that a check runs reports its cases', ()
   const files = new Set(trackedFiles('*'));
   assert.ok(commands.some(({ command }) => /vendor-php\/bin\/phpunit .*packages\/php\/tests\/DecimalModelDbTest\.php/.test(command)));
   assert.deepEqual(reportingScriptErrors(commands, path => files.has(path) ? text(path) : undefined), []);
+});
+
+caseTest('every relative require and import of the legacy tree names a file in the repository', () => {
+  const files = new Set(trackedFiles('*'));
+  assert.deepEqual(movedPathErrors([...files], path => files.has(path) ? text(path) : undefined), []);
+});
+
+caseTest('a relative require or import of the legacy tree that names a path one directory too deep or outside the repository fails', () => {
+  const files: Record<string, string> = {
+    'legacy/packages/php/testing/dbspec/apply/php.php': "<?php\nrequire __DIR__ . '/../../../../../vendor-php/autoload.php';\nrequire __DIR__ . '/../../../../../tests/dbspec/input.php';\nrequire __DIR__ . '/../../../tests/dbspec_plan_cases.php';\nrequire_once dirname(__DIR__, 3) . '/tests/repository_root.php';\nrequire ormRepositoryRoot() . '/vendor-php/autoload.php';\n",
+    'legacy/packages/ts/tests/far.mjs': "import { caseTest } from '../../../../../tests/testcase.mts';\nimport { cases } from '../../../../tests/testcase.mts';\n",
+    'legacy/packages/php/tests/dbspec_plan_cases.php': '',
+    'legacy/packages/php/tests/repository_root.php': '',
+    'legacy/tests/dbspec/ddl.json': '',
+    'tests/dbspec/input.php': '',
+    'tests/testcase.mts': '',
+    'scripts/outside.mjs': "import { x } from '../../../y.mjs';\n",
+  };
+  assert.deepEqual(movedPathErrors(Object.keys(files), path => files[path]), [
+    'legacy/packages/php/testing/dbspec/apply/php.php requires legacy/vendor-php/autoload.php, a directory that legacy does not hold; find the root by the helper of its language (ormRepositoryRoot() of PHP) in place of a count of directories',
+    'legacy/packages/php/testing/dbspec/apply/php.php requires legacy/tests/dbspec/input.php, which is tests/dbspec/input.php of the root; find the root by the helper of its language (ormRepositoryRoot() of PHP) in place of a count of directories',
+    'legacy/packages/ts/tests/far.mjs requires ../tests/testcase.mts, outside the repository; find the root by the helper of its language (ormRepositoryRoot() of PHP) in place of a count of directories',
+  ]);
 });
 
 caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared case report fails', () => {
