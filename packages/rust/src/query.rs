@@ -62,8 +62,10 @@ impl Query {
     }
 
     /// Adds a condition that no row satisfies, the predicate `none` of the request (CORE-137, PRT-92). `connector` is
-    /// `""`, `And` or `Or`, the connector words of CORE-82: `""` and `And` join it with `and` and `Or` with `or`. Any
-    /// other text fails the query with `config` at the next terminal.
+    /// `""`, `And` or `Or`, the connector words of CORE-82: `And` joins it to the conditions before it with `and` and `Or`
+    /// with `or`; `""` names no connector and is the form of a first condition. A connector on a first condition is
+    /// dropped (DSL-18), and `""` after another condition, like any other text, fails the query with `config` at the
+    /// next terminal (DSL-19).
     pub fn where_none(&mut self, connector: &str) {
         let conn = match connector {
             "" => "",

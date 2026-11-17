@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: a6499aa83020e3913e2b62685fe2c8a3590d51ca4bbee88f7bbdc24862c3a86b -->
+<!-- source-sha256: 79c6c16d18140b2493d22abfb28804a4e984c90397242bcce619fe97fe3dba52 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -649,11 +649,11 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 | relation getter `get<Table>Model()`, `get<Table>Models()` | DSL-89 | 있음, 바뀜: `related(name)`, `related_rows(name)`(CORE-88) | `packages/rust/interface.json:3889`, `packages/rust/interface.json:3920` |
 | `update(optimistic)` | INT-36, DSL-106, DSL-107 | 있음, 바뀜: `update()`는 인자가 없고 query의 조건 아래에서 key의 한 row를 쓴다(CORE-138) | `packages/rust/interface.json:4116`, `packages/rust/build/src/fixed.rs.txt:135` |
 | `delete(recursive)` | INT-37, DSL-110, DSL-111 | 있음, 바뀜: `delete()`는 인자가 없고 query의 조건 아래에서 key의 한 row를 지운다(CORE-138). 계약의 어느 member도 recursive로 지우지 않는다 | `packages/rust/interface.json:4151`, `packages/rust/build/src/fixed.rs.txt:145` |
-| `get()` | INT-29 | 코어에 있고 계약에 없음. CORE-70 | `packages/rust/src/query.rs:348`, `contracts/interfaces.json:1014` |
-| `gets()`, `Collection<T>`와 그 member `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80~INT-86 | 코어에 있고 계약에 없음. CORE-70: `Collection`은 generated model의 type을 받는다 | `packages/rust/src/query.rs:354`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
-| `getsBy<Chain>()` | INT-27 | 코어에 있고 계약에 없음. CORE-70 | `packages/rust/src/query.rs:376` |
-| `getQuery()` | DSL-65 | 코어에 있고 계약에 없음. CORE-70: `Statement`는 Rust 값을 담는다 | `packages/rust/src/query.rs:365` |
-| row의 `toArray()` | `Model.toArray`(선언 목록) | 코어에 있고 계약에 없음. CORE-120이 적고 계약은 선언하지 않는다 | `packages/rust/src/query.rs:401`, `contracts/interfaces.json:1728` |
+| `get()` | INT-29 | 코어에 있고 계약에 없음. CORE-70 | `packages/rust/src/query.rs:350`, `contracts/interfaces.json:1014` |
+| `gets()`, `Collection<T>`와 그 member `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80~INT-86 | 코어에 있고 계약에 없음. CORE-70: `Collection`은 generated model의 type을 받는다 | `packages/rust/src/query.rs:356`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
+| `getsBy<Chain>()` | INT-27 | 코어에 있고 계약에 없음. CORE-70 | `packages/rust/src/query.rs:378` |
+| `getQuery()` | DSL-65 | 코어에 있고 계약에 없음. CORE-70: `Statement`는 Rust 값을 담는다 | `packages/rust/src/query.rs:367` |
+| row의 `toArray()` | `Model.toArray`(선언 목록) | 코어에 있고 계약에 없음. CORE-120이 적고 계약은 선언하지 않는다 | `packages/rust/src/query.rs:403`, `contracts/interfaces.json:1728` |
 | `Key` | INT-11, INT-63 | 코어에 있고 계약에 없음. CORE-70 | `packages/rust/src/lib.rs:86` |
 | `sqlNull`, `value`, `payload`를 가진 `StyledValue` | INT-7 | 코어에 있고 계약에 없음. style 단계가 있는 column은 코어에서 `orm_value`로 나온다(CORE-62) | `packages/rust/src/lib.rs:116` |
 

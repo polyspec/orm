@@ -654,11 +654,11 @@ A user of the generated bindings has this today:
 | the relation getters `get<Table>Model()`, `get<Table>Models()` | DSL-89 | present, changed: `related(name)`, `related_rows(name)` (CORE-88) | `packages/rust/interface.json:3889`, `packages/rust/interface.json:3920` |
 | `update(optimistic)` | INT-36, DSL-106, DSL-107 | present, changed: `update()` takes no argument and writes the one row of its key under the conditions of the query (CORE-138) | `packages/rust/interface.json:4116`, `packages/rust/build/src/fixed.rs.txt:135` |
 | `delete(recursive)` | INT-37, DSL-110, DSL-111 | present, changed: `delete()` takes no argument and deletes the one row of its key under the conditions of the query (CORE-138); no member of the contract deletes recursively | `packages/rust/interface.json:4151`, `packages/rust/build/src/fixed.rs.txt:145` |
-| `get()` | INT-29 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:348`, `contracts/interfaces.json:1014` |
-| `gets()`, `Collection<T>` and its members `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80 to INT-86 | in the core, not in the contract; CORE-70: `Collection` takes the type of a generated model | `packages/rust/src/query.rs:354`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
-| `getsBy<Chain>()` | INT-27 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:376` |
-| `getQuery()` | DSL-65 | in the core, not in the contract; CORE-70: `Statement` holds Rust values | `packages/rust/src/query.rs:365` |
-| `toArray()` of a row | `Model.toArray` of the inventory | in the core, not in the contract; CORE-120 states it; the contract does not declare it | `packages/rust/src/query.rs:401`, `contracts/interfaces.json:1728` |
+| `get()` | INT-29 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:350`, `contracts/interfaces.json:1014` |
+| `gets()`, `Collection<T>` and its members `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80 to INT-86 | in the core, not in the contract; CORE-70: `Collection` takes the type of a generated model | `packages/rust/src/query.rs:356`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
+| `getsBy<Chain>()` | INT-27 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:378` |
+| `getQuery()` | DSL-65 | in the core, not in the contract; CORE-70: `Statement` holds Rust values | `packages/rust/src/query.rs:367` |
+| `toArray()` of a row | `Model.toArray` of the inventory | in the core, not in the contract; CORE-120 states it; the contract does not declare it | `packages/rust/src/query.rs:403`, `contracts/interfaces.json:1728` |
 | `Key` | INT-11, INT-63 | in the core, not in the contract; CORE-70 | `packages/rust/src/lib.rs:86` |
 | `StyledValue` with `sqlNull`, `value`, `payload` | INT-7 | in the core, not in the contract; a column with a style stage leaves the core as `orm_value` (CORE-62) | `packages/rust/src/lib.rs:116` |
 
