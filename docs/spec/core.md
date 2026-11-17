@@ -596,6 +596,28 @@ implementation is eligible for removal on that evidence.
   list is `empty_in` with the message `tuple condition received an empty list`, a group of another length is `config`
   with the message `every tuple needs one value per column`, and a key of fewer than two columns, or of a column with
   a codec stage or without the list operator, is `config`. Each is returned by the next terminal. `Query` has it.
+- **CORE-170** The contract declares the terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row
+  (CORE-83, CORE-120). `query.get` returns the row or nothing, as `query.get_by` does. `query.gets` and `query.gets_by`
+  are `Query::gets_rows()` and `Query::gets_rows_by(chain, values)`, which run `gets` and `gets_by` and return their
+  `Collection` as `Rows`, the class `rows` of the contract. `rows` has `len()`, the number of rows; `first()`, the first
+  row or nothing; `get(key)`, the row of a key or nothing; `keys()`, the keys in the order of the rows; `values()`, the
+  rows in their order; and `to_array()`, the `to_array` of each row in that order. A key is an `orm_value`: an integer
+  key is `int64`, a bool key `bool`, a bytes key `bytes`, a text key `text`, and a date-time key the text
+  `YYYY-MM-DD hh:mm:ss.ffffff` with six fraction digits. The key of a row is the value of the column of `key_name`
+  (CORE-89) or else of the primary key, and the key of a primary key of more than one column is one text that joins
+  its components, each with a tag of its type and its length (`Key::of_values`). `get(key)` takes an `int` as the
+  `int64` of the same number and a text as the text key or, when no row has that key, as the key of the date-time that
+  the text writes; a value of any other kind is the key of no row, so `get` returns nothing and raises no kind.
+  `to_array` of a `Query` returns an `OrderedMap` of `orm_value`, the map of the contract. A `Query` has no fetch key
+  and no fetch value, so `rows` leaves out of the `Collection` of a `Query` only its `connect`, its `delete` and its
+  JSON text. Not declared: an iteration of `rows` by key and value (binding GN-6f), because binding states no case of
+  an `iterate` member and every group of the contract holds a case (CORE-71); `keys()` and `values()` give the same
+  pairs. The cases run on a SQLite database (CORE-129). A row that a member returns is observed by a case of
+  `query.value` whose receiver is the instance value `{"from": <member>, "pick": [<step>]}` (binding GN-13f), with the
+  step `"?"` for the value of an optional and `{"index": n}` for an item of a list; the case runner of the core makes
+  such a value as a generated test does. Why: a list of `query` would lose the keys and the lookup by key, and
+  `Collection<Query>` has no Rust path that a `core_type` can name, so the core gives the collection of a `Query` a
+  type of its own.
 - **CORE-200** `gets_page(page, per_page)` reads one page of the rows of a `Query` and counts the rows of every page:
   the member `getsPage(page, perPage)` of the language implementations (DSL-64, DSL-67, INT-32). It returns a `page`:
   `rows`, the rows of the page as `gets` returns them (CORE-83); `total_count`, the number of rows that the conditions
@@ -699,14 +721,11 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
-  (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle, and `Collection`,
-  `Page` and `LookaheadPage` take the type of a generated model, so they and the members that return them (`get`,
-  `gets`, `gets_by`) are not declared either. Of these, `Statement` and `Collection` are returned by members that
-  `Query` has (`get_query`, `gets`, `gets_by`; CORE-83), so their declaration alone is missing. The `Page` of a `Query`
-  is declared as the class `page` (CORE-200). `LookaheadPage`,
-  `GroupRow` and `GroupRows` are returned by no member of `Query` (CORE-84) but by the generated Rust models alone, and
-  a binding has no generated model (CORE-50): it has nothing in their place, and reads the rows of a query only as
-  `related_rows` (CORE-88) or through the terminal `gets` of a `StepRunner` (CORE-92).
+  (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle and are not declared either.
+  The terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row are declared, and `gets` and `gets_by`
+  return the class `rows` (CORE-170). `Collection`, `Page` and `LookaheadPage` are not declared as types: each is
+  generic over its model, which the Rust path of a `core_type` cannot name, and a `Query` has no terminal that returns
+  a page but `gets_page`, whose `Page` is the class `page` (CORE-200). `get_query` is not declared, because it returns `Statement`.
 - **CORE-133** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which
   runs `Tx::execute_text` as `Db::execute_text_machine` runs `Db::execute_text` (CORE-127): the step and the
   parameters are read as `db.execute` reads them, and the statement runs in the transaction of the handle. Why: a

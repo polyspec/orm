@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use binding_core::OrderedMap;
 use indexmap::IndexMap;
 use polyspec_orm_schema::chain::{parse_chain, parse_order, split_pair, ChainKey};
 
@@ -23,10 +24,6 @@ pub struct Query {
     /// The values of the columns of the entity that a row read, by column name.
     values: IndexMap<String, Val>,
 }
-
-/// PLACEHOLDER, dropped at the merge: the rows of a `Query`, the core type of the unit `rows` of the contract, which
-/// the branch of `gets` declares with its members. It stands here so that the class `page` (CORE-200) names a unit.
-pub type Rows = Collection<Query>;
 
 /// One page of the rows of a `Query`, the core type of the class `page` of the contract (CORE-200).
 pub type QueryPage = Page<Query>;
@@ -58,8 +55,8 @@ impl Page<Query> {
 
     /// The rows of the page, as `gets` returns them (CORE-200).
     #[must_use]
-    pub fn rows(&self) -> Collection<Query> {
-        self.items.clone()
+    pub fn rows(&self) -> Rows {
+        Rows(self.items.clone())
     }
 }
 
@@ -69,6 +66,79 @@ fn new_query(core: Core) -> Box<dyn AnyModel> {
 
 fn collect_queries(items: Boxed, fetched: HashMap<Key, serde_json::Value>) -> Arc<dyn AnyCollection> {
     Arc::new(Collection::<Query>::from_boxes(items, fetched))
+}
+
+/// The rows that `gets` read, each under its key, in the order of the read (CORE-170): the class `rows` of the
+/// contract, which holds the `Collection` of a `Query`.
+#[derive(Clone)]
+pub struct Rows(Collection<Query>);
+
+/// The key of a row as `orm_value` (CORE-170): an integer is `int64`, a bool `bool`, bytes `bytes`, a text `text`, and
+/// a date-time the text of its six fraction digits.
+fn key_value(key: &Key) -> OrmValue {
+    match key {
+        Key::I(number) => OrmValue::Int64(*number),
+        Key::S(text) => OrmValue::Text(text.clone()),
+        Key::B(flag) => OrmValue::Bool(*flag),
+        Key::X(bytes) => OrmValue::Bytes(bytes.clone()),
+        Key::T(at) => OrmValue::Text(at.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
+    }
+}
+
+impl Rows {
+    /// The number of rows.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether no row was read.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// The first row, `None` when no row was read.
+    #[must_use]
+    pub fn first(&self) -> Option<Query> {
+        self.0.first().cloned()
+    }
+
+    /// The row of the key `key`, `None` when no row has it. An `int` and an `int64` name the same key, a text names the
+    /// key of that text and, when no row has it, the key of the date-time that it writes, and a value of any other kind
+    /// is the key of no row.
+    #[must_use]
+    pub fn get(&self, key: &OrmValue) -> Option<Query> {
+        let row = match key {
+            OrmValue::Int(number) | OrmValue::Int64(number) => self.0.get(Key::I(*number)),
+            OrmValue::Bool(flag) => self.0.get(Key::B(*flag)),
+            OrmValue::Bytes(bytes) => self.0.get(Key::X(bytes.clone())),
+            OrmValue::Text(text) => match (self.0.get(Key::S(text.clone())), crate::driver::parse_datetime(text)) {
+                (Some(row), _) => Some(row),
+                (None, Ok(at)) => self.0.get(Key::T(at)),
+                (None, Err(_no_datetime)) => None,
+            },
+            OrmValue::Null | OrmValue::Float(_) | OrmValue::Json(_) | OrmValue::List(_) | OrmValue::Map(_) => None,
+        };
+        row.cloned()
+    }
+
+    /// The keys of the rows, in the order of the rows.
+    #[must_use]
+    pub fn keys(&self) -> Vec<OrmValue> {
+        self.0.keys().iter().map(key_value).collect()
+    }
+
+    /// The rows, in their order.
+    #[must_use]
+    pub fn values(&self) -> Vec<Query> {
+        self.0.models().cloned().collect()
+    }
+
+    /// `to_array` of each row, in the order of the rows (CORE-120).
+    pub fn to_array(&self) -> Result<Vec<OrderedMap<OrmValue>>> {
+        self.0.models().map(Query::to_array).collect()
+    }
 }
 
 impl Query {
@@ -422,6 +492,17 @@ impl Query {
         self.by(chain, values).gets().await
     }
 
+    /// `gets` as the class `rows` of the contract holds its result (CORE-170).
+    pub async fn gets_rows(&self) -> Result<Rows> {
+        self.gets().await.map(Rows)
+    }
+
+    /// `gets_by` as the class `rows` of the contract holds its result (CORE-170).
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub async fn gets_rows_by(&self, chain: &str, values: &[OrmValue]) -> Result<Rows> {
+        self.gets_by(chain, values.to_vec()).await.map(Rows)
+    }
+
     /// `get_count` with the conditions of `chain` joined by `and`; the query does not change (CORE-83).
     /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
     pub async fn get_count_by(&self, chain: &str, values: &[OrmValue]) -> Result<i64> {
@@ -443,8 +524,16 @@ impl Query {
 
     /// The values of the columns of the entity that the row read, by column name in the order of the schema (CORE-120).
     /// A column that the row did not read has no key, and a column whose value is null has the key with `Null`.
-    pub fn to_array(&self) -> Result<IndexMap<String, OrmValue>> {
-        self.read_columns()?.into_iter().map(|column| self.value(&column).map(|value| (column, value))).collect()
+    pub fn to_array(&self) -> Result<OrderedMap<OrmValue>> {
+        let columns = self.read_columns()?;
+        let mut out = OrderedMap::with_capacity(columns.len());
+        for column in columns {
+            let value = self.value(&column)?;
+            if out.insert(column, value).is_some() {
+                return Err(Error::internal(format!("the entity {} names a column twice", self.entity())));
+            }
+        }
+        Ok(out)
     }
 
     /// The columns of the entity that the row read, in the order of the schema (CORE-92).

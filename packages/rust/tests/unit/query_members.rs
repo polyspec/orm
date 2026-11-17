@@ -366,6 +366,43 @@ async fn key_name_keys_the_rows_by_a_column() {
     db.close_async().await;
 }
 
+// Requirements: CORE-170. gets_rows and gets_rows_by hold the collection of gets as the class rows of the contract: its
+// keys are orm_value, a row is found by its key, and an int names the key of an int64.
+#[tokio::test]
+async fn rows_hold_the_rows_of_gets_under_their_keys() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-rows-class");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let text = |value: &str| OrmValue::Text(value.into());
+    let mut accounts = query(&schema, "account", &db);
+    accounts.order_by("SeqDesc");
+    let rows = accounts.gets_rows().await.expect("gets_rows");
+    assert_eq!(rows.len(), 3);
+    assert!(!rows.is_empty());
+    assert_eq!(rows.keys(), [int(3), int(2), int(1)], "the primary key by default, in the order of the read");
+    assert_eq!(rows.first().map(|row| row.value("seq").expect("seq")), Some(int(3)));
+    assert_eq!(rows.values().iter().map(|row| row.value("email").expect("email")).collect::<Vec<_>>(), [text("c@x"), text("b@x"), text("a@x")]);
+    assert_eq!(rows.get(&int(2)).map(|row| row.value("email").expect("email")), Some(text("b@x")));
+    assert_eq!(rows.get(&OrmValue::Int(2)).map(|row| row.value("email").expect("email")), Some(text("b@x")), "an int names the key of an int64");
+    assert!(rows.get(&int(9)).is_none(), "no row has the key");
+    assert!(rows.get(&text("2")).is_none(), "the text 2 is another key than the integer 2");
+    assert!(rows.get(&OrmValue::Null).is_none(), "null is the key of no row");
+    let arrays = rows.to_array().expect("to_array");
+    assert_eq!(arrays.len(), 3);
+    assert_eq!(arrays[0].get("seq"), Some(&int(3)), "to_array of each row, in the order of the rows");
+    accounts.key_name("email");
+    let rows = accounts.gets_rows_by("GtSeq", &[int(1)]).await.expect("gets_rows_by");
+    assert_eq!(rows.keys(), [text("c@x"), text("b@x")], "the column of key_name keys the rows");
+    assert_eq!(rows.get(&text("b@x")).map(|row| row.value("seq").expect("seq")), Some(int(2)));
+    assert_eq!(accounts.gets_rows().await.expect("gets_rows").len(), 3, "gets_rows_by leaves the query unchanged");
+    let mut none = accounts.clone();
+    none.where_none("");
+    let rows = none.gets_rows().await.expect("gets_rows");
+    assert!(rows.is_empty() && rows.first().is_none() && rows.keys().is_empty() && rows.values().is_empty());
+    db.close_async().await;
+}
+
 /// A subquery of the account of each key, which reads the column account_seq.
 fn key_accounts(schema: &Schema) -> Query {
     let mut keys = Query::new(schema, "account_key").expect("query");
@@ -694,6 +731,10 @@ async fn to_array_holds_the_columns_that_the_row_read() {
     db.close_async().await;
 }
 
+fn page_seqs(page: &crate::QueryPage) -> Vec<OrmValue> {
+    page.rows().values().iter().map(|row| row.value("seq").expect("seq")).collect()
+}
+
 // Requirements: CORE-200. gets_page reads the rows of one page in the order of the query, by the primary key when the
 // query has none, and counts the rows that the conditions select; a page after the last has no rows, and a page or a
 // per_page of 0 and a query with a limit are config.
@@ -705,18 +746,18 @@ async fn gets_page_reads_a_page_and_counts_the_rows_of_every_page() {
     let db = account_db(&scratch, &schema).await;
     let accounts = query(&schema, "account", &db);
     let second = accounts.gets_page(2, 2).await.expect("the second page");
-    assert_eq!(seqs(&second.rows()), [int(3)], "the rows after the first page, in the order of the primary key");
+    assert_eq!(page_seqs(&second), [int(3)], "the rows after the first page, in the order of the primary key");
     assert_eq!((second.total_count(), second.total_pages(), second.page(), second.per_page()), (3, 2, 2, 2));
     let past = accounts.gets_page(3, 2).await.expect("a page after the last");
     assert!(past.rows().is_empty(), "a page after the last has no rows");
     assert_eq!((past.total_count(), past.total_pages()), (3, 2), "and counts the rows all the same");
     let mut newest = accounts.clone();
     newest.order_by("SeqDesc");
-    assert_eq!(seqs(&newest.gets_page(1, 2).await.expect("the first page of an order").rows()), [int(3), int(2)]);
+    assert_eq!(page_seqs(&newest.gets_page(1, 2).await.expect("the first page of an order")), [int(3), int(2)]);
     let mut later = accounts.clone();
     later.where_chain("GtSeq", &[int(1)]);
     let page = later.gets_page(1, 5).await.expect("a page of a condition");
-    assert_eq!(seqs(&page.rows()), [int(2), int(3)]);
+    assert_eq!(page_seqs(&page), [int(2), int(3)]);
     assert_eq!((page.total_count(), page.total_pages()), (2, 1), "the count holds the conditions of the page");
     for (page, per_page) in [(0, 1), (1, 0)] {
         let error = failure(accounts.gets_page(page, per_page).await, "a page or a per_page of 0");
