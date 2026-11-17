@@ -249,6 +249,12 @@ aube = { path = ".mise/locks/npm-npm/12.2.0", digest = "sha256:ce704ee0a99dacc71
 backend = "npm:npm"
 specifiers = ["12.2.0"]
 
+[[tools."pypi:maturin"]]
+version = "1.16.0"
+backend = "pypi:maturin"
+specifiers = ["1.16.0"]
+uv = { path = ".mise/locks/pypi-maturin/1.16.0", digest = "sha256:e49bc844c265246339fbbac763f7802e91a7abfca379e244a778863e9f655db2" }
+
 [[tools."pypi:vulture"]]
 version = "2.16"
 backend = "pypi:vulture"
