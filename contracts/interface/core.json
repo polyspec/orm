@@ -38480,7 +38480,7 @@
       ]
     },
     {
-      "id": "the_rows_of_a_page_of_an_order",
+      "id": "the_rows_of_a_lookahead_page_of_an_order",
       "rule": "CORE-206",
       "receiver": {
         "new": "lookahead_page.rows",
@@ -38632,7 +38632,7 @@
       ]
     },
     {
-      "id": "a_page_after_the_last_has_no_rows",
+      "id": "a_lookahead_page_after_the_last_has_no_rows",
       "rule": "CORE-206",
       "receiver": {
         "new": "lookahead_page.rows",
