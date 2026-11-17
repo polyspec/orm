@@ -1639,6 +1639,37 @@ caseTest('every cargo starts through the cargo link of kit, and the rules of car
     unit('x', 'node kit/run-tests.$(if $(wildcard kit/link.mts),mts,mjs) cargo --cwd packages/rust -- --locked'),
     unit('x', 'node run-tests.mjs.bak; cargo build'),
   ]), [own('cargo build --locked'), own('env A=1 cargo +nightly fmt --check'), own('cargo build')]);
+  // T595: maturin runs cargo itself, so a wheel builds through the maturin link of kit (K1266). A maturin that starts otherwise,
+  // or a PEP 517 build front end (uv build, uv pip install, pip wheel, python -m build) of a directory whose pyproject.toml names
+  // the build backend maturin, whatever its arguments, builds the released tag in a linked checkout; the backend is read from the file.
+  const maturin = (segment: string) => `x starts maturin itself; start it through the maturin link of kit, MATURIN=<maturin> node $(KIT)/link.$(KIT_EXT) maturin <dir> <maturin arguments>: ${segment}`;
+  const frontEnd = (dir: string, segment: string) => `x builds ${dir}, whose pyproject.toml names the build backend maturin, with a PEP 517 build front end, which starts maturin without the cargo link; build it through the maturin link of kit, MATURIN=<maturin> node $(KIT)/link.$(KIT_EXT) maturin <dir> <maturin arguments>: ${segment}`;
+  const projects: Record<string, string> = {
+    'packages/python/pyproject.toml': '[build-system]\nrequires = ["maturin==1.16.0"]\nbuild-backend = "maturin"\n',
+    'legacy/packages/python/pyproject.toml': '[build-system]\nrequires = ["setuptools==84.0.0"]\nbuild-backend = "setuptools.build_meta"\n',
+  };
+  const read = (path: string) => projects[path];
+  assert.deepEqual(unlinkedCargoErrors([
+    unit('x', 'var/tools/mise/shims/maturin build --release --locked'),
+    unit('x', 'uv build packages/python'),
+    unit('x', "MATURIN_PEP517_ARGS='--locked' var/tools/mise/shims/uv build --wheel --python venv/bin/python --out-dir w packages/python"),
+    unit('x', 'uv pip install --python venv/bin/python ./packages/python/'),
+    unit('x', 'venv/bin/pip wheel packages/python'),
+    unit('x', 'python3 -m build --wheel packages/python'),
+    unit('x', 'node kit/runtime-targets.mjs build --roots packages/python -- uv build'),
+    unit('x', 'MATURIN=var/tools/mise/shims/maturin node kit/dist/link.mjs maturin packages/python build --release --locked'),
+    unit('x', 'MATURIN=m node kit/scripts/kit/link.mts maturin packages/python build --locked'),
+    unit('x', 'uv pip install --python venv/bin/python -r siblings.txt wheels/*.whl'),
+    // A build of a setuptools project starts no maturin.
+    unit('x', 'uv build legacy/packages/python'),
+    unit('x', 'node kit/runtime-targets.mjs build --roots legacy/packages/python -- var/tools/mise/shims/uv build'),
+  ], read), [maturin('var/tools/mise/shims/maturin build --release --locked'),
+    frontEnd('packages/python', 'uv build packages/python'),
+    frontEnd('packages/python', "MATURIN_PEP517_ARGS='--locked' var/tools/mise/shims/uv build --wheel --python venv/bin/python --out-dir w packages/python"),
+    frontEnd('packages/python', 'uv pip install --python venv/bin/python ./packages/python/'),
+    frontEnd('packages/python', 'venv/bin/pip wheel packages/python'),
+    frontEnd('packages/python', 'python3 -m build --wheel packages/python'),
+    frontEnd('packages/python', 'node kit/runtime-targets.mjs build --roots packages/python -- uv build')]);
   assert.deepEqual(unlinkedCargoSourceErrors({
     'scripts/a.mts': "spawn('cargo', ['build']);\nconst b = ['--', 'cargo', 'check'];\nif (word === 'cargo') {}\nconst c = { format: 'cargo' };\nconst d = ['tests/cargo-test.mts', 'x', '--', 'cargo', 'test'];\n// spawn('cargo')\n",
     'scripts/cargo-link.mts': "spawn('cargo', []);\n",
@@ -3141,26 +3172,25 @@ caseTest('T570: the tests of the build crate that read a server or a variable of
   }
 });
 
-// binding check runs go mod download when packages/go/go.mod requires a release, so the asset jobs install Go before it.
-// The release run (RELEASE=true) runs release-binding-check and the CI run bindings-check, both after the setups rust and
-// go, so a tool that the check misses fails the CI run before a tag exists (T584).
-caseTest('T584: the asset jobs install Go before the binding check of the CI run and of the release run', () => {
+// binding check runs go mod download when packages/go/go.mod requires a release, so the asset jobs install Go before it (T584).
+// A committed tree holds release forms only, so every run of a job, CI and release alike, runs release-binding-check, with
+// no condition on the input release of the workflow, which is gone (binding CK-70, GN-19i, B2.457, T595).
+caseTest('T584: the asset jobs install Go before the release check of binding, which every run runs', () => {
   const makefile = text('Makefile');
   for (const target of ['ci-assets-platform', 'ci-assets-npm']) {
     const lines = jobRecipeLines(makefile, target);
     const at = (pattern: RegExp) => lines.findIndex(line => pattern.test(line));
     const rust = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) rust -- orm-install-rust$/);
     const go = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) go -- install-tools TOOLS=go$/);
-    const release = at(/^@\$\(if \$\(filter true,\$\(RELEASE\)\),\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- release-binding-check,:\)$/);
-    const ci = at(/^@\$\(if \$\(CI_NOT_RELEASE\),\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- bindings-check,:\)$/);
+    const check = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- release-binding-check$/);
     assert.ok(rust >= 0, `${target} has no setup rust`);
     assert.ok(go > rust, `${target} installs no Go after the setup rust: add the setup go -- install-tools TOOLS=go`);
-    assert.ok(release > go, `${target} runs release-binding-check of RELEASE=true before the setup go, or not at all`);
-    assert.ok(ci > go, `${target} runs no bindings-check after the setup go in the CI run, the run without RELEASE=true`);
-    const first = at(/-- (?:release-binding-check|bindings-check)\b/);
-    assert.ok(first > go, `${target} runs a binding check before the setup go`);
+    assert.ok(check > go, `${target} runs no release-binding-check after the setup go`);
+    assert.equal(lines.filter(line => /\bRELEASE\b|bindings-check/.test(line)).length, 0, `${target} runs a check by the condition RELEASE or bindings-check`);
   }
-  assert.match(makefile, /^CI_NOT_RELEASE = \$\(if \$\(filter true,\$\(RELEASE\)\),,true\)$/m, 'CI_NOT_RELEASE is true unless RELEASE=true');
+  assert.doesNotMatch(makefile, /CI_NOT_RELEASE|\$\(RELEASE\)/, 'the Makefile reads no RELEASE');
+  for (const workflow of ['.github/workflows/assets.yml', '.github/workflows/release.yml'])
+    assert.doesNotMatch(text(workflow), /inputs\.release|^\s+release: (?:true|false)$|^\s+release:\n\s+description:/m, `${workflow} names the input release`);
 });
 
 // packages/release.mk, which binding release-recipes writes, reads CARGO, the cargo command of the repository, and each of

@@ -163,6 +163,8 @@ GO := $(KIT_TOOLS)/mise/shims/go
 COMPOSER := $(KIT_TOOLS)/mise/shims/composer
 PYTHON3 := $(KIT_TOOLS)/mise/shims/python3
 UV := $(KIT_TOOLS)/mise/shims/uv
+# MATURIN is the maturin of mise.toml; it builds the wheel of the Python binding through the maturin link of kit (K1266).
+MATURIN := $(KIT_TOOLS)/mise/shims/maturin
 RUFF := $(KIT_TOOLS)/mise/shims/ruff
 # The PHP lint tools are not tools of mise.toml; install-tools puts them into var/tools/bin.
 PHPCS := $(KIT_TOOLS)/bin/phpcs
@@ -405,10 +407,10 @@ test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; o
 # members of the root workspace (binding design L-1, L-2, GN-4). binding is the npm package @polyspec/binding of
 # package.json, the asset of the GitHub Release of the tag that every dependency line on polyspec-binding-core names, so
 # that the tool and the crate are one release (binding CK-20, CK-70); package-lock.json pins it by its integrity. bindings
-# writes the generated folders, which Git ignores, and the Go files zz_generated_*.go of packages/go, which are tracked
-# (binding GN-3); bindings-check runs the contract check, which also compares the tracked binding packages with what
-# binding scaffold writes (binding L-2, CK-19) and the version of binding_core that Cargo.lock pins with the version of
-# the tool (CK-20).
+# writes the generated folders and the Go files zz_generated_*.go of packages/go, all of which Git ignores (binding GN-3,
+# GN-15g): no tracked tree holds a generated file, so a target that reads one runs bindings first; bindings-check runs
+# the contract check, which also compares the tracked binding packages with what binding scaffold writes (binding L-2,
+# CK-19) and the version of binding_core that Cargo.lock pins with the version of the tool (CK-20).
 .PHONY: bindings bindings-check lint-bindings test-bindings node-package test-wasm test-go-bindings
 BINDING := $(CURDIR)/node_modules/.bin/binding
 bindings:
@@ -553,19 +555,22 @@ test-binding-node test-binding-node-offline test-binding-node-service: node-pack
 	$(call binding_selected,node)
 	$(BINDING_SERVERS) $(RUN_TESTS) node --cwd $(NODE_PACKAGE_DIR) -- --expose-gc $(call binding_select,--test-skip-pattern="$$(cat $(BINDING_SELECTED))",--test-name-pattern="$$(cat $(BINDING_SELECTED))",) generated.test.mjs
 
-# The Python binding: orm-install-binding-python builds the wheel of packages/python with the test features through uv and the
-# maturin build backend of its pyproject.toml, as release-wheel builds it (GN-19c), and installs it with its dependencies into the
+# The Python binding: orm-install-binding-python builds the wheel of packages/python with the test features with the maturin of
+# mise.toml, through the maturin link of kit (link.mjs maturin, K1266, T595), which passes the link of .links to the cargo that
+# maturin runs, against a copy of the tracked lock under var/link/cargo, and without .links runs maturin as given on the tracked
+# lock; it builds under the lease of the shared target directory, and installs the wheel with its dependencies into the
 # venv BINDING_PYTHON_VENV. The wheel names polyspec-json by its version and no package index holds it, so the install names it
 # beside the wheel by the URL and the sha256 of the asset of its GitHub Release for this platform, the lines of
 # config/binding-python-siblings.txt, and uv checks each hash (--verify-hashes) and that the version is the one the wheel names; it downloads, so it is an install target, which the python job of config/ci.json runs as setup.
 # test-binding-python runs the generated tests of packages/python/generated/tests on unittest in that venv, offline.
 BINDING_PYTHON_VENV = $(abspath var/binding-python/venv)
 BINDING_PYTHON_WHEELS = $(abspath var/binding-python/wheels)
-orm-install-binding-python: bindings
+orm-install-binding-python: bindings lease-tool
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
+	@test -x $(MATURIN) || { echo "$@: $(MATURIN) is missing; run make install-tools, which installs the maturin of mise.toml"; exit 1; }
 	$(MAKE) --no-print-directory python-venv DIR=$(BINDING_PYTHON_VENV)
 	rm -rf $(BINDING_PYTHON_WHEELS)
-	MATURIN_PEP517_ARGS='--locked --features $(call binding_test_features,packages/python)' $(ONLINE) $(UV) build --wheel --python $(BINDING_PYTHON_VENV)/bin/python --out-dir $(BINDING_PYTHON_WHEELS) packages/python
+	$(CARGO_LEASED) env MATURIN=$(MATURIN) $(ONLINE) $(NODE) $(KIT)/link.$(KIT_EXT) maturin packages/python build --release --locked --features $(call binding_test_features,packages/python) --interpreter $(BINDING_PYTHON_VENV)/bin/python --out $(BINDING_PYTHON_WHEELS)
 	$(ONLINE) $(UV) pip install --python $(BINDING_PYTHON_VENV)/bin/python --reinstall --verify-hashes -r config/binding-python-siblings.txt $(BINDING_PYTHON_WHEELS)/*.whl
 # The tests are the module test_generated of that folder, which unittest of the venv reads from there: the whole module, or
 # the names of a selection, written beside the venv. The runner of kit runs the Python tests of the client through its
@@ -598,6 +603,14 @@ CARGO = $(CARGO_LINK)
 .PHONY: release-recipes
 release-recipes:
 	$(BINDING_RUN) release-recipes --root $(CURDIR)
+# The Go crate builds C (libsqlite3-sys, through the crate cc) for the musl target of its arch, for which cc looks for
+# <arch>-linux-musl-gcc, which no runner holds. The C compiler and the archiver of each musl target of rust-toolchain.toml
+# are the clang and the llvm-ar of the LLVM of config/toolchain.json, by their paths in LLVM_ROOT of packages/release.mk,
+# which the release recipes read (binding B2.442).
+CC_x86_64_unknown_linux_musl = $(LLVM_ROOT)/bin/clang
+AR_x86_64_unknown_linux_musl = $(LLVM_ROOT)/bin/llvm-ar
+CC_aarch64_unknown_linux_musl = $(LLVM_ROOT)/bin/clang
+AR_aarch64_unknown_linux_musl = $(LLVM_ROOT)/bin/llvm-ar
 -include packages/release.mk
 
 # The CI pipeline of orm (.github/workflows/ci-pipeline.yml): the plan of its jobs from config/ci.json, the targets of a job
@@ -758,14 +771,13 @@ ci-release-platform-assets:
 	cp -R var/release/platform/. var/release/assets/
 
 # The recipes of the jobs of assets.yml (T497), which the jobs assets of ci.yml and release.yml call: platform builds the binding
-# assets of the platform of its runner, npm the npm package. RELEASE=true, the input release of the workflow, runs the release
-# check of binding first. Every build is a check of the job, so one run names every asset that does not build. The uses:
+# assets of the platform of its runner, npm the npm package. Each runs the release check of binding first, in CI as in a
+# release, since a committed tree holds release forms only (binding CK-70, GN-19i, B2.457). Every build is a check of the
+# job, so one run names every asset that does not build. The uses:
 # steps of the job platform set up each PHP minor of phpExtension.minors of config/toolchain.json before the run step, and
 # ci-assets-php-ext builds the extension for the PHP of one minor (MINOR) with its php-config.
 # Both recipes install Go after Rust and before the binding check, since binding check runs go mod download when
-# packages/go/go.mod requires a release. The run without RELEASE=true, the CI run (CI_NOT_RELEASE), runs bindings-check
-# at the same place, so a tool that the check misses fails the CI run before a tag exists (T584).
-CI_NOT_RELEASE = $(if $(filter true,$(RELEASE)),,true)
+# packages/go/go.mod requires a release, so a tool that the check misses fails the CI run before a tag exists (T584).
 .PHONY: ci-assets-platform ci-assets-npm ci-assets-php-ext
 # The job provisions the LLVM of config/toolchain.json before this recipe (binding GN-19i): the ubuntu-26.04 images hold it at
 # /usr/lib/llvm-<major>, the default LLVM_ROOT of packages/release.mk, and on macOS install-llvm-action installs it and sets
@@ -782,8 +794,7 @@ ci-assets-platform:
 	@$(CI_JOB) setup $(CI_NAME) go-modules -- orm-install-go-binding
 	@$(CI_JOB) setup $(CI_NAME) uv-python -- install-tools 'TOOLS=uv python'
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
-	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
-	@$(if $(CI_NOT_RELEASE),$(CI_JOB) setup $(CI_NAME) binding-check -- bindings-check,:)
+	@$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check
 	@$(CI_JOB) check $(CI_NAME) -- release-go-static
 	@$(CI_JOB) check $(CI_NAME) -- release-wheel
 	@$(CI_JOB) check $(CI_NAME) -- ci-assets-php-ext MINOR=8.4
@@ -798,8 +809,7 @@ ci-assets-npm:
 	@$(CI_JOB) setup $(CI_NAME) go-modules -- orm-install-go-binding
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
 	@$(CI_JOB) setup $(CI_NAME) wasm-bindgen -- install-wasm-bindgen
-	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
-	@$(if $(CI_NOT_RELEASE),$(CI_JOB) setup $(CI_NAME) binding-check -- bindings-check,:)
+	@$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check
 	@$(CI_JOB) check $(CI_NAME) -- release-npm
 	@$(CI_JOB) end $(CI_NAME)
 # The PHP of a minor that setup-php installed is php<minor> with php-config<minor> on Linux, and the keg php@<minor> of

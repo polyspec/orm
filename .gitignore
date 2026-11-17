@@ -102,10 +102,12 @@ go.work.sum
 /.ruff_cache/
 
 # The bindings that binding writes from packages/rust/interface.json (binding design L-1); make bindings writes them again. The
-# Go files zz_generated_*.go of packages/go are tracked (binding GN-3).
+# Go files zz_generated_*.go of packages/go are generated too: no tracked tree holds one, and binding release-go-module adds them
+# in the commit of the tag of the Go module, which it makes itself (binding GN-3, GN-15g).
 /packages/*/generated/
 /packages/ts/wasm/generated/
 /packages/go/internal/ffi/generated/
+/packages/go/**/zz_generated_*.go
 # The release recipes that binding release-recipes writes (binding GN-19h), and the folders of make release-npm-platform, in
 # which napi writes and packs the npm package of a platform; a release writes both again.
 /packages/release.mk

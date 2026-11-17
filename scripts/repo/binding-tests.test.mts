@@ -114,14 +114,13 @@ caseTest('a selection that holds no test, a test line that is not read and a nam
 });
 
 caseTest('the selections of the generated tests of this checkout hold tests, when make bindings has written them', async () => {
-  const { existsSync } = await import('node:fs');
   const { RUNTIMES, sources } = await import('./binding-tests.mts');
   for (const runtime of RUNTIMES) {
-    // The generated folders of Node, Python and PHP are not tracked; a checkout without them has nothing to read here.
+    // No generated file is tracked, the Go files of packages/go neither (binding GN-15g); a checkout without them has nothing
+    // to read here.
     const texts = sources(runtime);
     if (texts.length === 0) continue;
     const tests = generatedTests(runtime, texts);
     assert.ok(tests.some(item => item.service) && tests.some(item => !item.service), `${runtime}: ${tests.length} tests`);
   }
-  assert.ok(existsSync(new URL('../../packages/go/zz_generated_test.go', import.meta.url)), 'the Go tests are tracked');
 });
