@@ -372,7 +372,8 @@
   `order_by`, `offset`과 `count`를 가진 `limit`, lock 넷, `add_all_columns`, `remove_all_columns`, `column`을 가진
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
   `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
-  `group_by`, `connector`와 `query`를 가진 `where_group`).
+  `group_by`, `connector`와 `query`를 가진 `where_group`, `query`를 가진
+  `duplication`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
   형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
   `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
@@ -412,12 +413,16 @@
   `Query`의 `plus`와 `minus`. 생성된 Rust 모델은 `plus_<col>`과 `minus_<col>`을 가진다.
 - **CORE-151** `duplication(query)`는 다음 `create`를 duplicate-key update가 있는 insert로 만든다. unique key 하나의 행을
   만난 행은 넣지 않고, 같은 엔티티의 `Query`인 `query`의 배정을 만난 행에 쓴다(DSL-105). 그 배정은 요청의
-  `on_duplicate`이고 `create`가 그것을 비운다. 다른 엔티티의 `query`는 `config`이고, 배정이 없는 `query`는 `create`에서
+  `on_duplicate`이고 `create`가 그것을 비운다. 다른 엔티티의 `query`는 `config`이고 메시지는
+  `duplication takes a query of <entity>, not of <other>`이며, member가 실패시킨 `query`는 그 오류로 `Query`를
+  실패시킨다. 각각 다음 terminal에서다. 배정이 없는 `query`는 `create`에서
   `config`이며 메시지는 `duplication model has no set_<col> values`다. `query`가 primary key의 열이나 identity 열에
   배정하면 `ir_invalid`이고 메시지는 `on_duplicate cannot assign <entity>.<column>`이며(DSL-113), 어떤 unique key로도
   행을 만날 수 없거나 둘 이상으로 만날 수 있는 insert는 `ir_invalid`이고 메시지는
   `on_duplicate needs exactly one conflict key`로 시작한다. `Query`의 조건은 DSL-162가 적은 대로 insert에 적용되고,
-  조건을 만족하지 않는 행은 `condition_not_met`이다. 구현되지 않았다: `Query`의 `duplication`.
+  조건을 만족하지 않는 행은 `condition_not_met`이다. `create`가 돌려주는 행은 insert의 배정과 데이터베이스가 돌려준
+  key를 가지며, update가 저장한 값을 가지지 않는다. `query`에서는 배정만 읽는다. `Db` step은 `query`를 가진 call
+  `duplication`을 받는다(CORE-92).
 - **CORE-152** `update_optimistic()`은 엔티티의 update time 열이 행이 읽은 값을 아직 가지고 있는 동안에만 쓰는
   CORE-91의 `update`다. 언어 구현의 member `update(true)`이다(DSL-107, DSL-155). 그 값은 요청의 `optimistic`이고
   (PRT-7), 아무 행도 바꾸지 않은 문장은 `optimistic_lock`이며 메시지는 `row changed since it was read`다. 행을 읽지

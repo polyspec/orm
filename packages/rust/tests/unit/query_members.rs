@@ -943,3 +943,46 @@ async fn creates_inserts_the_rows_in_batches_of_one_transaction() {
     assert_eq!(accounts.get_count().await.expect("get_count"), 6, "a refused creates inserts nothing");
     db.close_async().await;
 }
+
+// Requirements: CORE-151. duplication makes the next create write the assignments of its query to the row that the
+// insert met on the unique key; a row that meets none is inserted; create clears it; a query of another entity and a
+// query without an assignment are config.
+#[tokio::test]
+async fn duplication_updates_the_row_that_a_create_meets() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-duplication");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let text = |value: &str| OrmValue::Text(value.into());
+    let named = |name: &str| {
+        let mut other = Query::new(&schema, "account").expect("query");
+        other.set("name", &text(name));
+        other
+    };
+    let mut met = new_account(&schema, "a@x");
+    met.connect(Connection::from(&db));
+    met.duplication(named("Met"));
+    met.create().await.expect("create meets the row of a@x");
+    let mut first = query(&schema, "account", &db);
+    first.add_all_columns();
+    first.where_chain("Seq", &[int(1)]);
+    assert_eq!(first.get().await.expect("get").expect("the row 1").value("name").expect("name"), text("Met"));
+    assert_eq!(query(&schema, "account", &db).get_count().await.expect("get_count"), 3, "no row is inserted");
+    met.set("email", &text("a@x"));
+    met.set("revision", &int(0));
+    assert_eq!(failure(met.create().await, "create cleared the duplication").kind().as_str(), "duplicate_key");
+    let mut fresh = new_account(&schema, "d@x");
+    fresh.connect(Connection::from(&db));
+    fresh.duplication(named("Met"));
+    fresh.create().await.expect("create inserts a row that meets none");
+    assert_eq!(query(&schema, "account", &db).get_count().await.expect("get_count"), 4);
+    let mut bare = new_account(&schema, "a@x");
+    bare.connect(Connection::from(&db));
+    bare.duplication(Query::new(&schema, "account").expect("query"));
+    assert_eq!(failure(bare.create().await, "no assignment").to_string(), "config: duplication model has no set_<col> values");
+    let mut other = new_account(&schema, "a@x");
+    other.connect(Connection::from(&db));
+    other.duplication(Query::new(&schema, "account_key").expect("query"));
+    assert_eq!(failure(other.create().await, "another entity").to_string(), "config: duplication takes a query of account, not of account_key");
+    db.close_async().await;
+}

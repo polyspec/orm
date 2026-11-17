@@ -444,7 +444,7 @@ implementation is eligible for removal on that evidence.
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
   with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
-  `column` and `revision`, `group_by` with `column`, and `where_group` with `connector` and `query`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, and `duplication` with `query`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
   value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
   `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
@@ -491,12 +491,15 @@ implementation is eligible for removal on that evidence.
 - **CORE-151** `duplication(query)` makes the next `create` an insert with a duplicate-key update: a row that meets a
   row of one unique key is not inserted, and the assignments of `query`, a `Query` of the same entity, are written to
   the row that it met (DSL-105). They are `on_duplicate` of the request, and `create` clears them. A `query` of
-  another entity is `config`, and one with no assignment is `config` at `create` with the message
+  another entity is `config` with the message `duplication takes a query of <entity>, not of <other>`, one that a
+  member failed fails the `Query` with that error, each at the next terminal, and one with no assignment is `config` at `create` with the message
   `duplication model has no set_<col> values`. An assignment of `query` to a column of the primary key or to the
   identity column is `ir_invalid` with the message `on_duplicate cannot assign <entity>.<column>` (DSL-113), and an
   insert that can meet a row on no unique key or on more than one is `ir_invalid` with a message that starts with
   `on_duplicate needs exactly one conflict key`. The conditions of the `Query` hold for the insert as DSL-162 states,
-  and a row that does not meet them is `condition_not_met`. Not implemented: `duplication` of a `Query`.
+  and a row that does not meet them is `condition_not_met`. The row that `create` returns holds the assignments of
+  the insert and the key that the database returned, and not the values that the update stored. Nothing of `query`
+  but its assignments is read. The `Db` step takes the call `duplication` with `query` (CORE-92).
 - **CORE-152** `update_optimistic()` is the `update` of CORE-91 that writes only while the update time column of the
   entity still holds the value that the row read: the member `update(true)` of the language implementations (DSL-107,
   DSL-155). The value is `optimistic` of the request (PRT-7), and a statement that changed no row is `optimistic_lock`

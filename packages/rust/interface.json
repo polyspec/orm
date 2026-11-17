@@ -4184,7 +4184,8 @@
             "polyspec_orm::Kind::Canceled",
             "polyspec_orm::Kind::PoolTimeout",
             "polyspec_orm::Kind::Closed",
-            "polyspec_orm::Kind::ConditionNotMet"
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::IrInvalid"
           ],
           "wait": "async_driver",
           "core": {
@@ -4524,7 +4525,8 @@
             "polyspec_orm::Kind::PoolTimeout",
             "polyspec_orm::Kind::Closed",
             "polyspec_orm::Kind::ConditionNotMet",
-            "polyspec_orm::Kind::RevisionChanged"
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::IrInvalid"
           ],
           "wait": "async_driver",
           "core": {
@@ -4587,6 +4589,33 @@
           "core": {
             "path": "polyspec_orm::Query::creates",
             "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.duplication",
+          "name": [
+            "duplication"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "query"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::duplication",
+            "receiver": "&mut self"
           }
         }
       ]
@@ -6342,6 +6371,39 @@
       "member": "query.creates",
       "file": "contracts/interface/core.json",
       "group": "query.creates.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.duplication",
+      "file": "contracts/interface/core.json",
+      "group": "query.duplication"
+    },
+    {
+      "member": "query.duplication",
+      "file": "contracts/interface/core.json",
+      "group": "query.duplication.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.create",
+      "file": "contracts/interface/core.json",
+      "group": "query.create.duplication",
       "only": {
         "targets": [
           "php",

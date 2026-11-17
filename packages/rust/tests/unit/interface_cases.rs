@@ -665,6 +665,13 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             }
             _ => panic!("{member}: query is no query"),
         },
+        ("query.duplication", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "query", member), member)).await {
+            Instance::Query(other) => {
+                query.duplication(*other);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: query is no query"),
+        },
         ("query.group_by", Some(Instance::Query(query))) => {
             query.group_by(&text(args, "column", member));
             Returned::Value(Value::Null)

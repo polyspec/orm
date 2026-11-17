@@ -440,6 +440,20 @@ impl Query {
         }
     }
 
+    /// Makes the next `create` an insert with a duplicate-key update that writes the assignments of `query`, a query of
+    /// the same entity, to the row that the insert met (CORE-151). A query of another entity is `config` at the next
+    /// terminal, and a query that a member failed fails this query with its error.
+    pub fn duplication(&mut self, query: Query) {
+        if let Some(error) = query.core.err() {
+            return self.core.fail_err(error);
+        }
+        if query.entity() != self.entity() {
+            let message = format!("duplication takes a query of {}, not of {}", self.entity(), query.entity());
+            return self.core.fail(message);
+        }
+        self.core.duplication(query.core);
+    }
+
     /// Makes the next `update` or `delete` write only while the integer column `column` holds `revision`; `update` also
     /// stores `revision + 1` (CORE-91, DSL-108).
     pub fn expect_revision(&mut self, column: &str, revision: i64) {
