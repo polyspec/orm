@@ -55,21 +55,52 @@ const interfaceContract = (): Contract => {
   return value;
 };
 type CaseRow = { id: string; raises?: { kind: string; category: string; message: string } };
-// The groups of a case file that a test reads by member: each group is a list of cases, and a case may name what it raises.
-function caseGroups(value: unknown, source: string): Record<string, CaseRow[]> {
-  const isRecord = (item: unknown): item is Record<string, unknown> => typeof item === 'object' && item !== null && !Array.isArray(item);
+const isRecord = (item: unknown): item is Record<string, unknown> => typeof item === 'object' && item !== null && !Array.isArray(item);
+// The members of a case file: the text of its comment, and its groups, each a list of cases.
+function caseFileGroups(value: unknown, source: string): [string, unknown[]][] {
   assert.ok(isRecord(value), `${source} is an object of groups`);
-  return Object.fromEntries(Object.entries(value).map(([group, cases]) => {
+  return Object.entries(value).flatMap(([group, cases]): [string, unknown[]][] => {
+    if (group === 'comment') {
+      assert.equal(typeof cases, 'string', `${source}: comment is a text`);
+      return [];
+    }
     assert.ok(Array.isArray(cases), `${source}: ${group} is a list of cases`);
+    return [[group, cases]];
+  });
+}
+// The groups of a case file that a test reads by member: each group is a list of cases, and a case may name the kind, the
+// category and the message of the error that it raises.
+function caseGroups(value: unknown, source: string): Record<string, CaseRow[]> {
+  return Object.fromEntries(caseFileGroups(value, source).map(([group, cases]) => {
     return [group, cases.map((kase: unknown): CaseRow => {
       assert.ok(isRecord(kase) && typeof kase['id'] === 'string', `${source}: a case of ${group} has an id`);
       const raises = kase['raises'];
-      if (raises === undefined) return { id: kase['id'] };
+      // The text "callback" names the error that a callback of the case raises, which has no kind of the contract.
+      if (raises === undefined || raises === 'callback') return { id: kase['id'] };
       assert.ok(isRecord(raises) && typeof raises['kind'] === 'string' && typeof raises['category'] === 'string' && typeof raises['message'] === 'string', `${source}: ${kase['id']} raises a kind, a category and a message`);
       return { id: kase['id'], raises: { kind: raises['kind'], category: raises['category'], message: raises['message'] } };
     })];
   }));
 }
+// The case files that the contract names, as binding check reads them.
+const contractCaseFiles = (contract: Contract): Map<string, unknown> => new Map([...new Set(contract.cases.map(row => row.file))].map(file => [file, JSON.parse(text(file)) as unknown]));
+// casesWithout returns the case files without the cases that raise one of kinds in a group of a member other than keep. A
+// kind that a member declares is shown by a case of any member of the same library and form of call (binding CK-22,
+// B2.376), so only the files without the cases of the other members show which kinds the cases of keep raise themselves.
+function casesWithout(contract: Contract, caseFiles: ReadonlyMap<string, unknown>, kinds: string[], keep?: string): Map<string, unknown> {
+  const kept = new Set(contract.cases.filter(row => row.member !== undefined && row.member === keep).map(row => `${row.file}\0${row.group}`));
+  return new Map([...caseFiles].map(([file, document]) => [file, Object.fromEntries(caseFileGroups(document, file).map(([group, cases]) => {
+    if (kept.has(`${file}\0${group}`)) return [group, cases];
+    return [group, cases.filter(kase => {
+      const raises = isRecord(kase) ? kase['raises'] : undefined;
+      const kind = isRecord(raises) ? raises['kind'] : undefined;
+      return typeof kind !== 'string' || !kinds.includes(kind);
+    })];
+  }))]));
+}
+// The CK-22 messages of binding's check at the member of path, on the given case files.
+const raiseFindings = (contract: Contract, caseFiles: ReadonlyMap<string, unknown>, path: string): string[] => checkContract(contract, { caseFiles })
+  .filter(finding => finding.check === 'CK-22' && (finding.path === path || finding.path.startsWith(`${path}/`))).map(finding => `${finding.path}: ${finding.message}`);
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
@@ -107,10 +138,8 @@ caseTest('T493-3: query.new receives only validated immutable binding schemas (C
   const queryNew = newIndex === undefined ? undefined : query?.members?.[newIndex];
   assert.ok(schema && queryNew && newIndex !== undefined, 'the contract declares Schema and Query.new');
   const path = `/units/${queryIndex}/members/${newIndex}`;
-  const caseFiles = new Map([...new Set(contract.cases.map(row => row.file))].map(file => [file, JSON.parse(text(file)) as unknown]));
-  const findings = (value: Contract) => checkContract(value, { caseFiles }).filter(finding => finding.check === 'CK-22' && (finding.path === path || finding.path.startsWith(`${path}/`)));
-  const missing = findings(contract);
-  assert.deepEqual(missing, [], missing.map(finding => `${finding.path}: ${finding.message}`).join('\n'));
+  const caseFiles = contractCaseFiles(contract);
+  assert.deepEqual(raiseFindings(contract, caseFiles, path), [], 'every kind that query.new declares has a case');
   assert.deepEqual(queryNew.raises, ['polyspec_orm::Kind::EntityUnknown']);
   assert.equal(schema.constructible, false);
   assert.equal(schema.final, true);
@@ -132,14 +161,27 @@ caseTest('T493-3: query.new receives only validated immutable binding schemas (C
   assert.equal(change.rule, 'CORE-125');
   assert.equal(change.to, 'query.new');
   assert.deepEqual(Object.keys(change.from).sort(), [...contract.targets].sort(), 'the correction names every binding language');
+  // Query.new declares entity_unknown, and CK-22 holds it to a case: without the cases that raise it, the declaration is a
+  // finding.
+  const missing = (kind: string, at: number) => `${path}/raises/${at}: no case of query.new raises the kind ${kind} (K-1, B-4)`;
+  assert.deepEqual(groups['query.new']?.map(kase => ({ id: kase.id, kind: kase.raises?.kind })), [
+    { id: 'entity_of_the_schema', kind: undefined }, { id: 'entity_unknown', kind: 'entity_unknown' },
+  ], 'no case of Query.new has a schema validation failure as its outcome');
+  assert.deepEqual(raiseFindings(contract, casesWithout(contract, caseFiles, ['entity_unknown']), path), [missing('entity_unknown', 0)]);
+  // The declarations that CORE-125 removed name kinds that only cases of other members raise. A case of any member of the
+  // same library and form of call shows a kind (binding CK-22, B2.376), so on the case files as they are the cases of
+  // Schema.load cover the restored declarations; on the case files that keep those kinds only in the cases of Query.new,
+  // the declared inventory has every case and each restored declaration is a finding.
+  const validation = ['schema_invalid', 'schema_hash_mismatch'];
+  const ownCases = casesWithout(contract, caseFiles, validation, 'query.new');
+  assert.deepEqual(raiseFindings(contract, ownCases, path), [], 'the inventory of Query.new needs no case of a schema validation failure');
   const obsolete = structuredClone(contract);
   const oldNew = obsolete.units[queryIndex]?.members?.[newIndex];
   assert.ok(oldNew, 'the mutation finds Query.new');
   oldNew.raises = ['polyspec_orm::Kind::EntityUnknown', 'polyspec_orm::Kind::SchemaInvalid', 'polyspec_orm::Kind::SchemaHashMismatch'];
-  assert.deepEqual(findings(obsolete).map(finding => finding.message), [
-    'no case of query.new raises the kind schema_invalid (K-1, B-4)',
-    'no case of query.new raises the kind schema_hash_mismatch (K-1, B-4)',
-  ], 'restoring unreachable declarations restores exactly their missing-outcome findings');
+  assert.deepEqual(raiseFindings(obsolete, caseFiles, path), [], 'the cases of Schema.load show the kinds for every member of the library that declares them');
+  assert.deepEqual(raiseFindings(obsolete, ownCases, path), [missing('schema_invalid', 1), missing('schema_hash_mismatch', 2)],
+    'no case of Query.new raises a restored kind, so each restored declaration is a finding once no other member shows it');
 });
 
 caseTest('T493-4: query.value preserves the admitted descriptor error inventory (CORE-126)', () => {
@@ -150,11 +192,10 @@ caseTest('T493-4: query.value preserves the admitted descriptor error inventory 
   const value = valueIndex === undefined ? undefined : query?.members?.[valueIndex];
   assert.ok(query && value && valueIndex !== undefined, 'the contract declares Query.value');
   const path = `/units/${queryIndex}/members/${valueIndex}`;
-  const groups = caseGroups(JSON.parse(text('contracts/interface/core.json')), 'contracts/interface/core.json');
-  const caseFiles = new Map<string, unknown>([['contracts/interface/core.json', groups]]);
-  const findings = (input: Contract) => checkContract(input, { caseFiles }).filter(finding => finding.check === 'CK-22' && (finding.path === path || finding.path.startsWith(`${path}/`))).map(finding => finding.message);
-  const missing = (kind: string) => `no case of query.value raises the kind ${kind} (K-1, B-4)`;
-  assert.deepEqual(findings(contract), [], 'query.value.sqlite holds the stored-row codec case; schema and entity failures are not Query.value outcomes');
+  const caseFiles = contractCaseFiles(contract);
+  const groups = caseGroups(caseFiles.get('contracts/interface/core.json'), 'contracts/interface/core.json');
+  const missing = (kind: string, at: number) => `${path}/raises/${at}: no case of query.value raises the kind ${kind} (K-1, B-4)`;
+  assert.deepEqual(raiseFindings(contract, caseFiles, path), [], 'every kind that query.value declares has a case');
   assert.deepEqual(value.raises, ['polyspec_orm::Kind::ColumnUnknown', 'polyspec_orm::Kind::ColumnUnselected', 'polyspec_orm::Kind::CodecDecode', 'polyspec_orm::Kind::Internal']);
   assert.equal(query.constructible, false);
   assert.equal(query.final, true);
@@ -173,11 +214,27 @@ caseTest('T493-4: query.value preserves the admitted descriptor error inventory 
   assert.equal(change.rule, 'CORE-126');
   assert.equal(change.to, 'query.value');
   assert.deepEqual(Object.keys(change.from).sort(), [...contract.targets].sort());
+  assert.deepEqual(groups['query.value.sqlite']?.map(kase => ({ id: kase.id, kind: kase.raises?.kind })), [{ id: 'a_json_cell_with_a_lone_surrogate', kind: 'codec_decode' }],
+    'query.value.sqlite holds the stored-row codec case');
+  // The cases of Query.value alone show each kind that it declares outside the category internal: the case files that keep
+  // those kinds only in the cases of Query.value give no finding, and without the one case of column_unselected, which no
+  // other member raises, its declaration is a finding.
+  const declared = ['column_unknown', 'column_unselected', 'codec_decode'];
+  assert.deepEqual(raiseFindings(contract, casesWithout(contract, caseFiles, declared, 'query.value'), path), [], 'the cases of Query.value raise each kind of its inventory');
+  assert.deepEqual(raiseFindings(contract, casesWithout(contract, caseFiles, ['column_unselected']), path), [missing('column_unselected', 1)]);
+  // The declarations that CORE-126 removed name kinds that only cases of other members raise: Schema.load and Query.new
+  // show them for every member of the same library and form of call (binding CK-22, B2.376), so the restored declarations
+  // are findings exactly where the case files keep those kinds only in the cases of Query.value.
+  const removed = ['schema_invalid', 'schema_hash_mismatch', 'entity_unknown'];
+  const ownCases = casesWithout(contract, caseFiles, removed, 'query.value');
+  assert.deepEqual(raiseFindings(contract, ownCases, path), [], 'the inventory of Query.value needs no case of a schema or entity failure');
   const obsolete = structuredClone(contract);
   const oldValue = obsolete.units[queryIndex]?.members?.[valueIndex];
   assert.ok(oldValue?.raises, 'the mutation finds Query.value errors');
   oldValue.raises.push('polyspec_orm::Kind::SchemaInvalid', 'polyspec_orm::Kind::SchemaHashMismatch', 'polyspec_orm::Kind::EntityUnknown');
-  assert.deepEqual(findings(obsolete), ['schema_invalid', 'schema_hash_mismatch', 'entity_unknown'].map(missing), 'restoring only the obsolete declarations restores exactly their three missing outcomes');
+  assert.deepEqual(raiseFindings(obsolete, caseFiles, path), [], 'the cases of Schema.load and Query.new show the kinds for every member of the library that declares them');
+  assert.deepEqual(raiseFindings(obsolete, ownCases, path), removed.map((kind, at) => missing(kind, 4 + at)),
+    'no case of Query.value raises a restored kind, so each restored declaration is a finding once no other member shows it');
 });
 
 // No clock ends a test case in any runtime (T473, T474): a machine under load runs the same work more slowly, and the result of

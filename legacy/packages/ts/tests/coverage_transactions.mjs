@@ -93,6 +93,29 @@ export const cases = {
         try { await statement; } catch (error) { cancellation = error; }
         assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', `${driver}: the abandoned statement is cancelled`);
 
+        // A statement that utils().run sends on the signalled handle is bound to the same signal (INT-150). The holder still
+        // holds the row, so the abort follows the same event as the abort of the statement above.
+        const frameController = new AbortController();
+        const frameHandle = db.withSignal(frameController.signal);
+        const frameSql = `UPDATE composite_account SET name = 'by frame' WHERE tenant_id = ${tenant} AND account_id = 6`;
+        const runFrame = () => frameHandle.utils().run(frame => frame.run('update', ['composite_account'], frameSql)).then(() => null, error => error);
+        let frameStatement;
+        if (driver === 'sqlite') {
+          frameController.abort();
+          frameStatement = runFrame();
+        } else if (starts) {
+          const armed = await starts.arm();
+          frameStatement = runFrame();
+          await armed.started;
+          frameController.abort();
+        } else {
+          frameStatement = runFrame();
+          await lockWaitEnds(item.dsn, 'SELECT 1 FROM `composite_account` FOR UPDATE');
+          frameController.abort();
+        }
+        const frameCancellation = await frameStatement;
+        assert.ok(frameCancellation instanceof OrmError && frameCancellation.code === 'CANCELED', `${driver}: the abandoned statement of utils().run is cancelled: ${String(frameCancellation)}`);
+
         releaseHolder();
         assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
       } finally {
@@ -100,22 +123,6 @@ export const cases = {
         await holder;
         await starts?.close();
       }
-      let cancellation = null;
-      try { await statement; } catch (error) { cancellation = error; }
-      assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', `${driver}: the abandoned statement is cancelled`);
-
-      // A statement that utils().run sends on the signalled handle is bound to the same signal (INT-150).
-      const frameController = new AbortController();
-      const frameHandle = db.withSignal(frameController.signal);
-      const frameSql = `UPDATE composite_account SET name = 'by frame' WHERE tenant_id = ${tenant} AND account_id = 6`;
-      if (driver === 'sqlite') frameController.abort();
-      else setTimeout(() => frameController.abort(), 100);
-      let frameCancellation = null;
-      try { await frameHandle.utils().run(frame => frame.run('update', ['composite_account'], frameSql)); } catch (error) { frameCancellation = error; }
-      assert.ok(frameCancellation instanceof OrmError && frameCancellation.code === 'CANCELED', `${driver}: the abandoned statement of utils().run is cancelled: ${String(frameCancellation)}`);
-
-      releaseHolder();
-      assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
       assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6)).getName(), 'original', `${driver}: cancellation and rollback preserve the stored row`);
       assert.equal(await exists(db, 6), true, `${driver}: the connection handle remains usable`);
 
@@ -129,9 +136,13 @@ export const cases = {
         const taker = single.utils().run(async () => { announceTaken(); await singleFree; });
         await taken;
         const waitController = new AbortController();
-        setTimeout(() => waitController.abort(), 100);
-        let waitCancellation = null;
-        try { await single.withSignal(waitController.signal).utils().run(frame => frame.run('select', [], 'SELECT 1')); } catch (error) { waitCancellation = error; }
+        const waiting = single.withSignal(waitController.signal).utils().run(frame => frame.run('select', [], 'SELECT 1')).then(() => null, error => error);
+        // The transaction asks the pool for the connection in the microtasks of its call, with no answer of the database before
+        // it, and the taker keeps the connection until freeSingle. One turn of the event loop therefore puts the abort after the
+        // start of the wait; no timer does.
+        await new Promise(resolve => setImmediate(resolve));
+        waitController.abort();
+        const waitCancellation = await waiting;
         assert.ok(waitCancellation instanceof OrmError && waitCancellation.code === 'CANCELED', `${driver}: the wait for the connection of a transaction is cancelled: ${String(waitCancellation)}`);
         freeSingle();
         await taker;
