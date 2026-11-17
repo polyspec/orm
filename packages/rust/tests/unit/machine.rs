@@ -566,6 +566,24 @@ fn a_close_machine_gives_one_io_step() {
     done.expect("a second close succeeds");
 }
 
+// Requirements: CORE-31, CORE-105, CK-69. The machine of close borrows its handle, as the generated bindings lend it a
+// clone: the handle stays usable as a value, and the close is of the pool that every clone shares, so a call of another
+// clone after it is closed.
+#[test]
+fn a_close_machine_lends_its_handle_and_closes_every_clone() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-machine-close-lent");
+    let (runtime, db) = probe_db(&scratch);
+    let other = db.clone();
+    let (steps, done) = drive(&runtime, &mut db.close());
+    assert_eq!(steps, ["Io", "Done"]);
+    done.expect("the close succeeds");
+    let error = runtime.block_on(other.transaction_async(|_tx: Tx| async { Ok(()) }, once())).expect_err("a call of another clone after the close");
+    assert_eq!(error.kind(), Kind::Closed, "{error}");
+    let error = runtime.block_on(db.transaction_async(|_tx: Tx| async { Ok(()) }, once())).expect_err("a call of the lent handle");
+    assert_eq!(error.kind(), Kind::Closed, "{error}");
+}
+
 /// The driver owns an I/O future between two advances and drops it with its machine on cancellation.
 #[derive(Clone, Copy, Debug)]
 enum Paused {
