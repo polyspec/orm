@@ -11,7 +11,7 @@
 // the sha256 of that asset. A sha256 does not follow from a version, so a line whose release changes takes the sha256
 // that --wheel-sha256 gives for its new asset, and the script names each asset it was given none for and writes nothing.
 //
-// Usage: node scripts/repo/pin-deps.mts --binding 0.0.21 --json 0.0.37 [--wheel-sha256 <asset>=<hex>]... [--check]
+// Usage: node scripts/repo/pin-deps.mts --binding 0.0.21 --json 0.0.38 [--wheel-sha256 <asset>=<hex>]... [--check]
 //   --check writes nothing and fails when a file pins another version.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';

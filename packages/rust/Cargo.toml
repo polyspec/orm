@@ -32,7 +32,7 @@ default = ["runtime"]
 # CORE-27, CORE-50, CORE-60).
 polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.21" }
 polyspec-orm-schema = { version = "=0.0.33", path = "schema" }
-polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.37" }
+polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.38" }
 rustls = { version = "0.23", default-features = false, features = ["std"], optional = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "json", "ipnet"], optional = true }
 # The SQLite library bundled with sqlx. The connection does not ask for that version via SQL; it reads it from this crate.
