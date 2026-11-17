@@ -17,7 +17,7 @@ use serde_json::{Map, Value};
 use crate::or_panic::OrPanic as _;
 use crate::test_support::Scratch;
 use crate::{
-    AesKeyring, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest, MapValue, OrmValue, Query, Schema, StepRunner,
+    AesKeyring, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest, MapValue, OrmValue, Query, Rows, Schema, StepRunner,
     TransactionOptions, Tx,
 };
 
@@ -32,6 +32,7 @@ enum Instance {
     Keyring(AesKeyring),
     Schema(Schema),
     Query(Box<Query>),
+    Rows(Box<Rows>),
     Model(Box<Manifest>),
     Integer(IntegerValue),
     Float(FloatValue),
@@ -39,10 +40,11 @@ enum Instance {
     Map(MapValue),
 }
 
-/// What a member returned: a value in its case form, or an instance.
+/// What a member returned: a value in its case form, an instance, or the instances of a list that is not empty.
 enum Returned {
     Value(Value),
     Instance(Instance),
+    Instances(Vec<Instance>),
 }
 
 fn field<'a>(args: &'a Map<String, Value>, name: &str, member: &str) -> &'a Value {
@@ -374,6 +376,16 @@ fn case_value(value: &OrmValue, what: &str) -> Value {
     }
 }
 
+/// The case form of a map of `orm_value` that a member returned: an object of its entries.
+fn case_map(entries: &OrderedMap<OrmValue>, what: &str) -> Value {
+    entries.iter().map(|(key, value)| (key.to_owned(), case_value(value, what))).collect::<Map<String, Value>>().into()
+}
+
+/// A row that a member may not return: `null` for none.
+fn optional_row(row: Option<Query>) -> Returned {
+    row.map_or(Returned::Value(Value::Null), |row| Returned::Instance(Instance::Query(Box::new(row))))
+}
+
 /// A connection of a case: an instance value of `db`, or of `tx` (the interface `connection`).
 async fn connection(value: &Value, what: &str) -> Connection {
     match Box::pin(instance(value, what)).await {
@@ -445,7 +457,7 @@ async fn run_function(fixture: Value, argument: Instance, what: String) -> Resul
             if let Some(expected) = step.get("result") {
                 match returned {
                     Returned::Value(value) => assert_eq!(&value, expected, "{what}: the step {call_name} of the function"),
-                    Returned::Instance(_) => panic!("{what}: the step {call_name} of the function returns an instance"),
+                    Returned::Instance(_) | Returned::Instances(_) => panic!("{what}: the step {call_name} of the function returns an instance"),
                 }
             }
         }
@@ -639,6 +651,22 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Some(row) => Returned::Instance(Instance::Query(Box::new(row))),
             None => Returned::Value(Value::Null),
         },
+        ("query.get", Some(Instance::Query(query))) => optional_row(query.get().await?),
+        ("query.gets", Some(Instance::Query(query))) => Returned::Instance(Instance::Rows(Box::new(query.gets_rows().await?))),
+        ("query.gets_by", Some(Instance::Query(query))) => Returned::Instance(Instance::Rows(Box::new(
+            query.gets_rows_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?,
+        ))),
+        ("query.to_array", Some(Instance::Query(query))) => Returned::Value(case_map(&query.to_array()?, member)),
+        ("rows.len", Some(Instance::Rows(rows))) => Returned::Value(Value::from(rows.len())),
+        ("rows.first", Some(Instance::Rows(rows))) => optional_row(rows.first()),
+        ("rows.get", Some(Instance::Rows(rows))) => optional_row(rows.get(&orm_value(field(args, "key", member), member)?)),
+        ("rows.keys", Some(Instance::Rows(rows))) => Returned::Value(rows.keys().iter().map(|key| case_value(key, member)).collect()),
+        // A list of rows that is not empty is observed through an instance value that picks one of them (binding GN-13f).
+        ("rows.values", Some(Instance::Rows(rows))) => match rows.values() {
+            items if items.is_empty() => Returned::Value(Value::Array(Vec::new())),
+            items => Returned::Instances(items.into_iter().map(|row| Instance::Query(Box::new(row))).collect()),
+        },
+        ("rows.to_array", Some(Instance::Rows(rows))) => Returned::Value(rows.to_array()?.iter().map(|row| case_map(row, member)).collect()),
         ("query.get_count_by", Some(Instance::Query(query))) => {
             Returned::Value(Value::from(query.get_count_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?))
         }
@@ -763,8 +791,35 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
     })
 }
 
-/// An instance value of a case: `{new, receiver, args, then}` (binding G-5, GN-13f). A value that cannot be made fails the
-/// test of the case.
+/// The instance that the steps of `pick` reach in what the member of `from` returned (binding GN-13f): `"?"` takes the
+/// value of an optional, which is present, and `{"index": n}` the item `n` of a list.
+fn picked(returned: Returned, pick: Option<&Value>, member: &str, what: &str) -> Result<Instance, String> {
+    let steps = pick.and_then(Value::as_array).unwrap_or_else(|| panic!("{what}: from of {member} names its pick, a list of steps"));
+    let mut at = returned;
+    for step in steps {
+        at = match (at, step.as_str(), step.get("index").and_then(Value::as_u64)) {
+            (Returned::Instance(instance), Some("?"), _) => Returned::Instance(instance),
+            (Returned::Value(Value::Null), Some("?"), _) => {
+                return Err(format!("{what}: {member} returned no value, and the pick takes the value of its optional"));
+            }
+            (Returned::Instances(mut items), None, Some(index)) => {
+                let index = usize::try_from(index).or_panic(|error| format!("{what}: the index {index} of a pick does not fit usize: {error}"));
+                if index >= items.len() {
+                    return Err(format!("{what}: {member} returned {} instances, and the pick takes the item {index}", items.len()));
+                }
+                Returned::Instance(items.swap_remove(index))
+            }
+            _ => panic!("{what}: the case runner takes no step {step} of a pick at what {member} returned"),
+        };
+    }
+    match at {
+        Returned::Instance(instance) => Ok(instance),
+        Returned::Value(_) | Returned::Instances(_) => Err(format!("{what}: the pick of {member} reaches no instance")),
+    }
+}
+
+/// An instance value of a case: `{new, receiver, args, then}` or `{from, receiver, args, pick, then}` (binding G-5,
+/// GN-13f). A value that cannot be made fails the test of the case.
 async fn instance(value: &Value, what: &str) -> Instance {
     match made(value, what).await {
         Ok(instance) => instance,
@@ -779,17 +834,22 @@ async fn made(value: &Value, what: &str) -> Result<Instance, String> {
         assert_eq!(made.len(), 1, "{what}: a bound value is {{bound}} alone");
         return Ok(bound(name.as_str().unwrap_or_else(|| panic!("{what}: bound names a name")), what));
     }
-    let member = made.get("new").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: an instance value names its member in new"));
+    let (member, pick) = match (made.get("new").and_then(Value::as_str), made.get("from").and_then(Value::as_str)) {
+        (Some(member), None) => (member, false),
+        (None, Some(member)) => (member, true),
+        _ => panic!("{what}: an instance value names its member in new or in from"),
+    };
     let empty = Map::new();
     let args = made.get("args").map_or(&empty, |args| args.as_object().unwrap_or_else(|| panic!("{what}: args is no object")));
     let mut receiver = match made.get("receiver") {
         Some(value) => Some(Box::pin(self::made(value, what)).await?),
         None => None,
     };
-    let mut out = match call(member, receiver.as_mut(), args).await {
-        Ok(Returned::Instance(instance)) => instance,
-        Ok(Returned::Value(_)) => return Err(format!("{what}: {member} returns no instance")),
-        Err(error) => return Err(format!("{what}: the preparation {member} failed: {error}")),
+    let mut out = match (call(member, receiver.as_mut(), args).await, pick) {
+        (Err(error), _) => return Err(format!("{what}: the preparation {member} failed: {error}")),
+        (Ok(returned), true) => picked(returned, made.get("pick"), member, what)?,
+        (Ok(Returned::Instance(instance)), false) => instance,
+        (Ok(Returned::Value(_) | Returned::Instances(_)), false) => return Err(format!("{what}: {member} returns no instance")),
     };
     for step in made.get("then").and_then(Value::as_array).map_or(&[][..], Vec::as_slice) {
         let name = step.get("call").and_then(Value::as_str).unwrap_or_else(|| panic!("{what}: a then step names its member in call"));
@@ -948,7 +1008,11 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
         }
         (Ok(Returned::Instance(instance)), None) => {
             assert!(fields.get("result").is_none(), "{what}: a class result is observed by the cases of its methods, not by result");
-            result = Some(instance);
+            result = Some(vec![instance]);
+        }
+        (Ok(Returned::Instances(instances)), None) => {
+            assert!(fields.get("result").is_none(), "{what}: the instances of a list are observed by the cases of their methods, not by result");
+            result = Some(instances);
         }
     }
     // The calls of after observe the receiver of a method after its call (binding G-5, GN-6ae): a member without a
@@ -974,7 +1038,7 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
             }
             (Ok(_), Some(raises)) => failures.push(format!("{what}: after {name} succeeded, and it expects {raises}")),
             (Ok(Returned::Value(value)), None) => assert_eq!(Some(&value), step.get("result"), "{what}: after {name}"),
-            (Ok(Returned::Instance(_)), None) => panic!("{what}: after {name} returns an instance"),
+            (Ok(Returned::Instance(_) | Returned::Instances(_)), None) => panic!("{what}: after {name} returns an instance"),
             (Err(error), None) => panic!("{what}: after {name} failed: {error}"),
         }
     }

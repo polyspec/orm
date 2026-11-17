@@ -366,6 +366,43 @@ async fn key_name_keys_the_rows_by_a_column() {
     db.close_async().await;
 }
 
+// Requirements: CORE-170. gets_rows and gets_rows_by hold the collection of gets as the class rows of the contract: its
+// keys are orm_value, a row is found by its key, and an int names the key of an int64.
+#[tokio::test]
+async fn rows_hold_the_rows_of_gets_under_their_keys() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-rows-class");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let text = |value: &str| OrmValue::Text(value.into());
+    let mut accounts = query(&schema, "account", &db);
+    accounts.order_by("SeqDesc");
+    let rows = accounts.gets_rows().await.expect("gets_rows");
+    assert_eq!(rows.len(), 3);
+    assert!(!rows.is_empty());
+    assert_eq!(rows.keys(), [int(3), int(2), int(1)], "the primary key by default, in the order of the read");
+    assert_eq!(rows.first().map(|row| row.value("seq").expect("seq")), Some(int(3)));
+    assert_eq!(rows.values().iter().map(|row| row.value("email").expect("email")).collect::<Vec<_>>(), [text("c@x"), text("b@x"), text("a@x")]);
+    assert_eq!(rows.get(&int(2)).map(|row| row.value("email").expect("email")), Some(text("b@x")));
+    assert_eq!(rows.get(&OrmValue::Int(2)).map(|row| row.value("email").expect("email")), Some(text("b@x")), "an int names the key of an int64");
+    assert!(rows.get(&int(9)).is_none(), "no row has the key");
+    assert!(rows.get(&text("2")).is_none(), "the text 2 is another key than the integer 2");
+    assert!(rows.get(&OrmValue::Null).is_none(), "null is the key of no row");
+    let arrays = rows.to_array().expect("to_array");
+    assert_eq!(arrays.len(), 3);
+    assert_eq!(arrays[0].get("seq"), Some(&int(3)), "to_array of each row, in the order of the rows");
+    accounts.key_name("email");
+    let rows = accounts.gets_rows_by("GtSeq", &[int(1)]).await.expect("gets_rows_by");
+    assert_eq!(rows.keys(), [text("c@x"), text("b@x")], "the column of key_name keys the rows");
+    assert_eq!(rows.get(&text("b@x")).map(|row| row.value("seq").expect("seq")), Some(int(2)));
+    assert_eq!(accounts.gets_rows().await.expect("gets_rows").len(), 3, "gets_rows_by leaves the query unchanged");
+    let mut none = accounts.clone();
+    none.where_none("");
+    let rows = none.gets_rows().await.expect("gets_rows");
+    assert!(rows.is_empty() && rows.first().is_none() && rows.keys().is_empty() && rows.values().is_empty());
+    db.close_async().await;
+}
+
 /// A subquery of the account of each key, which reads the column account_seq.
 fn key_accounts(schema: &Schema) -> Query {
     let mut keys = Query::new(schema, "account_key").expect("query");

@@ -3528,6 +3528,152 @@
           }
         },
         {
+          "id": "query.get",
+          "name": [
+            "get"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "optional": {
+              "unit": "query"
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::get",
+            "receiver": "&self"
+          },
+          "optional_reason": "CORE-83"
+        },
+        {
+          "id": "query.gets",
+          "name": [
+            "gets"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "rows"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_rows",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.gets_by",
+          "name": [
+            "gets",
+            "by"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "chain"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "values"
+              ],
+              "type": {
+                "list": {
+                  "unit": "orm_value"
+                }
+              },
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "rows"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_rows_by",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.to_array",
+          "name": [
+            "to",
+            "array"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "map": {
+              "unit": "orm_value"
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::to_array",
+            "receiver": "&self"
+          }
+        },
+        {
           "id": "query.limit",
           "name": [
             "limit"
@@ -4196,6 +4342,164 @@
           "core": {
             "path": "polyspec_orm::Query::restore_or_create",
             "receiver": "&mut self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rows",
+      "name": [
+        "rows"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::Rows",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "rows.len",
+          "name": [
+            "len"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Rows::len",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "rows.first",
+          "name": [
+            "first"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "optional": {
+              "unit": "query"
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Rows::first",
+            "receiver": "&self"
+          },
+          "optional_reason": "CORE-170"
+        },
+        {
+          "id": "rows.get",
+          "name": [
+            "get"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "key"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            }
+          ],
+          "returns": {
+            "optional": {
+              "unit": "query"
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Rows::get",
+            "receiver": "&self"
+          },
+          "optional_reason": "CORE-170"
+        },
+        {
+          "id": "rows.keys",
+          "name": [
+            "keys"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "unit": "orm_value"
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Rows::keys",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "rows.values",
+          "name": [
+            "values"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "unit": "query"
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Rows::values",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "rows.to_array",
+          "name": [
+            "to",
+            "array"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "map": {
+                "unit": "orm_value"
+              }
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::Internal"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Rows::to_array",
+            "receiver": "&self"
           }
         }
       ]
@@ -5187,6 +5491,180 @@
       "member": "query.get_count_by",
       "file": "contracts/interface/core.json",
       "group": "query.get_count_by"
+    },
+    {
+      "member": "query.get",
+      "file": "contracts/interface/core.json",
+      "group": "query.get"
+    },
+    {
+      "member": "query.get",
+      "file": "contracts/interface/core.json",
+      "group": "query.get.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets"
+    },
+    {
+      "member": "query.gets",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_by"
+    },
+    {
+      "member": "query.gets_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_by.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.to_array",
+      "file": "contracts/interface/core.json",
+      "group": "query.to_array"
+    },
+    {
+      "member": "query.to_array",
+      "file": "contracts/interface/core.json",
+      "group": "query.to_array.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.len",
+      "file": "contracts/interface/core.json",
+      "group": "rows.len",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.first",
+      "file": "contracts/interface/core.json",
+      "group": "rows.first",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.get",
+      "file": "contracts/interface/core.json",
+      "group": "rows.get",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.keys",
+      "file": "contracts/interface/core.json",
+      "group": "rows.keys",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.values",
+      "file": "contracts/interface/core.json",
+      "group": "rows.values",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.to_array",
+      "file": "contracts/interface/core.json",
+      "group": "rows.to_array",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.value",
+      "file": "contracts/interface/core.json",
+      "group": "query.value.rows",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
     },
     {
       "member": "query.limit",
