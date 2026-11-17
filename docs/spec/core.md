@@ -504,7 +504,9 @@ implementation is eligible for removal on that evidence.
   `expect_revision` it is `config` with the message `expectRevision does not combine with update(true)` (DSL-114):
   the update time is a value that the core writes and the revision a value that the caller holds, so they are two
   members. The conditions of the `Query` join the key (CORE-138), and one statement cannot tell them from the update
-  time, so a row that does not meet them is `optimistic_lock` too. Not implemented: `update_optimistic` of a `Query`,
+  time, so a row that does not meet them is `optimistic_lock` too. `update_optimistic` is the name of the terminal of
+  the core; whether a generated wrapper keeps the call `update(true)` is the matter of the generator. Not implemented:
+  `update_optimistic` of a `Query`,
   whose `update` takes no argument; the generated Rust models have `update(optimistic)`.
 - **CORE-153** `delete_recursive()` deletes the row of a `Query` as `delete` does (CORE-91) and, before it, the rows
   of the relation results that the row holds (CORE-88), each with the rows of its own results, children first: the
@@ -513,7 +515,9 @@ implementation is eligible for removal on that evidence.
   connection is a `Tx` (CORE-21), so a failure deletes nothing, a `revision_changed` of the row included (DSL-114). A
   `Query` with conditions whose row holds a result that is deleted is `config` before any statement, with the message
   `a recursive delete of a row with cascading relations takes no conditions` (CORE-138). It deletes one row of its key
-  and never the rows that conditions select (CORE-138). Not implemented: `delete_recursive` of a `Query`, whose
+  and never the rows that conditions select (CORE-138). `delete_recursive` is the name of the terminal of the core;
+  whether a generated wrapper keeps the call `delete(true)` is the matter of the generator. Not implemented:
+  `delete_recursive` of a `Query`, whose
   `delete` takes no argument; the generated Rust models have `delete(recursive)`.
 - **CORE-154** `order_by_random()` adds to the order an item that orders the rows randomly, by the function of the
   dialect, after the items before it (DSL-99); it is the item `random` of the request. A subquery of an added column
@@ -529,8 +533,10 @@ implementation is eligible for removal on that evidence.
   implemented: `order_by_function` of a `Query`, and no type of the contract is a function of DSL-131 (CORE-84).
 - **CORE-156** `force_index(name)` makes the statement of the `Query` use the index or the unique key `name` of its
   entity: the member `forceIndex<Name>()` of the language implementations (DSL-78). It is `force_index` of the query of
-  the request, and the last one called holds. A name that is no index and no unique key of the entity is
-  `index_unknown` at the next terminal with the message `<entity>.<name>`. Not implemented: `force_index` of a `Query`.
+  the request, and the last one called holds. A name that is no index and no unique key of the entity is `config` at
+  the next terminal with the message `<name> is not an index of <entity>`: the kind by which every builder of a
+  `Query` refuses a name that its entity does not have (CORE-82, CORE-87, CORE-89, CORE-91), where the planner alone
+  gives `index_unknown` with the message `<entity>.<name>`. Not implemented: `force_index` of a `Query`.
 - **CORE-157** Three members set how a `Query` given to `relation` or `relations` is attached (CORE-88, PRT-14), and
   have no effect on a `Query` that is given to neither. `parent_node()` merges the row of a `relation` result into the
   row that holds it (DSL-84): `flatten` of the request, by which the JSON text of the row (CORE-161) writes the
@@ -548,7 +554,8 @@ implementation is eligible for removal on that evidence.
   is given to neither, the root of a terminal and the subquery of `where_in` among them, it is `config` at the next
   terminal with the message `possible applies only to a relation child`. A name that is no column of the entity of the
   parent is `config` at the next terminal of the parent with the message `<column> is not a column of <entity>`
-  (CORE-130). Not implemented: `possible` of a `Query`.
+  (CORE-130), the kind and the message of every builder of a `Query` for a column that its entity does not have
+  (CORE-87, CORE-89, CORE-91); `value` alone, which reads a row, is `column_unknown` (CORE-83). Not implemented: `possible` of a `Query`.
 - **CORE-159** `fetch_key(function)` keys the `Collection` of `gets` by what `function` returns for each row, in place
   of the primary key and of `key_name` (CORE-89), and `fetch_value(function)` computes a value for each row, which the
   `Collection` holds beside the row under its key (DSL-70). The function takes the row, a `Query`, and is called once

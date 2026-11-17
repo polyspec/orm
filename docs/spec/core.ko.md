@@ -423,8 +423,9 @@
   `update(true) requires a row loaded with its update time column`이다. 행을 먼저 다시 읽는다. `expect_revision`과
   함께 쓰면 `config`이고 메시지는 `expectRevision does not combine with update(true)`다(DSL-114). update time은 코어가
   쓰는 값이고 revision은 호출자가 가진 값이므로 둘은 서로 다른 member다. `Query`의 조건은 key에 이어지고(CORE-138),
-  한 문장으로는 조건과 update time을 구별할 수 없으므로 조건을 만족하지 않는 행도 `optimistic_lock`이다. 구현되지
-  않았다: `Query`의 `update_optimistic`. 그 `update`는 인자를 받지 않는다. 생성된 Rust 모델은
+  한 문장으로는 조건과 update time을 구별할 수 없으므로 조건을 만족하지 않는 행도 `optimistic_lock`이다.
+  `update_optimistic`은 코어의 terminal의 이름이다. 생성된 wrapper가 호출 `update(true)`를 유지하는지는 generator의
+  일이다. 구현되지 않았다: `Query`의 `update_optimistic`. 그 `update`는 인자를 받지 않는다. 생성된 Rust 모델은
   `update(optimistic)`을 가진다.
 - **CORE-153** `delete_recursive()`는 `delete`처럼 `Query`의 행을 지우고(CORE-91), 그보다 먼저 그 행이 가진 relation
   결과(CORE-88)의 행을, 각 행이 가진 결과의 행과 함께 자식부터 지운다. 언어 구현의 member `delete(true)`이다
@@ -432,7 +433,8 @@
   실행되고, 연결이 `Tx`이면 savepoint에서 실행된다(CORE-21). 그래서 실패하면 아무것도 지우지 않으며, 그 행의
   `revision_changed`도 그렇다(DSL-114). 조건을 가진 `Query`의 행이 지워질 결과를 가지고 있으면 어떤 문장보다도 먼저
   `config`이고 메시지는 `a recursive delete of a row with cascading relations takes no conditions`다(CORE-138). 이것은
-  자기 key의 행 하나를 지우고, 조건이 고른 행들을 지우지 않는다(CORE-138). 구현되지 않았다: `Query`의
+  자기 key의 행 하나를 지우고, 조건이 고른 행들을 지우지 않는다(CORE-138). `delete_recursive`는 코어의 terminal의
+  이름이다. 생성된 wrapper가 호출 `delete(true)`를 유지하는지는 generator의 일이다. 구현되지 않았다: `Query`의
   `delete_recursive`. 그 `delete`는 인자를 받지 않는다. 생성된 Rust 모델은 `delete(recursive)`를 가진다.
 - **CORE-154** `order_by_random()`은 행을 dialect의 함수로 무작위로 정렬하는 항목을 순서의 앞선 항목 뒤에 더한다
   (DSL-99). 요청의 항목 `random`이다. 이것을 가진 추가 열의 subquery는 `ir_invalid`이고 메시지는
@@ -446,8 +448,9 @@
   `order_by_function`. 계약의 어떤 타입도 DSL-131의 함수가 아니다(CORE-84).
 - **CORE-156** `force_index(name)`은 `Query`의 문장이 그 엔티티의 index나 unique key `name`을 쓰게 한다. 언어 구현의
   member `forceIndex<Name>()`이다(DSL-78). 요청의 query의 `force_index`이고, 마지막에 부른 것이 남는다. 엔티티의
-  index도 unique key도 아닌 이름은 다음 terminal에서 `index_unknown`이고 메시지는 `<entity>.<name>`이다. 구현되지
-  않았다: `Query`의 `force_index`.
+  index도 unique key도 아닌 이름은 다음 terminal에서 `config`이고 메시지는 `<name> is not an index of <entity>`다.
+  `Query`의 모든 builder가 엔티티에 없는 이름을 거부하는 kind다(CORE-82, CORE-87, CORE-89, CORE-91). planner만이
+  메시지 `<entity>.<name>`의 `index_unknown`을 준다. 구현되지 않았다: `Query`의 `force_index`.
 - **CORE-157** member 셋은 `relation`이나 `relations`에 준 `Query`를 어떻게 붙일지 정하며(CORE-88, PRT-14), 어느
   쪽에도 주지 않은 `Query`에는 효과가 없다. `parent_node()`는 `relation` 결과의 행을 그것을 가진 행에 합친다
   (DSL-84). 요청의 `flatten`이고, 이것에 따라 행의 JSON 텍스트(CORE-161)는 자기 member 뒤에 자식의 member를 쓰며 행이
@@ -462,7 +465,9 @@
   `value`는 `orm_value`이며 열의 타입으로 비교한다. 요청의 `if_parent`이고(PRT-14), 마지막에 부른 것이 남는다. 어느
   쪽에도 주지 않은 `Query`, 곧 terminal의 root나 `where_in`의 subquery 같은 것에서는 다음 terminal에서 `config`이고
   메시지는 `possible applies only to a relation child`다. 부모 엔티티의 열이 아닌 이름은 부모의 다음 terminal에서
-  `config`이고 메시지는 `<column> is not a column of <entity>`다(CORE-130). 구현되지 않았다: `Query`의 `possible`.
+  `config`이고 메시지는 `<column> is not a column of <entity>`다(CORE-130). `Query`의 모든 builder가 엔티티에 없는
+  열에 주는 kind와 메시지다(CORE-87, CORE-89, CORE-91). 행을 읽는 `value`만 `column_unknown`이다(CORE-83). 구현되지
+  않았다: `Query`의 `possible`.
 - **CORE-159** `fetch_key(function)`은 `gets`의 `Collection`을 primary key와 `key_name`(CORE-89) 대신 `function`이 각
   행에 대해 돌려주는 값으로 key하고, `fetch_value(function)`은 각 행의 값 하나를 계산하며 `Collection`은 그 값을 행
   옆에 그 key로 가진다(DSL-70). 함수는 행인 `Query`를 받고, 행과 그 relation 결과를 읽은 뒤 행의 순서대로 행마다 한
