@@ -641,10 +641,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, install)
         db_throw_orm("SCHEMA_INVALID", "the document set has diagnostics");
         goto failed;
     }
-    if (zend_hash_num_elements(Z_ARRVAL_P(rendered_statements)) == 0) {
-        db_throw_orm("CONFIG", "the document set has no tables");
-        goto failed;
-    }
+    /* A set that owns no tables has no statement and no difference: the install succeeds and registers the set (SCH-7). */
     if (!schema_utils_render_statements(&documents, Z_STR(driver), &statements)) {
         if (EG(exception) == NULL) db_throw_orm("INTERNAL", "the renderer did not return its table mapping");
         goto failed;

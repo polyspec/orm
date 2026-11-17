@@ -41,7 +41,8 @@ final class SchemaUtils
      * it is CONFIG with all of those differences (docs/spec/schema.md "Schema installation"). On PostgreSQL and
      * SQLite, it runs inside a transaction (in progress or new), so a failed install leaves
      * nothing behind. MySQL commits each DDL by itself, so it runs outside a transaction, and
-     * inside one it is CONFIG.
+     * inside one it is CONFIG. A set that owns no tables has no statement and no difference, so the install
+     * succeeds and registers the set (SCH-7).
      */
     public function install(Schema $schema): void
     {
@@ -53,9 +54,6 @@ final class SchemaUtils
             throw self::invalid($diagnostics);
         }
         $statements = Renderer::statements($documents, $driver);
-        if ($statements === []) {
-            throw new OrmException(Code::CONFIG, 'the document set has no tables');
-        }
         $target = self::target($documents);
         $db = $this->db;
         $pdo = $db->pdo();
