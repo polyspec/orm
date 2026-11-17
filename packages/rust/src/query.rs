@@ -458,6 +458,23 @@ impl Query {
         crate::model::update(self, false).await
     }
 
+    /// Inserts the rows of the assignments of `rows`, queries of the same entity, in batches of `batch` rows in one
+    /// transaction, under the conditions of this query, and returns the number of rows inserted (CORE-204). A `batch` of
+    /// 0 and a row of another entity are `config`, and a batch over the bind limit of the database is `batch_too_large`.
+    pub async fn creates(&self, rows: Vec<Query>, batch: u32) -> Result<i64> {
+        for row in &rows {
+            if row.entity() != self.entity() {
+                return Err(Error::config(format!("creates takes rows of {}, not of {}", self.entity(), row.entity())));
+            }
+            if let Some(error) = row.core.err() {
+                return Err(error);
+            }
+        }
+        let batch = usize::try_from(batch).map_err(|error| Error::internal(format!("the batch {batch} is no size: {error}")))?;
+        let inserted = crate::model::creates(self, rows, batch).await?;
+        i64::try_from(inserted).map_err(|error| Error::internal(format!("the count {inserted} of inserted rows is no int64: {error}")))
+    }
+
     /// Writes the assignments by `update` when the query read a row or `set` assigned its primary key, and by `create`
     /// otherwise (CORE-203). It returns the query as `update` left it, or the row that `create` returned.
     pub async fn save(&mut self) -> Result<Query> {

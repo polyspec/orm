@@ -308,7 +308,7 @@
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
-- **CORE-84** 구현되지 않았다: `Query`의 `creates`, `join`, `leftJoin`, 묶음
+- **CORE-84** 구현되지 않았다: `Query`의 `join`, `leftJoin`, 묶음
   (`not`, `andNot`, `orNot`, `on`. `andGroup`과 `orGroup`은 `where_group`이다, CORE-202), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
@@ -572,6 +572,21 @@
   `save`는 `create`이고 만든 행을 돌려준다. 그래서 identity key의 행은 key 없이 만들고 key와 함께 고친다(DSL-113).
   실패는 그 `update`나 `create`의 실패이고, 연결이 없는 `Query`는 어느 쪽보다도 먼저 `config`다(CORE-81). `Db`
   step(CORE-92)에는 이것의 terminal이 없다.
+- **CORE-204** `creates(rows, batch)`는 `rows`의 각 `Query`의 배정으로 된 행을 그 순서대로 넣고, 넣은 행의 수를
+  돌려준다. 언어 구현의 member `creates(models, batch)`다(DSL-104). 행은 `batch`개씩의 batch로 넣고, batch 하나는 여러
+  행의 문장 하나이며, 모두 `Query`의 연결의 transaction 하나에서, 연결이 `Tx`이면 savepoint에서 실행된다(CORE-21).
+  그래서 실패하면 아무것도 넣지 않는다. `Query`는 엔티티와 연결과 insert의 조건을 주고, 조건은 DSL-162가 적은 대로
+  모든 행에 적용된다(`condition_not_met`). `rows`의 각 `Query`는 `set`의 배정만 주며(CORE-91) 그 연결과 조건은
+  효과가 없다. `batch`는 `uint`이고 0은 `config`이며 메시지는 `creates batch must be a positive integer, got 0`이다.
+  다른 엔티티의 `rows`의 `Query`는 `config`이고 메시지는 `creates takes rows of <entity>, not of <other>`이며,
+  member가 실패시킨 것은 그 오류로 `creates`를 실패시키고, 배정이 없는 첫 `Query`는 `config`이고 메시지는
+  `creates requires models with set_<col> values`이며, 배정이 첫 `Query`의 열과 그 순서가 아닌 것은 `config`이고
+  메시지는 `every model of creates must set the same columns`나 `... in the same order`다. 값과 조건 parameter가
+  데이터베이스의 문장이 받는 수(SQLite 999, MySQL과 PostgreSQL 65535)보다 많은 batch는 어떤 문장보다도 먼저
+  `batch_too_large`이고 메시지는
+  `creates batch <n> of <rows> rows binds <binds> parameters, over the <driver> limit of <limit>`이다. identity 열의
+  값은 `ir_invalid`다(DSL-113). 빈 `rows`는 연결이 있는 `Query`에서 0을 돌려주고 문장을 보내지 않는다(CORE-81).
+  행은 돌려주지 않고, insert 뒤에 행을 읽지 않는다. `Db` step(CORE-92)에는 이것의 terminal이 없다.
 
 ## 상태 기계
 

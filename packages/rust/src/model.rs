@@ -1403,17 +1403,17 @@ pub async fn create<M: AnyModel + Clone>(m: &mut M) -> Result<M> {
 /// Inserts models in batches of `batch` rows, each batch one multi-row INSERT, in one transaction (a savepoint
 /// inside an active one) and returns the inserted row count. A `batch` of 0 is CONFIG and a batch whose binds exceed
 /// the bind limit is BATCH_TOO_LARGE, both before any statement.
-pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64> {
+pub async fn creates<M: AnyModel + Clone>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64> {
     if batch == 0 {
         return Err(config("creates batch must be a positive integer, got 0"));
     }
-    let c = m.core();
+    let c = m.core_dyn();
     let ex = terminal(c)?;
     if rows.is_empty() {
         return Ok(0);
     }
     let ent = c.ent.entity_schema()?;
-    let first = rows[0].core();
+    let first = rows[0].core_dyn();
     if first.sets.is_empty() {
         return Err(config("creates requires models with set_<col> values"));
     }
@@ -1432,7 +1432,7 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
             start += part;
             let mut req = write_req(c, "insert");
             for (i, row) in chunk.iter().enumerate() {
-                let rc = row.core();
+                let rc = row.core_dyn();
                 if rc.sets.len() != columns.len() {
                     return Err(config("every model of creates must set the same columns"));
                 }

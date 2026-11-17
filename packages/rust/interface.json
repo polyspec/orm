@@ -4531,6 +4531,63 @@
             "path": "polyspec_orm::Query::save",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.creates",
+          "name": [
+            "creates"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "rows"
+              ],
+              "type": {
+                "list": {
+                  "unit": "query"
+                }
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "batch"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": "int64",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::BatchTooLarge",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::RollbackFailed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::creates",
+            "receiver": "&self"
+          }
         }
       ]
     },
@@ -6266,6 +6323,25 @@
       "member": "query.value",
       "file": "contracts/interface/core.json",
       "group": "query.value.save",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.creates",
+      "file": "contracts/interface/core.json",
+      "group": "query.creates"
+    },
+    {
+      "member": "query.creates",
+      "file": "contracts/interface/core.json",
+      "group": "query.creates.sqlite",
       "only": {
         "targets": [
           "php",

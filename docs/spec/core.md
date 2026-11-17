@@ -373,7 +373,7 @@ implementation is eligible for removal on that evidence.
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
-- **CORE-84** Not implemented: `creates` of a `Query`, `join`, `leftJoin`, the
+- **CORE-84** Not implemented: `join`, `leftJoin`, the
   groups (`not`, `andNot`, `orNot`, `on`; `andGroup` and `orGroup` are `where_group`, CORE-202), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
@@ -675,6 +675,24 @@ implementation is eligible for removal on that evidence.
   created row; a row with an identity key is therefore created without its key and updated with it (DSL-113). A
   failure is the failure of that `update` or `create`, and a `Query` with no connection is `config` before either
   (CORE-81). The `Db` step (CORE-92) has no terminal for it.
+- **CORE-204** `creates(rows, batch)` inserts the rows of the assignments of each `Query` of `rows`, in their order,
+  and returns the number of rows that it inserted: the member `creates(models, batch)` of the language implementations
+  (DSL-104). The rows are inserted in batches of `batch` rows, each batch one statement of several rows, all in one
+  transaction of the connection of the `Query`, a savepoint when the connection is a `Tx` (CORE-21), so a failure
+  inserts nothing. The `Query` gives the entity, the connection and the conditions of the insert, which hold for
+  every row as DSL-162 states (`condition_not_met`); each `Query` of `rows` gives the assignments of `set` alone
+  (CORE-91), and its connection and conditions have no effect. `batch` is `uint`, and 0 is `config` with the message
+  `creates batch must be a positive integer, got 0`. A `Query` of `rows` of another entity is `config` with the
+  message `creates takes rows of <entity>, not of <other>`, one that a member failed fails `creates` with that error,
+  the first without an assignment is `config` with the message `creates requires models with set_<col> values`, and
+  one whose assignments are not the columns of the first, in its order, is `config` with the message
+  `every model of creates must set the same columns` or `... in the same order`. A batch whose values and condition
+  parameters are more than the statement of the database takes, 999 on SQLite and 65535 on MySQL and PostgreSQL, is
+  `batch_too_large` before any statement, with the message
+  `creates batch <n> of <rows> rows binds <binds> parameters, over the <driver> limit of <limit>`. A value for the
+  identity column is `ir_invalid` (DSL-113). An empty `rows` returns 0 and sends no statement, on a `Query` with a
+  connection (CORE-81). The rows are not returned, and no row is read after the insert. The `Db` step (CORE-92) has
+  no terminal for it.
 
 ## State machines
 

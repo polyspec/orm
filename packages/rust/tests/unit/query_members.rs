@@ -896,3 +896,50 @@ async fn save_updates_a_known_row_and_creates_another() {
     assert_eq!(failure(unconnected, "no connection").to_string(), "config: the model has no connection; connect it to a Db or to the Tx of a transaction");
     db.close_async().await;
 }
+
+/// A query of `account` with no connection that assigns `email` and the revision 0.
+fn new_account(schema: &Schema, email: &str) -> Query {
+    let mut row = Query::new(schema, "account").expect("query");
+    row.set("email", &OrmValue::Text(email.into()));
+    row.set("revision", &int(0));
+    row
+}
+
+// Requirements: CORE-204. creates inserts the rows of the assignments in batches in one transaction and returns their
+// number; a failure inserts nothing; a batch of 0, a row of another entity, a row without assignments and a row of
+// other columns are config, and a batch over the bind limit is batch_too_large.
+#[tokio::test]
+async fn creates_inserts_the_rows_in_batches_of_one_transaction() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-creates");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let accounts = query(&schema, "account", &db);
+    let rows = vec![new_account(&schema, "d@x"), new_account(&schema, "e@x"), new_account(&schema, "f@x")];
+    assert_eq!(accounts.creates(rows, 2).await.expect("creates"), 3);
+    assert_eq!(accounts.get_count().await.expect("get_count"), 6);
+    assert_eq!(accounts.creates(Vec::new(), 1).await.expect("no rows"), 0);
+    let duplicate = vec![new_account(&schema, "g@x"), new_account(&schema, "a@x")];
+    assert_eq!(failure(accounts.creates(duplicate, 1).await, "a duplicate key").kind().as_str(), "duplicate_key");
+    assert_eq!(accounts.get_count().await.expect("get_count"), 6, "a failure of a later batch inserts nothing");
+    let message = |rows: Vec<Query>, batch: u32, what: &str| {
+        let accounts = accounts.clone();
+        let what = what.to_owned();
+        async move { failure(accounts.creates(rows, batch).await, &what).to_string() }
+    };
+    assert_eq!(message(vec![new_account(&schema, "h@x")], 0, "a batch of 0").await, "config: creates batch must be a positive integer, got 0");
+    let key = Query::new(&schema, "account_key").expect("query");
+    assert_eq!(message(vec![key], 1, "another entity").await, "config: creates takes rows of account, not of account_key");
+    let bare = Query::new(&schema, "account").expect("query");
+    assert_eq!(message(vec![bare], 1, "no assignment").await, "config: creates requires models with set_<col> values");
+    let mut other = Query::new(&schema, "account").expect("query");
+    other.set("email", &OrmValue::Text("i@x".into()));
+    assert_eq!(message(vec![new_account(&schema, "h@x"), other], 2, "other columns").await, "config: every model of creates must set the same columns");
+    let many = (0..500).map(|n| new_account(&schema, &format!("{n}@many"))).collect::<Vec<_>>();
+    assert_eq!(
+        message(many, 500, "a batch over the bind limit").await,
+        "batch_too_large: creates batch 1 of 500 rows binds 1000 parameters, over the sqlite limit of 999"
+    );
+    assert_eq!(accounts.get_count().await.expect("get_count"), 6, "a refused creates inserts nothing");
+    db.close_async().await;
+}

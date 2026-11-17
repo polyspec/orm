@@ -624,6 +624,17 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Returned::Value(Value::Null)
         }
         ("query.create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.create().await?))),
+        ("query.creates", Some(Instance::Query(query))) => {
+            let given = field(args, "rows", member).as_array().unwrap_or_else(|| panic!("{member}: rows is no list"));
+            let mut rows = Vec::with_capacity(given.len());
+            for row in given {
+                match Box::pin(instance(row, member)).await {
+                    Instance::Query(row) => rows.push(*row),
+                    _ => panic!("{member}: a row is no query"),
+                }
+            }
+            Returned::Value(returned_integer(query.creates(rows, uint(args, "batch", member)).await?))
+        }
         ("query.save", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.save().await?))),
         ("query.restore", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore().await?))),
         ("query.restore_or_create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore_or_create().await?))),
