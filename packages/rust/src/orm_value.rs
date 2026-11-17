@@ -137,6 +137,23 @@ impl OrmValue {
         })
     }
 
+    /// The value of the parameter `param` of a request (CORE-190). A parameter keeps no column, so an integer is
+    /// `Int64`, as an integer that enters the core is (CORE-123), a date is its canonical text and a date-time is its
+    /// canonical text with six fraction digits, the text that the core binds.
+    #[cfg(feature = "runtime")]
+    pub(crate) fn of_param(param: &Param) -> OrmValue {
+        match param {
+            Param::Null => OrmValue::Null,
+            Param::Bool(flag) => OrmValue::Bool(*flag),
+            Param::I64(n) => OrmValue::Int64(*n),
+            Param::F64(x) => OrmValue::Float(*x),
+            Param::Str(text) => OrmValue::Text(text.clone()),
+            Param::Bytes(bytes) => OrmValue::Bytes(bytes.clone()),
+            Param::Date(day) => OrmValue::Text(day.to_string()),
+            Param::DateTime(instant) => OrmValue::Text(crate::model::datetime_text(instant, 6)),
+        }
+    }
+
     /// The name of the kind of a value that a condition does not take.
     #[cfg(feature = "runtime")]
     fn refused_kind(&self) -> &'static str {

@@ -74,18 +74,35 @@ impl RequestParams {
     }
 }
 
-/// Applies the handle's request hook to req. Does nothing if there is no hook. The hook receives the request and
-/// the parameters and may change them in the future it returns, which this awaits; n_params is then the number of
-/// parameters. A hook error is returned as is.
+/// Applies the handle's request hook to req, and then records the request in the request log of the handle (CORE-190).
+/// Without a hook the request is unchanged. The hook receives the request and the parameters and may change them in the
+/// future it returns, which this awaits; n_params is then the number of parameters. A hook error is returned as is,
+/// and its request is not recorded.
 pub(crate) async fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
-    let Some(hook) = handle.hook.clone() else { return Ok(()) };
-    req.ir.n_params = req.params.len();
-    let mut params = RequestParams { params: std::mem::take(&mut req.params) };
-    let result = hook(&mut req.ir, &mut params).await;
-    req.params = params.params;
-    req.ir.n_params = req.params.len();
-    result
+    if let Some(hook) = handle.hook.clone() {
+        req.ir.n_params = req.params.len();
+        let mut params = RequestParams { params: std::mem::take(&mut req.params) };
+        let result = hook(&mut req.ir, &mut params).await;
+        req.params = params.params;
+        req.ir.n_params = req.params.len();
+        result?;
+    }
+    handle.record_request(req);
+    Ok(())
 }
+
+/// One request that a handle of `with_request_log` recorded (CORE-190): the request as the client had it after the
+/// request hook and before the planner numbered its parameters again, and the values that it bound.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ObservedRequest {
+    /// The request as its JSON text (docs/spec/flowmark-surface.md FMS-31).
+    pub request: String,
+    /// The values of the parameters of the request, by their index in it.
+    pub params: Vec<crate::OrmValue>,
+}
+
+/// The request log of a handle (CORE-190), which the handles made from that handle share.
+pub(crate) type RequestLog = Arc<Mutex<Vec<ObservedRequest>>>;
 
 /// The bound of the wait for a connection of the pool when the configuration states none (CORE-30).
 pub const DEFAULT_POOL_ACQUIRE_TIMEOUT_MS: u32 = 30_000;
@@ -701,6 +718,9 @@ pub struct Db {
     pub(crate) hook: Option<RequestHook>,
     /// The cancellation of this handle (CORE-45). Not shared with other handles of the connection.
     pub(crate) cancel: Option<binding_core::Cancel>,
+    /// The request log of this handle (CORE-190), or `None` for a handle that records nothing. A handle made from this
+    /// handle shares it; a handle of the connection that was not made from it does not.
+    pub(crate) log: Option<RequestLog>,
 }
 
 /// The connection pool state.
@@ -1028,6 +1048,7 @@ impl Db {
             }),
             hook: None,
             cancel: None,
+            log: None,
         };
         if owner.set(Arc::downgrade(&db.inner)).is_err() {
             return Err(Error::internal("the owner of a new database was already set"));
@@ -1041,7 +1062,7 @@ impl Db {
     /// active transactions of the connection; it carries one hook, so this
     /// replaces the hook of a hooked handle.
     pub fn with_request_hook(&self, hook: impl for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync + 'static) -> Db {
-        Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)), cancel: self.cancel.clone() }
+        Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)), cancel: self.cancel.clone(), log: self.log.clone() }
     }
 
     /// Returns a handle on the same connection that carries the cancellation `cancel` (CORE-45). The handle shares the
@@ -1052,7 +1073,34 @@ impl Db {
     /// `canceled` and are not sent; the end of a transaction and of a savepoint is sent whatever the cancellation
     /// (CORE-46). A statement in progress when the cancellation fires runs to its end (CORE-47).
     pub fn with_cancel(&self, cancel: binding_core::Cancel) -> Db {
-        Db { inner: self.inner.clone(), hook: self.hook.clone(), cancel: Some(cancel) }
+        Db { inner: self.inner.clone(), hook: self.hook.clone(), cancel: Some(cancel), log: self.log.clone() }
+    }
+
+    /// Returns a handle on the same connection that records each request of the handle (CORE-190): the request of a
+    /// read, a count, a page, an insert, an update, a delete, a restore and `get_query` of a model connected to it or
+    /// to the `Tx` of a transaction that it began, after the request hook succeeded and before the request is planned.
+    /// The handle keeps the request hook and the cancellation of this handle, and `with_request_hook` and `with_cancel`
+    /// of it keep the log. The log has no bound: it grows until `observed_requests` reads it. A handle that has a log
+    /// gets a new, empty one.
+    pub fn with_request_log(&self) -> Db {
+        Db { inner: self.inner.clone(), hook: self.hook.clone(), cancel: self.cancel.clone(), log: Some(Arc::new(Mutex::new(Vec::new()))) }
+    }
+
+    /// Returns the requests that the handle recorded since the last read, in their order, and empties the log
+    /// (CORE-190). A handle without a log returns an empty list.
+    pub fn observed_requests(&self) -> Vec<ObservedRequest> {
+        match &self.log {
+            Some(log) => std::mem::take(&mut *log.lock().unwrap()),
+            None => Vec::new(),
+        }
+    }
+
+    /// Records `req` in the request log of the handle, if it has one (CORE-190).
+    fn record_request(&self, req: &mut Req) {
+        let Some(log) = &self.log else { return };
+        req.ir.n_params = req.params.len();
+        let record = ObservedRequest { request: req.ir.to_json(), params: req.params.iter().map(crate::OrmValue::of_param).collect() };
+        log.lock().unwrap().push(record);
     }
 
     /// Whether the handle is the handle of an open transaction (CORE-140): always `false`, also inside the callback of
@@ -1899,6 +1947,10 @@ fn invalid_time_text(col_type: &str) -> Error {
 #[cfg(test)]
 #[path = "../tests/unit/cancel.rs"]
 mod cancel_tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/request_log.rs"]
+mod request_log_tests;
 
 /// The step and the parameters of `execute_text` (docs/spec/flowmark-surface.md FMS-42): a text that is no step of the
 /// form is `config`, and a list, a map or a JSON value among `params` is `codec_encode`.

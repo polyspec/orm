@@ -276,6 +276,12 @@ impl Request {
         form::check(form::Form::Request, &value, "request").map_err(not_of_the_form)?;
         serde_json::from_value(value).map_err(|error| not_of_the_form(format!("the request is not of its form: {error}")))
     }
+
+    /// The JSON text of the request (FMS-31), written by the serializer whose bytes the key of the plan cache hashes
+    /// (`Req::shape_key`), so it is the text that `from_json` reads.
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).expect("ir serializes")
+    }
 }
 
 fn not_of_the_form(message: String) -> crate::Error {

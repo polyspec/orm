@@ -1365,6 +1365,47 @@
       ]
     },
     {
+      "id": "observed_request",
+      "name": [
+        "observed",
+        "request"
+      ],
+      "module": "",
+      "kind": "record",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::ObservedRequest",
+      "fields": [
+        {
+          "name": [
+            "request"
+          ],
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": [
+            "params"
+          ],
+          "type": {
+            "list": {
+              "unit": "orm_value"
+            }
+          },
+          "required": true
+        }
+      ]
+    },
+    {
       "id": "config",
       "name": [
         "config"
@@ -1938,6 +1979,47 @@
           "wait": "none",
           "core": {
             "path": "polyspec_orm::Db::with_cancel",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "db.with_request_log",
+          "name": [
+            "with",
+            "request",
+            "log"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "db"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Db::with_request_log",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "db.observed_requests",
+          "name": [
+            "observed",
+            "requests"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "unit": "observed_request"
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Db::observed_requests",
             "receiver": "&self"
           }
         },
@@ -8500,6 +8582,34 @@
       "member": "db.with_cancel",
       "file": "contracts/interface/core.json",
       "group": "db.with_cancel",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.with_request_log",
+      "file": "contracts/interface/core.json",
+      "group": "db.with_request_log",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.observed_requests",
+      "file": "contracts/interface/core.json",
+      "group": "db.observed_requests",
       "only": {
         "targets": [
           "php",
