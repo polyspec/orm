@@ -16,7 +16,8 @@ class RestoreAnalysisShapeTest extends TestCase
 {
     public static function cases(): iterable
     {
-        $cases = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/ir/restore-analysis-shape.json'), true, 32, JSON_THROW_ON_ERROR);
+        $path = dirname(__DIR__, 3) . '/tests/ir/restore-analysis-shape.json';
+        $cases = json_decode((string) file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
         foreach ($cases as $case) {
             yield $case['id'] => [$case];
         }

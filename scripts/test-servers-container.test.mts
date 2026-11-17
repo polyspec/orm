@@ -17,6 +17,20 @@ import { caseTest, withTemporaryDirectory } from '../tests/testcase.mts';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { installBay, kinds, pull, remote, remove, run, start, type Context } from './test-servers-container.mts';
 import { ORM_ACCOUNTS_SQL } from './test-servers.mts';
+import { type Json, parseJsonValue } from './json/schema.mts';
+
+// The JSON that a case reads back from the files of a run, typed as it is read.
+const jsonOf = (path: string): Json => parseJsonValue(readFileSync(path, 'utf8'), path);
+const jsonLines = (path: string): Json[] => readFileSync(path, 'utf8').trim().split('\n').map(line => parseJsonValue(line, path));
+const memberOf = (value: Json, ...keys: string[]): Json => keys.reduce<Json>((at, key) => {
+  assert.ok(at !== null && typeof at === 'object' && !Array.isArray(at), `${key} is read from an object`);
+  return at[key] ?? null;
+}, value);
+const textOf = (value: Json, what: string): string => {
+  assert.ok(typeof value === 'string', `${what} is a string`);
+  return value;
+};
+const isTextList = (value: Json): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
 
 // SUFFIX is the suffix of the host names of the stand-in bay, which no bay has, and AUTHORITY the path that it reports
 // for the certificate of its authority.
@@ -608,8 +622,8 @@ caseTest('a run in the runner is the job build, which installs the runner from a
       // run.sh queues build and then check, each by its key, follows each, and records what bay records of it.
       const followed = (id: string) => [`job logs -f -timeout 24h ${id}`, `job wait -timeout 24h ${id}`, `job logs ${id}`, `job show -json ${id}`];
       assert.deepEqual(commands(stand).filter(command => !command.startsWith('plan')), ['images', `job add -json -key ${project}-build build`, ...followed('job-1'), 'images', `job add -json -key ${project}-check check`, ...followed('job-2')]);
-      assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'setup-mysql', 'check']]);
-      assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).service, 'check');
+      assert.deepEqual(jsonLines(stand.ups), [['build'], ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'setup-mysql', 'check']]);
+      assert.equal(memberOf(parseJsonValue(file(context.root, project, 'report/job-check.json'), 'report/job-check.json'), 'service'), 'check');
       const stepsLog = file(context.root, project, 'report/steps.log');
       for (const step of ['the job build (job-1)', 'the job check (job-2)']) assert.ok(stepsLog.includes(` ${step}`), `steps.log has no time of ${step}: ${stepsLog}`);
       assert.deepEqual(readdirSync(stand.state), [], 'a run in the runner leaves its project');
@@ -720,8 +734,8 @@ caseTest('a run of several kinds is one project with the servers, the steps and 
     const text = file(context.root, project, 'compose.run.yaml');
     assert.deepEqual([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map(match => match[1]), ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'postgres', 'postgres-replica', 'pgbouncer', 'setup-mysql', 'setup-postgres', 'check']);
     const setupOf = (kind: string, next: string) => text.slice(text.indexOf(`  setup-${kind}:\n`), text.indexOf(`  ${next}:\n`));
-    const images = JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).images;
-    assert.ok(setupOf('mysql', 'setup-postgres').includes(`image: "${images.mysql.reference}"`) && setupOf('postgres', 'check').includes(`image: "${images.postgres.reference}"`), 'a setup does not run the client of the image of its kind');
+    const images = memberOf(jsonOf(join(import.meta.dirname, '../config/containers.json')), 'images');
+    assert.ok(setupOf('mysql', 'setup-postgres').includes(`image: "${textOf(memberOf(images, 'mysql', 'reference'), 'images.mysql.reference')}"`) && setupOf('postgres', 'check').includes(`image: "${textOf(memberOf(images, 'postgres', 'reference'), 'images.postgres.reference')}"`), 'a setup does not run the client of the image of its kind');
     assert.match(setupOf('postgres', 'check'), /^ {4}depends_on:\n {6}postgres:\n {8}condition: "service_healthy"\n {6}postgres-replica:\n {8}condition: "service_healthy"\n {6}pgbouncer:\n {8}condition: "service_healthy"$/m);
     assert.match(text.slice(text.indexOf('  check:\n')), /^ {4}depends_on:\n {6}setup-mysql:\n {8}condition: "service_completed_successfully"\n {6}setup-postgres:\n {8}condition: "service_completed_successfully"$/m);
     const jobCheck = file(context.root, project, 'job-check.sh');
@@ -731,7 +745,7 @@ caseTest('a run of several kinds is one project with the servers, the steps and 
     const checkSh = file(context.root, project, 'check.sh');
     assert.ok(checkSh.includes(`export TEST_ENV="$run/servers.env" MARIADB_ENV="$run/servers.env"`), checkSh);
     assertShReads(join(containers(context.root), project), ['run.sh', 'setup-mysql.sh', 'setup-postgres.sh', 'job-check.sh', 'check.sh']);
-    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build'], ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'postgres', 'postgres-replica', 'pgbouncer', 'setup-mysql', 'setup-postgres', 'check']]);
+    assert.deepEqual(jsonLines(stand.ups), [['build'], ['mysql', 'mysql-replica', 'mysql-privilege', 'proxysql', 'postgres', 'postgres-replica', 'pgbouncer', 'setup-mysql', 'setup-postgres', 'check']]);
     assert.equal(file(context.root, project, 'report/status'), '0\n');
   }));
 
@@ -742,7 +756,7 @@ caseTest('a run in the runner whose job check fails ends with the result of the 
     assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, keep: true }), { code: 1, signal: null });
     const project = only(context.root);
     assert.equal(file(context.root, project, 'report/status'), '5\n');
-    assert.equal(JSON.parse(file(context.root, project, 'report/job-check.json')).exitCode, 5);
+    assert.equal(memberOf(parseJsonValue(file(context.root, project, 'report/job-check.json'), 'report/job-check.json'), 'exitCode'), 5);
     assert.match(file(context.root, project, 'report/steps.log'), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ the job check of orm-[0-9a-f]{12}-[0-9a-f]{8} did not succeed: bay job wait exited with 1$/m);
     assert.deepEqual(readdirSync(stand.state), []);
     // An image that is absent fails the run before a job is queued, naming the install target, and leaves nothing.
@@ -775,7 +789,7 @@ caseTest('run.sh refuses a bay of another contract and a missing bay before it s
     await start('postgres', context);
     const project = only(context.root);
     assert.equal(file(context.root, project, 'report/bay-version'), 'bay v7.8.9-another+dirty (0000) go0 test/test schema 1\n');
-    assert.ok(!file(context.root, project, 'run.sh').includes(JSON.parse(readFileSync(join(import.meta.dirname, '../config/containers.json'), 'utf8')).bay.version), 'run.sh reads the release that CI installs');
+    assert.ok(!file(context.root, project, 'run.sh').includes(textOf(memberOf(jsonOf(join(import.meta.dirname, '../config/containers.json')), 'bay', 'version'), 'bay.version')), 'run.sh reads the release that CI installs');
     const script2 = join(containers(context.root), project, 'run.sh');
     // The command of bay may have several words, as sudo -n bay has on a CI runner: each word reaches bay.
     writeFileSync(stand.calls, '');
@@ -814,7 +828,7 @@ caseTest('a run on another machine sends its directory once, queues and waits fo
     const reported = (name: string) => readFileSync(join(containers(context.root), 'reports', report, name), 'utf8');
     assert.equal(reported('status'), '5\n');
     assert.equal(reported('check.log'), 'the output of the command\n');
-    assert.equal(JSON.parse(reported('job-check.json')).exitCode, 5);
+    assert.equal(memberOf(parseJsonValue(reported('job-check.json'), 'job-check.json'), 'exitCode'), 5);
     assert.deepEqual(readdirSync(there), [report], 'the kept directory is not the one directory there');
 
     // The same run started again, as after a lost connection, sends nothing and queues no job a second time.
@@ -834,7 +848,7 @@ caseTest('a run on another machine sends its directory once, queues and waits fo
     assert.equal(readFileSync(stand.ups, 'utf8'), '', 'a job that has not ended ran');
     const [kept] = readdirSync(there);
     assert.ok(kept && existsSync(join(there, kept, 'compose.build.yaml')), 'the run removed the directory that its queued job reads');
-    assert.equal(JSON.parse(readFileSync(join(containers(context.root), 'reports', kept, 'job-build.json'), 'utf8')).state, 'queued');
+    assert.equal(memberOf(jsonOf(join(containers(context.root), 'reports', kept, 'job-build.json')), 'state'), 'queued');
     assert.ok(!existsSync(join(there, kept, 'job-check')), 'the job check was queued after a job build that has not ended');
     rmSync(stand.unended);
     const queued = join(dir, 'jobs', `${readFileSync(join(there, kept, 'job-build'), 'utf8').trim()}.json`);
@@ -845,7 +859,7 @@ caseTest('a run on another machine sends its directory once, queues and waits fo
     assert.deepEqual(readdirSync(there), [kept], 'the run removed its directory after a dropped connection');
     rmSync(drop);
     assert.equal(remote('mysql', command, { ...context, ssh }, { ...where, keep: false }), 0);
-    const checked = readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line) as string[]);
+    const checked = jsonLines(stand.ups).map(line => { assert.ok(isTextList(line), `${stand.ups}: a stand-up is a list of names`); return line; });
     assert.ok(checked.length === 1 && checked[0]?.includes('check'), `the job check did not run once: ${JSON.stringify(checked)}`);
     assert.deepEqual(readdirSync(there), [], 'the run leaves its directory on the other machine');
 
@@ -853,7 +867,7 @@ caseTest('a run on another machine sends its directory once, queues and waits fo
     writeFileSync(stand.ups, '');
     writeFileSync(stand.buildFails, '');
     assert.equal(remote('mysql', ['make', 'test-rust'], { ...context, ssh }, { ...where, keep: false, build: ['make', 'build'] }), 1);
-    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the job check ran after a failed build');
+    assert.deepEqual(jsonLines(stand.ups), [['build']], 'the job check ran after a failed build');
   }));
 
 caseTest('the install target of bay takes the archive of the release that CI installs for the platform, uses it only with its sha256, and leaves bay and bayd in the tools of the checkout (BAY5)', () =>
@@ -904,7 +918,7 @@ caseTest('a run in the runner with a build command builds in the job build, befo
     writeFileSync(stand.buildFails, '');
     writeFileSync(stand.ups, '');
     assert.deepEqual(await run('mysql', ['make', 'test-rust'], context, { runner: true, build: ['make', 'test-rust-build'] }), { code: 1, signal: null });
-    assert.deepEqual(readFileSync(stand.ups, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [['build']], 'the servers started after a failed build');
+    assert.deepEqual(jsonLines(stand.ups), [['build']], 'the servers started after a failed build');
     assert.deepEqual(readdirSync(stand.state), [], 'a run with a failed build leaves its project');
     assert.deepEqual(projects(context.root), []);
     // A value that is no count or no size is refused before anything is written.

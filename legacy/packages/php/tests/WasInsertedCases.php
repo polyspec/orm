@@ -118,10 +118,10 @@ final class WasInsertedCases
     }
 
     /**
-     * PostgreSQL: a second backend that waits for a row lock is reported (INT-53). The transaction of $db holds the row;
-     * a child process updates the same row and blocks. The child prints "waiting" when the server reports that its update
-     * waits (T475), and only then the case reads the state once, before it commits and lets the child finish. The child
-     * and its pipes are closed whatever the case ends with.
+     * PostgreSQL: a second backend that waits for a row lock is reported (INT-53). The transaction of $db holds the
+     * row; a child process updates the same row and blocks. The child prints "waiting" when the server reports that its
+     * update waits (T475), and only then the case reads the state once, before it commits and lets the child finish.
+     * The child and its pipes are closed whatever the case ends with.
      */
     public static function assertReportsABackendWaitingForLock(TestCase $test, Db $db, string $dsn): void
     {

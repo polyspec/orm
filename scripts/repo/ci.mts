@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { Minimatch } from 'minimatch';
-import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
+import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand } from './shell.mts';
 import { checkTargets, makeRecipes, makeTargets } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
 import { CI_SETUP, STEP_OUTPUT } from '../check/ci-setup.mts';
@@ -442,11 +442,12 @@ const PLATFORM_JOB = { path: '.github/workflows/assets.yml', job: 'platform', ru
 
 // platformRunners returns the sorted runners of the matrix include of a job, or null when the matrix lists none.
 function platformRunners(job: Record<string, unknown>): string[] | null {
+  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
   const strategy = job['strategy'];
-  const matrix = typeof strategy === 'object' && strategy !== null ? (strategy as Record<string, unknown>)['matrix'] : undefined;
-  const include = typeof matrix === 'object' && matrix !== null ? (matrix as Record<string, unknown>)['include'] : undefined;
+  const matrix = isRecord(strategy) ? strategy['matrix'] : undefined;
+  const include = isRecord(matrix) ? matrix['include'] : undefined;
   if (!Array.isArray(include)) return null;
-  return include.map(entry => (typeof entry === 'object' && entry !== null ? String((entry as Record<string, unknown>)['runner']) : '')).sort();
+  return include.map((entry: unknown) => (isRecord(entry) ? String(entry['runner']) : '')).sort();
 }
 
 export function runnerErrors(declared: string, workflows: Record<string, string>): string[] {

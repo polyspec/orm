@@ -92,10 +92,12 @@ function setup(server: Server, dsn: string, scope: string, step: Step) {
   if (step.hold !== undefined) rollbackHeld(server, dsn, scope, what);
   run(server, dsn, sql, what);
   if (step.hold === undefined) return;
-  const hold = step.hold as { where?: unknown; mode?: unknown; column?: unknown };
-  if (hold.mode !== 'update') throw new StateError(`${what}: hold.mode is update`);
-  const where = text(hold.where, `${what}: hold.where`);
-  const column = text(hold.column, `${what}: hold.column`);
+  const hold = step.hold;
+  if (typeof hold !== 'object' || hold === null || Array.isArray(hold)) throw new StateError(`${what}: hold is an object`);
+  const { where: holdWhere, mode: holdMode, column: holdColumn }: { where?: unknown; mode?: unknown; column?: unknown } = hold;
+  if (holdMode !== 'update') throw new StateError(`${what}: hold.mode is update`);
+  const where = text(holdWhere, `${what}: hold.where`);
+  const column = text(holdColumn, `${what}: hold.column`);
   const id = xid(scope);
   const update = `UPDATE ${table} SET ${column} = ${quoteValue(id.slice(0, 16), what)} WHERE ${where};`;
   run(server, dsn, server === 'mysql'
@@ -126,7 +128,9 @@ function main(argv: string[]): number {
   const [stepName, scope] = argv;
   try {
     if (stepName === undefined || scope === undefined || argv.length !== 2) throw new StateError('usage: service-state.mts <setup|check|change> <scope>, with the JSON of the step on standard input');
-    const step = JSON.parse(readFileSync(0, 'utf8')) as Step;
+    const parsed: unknown = JSON.parse(readFileSync(0, 'utf8'));
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new StateError(`${stepName} of ${scope}: the step is a JSON object`);
+    const step: Step = parsed;
     const variable = text(step.service, `${stepName} of ${scope}: service`);
     const server = ADDRESSES[variable];
     if (server === undefined) throw new StateError(`${stepName} of ${scope}: service ${variable} is none of ${Object.keys(ADDRESSES).join(', ')}`);

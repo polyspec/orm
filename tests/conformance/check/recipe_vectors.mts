@@ -169,7 +169,9 @@ const SEED_SHAPES: Record<string, (steps: Json[]) => Json> = {
  */
 const CATALOG_KINDS: ReadonlySet<string> = new Set((() => {
   const contract = parseJsonValue(readFileSync(resolve(import.meta.dirname, '../../../packages/rust/interface.json'), 'utf8'), 'packages/rust/interface.json');
-  const kinds = (contract as { errors?: { kinds?: { variant?: unknown }[] } }).errors?.kinds ?? [];
+  const errors = contract !== null && typeof contract === 'object' && !Array.isArray(contract) ? contract['errors'] : undefined;
+  const listed = errors !== null && typeof errors === 'object' && !Array.isArray(errors) ? errors?.['kinds'] : undefined;
+  const kinds = (Array.isArray(listed) ? listed : []).map(kind => (kind !== null && typeof kind === 'object' && !Array.isArray(kind) ? { variant: kind['variant'] } : {}));
   return kinds.flatMap(({ variant }) => typeof variant === 'string'
     ? [(variant.split('::').at(-1) ?? '').replace(/(?<!^)([A-Z])/g, '_$1').toLowerCase()] : []);
 })());

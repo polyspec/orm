@@ -729,7 +729,7 @@ function classifyRestore(ent: Entity, r: Request): RestoreParts {
       continue;
     }
     // The key and the soft delete column are the table's own: a restore clears the latter itself.
-    columnOf(ent, a.column) ?? fail(codes.COLUMN_UNKNOWN, `${ent.name}.${a.column}`);
+    if (columnOf(ent, a.column) === undefined) fail(codes.COLUMN_UNKNOWN, `${ent.name}.${a.column}`);
     set.push(a);
   }
   return { key, where: { items: where }, set };
@@ -748,7 +748,7 @@ export function analyzeRestore(m: RuntimeModel, r: Request): { key: string[]; as
   const ent = entityOf(m, r.entity) ?? fail(codes.ENTITY_UNKNOWN, r.entity);
   for (const a of r.set ?? []) {
     const column = a.column ?? '';
-    columnOf(ent, column) ?? fail(codes.COLUMN_UNKNOWN, `${ent.name}.${column}`);
+    if (columnOf(ent, column) === undefined) fail(codes.COLUMN_UNKNOWN, `${ent.name}.${column}`);
   }
   const parts = classifyRestore(ent, r);
   return { key: [...parts.key], assignments: parts.set.map(a => a.column) };

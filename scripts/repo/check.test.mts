@@ -19,10 +19,11 @@ import { connectProbeErrors } from './probes.mts';
 import { nativeLines, nativeTestErrors } from './native-tests.mts';
 import { composerBranchErrors, composerVersionErrors, BUILD_EXTENSION, EXTENSION_JOB, extensionMinorErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
-import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors } from '../check/ci-setup.mts';
+import { expandNeeds, GROUP_OUTPUTS, groupOutputs, groupSetupErrors } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
+import { type Json, parseJsonValue } from '../json/schema.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
@@ -43,12 +44,38 @@ const notVendored = (path: string) => !Object.hasOwn(copies, path);
 const tracked = ['scripts/docs/rules.mts', 'legacy/packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
 const repository = new URL('../../', import.meta.url);
 const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
+// The contract of the core, read against the schema that binding publishes for it.
+// The schema file of binding is not read: ajv in strict mode refuses it (a required property under not), so the guard checks
+// the members that these tests read, and checkContract checks the rest.
+const isContract = (value: Json): value is Contract & Json => value !== null && typeof value === 'object' && !Array.isArray(value)
+  && value['schema'] === 'polyspec/interface@1' && Array.isArray(value['units']) && Array.isArray(value['cases']);
+const interfaceContract = (): Contract => {
+  const value = parseJsonValue(text('packages/rust/interface.json'), 'packages/rust/interface.json');
+  assert.ok(isContract(value), 'packages/rust/interface.json is a polyspec/interface@1 contract with units and cases');
+  return value;
+};
+type CaseRow = { id: string; raises?: { kind: string; category: string; message: string } };
+// The groups of a case file that a test reads by member: each group is a list of cases, and a case may name what it raises.
+function caseGroups(value: unknown, source: string): Record<string, CaseRow[]> {
+  const isRecord = (item: unknown): item is Record<string, unknown> => typeof item === 'object' && item !== null && !Array.isArray(item);
+  assert.ok(isRecord(value), `${source} is an object of groups`);
+  return Object.fromEntries(Object.entries(value).map(([group, cases]) => {
+    assert.ok(Array.isArray(cases), `${source}: ${group} is a list of cases`);
+    return [group, cases.map((kase: unknown): CaseRow => {
+      assert.ok(isRecord(kase) && typeof kase['id'] === 'string', `${source}: a case of ${group} has an id`);
+      const raises = kase['raises'];
+      if (raises === undefined) return { id: kase['id'] };
+      assert.ok(isRecord(raises) && typeof raises['kind'] === 'string' && typeof raises['category'] === 'string' && typeof raises['message'] === 'string', `${source}: ${kase['id']} raises a kind, a category and a message`);
+      return { id: kase['id'], raises: { kind: raises['kind'], category: raises['category'], message: raises['message'] } };
+    })];
+  }));
+}
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
 
 caseTest('T493-1: the interface declares every binding error category (CORE-6)', () => {
-  const contract = JSON.parse(text('packages/rust/interface.json')) as Contract;
+  const contract = interfaceContract();
   const findings = checkContract(contract).filter(finding => finding.check === 'CK-10');
   assert.deepEqual(findings, [], findings.map(finding => `${finding.path}: ${finding.message}`).join('\n'));
   const withoutIo = structuredClone(contract);
@@ -58,7 +85,7 @@ caseTest('T493-1: the interface declares every binding error category (CORE-6)',
 });
 
 caseTest('T493-2: the value alias preserves each kind across its native representations (CORE-124)', () => {
-  const contract = JSON.parse(text('packages/rust/interface.json')) as Contract;
+  const contract = interfaceContract();
   const findings = checkContract(contract).filter(finding => ['CK-8', 'CK-78'].includes(finding.check));
   assert.deepEqual(findings, [], findings.map(finding => `${finding.path}: ${finding.message}`).join('\n'));
   const native = structuredClone(contract);
@@ -72,7 +99,7 @@ caseTest('T493-2: the value alias preserves each kind across its native represen
   assert.ok(missing[0]?.path.endsWith('/make/php'), JSON.stringify(missing));
 });
 caseTest('T493-3: query.new receives only validated immutable binding schemas (CORE-125)', () => {
-  const contract = JSON.parse(text('packages/rust/interface.json')) as Contract;
+  const contract = interfaceContract();
   const schema = contract.units.find(unit => unit.id === 'schema');
   const queryIndex = contract.units.findIndex(unit => unit.id === 'query');
   const query = contract.units[queryIndex];
@@ -91,14 +118,13 @@ caseTest('T493-3: query.new receives only validated immutable binding schemas (C
   const namesSchema = (value: unknown): boolean => {
     if (Array.isArray(value)) return value.some(namesSchema);
     if (typeof value !== 'object' || value === null) return false;
-    const type = value as Record<string, unknown>;
-    return type.unit === 'schema' || Object.values(type).some(namesSchema);
+    return ('unit' in value && value.unit === 'schema') || Object.values(value).some(namesSchema);
   };
   const factories = contract.units.flatMap(unit => (unit.members ?? []).filter(member => namesSchema(member.returns)).map(member => member.id));
   assert.deepEqual(factories, ['schema.load'], 'only the validating factory returns an admitted Schema');
   const load = schema.members?.find(member => member.id === 'schema.load');
   assert.deepEqual(load?.raises, ['polyspec_orm::Kind::SchemaInvalid', 'polyspec_orm::Kind::SchemaHashMismatch']);
-  const groups = caseFiles.get('contracts/interface/core.json') as Record<string, { raises?: { kind?: string } }[]>;
+  const groups = caseGroups(caseFiles.get('contracts/interface/core.json'), 'contracts/interface/core.json');
   const validationKinds = [...new Set(groups['schema.load']?.map(kase => kase.raises?.kind).filter(kind => kind !== undefined))].sort();
   assert.deepEqual(validationKinds, ['schema_hash_mismatch', 'schema_invalid'], 'validation failures keep their Schema.load cases');
   const change = contract.changes.find(row => row.id === 'query_new_validated_schema_errors');
@@ -117,14 +143,14 @@ caseTest('T493-3: query.new receives only validated immutable binding schemas (C
 });
 
 caseTest('T493-4: query.value preserves the admitted descriptor error inventory (CORE-126)', () => {
-  const contract = JSON.parse(text('packages/rust/interface.json')) as Contract;
+  const contract = interfaceContract();
   const queryIndex = contract.units.findIndex(unit => unit.id === 'query');
   const query = contract.units[queryIndex];
   const valueIndex = query?.members?.findIndex(member => member.id === 'query.value');
   const value = valueIndex === undefined ? undefined : query?.members?.[valueIndex];
   assert.ok(query && value && valueIndex !== undefined, 'the contract declares Query.value');
   const path = `/units/${queryIndex}/members/${valueIndex}`;
-  const groups = JSON.parse(text('contracts/interface/core.json')) as Record<string, { id: string; raises?: { kind: string; category: string; message: string } }[]>;
+  const groups = caseGroups(JSON.parse(text('contracts/interface/core.json')), 'contracts/interface/core.json');
   const caseFiles = new Map<string, unknown>([['contracts/interface/core.json', groups]]);
   const findings = (input: Contract) => checkContract(input, { caseFiles }).filter(finding => finding.check === 'CK-22' && (finding.path === path || finding.path.startsWith(`${path}/`))).map(finding => finding.message);
   const missing = (kind: string) => `no case of query.value raises the kind ${kind} (K-1, B-4)`;

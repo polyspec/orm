@@ -27,8 +27,8 @@ final class Setting
 
     /**
      * The stage that a codec stage name means: json, the name of the stage ordered_json in the core, means
-     * ordered_json, with the same encoding, and any other name means itself (DBS-185). A document keeps the name that it
-     * was written with, so its canonical text and its manifest hash are those of the document as written.
+     * ordered_json, with the same encoding, and any other name means itself (DBS-185). A document keeps the name that
+     * it was written with, so its canonical text and its manifest hash are those of the document as written.
      */
     public static function codecStageMeaning(string $stage): string
     {

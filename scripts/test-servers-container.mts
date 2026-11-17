@@ -1095,7 +1095,7 @@ function write(list: readonly Kind[], context: Context, form: Form, command: rea
     for (const each of ['ca.pem', 'mismatch-cert.pem', 'mismatch-key.pem']) chmodSync(join(tls, each), 0o644);
     // The variables of each kind; the kinds share the variables that they name alike, the lease folder and the query of
     // SQLite.
-    const variables: Record<string, string> = Object.assign({}, ...list.map(kind => SERVERS[kind].variables({ host, authority: place.authority(stated), test: place.test, other: place.other, leases: place.leases })));
+    const variables: Record<string, string> = Object.fromEntries(list.flatMap(kind => Object.entries(SERVERS[kind].variables({ host, authority: place.authority(stated), test: place.test, other: place.other, leases: place.leases }))));
     const steps = list.flatMap(kind => SERVERS[kind].steps(host));
     if (form === 'host') writeFileSync(join(at.dir, 'run.sh'), runFile(at, list, services, steps, variables, command, context.root));
     else {

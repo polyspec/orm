@@ -63,7 +63,7 @@ const STAGES = new Set<string>(STAGE_LIST);
 const JSON_STAGE = 'json';
 // STAGE_NAMES are the names that a document may write for a codec stage.
 const STAGE_NAMES: readonly DbspecCodecStageName[] = [...STAGE_LIST, JSON_STAGE];
-const known = (name: string): boolean => STAGES.has(name) || name === JSON_STAGE;
+const known = (name: string): name is DbspecCodecStageName => STAGES.has(name) || name === JSON_STAGE;
 const ACTION_LIST: readonly DbspecAction[] = ['restrict', 'cascade', 'set_null'];
 const ACTIONS = new Set<string>(ACTION_LIST);
 const STORAGES: readonly ('files' | 'document' | 'block')[] = ['files', 'document', 'block'];
@@ -2398,7 +2398,7 @@ class DocumentParser {
   /** The stage order and the storage type that the last stage needs. */
   private codec(table: ITable, s: Extract<ISetting, { kind: 'codec' }>, hasAesVersion: boolean): void {
     const column = this.lookup(table, s.column, 'setting');
-    const stages = s.stages.map(stage => (known(stage.t) ? codecStageMeaning(stage.t as DbspecCodecStageName) : stage.t));
+    const stages = s.stages.map(stage => (known(stage.t) ? codecStageMeaning(stage.t) : stage.t));
     if (stages.includes('aes') && !hasAesVersion) this.at('setting', s.kw, 'a column with the aes stage requires an aes_version setting');
     const json = stages.indexOf('ordered_json');
     if (json > 0) this.at('setting', present(s.stages[json], 's.stages[json]'), 'ordered_json is the first codec stage');

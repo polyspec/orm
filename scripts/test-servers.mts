@@ -527,8 +527,8 @@ export interface LogReader {
 const LOG_READER = '{ print >> ENVIRON["LOG"]; fflush(ENVIRON["LOG"]) } !ready { print; fflush() } !ready && index($0, ENVIRON["READY_LINE"]) { ready = 1 }';
 
 export function logReader(log: string, line: string): LogReader {
-  const child = spawn('awk', [LOG_READER], { detached: true, stdio: ['pipe', 'pipe', 'ignore'], env: { PATH: process.env.PATH ?? '/usr/bin:/bin', LOG: log, READY_LINE: line } });
-  const output = child.stdout!;
+  const child = spawn('awk', [LOG_READER], { detached: true, stdio: ['pipe', 'pipe', 'ignore'] as const, env: { PATH: process.env.PATH ?? '/usr/bin:/bin', LOG: log, READY_LINE: line } });
+  const output = child.stdout;
   let pending = '', seen = false, each: ((text: string) => void) | undefined, settle: (value: boolean) => void = () => {};
   const buffered: string[] = [];
   const ready = new Promise<boolean>(resolveReady => { settle = resolveReady; });
@@ -545,8 +545,8 @@ export function logReader(log: string, line: string): LogReader {
   });
   output.once('end', () => { if (pending !== '') give(pending); pending = ''; settle(seen); });
   return {
-    child, input: child.stdin!, ready,
-    attached: () => { child.stdin!.destroy(); },
+    child, input: child.stdin, ready,
+    attached: () => { child.stdin.destroy(); },
     lines: next => { each = next; for (const text of buffered.splice(0)) next(text); },
     release: () => { output.destroy(); child.unref(); },
   };

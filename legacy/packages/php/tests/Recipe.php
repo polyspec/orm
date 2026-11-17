@@ -3566,8 +3566,12 @@ final class Recipe
                 $before = $request;
                 $result = self::connectionOf($s, $context)->analyzeRestore($request);
                 if ($s['mutate_return'] ?? false) {
-                    if ($result['key'] !== []) { $result['key'][0] = 'changed'; }
-                    if ($result['assignments'] !== []) { $result['assignments'][0] = 'changed'; }
+                    if ($result['key'] !== []) {
+                        $result['key'][0] = 'changed';
+                    }
+                    if ($result['assignments'] !== []) {
+                        $result['assignments'][0] = 'changed';
+                    }
                     $result['key'][] = 'changed';
                     $result['assignments'][] = 'changed';
                     $result = self::connectionOf($s, $context)->analyzeRestore($request);

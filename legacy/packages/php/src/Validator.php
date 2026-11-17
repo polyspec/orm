@@ -31,7 +31,8 @@ final class Validator
     /** Field types of every record: int, string, bool, list<T>, map<T>, or a record name. */
     private const RECORDS = [
         'Request' => self::QUERY + [
-            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'load' => 'bool', 'require_match' => 'bool',
+            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'load' => 'bool',
+            'require_match' => 'bool',
             'set' => 'list<Assign>',
             'on_duplicate' => 'list<Assign>', 'rows' => 'list<list<int>>', 'optimistic' => 'Optimist',
             'agg' => 'string', 'n_params' => 'int',
@@ -338,7 +339,10 @@ final class Validator
     {
         self::shape('Request', $r, '');
         if (($r['ir_version'] ?? null) !== self::IR_VERSION) {
-            throw self::err(Code::VERSION_MISMATCH, 'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION);
+            throw self::err(
+                Code::VERSION_MISMATCH,
+                'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION
+            );
         }
         if (($r['kind'] ?? '') !== 'restore') {
             throw self::err(Code::IR_INVALID, 'restore analysis requires a restore request');

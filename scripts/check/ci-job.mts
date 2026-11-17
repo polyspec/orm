@@ -111,9 +111,35 @@ function save(state: JobState): void {
   write(stepsFile(state.job), `${JSON.stringify(state.steps)}\n`);
 }
 
+const OUTCOMES: readonly string[] = ['success', 'failure', 'skipped'];
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+const isOutcome = (value: unknown): value is Outcome => typeof value === 'string' && OUTCOMES.includes(value);
+
+// jobState is the state that a file holds, checked as it is read: a state that begin did not write throws naming the file.
+function jobState(value: unknown, file: string): JobState {
+  const bad = (what: string): never => { throw new Error(`${file}: ${what}`); };
+  if (!isRecord(value)) return bad('a job state is an object');
+  const { job, outputs, steps, setupFailed, others } = value;
+  if (typeof job !== 'string') return bad('job is a string');
+  if (!isRecord(outputs) || !Object.values(outputs).every(output => typeof output === 'boolean')) return bad('outputs map names to booleans');
+  if (!isRecord(steps)) return bad('steps is an object');
+  const checkedSteps: JobState['steps'] = {};
+  for (const [id, step] of Object.entries(steps)) {
+    if (!isRecord(step) || !isOutcome(step['outcome']) || (step['reason'] !== undefined && typeof step['reason'] !== 'string')) return bad(`step ${id} has an outcome and may have a reason`);
+    checkedSteps[id] = step['reason'] === undefined ? { outcome: step['outcome'] } : { outcome: step['outcome'], reason: step['reason'] };
+  }
+  if (setupFailed !== null && typeof setupFailed !== 'string') return bad('setupFailed is a string or null');
+  if (!Array.isArray(others)) return bad('others is a list');
+  const checkedOthers = others.map((other: unknown, at): JobState['others'][number] => {
+    if (!isRecord(other) || (other['kind'] !== 'check' && other['kind'] !== 'always') || typeof other['command'] !== 'string' || !isOutcome(other['outcome'])) return bad(`others/${at} has a kind, a command and an outcome`);
+    return { kind: other['kind'], command: other['command'], outcome: other['outcome'] };
+  });
+  return { job, outputs: Object.fromEntries(Object.entries(outputs).map(([name, on]) => [name, on === true])), steps: checkedSteps, setupFailed, others: checkedOthers };
+}
+
 function load(job: string): JobState {
   try {
-    return JSON.parse(readFileSync(stateFile(job), 'utf8')) as JobState;
+    return jobState(JSON.parse(readFileSync(stateFile(job), 'utf8')), stateFile(job));
   } catch (error) {
     throw new Error(`the job ${job} has no state at ${stateFile(job)}: ${error instanceof Error ? error.message : String(error)}; its recipe starts with ci-job.mts begin ${job}`, { cause: error });
   }

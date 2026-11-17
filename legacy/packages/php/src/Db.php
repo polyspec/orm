@@ -355,7 +355,10 @@ final class Db
         Validator::restoreAnalysisShape($request);
         $hash = $request['manifest_hash'] ?? '';
         if (!isset($this->state->sets[$hash])) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "restore analysis manifest $hash is not registered on this connection");
+            throw new OrmException(
+                Code::SCHEMA_HASH_MISMATCH,
+                "restore analysis manifest $hash is not registered on this connection"
+            );
         }
         return Validator::analyzeRestore(Registry::model($hash), $request);
     }

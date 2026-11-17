@@ -63,6 +63,12 @@
     "mariadbd",
     "mariadb",
     "mariadb-tzinfo-to-sql",
+    // the POSIX tools that scripts/test-servers.mts and its tests spawn: awk reads the log of a server, tail follows it, pgrep finds a left child
+    "awk",
+    "tail",
+    "pgrep",
+    // the TLS tool that scripts/test-servers.mts and its container tests run to make and read the test certificates
+    "openssl",
     // the tool that names the fmt headers for the MariaDB build of make orm-install-mariadb (scripts/mariadb-build.mts)
     "pkg-config"
   ],
@@ -73,8 +79,8 @@
     "mysql2",
     // the PostgreSQL driver of the TypeScript client (legacy/packages/ts), which the root's database checks import through the workspace
     "pg",
-    // the generator of the bindings, which the binding recipes and packages/release.mk run as node_modules/.bin/binding
-    "@polyspec/binding",
+    // the json of the TypeScript binding (packages/ts), which the root pins by the URL of its release asset so that the workspace resolves it (T516)
+    "@polyspec/json",
     // the napi CLI, which make release-npm-platform of packages/release.mk runs as node_modules/.bin/napi
     "@napi-rs/cli"
   ],

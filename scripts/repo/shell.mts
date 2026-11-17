@@ -3,6 +3,9 @@
 // package.json and the command lines of the scripts of scripts/. A rule of scripts/repo looks at each simple command
 // (a segment) that such text runs.
 import { parse } from 'unbash';
+
+/** A text that the shell reader cannot read as commands. */
+export class ShellParseError extends Error {}
 import type { CompoundList, PipelineNode, Redirection, Script, Statement } from 'unbash';
 
 /**
@@ -29,7 +32,7 @@ function closing(text: string, start: number): number {
     if (text[index] === open) depth++;
     else if (text[index] === close && --depth === 0) return index + 1;
   }
-  throw new Error(`the make reference at ${start - 1} never closes: ${text}`);
+  throw new ShellParseError(`the make reference at ${start - 1} never closes: ${text}`);
 }
 
 // shellOf turns the text of a dialect into the text the shell parses, keeping where each character came from.
@@ -47,12 +50,12 @@ function shellOf(text: string, dialect: Dialect): Mapped {
       const next = text[index + 1];
       if (next === '$') { add('$', index, index + 2); index += 2; continue; }
       if (next === '(' || next === '{') { const end = closing(text, index + 1); add(VALUE, index, end); index = end; continue; }
-      if (next === undefined) throw new Error(`a make recipe ends with a lone $: ${text}`);
+      if (next === undefined) throw new ShellParseError(`a make recipe ends with a lone $: ${text}`);
       add(VALUE, index, index + 2); index += 2; continue;
     }
     if (dialect === 'workflow' && text.startsWith('${{', index)) {
       const end = text.indexOf('}}', index);
-      if (end === -1) throw new Error(`the workflow expression at ${index} never closes: ${text}`);
+      if (end === -1) throw new ShellParseError(`the workflow expression at ${index} never closes: ${text}`);
       add(VALUE, index, end + 2); index = end + 2; continue;
     }
     add(char, index, index + 1);
@@ -69,7 +72,7 @@ function script(text: string, dialect: Dialect): { tree: Script; mapped: Mapped 
   const mapped = shellOf(text, dialect);
   const tree = parse(mapped.shell);
   const error = tree.errors?.[0];
-  if (error) throw new Error(`the shell parser rejects this ${dialect} command at ${mapped.from[error.pos] ?? text.length}: ${error.message}: ${text}`);
+  if (error) throw new ShellParseError(`the shell parser rejects this ${dialect} command at ${mapped.from[error.pos] ?? text.length}: ${error.message}: ${text}`);
   return { tree, mapped };
 }
 
@@ -91,7 +94,7 @@ function walk(tree: Script, text: string, visit: (node: PipelineNode | Statement
       case 'If': body(command.clause); body(command.then); node(command.else); return;
       case 'Case': for (const item of command.items) body(item.body); return;
       case 'Function': case 'Coproc': node(command.body); return;
-      default: throw new Error(`the shell reader does not know the node ${(command as { type: string }).type}: ${text}`);
+      default: throw new ShellParseError(`the shell reader does not know the node ${(command as { type: string }).type}: ${text}`);
     }
   };
   list(tree.commands);

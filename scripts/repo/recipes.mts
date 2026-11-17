@@ -3,7 +3,7 @@
 // targets that a line runs with $(MAKE), and the make arguments after `--` of a line of the job runner (CI_JOB,
 // scripts/check/ci-job.mts). The rules of scripts/repo/ci.mts and scripts/repo/toolchains.mts read the commands of a
 // workflow from here.
-import { commands, type SimpleCommand } from './shell.mts';
+import { commands, type SimpleCommand, ShellParseError } from './shell.mts';
 import { makeTargets } from './testcases.mts';
 import { readWorkflow, type WorkflowJob, type WorkflowStep } from './workflow.mts';
 
@@ -81,8 +81,9 @@ export function recipeCommands(makefile: string, roots: readonly string[]): Simp
     const text = runner?.[1] !== undefined ? `make ${runner[1]}` : line.replaceAll('$(MAKE)', 'make');
     try {
       return commands(text, 'make');
-    } catch {
-      // A line that the shell parser does not read is no command of a tool.
+    } catch (error) {
+      // A line that the shell parser does not read is no command of a tool; any other failure is thrown.
+      if (!(error instanceof ShellParseError)) throw error;
       return [];
     }
   });
