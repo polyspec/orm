@@ -572,6 +572,39 @@
           "raises": [],
           "wait": "none",
           "core": "polyspec_orm::engine::value_function_unit"
+        },
+        {
+          "id": "orm.transaction_conflict",
+          "name": [
+            "transaction",
+            "conflict"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "message"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Deadlock"
+          ],
+          "wait": "none",
+          "core": "polyspec_orm::tx::fail_transaction_conflict",
+          "only": {
+            "targets": [
+              "php",
+              "python",
+              "node",
+              "go"
+            ],
+            "reason": "CORE-134"
+          }
         }
       ]
     },
@@ -5799,6 +5832,20 @@
       "member": "orm.value_function_unit",
       "file": "contracts/interface/core.json",
       "group": "orm.value_function_unit"
+    },
+    {
+      "member": "orm.transaction_conflict",
+      "file": "contracts/interface/core.json",
+      "group": "orm.transaction_conflict",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      }
     },
     {
       "member": "dbspec.read_bytes",

@@ -414,6 +414,12 @@
   값이고 `{"index": n}`은 list의 항목이다. 코어의 case runner는 생성된 시험이 하듯 그런 값을 만든다. 이유: `query`의
   list는 key와 key로 찾는 일을 잃고, `Collection<Query>`에는 `core_type`이 적을 수 있는 Rust 경로가 없으므로, 코어가
   `Query`의 collection에 자기 타입을 준다.
+- **CORE-171** 계약의 member `orm.transaction_conflict(message)`는 `tx::fail_transaction_conflict(message)`다. 이것은
+  `transaction_conflict(message)`가 만드는 오류(INT-48), 곧 메시지가 `message`인 kind `deadlock`으로 실패한다. 계약의
+  member는 오류 값을 돌려주지 않으므로, 언어 구현의 함수가 오류를 돌려주는 자리에서 이 member는 오류를 낸다. 언어의
+  `throw transactionConflict(message)`는 같은 `throw`에 한 단계 먼저 닿고, Go 함수는 전과 같이 error를 돌려준다. 이것을
+  부르는 `db.transaction`의 callback은 kind `deadlock`으로 끝나고 트랜잭션은 이를 재시도한다(CORE-24). target `wasm`에는
+  트랜잭션이 없어서 이 member가 없다(CORE-134).
 
 ## 상태 기계
 

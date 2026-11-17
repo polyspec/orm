@@ -25767,5 +25767,27 @@
         "value": "locked"
       }
     }
+  ],
+  "orm.transaction_conflict": [
+    {
+      "id": "the_retryable_error",
+      "rule": "CORE-171",
+      "message": "the stock changed",
+      "raises": {
+        "kind": "deadlock",
+        "category": "store",
+        "message": "deadlock: the stock changed"
+      }
+    },
+    {
+      "id": "an_empty_message",
+      "rule": "CORE-171",
+      "message": "",
+      "raises": {
+        "kind": "deadlock",
+        "category": "store",
+        "message": "deadlock: "
+      }
+    }
   ]
 }

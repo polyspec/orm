@@ -494,6 +494,13 @@ implementation is eligible for removal on that evidence.
   such a value as a generated test does. Why: a list of `query` would lose the keys and the lookup by key, and
   `Collection<Query>` has no Rust path that a `core_type` can name, so the core gives the collection of a `Query` a
   type of its own.
+- **CORE-171** The member `orm.transaction_conflict(message)` of the contract is `tx::fail_transaction_conflict(message)`,
+  which fails with the error that `transaction_conflict(message)` makes (INT-48): the kind `deadlock` with the message
+  `message`. A member of the contract returns no error value, so the member raises the error where the function of a
+  language implementation returns it: `throw transactionConflict(message)` of a language reaches the same `throw`
+  one step earlier, and the Go function returns the error as before. A callback of `db.transaction` that calls it ends
+  with the kind `deadlock`, which the transaction retries (CORE-24). The target `wasm` has no transaction and does not
+  have the member (CORE-134).
 
 ## State machines
 

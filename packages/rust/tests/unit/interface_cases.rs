@@ -743,6 +743,10 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("aes_keyring.current", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.current())),
         ("aes_keyring.versions", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.versions())),
         ("orm.value_function_unit", None) => Returned::Value(optional_text(crate::engine::value_function_unit(&text(args, "name", member)))),
+        ("orm.transaction_conflict", None) => {
+            crate::tx::fail_transaction_conflict(&text(args, "message", member))?;
+            Returned::Value(Value::Null)
+        }
         ("dbspec.read_bytes", None) => Returned::Value(Value::from(crate::dbspec_json::read_bytes(&text(args, "name", member), &bytes(args, "bytes", member)))),
         ("dbspec.parse_set", None) => {
             Returned::Value(Value::from(crate::dbspec_json::parse_set(&texts(args, "owned", member), &texts(args, "external", member))?))
