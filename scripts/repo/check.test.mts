@@ -3405,6 +3405,20 @@ caseTest('T614: every setup target installs the tools it runs through their mise
     'the python job of config/ci.json runs a, which runs maturin through $(MATURIN), and tools.python does not name maturin',
   ]);
   assert.deepEqual(shimToolErrors(makefile, { setup: { runtimes: { go: ['e'] } }, tools: {} }, mise), ['e of the setup e runs gofmt through $(GOFMT), which no tool of mise.toml provides']);
-  const config = parseJsonValue(text('config/ci.json'), 'config/ci.json') as Parameters<typeof shimToolErrors>[1];
+  const json = parseJsonValue(text('config/ci.json'), 'config/ci.json');
+  const strings = (value: unknown, where: string): string[] => {
+    assert.ok(Array.isArray(value) && value.every(item => typeof item === 'string'), `config/ci.json ${where} is a list of strings`);
+    return value;
+  };
+  const lists = (value: unknown, where: string): Record<string, string[]> => {
+    assert.ok(isRecord(value), `config/ci.json ${where} is an object`);
+    return Object.fromEntries(Object.entries(value).map(([key, list]) => [key, strings(list, `${where}.${key}`)]));
+  };
+  assert.ok(isRecord(json) && isRecord(json['setup']), 'config/ci.json has an object setup');
+  const setup = json['setup'];
+  const config = {
+    setup: { shared: strings(setup['shared'] ?? [], 'setup.shared'), runtimes: lists(setup['runtimes'] ?? {}, 'setup.runtimes') },
+    tools: lists(json['tools'] ?? {}, 'tools'),
+  };
   assert.deepEqual(shimToolErrors(text('Makefile'), config, text('mise.toml')), []);
 });

@@ -59,8 +59,7 @@
     "initdb",
     // the PostgreSQL command that copies the primary into the replica (scripts/test-servers.test.mts)
     "pg_basebackup",
-    // the MariaDB server, client and time zone loader that make orm-test-mariadb runs (scripts/test-servers-mariadb.mts)
-    "mariadbd",
+    // the MariaDB client and time zone loader that make orm-test-mariadb runs (scripts/test-servers-mariadb.mts)
     "mariadb",
     "mariadb-tzinfo-to-sql",
     // the POSIX tools that scripts/test-servers.mts and its tests spawn: awk reads the log of a server, tail follows it, pgrep finds a left child

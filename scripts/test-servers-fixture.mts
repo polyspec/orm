@@ -46,7 +46,6 @@ export async function withFixtureServer<T>(options: FixtureServerOptions, work: 
     return await Promise.race([Promise.resolve().then(() => work({ root, sockets })), aborted]);
   } finally {
     options.signal.removeEventListener('abort', onAbort);
-    aborted.catch(() => {});
     const pidFile = join(root, options.pidFile);
     if (existsSync(pidFile)) options.stop(Number(readFileSync(pidFile, 'utf8').trim()));
     rmSync(root, { recursive: true, force: true });
