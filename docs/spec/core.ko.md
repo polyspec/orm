@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 250ed1b65ee29778d7cbc3b2f2b41ba7aca317909b4359c0fd955c501dada3bf -->
+<!-- source-sha256: 3677fd591304b26d8568f2da1afb5bb3598b7ebc9339b20c0124b788010d1c5b -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -157,9 +157,11 @@
   parameter에는 column이 없으므로 값이 kind를 정한다. null은 `null`, boolean은 `bool`, 정수는 column의 폭과 무관하게 `int64`(코어에 들어오는
   정수와 같다, CORE-123), float는 `float`, text는 `text`, bytes는 `bytes`, date는 canonical text, date-time은 소수 여섯 자리의
   canonical text이며, 이는 코어가 bind하는 text다.
-  기록하는 시점은 handle의 request hook이 성공한 뒤이고 request를 plan하기 전이다. 그래서 기록의 text에는 hook이 바꾼 내용과 hook이 더한 parameter가
-  들어 있고, parameter index는 planner가 walk 순서로 번호를 다시 매기기 전의 index다. hook이 실패한 request는 기록하지 않는다. 그 시점 뒤에 코어가 거부한
-  request는 만들어진 데까지 기록한다. count의 row lock, entity에 없는 column, 트랜잭션 밖의 row lock이 그런 경우다.
+  기록하는 시점은 handle의 request hook이 성공한 뒤이고 request를 plan하기 전이다. log는 hook이 받는 것과 같은 request를
+  hook이 바꾼 그대로 기록한다. 그래서 기록의 text에는 hook이 바꾼 내용과 hook이 더한 parameter가
+  들어 있고, parameter index는 planner가 walk 순서로 번호를 다시 매기기 전의 index다. hook이 실패한 request는 기록하지 않는다. 만드는 중에 실패한
+  request는 만들어진 데까지 기록한다. 코어가 그 시점 뒤에 거부하는 request가 그것이고, count의 row lock, entity에 없는 column,
+  트랜잭션 밖의 row lock이 그런 경우다.
   log는 handle의 request hook, 취소와 별개인 slot이다. `with_request_log`는 둘을 유지하고, 호출된 handle의 어떤 것도 바꾸지 않는다. 기록하는
   handle의 `with_request_hook`과 `with_cancel`은 같은 log에 기록하는 handle을 돌려주고, 그 handle의 clone도 같은 log에
   기록한다(CORE-101). 기록하는 handle의 `with_request_log`는 비어 있는 새 log를 가진 handle을 돌려주며, 그 handle의 request는 첫 log에

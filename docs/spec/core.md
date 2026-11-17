@@ -186,11 +186,12 @@ implementation is eligible for removal on that evidence.
   null is `null`, a boolean `bool`, an integer `int64` whatever the width of its column, as an integer that enters the
   core is (CORE-123), a float `float`, a text `text`, bytes `bytes`, a date its canonical text, and a date-time its
   canonical text with six fraction digits, which is the text that the core binds.
-  The record is taken after the request hook of the handle succeeded and before the request is planned. Its text
+  The record is taken after the request hook of the handle succeeded and before the request is planned: the log
+  records the same request that the hook receives, as the hook left it. Its text
   therefore holds what the hook changed and the parameters that the hook added, and its parameter indexes are those of
   the request before the planner numbers them in walk order. A request whose hook failed is not recorded. A request that
-  the core refuses after that point is recorded, as far as it was built: a row lock on a count, a column that the entity
-  lacks, a row lock outside a transaction.
+  fails while it is built is recorded as far as it was built: the core refuses it after that point, as it refuses a row
+  lock on a count, a column that the entity lacks and a row lock outside a transaction.
   The log is a slot of the handle apart from its request hook and its cancellation. `with_request_log` keeps both and
   changes nothing of the handle it is called on. `with_request_hook` and `with_cancel` of a recording handle return a
   handle that records in the same log, and so does a clone of the handle (CORE-101). `with_request_log` of a recording
