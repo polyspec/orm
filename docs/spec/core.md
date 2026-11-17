@@ -148,6 +148,32 @@ implementation is eligible for removal on that evidence.
   with `closed`. A second `close` succeeds.
 - **CORE-32** `Db` takes concurrent calls. A statement borrows one connection of the pool and its result does not depend
   on other calls. The number of a transaction is counted when its `BEGIN` is sent.
+- **CORE-141** `Db::analyze_restore(request)` is the restore analysis of PRT-91 on a connection, the member
+  `db.analyze_restore` of the contract; this replaces INT-191 for the core. It takes the restore request as its JSON
+  text (FMS-31), as `runtime_model.restore_key` does, and returns the JSON text
+  `{"assignments": [<column>, ..], "key": [<column>, ..]}`: `key` holds the columns of the selected key in the order of
+  the schema, and `assignments` holds the columns of the `set` that the key did not take as conditions, in the order of
+  the request, a repeated column each time. It checks, in this order, and fails at the first that does not hold: the
+  connection is open (`closed: database is closed`); the text is a request of the form (`ir_invalid`, with the message
+  of FMS-31); the `manifest_hash` of the request is the hash of a set registered on the connection
+  (`schema_hash_mismatch: manifest <hash> is not registered on this connection: connect through its generated models or install it`,
+  the message of a model request on such a connection; an absent hash is the empty hash, and the analysis supplies
+  none); the `ir_version` is that of the core (`version_mismatch: ir_version <n>, engine <m>`); the kind is `restore`
+  (`ir_invalid: restore analysis requires a restore request`); the set has the entity (`entity_unknown: <entity>`); the
+  entity has every column of the `set` (`column_unknown: <entity>.<column>`, the first such column in the order of the
+  request); the entity has a `soft_delete` setting
+  (`ir_invalid: restore of <entity>, which has no soft_delete setting`); no top-level condition of the `where` after the
+  first joins with `or` (`ir_invalid: restore of <entity> joins the conditions of its where with and`); and the
+  parameter values of the `set` and of the `eq` conditions cover the primary key or a unique key
+  (`ir_invalid: restore of <entity> gives no primary key or unique key a value in its set or in an eq condition of its where`).
+  An unknown column of the `set` is so reported before the classification, whatever the key. It does not check the
+  bounds of a parameter, the type of a value, the other members of the request or whether a column may be assigned: a
+  primary-key, identity or soft-delete column that the key did not take is an assignment of the result, and the write
+  refuses it (`restore_key`, `ir_invalid: restore cannot assign <column>`). The member is synchronous: it sends no
+  statement, takes no connection of the pool, calls no request hook, emits no statement event, reads no bound value and
+  changes no request, schema or transaction, so it may be called while a transaction of the connection runs. Why: the
+  generated bindings replace the clients whose connection had `analyzeRestore`, and a public member does not end with
+  them; the request has no type of the contract (CORE-70), so it is text as in the members of `runtime_model`.
 
 ## Cancellation
 

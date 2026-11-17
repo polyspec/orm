@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 602dcf9499e278a3f7ec69af1142927600304f664ef1ff3200773374df20cf8a -->
+<!-- source-sha256: fc1c74bff83e1a87ba56307bec04e978b788c7ce3b6e330a33108f0e7cd4504d -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `legacy/packages/go/engine/ir/ir.go`와 `legacy/packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -143,14 +143,14 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 
 이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 뺀다: root와 각 subquery는 `WHERE`에서, 각 join child는 `ON` 조건에서 빼므로 left join은 null child를 주며, 각 relation은 자기 statement에서 뺀다. soft delete한 행과 맞는 요청은 `restore`뿐이다(conformance vector `joins_soft_deleted`). 모델 메서드 `restore`는 set 값을 `set`으로 보내고 `where`는 보내지 않으며, 이 step을 실행한 뒤 hook이 남긴 요청에서 planner가 고른 key의 값으로 행을 읽는다([사용법](../operations/usage.ko.md#restore-a-soft-deleted-row)).
 
-- **PRT-91** Restore 분석은 key 선택과 assignment 분류를 쓰기 검증과 분리한다. 호출 시점 요청에 이 절의 key 선택 규칙을 적용한다. 완전한 primary key가 우선이고, 그렇지 않으면 이름 순서에서 첫 완전한 unique key다. Key 컬럼은 schema 순서, assignment는 중복 컬럼을 포함한 요청 set 순서를 유지한다. 선택한 key 컬럼과 매개변수 값 key 조건으로 소비하지 않은 set 컬럼을 보고한다. 분석과 planner는 같은 분류기를 부르며, planner는 그다음 기존 검증으로 primary, identity, soft-delete, audit 등 허용되지 않은 할당을 거절한다. 코어에서는 쓰기의 분류기 `restore_key`(FMS-34)가 primary key 컬럼, identity 컬럼, soft-delete 컬럼의 할당을 직접 거절하고, 분석인 `Db::analyze_restore`(INT-191, T597)는 그것을 쓰기에 맡긴다. 구현되지 않았다: 코어의 `Db::analyze_restore`. 분석은 쓰기를 허가하지 않으며 매개변수 범위, 값 타입, 할당 권한은 검사하지 않아 hook가 해당 할당을 먼저 분류하고 거절할 수 있다. 요청 형태 오류, 알 수 없는 entity나 assignment 컬럼, soft delete가 없는 table, 최상위 restore 조건 사이의 or, 불완전한 key는 기존 코드와 메시지로 거절한다. Restore가 아닌 kind는 `IR_INVALID` `restore analysis requires a restore request`다. 호출은 bind 값을 읽거나 매개변수 번호를 바꾸지 않고 요청을 유지한다. 반환 목록은 독립적이므로 목록 수정이 요청, 등록 schema, 다음 결과를 바꿀 수 없다. 동적 client는 manifest hash를 찾기 전에 기존 Request record shape를 검사한다. hash가 없거나 null이면 빈 typed string과 같은 미등록 빈 hash 결과가 나오며 분석이 등록된 hash를 채우지 않는다. Go와 Rust의 hash는 string type이므로 배열은 공개 method 입력 type에 들어가지 않는다.
+- **PRT-91** Restore 분석은 key 선택과 assignment 분류를 쓰기 검증과 분리한다. 호출 시점 요청에 이 절의 key 선택 규칙을 적용한다. 완전한 primary key가 우선이고, 그렇지 않으면 이름 순서에서 첫 완전한 unique key다. Key 컬럼은 schema 순서, assignment는 중복 컬럼을 포함한 요청 set 순서를 유지한다. 선택한 key 컬럼과 매개변수 값 key 조건으로 소비하지 않은 set 컬럼을 보고한다. 분석과 planner는 같은 분류기를 부르며, planner는 그다음 기존 검증으로 primary, identity, soft-delete, audit 등 허용되지 않은 할당을 거절한다. 분석은 쓰기를 허가하지 않으며 매개변수 범위, 값 타입, 할당 권한은 검사하지 않아 hook가 해당 할당을 먼저 분류하고 거절할 수 있다. 요청 형태 오류, 알 수 없는 entity나 assignment 컬럼, soft delete가 없는 table, 최상위 restore 조건 사이의 or, 불완전한 key는 기존 코드와 메시지로 거절한다. Restore가 아닌 kind는 `IR_INVALID` `restore analysis requires a restore request`다. 호출은 bind 값을 읽거나 매개변수 번호를 바꾸지 않고 요청을 유지한다. 반환 목록은 독립적이므로 목록 수정이 요청, 등록 schema, 다음 결과를 바꿀 수 없다. 동적 client는 manifest hash를 찾기 전에 기존 Request record shape를 검사한다. hash가 없거나 null이면 빈 typed string과 같은 미등록 빈 hash 결과가 나오며 분석이 등록된 hash를 채우지 않는다. Go와 Rust의 hash는 string type이므로 배열은 공개 method 입력 type에 들어가지 않는다. 이 분리는 한 구현의 규칙이 아니라 프로토콜의 규칙이다: 코어는 분석을 `Db::analyze_restore`로 가진다(CORE-141). 코어에서 분류기는 `restore_key`(FMS-34)의 안쪽 부분이다. 쓰기는 `restore_key`를 부르고, `restore_key`는 분류기를 실행한 다음 primary key, identity, soft delete 컬럼의 할당을 스스로 거절한다. 분석은 분류기만 실행하고 그런 컬럼을 assignment로 보고한다. 코어의 분석은 요청의 `ir_version`과 kind를 스스로 검사하고, 알 수 없는 assignment 컬럼을 분류 전에 보고하며, CORE-141의 kind와 메시지를 준다.
 - **PRT-92** `{"conn", "op": "none"}`은 어떤 행도 만족하지 않는 predicate다. planner는 모든 dialect에서 `1 = 0`으로
   쓰고, 다른 항목처럼 `conn`으로 잇는다. `not`인 group 안에서는 group과 함께 부정되므로 `NOT (none)`은 모든 행에서
   참이다. `update`, `delete`, `restore`의 `where`에서 조건으로 세며, 그때 바뀌는 행은 없다. 이 op는 요청 언어를
   바꾸므로 이 protocol의 요청은 `ir_version` 2다(T563). 다른 `ir_version`의 요청은 `VERSION_MISMATCH`다. 이 규칙은
   `ir_version` 1을 대체한다. `ir_version` 1은 `legacy/packages/`의 언어 구현에서 계속 유지된다: 그 구현은 1을
   선언하고, 2의 요청을 `VERSION_MISMATCH`로 거부하며, `ir_version` 1을 유지하는 `legacy/tests/`와
-  `legacy/contracts/fixtures/`의 고정 사본을 돈다(CORE-1). `tests/ir/`와 `contracts/fixtures/`는 `ir_version` 2의
+  `legacy/contracts/fixtures/`의 고정 사본을 실행한다(CORE-1). `tests/ir/`와 `contracts/fixtures/`는 `ir_version` 2의
   요청을 담는다.
 - **PRT-93** 문장의 `WHERE`는 조건들을 `AND`로 잇는다: relation의 key 목록, `soft_delete` 설정을 가진 table의 soft
   delete 열, 최상위 `where` group, `joined` 항목이 자리를 정하지 않은 join의 `where` group, 기대 revision이다. 최상위에

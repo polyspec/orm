@@ -419,4 +419,105 @@ mod tests {
             assert_eq!(error.kind(), crate::Kind::IrInvalid, "{name}: {error}");
         }
     }
+
+    /// The requests of the cases restore_primary_key, restore_soft_delete_column and restore_identity_new_value of
+    /// tests/ir/validate.json on the entity tag: the where gives the primary key its value, and the set assigns a column
+    /// that the write refuses. Each is named with the column that its set assigns.
+    fn refused_restores(m: &Manifest) -> [(&'static str, &'static str, ir::Request); 3] {
+        let assigning = |assign: ir::Assign| {
+            let mut request = restore_request(m, "tag", &[("", "id", "eq")]);
+            request.n_params = 3;
+            request.set.push(assign);
+            request
+        };
+        [
+            ("restore_primary_key", "id", assigning(ir::Assign { column: "id".into(), null: true, ..Default::default() })),
+            ("restore_soft_delete_column", "deleted_at", assigning(ir::Assign { column: "deleted_at".into(), null: true, ..Default::default() })),
+            ("restore_identity_new_value", "id", assigning(ir::Assign { column: "id".into(), plus_p: Some(1), ..Default::default() })),
+        ]
+    }
+
+    // The classifier of the write refuses the assignment of a primary-key column, an identity column and the soft delete
+    // column itself, after the split of the classification as before it (T597, T586).
+    #[test]
+    fn restore_key_refuses_the_assignments_of_the_write() {
+        let _case = polyspec_orm_testcase::case!();
+        let m = restore_manifest();
+        let tag = m.entity("tag").unwrap();
+        for (name, column, request) in refused_restores(&m) {
+            let Err(error) = validate::restore_key(tag, &request) else { panic!("{name}: restore_key takes the assignment of {column}") };
+            assert_eq!(error.kind(), crate::Kind::IrInvalid, "{name}: {error}");
+            assert_eq!(error.text(), format!("restore cannot assign {column}"), "{name}");
+            let error = validate(&m, &request).expect_err(name);
+            assert_eq!(error.kind(), crate::Kind::IrInvalid, "{name}: {error}");
+        }
+        // A request that the write takes keeps its parts: the set value of a key column is a condition, the other a new value.
+        let taken = with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["id", "label"]);
+        let Ok(parts) = validate::restore_key(tag, &taken) else { panic!("restore_key refuses a restore by its primary key") };
+        assert_eq!(parts.key, ["id"]);
+        assert_eq!(parts.set.iter().map(|a| a.column.as_str()).collect::<Vec<_>>(), ["label"]);
+        assert_eq!(parts.where_.items.len(), 2);
+        assert_eq!(parts.soft_delete, "deleted_at");
+        // A column that the entity does not have is reported after the key, as before: without a key the key is the refusal.
+        let unknown = with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["absent"]);
+        let Err(error) = validate::restore_key(tag, &unknown) else { panic!("restore_key takes an unknown column") };
+        assert_eq!((error.kind(), error.text()), (crate::Kind::ColumnUnknown, "tag.absent"));
+        let unknown_without_key = with_set(restore_request(&m, "tag", &[]), &["absent"]);
+        let Err(error) = validate::restore_key(tag, &unknown_without_key) else { panic!("restore_key takes a restore without a key") };
+        assert_eq!(error.kind(), crate::Kind::IrInvalid, "{error}");
+    }
+
+    // The restore analysis classifies what the write refuses and reports it as an assignment (CORE-141, PRT-91).
+    #[test]
+    fn restore_analysis_leaves_the_refusal_to_the_write() {
+        let _case = polyspec_orm_testcase::case!();
+        let m = restore_manifest();
+        for (name, column, request) in refused_restores(&m) {
+            let analysis = validate::analyze_restore(&m, &request).expect(name);
+            assert_eq!(analysis, validate::RestoreAnalysis { key: vec!["id".into()], assignments: vec![column.into()] }, "{name}");
+        }
+        // The key keeps the order of the schema, and the assignments the order of the request with a repeated column.
+        let pair = with_set(restore_request(&m, "link", &[]), &["member_id", "audit_seq", "team_id", "audit_seq"]);
+        let analysis = validate::analyze_restore(&m, &pair).expect("a unique key in the set");
+        assert_eq!(analysis.key, ["team_id", "member_id"]);
+        assert_eq!(analysis.assignments, ["audit_seq", "audit_seq"]);
+        // It checks the version and the kind itself, and an unknown column of the set before the key.
+        let mut version = restore_request(&m, "tag", &[("", "id", "eq")]);
+        version.ir_version += 1;
+        let mut kind = restore_request(&m, "tag", &[("", "id", "eq")]);
+        kind.kind = "update".into();
+        let refusals = [
+            ("another version", version, crate::Kind::VersionMismatch, format!("ir_version {}, engine {}", crate::ir::VERSION + 1, crate::ir::VERSION)),
+            ("another kind", kind, crate::Kind::IrInvalid, "restore analysis requires a restore request".to_owned()),
+            ("an unknown entity", restore_request(&m, "absent", &[("", "id", "eq")]), crate::Kind::EntityUnknown, "absent".to_owned()),
+            ("an unknown column without a key", with_set(restore_request(&m, "tag", &[]), &["absent"]), crate::Kind::ColumnUnknown, "tag.absent".to_owned()),
+            (
+                "a table without soft_delete",
+                restore_request(&m, "plain", &[("", "id", "eq")]),
+                crate::Kind::IrInvalid,
+                "restore of plain, which has no soft_delete setting".to_owned(),
+            ),
+            (
+                "an or connector",
+                restore_request(&m, "tag", &[("", "id", "eq"), ("or", "name", "eq")]),
+                crate::Kind::IrInvalid,
+                "restore of tag joins the conditions of its where with and".to_owned(),
+            ),
+            (
+                "no key",
+                with_set(restore_request(&m, "tag", &[]), &["label"]),
+                crate::Kind::IrInvalid,
+                "restore of tag gives no primary key or unique key a value in its set or in an eq condition of its where".to_owned(),
+            ),
+        ];
+        for (name, request, kind, text) in refusals {
+            let error = validate::analyze_restore(&m, &request).expect_err(name);
+            assert_eq!((error.kind(), error.text()), (kind, text.as_str()), "{name}");
+        }
+        // It checks no parameter bound: the write does.
+        let mut unbound = with_set(restore_request(&m, "tag", &[("", "id", "eq")]), &["label"]);
+        unbound.n_params = 0;
+        let analysis = validate::analyze_restore(&m, &unbound).expect("a request whose parameters are out of its bounds");
+        assert_eq!(analysis, validate::RestoreAnalysis { key: vec!["id".into()], assignments: vec!["label".into()] });
+    }
 }

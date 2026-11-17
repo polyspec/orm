@@ -308,18 +308,70 @@ pub(crate) struct RestoreParts {
     pub key: Vec<String>,
     /// The where of the request with an eq condition for each set value of a key column.
     pub where_: ir::Group,
-    /// The set values of the columns outside the key: the new values of the row.
+    /// The set values that the key did not take as conditions: the new values of the row. `restore_key` holds none of
+    /// a primary-key column, an identity column or the soft delete column; the classification alone may.
     pub set: Vec<ir::Assign>,
     /// The soft delete column that the restore clears.
     pub soft_delete: String,
 }
 
-/// Picks the key of a restore request (docs/spec/protocol.md 1.5) after the request hook. The set values with a parameter
-/// and the eq conditions with a parameter that the where joins with and give columns their values; the key is the
-/// primary key when they cover it, otherwise the first unique key in name order that they cover. A set value of a key
-/// column becomes a condition, every other set value is a new value, and the where keeps its other conditions, which
-/// narrow the restore further; the key still names at most one row.
+/// Picks the key of a restore request (docs/spec/protocol.md 1.5) after the request hook, for the write: the parts that
+/// `classify_restore` gives, after the refusal of a new value that the write does not take. A new value of a column
+/// that the entity does not have is `column_unknown`, and a new value of a primary-key column, an identity column or the
+/// soft delete column is `ir_invalid`: the key and the soft delete column are the table's own, and a restore clears the
+/// latter itself. The restore analysis (`analyze_restore`, CORE-141) classifies without this refusal.
 pub(crate) fn restore_key(ent: &Entity, r: &ir::Request) -> Result<RestoreParts> {
+    let parts = classify_restore(ent, r)?;
+    for a in &parts.set {
+        let c = ent.field(&a.column).ok_or_else(|| unknown_column(&r.query.entity, &a.column))?;
+        if c.primary_key || c.identity || a.column == parts.soft_delete {
+            return Err(err(crate::Kind::IrInvalid, format!("restore cannot assign {}", a.column)));
+        }
+    }
+    Ok(parts)
+}
+
+/// The key and the assignments of a restore request, as the restore analysis reports them (CORE-141, PRT-91).
+#[cfg(any(feature = "runtime", test))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RestoreAnalysis {
+    /// The columns of the selected key, in the order of the schema.
+    pub key: Vec<String>,
+    /// The columns of the set that the key did not take as conditions, in the order of the request; a repeated column
+    /// is held each time.
+    pub assignments: Vec<String>,
+}
+
+/// The restore analysis of a request against the model of its set (CORE-141, PRT-91). It checks, in this order, the
+/// `ir_version`, that the kind is `restore`, the entity and every column of the set, and then classifies as the write
+/// does (`classify_restore`): an unknown column of the set is reported before the classification. It does not refuse
+/// the assignment of a primary-key, identity or soft-delete column, which `restore_key` refuses for the write, and it
+/// checks no parameter bound, no value type and no other member of the request.
+#[cfg(any(feature = "runtime", test))]
+pub(crate) fn analyze_restore(m: &Manifest, r: &ir::Request) -> Result<RestoreAnalysis> {
+    if r.ir_version != IR_VERSION {
+        return Err(err(crate::Kind::VersionMismatch, format!("ir_version {}, engine {IR_VERSION}", r.ir_version)));
+    }
+    if r.kind != "restore" {
+        return Err(err(crate::Kind::IrInvalid, "restore analysis requires a restore request"));
+    }
+    let ent = m.entity(&r.query.entity)?;
+    for a in &r.set {
+        if ent.field(&a.column).is_none() {
+            return Err(unknown_column(&r.query.entity, &a.column));
+        }
+    }
+    let parts = classify_restore(ent, r)?;
+    Ok(RestoreAnalysis { key: parts.key, assignments: parts.set.into_iter().map(|a| a.column).collect() })
+}
+
+/// Classifies a restore request (docs/spec/protocol.md 1.5, PRT-91), for the write and for the analysis. The set values
+/// with a parameter and the eq conditions with a parameter that the where joins with and give columns their values; the
+/// key is the primary key when they cover it, otherwise the first unique key in name order that they cover. A set value
+/// of a key column becomes a condition, every other set value stays in the set in the order of the request, and the
+/// where keeps its other conditions, which narrow the restore further; the key still names at most one row. It reads no
+/// field of a set column, so it refuses neither an unknown column nor an assignment: its callers do.
+fn classify_restore(ent: &Entity, r: &ir::Request) -> Result<RestoreParts> {
     let Some(soft_delete) = ent.soft_delete.as_deref() else {
         return Err(err(crate::Kind::IrInvalid, format!("restore of {}, which has no soft_delete setting", ent.name)));
     };
@@ -368,11 +420,6 @@ pub(crate) fn restore_key(ent: &Entity, r: &ir::Request) -> Result<RestoreParts>
             let conn = if where_items.is_empty() { String::new() } else { "and".to_owned() };
             where_items.push(ir::Item::Pred { pred: Box::new(ir::Pred { conn, column: a.column.clone(), op: "eq".into(), p: Some(p), ..Default::default() }) });
             continue;
-        }
-        // The key and the soft delete column are the table's own: a restore clears the latter itself.
-        let c = ent.field(&a.column).ok_or_else(|| unknown_column(&r.query.entity, &a.column))?;
-        if c.primary_key || c.identity || a.column == soft_delete {
-            return Err(err(crate::Kind::IrInvalid, format!("restore cannot assign {}", a.column)));
         }
         set.push(a.clone());
     }
@@ -699,7 +746,15 @@ impl<'m> Validator<'m> {
         let ent = at.node.ent.ok_or_else(|| err(crate::Kind::EntityUnknown, at.node.name.clone()))?;
         if p.op == "none" {
             // The predicate that no row satisfies names no column and holds no value (PRT-92).
-            if !p.column.is_empty() || p.p.is_some() || !p.ps.is_empty() || p.r#ref.is_some() || p.r#fn.is_some() || p.value.is_some() || !p.cols.is_empty() || p.sub.is_some() {
+            if !p.column.is_empty()
+                || p.p.is_some()
+                || !p.ps.is_empty()
+                || p.r#ref.is_some()
+                || p.r#fn.is_some()
+                || p.value.is_some()
+                || !p.cols.is_empty()
+                || p.sub.is_some()
+            {
                 return Err(err(crate::Kind::IrInvalid, "none takes no column and no value"));
             }
             return Ok(());

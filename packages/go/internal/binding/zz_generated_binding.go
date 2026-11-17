@@ -35,6 +35,7 @@ int32_t polyspec_orm__db__stats(const uint8_t *args, size_t len, polyspec_orm__b
 int32_t polyspec_orm__db__driver(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__transaction_active(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__sql_driver(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
+int32_t polyspec_orm__db__analyze_restore(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__transaction(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__with_cancel(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__connect_schema(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
@@ -297,6 +298,13 @@ func Db_TransactionActive(args []byte) (*Reader, error) {
 func Db_SqlDriver(args []byte) (*Reader, error) {
 	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
 		return C.polyspec_orm__db__sql_driver(pointer, length, result)
+	}, args)
+}
+
+// Db_AnalyzeRestore calls polyspec_orm__db__analyze_restore with the encoded arguments (B-8).
+func Db_AnalyzeRestore(args []byte) (*Reader, error) {
+	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
+		return C.polyspec_orm__db__analyze_restore(pointer, length, result)
 	}, args)
 }
 

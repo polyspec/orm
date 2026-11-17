@@ -414,6 +414,25 @@ func (this *Db) SqlDriver() (string, error) {
 	return value0, nil
 }
 
+// AnalyzeRestore calls polyspec_orm::Db::analyze_restore (contract member db.analyze_restore).
+func (this *Db) AnalyzeRestore(request string) (string, error) {
+	var zero0 string
+	enc := binding.NewWriter()
+	enc.Uint(this.handle())
+	enc.Text(request)
+	dec, err := binding.Db_AnalyzeRestore(enc.Done())
+	runtime.KeepAlive(this)
+	if err != nil {
+		return zero0, err
+	}
+	var value0 string
+	value0 = dec.Text()
+	if err := dec.Finish(); err != nil {
+		return zero0, err
+	}
+	return value0, nil
+}
+
 // Transaction calls polyspec_orm::Db::transaction (contract member db.transaction).
 func (this *Db) Transaction(callback func(*Tx) (any, error), options TransactionOptions) (any, error) {
 	var zero0 any

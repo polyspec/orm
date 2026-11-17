@@ -454,6 +454,458 @@ func TestGN13eDbSqlDriverASqliteDsn(t *testing.T) {
 	}
 }
 
+func TestB3DbAnalyzeRestoreRefusesRequestThatIsNotUTF8(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("\xff")
+	if failure, ok := err.(*liberrors.ORMValueError); !ok || failure.Kind() != "invalid_text" {
+		t.Fatalf("B-3: %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreVersion(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":1,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"id\",\"p\":0}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "version_mismatch" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreWrongKind(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"update\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "ir_invalid" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreUnknownEntity(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"absent\",\"n_params\":1,\"set\":[{\"column\":\"id\",\"p\":0}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "entity_unknown" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreUnknownColumn(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"absent\",\"p\":1}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "column_unknown" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreUnknownColumnBeforeKey(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"absent\",\"p\":0}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "column_unknown" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreNoSoftDelete(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"owner\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"name\",\"p\":1}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "ir_invalid" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreOrBetweenConditions(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"where\":{\"items\":[{\"pred\":{\"column\":\"id\",\"op\":\"eq\",\"p\":0}},{\"pred\":{\"conn\":\"or\",\"column\":\"code\",\"op\":\"eq\",\"p\":1}}]}}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "ir_invalid" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreNoKey(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"meta\",\"p\":0}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "ir_invalid" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreEmptyManifest(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":0}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "schema_hash_mismatch" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreUnregisteredManifest(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"absent\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"id\",\"p\":0}]}")
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "schema_hash_mismatch" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4DbAnalyzeRestoreClosedConnection(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	failure6 := made4.Close()
+	if failure6 != nil {
+		t.Fatalf("GN-13f: %v", failure6)
+	}
+	_, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}")
+	failure, ok := err.(*liberrors.ORMTypeError)
+	if !ok || failure.Kind() != "closed" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestGN13eDbAnalyzeRestorePrimaryKey(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"meta\"],\"key\":[\"id\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestoreUniqueKey(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"code\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"meta\"],\"key\":[\"code\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestorePrimaryPrecedesUnique(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":3,\"set\":[{\"column\":\"code\",\"p\":0},{\"column\":\"id\",\"p\":1},{\"column\":\"tag\",\"p\":2}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"code\",\"tag\"],\"key\":[\"id\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestoreWhereKey(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":9,\"where\":{\"items\":[{\"pred\":{\"column\":\"id\",\"op\":\"eq\",\"p\":8}}]},\"set\":[{\"column\":\"meta\",\"null\":true}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"meta\"],\"key\":[\"id\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestoreDuplicateAssignment(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":3,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1},{\"column\":\"meta\",\"p\":2}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"meta\",\"meta\"],\"key\":[\"id\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestoreNoParameterBounds(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":0,\"set\":[{\"column\":\"id\",\"p\":999},{\"column\":\"meta\",\"p\":998}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"meta\"],\"key\":[\"id\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestoreWriteRestrictionDeferred(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"code\",\"p\":0},{\"column\":\"id\",\"null\":true},{\"column\":\"deleted_at\",\"null\":true}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"id\",\"deleted_at\"],\"key\":[\"code\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestoreUniqueNameOrder(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":3,\"set\":[{\"column\":\"tag\",\"p\":0},{\"column\":\"code\",\"p\":1},{\"column\":\"meta\",\"p\":2}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"tag\",\"meta\"],\"key\":[\"code\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestoreCompositeSchemaOrder(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 partition\u000a\u000atable hook_partition {\u000a  scope_id i64\u000a  id i64\u000a  alternate_code varchar(32)\u000a  label varchar(32)\u000a  note varchar(32) null\u000a  deleted_at datetime(6) null\u000a  primary key (scope_id, id)\u000a  unique a_alternate (alternate_code)\u000a  unique z_label (label)\u000a  settings {\u000a    soft_delete deleted_at\u000a  }\u000a}\u000a", "", "sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751\",\"kind\":\"restore\",\"entity\":\"hook_partition\",\"n_params\":3,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"scope_id\",\"p\":1},{\"column\":\"note\",\"p\":2}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"note\"],\"key\":[\"scope_id\",\"id\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
+func TestGN13eDbAnalyzeRestorePrimaryAssignmentDeferred(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 partition\u000a\u000atable hook_partition {\u000a  scope_id i64\u000a  id i64\u000a  alternate_code varchar(32)\u000a  label varchar(32)\u000a  note varchar(32) null\u000a  deleted_at datetime(6) null\u000a  primary key (scope_id, id)\u000a  unique a_alternate (alternate_code)\u000a  unique z_label (label)\u000a  settings {\u000a    soft_delete deleted_at\u000a  }\u000a}\u000a", "", "sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	value0, err := made4.AnalyzeRestore("{\"ir_version\":2,\"manifest_hash\":\"sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751\",\"kind\":\"restore\",\"entity\":\"hook_partition\",\"n_params\":3,\"set\":[{\"column\":\"alternate_code\",\"p\":0},{\"column\":\"scope_id\",\"p\":1},{\"column\":\"note\",\"p\":2}]}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (string)("{\"assignments\":[\"scope_id\",\"note\"],\"key\":[\"alternate_code\"]}"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+}
+
 func TestGN6aeDbTransactionRefusesANilCallback(t *testing.T) {
 	_caseTextOwner0 := t
 	_caseTextRoot1 := casePath(_caseTextOwner0, ".")

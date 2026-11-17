@@ -331,10 +331,13 @@ fn host_value(host: &mut CaseHost, case: &Value, what: &str) -> HostValue {
         "map" => {
             // The value of a map is a list of [key, value] pairs in order, a key being a text (binding GN-13).
             let pairs = given().as_array().unwrap_or_else(|| panic!("{what}: the value of a map is no list of [key, value] pairs"));
-            let entries: Vec<(HostValue, HostValue)> = pairs.iter().map(|pair| match pair.as_array().map(Vec::as_slice) {
-                Some([Value::String(key), member]) => (host_text(key), host_value(host, member, what)),
-                _ => panic!("{what}: an entry of a map is {pair}, not [key, value] with a text key"),
-            }).collect();
+            let entries: Vec<(HostValue, HostValue)> = pairs
+                .iter()
+                .map(|pair| match pair.as_array().map(Vec::as_slice) {
+                    Some([Value::String(key), member]) => (host_text(key), host_value(host, member, what)),
+                    _ => panic!("{what}: an entry of a map is {pair}, not [key, value] with a text key"),
+                })
+                .collect();
             let len = u64::try_from(entries.len()).or_panic(|error| format!("{what}: the length of a map does not fit u64: {error}"));
             host.maps.push(entries);
             HostValue::Map { handle: handle(host.maps.len() - 1), len }
@@ -673,6 +676,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("db.transaction_active", Some(Instance::Db(db))) => Returned::Value(Value::from(db.transaction_active())),
         ("tx.transaction_active", Some(Instance::Tx(tx))) => Returned::Value(Value::from(tx.transaction_active())),
         ("db.sql_driver", Some(Instance::Db(db))) => Returned::Value(Value::from(db.sql_driver())),
+        ("db.analyze_restore", Some(Instance::Db(db))) => Returned::Value(Value::from(db.analyze_restore(&text(args, "request", member))?)),
         ("db.with_cancel", Some(Instance::Db(db))) => Returned::Instance(Instance::Db(db.with_cancel(cancel(field(args, "cancel", member), member)))),
         ("db.execute", Some(Instance::Db(db))) => {
             db.execute_text(&text(args, "step", member), orm_values(args, "params", member)?).await?;

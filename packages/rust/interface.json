@@ -1742,6 +1742,38 @@
           }
         },
         {
+          "id": "db.analyze_restore",
+          "name": [
+            "analyze",
+            "restore"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "request"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::SchemaHashMismatch",
+            "polyspec_orm::Kind::VersionMismatch",
+            "polyspec_orm::Kind::EntityUnknown",
+            "polyspec_orm::Kind::ColumnUnknown"
+          ],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Db::analyze_restore",
+            "receiver": "&self"
+          }
+        },
+        {
           "id": "db.transaction",
           "name": [
             "transaction"
@@ -5627,6 +5659,20 @@
       "member": "db.sql_driver",
       "file": "contracts/interface/core.json",
       "group": "db.sql_driver",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.analyze_restore",
+      "file": "contracts/interface/core.json",
+      "group": "db.analyze_restore",
       "only": {
         "targets": [
           "php",

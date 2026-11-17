@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: b137d1abe0268bb11f77977718b2ca3ebe0d18fd087ec58c8890d37d6169bffb -->
+<!-- source-sha256: a7d31e83462c4ed548482e2575a50e1f1d459b4272743566bbdea8cab8b01056 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -94,16 +94,13 @@
   코어는 언어 코드를 부르는 동안 잠금 guard를 쥐지 않는다. INT-47과 DSL-122의 `CONFIG`를 대체한다.
 - **CORE-23** callback이 돌아온 뒤의 `Tx`와 그에 연결된 모든 모델은 모든 문장을 `transaction_ended`로 실패하고 아무것도
   보내지 않는다. INT-150a를 대체한다.
-- **CORE-140** `transaction_active()`는 handle이 열린 트랜잭션의 handle인지 말한다. `Tx::transaction_active`는 그
-  handle을 받은 callback, 곧 트랜잭션이나 savepoint의 callback이 실행되는 동안 `true`이고, 그 callback이 돌아온 뒤에는
-  트랜잭션이 commit되었든 롤백되었든 실패했든 `false`다. 트랜잭션의 handle은 그 savepoint callback이 실행되는 동안에도,
-  그 callback이 돌아온 뒤에도 자기 callback이 돌아올 때까지 `true`다. clone은 그 handle로서 답한다.
-  `Db::transaction_active`는 언제나 `false`이며, 그 `Db`의 트랜잭션의 callback 안에서도 그렇다: 실행 흐름의 활성
-  트랜잭션은 없고 handle이 트랜잭션에 들어가는 유일한 길이며(CORE-20), `Db`는 pool이므로 열린 트랜잭션의 수를 세면 다른
-  요청의 트랜잭션을 두고 답하게 된다. 이 호출은 동기이고, 문장을 보내지 않고, hook을 부르지 않으며, 실패하지 않는다.
-  계약은 `db.transaction_active`와 `tx.transaction_active`를 선언하고, interface unit `connection`은 member를 선언하지
-  않는다. binding이 member를 선언하는 generated interface를 생성하지 않기 때문이다(GN-6ap). legacy client는 실행 흐름을
-  두고 답하며(INT-192) 바뀌지 않는다.
+- **CORE-140** `transaction_active()`는 handle이 열린 트랜잭션의 handle인지를 돌려준다. `Tx::transaction_active`는 그 handle을 받은 callback,
+  곧 트랜잭션이나 savepoint의 callback이 실행되는 동안 `true`이고, 그 callback이 돌아온 뒤에는 트랜잭션이 commit되었든 롤백되었든 실패했든 `false`다. 트랜잭션의 handle은
+  그 savepoint callback이 실행되는 동안에도, 그 callback이 돌아온 뒤에도 자기 callback이 돌아올 때까지 `true`다. clone은 그 handle과 같은 값을 돌려준다.
+  `Db::transaction_active`는 언제나 `false`이며, 그 `Db`의 트랜잭션의 callback 안에서도 그렇다: 실행 흐름의 활성 트랜잭션은 없고 handle이 트랜잭션에 들어가는 유일한
+  길이며(CORE-20), `Db`는 pool이므로 열린 트랜잭션의 수를 세면 다른 요청의 트랜잭션을 두고 답하게 된다. 이 호출은 동기이고, 문장을 보내지 않고, hook을 부르지 않으며, 실패하지 않는다.
+  계약은 `db.transaction_active`와 `tx.transaction_active`를 선언하고, interface unit `connection`은 member를 선언하지 않는다. binding이
+  member를 선언하는 generated interface를 생성하지 않기 때문이다(GN-6ap). legacy client는 실행 흐름을 두고 답하며(INT-192) 바뀌지 않는다.
 - **CORE-24** 트랜잭션은 실패의 kind가 `deadlock`이면 롤백 뒤 callback 전체를 다시 실행한다: 문장의 deadlock,
   `transaction_conflict`(INT-48)의 오류, callback이 던진 kind `deadlock`의 오류가 해당한다. 바인딩은 callback이 던진 orm
   category 클래스 오류의 kind를 코어에 넘기고(계약의 `recognize`), 그 밖의 실패는 롤백 뒤 그대로 돌려준다. 시도 `n`(1부터)
@@ -131,6 +128,26 @@
   번째 `close`는 성공한다.
 - **CORE-32** `Db`는 동시 호출을 받는다. 문장은 pool 연결 하나를 빌리고 그 결과는 다른 호출과 무관하다. 트랜잭션 번호는
   `BEGIN`을 보낼 때 하나씩 더한다.
+- **CORE-141** `Db::analyze_restore(request)`는 연결에서 하는 PRT-91의 restore 분석이며 contract의 member `db.analyze_restore`다.
+  코어에서는 INT-191을 대체한다. `runtime_model.restore_key`처럼 restore 요청을 JSON text(FMS-31)로 받고 JSON text
+  `{"assignments": [<column>, ..], "key": [<column>, ..]}`를 돌려준다: `key`는 고른 key의 컬럼을 schema 순서로, `assignments`는 key가
+  조건으로 가져가지 않은 `set`의 컬럼을 요청 순서로 담으며 반복된 컬럼은 그때마다 담는다. 다음을 이 순서로 검사하고 성립하지 않는 첫 항목에서 실패한다: 연결이 열려
+  있다(`closed: database is closed`). text가 형식에 맞는 요청이다(`ir_invalid`, FMS-31의 메시지). 요청의 `manifest_hash`가 연결에 등록된 set의
+  hash다(`schema_hash_mismatch: manifest <hash> is not registered on this connection: connect through its generated models or install it`,
+  그런 연결에서 모델 요청이 받는 메시지다. 없는 hash는 빈 hash이며 분석이 hash를 채우지 않는다). `ir_version`이 코어의
+  것이다(`version_mismatch: ir_version <n>, engine <m>`). kind가
+  `restore`다(`ir_invalid: restore analysis requires a restore request`). set에 그 entity가 있다(`entity_unknown: <entity>`).
+  entity에 `set`의 모든 컬럼이 있다(`column_unknown: <entity>.<column>`, 요청 순서에서 그런 첫 컬럼). entity에 `soft_delete` 설정이
+  있다(`ir_invalid: restore of <entity>, which has no soft_delete setting`). `where`의 최상위 조건 가운데 첫째 뒤의 어느 것도 `or`로 잇지
+  않는다(`ir_invalid: restore of <entity> joins the conditions of its where with and`). `set`과 `eq` 조건의 매개변수 값이 primary
+  key나 unique key 하나를
+  덮는다(`ir_invalid: restore of <entity> gives no primary key or unique key a value in its set or in an eq condition of its where`).
+  그래서 `set`의 알 수 없는 컬럼은 key와 상관없이 분류 전에 보고된다. 매개변수의 범위, 값의 type, 요청의 다른 member, 컬럼을 할당해도 되는지는 검사하지 않는다: key가 가져가지 않은
+  primary key, identity, soft delete 컬럼은 결과의 assignment이고, 쓰기가 그것을 거절한다(`restore_key`,
+  `ir_invalid: restore cannot assign <column>`). 이 member는 동기다: 문장을 보내지 않고, pool의 연결을 잡지 않고, request hook를 부르지 않고,
+  statement event를 내지 않고, bind 값을 읽지 않으며, 요청도 schema도 트랜잭션도 바꾸지 않는다. 그래서 연결의 트랜잭션이 실행되는 동안에도 부를 수 있다. 이유: 생성 바인딩은 연결에
+  `analyzeRestore`가 있던 client를 대체하며, 공개 member는 그 client와 함께 끝나지 않는다. 요청은 contract의 type이 아니므로(CORE-70) `runtime_model`의
+  member처럼 text다.
 
 ## 취소
 
@@ -363,13 +380,13 @@
   `<column> is not a column of <entity>`이며, list나 map은 `codec_encode`이고 메시지는 `the value of a column is a list`나 `a map`이고,
   열이 받을 수 없는 값은 쓰기에서 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그
   원인의 kind로 실패한다(CORE-10).
-- **CORE-138** `Query`의 조건(`where`, `where_in`, `where_none`; CORE-82, CORE-137)은 그 `update`와 `delete`(CORE-91)에도
-  적용된다: 문장은 key의 행이 조건을 만족할 때만 그 행을 쓰고, 조건을 key에 `and`로 잇는다. 그래서 `where_none`을 가진
-  query는 어떤 행도 쓰지 않는다. key는 여전히 한 행을 가리키고, `expect_revision`과 soft delete 열은 전처럼 이어진다
-  (PRT-93). 아무 행도 바꾸지 않은 쓰기는 오류가 아니다. 다만 `expect_revision` 아래에서는 `revision_changed`로
-  남는다(CORE-91). 한 문장으로는 revision과 조건을 구별할 수 없기 때문이다. 그때 메시지는 `the row's <column> is not
-  <revision> or the row does not meet the conditions`다. 재귀 delete는 cascade 자식을 행보다 먼저 지우므로, cascade relation을 가진 행에 조건을 둔 재귀 delete는
-  `config`다: `a recursive delete of a row with cascading relations takes no conditions`. 언어 구현(legacy/)은 조건이 고른 모든 행을 쓰는 집합 쓰기였다.
+- **CORE-138** `Query`의 조건(`where`, `where_in`, `where_none`; CORE-82, CORE-137)은 그 `update`와 `delete`(CORE-91)에도 적용된다:
+  문장은 key의 행이 조건을 만족할 때만 그 행을 쓰고, 조건을 key에 `and`로 잇는다. 그래서 `where_none`을 가진 query는 어떤 행도 쓰지 않는다. key는 여전히 한 행을 가리키고,
+  `expect_revision`과 soft delete 열은 전처럼 이어진다 (PRT-93). 아무 행도 바꾸지 않은 쓰기는 오류가 아니다. 다만 `expect_revision` 아래에서는
+  `revision_changed`로 남는다(CORE-91). 한 문장으로는 revision과 조건을 구별할 수 없기 때문이다. 그때 메시지는
+  `the row's <column> is not <revision> or the row does not meet the conditions`다. 재귀 delete는 cascade 자식을 행보다 먼저 지우므로,
+  cascade relation을 가진 행에 조건을 둔 재귀 delete는 `config`다:
+  `a recursive delete of a row with cascading relations takes no conditions`. 언어 구현(legacy/)은 조건이 고른 모든 행을 쓰는 집합 쓰기였다.
   core는 key의 한 행을 그 조건 아래에서 쓴다(T563-3).
 - **CORE-92** `Db` step은 다른 library의 코어가 데이터로 가진 질의이고, host는 자기 판단 없이 그것을 orm으로 실행한다:
   `StepRunner::new(schema, connection)`는 그 step을 `connection`에서 실행하고, `run(step)`은 step 하나를 JSON 텍스트로

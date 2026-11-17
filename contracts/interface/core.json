@@ -15717,6 +15717,686 @@
       "result": false
     }
   ],
+  "db.analyze_restore": [
+    {
+      "id": "primary_key",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}",
+      "result": "{\"assignments\":[\"meta\"],\"key\":[\"id\"]}"
+    },
+    {
+      "id": "unique_key",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"code\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}",
+      "result": "{\"assignments\":[\"meta\"],\"key\":[\"code\"]}"
+    },
+    {
+      "id": "primary_precedes_unique",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":3,\"set\":[{\"column\":\"code\",\"p\":0},{\"column\":\"id\",\"p\":1},{\"column\":\"tag\",\"p\":2}]}",
+      "result": "{\"assignments\":[\"code\",\"tag\"],\"key\":[\"id\"]}"
+    },
+    {
+      "id": "where_key",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":9,\"where\":{\"items\":[{\"pred\":{\"column\":\"id\",\"op\":\"eq\",\"p\":8}}]},\"set\":[{\"column\":\"meta\",\"null\":true}]}",
+      "result": "{\"assignments\":[\"meta\"],\"key\":[\"id\"]}"
+    },
+    {
+      "id": "duplicate_assignment",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":3,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1},{\"column\":\"meta\",\"p\":2}]}",
+      "result": "{\"assignments\":[\"meta\",\"meta\"],\"key\":[\"id\"]}"
+    },
+    {
+      "id": "no_parameter_bounds",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":0,\"set\":[{\"column\":\"id\",\"p\":999},{\"column\":\"meta\",\"p\":998}]}",
+      "result": "{\"assignments\":[\"meta\"],\"key\":[\"id\"]}"
+    },
+    {
+      "id": "write_restriction_deferred",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"code\",\"p\":0},{\"column\":\"id\",\"null\":true},{\"column\":\"deleted_at\",\"null\":true}]}",
+      "result": "{\"assignments\":[\"id\",\"deleted_at\"],\"key\":[\"code\"]}"
+    },
+    {
+      "id": "unique_name_order",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":3,\"set\":[{\"column\":\"tag\",\"p\":0},{\"column\":\"code\",\"p\":1},{\"column\":\"meta\",\"p\":2}]}",
+      "result": "{\"assignments\":[\"tag\",\"meta\"],\"key\":[\"code\"]}"
+    },
+    {
+      "id": "composite_schema_order",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 partition\n\ntable hook_partition {\n  scope_id i64\n  id i64\n  alternate_code varchar(32)\n  label varchar(32)\n  note varchar(32) null\n  deleted_at datetime(6) null\n  primary key (scope_id, id)\n  unique a_alternate (alternate_code)\n  unique z_label (label)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751\",\"kind\":\"restore\",\"entity\":\"hook_partition\",\"n_params\":3,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"scope_id\",\"p\":1},{\"column\":\"note\",\"p\":2}]}",
+      "result": "{\"assignments\":[\"note\"],\"key\":[\"scope_id\",\"id\"]}"
+    },
+    {
+      "id": "primary_assignment_deferred",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 partition\n\ntable hook_partition {\n  scope_id i64\n  id i64\n  alternate_code varchar(32)\n  label varchar(32)\n  note varchar(32) null\n  deleted_at datetime(6) null\n  primary key (scope_id, id)\n  unique a_alternate (alternate_code)\n  unique z_label (label)\n  settings {\n    soft_delete deleted_at\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:160fcfcd6c76f1e04147d423aabea1ed8f418192297503361409a1ca5faf7751\",\"kind\":\"restore\",\"entity\":\"hook_partition\",\"n_params\":3,\"set\":[{\"column\":\"alternate_code\",\"p\":0},{\"column\":\"scope_id\",\"p\":1},{\"column\":\"note\",\"p\":2}]}",
+      "result": "{\"assignments\":[\"scope_id\",\"note\"],\"key\":[\"alternate_code\"]}"
+    },
+    {
+      "id": "version",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":3,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"id\",\"p\":0}]}",
+      "raises": {
+        "kind": "version_mismatch",
+        "category": "value",
+        "message": "version_mismatch: ir_version 3, engine 2"
+      }
+    },
+    {
+      "id": "wrong_kind",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"update\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: restore analysis requires a restore request"
+      }
+    },
+    {
+      "id": "unknown_entity",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"absent\",\"n_params\":1,\"set\":[{\"column\":\"id\",\"p\":0}]}",
+      "raises": {
+        "kind": "entity_unknown",
+        "category": "value",
+        "message": "entity_unknown: absent"
+      }
+    },
+    {
+      "id": "unknown_column",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"absent\",\"p\":1}]}",
+      "raises": {
+        "kind": "column_unknown",
+        "category": "value",
+        "message": "column_unknown: item.absent"
+      }
+    },
+    {
+      "id": "unknown_column_before_key",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"absent\",\"p\":0}]}",
+      "raises": {
+        "kind": "column_unknown",
+        "category": "value",
+        "message": "column_unknown: item.absent"
+      }
+    },
+    {
+      "id": "no_soft_delete",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"owner\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"name\",\"p\":1}]}",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: restore of owner, which has no soft_delete setting"
+      }
+    },
+    {
+      "id": "or_between_conditions",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"where\":{\"items\":[{\"pred\":{\"column\":\"id\",\"op\":\"eq\",\"p\":0}},{\"pred\":{\"conn\":\"or\",\"column\":\"code\",\"op\":\"eq\",\"p\":1}}]}}",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: restore of item joins the conditions of its where with and"
+      }
+    },
+    {
+      "id": "no_key",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"meta\",\"p\":0}]}",
+      "raises": {
+        "kind": "ir_invalid",
+        "category": "value",
+        "message": "ir_invalid: restore of item gives no primary key or unique key a value in its set or in an eq condition of its where"
+      }
+    },
+    {
+      "id": "empty_manifest",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":0}",
+      "raises": {
+        "kind": "schema_hash_mismatch",
+        "category": "value",
+        "message": "schema_hash_mismatch: manifest  is not registered on this connection: connect through its generated models or install it"
+      }
+    },
+    {
+      "id": "unregistered_manifest",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"absent\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":1,\"set\":[{\"column\":\"id\",\"p\":0}]}",
+      "raises": {
+        "kind": "schema_hash_mismatch",
+        "category": "value",
+        "message": "schema_hash_mismatch: manifest absent is not registered on this connection: connect through its generated models or install it"
+      }
+    },
+    {
+      "id": "closed_connection",
+      "rule": "CORE-141",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": [
+          {
+            "call": "db.close"
+          }
+        ]
+      },
+      "request": "{\"ir_version\":2,\"manifest_hash\":\"sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a\",\"kind\":\"restore\",\"entity\":\"item\",\"n_params\":2,\"set\":[{\"column\":\"id\",\"p\":0},{\"column\":\"meta\",\"p\":1}]}",
+      "raises": {
+        "kind": "closed",
+        "category": "type",
+        "message": "closed: database is closed"
+      }
+    }
+  ],
   "db.sql_driver": [
     {
       "id": "a_sqlite_dsn",

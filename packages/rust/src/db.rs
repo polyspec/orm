@@ -641,6 +641,15 @@ impl Pool {
     }
 }
 
+/// The refusal of a request whose manifest is of no set registered on the connection: a connection plans, and analyzes
+/// (CORE-141), only the sets registered to it.
+fn not_registered(hash: &str) -> Error {
+    Error::new(
+        crate::Kind::SchemaHashMismatch,
+        format!("manifest {hash} is not registered on this connection: connect through its generated models or install it"),
+    )
+}
+
 pub(crate) struct DbInner {
     pub(crate) pool: Pool,
     /// Held while the connections beyond the idle size close, so that two ends of work do not close the same surplus twice.
@@ -1074,6 +1083,35 @@ impl Db {
         }
     }
 
+    /// The restore analysis of PRT-91 on this connection (CORE-141), the member `db.analyze_restore` of the contract:
+    /// the key and the assignments of the restore request of the JSON text `request` (FMS-31), as the JSON text
+    /// `{"assignments": [..], "key": [..]}`. The key holds its columns in the order of the schema, and the assignments
+    /// hold the columns of the set that the key did not take as conditions, in the order of the request.
+    ///
+    /// It fails with `closed` on a closed connection, with `ir_invalid` for a text that is no request, with
+    /// `schema_hash_mismatch` when the `manifest_hash` of the request is of no set registered on this connection, and
+    /// then as the analysis of the engine does: `version_mismatch`, `ir_invalid` for a kind that is not `restore`,
+    /// `entity_unknown`, `column_unknown` for a column of the set, before the key is picked, and `ir_invalid` for an
+    /// entity without soft delete, an `or` between top-level conditions and a request that gives no key its values.
+    ///
+    /// It does not refuse the assignment of a primary-key, identity or soft-delete column, which the write refuses,
+    /// and checks no parameter bound and no value type. It is synchronous, sends no statement, takes no connection of
+    /// the pool, calls no request hook and changes neither the request nor the connection, so it may be called while
+    /// a transaction of the connection runs.
+    pub fn analyze_restore(&self, request: &str) -> Result<String> {
+        self.ensure_open()?;
+        let request = crate::ir::Request::from_json(request)?;
+        let manifest = {
+            let schemas = self.inner.schemas.read().unwrap();
+            match schemas.iter().find(|schema| schema.hash() == request.manifest_hash) {
+                Some(schema) => schema.manifest()?,
+                None => return Err(not_registered(&request.manifest_hash)),
+            }
+        };
+        let analysis = engine::validate::analyze_restore(&manifest, &request)?;
+        Ok(serde_json::json!({"assignments": analysis.assignments, "key": analysis.key}).to_string())
+    }
+
     /// The server of the connection that dbspec introspects by (DIA-203): the server that connect read on a mysql
     /// connection (DIA-201), and the database's own on PostgreSQL and SQLite; a markdown connection answers in SQLite's
     /// dialect, as its server (DIA-185).
@@ -1155,10 +1193,7 @@ impl Db {
         // A connection plans only the sets registered to it. The targets a request may run against are
         // decided by the database the connection uses, not by the code the process has read.
         if !self.inner.sets.read().unwrap().contains(req.schema.hash()) {
-            return Err(Error::new(
-                crate::Kind::SchemaHashMismatch,
-                format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
-            ));
+            return Err(not_registered(req.schema.hash()));
         }
         let Some(dialect) = self.inner.dialect else { return Err(Error::internal("the connection has no dialect")) };
         if let Some(n_params) = n_params {
