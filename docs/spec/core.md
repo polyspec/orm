@@ -633,9 +633,8 @@ implementation is eligible for removal on that evidence.
   key ascending, in the order of the key columns, so that consecutive pages neither repeat nor skip a row. A page
   after the last one has no rows and is no error. `page` and `per_page` are `uint`; 0 of either is `config` with the
   message `gets_page requires a positive page and per_page`, a `Query` with `limit` (CORE-85) is `config` with the
-  message `gets_page cannot be combined with limit`, and an offset over the range of `uint` is `config` with the
-  message `page offset exceeds u32 range`, each before any statement and before the connection is asked for
-  (CORE-81). The terminal does not change the `Query` (DSL-69). In the contract `page` is a class whose members
+  message `gets_page cannot be combined with limit`, each before the connection is asked for (CORE-81), and an
+  offset over the range of `uint` is `config` with the message `page offset exceeds u32 range`, before any statement. The terminal does not change the `Query` (DSL-69). In the contract `page` is a class whose members
   `total_count`, `total_pages`, `page` and `per_page` are properties and whose member `rows` returns the unit `rows`
   (CORE-70). The `Db` step (CORE-92) has no terminal for it.
 - **CORE-201** `group_by(column)` adds a column to the grouping of a `Query`, the member `groupBy<Col>()` of the

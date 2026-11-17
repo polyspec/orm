@@ -538,8 +538,8 @@
   없는 `Query`는 primary key 오름차순으로, key 열의 순서대로 정렬되므로 이어지는 page가 행을 되풀이하거나 건너뛰지
   않는다. 마지막 page 뒤의 page는 행이 없고 오류가 아니다. `page`와 `per_page`는 `uint`다. 어느 하나가 0이면
   `config`이고 메시지는 `gets_page requires a positive page and per_page`이며, `limit`(CORE-85)가 있는 `Query`는
-  `config`이고 메시지는 `gets_page cannot be combined with limit`이고, `uint`의 범위를 넘는 offset은 `config`이고
-  메시지는 `page offset exceeds u32 range`다. 각각 어떤 문장보다도, 그리고 연결을 구하기보다도 먼저다(CORE-81). 이
+  `config`이고 메시지는 `gets_page cannot be combined with limit`이다. 둘 다 연결을 구하기 전이다(CORE-81). `uint`의
+  범위를 넘는 offset은 어떤 문장보다도 먼저 `config`이고 메시지는 `page offset exceeds u32 range`다. 이
   terminal은 `Query`를 바꾸지 않는다(DSL-69). 계약에서 `page`는 class이고 그 member `total_count`, `total_pages`,
   `page`, `per_page`는 property이며 member `rows`는 unit `rows`를 돌려준다(CORE-70). `Db` step(CORE-92)에는 이것의
   terminal이 없다.
