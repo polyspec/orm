@@ -34,8 +34,9 @@ func TestBackendWaitingForLockReportsPostgresWaiter(t *testing.T) {
 
 	// The child is a session of the test that reports its lock waits (reportLockWaits, T475): the server sends it the LOG
 	// message "still waiting for" while its update waits for the row that the parent holds, and only then the parent reads
-	// BackendWaitingForLock once.
-	child, childWaits := reportLockWaits(t, dsn)
+	// BackendWaitingForLock once. Its settings and its update run outside a transaction, so it opens the server, not the
+	// pooler, and both run on one server session (serverSession).
+	child, childWaits := reportLockWaits(t, serverSession(t, "postgres", dsn))
 	childDone := make(chan error, 1)
 	childStarted := false
 	var waiting bool
