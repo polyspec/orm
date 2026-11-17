@@ -373,7 +373,7 @@ implementation is eligible for removal on that evidence.
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
-- **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
+- **CORE-84** Not implemented: `creates` of a `Query`, `join`, `leftJoin`, the
   groups (`not`, `andNot`, `orNot`, `on`; `andGroup` and `orGroup` are `where_group`, CORE-202), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
@@ -666,6 +666,15 @@ implementation is eligible for removal on that evidence.
   `where_group takes a query of <entity>, not of <other>`, and a `query` that one of its members failed fails the
   `Query` with that error. Each is returned by the next terminal. The conditions of a group hold for `update` and
   `delete` as every condition does (CORE-138).
+- **CORE-203** `save()` writes the assignments of a `Query` (CORE-91) by `update` when its row is known and by
+  `create` when it is not: the member `save()` of the language implementations (DSL-109). The row is known when the
+  `Query` read a row or `set` assigned every column of the primary key, which is what `update` asks for (CORE-91).
+  Then `save` is that `update`, with its `expect_revision` and under the conditions of the `Query` (CORE-138), and
+  returns the `Query` as the `update` left it. It reads no row first: a key that no row holds, and a row that does not
+  meet the conditions, change nothing, are no error and insert nothing. Otherwise `save` is `create` and returns the
+  created row; a row with an identity key is therefore created without its key and updated with it (DSL-113). A
+  failure is the failure of that `update` or `create`, and a `Query` with no connection is `config` before either
+  (CORE-81). The `Db` step (CORE-92) has no terminal for it.
 
 ## State machines
 

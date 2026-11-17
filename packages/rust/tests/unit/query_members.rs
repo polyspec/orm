@@ -861,3 +861,38 @@ async fn where_group_adds_the_conditions_of_a_query_as_one_group() {
     }
     db.close_async().await;
 }
+
+// Requirements: CORE-203. save updates the row of a set primary key or of a read row and creates a row otherwise; a
+// key that no row holds changes nothing and inserts nothing.
+#[tokio::test]
+async fn save_updates_a_known_row_and_creates_another() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-save");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let text = |value: &str| OrmValue::Text(value.into());
+    let mut created = query(&schema, "account", &db);
+    created.set("email", &text("d@x"));
+    created.set("revision", &int(0));
+    let row = created.save().await.expect("save creates");
+    assert_eq!(row.value("seq").expect("seq"), int(4), "the created row holds its identity");
+    let mut keyed = query(&schema, "account", &db);
+    keyed.set("seq", &int(2));
+    keyed.set("email", &text("bea@x"));
+    keyed.save().await.expect("save updates the row of a set key");
+    let second = account(&schema, &db, 2).await.expect("the row 2");
+    assert_eq!(second.value("email").expect("email"), text("bea@x"));
+    let mut read = account(&schema, &db, 3).await.expect("the row 3");
+    read.set("email", &text("cy@x"));
+    read.save().await.expect("save updates a read row");
+    assert_eq!(account(&schema, &db, 3).await.expect("the row 3").value("email").expect("email"), text("cy@x"));
+    let mut absent = query(&schema, "account", &db);
+    absent.set("seq", &int(9));
+    absent.set("email", &text("z@x"));
+    absent.set("revision", &int(0));
+    absent.save().await.expect("a key that no row holds is no error");
+    assert_eq!(query(&schema, "account", &db).get_count().await.expect("get_count"), 4, "and inserts nothing");
+    let unconnected = Query::new(&schema, "account").expect("query").save().await;
+    assert_eq!(failure(unconnected, "no connection").to_string(), "config: the model has no connection; connect it to a Db or to the Tx of a transaction");
+    db.close_async().await;
+}

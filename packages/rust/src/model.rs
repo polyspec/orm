@@ -1618,10 +1618,10 @@ pub async fn update<M: AnyModel + Clone>(m: &mut M, optimistic: bool) -> Result<
 }
 
 /// Updates the row when its primary key is known, otherwise creates it.
-pub async fn save<M: Model>(m: &mut M) -> Result<M> {
-    terminal(m.core())?;
-    let ent = m.core().ent.entity_schema()?;
-    if key_values(m.core(), &ent).is_ok() {
+pub async fn save<M: AnyModel + Clone>(m: &mut M) -> Result<M> {
+    terminal(m.core_dyn())?;
+    let ent = m.core_dyn().ent.entity_schema()?;
+    if key_values(m.core_dyn(), &ent).is_ok() {
         update(m, false).await?;
         return Ok(m.clone());
     }

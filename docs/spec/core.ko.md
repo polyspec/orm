@@ -308,7 +308,7 @@
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
-- **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `join`, `leftJoin`, 묶음
+- **CORE-84** 구현되지 않았다: `Query`의 `creates`, `join`, `leftJoin`, 묶음
   (`not`, `andNot`, `orNot`, `on`. `andGroup`과 `orGroup`은 `where_group`이다, CORE-202), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
@@ -564,6 +564,14 @@
   `the query of where_group has no condition`이며(DSL-22), 다른 엔티티의 `query`는 `config`이고 메시지는
   `where_group takes a query of <entity>, not of <other>`이고, member가 실패시킨 `query`는 그 오류로 `Query`를
   실패시킨다. 각각 다음 terminal이 돌려준다. group의 조건은 모든 조건처럼 `update`와 `delete`에도 적용된다(CORE-138).
+- **CORE-203** `save()`는 `Query`의 배정(CORE-91)을, 그 행을 알면 `update`로, 모르면 `create`로 쓴다. 언어 구현의
+  member `save()`다(DSL-109). 행을 안다는 것은 `Query`가 행을 읽었거나 `set`이 primary key의 모든 열을 배정했다는
+  것이고, `update`가 요구하는 바로 그것이다(CORE-91). 그때 `save`는 그 `update`이고 `expect_revision`과 `Query`의
+  조건(CORE-138)을 그대로 가지며, `update`가 남긴 그대로의 `Query`를 돌려준다. 먼저 행을 읽지 않는다: 어떤 행도
+  가지지 않은 key와 조건을 만족하지 않는 행은 아무것도 바꾸지 않고 오류가 아니며 아무것도 넣지 않는다. 그렇지 않으면
+  `save`는 `create`이고 만든 행을 돌려준다. 그래서 identity key의 행은 key 없이 만들고 key와 함께 고친다(DSL-113).
+  실패는 그 `update`나 `create`의 실패이고, 연결이 없는 `Query`는 어느 쪽보다도 먼저 `config`다(CORE-81). `Db`
+  step(CORE-92)에는 이것의 terminal이 없다.
 
 ## 상태 기계
 

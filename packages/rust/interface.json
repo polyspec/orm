@@ -4493,6 +4493,44 @@
             "path": "polyspec_orm::Query::where_group",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.save",
+          "name": [
+            "save"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "query"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::RevisionChanged"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::save",
+            "receiver": "&mut self"
+          }
         }
       ]
     },
@@ -6195,6 +6233,39 @@
       "member": "query.where_group",
       "file": "contracts/interface/core.json",
       "group": "query.where_group.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.save",
+      "file": "contracts/interface/core.json",
+      "group": "query.save"
+    },
+    {
+      "member": "query.save",
+      "file": "contracts/interface/core.json",
+      "group": "query.save.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.value",
+      "file": "contracts/interface/core.json",
+      "group": "query.value.save",
       "only": {
         "targets": [
           "php",

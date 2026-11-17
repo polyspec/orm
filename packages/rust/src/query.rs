@@ -458,6 +458,12 @@ impl Query {
         crate::model::update(self, false).await
     }
 
+    /// Writes the assignments by `update` when the query read a row or `set` assigned its primary key, and by `create`
+    /// otherwise (CORE-203). It returns the query as `update` left it, or the row that `create` returned.
+    pub async fn save(&mut self) -> Result<Query> {
+        crate::model::save(self).await
+    }
+
     /// Deletes the row that the query read or, in a query that read no row, the row of the primary key that `set`
     /// assigned (CORE-91).
     pub async fn delete(&self) -> Result<()> {
