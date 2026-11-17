@@ -3951,8 +3951,12 @@ orm-install-rust: orm-install-rust-toolchain orm-install-rust-crates
 # deps-rust is the default CI setup of the rust runtime, which setup.runtimes.rust of config/ci.json leaves empty (kit K859).
 .PHONY: deps-rust
 deps-rust: orm-install-rust
+# orm-install-rust-toolchain installs the channel, components and targets of rust-toolchain.toml with kit's rust install
+# (install-tools TOOLS=rust), which passes them to rustup toolchain install explicitly, as install-tools of the static group does.
+# A bare rustup toolchain install installs the RUSTUP_TOOLCHAIN that this Makefile exports and reads neither the components nor
+# the targets of the file, so the asset jobs had no wasm32-unknown-unknown (CI run 44038491048).
 orm-install-rust-toolchain:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(MAKE) --no-print-directory install-tools TOOLS=rust
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
 # RUST_CRATE_MANIFESTS lists the workspace manifests of the tracked Cargo.lock files; cargo fetch --locked downloads each workspace's crates.
 RUST_CRATE_MANIFESTS = benchmarks/rust/Cargo.toml Cargo.toml packages/rust/testing/interfaces/Cargo.toml
