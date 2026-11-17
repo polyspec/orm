@@ -10,7 +10,8 @@ declare(strict_types=1);
 // Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/introspect/php-extension.php
 // <mysql|postgres|sqlite> <uri>
 
-require __DIR__ . '/../../../../../vendor-php/autoload.php';
+require_once dirname(__DIR__, 4) . '/php/tests/repository_root.php';
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
 require __DIR__ . '/../../../../php/testing/dbspec/introspect/runner.php';
 
 if ($argc !== 3) {

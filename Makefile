@@ -4122,7 +4122,7 @@ generated-lint-check: python-models php-models go-models typescript-read
 	trap 'rm -rf "$$phpstan_tmp"' EXIT; \
 	$(PUBLISH) "$$phpstan_tmp/phpstan.neon" printf 'includes:\n    - %s\nparameters:\n    tmpDir: %s/cache\n' "$(CURDIR)/phpstan.dist.neon" "$$phpstan_tmp"; \
 	cd legacy/packages/php; \
-	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=../../vendor-php/autoload.php gen
+	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=$(CURDIR)/vendor-php/autoload.php gen
 	test -z "$$(cd legacy/packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +)" || { cd legacy/packages/go && find $(GENERATED_GO) -type f -name '*.go' ! -name '*_test.go' -exec gofmt -l {} +; exit 1; }
 	cd legacy/packages/go && $(GO) vet $(GENERATED_GO)
 	$(NPM) exec --prefix "$(KIT_PACKAGE)" --offline -- oxlint -c .oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)
@@ -4139,13 +4139,13 @@ clippy-crate: lease-tool ## Clippy of the package CRATE with the lint-rust flags
 # caller, so calling its method on each row passes; a mixed row fails it.
 .PHONY: group-rows-phpstan-check
 group-rows-phpstan-check: php-vendor-check
-	cd legacy/packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/GroupRowsIteration.php
+	cd legacy/packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=$(CURDIR)/vendor-php/autoload.php tests/phpstan/GroupRowsIteration.php
 
 # collection-raw-phpstan-check runs PHPStan at level 5 over the fixture of KSTD-5-54: a raw Collection parameter carries no
 # method of the base Model, so calling a column getter on its rows is no false method.notFound.
 .PHONY: collection-raw-phpstan-check
 collection-raw-phpstan-check: php-vendor-check
-	cd legacy/packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/RawCollection.php
+	cd legacy/packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(CURDIR)/phpstan.dist.neon --autoload-file=$(CURDIR)/vendor-php/autoload.php tests/phpstan/RawCollection.php
 
 # dbspec-php-extension-check/markdown runs MarkdownTest with the extension loaded: the markdown IR uses of KSTD-5-80.
 DBSPEC_MARKDOWN_TEST_FILTER ?=
@@ -4169,7 +4169,7 @@ collection-get-phpstan-check: php-vendor-check
 	trap 'rm -rf "$$phpstan_tmp"' EXIT; \
 	$(PUBLISH) "$$phpstan_tmp/phpstan.neon" printf 'includes:\n    - %s\nparameters:\n    tmpDir: %s/cache\n' "$(CURDIR)/phpstan.dist.neon" "$$phpstan_tmp"; \
 	cd legacy/packages/php; \
-	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=../../vendor-php/autoload.php tests/phpstan/CollectionGet.php
+	$(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration="$$phpstan_tmp/phpstan.neon" --autoload-file=$(CURDIR)/vendor-php/autoload.php tests/phpstan/CollectionGet.php
 
 # KSTD-5-62: only the private catalog-document build failure is a Mermaid diagnostic. These owner targets run the
 # focused unexpected-error identity cases; the PHP extension variant builds a test-only module around the actual mermaid.c.

@@ -135,7 +135,7 @@ let stopped;
 before(async t => {
   t.diagnostic('orm-gen gen --check of src/models/markdown_fixture');
   try {
-    await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../../../packages/tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_cases.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
+    await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_cases.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
   } catch (error) {
     throw new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`, { cause: error });
   }

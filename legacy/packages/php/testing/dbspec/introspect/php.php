@@ -8,7 +8,8 @@ declare(strict_types=1);
 //
 // Usage: php packages/php/testing/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>
 
-require __DIR__ . '/../../../../../vendor-php/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/repository_root.php';
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
 require __DIR__ . '/runner.php';
 
 if ($argc !== 3) {

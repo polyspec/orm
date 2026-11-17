@@ -10,11 +10,11 @@ declare(strict_types=1);
 // Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php
 // <tests/dbspec dir> <stress document> <ddl.json> <plan-cases.json> <mermaid.json>
 
-require __DIR__ . '/../../../../../tests/dbspec/input.php';
-require __DIR__ . '/../../../../../vendor-php/autoload.php';
-require __DIR__ . '/../../../../../tests/dbspec/vectors.php';
+require_once dirname(__DIR__, 4) . '/php/tests/repository_root.php';
+require ormRepositoryRoot() . '/tests/dbspec/input.php';
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
+require ormRepositoryRoot() . '/tests/dbspec/vectors.php';
 require __DIR__ . '/../../../../php/tests/dbspec_plan_cases.php';
-require_once __DIR__ . '/../../../../php/tests/repository_root.php';
 require __DIR__ . '/../../../../php/testing/dbspec/compare/php-interface.php';
 
 if ($argc !== 6) {

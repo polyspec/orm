@@ -117,6 +117,30 @@ function dependencies(path: string, text: string): string[] {
   return [...text.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*'(\.{1,2}\/[^']+)'/g)].map(match => resolve(directory, match[1] ?? ''));
 }
 
+// movedPathErrors returns one error for each relative require of a PHP file and each relative import of a JavaScript
+// file of the tree legacy (tracked: the tracked files; read(path) as Read) that names a path outside the repository, a
+// path in a directory that legacy does not hold, or a file of legacy that is not tracked where the root tracks the same
+// path. Each is a count of directories that the move of the packages under legacy made one too short; the root is found
+// by the helper of the language instead, which names it however deep the file lies.
+export function movedPathErrors(tracked: string[], read: Read): string[] {
+  const files = new Set(tracked);
+  const held = new Set(tracked.filter(path => path.startsWith('legacy/')).map(path => path.split('/')[1]));
+  const fix = 'find the root by the helper of its language (ormRepositoryRoot() of PHP) in place of a count of directories';
+  const errors: string[] = [];
+  for (const path of tracked) {
+    if (!path.startsWith('legacy/') || !/\.(?:php|[cm]?[jt]s)$/.test(path)) continue;
+    const text = read(path);
+    if (text === undefined) continue;
+    for (const target of dependencies(path, text)) {
+      if (target.startsWith('../')) errors.push(`${path} requires ${target}, outside the repository; ${fix}`);
+      else if (!target.startsWith('legacy/')) continue;
+      else if (!held.has(target.split('/')[1] ?? '')) errors.push(`${path} requires ${target}, a directory that legacy does not hold; ${fix}`);
+      else if (!files.has(target) && files.has(target.slice('legacy/'.length))) errors.push(`${path} requires ${target}, which is ${target.slice('legacy/'.length)} of the root; ${fix}`);
+    }
+  }
+  return errors;
+}
+
 // reportingScriptErrors returns one error each time a test file that a command (commands: {source, command}) runs does not report a case.
 // A TypeScript test must write the shared case report (tests/testcase.mts), directly or through an imported file.
 // PHP tests are run, reported and given a deadline by PHPUnit (vendor-php/bin/phpunit of the development root, and that package's phpunit.xml.dist).

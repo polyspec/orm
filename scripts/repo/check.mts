@@ -14,7 +14,7 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, unlinkedCargoErrors, unlinkedCargoSourceErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, typescriptExclusiveReaderErrors, phpunitModelErrors, unleasedCargoErrors, unlinkedCargoErrors, unlinkedCargoSourceErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, movedPathErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { nativeTestErrors } from './native-tests.mts';
 import { caseRunnerTests, readTree as readRecipeTree } from '../features/recipe-runners.mts';
@@ -114,6 +114,7 @@ const runCommands = [
   ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command, dialect: 'sh' as const })),
 ];
 failures.push(...reportingScriptErrors(runCommands, (path: string) => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
+failures.push(...movedPathErrors(tracked, (path: string) => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
 // Build and lint tools (tsc, go generate, go vet, go build, cargo build) are long-running work, so they run
 // under tests/run-long.mts with step logs and without a deadline, as below.
 const featureUnits = [...features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
