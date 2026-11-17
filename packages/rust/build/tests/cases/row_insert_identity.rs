@@ -42,7 +42,7 @@ async fn close_dialect_fixture(
 // Runtime-unique (FCV-14): the phase publisher, the cancellation flag and inserts joined on one connection exist only in the
 // Rust insert_row; what any runtime answers is the recipe cases generated_keys and generated_key_lifecycle.
 // Requirements: INT-123a.
-async fn insert_phases_and_joined_keys_follow_the_transaction() {
+async fn insert_phases_and_joined_keys_follow_the_transaction_servers() {
     let _case = polyspec_orm_testcase::case!();
     check().await;
 }
@@ -159,5 +159,5 @@ async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &polyspec
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("row_insert_identity": insert_phases_and_joined_keys_follow_the_transaction)
+    polyspec_orm_testcase::native_trials!("row_insert_identity": insert_phases_and_joined_keys_follow_the_transaction_servers)
 }

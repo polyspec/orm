@@ -4,7 +4,7 @@ use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-135.
-async fn physical_query_columns_preserve_empty_results_and_duplicate_aliases() {
+async fn physical_query_columns_preserve_empty_results_and_duplicate_aliases_servers() {
     let _case = polyspec_orm_testcase::case!();
     check().await;
 }
@@ -33,7 +33,7 @@ async fn check() {
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-125a.
-async fn physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone() {
+async fn physical_catalog_query_runs_a_stale_statement_again_alone_on_postgres() {
     let _case = polyspec_orm_testcase::case!();
     stale_statement().await;
 }
@@ -81,5 +81,5 @@ async fn stale_statement() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("tool_columns": physical_query_columns_preserve_empty_results_and_duplicate_aliases, physical_catalog_query_runs_a_stale_statement_again_on_postgres_alone)
+    polyspec_orm_testcase::native_trials!("tool_columns": physical_query_columns_preserve_empty_results_and_duplicate_aliases_servers, physical_catalog_query_runs_a_stale_statement_again_alone_on_postgres)
 }

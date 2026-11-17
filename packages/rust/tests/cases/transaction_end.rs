@@ -28,7 +28,7 @@ fn once() -> TransactionOptions {
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72.
-async fn failed_cleanup_discards_the_connection() {
+async fn failed_cleanup_discards_the_connection_mysql() {
     let _case = polyspec_orm_testcase::case!();
     let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 1, polyspec_orm::Config::default()).await.expect("connect");
     let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
@@ -70,7 +70,7 @@ async fn failed_cleanup_discards_the_connection() {
 // Even if RELEASE_LOCK fails, the local value reset is still attempted, and both failures are reported.
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72.
-async fn every_failed_cleanup_step_is_reported() {
+async fn every_failed_cleanup_step_is_reported_mysql() {
     let _case = polyspec_orm_testcase::case!();
     let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 2, polyspec_orm::Config::default()).await.expect("connect");
     let lock = format!("orm_test.killed.{}", std::process::id());
@@ -83,7 +83,7 @@ async fn every_failed_cleanup_step_is_reported() {
 // named lock, so another connection takes the lock.
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72.
-async fn panicking_callback_ends_its_transaction() {
+async fn panicking_callback_ends_its_transaction_mysql() {
     let _case = polyspec_orm_testcase::case!();
     let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, polyspec_orm::Config::default()).await.expect("connect");
     let key = format!("orm_test.panicked.{}", std::process::id());
@@ -117,7 +117,7 @@ async fn panicking_callback_ends_its_transaction() {
 // On SQLite, the write transaction of the closed connection ends, so another connection takes the write lock.
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72, INT-67.
-async fn dropped_transaction_closes_its_connection() {
+async fn dropped_transaction_closes_its_connection_servers() {
     let _case = polyspec_orm_testcase::case!();
     let tmp = std::env::temp_dir().join(format!("orm-rust-dropped-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).or_panic(|e| format!("create {}: {e}", tmp.display()));
@@ -196,7 +196,7 @@ async fn dropped_transaction_closes_its_connection() {
 // variable remains after COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-72.
-async fn failed_local_reset_is_reported() {
+async fn failed_local_reset_is_reported_mysql() {
     let _case = polyspec_orm_testcase::case!();
     let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 2, polyspec_orm::Config::default()).await.expect("connect");
     let reset = polyspec_orm::testing::killed_transaction_cleanup(&db, None).await;
@@ -207,5 +207,5 @@ async fn failed_local_reset_is_reported() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("transaction_end": failed_cleanup_discards_the_connection, every_failed_cleanup_step_is_reported, panicking_callback_ends_its_transaction, dropped_transaction_closes_its_connection, failed_local_reset_is_reported)
+    polyspec_orm_testcase::native_trials!("transaction_end": failed_cleanup_discards_the_connection_mysql, every_failed_cleanup_step_is_reported_mysql, panicking_callback_ends_its_transaction_mysql, dropped_transaction_closes_its_connection_servers, failed_local_reset_is_reported_mysql)
 }

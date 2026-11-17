@@ -4,7 +4,7 @@ use polyspec_orm_build::tool_db;
 
 // Requirements: SCH-3.
 #[tokio::main(flavor = "current_thread")]
-async fn physical_tool_cells_reject_loss_without_substituting_values() {
+async fn physical_tool_cells_reject_loss_without_substituting_values_servers() {
     let _case = polyspec_orm_testcase::case!();
     physical_tool_cells().await;
 }
@@ -44,7 +44,7 @@ async fn physical_tool_cells() {
 
 // Requirements: INT-170, INT-185.
 #[tokio::main(flavor = "current_thread")]
-async fn a_refused_multirange_read_leaves_no_prepared_statement_on_its_session() {
+async fn a_refused_multirange_read_leaves_no_prepared_statement_on_its_session_postgres() {
     let _case = polyspec_orm_testcase::case!();
     multirange_session().await;
 }
@@ -71,7 +71,7 @@ async fn multirange_session() {
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     polyspec_orm_testcase::native_trials!(
-        "tool_cells": physical_tool_cells_reject_loss_without_substituting_values,
-        a_refused_multirange_read_leaves_no_prepared_statement_on_its_session
+        "tool_cells": physical_tool_cells_reject_loss_without_substituting_values_servers,
+        a_refused_multirange_read_leaves_no_prepared_statement_on_its_session_postgres
     )
 }

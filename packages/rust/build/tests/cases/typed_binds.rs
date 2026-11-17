@@ -4,7 +4,7 @@ use physical_fixture::{dsn_for, sqlite_path};
 use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-116.
-async fn native_typed_binds_preserve_values_and_typed_nulls() {
+async fn native_typed_binds_preserve_values_and_typed_nulls_servers() {
     let _case = polyspec_orm_testcase::case!();
     async {
         let path = sqlite_path("typed-binds");
@@ -41,7 +41,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-116, INT-122.
-async fn native_typed_writes_roundtrip_reject_and_rollback() {
+async fn native_typed_writes_roundtrip_reject_and_rollback_servers() {
     let _case = polyspec_orm_testcase::case!();
     async {
         let path = sqlite_path("typed-writes");
@@ -229,5 +229,5 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("typed_binds": native_typed_binds_preserve_values_and_typed_nulls, native_typed_writes_roundtrip_reject_and_rollback)
+    polyspec_orm_testcase::native_trials!("typed_binds": native_typed_binds_preserve_values_and_typed_nulls_servers, native_typed_writes_roundtrip_reject_and_rollback_servers)
 }

@@ -25,6 +25,7 @@ const LISTING = [
   'driver::tests::declared_mysql_text_decodes_utf8_bytes: test',
   'dialect_mysql::tests::renders_a_limit: test',
   'zone::only_the_named_parameters_reach_sqlx: test',
+  'zone::dropping_a_query_cancels_it_servers: test',
   'rollback::transaction_forms_rollback_fault_sqlite: test',
   'rollback::transaction_forms_rollback_fault_mysql: test',
   'rollback::transaction_forms_rollback_fault_postgres: test',
@@ -38,7 +39,7 @@ const LISTING = [
   'markdown_session::refused_row_sends_close: test',
   'src/lib.rs - Db::connect (line 12): test',
   '',
-  '16 tests, 0 benchmarks',
+  '17 tests, 0 benchmarks',
 ].join('\n');
 
 caseTest('the groups of the Rust test program are the names that its main.rs lists', () => {
@@ -48,7 +49,7 @@ caseTest('the groups of the Rust test program are the names that its main.rs lis
 
 caseTest('a listing of cargo test names a test on each line that ends in `: test`', () => {
   const names = listedTests(LISTING);
-  assert.equal(names.length, 15);
+  assert.equal(names.length, 16);
   assert.equal(names.at(-1), 'src/lib.rs - Db::connect (line 12)');
   assert.deepEqual(listedTests('16 tests, 0 benchmarks\n'), []);
 });
@@ -63,6 +64,7 @@ caseTest('the name of a Rust test says what it runs on: the database of its grou
   assert.equal(need('rollback::transaction_forms_rollback_fault_mysql'), 'mysql');
   assert.equal(need('rollback::transaction_forms_rollback_fault_postgres'), 'postgres');
   assert.equal(need('rollback::transaction_forms_rollback_fault_sqlite'), undefined);
+  assert.equal(need('zone::dropping_a_query_cancels_it_servers'), 'servers');
   // The tests that the run of the workspace with the servers leaves to another target are left here as well.
   assert.equal(need('markdown_conformance::insert_one'), 'elsewhere');
   assert.equal(need('markdown_session::refused_row_sends_close'), undefined);
@@ -76,8 +78,8 @@ caseTest('the name of a Rust test says what it runs on: the database of its grou
 
 caseTest('the offline selection of the Rust tests skips a left group whole and a left test of another group by its name, and counts them', () => {
   const { skips, left, selected } = rustSelection(listedTests(LISTING), GROUPS, ELSEWHERE);
-  assert.deepEqual(skips, ['rollback::transaction_forms_rollback_fault_mysql', 'rollback::transaction_forms_rollback_fault_postgres', 'aes_rotation_mysql::', 'aes_rotation_postgres::', 'aes_rotation_markdown::', 'markdown_conformance::']);
-  assert.deepEqual(left, { mysql: 3, postgres: 2, flowmark: 1, elsewhere: 1 });
+  assert.deepEqual(skips, ['zone::dropping_a_query_cancels_it_servers', 'rollback::transaction_forms_rollback_fault_mysql', 'rollback::transaction_forms_rollback_fault_postgres', 'aes_rotation_mysql::', 'aes_rotation_postgres::', 'aes_rotation_markdown::', 'markdown_conformance::']);
+  assert.deepEqual(left, { mysql: 3, postgres: 2, servers: 1, flowmark: 1, elsewhere: 1 });
   assert.equal(selected, 8);
 });
 
@@ -102,6 +104,7 @@ const MODULES: Record<string, string[]> = {
     `${PACKAGE}.test_statement_runner.StatementRunnerTest.test_active_frame_sqlite`,
     `${PACKAGE}.test_statement_runner.StatementRunnerTest.test_active_frame_mysql`,
     `${PACKAGE}.test_statement_runner.StatementRunnerTest.test_active_frame_postgres`,
+    `${PACKAGE}.test_statement_runner.StatementRunnerTest.test_value_types_servers`,
   ],
 };
 const FILES = ['__init__.py', 'recipe.py', 'aes_rotation_mariadb.py', 'test_aes_rotation_mysql.py', 'test_aes_rotation_postgres.py', 'test_aes_rotation_markdown.py', 'test_aes_rotation_sqlite.py', 'test_mysql_found_rows.py', 'test_statement_runner.py'];
@@ -119,7 +122,7 @@ caseTest('the name of a Python test module says what it runs on by its end', () 
 caseTest('the offline selection of the Python tests names an offline module, and the offline tests of a module that holds a test of a server', () => {
   const { names, left, selected } = pythonSelection(FILES, testsOf);
   assert.deepEqual(names, [`${PACKAGE}.test_aes_rotation_sqlite`, `${PACKAGE}.test_mysql_found_rows`, `${PACKAGE}.test_statement_runner.StatementRunnerTest.test_active_frame_sqlite`]);
-  assert.deepEqual(left, { mysql: 3, postgres: 2, flowmark: 1, elsewhere: 0 });
+  assert.deepEqual(left, { mysql: 3, postgres: 2, servers: 1, flowmark: 1, elsewhere: 0 });
   assert.equal(selected, 3);
 });
 

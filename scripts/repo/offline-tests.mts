@@ -9,11 +9,11 @@
 //   rust    the test program all of packages/rust/programs names a test <group>::<name>, and the groups are the modules that
 //           tests/all/main.rs lists. A group <recipe>_mysql or <recipe>_postgres runs on that server and a group
 //           <recipe>_markdown on flowmark (docs/spec/feature-coverage.md FCV-3). A test of another group whose own name
-//           ends in _mysql or _postgres runs on that server. The tests that client-db-test.mts leaves to another target
+//           ends in _mysql or _postgres runs on that server, and one that ends in _servers on more than one server. The tests that client-db-test.mts leaves to another target
 //           are left here too. Every other test, and every test of another program of the workspace, is offline.
 //   python  a test module test_<recipe>_mysql.py or test_<recipe>_postgres.py runs on that server and
-//           test_<recipe>_markdown.py on flowmark. A test of another module whose method ends in _mysql or _postgres runs
-//           on that server. Every other test is offline. A case of a recipe is named by its case id alone, so unittest
+//           test_<recipe>_markdown.py on flowmark. A test of another module whose method ends in _mysql, _postgres
+//           or _servers runs on that server or on more than one. Every other test is offline. A case of a recipe is named by its case id alone, so unittest
 //           selects it by its module.
 // A test that reads a server and whose name does not say so stays in the offline selection and fails there with its own
 // message: nothing is skipped by a list, and the fix is at the test, whose name or group says what it runs on.
@@ -33,11 +33,12 @@ const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const RUST_MAIN = 'packages/rust/programs/tests/all/main.rs';
 const PYTHON_TESTS = 'legacy/packages/python/tests';
 
-export const NEEDS = ['mysql', 'postgres', 'flowmark', 'elsewhere'] as const;
+export const NEEDS = ['mysql', 'postgres', 'servers', 'flowmark', 'elsewhere'] as const;
 export type Need = (typeof NEEDS)[number];
 export type Counts = Record<Need, number>;
-const NEED_OF_SUFFIX: Record<string, Need> = { mysql: 'mysql', postgres: 'postgres', markdown: 'flowmark' };
-const zero = (): Counts => ({ mysql: 0, postgres: 0, flowmark: 0, elsewhere: 0 });
+// The end of a name: _mysql and _postgres for one server, _servers for more than one, _markdown for flowmark.
+const NEED_OF_SUFFIX: Record<string, Need> = { mysql: 'mysql', postgres: 'postgres', servers: 'servers', markdown: 'flowmark' };
+const zero = (): Counts => ({ mysql: 0, postgres: 0, servers: 0, flowmark: 0, elsewhere: 0 });
 
 /** rustGroups are the groups of the test program all, read from the text of its main.rs. */
 export function rustGroups(main: string): string[] {
@@ -57,9 +58,9 @@ export function rustNeed(name: string, groups: ReadonlySet<string>, elsewhere: R
   const [group = '', ...rest] = name.split('::');
   if (rest.length === 0 || !groups.has(group)) return undefined;
   const suffix = (text: string, suffixes: string): string | undefined => new RegExp(`_(${suffixes})$`).exec(text)?.[1];
-  const ofGroup = suffix(group, 'mysql|postgres|markdown');
+  const ofGroup = suffix(group, 'mysql|postgres|servers|markdown');
   if (ofGroup !== undefined) return NEED_OF_SUFFIX[ofGroup];
-  const ofTest = suffix(rest.at(-1) ?? '', 'mysql|postgres');
+  const ofTest = suffix(rest.at(-1) ?? '', 'mysql|postgres|servers');
   return ofTest === undefined ? undefined : NEED_OF_SUFFIX[ofTest];
 }
 
@@ -100,7 +101,7 @@ const PYTHON_PACKAGE = PYTHON_TESTS.replaceAll('/', '.');
  * pythonSelection is the names that unittest takes for the offline tests among the test modules `files`, and the number of
  * tests that are left by what they run on. `testsOf` gives the ids of the tests of a module, as unittest loads them. A
  * module that is left by its name is left whole. In another module, a test <module>.<class>.<method> whose method ends in
- * _mysql or _postgres is left; such a module is selected by the ids of its other tests, and a module without one by its name.
+ * _mysql, _postgres or _servers is left; such a module is selected by the ids of its other tests, and a module without one by its name.
  */
 export function pythonSelection(files: readonly string[], testsOf: (module: string) => readonly string[]): { names: string[]; left: Counts; selected: number } {
   const tests = files.filter(file => /^test_\w+\.py$/.test(file)).sort();
@@ -113,7 +114,7 @@ export function pythonSelection(files: readonly string[], testsOf: (module: stri
     const ofModule = pythonNeed(file);
     if (ofModule !== undefined) { left[ofModule] += ids.length; continue; }
     const needOf = (id: string): Need | undefined => {
-      const suffix = id.startsWith(`${module}.`) ? /_(mysql|postgres)$/.exec(id)?.[1] : undefined;
+      const suffix = id.startsWith(`${module}.`) ? /_(mysql|postgres|servers)$/.exec(id)?.[1] : undefined;
       return suffix === undefined ? undefined : NEED_OF_SUFFIX[suffix];
     };
     const offline = ids.filter(id => needOf(id) === undefined);
@@ -165,7 +166,7 @@ async function main(args: readonly string[]): Promise<number> {
       const { rustOwnedElsewhereSkipArguments } = await import('../client-db-test.mts');
       const elsewhere = new Set(rustOwnedElsewhereSkipArguments(ROOT).filter(word => word !== '--skip'));
       const { skips, left, selected } = rustSelection(names, new Set(rustGroups(readFileSync(join(ROOT, RUST_MAIN), 'utf8'))), elsewhere);
-      console.error(`offline-tests: make test-rust selects ${selected} of ${names.length} tests and leaves ${left.mysql} of MySQL, ${left.postgres} of PostgreSQL and ${left.flowmark} of flowmark to make client-db-rust-check, and ${left.elsewhere} to make markdown-conformance-check/rust and make feature-performance-check`);
+      console.error(`offline-tests: make test-rust selects ${selected} of ${names.length} tests and leaves ${left.mysql} of MySQL, ${left.postgres} of PostgreSQL, ${left.servers} of several servers and ${left.flowmark} of flowmark to make client-db-rust-check, and ${left.elsewhere} to make markdown-conformance-check/rust and make feature-performance-check`);
       process.stdout.write(`${skips.flatMap(pattern => ['--skip', pattern]).join(' ')}\n`);
       return 0;
     }
@@ -174,7 +175,7 @@ async function main(args: readonly string[]): Promise<number> {
       const listed = pythonTests(argument, files);
       const { names, left, selected } = pythonSelection(files, module => listed.get(module) ?? []);
       const total = [...listed.values()].reduce((sum, ids) => sum + ids.length, 0);
-      console.error(`offline-tests: make test-python selects ${selected} of ${total} tests and leaves ${left.mysql} of MySQL, ${left.postgres} of PostgreSQL and ${left.flowmark} of flowmark to make suite-python-check`);
+      console.error(`offline-tests: make test-python selects ${selected} of ${total} tests and leaves ${left.mysql} of MySQL, ${left.postgres} of PostgreSQL, ${left.servers} of several servers and ${left.flowmark} of flowmark to make suite-python-check`);
       process.stdout.write(`${names.join(' ')}\n`);
       return 0;
     }

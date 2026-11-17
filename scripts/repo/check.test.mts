@@ -285,7 +285,7 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   for (const path of ['legacy/packages/ts/tests/idle-connection-end.mjs', 'legacy/packages/go/orm/timezone_test.go', 'legacy/packages/python/tests/connection_pool.py', 'packages/rust/tests/cases/zone.rs']) {
     // zone.rs holds other cases; the INT-92 case and its release helper end before the next case.
     const whole = text(path);
-    const source = path.endsWith('zone.rs') ? whole.slice(whole.indexOf('async fn pool_discards_ended_idle_connection'), whole.indexOf('fn statement_timeout_negative_is_unrepresentable')) : whole;
+    const source = path.endsWith('zone.rs') ? whole.slice(whole.indexOf('async fn pool_discards_ended_idle_connection_servers'), whole.indexOf('fn statement_timeout_negative_is_unrepresentable')) : whole;
     assert.match(source, /IS_USED_LOCK/, `${path} reads once that the idle connection holds the named lock`);
     assert.match(source, /GET_LOCK\(\?, 30\)|GET_LOCK\(%s, 30\)/, `${path} waits for the end of the killed thread with GET_LOCK`);
     assert.doesNotMatch(source, /setTimeout|time\.sleep|time\.Sleep|tokio::time::sleep|Instant::now|monotonic|time\.Now\(\)\.Add|deadline/, `${path} waits on no timer`);

@@ -40,7 +40,7 @@ fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
 
 // Requirements: SCH-4.
 #[tokio::main(flavor = "current_thread")]
-async fn physical_tool_accessors_preserve_errors_on_all_databases() {
+async fn physical_tool_accessors_preserve_errors_on_all_databases_servers() {
     let _case = polyspec_orm_testcase::case!();
     physical_accessors().await;
 }
@@ -70,5 +70,5 @@ async fn physical_accessors() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("tool_values": tool_accessors_reject_invalid_values_without_defaults_or_contents, physical_tool_accessors_preserve_errors_on_all_databases)
+    polyspec_orm_testcase::native_trials!("tool_values": tool_accessors_reject_invalid_values_without_defaults_or_contents, physical_tool_accessors_preserve_errors_on_all_databases_servers)
 }

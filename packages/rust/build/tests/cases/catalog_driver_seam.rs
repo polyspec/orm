@@ -15,7 +15,7 @@ use std::sync::{atomic::AtomicBool, Arc, Mutex};
 #[tokio::main(flavor = "current_thread")]
 // A quoted MariaDB default that is not one whole literal, which no server writes, so the recipes cannot hold it (FCV-2).
 // Requirements: DIA-205.
-async fn a_mariadb_default_that_is_not_one_literal_is_metadata_invalid() {
+async fn a_mariadb_default_that_is_not_one_literal_is_metadata_invalid_mysql() {
     let _case = polyspec_orm_testcase::case!();
     let dsn = physical_fixture::dsn_for("mysql", &physical_fixture::sqlite_path("mariadb-default"));
     for text in ["'a' 'b'", "'unterminated", "'a'x"] {
@@ -90,7 +90,7 @@ async fn an_insert_whose_commit_is_unacknowledged_is_indeterminate_with_its_caus
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
     polyspec_orm_testcase::native_trials!(
-        "catalog_driver_seam": a_mariadb_default_that_is_not_one_literal_is_metadata_invalid,
+        "catalog_driver_seam": a_mariadb_default_that_is_not_one_literal_is_metadata_invalid_mysql,
         an_insert_whose_commit_is_unacknowledged_is_indeterminate_with_its_cause
     )
 }
