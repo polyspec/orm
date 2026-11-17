@@ -21835,6 +21835,1512 @@
       ]
     }
   ],
+  "db.utils": [
+    {
+      "id": "the_utilities_of_a_db",
+      "rule": "CORE-180",
+      "receiver": {
+        "new": "db.connect",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      }
+    }
+  ],
+  "db.transaction.utils": [
+    {
+      "id": "the_utilities_of_a_tx",
+      "rule": "CORE-180",
+      "receiver": {
+        "new": "db.connect",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "callback": {
+        "function": {
+          "calls": [
+            {
+              "on": "0",
+              "call": "tx.utils",
+              "args": {}
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "options": {
+        "isolation": null,
+        "read_only": null,
+        "timeout_ms": null,
+        "retry": null,
+        "audit": null
+      },
+      "result": {
+        "kind": "text",
+        "value": "done"
+      }
+    }
+  ],
+  "utils.stats": [
+    {
+      "id": "the_pool_of_one_connection",
+      "rule": "CORE-186",
+      "receiver": {
+        "new": "db.utils",
+        "receiver": {
+          "new": "db.connect",
+          "args": {
+            "dsn": {
+              "text": [
+                "sqlite://",
+                {
+                  "case_path": "shop.db"
+                }
+              ]
+            },
+            "pool_size": 1,
+            "cfg": {}
+          },
+          "then": []
+        }
+      },
+      "result": {
+        "idle": 1,
+        "in_use": 0,
+        "max_open_connections": 1,
+        "open_connections": 1
+      }
+    }
+  ],
+  "utils.lock": [
+    {
+      "id": "a_lock_outside_a_transaction",
+      "rule": "CORE-183",
+      "receiver": {
+        "new": "db.utils",
+        "receiver": {
+          "new": "db.connect",
+          "args": {
+            "dsn": {
+              "text": [
+                "sqlite://",
+                {
+                  "case_path": "shop.db"
+                }
+              ]
+            },
+            "pool_size": 1,
+            "cfg": {}
+          },
+          "then": []
+        }
+      },
+      "key": "orm.case",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: lock requires a transaction: call it on the utils of the Tx of a transaction"
+      }
+    }
+  ],
+  "utils.set_local": [
+    {
+      "id": "a_local_value_outside_a_transaction",
+      "rule": "CORE-183",
+      "receiver": {
+        "new": "db.utils",
+        "receiver": {
+          "new": "db.connect",
+          "args": {
+            "dsn": {
+              "text": [
+                "sqlite://",
+                {
+                  "case_path": "shop.db"
+                }
+              ]
+            },
+            "pool_size": 1,
+            "cfg": {}
+          },
+          "then": []
+        }
+      },
+      "key": "orm.actor",
+      "value": "ann",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: set_local requires a transaction: call it on the utils of the Tx of a transaction"
+      }
+    }
+  ],
+  "utils.backend_waiting_for_lock": [
+    {
+      "id": "sqlite_has_no_waiting_backend",
+      "rule": "CORE-183",
+      "receiver": {
+        "new": "db.utils",
+        "receiver": {
+          "new": "db.connect",
+          "args": {
+            "dsn": {
+              "text": [
+                "sqlite://",
+                {
+                  "case_path": "shop.db"
+                }
+              ]
+            },
+            "pool_size": 1,
+            "cfg": {}
+          },
+          "then": []
+        }
+      },
+      "result": false
+    }
+  ],
+  "utils.schema": [
+    {
+      "id": "the_schema_utilities",
+      "rule": "CORE-180",
+      "receiver": {
+        "new": "db.utils",
+        "receiver": {
+          "new": "db.connect",
+          "args": {
+            "dsn": {
+              "text": [
+                "sqlite://",
+                {
+                  "case_path": "shop.db"
+                }
+              ]
+            },
+            "pool_size": 1,
+            "cfg": {}
+          },
+          "then": []
+        }
+      }
+    }
+  ],
+  "utils.privileges": [
+    {
+      "id": "the_privilege_utilities",
+      "rule": "CORE-180",
+      "receiver": {
+        "new": "db.utils",
+        "receiver": {
+          "new": "db.connect",
+          "args": {
+            "dsn": {
+              "text": [
+                "sqlite://",
+                {
+                  "case_path": "shop.db"
+                }
+              ]
+            },
+            "pool_size": 1,
+            "cfg": {}
+          },
+          "then": []
+        }
+      }
+    }
+  ],
+  "utils.aes": [
+    {
+      "id": "the_aes_utilities",
+      "rule": "CORE-180",
+      "receiver": {
+        "new": "db.utils",
+        "receiver": {
+          "new": "db.connect",
+          "args": {
+            "dsn": {
+              "text": [
+                "sqlite://",
+                {
+                  "case_path": "shop.db"
+                }
+              ]
+            },
+            "pool_size": 1,
+            "cfg": {}
+          },
+          "then": []
+        }
+      }
+    }
+  ],
+  "schema_utils.register": [
+    {
+      "id": "a_set_on_a_connection_without_one",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "result": null
+    },
+    {
+      "id": "the_same_set_again",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        },
+        "then": [
+          {
+            "call": "schema_utils.register",
+            "args": {
+              "schema": {
+                "new": "schema.load",
+                "args": {
+                  "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+                  "external_text": "",
+                  "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "result": null
+    },
+    {
+      "id": "a_second_set",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        },
+        "then": [
+          {
+            "call": "schema_utils.register",
+            "args": {
+              "schema": {
+                "new": "schema.load",
+                "args": {
+                  "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+                  "external_text": "",
+                  "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+        }
+      },
+      "result": null
+    }
+  ],
+  "schema_utils.install": [
+    {
+      "id": "an_empty_database",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "result": null,
+      "after": [
+        {
+          "call": "schema_utils.empty",
+          "args": {},
+          "result": false
+        }
+      ]
+    },
+    {
+      "id": "an_installed_set_again",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        },
+        "then": [
+          {
+            "call": "schema_utils.install",
+            "args": {
+              "schema": {
+                "new": "schema.load",
+                "args": {
+                  "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+                  "external_text": "",
+                  "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "result": null
+    },
+    {
+      "id": "only_some_tables_of_the_set",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+        }
+      },
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: install found only some tables of the document set: owner"
+      }
+    }
+  ],
+  "schema_utils.add_tables_and_columns": [
+    {
+      "id": "a_column_that_is_null",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        },
+        "then": [
+          {
+            "call": "schema_utils.install",
+            "args": {
+              "schema": {
+                "new": "schema.load",
+                "args": {
+                  "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+                  "external_text": "",
+                  "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  note varchar(32) null\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:6abd5c9a00b98168efbb3bdd6a971800b0c10fdf14ceab77cc6e1ce1409b8b0e"
+        }
+      },
+      "result": [
+        "clock_event.note"
+      ],
+      "after": [
+        {
+          "call": "schema_utils.add_tables_and_columns",
+          "args": {
+            "schema": {
+              "new": "schema.load",
+              "args": {
+                "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label i32\n  created_ts datetime(6) default now\n  note varchar(32) null\n  primary key (seq)\n}\n",
+                "external_text": "",
+                "manifest_hash": "sha256:49305b636252c5a5bab65d3a927e972b747c5453c8afa519ec31b37d3df5862a"
+              }
+            }
+          },
+          "raises": {
+            "kind": "schema_differs"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nothing_to_add",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        },
+        "then": [
+          {
+            "call": "schema_utils.install",
+            "args": {
+              "schema": {
+                "new": "schema.load",
+                "args": {
+                  "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+                  "external_text": "",
+                  "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema": {
+        "new": "schema.load",
+        "args": {
+          "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+          "external_text": "",
+          "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+        }
+      },
+      "result": []
+    }
+  ],
+  "schema_utils.exists": [
+    {
+      "id": "a_schema_with_a_table",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE app__note (id INTEGER PRIMARY KEY)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "name": "app",
+      "result": true
+    },
+    {
+      "id": "a_schema_without_a_table",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE app__note (id INTEGER PRIMARY KEY)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "name": "other",
+      "result": false
+    },
+    {
+      "id": "a_name_that_is_no_identifier",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "name": "a b",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: identifier a b is invalid"
+      }
+    }
+  ],
+  "schema_utils.installed": [
+    {
+      "id": "a_table_of_a_schema",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE app__note (id INTEGER PRIMARY KEY)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "name": "app",
+      "table": "note",
+      "result": true
+    },
+    {
+      "id": "a_table_that_the_schema_lacks",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE app__note (id INTEGER PRIMARY KEY)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "name": "app",
+      "table": "gone",
+      "result": false
+    },
+    {
+      "id": "an_empty_schema_name",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "name": "",
+      "table": "note",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: schema and table names are required"
+      }
+    }
+  ],
+  "schema_utils.empty": [
+    {
+      "id": "a_new_database",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "result": true
+    },
+    {
+      "id": "a_database_with_a_table",
+      "rule": "CORE-182",
+      "receiver": {
+        "new": "utils.schema",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE app__note (id INTEGER PRIMARY KEY)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "result": false
+    }
+  ],
+  "privilege_utils.grant_table": [
+    {
+      "id": "sqlite_has_no_table_privileges",
+      "rule": "CORE-184",
+      "receiver": {
+        "new": "utils.privileges",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "table": "app.note",
+      "role": "reader",
+      "raises": {
+        "kind": "capability_unsupported",
+        "category": "value",
+        "message": "capability_unsupported: table privileges are supported only by postgres"
+      }
+    },
+    {
+      "id": "a_table_without_its_schema",
+      "rule": "CORE-184",
+      "receiver": {
+        "new": "utils.privileges",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "table": "note",
+      "role": "reader",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: a qualified table name is required"
+      }
+    }
+  ],
+  "privilege_utils.revoke_table": [
+    {
+      "id": "sqlite_has_no_table_privileges",
+      "rule": "CORE-184",
+      "receiver": {
+        "new": "utils.privileges",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "table": "app.note",
+      "privilege": "select",
+      "role": "reader",
+      "raises": {
+        "kind": "capability_unsupported",
+        "category": "value",
+        "message": "capability_unsupported: table privileges are supported only by postgres"
+      }
+    },
+    {
+      "id": "a_privilege_that_is_none",
+      "rule": "CORE-184",
+      "receiver": {
+        "new": "utils.privileges",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "table": "app.note",
+      "privilege": "drop",
+      "role": "reader",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: unsupported table privilege \"drop\""
+      }
+    }
+  ],
+  "privilege_utils.inspect_table": [
+    {
+      "id": "sqlite_has_no_table_privileges",
+      "rule": "CORE-184",
+      "receiver": {
+        "new": "utils.privileges",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "table": "app.note",
+      "raises": {
+        "kind": "capability_unsupported",
+        "category": "value",
+        "message": "capability_unsupported: table privileges are supported only by postgres"
+      }
+    },
+    {
+      "id": "a_table_without_its_schema",
+      "rule": "CORE-184",
+      "receiver": {
+        "new": "utils.privileges",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "table": "note",
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: a qualified table name is required"
+      }
+    }
+  ],
+  "aes_utils.status": [
+    {
+      "id": "the_rows_of_each_stored_version",
+      "rule": "CORE-185",
+      "receiver": {
+        "new": "utils.aes",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE rot_row (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              },
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO rot_row (seq, aes_key_version, token) VALUES (1, 1, NULL), (2, 2, NULL), (3, 2, NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "model": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 rot\n\ntable rot_row {\n  seq i64 identity\n  aes_key_version i32\n  token varchar(255) null\n  primary key (seq)\n  settings {\n    codec token aes hex\n    aes_version aes_key_version\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:9abde82bf1c2869ce8dbc2a386b5f5aa320092b9c198f2891fc3af377fc80369"
+            }
+          },
+          "entity": "rot_row"
+        }
+      },
+      "keyring": {
+        "new": "aes_keyring.constructor",
+        "args": {
+          "keys": [
+            [
+              {
+                "int": 1
+              },
+              "k1"
+            ],
+            [
+              {
+                "int": 2
+              },
+              "k2"
+            ]
+          ],
+          "current": 2
+        }
+      },
+      "result": {
+        "current": 2,
+        "total": 3,
+        "pending": 1,
+        "versions": [
+          [
+            {
+              "int": 1
+            },
+            1
+          ],
+          [
+            {
+              "int": 2
+            },
+            2
+          ]
+        ]
+      }
+    },
+    {
+      "id": "an_entity_without_an_aes_column",
+      "rule": "CORE-185",
+      "receiver": {
+        "new": "utils.aes",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "model": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "keyring": {
+        "new": "aes_keyring.constructor",
+        "args": {
+          "keys": [
+            [
+              {
+                "int": 1
+              },
+              "k1"
+            ],
+            [
+              {
+                "int": 2
+              },
+              "k2"
+            ]
+          ],
+          "current": 2
+        }
+      },
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: entity clock_event has no AES columns with a key version"
+      }
+    }
+  ],
+  "aes_utils.rotate": [
+    {
+      "id": "the_rows_of_an_older_version",
+      "rule": "CORE-185",
+      "receiver": {
+        "new": "utils.aes",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": [
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE rot_row (seq INTEGER PRIMARY KEY AUTOINCREMENT, aes_key_version INTEGER NOT NULL, token TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              },
+              {
+                "call": "db.execute",
+                "args": {
+                  "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO rot_row (seq, aes_key_version, token) VALUES (1, 1, NULL), (2, 2, NULL), (3, 2, NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                  "params": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "model": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 rot\n\ntable rot_row {\n  seq i64 identity\n  aes_key_version i32\n  token varchar(255) null\n  primary key (seq)\n  settings {\n    codec token aes hex\n    aes_version aes_key_version\n  }\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:9abde82bf1c2869ce8dbc2a386b5f5aa320092b9c198f2891fc3af377fc80369"
+            }
+          },
+          "entity": "rot_row"
+        }
+      },
+      "keyring": {
+        "new": "aes_keyring.constructor",
+        "args": {
+          "keys": [
+            [
+              {
+                "int": 1
+              },
+              "k1"
+            ],
+            [
+              {
+                "int": 2
+              },
+              "k2"
+            ]
+          ],
+          "current": 2
+        }
+      },
+      "result": 1,
+      "after": [
+        {
+          "call": "aes_utils.status",
+          "args": {
+            "model": {
+              "new": "query.new",
+              "args": {
+                "schema": {
+                  "new": "schema.load",
+                  "args": {
+                    "manifest_text": "dbspec 1 rot\n\ntable rot_row {\n  seq i64 identity\n  aes_key_version i32\n  token varchar(255) null\n  primary key (seq)\n  settings {\n    codec token aes hex\n    aes_version aes_key_version\n  }\n}\n",
+                    "external_text": "",
+                    "manifest_hash": "sha256:9abde82bf1c2869ce8dbc2a386b5f5aa320092b9c198f2891fc3af377fc80369"
+                  }
+                },
+                "entity": "rot_row"
+              }
+            },
+            "keyring": {
+              "new": "aes_keyring.constructor",
+              "args": {
+                "keys": [
+                  [
+                    {
+                      "int": 1
+                    },
+                    "k1"
+                  ],
+                  [
+                    {
+                      "int": 2
+                    },
+                    "k2"
+                  ]
+                ],
+                "current": 2
+              }
+            }
+          },
+          "result": {
+            "current": 2,
+            "total": 3,
+            "pending": 0,
+            "versions": [
+              [
+                {
+                  "int": 2
+                },
+                3
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_entity_without_an_aes_column",
+      "rule": "CORE-185",
+      "receiver": {
+        "new": "utils.aes",
+        "receiver": {
+          "new": "db.utils",
+          "receiver": {
+            "new": "db.connect",
+            "args": {
+              "dsn": {
+                "text": [
+                  "sqlite://",
+                  {
+                    "case_path": "shop.db"
+                  }
+                ]
+              },
+              "pool_size": 1,
+              "cfg": {}
+            },
+            "then": []
+          }
+        }
+      },
+      "model": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "keyring": {
+        "new": "aes_keyring.constructor",
+        "args": {
+          "keys": [
+            [
+              {
+                "int": 1
+              },
+              "k1"
+            ],
+            [
+              {
+                "int": 2
+              },
+              "k2"
+            ]
+          ],
+          "current": 2
+        }
+      },
+      "raises": {
+        "kind": "config",
+        "category": "value",
+        "message": "config: entity clock_event has no AES columns with a key version"
+      }
+    }
+  ],
   "step_runner.new": [
     {
       "id": "a_runner_of_a_db",

@@ -7542,7 +7542,14 @@ mod tables {
                         return Ok(json!({ "value": { "int": n.to_string() } }));
                     }
                     let status = conn.utils().aes().status(&row, &keyring).await.map_err(orm)?;
-                    let versions: Vec<Value> = status.versions.iter().map(|(version, n)| json!([version.to_string(), { "int": n.to_string() }])).collect();
+                    let mut versions: Vec<Value> = Vec::new();
+                    for (version, n) in status.versions.iter() {
+                        // The versions of a status are integer keys (CORE-185).
+                        let polyspec_orm::binding_core::Key::Int(version) = version else {
+                            return Err(ModelError::Text(format!("aes status holds the key {version:?}, which is no integer")));
+                        };
+                        versions.push(json!([version.to_string(), { "int": n.to_string() }]));
+                    }
                     Ok(json!({ "value": { "object": [
                         ["current", { "int": status.current.to_string() }],
                         ["total", { "int": status.total.to_string() }],

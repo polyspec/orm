@@ -112,7 +112,7 @@ pub use step::StepRunner;
 #[cfg(feature = "runtime")]
 pub use tx::{transaction_conflict, Close, Connection, Isolation, Savepoint, SavepointIo, Transaction, TransactionIo, TransactionOptions, Tx, DEFAULT_RETRY};
 #[cfg(feature = "runtime")]
-pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
+pub use utils::{AesKeyring, AesRotationStatus, AesUtils, Operation, PrivilegeUtils, SchemaUtils, TablePrivileges, Utils};
 pub use value::{Param, StyledValue, Val};
 
 /// The catalog code of a MySQL error number that the catalog names (docs/spec/errors.yaml), or None for any other number.

@@ -1,42 +1,60 @@
-//! Operations outside the query syntax: `db.utils()`.
+//! Operations outside the query syntax: `db.utils()` and `tx.utils()` (INT-73, CORE-180 to CORE-186).
 
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::sync::Arc;
 
 use crate::db::{Db, DbStats, Executor};
 use crate::dbspec::CatalogFetch;
 use crate::driver::TxInner;
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_ROLLBACK, KIND_SCHEMA, KIND_UTILITY};
-use crate::model::{val_param, Model};
+use crate::model::{val_param, AnyModel, EntityRef, Model};
 use crate::plan::{BindSlot, Step};
 use crate::row::read_row;
 use crate::schema::Schema;
-use crate::tx::{transaction_conflict, Tx, TxShared};
+use crate::query::Query;
+use crate::tx::{transaction_conflict, Connection, Tx, TxShared};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
 use polyspec_orm_schema::dbspec::{self, Document};
 
-/// The utilities of a connection.
+mod machine;
+pub use machine::Operation;
+
 /// The PostgreSQL statement that reports a backend waiting for a lock (INT-53).
 const BACKEND_WAITING_FOR_LOCK: &str = "SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.pid<>pg_backend_pid() AND NOT l.granted)";
 
-pub struct Utils<'a> {
-    db: &'a Db,
-    /// The transaction of `Tx::utils`, or None for `Db::utils`.
-    tx: Option<&'a Tx>,
+/// The utilities of a connection (INT-73, CORE-180). The value owns a handle of its connection, a clone of the `Db` of
+/// `Db::utils` or of the `Tx` of `Tx::utils` (CORE-101), so it borrows nothing and is the class `utils` of the contract.
+#[derive(Clone)]
+pub struct Utils {
+    conn: Connection,
 }
 
 impl Db {
     /// Operations outside the query syntax, outside a transaction.
-    pub fn utils(&self) -> Utils<'_> {
-        Utils { db: self, tx: None }
+    pub fn utils(&self) -> Utils {
+        Utils { conn: Connection::Db(self.clone()) }
     }
 }
 
-impl<'a> Utils<'a> {
+impl Utils {
     /// The operations of the transaction of `tx` (CORE-20).
-    pub(crate) fn of_transaction(tx: &'a Tx) -> Self {
-        Utils { db: tx.db(), tx: Some(tx) }
+    pub(crate) fn of_transaction(tx: &Tx) -> Self {
+        Utils { conn: Connection::Tx(tx.clone()) }
+    }
+
+    /// The database of the connection.
+    fn db(&self) -> &Db {
+        self.conn.db()
+    }
+
+    /// The transaction handle of `Tx::utils`, or None for `Db::utils`.
+    fn tx(&self) -> Option<&Tx> {
+        match &self.conn {
+            Connection::Tx(tx) => Some(tx),
+            Connection::Db(_) => None,
+        }
     }
 }
 
@@ -95,16 +113,16 @@ fn truthy(v: &Val) -> bool {
     }
 }
 
-impl<'a> Utils<'a> {
-    /// The connection pool state.
+impl Utils {
+    /// The connection pool state, the same record as `Db::stats` gives (INT-61).
     pub fn stats(&self) -> DbStats {
-        self.db.stats()
+        self.db().stats()
     }
 
     /// The transaction of a utility that needs one: the transaction of `Tx::utils`, after the checks of CORE-22 and
     /// CORE-23, or `config` for `Db::utils`.
     fn active(&self, name: &str) -> Result<Arc<TxShared>> {
-        match self.tx {
+        match self.tx() {
             Some(tx) => match tx.executor()? {
                 Executor::Tx(shared) => Ok(shared),
                 Executor::Db(_) => Err(Error::internal("a transaction handle ran on the pool")),
@@ -114,7 +132,7 @@ impl<'a> Utils<'a> {
     }
 
     fn ph(&self, n: usize) -> String {
-        if self.db.sql_driver() == "postgres" {
+        if self.db().sql_driver() == "postgres" {
             format!("${n}")
         } else {
             "?".into()
@@ -123,16 +141,13 @@ impl<'a> Utils<'a> {
 
     /// The executor for reads: the connection's active transaction, or the connection's pool if there is none.
     fn read(&self) -> Result<Executor> {
-        match self.tx {
-            Some(tx) => tx.executor(),
-            None => Ok(Executor::Db(self.db.clone())),
-        }
+        self.conn.executor()
     }
 
     /// Runs a statement of `kind` and returns the rows. The event carries `tables`.
     async fn query(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param], types: &[&str]) -> Result<Vec<Vec<Val>>> {
         let rows = ex.query_as(Some(kind), Some(tables), &step(sql, types), params, Vec::new()).await?;
-        rows.iter().map(|r| read_row(r, r.len(), self.db.inner.zone)).collect()
+        rows.iter().map(|r| read_row(r, r.len(), self.db().inner.zone)).collect()
     }
 
     /// Runs a statement of `kind` and returns the number of changed rows. The event carries `tables`.
@@ -141,26 +156,33 @@ impl<'a> Utils<'a> {
     }
 
     /// Runs f in the transaction of `Tx::utils`, or in a new transaction for `Db::utils`, which ends as `transaction` does
-    /// and does not retry.
-    async fn run_executor<T>(&self, f: impl AsyncFn(&Executor) -> Result<T>) -> Result<T> {
-        if let Some(tx) = self.tx {
-            return f(&tx.executor()?).await;
+    /// and does not retry. `f` takes the executor by value and returns a future that borrows nothing of the call, as
+    /// the callback of `transaction_async` does, so the future of a utility is `Send` (CORE-181).
+    async fn run_executor<T, F, Fut>(&self, f: F) -> Result<T>
+    where
+        F: Fn(Executor) -> Fut,
+        Fut: Future<Output = Result<T>>,
+    {
+        match &self.conn {
+            Connection::Tx(tx) => f(tx.executor()?).await,
+            Connection::Db(db) => {
+                let f = &f;
+                db.transaction_async(move |tx: Tx| async move { f(tx.executor()?).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() })
+                    .await
+            }
         }
-        let f = &f;
-        self.db
-            .transaction_async(move |tx: Tx| async move { f(&tx.executor()?).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() })
-            .await
     }
 
     /// Calls `f` with the transaction handle (INT-150): the transaction of `Tx::utils`, or a new transaction for
-    /// `Db::utils`, which ends as `transaction` does and does not retry. `Tx::run` runs one statement in it.
+    /// `Db::utils`, which ends as `transaction` does and does not retry. `Tx::run` runs one statement in it. The contract
+    /// does not declare it: through a binding it is `db.transaction` with the retry 0 and `tx.execute` (CORE-180).
     pub async fn run<T>(&self, f: impl AsyncFn(&Tx) -> Result<T>) -> Result<T> {
-        if let Some(tx) = self.tx {
+        if let Some(tx) = self.tx() {
             tx.executor()?;
             return f(tx).await;
         }
         let f = &f;
-        self.db.transaction_async(move |tx: Tx| async move { f(&tx).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() }).await
+        self.db().transaction_async(move |tx: Tx| async move { f(&tx).await }, crate::TransactionOptions { retry: Some(0), ..Default::default() }).await
     }
 
     /// Runs an existence-check statement that takes only text binds.
@@ -176,7 +198,7 @@ impl<'a> Utils<'a> {
             return Err(Error::config(format!("lock key {} is invalid", polyspec_orm_schema::message::quote(key))));
         }
         let ex = Executor::Tx(t.clone());
-        match self.db.sql_driver() {
+        match self.db().sql_driver() {
             "mysql" => {
                 let rows = self.query(&ex, KIND_UTILITY, &[], "SELECT GET_LOCK(?, 50)".into(), &[Param::Str(key.into())], &["text"]).await?;
                 let got = rows.first().and_then(|r| r.first()).cloned().unwrap_or(Val::Null);
@@ -201,7 +223,7 @@ impl<'a> Utils<'a> {
         }
         let ex = Executor::Tx(t.clone());
         let params = [Param::Str(key.into()), Param::Str(value.into())];
-        match self.db.sql_driver() {
+        match self.db().sql_driver() {
             "postgres" => {
                 self.exec(&ex, KIND_UTILITY, &[], "SELECT set_config($1, $2, true)".into(), &params, &["text", "text"]).await?;
             }
@@ -215,7 +237,6 @@ impl<'a> Utils<'a> {
         Ok(())
     }
 
-    /// A value set with set_local; NO_ROWS when it is missing.
     /// Whether a generated insert of `entity` with the identity key `sequence` succeeded in the active transaction (INT-52).
     pub fn was_inserted(&self, entity: &str, sequence: i64) -> Result<bool> {
         let t = self.active("wasInserted")?;
@@ -225,17 +246,18 @@ impl<'a> Utils<'a> {
         Ok(t.was_inserted(entity, sequence))
     }
 
-    /// Whether another backend of the PostgreSQL connection waits for a lock (INT-53). MySQL and SQLite return false without a
-    /// statement; a markdown connection is CAPABILITY_UNSUPPORTED. The statement runs on a connection of the pool, as Go does, so
+    /// Whether another backend of the PostgreSQL connection waits for a lock (INT-53). MySQL, SQLite and a markdown
+    /// connection return false without a statement (CORE-183). The statement runs on a connection of the pool, as Go does, so
     /// that the statistics of a transaction do not hide a backend that starts to wait.
     pub async fn backend_waiting_for_lock(&self) -> Result<bool> {
-        if self.db.sql_driver() != "postgres" {
+        if self.db().sql_driver() != "postgres" {
             return Ok(false);
         }
-        let rows = self.query(&Executor::Db(self.db.clone()), KIND_UTILITY, &[], BACKEND_WAITING_FOR_LOCK.into(), &[], &[]).await?;
+        let rows = self.query(&Executor::Db(self.db().clone()), KIND_UTILITY, &[], BACKEND_WAITING_FOR_LOCK.into(), &[], &[]).await?;
         Ok(matches!(rows.first().and_then(|r| r.first()), Some(Val::Bool(true))))
     }
 
+    /// A value set with set_local; NO_ROWS when it is missing.
     pub fn local(&self, key: &str) -> Result<String> {
         let t = self.active("local")?;
         if !valid_key(key) {
@@ -245,35 +267,51 @@ impl<'a> Utils<'a> {
         v.ok_or_else(|| Error::new(crate::Kind::NoRows, format!("local value {key} is not set")))
     }
 
+    /// `lock` as a machine that owns the utilities and the key: the member `utils.lock` of the contract (CORE-181).
+    pub fn lock_machine(self, key: String) -> Operation<()> {
+        Operation::new(async move { self.lock(&key).await })
+    }
+
+    /// `set_local` as a machine that owns its arguments: the member `utils.set_local` of the contract (CORE-181).
+    pub fn set_local_machine(self, key: String, value: String) -> Operation<()> {
+        Operation::new(async move { self.set_local(&key, &value).await })
+    }
+
+    /// `backend_waiting_for_lock` as a machine: the member `utils.backend_waiting_for_lock` of the contract (CORE-181).
+    pub fn backend_waiting_for_lock_machine(self) -> Operation<bool> {
+        Operation::new(async move { self.backend_waiting_for_lock().await })
+    }
+
     /// Schema installation and inspection.
-    pub fn schema(&self) -> SchemaUtils<'_> {
-        SchemaUtils { u: self }
+    pub fn schema(&self) -> SchemaUtils {
+        SchemaUtils { u: self.clone() }
     }
 
     /// Table privileges (PostgreSQL only).
-    pub fn privileges(&self) -> PrivilegeUtils<'_> {
-        PrivilegeUtils { u: self }
+    pub fn privileges(&self) -> PrivilegeUtils {
+        PrivilegeUtils { u: self.clone() }
     }
 
     /// AES key version status and rotation.
-    pub fn aes(&self) -> AesUtils<'_> {
-        AesUtils { u: self }
+    pub fn aes(&self) -> AesUtils {
+        AesUtils { u: self.clone() }
     }
 }
 
-/// Schema installation and inspection.
-pub struct SchemaUtils<'a> {
-    u: &'a Utils<'a>,
+/// Schema installation and inspection (CORE-182). It owns the utilities of its connection.
+#[derive(Clone)]
+pub struct SchemaUtils {
+    u: Utils,
 }
 
-impl SchemaUtils<'_> {
+impl SchemaUtils {
     /// Registers a set of the generated schema on this connection. It does not read or write the database: it only checks that the manifest
     /// text hashes to the declared hash (otherwise CONFIG) and registers the set. Registering the same set
     /// again changes nothing. Whether the database matches the set is checked by `install` and
     /// `add_tables_and_columns` at install and upgrade time; connections opened per request do not check it either, and
     /// `register` registers the set without statements (docs/spec/schema.md, "Schema registration").
     pub fn register(&self, schema: &Schema) -> Result<()> {
-        self.u.db.register(schema)
+        self.u.db().register(schema)
     }
 
     /// Installs the generated schema's dbspec document set into the connection's database and, after checking that the database matches the set,
@@ -290,40 +328,41 @@ impl SchemaUtils<'_> {
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
-        let dialect = match self.u.db.sql_driver() {
+        let dialect = match self.u.db().sql_driver() {
             "mysql" => dbspec::Dialect::MySql,
             "postgres" => dbspec::Dialect::Postgres,
             _ => dbspec::Dialect::Sqlite,
         };
         let statements = dbspec::render_statements(&refs, dialect).map_err(invalid)?;
         let target = schema_target(&documents)?;
-        let db = self.u.db;
+        let db = self.u.db();
         match db.pool() {
             crate::db::Pool::MySql(pool) => {
                 // MySQL commits schema statements implicitly, so they run outside a transaction.
-                if self.u.tx.is_some() {
+                if self.u.tx().is_some() {
                     return Err(Error::config("MySQL commits schema statements implicitly; install outside a transaction"));
                 }
                 let mut conn = pool.acquire().await?;
                 install_on(Observed { db, transaction: None }, &mut *conn, dialect, &statements, &target, &refs).await?;
             }
             _ => {
+                let (statements, target, refs) = (&statements, &target, &refs);
                 self.u
-                    .run_executor(async |ex: &Executor| {
-                        let Executor::Tx(t) = ex else { return Err(Error::internal("schema install outside a transaction")) };
+                    .run_executor(|ex: Executor| async move {
+                        let Executor::Tx(t) = &ex else { return Err(Error::internal("schema install outside a transaction")) };
                         let on = Observed { db, transaction: Some(t.number) };
                         let mut guard = t.enter()?;
                         match guard.as_mut() {
-                            Some(TxInner::Postgres(conn)) => install_on(on, &mut **conn, dialect, &statements, &target, &refs).await,
-                            Some(TxInner::Sqlite(conn)) => install_on(on, &mut **conn, dialect, &statements, &target, &refs).await,
-                            Some(TxInner::Markdown(conn)) => install_on(on, conn, dialect, &statements, &target, &refs).await,
+                            Some(TxInner::Postgres(conn)) => install_on(on, &mut **conn, dialect, statements, target, refs).await,
+                            Some(TxInner::Sqlite(conn)) => install_on(on, &mut **conn, dialect, statements, target, refs).await,
+                            Some(TxInner::Markdown(conn)) => install_on(on, conn, dialect, statements, target, refs).await,
                             _ => Err(Error::internal("a schema install transaction holds another connection")),
                         }
                     })
                     .await?;
             }
         }
-        self.u.db.register(schema)
+        self.u.db().register(schema)
     }
 
     /// Upgrades an installed document set only by adding it as a new version of the generated schema (docs/spec/schema.md,
@@ -343,24 +382,25 @@ impl SchemaUtils<'_> {
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
         let target = schema_target(&documents)?;
-        let db = self.u.db;
+        let db = self.u.db();
         match db.pool() {
             crate::db::Pool::Postgres(_) => {
+                let (target, refs) = (&target, &refs);
                 self.u
-                    .run_executor(async |ex: &Executor| {
-                        let Executor::Tx(t) = ex else { return Err(Error::internal("add columns outside a transaction")) };
+                    .run_executor(|ex: Executor| async move {
+                        let Executor::Tx(t) = &ex else { return Err(Error::internal("add columns outside a transaction")) };
                         let on = Observed { db, transaction: Some(t.number) };
                         let mut guard = t.enter()?;
                         let Some(TxInner::Postgres(conn)) = guard.as_mut() else {
                             return Err(Error::internal("a PostgreSQL transaction holds another connection"));
                         };
-                        add_tables_and_columns_on(on, &mut **conn, dbspec::Dialect::Postgres, &target, &refs).await
+                        add_tables_and_columns_on(on, &mut **conn, dbspec::Dialect::Postgres, target, refs).await
                     })
                     .await
             }
-            _ if self.u.tx.is_some() => Err(Error::config(format!(
+            _ if self.u.tx().is_some() => Err(Error::config(format!(
                 "{} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table",
-                self.u.db.sql_driver()
+                self.u.db().sql_driver()
             ))),
             crate::db::Pool::MySql(pool) => {
                 let mut conn = pool.acquire().await?;
@@ -387,13 +427,40 @@ impl SchemaUtils<'_> {
         }
     }
 
+    /// `install` as a machine that owns the utilities and the schema: the member `schema_utils.install` of the contract
+    /// (CORE-181).
+    pub fn install_machine(self, schema: Schema) -> Operation<()> {
+        Operation::new(async move { self.install(&schema).await })
+    }
+
+    /// `add_tables_and_columns` as a machine that owns its arguments: the member `schema_utils.add_tables_and_columns`
+    /// of the contract (CORE-181).
+    pub fn add_tables_and_columns_machine(self, schema: Schema) -> Operation<Vec<String>> {
+        Operation::new(async move { self.add_tables_and_columns(&schema).await })
+    }
+
+    /// `exists` as a machine that owns its arguments: the member `schema_utils.exists` of the contract (CORE-181).
+    pub fn exists_machine(self, name: String) -> Operation<bool> {
+        Operation::new(async move { self.exists(&name).await })
+    }
+
+    /// `installed` as a machine that owns its arguments: the member `schema_utils.installed` of the contract (CORE-181).
+    pub fn installed_machine(self, name: String, table: String) -> Operation<bool> {
+        Operation::new(async move { self.installed(&name, &table).await })
+    }
+
+    /// `empty` as a machine: the member `schema_utils.empty` of the contract (CORE-181).
+    pub fn empty_machine(self) -> Operation<bool> {
+        Operation::new(async move { self.empty().await })
+    }
+
     /// Whether a schema exists.
     pub async fn exists(&self, name: &str) -> Result<bool> {
         if !valid_key(name) {
             return Err(Error::config(format!("identifier {name} is invalid")));
         }
         let p = [Param::Str(name.into())];
-        match self.u.db.sql_driver() {
+        match self.u.db().sql_driver() {
             "postgres" => self.u.exists("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)", &p).await,
             "mysql" => self.u.exists("SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)", &p).await,
             _ => {
@@ -410,7 +477,7 @@ impl SchemaUtils<'_> {
         if !valid_key(name) || !valid_key(table) {
             return Err(Error::config("schema and table names are required"));
         }
-        match self.u.db.sql_driver() {
+        match self.u.db().sql_driver() {
             "postgres" => self.u.exists("SELECT to_regclass($1) IS NOT NULL", &[Param::Str(format!("{name}.{table}"))]).await,
             "mysql" => {
                 self.u
@@ -438,7 +505,7 @@ impl SchemaUtils<'_> {
     /// database is content, and on SQLite a table or view other than the sqlite_
     /// and orm__ tables is content.
     pub async fn empty(&self) -> Result<bool> {
-        match self.u.db.sql_driver() {
+        match self.u.db().sql_driver() {
             "postgres" => self.u.exists(r"SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))", &[]).await,
             "mysql" => self.u.exists("SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE())", &[]).await,
             _ => self.u.exists(r"SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\_%' ESCAPE '\' AND name NOT LIKE 'orm\_\_%' ESCAPE '\')", &[]).await,
@@ -456,16 +523,17 @@ pub struct TablePrivileges {
     pub truncate: bool,
 }
 
-/// Table privileges (PostgreSQL only).
-pub struct PrivilegeUtils<'a> {
-    u: &'a Utils<'a>,
+/// Table privileges (PostgreSQL only; CORE-184). It owns the utilities of its connection.
+#[derive(Clone)]
+pub struct PrivilegeUtils {
+    u: Utils,
 }
 
-impl PrivilegeUtils<'_> {
+impl PrivilegeUtils {
     /// Refuses a dialect other than PostgreSQL, after the arguments of the call are checked, so that an invalid argument is
     /// the same CONFIG on every database (INT-59, DIA-225).
     fn supported(&self) -> Result<()> {
-        if self.u.db.sql_driver() != "postgres" {
+        if self.u.db().sql_driver() != "postgres" {
             return Err(Error::new(crate::Kind::CapabilityUnsupported, "table privileges are supported only by postgres"));
         }
         Ok(())
@@ -486,16 +554,35 @@ impl PrivilegeUtils<'_> {
         Ok(quote("postgres", name))
     }
 
+    /// `grant_table` as a machine that owns its arguments: the member `privilege_utils.grant_table` of the contract
+    /// (CORE-181).
+    pub fn grant_table_machine(self, table: String, role: String) -> Operation<()> {
+        Operation::new(async move { self.grant_table(&table, &role).await })
+    }
+
+    /// `revoke_table` as a machine that owns its arguments: the member `privilege_utils.revoke_table` of the contract
+    /// (CORE-181).
+    pub fn revoke_table_machine(self, table: String, privilege: String, role: String) -> Operation<()> {
+        Operation::new(async move { self.revoke_table(&table, &privilege, &role).await })
+    }
+
+    /// `inspect_table` as a machine that owns its arguments: the member `privilege_utils.inspect_table` of the contract
+    /// (CORE-181).
+    pub fn inspect_table_machine(self, table: String) -> Operation<TablePrivileges> {
+        Operation::new(async move { self.inspect_table(&table).await })
+    }
+
     /// Grants schema usage and SELECT, INSERT, UPDATE, DELETE on a table.
     pub async fn grant_table(&self, table: &str, role: &str) -> Result<()> {
         let (schema, qualified) = Self::table(table)?;
         let role = Self::role(role)?;
         self.supported()?;
         let tables = [table.to_owned()];
+        let (u, tables, schema, qualified, role) = (&self.u, &tables, &schema, &qualified, &role);
         self.u
-            .run_executor(async |ex: &Executor| {
-                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT USAGE ON SCHEMA {schema} TO {role}"), &[], &[]).await?;
-                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {role}"), &[], &[]).await?;
+            .run_executor(|ex: Executor| async move {
+                u.exec(&ex, KIND_UTILITY, tables, format!("GRANT USAGE ON SCHEMA {schema} TO {role}"), &[], &[]).await?;
+                u.exec(&ex, KIND_UTILITY, tables, format!("GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {role}"), &[], &[]).await?;
                 Ok(())
             })
             .await
@@ -514,9 +601,10 @@ impl PrivilegeUtils<'_> {
             return Err(Error::config(format!("unsupported table privilege {}", polyspec_orm_schema::message::quote(given))));
         }
         self.supported()?;
+        let (u, tables, privilege, qualified, role) = (&self.u, &tables, &privilege, &qualified, &role);
         self.u
-            .run_executor(async |ex: &Executor| {
-                self.u.exec(ex, KIND_UTILITY, &tables, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[], &[]).await?;
+            .run_executor(|ex: Executor| async move {
+                u.exec(&ex, KIND_UTILITY, tables, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[], &[]).await?;
                 Ok(())
             })
             .await
@@ -568,13 +656,14 @@ impl AesKeyring {
     }
 }
 
-/// Row counts by stored key version.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Row counts by stored key version (INT-75), the record `aes_rotation_status` of the contract: `versions` is a
+/// `KeyedMap` of integer keys in ascending order of the stored version, as the record of a binding holds it (CORE-185).
+#[derive(Debug, Clone, PartialEq)]
 pub struct AesRotationStatus {
     pub current: i32,
     pub total: i64,
     pub pending: i64,
-    pub versions: BTreeMap<i32, i64>,
+    pub versions: binding_core::KeyedMap<i64>,
 }
 
 struct AesSpec {
@@ -599,14 +688,14 @@ fn rotation_key<'a>(version: Option<&Val>, keyring: &'a AesKeyring) -> Result<&'
     keyring.key(crate::row::stored_version(version)?)
 }
 
-/// AES key version status and rotation.
-pub struct AesUtils<'a> {
-    u: &'a Utils<'a>,
+/// AES key version status and rotation (CORE-185). It owns the utilities of its connection.
+#[derive(Clone)]
+pub struct AesUtils {
+    u: Utils,
 }
 
-impl AesUtils<'_> {
-    fn spec<M: Model>(&self, m: &M) -> Result<AesSpec> {
-        let entity = m.core().entity();
+impl AesUtils {
+    fn spec(&self, entity: &EntityRef) -> Result<AesSpec> {
         let name = entity.name();
         let ent = entity.entity_schema()?;
         let columns: Vec<(String, Vec<String>)> =
@@ -625,18 +714,50 @@ impl AesUtils<'_> {
 
     /// Reads the key version of every row of the model table.
     pub async fn status<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<AesRotationStatus> {
-        let spec = self.spec(m)?;
-        let d = self.u.db.sql_driver();
+        self.status_entity(m.core().entity(), keyring).await
+    }
+
+    /// `status` for the entity of a `Query`, which names its entity in a value (CORE-81, CORE-185).
+    pub async fn status_query(&self, query: &Query, keyring: &AesKeyring) -> Result<AesRotationStatus> {
+        self.status_entity(query.core_dyn().entity(), keyring).await
+    }
+
+    /// Re-encrypts every AES column of every row that is not at the current key
+    /// version in one transaction and returns the number of rotated rows.
+    pub async fn rotate<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<u64> {
+        self.rotate_entity(m.core().entity(), keyring).await
+    }
+
+    /// `rotate` for the entity of a `Query`, which names its entity in a value (CORE-81, CORE-185).
+    pub async fn rotate_query(&self, query: &Query, keyring: &AesKeyring) -> Result<u64> {
+        self.rotate_entity(query.core_dyn().entity(), keyring).await
+    }
+
+    /// `status_query` as a machine that owns the utilities, the query and the key ring: the member `aes_utils.status` of
+    /// the contract (CORE-181, CORE-185).
+    pub fn status_machine(self, model: Query, keyring: AesKeyring) -> Operation<AesRotationStatus> {
+        Operation::new(async move { self.status_query(&model, &keyring).await })
+    }
+
+    /// `rotate_query` as a machine that owns the utilities, the query and the key ring: the member `aes_utils.rotate` of
+    /// the contract (CORE-181, CORE-185).
+    pub fn rotate_machine(self, model: Query, keyring: AesKeyring) -> Operation<u64> {
+        Operation::new(async move { self.rotate_query(&model, &keyring).await })
+    }
+
+    async fn status_entity(&self, entity: &EntityRef, keyring: &AesKeyring) -> Result<AesRotationStatus> {
+        let spec = self.spec(entity)?;
+        let d = self.u.db().sql_driver();
         let version = quote(d, &spec.version);
         let sql = format!("SELECT {version}, COUNT(*) FROM {} GROUP BY {version} ORDER BY {version}", quote(d, &spec.table));
-        let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
+        let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: binding_core::KeyedMap::new() };
         for row in self.u.query(&self.u.read()?, KIND_UTILITY, std::slice::from_ref(&spec.table), sql, &[], &[]).await? {
             let stored = crate::row::stored_version(&row[0])?;
             let count = row[1].as_i64()?;
             if count < 0 {
                 return Err(Error::internal("negative AES key version count"));
             }
-            status.versions.insert(stored, count);
+            status.versions.insert(binding_core::Key::Int(i64::from(stored)), count);
             status.total = status.total.checked_add(count).ok_or_else(|| Error::internal("AES key version total exceeds i64 range"))?;
             if stored != status.current {
                 status.pending = status.pending.checked_add(count).ok_or_else(|| Error::internal("AES key version pending count exceeds i64 range"))?;
@@ -645,11 +766,9 @@ impl AesUtils<'_> {
         Ok(status)
     }
 
-    /// Re-encrypts every AES column of every row that is not at the current key
-    /// version in one transaction and returns the number of rotated rows.
-    pub async fn rotate<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<u64> {
-        let spec = self.spec(m)?;
-        let d = self.u.db.sql_driver();
+    async fn rotate_entity(&self, entity: &EntityRef, keyring: &AesKeyring) -> Result<u64> {
+        let spec = self.spec(entity)?;
+        let d = self.u.db().sql_driver();
         let q = |name: &str| quote(d, name);
         let mut columns: Vec<String> = spec.keys.iter().map(|k| q(k)).collect();
         columns.push(q(&spec.version));
@@ -675,11 +794,12 @@ impl AesUtils<'_> {
         update_types.push(spec.version_type);
         update_types.extend(spec.key_types.iter().copied());
         update_types.push(spec.version_type);
+        let (u, spec, select, update, update_types) = (&self.u, &spec, &select, &update, &update_types);
         self.u
-            .run_executor(async |ex: &Executor| {
+            .run_executor(|ex: Executor| async move {
                 let mut rotated = 0;
                 loop {
-                    let batch = self.u.query(ex, KIND_UTILITY, tables, select.clone(), &[Param::I64(keyring.current as i64)], &[spec.version_type]).await?;
+                    let batch = u.query(&ex, KIND_UTILITY, tables, select.clone(), &[Param::I64(keyring.current as i64)], &[spec.version_type]).await?;
                     if batch.is_empty() {
                         return Ok(rotated);
                     }
@@ -697,7 +817,7 @@ impl AesUtils<'_> {
                         args.push(Param::I64(keyring.current as i64));
                         args.extend(row[..k].iter().map(val_param));
                         args.push(val_param(&row[k]));
-                        let affected = self.u.exec(ex, KIND_UTILITY, tables, update.clone(), &args, &update_types).await?;
+                        let affected = u.exec(&ex, KIND_UTILITY, tables, update.clone(), &args, update_types).await?;
                         if affected != 1 {
                             return Err(transaction_conflict(format!("aes rotation of {} changed {affected} rows", spec.table)));
                         }

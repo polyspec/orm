@@ -749,13 +749,101 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
-  (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle and are not declared either.
-  The terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row are declared, and `gets` and `gets_by`
-  return the class `rows` (CORE-170). `Collection`, `Page` and `LookaheadPage` are not declared as types: each is
-  generic over its model, which the Rust path of a `core_type` cannot name, and a `Query` has no terminal that returns
-  a page (CORE-84). `get_query` is not declared, because it returns `Statement`. `Page`, `LookaheadPage`, `GroupRow`
-  and `GroupRows` are returned by no member of `Query` (CORE-84) but by the generated Rust models alone, and a binding
-  has no generated model (CORE-50).
+  (their values are the Rust values `Param` and `Key`). `Utils` and its parts own a handle of their connection and
+  are declared as CORE-180 to CORE-186 state, without `Utils::run`, `Utils::local` and `Utils::was_inserted`
+  (CORE-180). The terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row are declared, and `gets`
+  and `gets_by` return the class `rows` (CORE-170). `Collection`, `Page` and `LookaheadPage` are not declared as types:
+  each is generic over its model, which the Rust path of a `core_type` cannot name, and a `Query` has no terminal that
+  returns a page (CORE-84). `get_query` is not declared, because it returns `Statement`. `Page`, `LookaheadPage`,
+  `GroupRow` and `GroupRows` are returned by no member of `Query` (CORE-84) but by the generated Rust models alone, and
+  a binding has no generated model (CORE-50).
+- **CORE-180** The contract declares the utilities of a connection with the call shape of the legacy clients (INT-73,
+  INT-134): the members `db.utils` and `tx.utils` return the class `utils` (`Utils`), whose members `schema`,
+  `privileges` and `aes` return the classes `schema_utils` (`SchemaUtils`), `privilege_utils` (`PrivilegeUtils`) and
+  `aes_utils` (`AesUtils`, INT-131), so a caller writes `db.utils().schema().register(schema)` in the name form of its
+  language. Each of the four is an owned value (binding GN-6au): `Utils` holds a `Connection`, a clone of the `Db` of
+  `Db::utils` or of the `Tx` of `Tx::utils`, and each part holds a clone of its `Utils`; a clone of a handle is the
+  handle (CORE-101), so the utilities of a `Tx` run in its transaction and end with it (CORE-22, CORE-23), and the
+  utilities of a `Db` carry its request hook and its cancellation. `utils` is constructible by no language code. Three
+  members of `Utils` are not declared. `Utils::run(f)` (INT-150) calls a function with the transaction handle, in a new
+  transaction without retry or in the active one: through a binding that is `db.transaction` with the option `retry`
+  0, or the callback of the transaction that is active, and `tx.execute` (CORE-133) for a statement. `Utils::local`
+  and `Utils::was_inserted` (INT-51, INT-52) answer only on the utilities of a `Tx`, where they raise `no_rows`, `busy`
+  and `transaction_ended` without a wait, and the case form of binding calls no member on the value that a step of a
+  function returned, so no case reaches them and the contract check refuses their kinds (CK-22: "no case of utils.local
+  raises the kind no_rows", and so for `busy` and `transaction_ended` of both); they stay members of the core until
+  the case form reaches them. For the same reason the cases of `utils.lock` and `utils.set_local` show only the refusal
+  on the utilities of a `Db`, and the tests of the core show their work in a transaction.
+- **CORE-181** A member of the four classes that sends a statement has `wait: async_driver`, and the class of its
+  receiver carries language code, because `db` returns it (binding GN-6h), so its core path is a machine (binding
+  GN-6ab, CK-68): `Utils::lock_machine(self, key: String)`, `set_local_machine`, `backend_waiting_for_lock_machine`,
+  `SchemaUtils::install_machine(self, schema: Schema)`, `add_tables_and_columns_machine`, `exists_machine`,
+  `installed_machine`, `empty_machine`, `PrivilegeUtils::grant_table_machine`, `revoke_table_machine`,
+  `inspect_table_machine`, `AesUtils::status_machine(self, model: Query, keyring: AesKeyring)` and `rotate_machine`.
+  Each returns `Operation<T>`, which owns the utilities and the arguments, gives one `Io` step that runs the native
+  `async fn` of the same name, and ends with its result unchanged, as `Execute` does for `db.execute` (CORE-127); it
+  gives no `Call` and no `Await`, and making or dropping it sends no statement. The contract keeps the receiver `&self`,
+  so the binding gives the machine a clone and the caller keeps its instance. The future of each of these functions is
+  `Send`: the function that runs several statements in one transaction takes its executor by value. The members that
+  send nothing, `db.utils`, `tx.utils`, `utils.schema`, `utils.privileges`, `utils.aes`, `utils.stats` and
+  `schema_utils.register`, have `wait: none`. No member of the four classes calls language code.
+- **CORE-182** The class `schema_utils` carries INT-54 to INT-58; its argument `schema` is the class `schema`
+  (INT-133, CORE-80).
+  - `register(schema)` returns nothing and sends no statement (INT-54). A connection holds the sets that it
+    registered by their manifest hash, and a request is planned only for a set of its connection, else it is
+    `schema_hash_mismatch: manifest <hash> is not registered on this connection: connect through its generated models
+    or install it`. `db.connect_schema` (INT-132) registers one set when it connects; `register` adds a set to a
+    connection of `db.connect` or of `db.connect_schema`, so one connection plans the requests of several sets. A set
+    that is registered again changes nothing. The registration compares no table: two sets that name one table with
+    different columns are both registered, each request is planned from the set of its query, and the statement of the
+    set that the database does not match fails on the database. A schema of the contract is made by `schema.load`,
+    which refuses a text that does not hash to its hash before any registration, so `register` raises no kind through
+    a binding; the `config` of INT-54 remains for a schema of generated Rust code.
+  - `install(schema)` returns nothing (INT-55): it creates every table of the set when the database has none of them,
+    changes nothing when it has all, then compares the database with the set, and registers the set. The failures are
+    `config`: `install found only some tables of the document set: <tables>`, `the database differs from the document
+    set: <differences>`, `the tables that the set uses from external documents differ from the database:
+    <differences>`, and on MySQL inside a transaction `MySQL commits schema statements implicitly; install outside a
+    transaction`.
+  - `add_tables_and_columns(schema)` returns the list of what it added, a created table as `table` and an added column
+    as `table.column` (INT-56), and registers nothing. A difference that it does not add is `schema_differs: the
+    existing tables of the document set differ beyond missing tables, missing columns that are null or have a default
+    and missing indexes: <differences>` before any statement, and on MySQL and SQLite inside a transaction it is
+    `config`: `<driver> adds tables and columns outside a transaction: MySQL commits schema statements implicitly and
+    SQLite turns foreign keys off to rebuild a table`.
+  - `exists(name)` and `installed(name, table)` return a boolean (INT-57): on SQLite, which has no schemas, a schema
+    `name` exists when a table or a view is named `<name>__<any>`, and its table `table` is the table or the view
+    `<name>__<table>`. A name that is empty, longer than 64 bytes, starts with `.` or holds a byte other than an ASCII
+    letter, a digit, `_` and `.` is `config`: `identifier <name> is invalid` for `exists` and `schema and table names
+    are required` for `installed`.
+  - `empty()` returns whether the database holds no user content, as INT-58 states for each database.
+- **CORE-183** The members `utils.lock(key)` and `utils.set_local(key, value)` return nothing (INT-50, INT-51), and
+  `utils.backend_waiting_for_lock()` returns a boolean (INT-53), which is `false` without a statement on every
+  connection other than PostgreSQL, a markdown connection among them. `lock` and `set_local` need the utilities of a
+  `Tx`: on the utilities of a `Db` they are `config`: `<name> requires a transaction: call it on the utils of the Tx of
+  a transaction`, where `<name>` is `lock` or `set_local` (`local` and `wasInserted` for the two members that the
+  contract leaves out, CORE-180). A key that is no identifier of CORE-182 is `config`: `lock key "<key>" is invalid` or
+  `local key "<key>" is invalid`. On SQLite `lock` takes the row lock of the transaction (INT-49) and `set_local`
+  keeps the value in the transaction; a lock that MySQL did not give within its wait is `deadlock`: `lock <key> was
+  not acquired`.
+- **CORE-184** The class `privilege_utils` carries INT-59: `grant_table(table, role)` and `revoke_table(table,
+  privilege, role)` return nothing, and `inspect_table(table)` returns the record `table_privileges`
+  (`TablePrivileges`) of the booleans `insert`, `select`, `update`, `delete` and `truncate`. The arguments are checked
+  first on every database, each failure `config`: `a qualified table name is required`, `role <role> is invalid`,
+  `unsupported table privilege "<privilege>"`; a connection other than PostgreSQL then raises `capability_unsupported:
+  table privileges are supported only by postgres`.
+- **CORE-185** The class `aes_utils` carries INT-60, INT-75 and INT-131. Its members take the entity as `model`, a
+  `query` (CORE-81), in place of the generated model of the legacy clients, and read only the entity of the query:
+  the query needs no connection, and its set need not be registered. The core functions are
+  `AesUtils::status_query(&self, query: &Query, keyring: &AesKeyring)` and `rotate_query`, beside the generic `status`
+  and `rotate` that take a generated Rust model. `status(model, keyring)` returns the record `aes_rotation_status`
+  (`AesRotationStatus`): `current`, `total`, `pending` and `versions`, a keyed map from each stored version, an
+  integer key, to its number of rows, in ascending order of the version; the field of the core is a
+  `KeyedMap<i64>`, as `Config.aes_keys` is a `KeyedMap` (CORE-131). `rotate(model, keyring)` returns the number of
+  rows that it wrote. An entity without an AES column and a version column is `config`: `entity <entity> has no AES
+  columns with a key version`.
+- **CORE-186** The member `utils.stats` returns the record `db_stats` that `db.stats` returns, of the same pool
+  (INT-61, INT-79): `Utils::stats` calls `Db::stats` of its connection.
 - **CORE-133** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which
   runs `Tx::execute_text` as `Db::execute_text_machine` runs `Db::execute_text` (CORE-127): the step and the
   parameters are read as `db.execute` reads them, and the statement runs in the transaction of the handle. Why: a

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ee256df3d6f99ab71e68a543c0e061f54e11c9a406ae25257cbd0bcce0aae4b4 -->
+<!-- source-sha256: 4eba94a14944093a49c369621ddedaaa624ba659560f40d741ddb55ac0b4142f -->
 # 변경 이력
 
 ## Unreleased
 
+- 인터페이스 계약이 연결의 유틸리티를 선언한다(T603, CORE-180~CORE-186): `db.utils()`와 `tx.utils()`는 `stats`, `lock`, `set_local`, `backend_waiting_for_lock`을 가진 class `utils`를 돌려주고, 그 `schema()`, `privileges()`, `aes()`는 `register`, `install`, `add_tables_and_columns`, `exists`, `installed`, `empty`의 class, `grant_table`, `revoke_table`, `inspect_table`의 class, entity를 `Query`로 받는 `status`, `rotate`의 class를 돌려준다. 코어에서 `Utils`, `SchemaUtils`, `PrivilegeUtils`, `AesUtils`는 연결의 handle을 빌리지 않고 소유하고, `AesRotationStatus.versions`는 `BTreeMap<i32, i64>`가 아니라 `KeyedMap<i64>`이며, 문장을 보내는 각 member에는 machine 형식이 있다. `Utils::run`, `Utils::local`, `Utils::was_inserted`는 코어만의 member로 남는다.
 - 코어는 restore 분석을 `Db::analyze_restore(request)`, contract의 member `db.analyze_restore`로 가진다(CORE-141, PRT-91): restore 요청을 JSON text로 받아 `{"assignments": [..], "key": [..]}`를 돌려준다. 고른 key는 schema 순서이고 assignments는 key가 가져가지 않은 set의 컬럼이며, 문장을 보내지 않고 hook를 부르지 않는다. set의 알 수 없는 컬럼은 key를 고르기 전에 보고하고, primary key, identity, soft delete 할당의 거절은 쓰기에 맡긴다: `restore_key`를 분류기와 그 거절로 나누었고, `restore_key`와 `runtime_model.restore_key`는 전에 돌려주던 것을 돌려준다. `contracts/interface/core.json`의 group `db.analyze_restore`가 SQLite에서 case 21개를 가진다(T597).
 - handle은 `transaction_active`로 자신이 열린 트랜잭션의 handle인지 말한다(CORE-140, T564): `Tx::transaction_active`는 그 handle을 받은 트랜잭션이나 savepoint의 callback이 실행되는 동안 true이고 그 뒤에는 false이며, `Db::transaction_active`는 자기 트랜잭션의 callback 안에서도 언제나 false다. handle이 트랜잭션에 들어가는 유일한 길이고 `Db`는 pool이기 때문이다. 계약은 `db.transaction_active`와 `tx.transaction_active`를 선언하고, `db.transaction_active`와 `db.transaction`의 case 다섯이 이를 담는다. core의 case runner는 `after`에서 function이 이름 붙인 인자를 부르고, database receiver에 `receiver`라는 이름을 주며, case가 기대한 실패를 낸 호출 뒤에도 `after`를 실행한다.
 - 트랜잭션의 callback이 `Db`를 거쳐 보내는 문장은 그 트랜잭션 밖의 문장이다(CORE-20, T591): `Db`는 pool이므로 그 문장은 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이 롤백된 뒤에도 남는다. `db.transaction`의 case `a_row_written_through_the_db_in_a_callback_that_raises_stays`가 이를 담는다.
