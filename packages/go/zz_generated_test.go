@@ -8469,7 +8469,7 @@ func TestB4QueryUpdateARevisionAndAConditionJoinedByOrUpdateNoSoftDeletedRowMysq
 	bound_check := made16
 	_ = bound_check
 	err := made2.Update()
-	failure, ok := err.(*liberrors.)
+	failure, ok := err.(*liberrors.ORMValueError)
 	if !ok || failure.Kind() != "revision_changed" {
 		t.Fatalf("B-4: %#v", err)
 	}
@@ -8562,7 +8562,7 @@ func TestB4QueryUpdateARevisionAndAConditionJoinedByOrUpdateNoSoftDeletedRowPost
 	bound_check := made16
 	_ = bound_check
 	err := made2.Update()
-	failure, ok := err.(*liberrors.)
+	failure, ok := err.(*liberrors.ORMValueError)
 	if !ok || failure.Kind() != "revision_changed" {
 		t.Fatalf("B-4: %#v", err)
 	}

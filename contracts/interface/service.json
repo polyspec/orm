@@ -2394,7 +2394,7 @@
     },
     "raises": {
       "kind": "revision_changed",
-      "category": "state",
+      "category": "value",
       "message": "revision_changed: the row's rev is not 1 or the row does not meet the conditions"
     },
     "with": {
@@ -2807,7 +2807,7 @@
     },
     "raises": {
       "kind": "revision_changed",
-      "category": "state",
+      "category": "value",
       "message": "revision_changed: the row's rev is not 1 or the row does not meet the conditions"
     },
     "with": {
