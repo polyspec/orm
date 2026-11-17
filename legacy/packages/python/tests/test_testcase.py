@@ -67,6 +67,26 @@ def run_sample(*names: str) -> subprocess.CompletedProcess:
         )
 
 
+# The one run of unittest that a Makefile line may start without the harness: the generated tests of the binding package
+# (packages/python), which the interpreter of the binding's own venv discovers inside packages/python/generated/tests. That
+# package is not this one: its tests are generated from the interface contract, import no testcase and write no step, and
+# its venv holds the built wheel and not this client.
+GENERATED_BINDING_RUN = re.compile(
+    r"^\$\(BINDING_PYTHON_VENV\)/bin/python -m unittest discover"
+    r"(?: -v)? -s packages/python/generated/tests -t packages/python/generated/tests$"
+)
+
+
+def bare_unittest_lines(makefile: str) -> list[str]:
+    """The lines of a Makefile that start unittest itself (`-m unittest`) on anything but the generated tests of the binding.
+
+    Every test of this package runs through testcase: its module by `-m <module>`, which ends with testcase.main, or a tree
+    by `-m legacy.packages.python.tests.testcase discover`. testcase.step fails with `step outside a case` under another
+    runner."""
+    lines = [line.strip() for line in makefile.splitlines() if "-m unittest" in line]
+    return [line for line in lines if not GENERATED_BINDING_RUN.search(line)]
+
+
 class DurationTest(unittest.TestCase):
     def test_go_duration_form(self) -> None:
         for seconds, text in (
@@ -127,13 +147,56 @@ class NoClockTest(unittest.TestCase):
         threading.Timer = recording
         try:
             stream = io.StringIO()
-            result = testcase.CaseRunner(stream=stream, verbosity=2).run(
-                unittest.defaultTestLoader.loadTestsFromTestCase(Long)
-            )
+            # The result class is named, so the case of this run is not a case of the run that runs this test.
+            result = testcase.CaseRunner(
+                stream=stream, verbosity=2, resultclass=unittest.TextTestResult
+            ).run(unittest.defaultTestLoader.loadTestsFromTestCase(Long))
         finally:
             threading.Timer = original
         self.assertTrue(result.wasSuccessful(), stream.getvalue())
         self.assertEqual(armed, [], "the harness armed a timer for the case")
+
+
+class ResultClassTest(unittest.TestCase):
+    """CaseRunner builds its result on the result class that unittest.TextTestRunner names when the runner is made, so a
+    runner that reads the tests through that class (kit's run-tests counts them so) receives each case of the harness (T569)."""
+
+    def test_the_result_of_the_runner_extends_the_result_class_of_unittest(
+        self,
+    ) -> None:
+        seen: list[tuple[str, str]] = []
+
+        class Recording(unittest.TextTestResult):
+            def startTest(self, test: unittest.TestCase) -> None:
+                seen.append(("start", test.id()))
+                super().startTest(test)
+
+            def addSuccess(self, test: unittest.TestCase) -> None:
+                super().addSuccess(test)
+                seen.append(("pass", test.id()))
+
+        steps: list[str] = []
+
+        class One(unittest.TestCase):
+            def test_one(self) -> None:
+                # step() raises outside a case, so a step that is written shows that the harness still records the case.
+                testcase.step("recorded step")
+                steps.append(self.id())
+
+        original = unittest.TextTestRunner.resultclass
+        unittest.TextTestRunner.resultclass = Recording
+        try:
+            stream = io.StringIO()
+            result = testcase.CaseRunner(stream=stream, verbosity=2).run(
+                unittest.defaultTestLoader.loadTestsFromTestCase(One)
+            )
+        finally:
+            unittest.TextTestRunner.resultclass = original
+        self.assertTrue(result.wasSuccessful(), stream.getvalue())
+        name = One("test_one").id()
+        self.assertEqual(steps, [name])
+        self.assertIsInstance(result, Recording)
+        self.assertEqual(seen, [("start", name), ("pass", name)])
 
 
 class EveryTestTest(unittest.TestCase):
@@ -152,10 +215,25 @@ class EveryTestTest(unittest.TestCase):
         )
 
     def test_discovery_runs_through_the_harness(self) -> None:
-        makefile = (REPOSITORY_ROOT / "Makefile").read_text()
-        bare = [line.strip() for line in makefile.splitlines() if "-m unittest" in line]
+        # The rule on the lines of a Makefile, on each side: a line that starts unittest itself on the tests of this package
+        # is found, with any interpreter, and the line of the generated tests of the binding is not.
+        generated = "$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -v -s packages/python/generated/tests -t packages/python/generated/tests"
+        found = [
+            "$(PYTHON_VENV)/bin/python -m unittest discover -s legacy/packages/python/tests -t .",
+            "$(PYTHON_VENV)/bin/python -m unittest legacy.packages.python.tests.test_markdown",
+            "$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -s legacy/packages/python/tests -t legacy/packages/python/tests",
+            "$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -s packages/python/generated/tests -t .",
+            "python3 -m unittest discover -s packages/python/generated/tests -t packages/python/generated/tests",
+            "cd legacy/packages/python && $(BINDING_PYTHON_VENV)/bin/python -m unittest discover -s tests",
+        ]
         self.assertEqual(
-            bare, [], "these Makefile lines discover the Python tests without testcase"
+            bare_unittest_lines("\n".join(["\t" + generated, *found])), found
+        )
+        makefile = (REPOSITORY_ROOT / "Makefile").read_text()
+        self.assertEqual(
+            bare_unittest_lines(makefile),
+            [],
+            "these Makefile lines run Python tests of this package on unittest without testcase",
         )
 
 

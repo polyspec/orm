@@ -264,7 +264,8 @@
       "scope": "owner",
       "needs": [
         "php",
-        "rust"
+        "rust",
+        "python"
       ],
       "inputs": [
         "scripts/repo/**",

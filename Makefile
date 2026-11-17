@@ -360,7 +360,7 @@ test-php: php-vendor-check php-models php-cancel-helper-build ## Run the unit te
 # them: without them each of their cases fails with `ORM_PYTHON_BIND_MODELS names no model directory` (T451).
 test-python: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 # The tests run through the case harness of the package (legacy.packages.python.tests.testcase), as every other Python run of the
-# repository does: it gives each case its deadline and the step lines that testcase.step writes, which fails with
+# repository does: it gives each case the step lines that testcase.step writes, which fails with
 # `step outside a case` under another runner (T452).
 test-python: python-venv-check bind-python-models ## Run the unit tests of the Python package with CASES=<pattern>; offline
 	$(PYTHON_TESTS) -- discover -s legacy/packages/python/tests -t . -p 'test_*.py' $(if $(CASES),-k '$(CASES)')
@@ -2270,8 +2270,9 @@ fuzz-check/clients-go-orm:
 PHP = php
 # RUN_TESTS is kit's run-tests: it runs a unit tool with its reader and fails when no test ran (kit package, ./run-tests).
 RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
-# PYTHON_TESTS runs Python tests through the harness of legacy/packages/python/tests/testcase.py, which keeps the deadline of each
-# case by its class and ends the process GRACE after it; run-tests holds no time limit of its own (kit 0.0.105).
+# PYTHON_TESTS runs Python tests through the harness of legacy/packages/python/tests/testcase.py, whose runner records the running
+# case for testcase.step and extends the result class that run-tests gives unittest, so run-tests counts each case and fails
+# when none ran (T569). Neither the harness nor run-tests holds a time limit: no clock ends a case (T474).
 PYTHON_TESTS = PYTHONUNBUFFERED=1 NO_COLOR=1 PYTHON_COLORS=0 $(RUN_TESTS) python --venv $(PYTHON_VENV) --module legacy.packages.python.tests.testcase
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/orm-gen-python client-unit-check/orm-gen-typescript client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models

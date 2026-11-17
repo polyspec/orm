@@ -419,6 +419,53 @@ caseTest('the Python unit tests take the slot models of the bind recipes (T451)'
   assert.match(text('Makefile'), variable, 'test-python does not export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)');
 });
 
+// run-tests counts the Python tests through the result class that it gives unittest.TextTestRunner, and the case harness of
+// the package runs every test; a harness that replaces that class leaves every run at `0 passed, 0 failed, no test ran`,
+// whatever unittest ran (T569). The case runs the command of the recipe of test-python on a tree of its own, with the
+// interpreter of the venv that the recipe names, which make orm-install-python writes.
+caseTest('run-tests counts the Python tests that the case harness runs (T569)', () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const dry = spawnSync('make', ['-n', '--no-print-directory', 'test-python'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(dry.status, 0, dry.stderr);
+  const recipe = dry.stdout.split('\n').find(line => /run-tests\.(?:mjs|mts) python .*--module legacy\.packages\.python\.tests\.testcase -- discover /.test(line));
+  assert.ok(recipe !== undefined, `test-python runs no python tests through the case harness: ${dry.stdout}`);
+  const runner = recipe.slice(0, recipe.indexOf(' -- discover ')).trim();
+  const venv = / --venv (\S+)/.exec(runner)?.[1];
+  assert.ok(venv !== undefined, `the recipe of test-python names no venv: ${recipe}`);
+  assert.ok(existsSync(join(venv, 'bin/python')), `${join(venv, 'bin/python')} is missing; run make orm-install-python, which writes it`);
+  const directory = mkdtempSync(join(tmpdir(), 'orm-python-count-'));
+  try {
+    writeFileSync(join(directory, 'sample.py'), [
+      'import unittest',
+      'from legacy.packages.python.tests import testcase',
+      '',
+      '',
+      'class Sample(unittest.TestCase):',
+      '    def test_pass(self):',
+      "        testcase.step('one step')",
+      '',
+      '    def test_fail(self):',
+      '        self.assertEqual(1, 2)',
+      '',
+    ].join('\n'));
+    const run = (pattern: string) => {
+      const result = spawnSync('sh', ['-c', `${runner} -- discover -s "$1" -t "$1" -p sample.py -k "$2"`, 'sh', directory, pattern], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+      return { status: result.status, output: `${result.stdout}${result.stderr}` };
+    };
+    const passed = run('test_pass');
+    assert.match(passed.output, /: 1 passed, 0 failed, 0 skipped/, passed.output);
+    assert.equal(passed.status, 0, passed.output);
+    const failed = run('test_fail');
+    assert.match(failed.output, /: 0 passed, 1 failed, 0 skipped/, failed.output);
+    assert.notEqual(failed.status, 0, failed.output);
+    const none = run('no_such_case');
+    assert.match(none.output, /no test ran/, none.output);
+    assert.notEqual(none.status, 0, none.output);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 // QueryCancellationTest loads the SQLite cancellation helper that php-cancel-helper-build writes, and the tests read the
 // models of php-models; without them a run of make test-php in a fresh checkout fails with
 // `SQLite cancellation helper for <platform> is not installed in the polyspec/orm package` (T453).

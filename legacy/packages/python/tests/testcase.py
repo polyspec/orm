@@ -55,8 +55,9 @@ def step(text: str) -> None:
     _emit(text)
 
 
-class CaseResult(unittest.TextTestResult):
-    """A unittest result that records the running case, whose steps step() writes; the reporting is unittest's own."""
+class CaseSteps:
+    """Records the running case, whose steps step() writes. It is mixed in before a unittest result class, whose reporting
+    stays as it is."""
 
     def startTest(self, test: unittest.TestCase) -> None:
         global _current
@@ -70,9 +71,17 @@ class CaseResult(unittest.TextTestResult):
 
 
 class CaseRunner(unittest.TextTestRunner):
-    """The unittest runner of every Python test: TextTestRunner with CaseResult."""
+    """The unittest runner of every Python test: TextTestRunner whose result records the running case (CaseSteps).
 
-    resultclass = CaseResult
+    The result extends the result class that the runner has when it is made: the class a caller passes as resultclass, or
+    the one unittest.TextTestRunner names then. A program that runs this harness and reads the tests through that class, as
+    kit's run-tests does to count them, so receives every case; a result class fixed here would hide them from it (T569)."""
+
+    def __init__(self, *args: Any, **options: Any) -> None:
+        super().__init__(*args, **options)
+        base = self.resultclass
+        if not issubclass(base, CaseSteps):
+            self.resultclass = type(f"Case{base.__name__}", (CaseSteps, base), {})
 
 
 def main(
