@@ -163,6 +163,8 @@ GO := $(KIT_TOOLS)/mise/shims/go
 COMPOSER := $(KIT_TOOLS)/mise/shims/composer
 PYTHON3 := $(KIT_TOOLS)/mise/shims/python3
 UV := $(KIT_TOOLS)/mise/shims/uv
+# MATURIN is the maturin of mise.toml; it builds the wheel of the Python binding through the maturin link of kit (K1266).
+MATURIN := $(KIT_TOOLS)/mise/shims/maturin
 RUFF := $(KIT_TOOLS)/mise/shims/ruff
 # The PHP lint tools are not tools of mise.toml; install-tools puts them into var/tools/bin.
 PHPCS := $(KIT_TOOLS)/bin/phpcs
@@ -523,19 +525,22 @@ test-binding-node test-binding-node-offline test-binding-node-service: node-pack
 	$(call binding_selected,node)
 	$(BINDING_SERVERS) $(RUN_TESTS) node --cwd $(NODE_PACKAGE_DIR) -- --expose-gc $(call binding_select,--test-skip-pattern="$$(cat $(BINDING_SELECTED))",--test-name-pattern="$$(cat $(BINDING_SELECTED))",) generated.test.mjs
 
-# The Python binding: orm-install-binding-python builds the wheel of packages/python with the test features through uv and the
-# maturin build backend of its pyproject.toml, as release-wheel builds it (GN-19c), and installs it with its dependencies into the
+# The Python binding: orm-install-binding-python builds the wheel of packages/python with the test features with the maturin of
+# mise.toml, through the maturin link of kit (link.mjs maturin, K1266, T595), which passes the link of .links to the cargo that
+# maturin runs, against a copy of the tracked lock under var/link/cargo, and without .links runs maturin as given on the tracked
+# lock; it builds under the lease of the shared target directory, and installs the wheel with its dependencies into the
 # venv BINDING_PYTHON_VENV. The wheel names polyspec-json by its version and no package index holds it, so the install names it
 # beside the wheel by the URL and the sha256 of the asset of its GitHub Release for this platform, the lines of
 # config/binding-python-siblings.txt, and uv checks each hash (--verify-hashes) and that the version is the one the wheel names; it downloads, so it is an install target, which the python job of config/ci.json runs as setup.
 # test-binding-python runs the generated tests of packages/python/generated/tests on unittest in that venv, offline.
 BINDING_PYTHON_VENV = $(abspath var/binding-python/venv)
 BINDING_PYTHON_WHEELS = $(abspath var/binding-python/wheels)
-orm-install-binding-python: bindings
+orm-install-binding-python: bindings lease-tool
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
+	@test -x $(MATURIN) || { echo "$@: $(MATURIN) is missing; run make install-tools, which installs the maturin of mise.toml"; exit 1; }
 	$(MAKE) --no-print-directory python-venv DIR=$(BINDING_PYTHON_VENV)
 	rm -rf $(BINDING_PYTHON_WHEELS)
-	MATURIN_PEP517_ARGS='--locked --features $(call binding_test_features,packages/python)' $(ONLINE) $(UV) build --wheel --python $(BINDING_PYTHON_VENV)/bin/python --out-dir $(BINDING_PYTHON_WHEELS) packages/python
+	$(CARGO_LEASED) env MATURIN=$(MATURIN) $(ONLINE) $(NODE) $(KIT)/link.$(KIT_EXT) maturin packages/python build --release --locked --features $(call binding_test_features,packages/python) --interpreter $(BINDING_PYTHON_VENV)/bin/python --out $(BINDING_PYTHON_WHEELS)
 	$(ONLINE) $(UV) pip install --python $(BINDING_PYTHON_VENV)/bin/python --reinstall --verify-hashes -r config/binding-python-siblings.txt $(BINDING_PYTHON_WHEELS)/*.whl
 # The tests are the module test_generated of that folder, which unittest of the venv reads from there: the whole module, or
 # the names of a selection, written beside the venv. The runner of kit runs the Python tests of the client through its

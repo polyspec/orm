@@ -613,11 +613,20 @@ export function unleasedCargoErrors(units: Unit[]): string[] {
 // a shell script) that starts cargo itself (T531). cargo starts only through scripts/cargo-link.mts, the cargo link of kit, so a
 // polyspec crate of a checkout that .links names is built from it; a cargo that starts otherwise builds the released tag in a
 // linked checkout. `node tests/cargo-test.mts <name> -- cargo test ...` names the command that cargo-test.mts starts through the link.
+// A maturin build, and a uv build of the maturin backend (MATURIN_PEP517_ARGS), are cargo too (T595): maturin starts only through link.mjs maturin.
 export function unlinkedCargoErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units)
     for (const command of commands)
       for (const segment of segments(command, dialect)) {
+        // T595: maturin runs cargo itself, so it starts only through the maturin link of kit (K1266), which passes the link to
+        // that cargo; uv build with MATURIN_PEP517_ARGS, the arguments of the maturin backend, starts maturin through that
+        // backend, out of reach of the link (a uv build of a setuptools project starts no maturin).
+        const link = 'MATURIN=<maturin> node $(KIT)/link.$(KIT_EXT) maturin <dir> <maturin arguments>';
+        if (/(?:^|[\s;&|(/])maturin\s+(?:build|develop|publish|sdist)\b/.test(segment))
+          errors.push(`${name} starts maturin itself; start it through the maturin link of kit, ${link}: ${segment}`);
+        if (/\bMATURIN_PEP517_ARGS=/.test(segment) && /(?:^|[\s;&|(/])uv\s+build\b/.test(segment))
+          errors.push(`${name} builds a wheel with uv build, whose PEP 517 backend starts maturin without the cargo link; build it through the maturin link of kit, ${link}: ${segment}`);
         const cargo = /(?:^|[\s;&|(])cargo\s+(?:\+\S+\s+)?[a-z-]/.exec(segment);
         if (!cargo) continue;
         const described = /\bcargo-test\.mts\b/.exec(segment);
