@@ -468,6 +468,14 @@ impl Tx {
         Tx { shared, depth, open: Arc::new(AtomicBool::new(true)) }
     }
 
+    /// Whether the handle is the handle of an open transaction (CORE-140): `true` while the callback that received the
+    /// handle runs, the callback of a transaction or of a savepoint, and `false` after that callback returned, whether
+    /// the transaction committed, rolled back or failed. A clone answers as its handle. It sends no statement, calls no
+    /// hook and never fails.
+    pub fn transaction_active(&self) -> bool {
+        self.open.load(Ordering::Acquire)
+    }
+
     /// The executor of a statement through the handle, after the checks of CORE-22 and CORE-23. The statement itself takes
     /// the connection of the transaction with a try lock, so an overlapping statement is `busy` too.
     pub(crate) fn executor(&self) -> Result<Executor> {
@@ -1112,6 +1120,51 @@ mod tests {
 
     async fn sqlite_db(tmp: &Scratch, name: &str) -> Db {
         Db::connect(&format!("sqlite://{}", tmp.join(name).display()), 1, crate::Config::default()).await.expect("connect")
+    }
+
+    // A handle is active while its own callback runs, a clone answers as its handle, and a Db is never active (CORE-140).
+    #[tokio::test]
+    // Requirements: CORE-140.
+    async fn a_handle_is_active_while_its_callback_runs() {
+        let _case = polyspec_orm_testcase::case!();
+        let tmp = Scratch::new("orm-transaction-active");
+        let db = &sqlite_db(&tmp, "active.sqlite").await;
+        let kept = &Mutex::new(Vec::new());
+        assert!(!db.transaction_active(), "a Db outside a transaction");
+        let ended = db
+            .transaction_async(
+                |tx: Tx| async move {
+                    assert!(tx.transaction_active() && tx.clone().transaction_active(), "the handle in its callback");
+                    assert!(!db.transaction_active(), "the Db in the callback of its transaction");
+                    let outer = tx.clone();
+                    tx.savepoint_async(|savepoint: Tx| async move {
+                        assert!(savepoint.transaction_active() && outer.transaction_active(), "the savepoint and its outer handle");
+                        kept.lock().unwrap().push(savepoint);
+                        Ok(())
+                    })
+                    .await?;
+                    assert!(tx.transaction_active(), "the outer handle after its savepoint");
+                    assert!(!kept.lock().unwrap()[0].transaction_active(), "the savepoint handle after its callback");
+                    kept.lock().unwrap().push(tx);
+                    Ok(())
+                },
+                once(),
+            )
+            .await;
+        assert!(ended.is_ok(), "{ended:?}");
+        assert!(kept.lock().unwrap().iter().all(|handle| !handle.transaction_active()), "the handles after a commit");
+        kept.lock().unwrap().clear();
+        let ended = db
+            .transaction_async(
+                |tx: Tx| async move {
+                    kept.lock().unwrap().push(tx);
+                    Err::<(), _>(Error::config("callback failed"))
+                },
+                once(),
+            )
+            .await;
+        assert!(ended.is_err() && !kept.lock().unwrap()[0].transaction_active(), "the handle after a rollback: {ended:?}");
+        db.close_async().await;
     }
 
     // A callback that fails with deadlock, its own transaction_conflict included, runs again up to retry times; any other

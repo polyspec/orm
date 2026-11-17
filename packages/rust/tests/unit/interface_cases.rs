@@ -58,6 +58,9 @@ thread_local! {
     /// The named instances of the case (binding GN-13pa): the values of `with` and the arguments that `names` of a function
     /// fixture names, which a step calls with `"on": "<name>"` and gives as `{"bound": "<name>"}`.
     static NAMED: RefCell<BTreeMap<String, Instance>> = const { RefCell::new(BTreeMap::new()) };
+    /// The arguments that a function fixture named and kept when it returned, which a call of `after` calls with
+    /// `"on": "<name>"` (binding GN-13o).
+    static KEPT: RefCell<BTreeMap<String, Instance>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 /// Another handle of a named instance for an argument `{"bound"}`: a database and a transaction handle share their state, and
@@ -413,7 +416,8 @@ async fn run_function(fixture: Value, argument: Instance, what: String) -> Resul
     let function = fixture.get("function").and_then(Value::as_object).unwrap_or_else(|| panic!("{what}: a function value is {{function}}"));
     let mut argument = argument;
     let empty = Map::new();
-    // names gives the argument its name, which an inner function fixture calls (binding GN-13n); the name ends with the function.
+    // names gives the argument its name, which an inner function fixture calls (binding GN-13n); the name ends with the
+    // function, which keeps the argument for the calls of after (GN-13o).
     let names: Vec<String> = function
         .get("names")
         .and_then(Value::as_array)
@@ -452,11 +456,12 @@ async fn run_function(fixture: Value, argument: Instance, what: String) -> Resul
         Ok::<(), Error>(())
     }
     .await;
-    NAMED.with_borrow_mut(|named| {
-        for given in &names {
-            named.remove(given);
+    for given in &names {
+        if let Some(kept) = NAMED.with_borrow_mut(|named| named.remove(given)) {
+            // A function that runs again, as the callback of a retried transaction does, keeps its last argument.
+            KEPT.with_borrow_mut(|all| all.insert(given.clone(), kept));
         }
-    });
+    }
     ran?;
     match (function.get("result"), function.get("raise")) {
         (Some(result), None) => Ok(result.clone()),
@@ -665,6 +670,8 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             }))
         }
         ("db.driver", Some(Instance::Db(db))) => Returned::Value(Value::from(db.driver())),
+        ("db.transaction_active", Some(Instance::Db(db))) => Returned::Value(Value::from(db.transaction_active())),
+        ("tx.transaction_active", Some(Instance::Tx(tx))) => Returned::Value(Value::from(tx.transaction_active())),
         ("db.sql_driver", Some(Instance::Db(db))) => Returned::Value(Value::from(db.sql_driver())),
         ("db.with_cancel", Some(Instance::Db(db))) => Returned::Instance(Instance::Db(db.with_cancel(cancel(field(args, "cancel", member), member)))),
         ("db.execute", Some(Instance::Db(db))) => {
@@ -851,6 +858,7 @@ pub(crate) async fn run_case(member: &str, case: &Value, failures: &mut Vec<Stri
     }
     run_case_in(member, fields, &what, failures).await;
     NAMED.with_borrow_mut(BTreeMap::clear);
+    KEPT.with_borrow_mut(BTreeMap::clear);
     for db in OPENED.with_borrow_mut(std::mem::take) {
         db.close_async().await;
     }
@@ -874,6 +882,11 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
         },
         None => None,
     };
+    // A database that is the receiver of the case has the name receiver, which a step of a function fixture calls while
+    // the call of the case runs (binding GN-13p). A database shares its state, so the name is the receiver itself.
+    if let Some(Instance::Db(db)) = &receiver {
+        NAMED.with_borrow_mut(|named| named.insert("receiver".to_owned(), Instance::Db(db.clone())));
+    }
     // with names the instances of the case after its receiver (binding GN-13pa). The JSON of the core keeps no key order, so
     // no value of with names another: then their order is not observable.
     if let Some(with) = fields.get("with") {
@@ -910,15 +923,15 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
         (Err(error), Some(raises)) if raises == "callback" => {
             if error.text() != CALLBACK_RAISED {
                 failures.push(format!("{what}: the case expects the failure of its function, and the member raised {error}"));
+                return;
             }
-            return;
         }
         (Err(error), Some(raises)) => {
             let raised = serde_json::json!({"kind": error.kind().as_str(), "category": error.category().as_str(), "message": error.to_string()});
             if raises != &raised {
                 failures.push(format!("{what}: the case expects {raises}, and the member raised {raised}"));
+                return;
             }
-            return;
         }
         (Err(error), None) => {
             failures.push(format!("{what}: failed with {error} ({})", error.kind().as_str()));
@@ -951,8 +964,10 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
             result = Some(instance);
         }
     }
-    // The calls of after observe the receiver of a method after its call (binding G-5, GN-6ae): a member without a
-    // receiver names none, and the instance that it returns is observed by the cases of its methods, whose receiver it makes.
+    // The calls of after observe the receiver of a method after its call (binding G-5, GN-6ae), also after a call that
+    // raised what the case expects: a member without a receiver names none, and the instance that it returns is observed
+    // by the cases of its methods, whose receiver it makes. A call of after takes the names that the functions kept (GN-13o).
+    NAMED.with_borrow_mut(|named| named.append(&mut KEPT.with_borrow_mut(std::mem::take)));
     let after = fields.get("after").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
     assert!(after.is_empty() || receiver.is_some(), "{what}: the member has no receiver, so the case names no after");
     let empty = Map::new();

@@ -1548,6 +1548,191 @@ func TestGN6aeDbTransactionACallbackThatRaisesKeepsNothingThrown(t *testing.T) {
 	}
 }
 
+func TestGN6aeDbTransactionATxIsNotActiveAfterACallbackThatRaisedKeepsNothingThrown(t *testing.T) {
+	raised := errors.New("raised by the function of the case")
+	var bound_tx *Tx
+	_ = bound_tx
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	failure6 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure6 != nil {
+		t.Fatalf("GN-13f: %v", failure6)
+	}
+	failure7 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure7 != nil {
+		t.Fatalf("GN-13f: %v", failure7)
+	}
+	failure8 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure8 != nil {
+		t.Fatalf("GN-13f: %v", failure8)
+	}
+	failure9 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure9 != nil {
+		t.Fatalf("GN-13f: %v", failure9)
+	}
+	failure10 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure10 != nil {
+		t.Fatalf("GN-13f: %v", failure10)
+	}
+	failure11 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure11 != nil {
+		t.Fatalf("GN-13f: %v", failure11)
+	}
+	failure12 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure12 != nil {
+		t.Fatalf("GN-13f: %v", failure12)
+	}
+	failure13 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure13 != nil {
+		t.Fatalf("GN-13f: %v", failure13)
+	}
+	failure14 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure14 != nil {
+		t.Fatalf("GN-13f: %v", failure14)
+	}
+	failure15 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure15 != nil {
+		t.Fatalf("GN-13f: %v", failure15)
+	}
+	function16 := func(arg0 *Tx) (any, error) {
+		bound_tx = arg0
+		{
+			value0, err := arg0.TransactionActive()
+			if err != nil {
+				return nil, err
+			}
+			if want := (bool)(true); !reflect.DeepEqual(value0, want) {
+				return nil, fmt.Errorf("GN-6ae: tx.transaction_active returned %#v, not %#v", value0, want)
+			}
+		}
+		return nil, raised
+	}
+	_, err := made4.Transaction(function16, TransactionOptions{Isolation: nil, ReadOnly: nil, TimeoutMs: nil, Retry: nil, Audit: nil})
+	if err != raised {
+		t.Fatalf("GN-6ae: %#v is not the error of the function", err)
+	}
+	{
+		value0, err := bound_tx.TransactionActive()
+		if err != nil {
+			t.Fatalf("GN-6ae: after: %v", err)
+		}
+		if want := (bool)(false); !reflect.DeepEqual(value0, want) {
+			t.Fatalf("GN-6ae: after: %#v is not %#v", value0, want)
+		}
+	}
+	if count, err := binding.ThrownCount(); err != nil || count != 0 {
+		t.Fatalf("GN-6ae: %d values that were thrown are kept after the call (%v)", count, err)
+	}
+}
+
+func TestGN6aeDbTransactionARowWrittenThroughTheDbInACallbackThatRaisesStaysKeepsNothingThrown(t *testing.T) {
+	raised := errors.New("raised by the function of the case")
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 2, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	failure6 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure6 != nil {
+		t.Fatalf("GN-13f: %v", failure6)
+	}
+	failure7 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure7 != nil {
+		t.Fatalf("GN-13f: %v", failure7)
+	}
+	failure8 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure8 != nil {
+		t.Fatalf("GN-13f: %v", failure8)
+	}
+	failure9 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure9 != nil {
+		t.Fatalf("GN-13f: %v", failure9)
+	}
+	failure10 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure10 != nil {
+		t.Fatalf("GN-13f: %v", failure10)
+	}
+	failure11 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure11 != nil {
+		t.Fatalf("GN-13f: %v", failure11)
+	}
+	failure12 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure12 != nil {
+		t.Fatalf("GN-13f: %v", failure12)
+	}
+	failure13 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure13 != nil {
+		t.Fatalf("GN-13f: %v", failure13)
+	}
+	failure14 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure14 != nil {
+		t.Fatalf("GN-13f: %v", failure14)
+	}
+	failure15 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure15 != nil {
+		t.Fatalf("GN-13f: %v", failure15)
+	}
+	bound_receiver := made4
+	_ = bound_receiver
+	made16, failure17 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure17 != nil {
+		t.Fatalf("GN-13f: %v", failure17)
+	}
+	made18, failure19 := QueryNew(made16, "item")
+	if failure19 != nil {
+		t.Fatalf("GN-13f: %v", failure19)
+	}
+	made20, failure21 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure21 != nil {
+		t.Fatalf("GN-13f: %v", failure21)
+	}
+	made22, failure23 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made20, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure23 != nil {
+		t.Fatalf("GN-13f: %v", failure23)
+	}
+	failure24 := made18.Connect(made22)
+	if failure24 != nil {
+		t.Fatalf("GN-13f: %v", failure24)
+	}
+	bound_check := made18
+	_ = bound_check
+	function25 := func(arg0 *Tx) (any, error) {
+		if err := bound_receiver.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (code, qty, rev) VALUES ('outside', 1, 1)\",\"tables\":[],\"bind_slots\":[]}", []any{}); err != nil {
+			return nil, err
+		}
+		return nil, raised
+	}
+	_, err := made4.Transaction(function25, TransactionOptions{Isolation: nil, ReadOnly: ptr(true), TimeoutMs: nil, Retry: nil, Audit: nil})
+	if err != raised {
+		t.Fatalf("GN-6ae: %#v is not the error of the function", err)
+	}
+	{
+		value0, err := bound_check.GetCountBy("Code", []any{"outside"})
+		if err != nil {
+			t.Fatalf("GN-6ae: after: %v", err)
+		}
+		if want := (int64)(1); !reflect.DeepEqual(value0, want) {
+			t.Fatalf("GN-6ae: after: %#v is not %#v", value0, want)
+		}
+	}
+	if count, err := binding.ThrownCount(); err != nil || count != 0 {
+		t.Fatalf("GN-6ae: %d values that were thrown are kept after the call (%v)", count, err)
+	}
+}
+
 func TestGN13eDbTransactionACallbackCommitsItsResultKeepsNothingThrown(t *testing.T) {
 	_caseTextOwner0 := t
 	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
@@ -2009,6 +2194,311 @@ func TestGN13eDbTransactionATxIsBusyWhileItsSavepointCallbackRunsKeepsNothingThr
 	}
 	if want := (any)("done"); !reflect.DeepEqual(value0, want) {
 		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+	if count, err := binding.ThrownCount(); err != nil || count != 0 {
+		t.Fatalf("GN-6ae: %d values that were thrown are kept after the call (%v)", count, err)
+	}
+}
+
+func TestGN13eDbTransactionATxIsActiveWhileItsCallbackRunsAndNotAfterACommitKeepsNothingThrown(t *testing.T) {
+	var bound_tx *Tx
+	_ = bound_tx
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	failure6 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure6 != nil {
+		t.Fatalf("GN-13f: %v", failure6)
+	}
+	failure7 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure7 != nil {
+		t.Fatalf("GN-13f: %v", failure7)
+	}
+	failure8 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure8 != nil {
+		t.Fatalf("GN-13f: %v", failure8)
+	}
+	failure9 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure9 != nil {
+		t.Fatalf("GN-13f: %v", failure9)
+	}
+	failure10 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure10 != nil {
+		t.Fatalf("GN-13f: %v", failure10)
+	}
+	failure11 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure11 != nil {
+		t.Fatalf("GN-13f: %v", failure11)
+	}
+	failure12 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure12 != nil {
+		t.Fatalf("GN-13f: %v", failure12)
+	}
+	failure13 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure13 != nil {
+		t.Fatalf("GN-13f: %v", failure13)
+	}
+	failure14 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure14 != nil {
+		t.Fatalf("GN-13f: %v", failure14)
+	}
+	failure15 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure15 != nil {
+		t.Fatalf("GN-13f: %v", failure15)
+	}
+	function16 := func(arg0 *Tx) (any, error) {
+		bound_tx = arg0
+		{
+			value0, err := arg0.TransactionActive()
+			if err != nil {
+				return nil, err
+			}
+			if want := (bool)(true); !reflect.DeepEqual(value0, want) {
+				return nil, fmt.Errorf("GN-6ae: tx.transaction_active returned %#v, not %#v", value0, want)
+			}
+		}
+		return "done", nil
+	}
+	value0, err := made4.Transaction(function16, TransactionOptions{Isolation: nil, ReadOnly: nil, TimeoutMs: nil, Retry: nil, Audit: nil})
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (any)("done"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+	{
+		value0, err := bound_tx.TransactionActive()
+		if err != nil {
+			t.Fatalf("GN-6ae: after: %v", err)
+		}
+		if want := (bool)(false); !reflect.DeepEqual(value0, want) {
+			t.Fatalf("GN-6ae: after: %#v is not %#v", value0, want)
+		}
+	}
+	if count, err := binding.ThrownCount(); err != nil || count != 0 {
+		t.Fatalf("GN-6ae: %d values that were thrown are kept after the call (%v)", count, err)
+	}
+}
+
+func TestGN13eDbTransactionASavepointHandleAndItsOuterHandleAreActiveKeepsNothingThrown(t *testing.T) {
+	var bound_inner *Tx
+	_ = bound_inner
+	var bound_outer *Tx
+	_ = bound_outer
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	failure6 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure6 != nil {
+		t.Fatalf("GN-13f: %v", failure6)
+	}
+	failure7 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure7 != nil {
+		t.Fatalf("GN-13f: %v", failure7)
+	}
+	failure8 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure8 != nil {
+		t.Fatalf("GN-13f: %v", failure8)
+	}
+	failure9 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure9 != nil {
+		t.Fatalf("GN-13f: %v", failure9)
+	}
+	failure10 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure10 != nil {
+		t.Fatalf("GN-13f: %v", failure10)
+	}
+	failure11 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure11 != nil {
+		t.Fatalf("GN-13f: %v", failure11)
+	}
+	failure12 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure12 != nil {
+		t.Fatalf("GN-13f: %v", failure12)
+	}
+	failure13 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure13 != nil {
+		t.Fatalf("GN-13f: %v", failure13)
+	}
+	failure14 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure14 != nil {
+		t.Fatalf("GN-13f: %v", failure14)
+	}
+	failure15 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure15 != nil {
+		t.Fatalf("GN-13f: %v", failure15)
+	}
+	function17 := func(arg0 *Tx) (any, error) {
+		bound_outer = arg0
+		function16 := func(arg0 *Tx) (any, error) {
+			bound_inner = arg0
+			{
+				value0, err := arg0.TransactionActive()
+				if err != nil {
+					return nil, err
+				}
+				if want := (bool)(true); !reflect.DeepEqual(value0, want) {
+					return nil, fmt.Errorf("GN-6ae: tx.transaction_active returned %#v, not %#v", value0, want)
+				}
+			}
+			{
+				value0, err := bound_outer.TransactionActive()
+				if err != nil {
+					return nil, err
+				}
+				if want := (bool)(true); !reflect.DeepEqual(value0, want) {
+					return nil, fmt.Errorf("GN-6ae: tx.transaction_active returned %#v, not %#v", value0, want)
+				}
+			}
+			return "done", nil
+		}
+		if _, err := bound_outer.Savepoint(function16); err != nil {
+			return nil, err
+		}
+		{
+			value0, err := bound_outer.TransactionActive()
+			if err != nil {
+				return nil, err
+			}
+			if want := (bool)(true); !reflect.DeepEqual(value0, want) {
+				return nil, fmt.Errorf("GN-6ae: tx.transaction_active returned %#v, not %#v", value0, want)
+			}
+		}
+		return "done", nil
+	}
+	value0, err := made4.Transaction(function17, TransactionOptions{Isolation: nil, ReadOnly: nil, TimeoutMs: nil, Retry: nil, Audit: nil})
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (any)("done"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+	{
+		value0, err := bound_inner.TransactionActive()
+		if err != nil {
+			t.Fatalf("GN-6ae: after: %v", err)
+		}
+		if want := (bool)(false); !reflect.DeepEqual(value0, want) {
+			t.Fatalf("GN-6ae: after: %#v is not %#v", value0, want)
+		}
+	}
+	{
+		value0, err := bound_outer.TransactionActive()
+		if err != nil {
+			t.Fatalf("GN-6ae: after: %v", err)
+		}
+		if want := (bool)(false); !reflect.DeepEqual(value0, want) {
+			t.Fatalf("GN-6ae: after: %#v is not %#v", value0, want)
+		}
+	}
+	if count, err := binding.ThrownCount(); err != nil || count != 0 {
+		t.Fatalf("GN-6ae: %d values that were thrown are kept after the call (%v)", count, err)
+	}
+}
+
+func TestGN13eDbTransactionADbIsNotActiveInTheCallbackOfItsTransactionKeepsNothingThrown(t *testing.T) {
+	_caseTextOwner0 := t
+	_caseTextRoot1 := casePath(_caseTextOwner0, ".")
+	made2, failure3 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made4, failure5 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner0, _caseTextRoot1, "shop.db", false)), made2, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	failure6 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure6 != nil {
+		t.Fatalf("GN-13f: %v", failure6)
+	}
+	failure7 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure7 != nil {
+		t.Fatalf("GN-13f: %v", failure7)
+	}
+	failure8 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure8 != nil {
+		t.Fatalf("GN-13f: %v", failure8)
+	}
+	failure9 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure9 != nil {
+		t.Fatalf("GN-13f: %v", failure9)
+	}
+	failure10 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure10 != nil {
+		t.Fatalf("GN-13f: %v", failure10)
+	}
+	failure11 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure11 != nil {
+		t.Fatalf("GN-13f: %v", failure11)
+	}
+	failure12 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure12 != nil {
+		t.Fatalf("GN-13f: %v", failure12)
+	}
+	failure13 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure13 != nil {
+		t.Fatalf("GN-13f: %v", failure13)
+	}
+	failure14 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure14 != nil {
+		t.Fatalf("GN-13f: %v", failure14)
+	}
+	failure15 := made4.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure15 != nil {
+		t.Fatalf("GN-13f: %v", failure15)
+	}
+	bound_receiver := made4
+	_ = bound_receiver
+	function16 := func(arg0 *Tx) (any, error) {
+		{
+			value0, err := arg0.TransactionActive()
+			if err != nil {
+				return nil, err
+			}
+			if want := (bool)(true); !reflect.DeepEqual(value0, want) {
+				return nil, fmt.Errorf("GN-6ae: tx.transaction_active returned %#v, not %#v", value0, want)
+			}
+		}
+		{
+			value0, err := bound_receiver.TransactionActive()
+			if err != nil {
+				return nil, err
+			}
+			if want := (bool)(false); !reflect.DeepEqual(value0, want) {
+				return nil, fmt.Errorf("GN-6ae: db.transaction_active returned %#v, not %#v", value0, want)
+			}
+		}
+		return "done", nil
+	}
+	value0, err := made4.Transaction(function16, TransactionOptions{Isolation: nil, ReadOnly: nil, TimeoutMs: nil, Retry: nil, Audit: nil})
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (any)("done"); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
+	{
+		value0, err := made4.TransactionActive()
+		if err != nil {
+			t.Fatalf("GN-6ae: after: %v", err)
+		}
+		if want := (bool)(false); !reflect.DeepEqual(value0, want) {
+			t.Fatalf("GN-6ae: after: %#v is not %#v", value0, want)
+		}
 	}
 	if count, err := binding.ThrownCount(); err != nil || count != 0 {
 		t.Fatalf("GN-6ae: %d values that were thrown are kept after the call (%v)", count, err)

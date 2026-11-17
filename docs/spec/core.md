@@ -91,7 +91,9 @@ implementation is eligible for removal on that evidence.
   execution flow: this replaces INT-45, INT-161 and the first sentence of DSL-10. A model with no connection fails with
   `config`. A `Db::transaction` inside a callback opens an independent transaction on another connection of the pool; when
   it waits for a row lock that the outer transaction holds, it ends with `canceled` at the bound of the wait or with
-  `deadlock`.
+  `deadlock`. A statement that the callback sends through the `Db` is a statement outside that transaction: the `Db` is
+  the pool, so the statement takes another connection of the pool, commits by itself and stays after the transaction
+  rolls back.
 - **CORE-21** `Tx::savepoint(callback)` runs `callback` in a savepoint of the transaction and passes it a handle of the
   savepoint, which is a `Tx`. It takes no options. A failure of the callback runs `ROLLBACK TO SAVEPOINT` and
   `RELEASE SAVEPOINT` and returns the failure unchanged; when one of them fails too, the result is `rollback_failed`
@@ -104,6 +106,17 @@ implementation is eligible for removal on that evidence.
   guard while it calls language code. This replaces INT-47 and the `CONFIG` of DSL-122.
 - **CORE-23** A `Tx` whose callback has returned, and every model connected to it, fails every statement with
   `transaction_ended` and sends nothing. This replaces INT-150a.
+- **CORE-140** `transaction_active()` says whether a handle is the handle of an open transaction.
+  `Tx::transaction_active` is `true` while the callback that received the handle runs, the callback of a transaction or
+  of a savepoint, and `false` after that callback returned, whether the transaction committed, rolled back or failed.
+  The handle of a transaction stays `true` while a savepoint callback of it runs and after that callback returned,
+  until its own callback returns. A clone answers as its handle. `Db::transaction_active` is always `false`, also inside
+  the callback of a transaction of that `Db`: there is no active transaction of an execution flow and the handle is the
+  only way into the transaction (CORE-20), and a `Db` is a pool, so a count of its open transactions would answer for
+  the transaction of another request. The call is synchronous, sends no statement, calls no hook and never fails. The
+  contract declares `db.transaction_active` and `tx.transaction_active`, and the interface unit `connection` declares no
+  member, since binding generates no generated interface that declares members (GN-6ap). The legacy clients answer for
+  the execution flow (INT-192) and are not changed.
 - **CORE-24** A transaction retries the whole callback, after its rollback, when the failure has the kind `deadlock`:
   a deadlock of a statement, the error of `transaction_conflict` (INT-48), or an error of the kind `deadlock` that the
   callback raised. A binding hands the core the kind of an error of a category class of orm that the callback raised
@@ -606,7 +619,8 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
 - **CORE-136** The case runner of the core (`packages/rust/tests/unit/interface_cases.rs`) takes the named instances of
   binding GN-13pa: the values of `with`, made after the receiver; `names` of a function fixture, which names its argument
   for the steps of the inner fixtures; a step and a call of `after` with `"on": "<name>"`; an argument
-  `{"bound": "<name>"}`; and a step with `raises`, after which the next step runs (GN-13o). The JSON of the core keeps no key order,
+  `{"bound": "<name>"}`; and a step with `raises`, after which the next step runs (GN-13o). A call of `after` also takes
+  a name of `names`, and calls the argument that the function kept after the function returned (GN-13o). The JSON of the core keeps no key order,
   so a value of `with` names no other value. The cases of `db.transaction` give `transaction_ended` to a query connected
   to the handle of the callback and called after the callback returned (CORE-23), and `busy` to a statement of the handle
   while a savepoint callback of the handle runs (CORE-22).

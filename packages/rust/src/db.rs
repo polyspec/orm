@@ -1046,6 +1046,14 @@ impl Db {
         Db { inner: self.inner.clone(), hook: self.hook.clone(), cancel: Some(cancel) }
     }
 
+    /// Whether the handle is the handle of an open transaction (CORE-140): always `false`, also inside the callback of
+    /// a transaction of this `Db`. There is no active transaction of an execution flow and the `Tx` is the only way into
+    /// the transaction (CORE-20), and a `Db` is a pool, so a count of its open transactions would answer for the
+    /// transaction of another request. It sends no statement, calls no hook and never fails.
+    pub fn transaction_active(&self) -> bool {
+        false
+    }
+
     /// The database of the connection: mysql, postgres, sqlite, or markdown, a
     /// corpus that a flowmark server serves.
     pub fn driver(&self) -> &'static str {

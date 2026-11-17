@@ -1708,6 +1708,23 @@
           }
         },
         {
+          "id": "db.transaction_active",
+          "name": [
+            "transaction",
+            "active"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "bool",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Db::transaction_active",
+            "receiver": "&self"
+          }
+        },
+        {
           "id": "db.sql_driver",
           "name": [
             "sql",
@@ -2068,6 +2085,23 @@
             "path": "polyspec_orm::Tx::savepoint",
             "receiver": "&self",
             "machine": true
+          }
+        },
+        {
+          "id": "tx.transaction_active",
+          "name": [
+            "transaction",
+            "active"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "bool",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Tx::transaction_active",
+            "receiver": "&self"
           }
         }
       ]
@@ -5565,6 +5599,20 @@
       "member": "db.driver",
       "file": "contracts/interface/core.json",
       "group": "db.driver",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.transaction_active",
+      "file": "contracts/interface/core.json",
+      "group": "db.transaction_active",
       "only": {
         "targets": [
           "php",

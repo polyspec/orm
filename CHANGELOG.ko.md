@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c94e9b764ee43d157a90bf7394a8eebef2e4af570c18bb9bdf580be11369c1a0 -->
+<!-- source-sha256: c4a19b2866e52cbf542e28717431bc871e454a6a57e467cde47322c0d2673d06 -->
 # 변경 이력
 
 ## Unreleased
 
+- handle은 `transaction_active`로 자신이 열린 트랜잭션의 handle인지 말한다(CORE-140, T564): `Tx::transaction_active`는 그 handle을 받은 트랜잭션이나 savepoint의 callback이 실행되는 동안 true이고 그 뒤에는 false이며, `Db::transaction_active`는 자기 트랜잭션의 callback 안에서도 언제나 false다. handle이 트랜잭션에 들어가는 유일한 길이고 `Db`는 pool이기 때문이다. 계약은 `db.transaction_active`와 `tx.transaction_active`를 선언하고, `db.transaction_active`와 `db.transaction`의 case 다섯이 이를 담는다. core의 case runner는 `after`에서 function이 이름 붙인 인자를 부르고, database receiver에 `receiver`라는 이름을 주며, case가 기대한 실패를 낸 호출 뒤에도 `after`를 실행한다.
+- 트랜잭션의 callback이 `Db`를 거쳐 보내는 문장은 그 트랜잭션 밖의 문장이다(CORE-20, T591): `Db`는 pool이므로 그 문장은 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이 롤백된 뒤에도 남는다. `db.transaction`의 case `a_row_written_through_the_db_in_a_callback_that_raises_stays`가 이를 담는다.
 - `Query`는 `where_none(connector)`(TypeScript와 PHP `whereNone`, Python과 Rust `where_none`, Go `WhereNone`; CORE-137, PRT-92)로 어떤 행도 만족하지 않는 조건을 가진다: `""`나 `And`는 그것을 `and`로, `Or`는 `or`로 잇고, 모든 dialect가 `1 = 0`으로 쓰며, 빈 key 목록이 raw SQL 없이 아무것도 고르지 않는다(T563-2).
 - `Query`의 조건은 그 `update`와 `delete`에도 적용된다(CORE-138): 문장은 key의 행이 조건을 만족할 때만 그 행을 쓴다. 그래서 `where_none`은 어떤 행도 쓰지 않는다. 전에는 key가 조건을 말없이 대신했다. `expect_revision` 아래에서 아무 행도 바꾸지 않은 쓰기는 `revision_changed`로 남고, 메시지가 조건을 말한다(T563-3).
 - 최상위에서 `or`로 조건을 잇는 `where`로 `soft_delete` 설정을 가진 table을 읽으면 soft delete된 행을 읽지 않고, 그런 `where`의 update나 soft delete는 그런 행을 쓰지 않는다: planner가 그 group을 soft delete 열과 기대 revision 옆에 괄호로 쓴다(PRT-93, T572, T572-1).

@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: f450b0740e96aad772cd05c16e34032a3709f4bfd9858c4a50a456c5852ec23a -->
+<!-- source-sha256: b137d1abe0268bb11f77977718b2ca3ebe0d18fd087ec58c8890d37d6169bffb -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -80,7 +80,9 @@
   INT-44다. handle이 트랜잭션에 들어가는 유일한 길이다: 모델은 `connect(&tx)` 뒤에 그 안에서 실행되고, 트랜잭션의 문장
   실행기는 `Tx::run`이다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
   모델은 `config`로 실패한다. callback 안의 `Db::transaction`은 pool의 다른 연결에서 독립된 트랜잭션을 연다. 그 트랜잭션이
-  바깥 트랜잭션이 잡은 행 잠금을 기다리면 대기 한도에서 `canceled`나 `deadlock`으로 끝난다.
+  바깥 트랜잭션이 잡은 행 잠금을 기다리면 대기 한도에서 `canceled`나 `deadlock`으로 끝난다. callback이 `Db`를 거쳐 보내는
+  문장은 그 트랜잭션 밖의 문장이다: `Db`는 pool이므로 그 문장은 pool의 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이
+  롤백된 뒤에도 남는다.
 - **CORE-21** `Tx::savepoint(callback)`은 트랜잭션의 savepoint에서 `callback`을 실행하고 savepoint의 handle(`Tx`)을
   넘긴다. options는 받지 않는다. callback이 실패하면 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 보내고 실패를 그대로
   돌려준다. 그중 하나도 실패하면 결과는 `rollback_failed`(CORE-25)다. callback이 성공한 뒤의 release 실패는 그 실패다.
@@ -92,6 +94,16 @@
   코어는 언어 코드를 부르는 동안 잠금 guard를 쥐지 않는다. INT-47과 DSL-122의 `CONFIG`를 대체한다.
 - **CORE-23** callback이 돌아온 뒤의 `Tx`와 그에 연결된 모든 모델은 모든 문장을 `transaction_ended`로 실패하고 아무것도
   보내지 않는다. INT-150a를 대체한다.
+- **CORE-140** `transaction_active()`는 handle이 열린 트랜잭션의 handle인지 말한다. `Tx::transaction_active`는 그
+  handle을 받은 callback, 곧 트랜잭션이나 savepoint의 callback이 실행되는 동안 `true`이고, 그 callback이 돌아온 뒤에는
+  트랜잭션이 commit되었든 롤백되었든 실패했든 `false`다. 트랜잭션의 handle은 그 savepoint callback이 실행되는 동안에도,
+  그 callback이 돌아온 뒤에도 자기 callback이 돌아올 때까지 `true`다. clone은 그 handle로서 답한다.
+  `Db::transaction_active`는 언제나 `false`이며, 그 `Db`의 트랜잭션의 callback 안에서도 그렇다: 실행 흐름의 활성
+  트랜잭션은 없고 handle이 트랜잭션에 들어가는 유일한 길이며(CORE-20), `Db`는 pool이므로 열린 트랜잭션의 수를 세면 다른
+  요청의 트랜잭션을 두고 답하게 된다. 이 호출은 동기이고, 문장을 보내지 않고, hook을 부르지 않으며, 실패하지 않는다.
+  계약은 `db.transaction_active`와 `tx.transaction_active`를 선언하고, interface unit `connection`은 member를 선언하지
+  않는다. binding이 member를 선언하는 generated interface를 생성하지 않기 때문이다(GN-6ap). legacy client는 실행 흐름을
+  두고 답하며(INT-192) 바뀌지 않는다.
 - **CORE-24** 트랜잭션은 실패의 kind가 `deadlock`이면 롤백 뒤 callback 전체를 다시 실행한다: 문장의 deadlock,
   `transaction_conflict`(INT-48)의 오류, callback이 던진 kind `deadlock`의 오류가 해당한다. 바인딩은 callback이 던진 orm
   category 클래스 오류의 kind를 코어에 넘기고(계약의 `recognize`), 그 밖의 실패는 롤백 뒤 그대로 돌려준다. 시도 `n`(1부터)
@@ -513,7 +525,8 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
 - **CORE-136** core의 case runner(`packages/rust/tests/unit/interface_cases.rs`)는 binding GN-13pa의 이름 있는
   instance를 받는다. receiver 다음에 만들어지는 `with`의 값, 안쪽 fixture의 step을 위해 자기 인자에 이름을 붙이는
   function fixture의 `names`, `"on": "<name>"`을 가진 step과 `after`의 호출, 인자 `{"bound": "<name>"}`, 그리고
-  `raises`를 가진 step이다. `raises`를 가진 step 다음에는 다음 step이 실행된다(GN-13o). core의 JSON은 key 순서를 지키지
+  `raises`를 가진 step이다. `raises`를 가진 step 다음에는 다음 step이 실행된다(GN-13o). `after`의 호출은 `names`의 이름도 받아, function이
+  돌아온 뒤 function이 간직한 인자를 부른다(GN-13o). core의 JSON은 key 순서를 지키지
   않으므로 `with`의 값은 다른 값을 이름하지 않는다. `db.transaction`의 case는 callback의 handle에 connect되어 callback이
   돌아온 뒤 호출되는 query에 `transaction_ended`를 주고(CORE-23), handle의 savepoint callback이 도는 동안 그 handle의
   statement에 `busy`를 준다(CORE-22).

@@ -378,6 +378,24 @@ func (this *Db) Driver() (string, error) {
 	return value0, nil
 }
 
+// TransactionActive calls polyspec_orm::Db::transaction_active (contract member db.transaction_active).
+func (this *Db) TransactionActive() (bool, error) {
+	var zero0 bool
+	enc := binding.NewWriter()
+	enc.Uint(this.handle())
+	dec, err := binding.Db_TransactionActive(enc.Done())
+	runtime.KeepAlive(this)
+	if err != nil {
+		return zero0, err
+	}
+	var value0 bool
+	value0 = dec.Bool()
+	if err := dec.Finish(); err != nil {
+		return zero0, err
+	}
+	return value0, nil
+}
+
 // SqlDriver calls polyspec_orm::Db::sql_driver (contract member db.sql_driver).
 func (this *Db) SqlDriver() (string, error) {
 	var zero0 string
@@ -685,6 +703,24 @@ func (this *Tx) Savepoint(callback func(*Tx) (any, error)) (any, error) {
 	}
 	var value0 any
 	value0 = dec.Passed()
+	if err := dec.Finish(); err != nil {
+		return zero0, err
+	}
+	return value0, nil
+}
+
+// TransactionActive calls polyspec_orm::Tx::transaction_active (contract member tx.transaction_active).
+func (this *Tx) TransactionActive() (bool, error) {
+	var zero0 bool
+	enc := binding.NewWriter()
+	enc.Uint(this.handle())
+	dec, err := binding.Tx_TransactionActive(enc.Done())
+	runtime.KeepAlive(this)
+	if err != nil {
+		return zero0, err
+	}
+	var value0 bool
+	value0 = dec.Bool()
 	if err := dec.Finish(); err != nil {
 		return zero0, err
 	}

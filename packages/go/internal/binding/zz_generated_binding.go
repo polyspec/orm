@@ -33,6 +33,7 @@ int32_t polyspec_orm__db__connect(const uint8_t *args, size_t len, polyspec_orm_
 int32_t polyspec_orm__db__close(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__stats(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__driver(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
+int32_t polyspec_orm__db__transaction_active(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__sql_driver(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__transaction(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__with_cancel(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
@@ -40,6 +41,7 @@ int32_t polyspec_orm__db__connect_schema(const uint8_t *args, size_t len, polysp
 int32_t polyspec_orm__db__execute(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__tx__execute(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__tx__savepoint(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
+int32_t polyspec_orm__tx__transaction_active(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__aes_keyring__new(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__aes_keyring__current(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__aes_keyring__versions(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
@@ -284,6 +286,13 @@ func Db_Driver(args []byte) (*Reader, error) {
 	}, args)
 }
 
+// Db_TransactionActive calls polyspec_orm__db__transaction_active with the encoded arguments (B-8).
+func Db_TransactionActive(args []byte) (*Reader, error) {
+	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
+		return C.polyspec_orm__db__transaction_active(pointer, length, result)
+	}, args)
+}
+
 // Db_SqlDriver calls polyspec_orm__db__sql_driver with the encoded arguments (B-8).
 func Db_SqlDriver(args []byte) (*Reader, error) {
 	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
@@ -330,6 +339,13 @@ func Tx_Execute(args []byte) (*Reader, error) {
 func Tx_Savepoint(args []byte) (*Reader, error) {
 	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
 		return C.polyspec_orm__tx__savepoint(pointer, length, result)
+	}, args)
+}
+
+// Tx_TransactionActive calls polyspec_orm__tx__transaction_active with the encoded arguments (B-8).
+func Tx_TransactionActive(args []byte) (*Reader, error) {
+	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
+		return C.polyspec_orm__tx__transaction_active(pointer, length, result)
 	}, args)
 }
 
