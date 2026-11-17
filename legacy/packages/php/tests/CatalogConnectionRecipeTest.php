@@ -19,6 +19,14 @@ use PHPUnit\Framework\Attributes\Medium;
 #[Medium]
 class CatalogConnectionRecipeTest extends DatabaseRecipeTestCase
 {
+    // row_baseline_rejected holds about four live copies of its 14,680,064-byte cell: alone on SQLite it passes with
+    // 56M above what the process holds at the start of the class and fails with 48M (Allowed memory size exhausted in
+    // Catalog.php), so the class states 64M; the extension twin inherits it.
+    public static function setUpBeforeClass(): void
+    {
+        requireMemoryBudget('64M', 'the recipe ' . static::recipe());
+    }
+
     protected static function recipe(): string
     {
         return 'contracts/fixtures/catalog_connection/catalog_connection.json';
