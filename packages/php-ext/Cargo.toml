@@ -25,7 +25,7 @@ thrown-count-test = []
 [dependencies]
 polyspec-orm = { path = "../rust" }
 polyspec-binding-core = { git = "https://github.com/polyspec/binding.git", tag = "v0.0.21", features = ["construct", "lock", "driver"] }
-polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.34" }
+polyspec-json = { git = "https://github.com/polyspec/json.git", tag = "v0.0.37" }
 ext-php-rs = "=0.16.4"
 
 [lints]

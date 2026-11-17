@@ -32,7 +32,7 @@
   "devDependencies": {
     "@napi-rs/cli": "3.10.12",
     "@polyspec/binding": "https://github.com/polyspec/binding/releases/download/v0.0.21/polyspec-binding-0.0.21.tgz",
-    "@polyspec/json": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-0.0.34.tgz",
+    "@polyspec/json": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-0.0.37.tgz",
     "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.122/polyspec-kit-0.0.122.tgz",
     "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.25/polyspec-ordered-json-0.0.25.tgz",
     "@types/mdast": "4.0.4",
@@ -55,16 +55,16 @@
     "yaml": "2.9.1"
   },
   "overrides": {
-    "@polyspec/json": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-0.0.34.tgz",
-    "@polyspec/json-darwin-arm64": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-darwin-arm64-0.0.34.tgz",
-    "@polyspec/json-linux-arm64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-linux-arm64-gnu-0.0.34.tgz",
-    "@polyspec/json-linux-x64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-linux-x64-gnu-0.0.34.tgz",
+    "@polyspec/json": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-0.0.37.tgz",
+    "@polyspec/json-darwin-arm64": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-darwin-arm64-0.0.37.tgz",
+    "@polyspec/json-linux-arm64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-linux-arm64-gnu-0.0.37.tgz",
+    "@polyspec/json-linux-x64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-linux-x64-gnu-0.0.37.tgz",
     "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.25/polyspec-ordered-json-0.0.25.tgz",
     "vite": "^7.0.0"
   },
   "optionalDependencies": {
-    "@polyspec/json-darwin-arm64": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-darwin-arm64-0.0.34.tgz",
-    "@polyspec/json-linux-arm64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-linux-arm64-gnu-0.0.34.tgz",
-    "@polyspec/json-linux-x64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-linux-x64-gnu-0.0.34.tgz"
+    "@polyspec/json-darwin-arm64": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-darwin-arm64-0.0.37.tgz",
+    "@polyspec/json-linux-arm64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-linux-arm64-gnu-0.0.37.tgz",
+    "@polyspec/json-linux-x64-gnu": "https://github.com/polyspec/json/releases/download/v0.0.37/polyspec-json-linux-x64-gnu-0.0.37.tgz"
   }
 }

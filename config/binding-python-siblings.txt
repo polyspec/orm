@@ -3,6 +3,6 @@
 # for each platform that the release builds. No package index holds them, so make orm-install-binding-python installs
 # them from this file beside the wheel, with uv's check of the hashes; the version of a line is the version that
 # pyproject.toml names, and uv refuses the install when they differ.
-polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-macosx_11_0_arm64.whl ; sys_platform == "darwin" and platform_machine == "arm64" --hash=sha256:ba29ddb049a60c499f2b8f2777f257c91fdabef826f22e2e229d8c916ae4a31e
-polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_aarch64.whl ; sys_platform == "linux" and platform_machine == "aarch64" --hash=sha256:e693c7599e7719624c33e3cad916fe1c5c024ef2c2825f5d2c017f531e5fe07b
-polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_x86_64.whl ; sys_platform == "linux" and platform_machine == "x86_64" --hash=sha256:1584be32d8a6be67855bc6419fb9cae6bb0c55257a3a3a077ae1580b16346a6d
+polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.37/polyspec_json-0.0.37-cp314-abi3-macosx_11_0_arm64.whl ; sys_platform == "darwin" and platform_machine == "arm64" --hash=sha256:a2790d4f72212abd800341788011dd7a6f6f023eeffb569bc2736678f1776c4c
+polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.37/polyspec_json-0.0.37-cp314-abi3-manylinux_2_34_aarch64.whl ; sys_platform == "linux" and platform_machine == "aarch64" --hash=sha256:2ead3065656d12dfe6f2d73fb13e36fda9b8ecbc6e4a6d968b938a0b3b24e32b
+polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.37/polyspec_json-0.0.37-cp314-abi3-manylinux_2_34_x86_64.whl ; sys_platform == "linux" and platform_machine == "x86_64" --hash=sha256:33e3255d043a514629cf01e36fc273d70caaf8e4f52fe0085ea345e0ba7db275
