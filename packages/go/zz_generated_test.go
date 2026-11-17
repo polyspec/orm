@@ -3764,7 +3764,26 @@ func TestB4QueryGetCountRefusedNumberOfValues(t *testing.T) {
 }
 
 func TestB4QueryGetCountAMapIsNoConditionValue(t *testing.T) {
-	t.Fatal("the case a_map_is_no_condition_value of query.get_count: a case value of the kind map of the alias orm_value is not generated for Go yet (GN-13)")
+	made0, failure1 := SchemaLoad("dbspec 1 clock\u000a\u000atable clock_event {\u000a  seq i64 identity\u000a  label varchar(32)\u000a  created_ts datetime(6) default now\u000a  primary key (seq)\u000a}\u000a", "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "clock_event")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	failure4 := made2.Where("Seq", []any{map[string]any{}})
+	if failure4 != nil {
+		t.Fatalf("GN-13f: %v", failure4)
+	}
+	_, err := made2.GetCount()
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_encode" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
 }
 
 func TestB4QueryGetCountABetweenListOfOneValue(t *testing.T) {
@@ -5018,7 +5037,22 @@ func TestB4QueryGetByEmptyList(t *testing.T) {
 }
 
 func TestB4QueryGetByAMapIsNoConditionValue(t *testing.T) {
-	t.Fatal("the case a_map_is_no_condition_value of query.get_by: a case value of the kind map of the alias orm_value is not generated for Go yet (GN-13)")
+	made0, failure1 := SchemaLoad("dbspec 1 clock\u000a\u000atable clock_event {\u000a  seq i64 identity\u000a  label varchar(32)\u000a  created_ts datetime(6) default now\u000a  primary key (seq)\u000a}\u000a", "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "clock_event")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	_, err := made2.GetBy("Seq", []any{map[string]any{}})
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_encode" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
 }
 
 func TestB4QueryGetByATableThatTheDatabaseLacks(t *testing.T) {
@@ -5241,6 +5275,79 @@ func TestB4QueryGetByAClosedConnection(t *testing.T) {
 	_, err := made2.GetBy("Id", []any{int64(1)})
 	failure, ok := err.(*liberrors.ORMTypeError)
 	if !ok || failure.Kind() != "closed" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
+}
+
+func TestB4QueryGetByAStoredCellThatIsNotJson(t *testing.T) {
+	_caseTextOwner4 := t
+	_caseTextRoot5 := casePath(_caseTextOwner4, ".")
+	made0, failure1 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "item")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	made6, failure7 := SchemaLoad("dbspec 1 shop\u000a\u000atable item {\u000a  id i64 identity\u000a  code varchar(16)\u000a  owner_id i64 null\u000a  qty i32\u000a  rev i64\u000a  tag varchar(16) null\u000a  meta text null\u000a  deleted_at datetime(6) null\u000a  primary key (id)\u000a  unique uq_item_code (code)\u000a  unique uq_item_tag (tag)\u000a  index ix_item_owner (owner_id)\u000a  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\u000a  check ck_item_qty (qty >= 0)\u000a  settings {\u000a    soft_delete deleted_at\u000a    codec meta json\u000a  }\u000a}\u000a\u000atable owner {\u000a  id i64 identity\u000a  name varchar(32)\u000a  primary key (id)\u000a}\u000a\u000atable ghost {\u000a  id i64 identity\u000a  primary key (id)\u000a}\u000a", "", "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a")
+	if failure7 != nil {
+		t.Fatalf("GN-13f: %v", failure7)
+	}
+	made8, failure9 := DbConnectSchema(("sqlite://" + _caseTextPath(_caseTextOwner4, _caseTextRoot5, "shop.db", false)), made6, 1, Config{AesKey: nil, BlindIndexKey: nil, AesVersion: nil, AesKeys: nil, PlanCacheSize: nil, StatementCacheSize: nil, StatementTimeoutMs: nil, PoolIdleSize: nil, PoolLifetimeMs: nil, PoolAcquireTimeoutMs: nil, AuditSource: nil})
+	if failure9 != nil {
+		t.Fatalf("GN-13f: %v", failure9)
+	}
+	failure10 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure10 != nil {
+		t.Fatalf("GN-13f: %v", failure10)
+	}
+	failure11 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure11 != nil {
+		t.Fatalf("GN-13f: %v", failure11)
+	}
+	failure12 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure12 != nil {
+		t.Fatalf("GN-13f: %v", failure12)
+	}
+	failure13 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure13 != nil {
+		t.Fatalf("GN-13f: %v", failure13)
+	}
+	failure14 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure14 != nil {
+		t.Fatalf("GN-13f: %v", failure14)
+	}
+	failure15 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure15 != nil {
+		t.Fatalf("GN-13f: %v", failure15)
+	}
+	failure16 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure16 != nil {
+		t.Fatalf("GN-13f: %v", failure16)
+	}
+	failure17 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure17 != nil {
+		t.Fatalf("GN-13f: %v", failure17)
+	}
+	failure18 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure18 != nil {
+		t.Fatalf("GN-13f: %v", failure18)
+	}
+	failure19 := made8.Execute("{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}", []any{})
+	if failure19 != nil {
+		t.Fatalf("GN-13f: %v", failure19)
+	}
+	failure20 := made2.Connect(made8)
+	if failure20 != nil {
+		t.Fatalf("GN-13f: %v", failure20)
+	}
+	_, err := made2.GetBy("Id", []any{int64(3)})
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_decode" {
 		t.Fatalf("B-4: %#v", err)
 	}
 	if _, ok := failure.Errno(); ok {
@@ -6453,7 +6560,30 @@ func TestB4QueryCreateEmptyList(t *testing.T) {
 }
 
 func TestB4QueryCreateAMapIsNoConditionValue(t *testing.T) {
-	t.Fatal("the case a_map_is_no_condition_value of query.create: a case value of the kind map of the alias orm_value is not generated for Go yet (GN-13)")
+	made0, failure1 := SchemaLoad("dbspec 1 clock\u000a\u000atable clock_event {\u000a  seq i64 identity\u000a  label varchar(32)\u000a  created_ts datetime(6) default now\u000a  primary key (seq)\u000a}\u000a", "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "clock_event")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	failure4 := made2.Set("seq", int64(1))
+	if failure4 != nil {
+		t.Fatalf("GN-13f: %v", failure4)
+	}
+	failure5 := made2.Where("Seq", []any{map[string]any{}})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made2.Create()
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_encode" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
 }
 
 func TestB4QueryCreateADuplicateKey(t *testing.T) {
@@ -7343,7 +7473,30 @@ func TestB4QueryUpdateEmptyList(t *testing.T) {
 }
 
 func TestB4QueryUpdateAMapIsNoConditionValue(t *testing.T) {
-	t.Fatal("the case a_map_is_no_condition_value of query.update: a case value of the kind map of the alias orm_value is not generated for Go yet (GN-13)")
+	made0, failure1 := SchemaLoad("dbspec 1 clock\u000a\u000atable clock_event {\u000a  seq i64 identity\u000a  label varchar(32)\u000a  created_ts datetime(6) default now\u000a  primary key (seq)\u000a}\u000a", "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "clock_event")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	failure4 := made2.Set("seq", int64(1))
+	if failure4 != nil {
+		t.Fatalf("GN-13f: %v", failure4)
+	}
+	failure5 := made2.Where("Seq", []any{map[string]any{}})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	err := made2.Update()
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_encode" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
 }
 
 func TestB4QueryUpdateADuplicateKey(t *testing.T) {
@@ -8664,7 +8817,30 @@ func TestB4QueryDeleteEmptyList(t *testing.T) {
 }
 
 func TestB4QueryDeleteAMapIsNoConditionValue(t *testing.T) {
-	t.Fatal("the case a_map_is_no_condition_value of query.delete: a case value of the kind map of the alias orm_value is not generated for Go yet (GN-13)")
+	made0, failure1 := SchemaLoad("dbspec 1 clock\u000a\u000atable clock_event {\u000a  seq i64 identity\u000a  label varchar(32)\u000a  created_ts datetime(6) default now\u000a  primary key (seq)\u000a}\u000a", "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "clock_event")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	failure4 := made2.Set("seq", int64(1))
+	if failure4 != nil {
+		t.Fatalf("GN-13f: %v", failure4)
+	}
+	failure5 := made2.Where("Seq", []any{map[string]any{}})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	err := made2.Delete()
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_encode" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
 }
 
 func TestB4QueryDeleteAReferencedParent(t *testing.T) {
@@ -9502,7 +9678,30 @@ func TestB4QueryRestoreEmptyList(t *testing.T) {
 }
 
 func TestB4QueryRestoreAMapIsNoConditionValue(t *testing.T) {
-	t.Fatal("the case a_map_is_no_condition_value of query.restore: a case value of the kind map of the alias orm_value is not generated for Go yet (GN-13)")
+	made0, failure1 := SchemaLoad("dbspec 1 clock\u000a\u000atable clock_event {\u000a  seq i64 identity\u000a  label varchar(32)\u000a  created_ts datetime(6) default now\u000a  primary key (seq)\u000a}\u000a", "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "clock_event")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	failure4 := made2.Set("seq", int64(1))
+	if failure4 != nil {
+		t.Fatalf("GN-13f: %v", failure4)
+	}
+	failure5 := made2.Where("Seq", []any{map[string]any{}})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made2.Restore()
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_encode" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
 }
 
 func TestB4QueryRestoreAReadOnlyDatabase(t *testing.T) {
@@ -10364,7 +10563,30 @@ func TestB4QueryRestoreOrCreateEmptyList(t *testing.T) {
 }
 
 func TestB4QueryRestoreOrCreateAMapIsNoConditionValue(t *testing.T) {
-	t.Fatal("the case a_map_is_no_condition_value of query.restore_or_create: a case value of the kind map of the alias orm_value is not generated for Go yet (GN-13)")
+	made0, failure1 := SchemaLoad("dbspec 1 clock\u000a\u000atable clock_event {\u000a  seq i64 identity\u000a  label varchar(32)\u000a  created_ts datetime(6) default now\u000a  primary key (seq)\u000a}\u000a", "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb")
+	if failure1 != nil {
+		t.Fatalf("GN-13f: %v", failure1)
+	}
+	made2, failure3 := QueryNew(made0, "clock_event")
+	if failure3 != nil {
+		t.Fatalf("GN-13f: %v", failure3)
+	}
+	failure4 := made2.Set("seq", int64(1))
+	if failure4 != nil {
+		t.Fatalf("GN-13f: %v", failure4)
+	}
+	failure5 := made2.Where("Seq", []any{map[string]any{}})
+	if failure5 != nil {
+		t.Fatalf("GN-13f: %v", failure5)
+	}
+	_, err := made2.RestoreOrCreate()
+	failure, ok := err.(*liberrors.ORMValueError)
+	if !ok || failure.Kind() != "codec_encode" {
+		t.Fatalf("B-4: %#v", err)
+	}
+	if _, ok := failure.Errno(); ok {
+		t.Fatalf("B-4: the errno of %#v", err)
+	}
 }
 
 func TestB4QueryRestoreOrCreateADuplicateKey(t *testing.T) {

@@ -76,6 +76,11 @@ implementation is eligible for removal on that evidence.
   `CONFIG`: `busy` (CORE-22), `transaction_ended` (CORE-23), `closed` (CORE-31) and `pool_timeout` (CORE-30).
   `rollback_failed` replaces `ROLLBACK` (CORE-25). The codes `SUBSCRIBER` (CORE-28), `GENERATOR_SCAN_PARSE` and
   `GENERATOR_SCAN_UNATTACHED` (CORE-50) are no kinds of the core.
+- **CORE-139** A stored cell that a stage refuses when a read decodes it fails the member that reads the row with the
+  kind `codec_decode`, the class of the category `value` (CORE-11) and the message
+  `codec_decode: <entity>.<column>: <text>`, in every binding; the conversion of a value that a read already holds
+  keeps the message of CORE-64 and CORE-126. No error class of another library reaches the caller of
+  a member of orm; the error of that library is kept only as the cause.
 
 ## Transactions
 

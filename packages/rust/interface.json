@@ -3456,6 +3456,7 @@
           "raises": [
             "polyspec_orm::Kind::Config",
             "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
             "polyspec_orm::Kind::CodecEncode",
             "polyspec_orm::Kind::Busy",
             "polyspec_orm::Kind::TransactionEnded",
@@ -4129,6 +4130,7 @@
           "raises": [
             "polyspec_orm::Kind::Config",
             "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
             "polyspec_orm::Kind::CodecEncode",
             "polyspec_orm::Kind::Busy",
             "polyspec_orm::Kind::TransactionEnded",
@@ -4169,6 +4171,7 @@
           "raises": [
             "polyspec_orm::Kind::Config",
             "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
             "polyspec_orm::Kind::CodecEncode",
             "polyspec_orm::Kind::Busy",
             "polyspec_orm::Kind::TransactionEnded",

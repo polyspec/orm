@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 25cacf319f3fbb30184e34db98ba2d6268b8285ed17475188c4df3925d5d820d -->
+<!-- source-sha256: f450b0740e96aad772cd05c16e34032a3709f4bfd9858c4a50a456c5852ec23a -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -68,6 +68,10 @@
   `transaction_ended`(CORE-23), `closed`(CORE-31), `pool_timeout`(CORE-30). `rollback_failed`는 `ROLLBACK`을
   대체한다(CORE-25). 코드 `SUBSCRIBER`(CORE-28), `GENERATOR_SCAN_PARSE`, `GENERATOR_SCAN_UNATTACHED`(CORE-50)는 코어의
   kind가 아니다.
+- **CORE-139** 읽기가 디코드할 때 stage가 거부한 저장 cell은 그 행을 읽는 member를 모든 바인딩에서 kind `codec_decode`,
+  category `value`의 클래스(CORE-11), 메시지 `codec_decode: <entity>.<column>: <text>`로 실패시킨다. 읽기가 이미 가진
+  값의 변환은 CORE-64와 CORE-126의 메시지를 그대로 둔다. 다른 라이브러리의 오류
+  클래스는 orm member의 호출자에게 닿지 않는다. 그 라이브러리의 오류는 원인으로만 남는다.
 
 ## 트랜잭션
 

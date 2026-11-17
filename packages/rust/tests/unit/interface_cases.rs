@@ -326,8 +326,12 @@ fn host_value(host: &mut CaseHost, case: &Value, what: &str) -> HostValue {
             HostValue::List { handle: handle(host.lists.len() - 1), len }
         }
         "map" => {
-            let members = given().as_object().unwrap_or_else(|| panic!("{what}: the value of a map is no object"));
-            let entries: Vec<(HostValue, HostValue)> = members.iter().map(|(key, member)| (host_text(key), host_value(host, member, what))).collect();
+            // The value of a map is a list of [key, value] pairs in order, a key being a text (binding GN-13).
+            let pairs = given().as_array().unwrap_or_else(|| panic!("{what}: the value of a map is no list of [key, value] pairs"));
+            let entries: Vec<(HostValue, HostValue)> = pairs.iter().map(|pair| match pair.as_array().map(Vec::as_slice) {
+                Some([Value::String(key), member]) => (host_text(key), host_value(host, member, what)),
+                _ => panic!("{what}: an entry of a map is {pair}, not [key, value] with a text key"),
+            }).collect();
             let len = u64::try_from(entries.len()).or_panic(|error| format!("{what}: the length of a map does not fit u64: {error}"));
             host.maps.push(entries);
             HostValue::Map { handle: handle(host.maps.len() - 1), len }
@@ -365,7 +369,7 @@ fn case_value(value: &OrmValue, what: &str) -> Value {
         OrmValue::Text(text) => of("text", Value::from(text.as_str())),
         OrmValue::Bytes(bytes) => of("bytes", serde_json::json!({"hex": bytes.iter().map(|byte| format!("{byte:02x}")).collect::<String>()})),
         OrmValue::List(items) => of("list", items.iter().map(|item| case_value(item, what)).collect()),
-        OrmValue::Map(entries) => of("map", entries.iter().map(|(key, entry)| (key.clone(), case_value(entry, what))).collect::<Map<String, Value>>().into()),
+        OrmValue::Map(entries) => of("map", entries.iter().map(|(key, entry)| serde_json::json!([key, case_value(entry, what)])).collect()),
         OrmValue::Json(_) => panic!("{what}: the case form has no value of json_value"),
     }
 }
@@ -925,7 +929,14 @@ async fn run_case_in(member: &str, fields: &Map<String, Value>, what: &str, fail
             return;
         }
         (Ok(Returned::Value(value)), None) => {
-            let expected = fields.get("result").unwrap_or_else(|| panic!("{what}: the case states no result"));
+            // A call that returns nothing gives null: its case writes `"result": null` or leaves the key out, and the
+            // two forms mean the same. A call that returns a value states its result.
+            let nothing = Value::Null;
+            let expected = match fields.get("result") {
+                Some(expected) => expected,
+                None if value == nothing => &nothing,
+                None => panic!("{what}: the case states no result, and the call returned {value}"),
+            };
             // An expected text may be composed with the paths of the case (binding GN-13l), compared as text.
             let expected = &match (expected.get("text"), case_text(expected, &what)) {
                 (Some(_), Some(text)) => Value::from(text),

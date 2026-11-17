@@ -79,15 +79,33 @@ func TestGN13eDecodeLargeIntegralFloatKind(t *testing.T) {
 }
 
 func TestGN13eDecodeEmptyMapKind(t *testing.T) {
-	t.Fatal("codec.decode: a case value of the kind map of orm_value is {}, not an array of [key, value] pairs (G-5) (GN-13e)")
+	value0, err := Decode([]string{"yaml"}, "{}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (any)(map[string]any{}); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
 }
 
 func TestGN13eDecodeSequenceMapKind(t *testing.T) {
-	t.Fatal("codec.decode: a case value of the kind map of orm_value is {\"0\":{\"kind\":\"bool\",\"value\":true},\"1\":{\"kind\":\"bool\",\"value\":false}}, not an array of [key, value] pairs (G-5) (GN-13e)")
+	value0, err := Decode([]string{"yaml"}, "{\"0\": true, \"1\": false}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (any)(map[string]any{"0": true, "1": false}); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
 }
 
 func TestGN13eDecodeNamedMapKind(t *testing.T) {
-	t.Fatal("codec.decode: a case value of the kind map of orm_value is {\"name\":{\"kind\":\"bool\",\"value\":true}}, not an array of [key, value] pairs (G-5) (GN-13e)")
+	value0, err := Decode([]string{"yaml"}, "{name: true}")
+	if err != nil {
+		t.Fatalf("GN-13e: %v", err)
+	}
+	if want := (any)(map[string]any{"name": true}); !reflect.DeepEqual(value0, want) {
+		t.Fatalf("GN-13e: %#v is not %#v", value0, want)
+	}
 }
 
 func TestGN13eDecodeEmptyListKind(t *testing.T) {

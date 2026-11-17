@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9dcbb8ae42b1f1e1e29d849c2ecd4f9a04a034490fd7feb6e2c2fe70faf2cd74 -->
+<!-- source-sha256: c94e9b764ee43d157a90bf7394a8eebef2e4af570c18bb9bdf580be11369c1a0 -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 - `Query`는 `where_none(connector)`(TypeScript와 PHP `whereNone`, Python과 Rust `where_none`, Go `WhereNone`; CORE-137, PRT-92)로 어떤 행도 만족하지 않는 조건을 가진다: `""`나 `And`는 그것을 `and`로, `Or`는 `or`로 잇고, 모든 dialect가 `1 = 0`으로 쓰며, 빈 key 목록이 raw SQL 없이 아무것도 고르지 않는다(T563-2).
 - `Query`의 조건은 그 `update`와 `delete`에도 적용된다(CORE-138): 문장은 key의 행이 조건을 만족할 때만 그 행을 쓴다. 그래서 `where_none`은 어떤 행도 쓰지 않는다. 전에는 key가 조건을 말없이 대신했다. `expect_revision` 아래에서 아무 행도 바꾸지 않은 쓰기는 `revision_changed`로 남고, 메시지가 조건을 말한다(T563-3).
 - 최상위에서 `or`로 조건을 잇는 `where`로 `soft_delete` 설정을 가진 table을 읽으면 soft delete된 행을 읽지 않고, 그런 `where`의 update나 soft delete는 그런 행을 쓰지 않는다: planner가 그 group을 soft delete 열과 기대 revision 옆에 괄호로 쓴다(PRT-93, T572, T572-1).
+- decode되지 않는 저장 cell은 그 행을 읽는 member를 모든 바인딩에서 똑같이 실패시킨다(CORE-139): kind는 `codec_decode`, 클래스는 category `value`의 클래스, 메시지는 `codec_decode: <entity>.<column>: <text>`다. `Query`의 `get_by`, `restore`, `restore_or_create`는 이제 contract의 `raises`에 `codec_decode`를 적고, `query.get_by.sqlite`의 case 하나가 JSON이 아닌 `json` cell을 읽는다(T579).
 - orm은 binding 0.0.17과 json 0.0.34로 빌드한다(T576): Cargo, npm, Go pin이 그 release를 이름하고, 각 lock은 `polyspec-binding-core` 하나와 `polyspec-json` 하나를 가지며, packages/go의 생성된 Go 파일 `zz_generated_*.go`는 binding GN-3대로 추적되고, `scripts/repo/pin-deps.mts`가 pin을 쓴다.
 - 연결은 `beforeTransaction`(Go `BeforeTransaction`, Python과 Rust `before_transaction`)으로 hook를 등록하며, 모든 client는 `transaction`이 연결이나 그 handle에서 여는 가장 바깥 transaction마다, transaction이 connection을 잡거나 statement를 보내기 전에 그 hook를 부르고 TypeScript와 Rust에서는 기다립니다. 등록은 hook를 지우는 함수를 돌려줍니다. 그래서 hook는 호출의 read 뒤, write transaction 전에 다른 연결에서 row를 commit할 수 있으며, SQLite에서는 `BEGIN IMMEDIATE`가 write lock을 잡기 전입니다. hook의 오류는 transaction을 시작 전에 끝내며 바뀌지 않고 다시 실행되지 않습니다(T557, INT-190).
 - 연결의 `transactionActive`(Go `TransactionActive`, Python과 Rust `transaction_active`)로 호출한 execution flow에 그 연결의 transaction이 활성인지 알려 주므로, 호출자는 transaction 안에서 데이터베이스 밖의 작업을 거절할 수 있습니다. 여섯 client 모두 기존 transaction stack만 읽으며 statement를 보내거나 hook을 부르거나 driver에 묻지 않습니다(T556, INT-189).
