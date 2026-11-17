@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 2d9c99bb58986a088f2737290f68f1b8f8c33ed8d2bff80411b723bee8d9fb19 -->
+<!-- source-sha256: 3f615706b17eb9120660b1c17512dd82571e03427955b214ce54d92890a58b68 -->
 # 사용법
 
 릴리스 v0.0.34는 Rust 코어와, 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩의 첫 릴리스다. 바인딩은 TypeScript와 Node(`packages/ts`), Python(`packages/python`), PHP extension(`packages/php-ext`), Go(`packages/go`)다. 그 릴리스의 사용자가 가진 것은 [생성된 바인딩](#generated-bindings)에 있다. 손으로 쓴 클라이언트는 `legacy/packages`에 보존하며 v0.0.34는 그것을 릴리스하지 않는다([CORE-1](../spec/core.ko.md)). 1절부터 12절까지는 그 클라이언트를 설명하며, [legacy/packages의 언어 구현](#language-implementations-under-legacy-packages)에 그 범위가 있다.
@@ -951,6 +951,7 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 - hook은 model이 만든 request, 그것이 bind한 매개변수(읽기 전용이라 hook이 호출자가 준 값을 확인할 수 있다), 매개변수를 더하는 수단을 받는다: `addParam(value)`는 value를 request 매개변수 끝에 더하고 그 index를 돌려준다. hook은 protocol이 허용하는 어떤 방식으로든 request를 바꿀 수 있다. 예를 들어 root, join, relation의 `where`에 predicate를, `set`에 assignment와 `rows`의 각 항목에 매개변수 하나를, `on_duplicate`에 항목을 더한다. client는 그 뒤 `n_params`를 매개변수 수로 쓰고 request를 다른 request처럼 plan한다. planner가 request를 검증하므로 매개변수 밖의 index는 `IR_INVALID`로, 모르는 column은 `COLUMN_UNKNOWN`으로 statement 전에 실패한다. plan cache는 값이 아니라 request로 key를 정하므로, hook이 같은 모양으로 바꾼 두 request는 hook이 더한 값과 관계없이 plan 하나를 함께 쓴다.
 - client는 hook이 돌아온 뒤에 request를 plan하며, TypeScript와 Rust에서는 hook의 promise나 future를 기다린다(INT-78). 그래서 hook은 client가 request를 plan하기 전에 다른 연결(두 번째 `Db`)로 문을 실행할 수 있다. 예를 들어 트랜잭션 안에서 request가 쓸 행을 읽는다. Go, PHP, Python에서 hook은 이것을 다른 동기 호출처럼 한다.
 - hook의 오류(PHP, Python, TypeScript는 throw, Go와 Rust는 반환, 또는 promise의 거부나 future의 오류)는 바뀌지 않은 채 statement 전에 operation을 실패시킨다.
+- member가 이미 실패시킨 Rust 코어의 동적 `Query`(열이 아닌 이름 같은, 미뤄 둔 `config`)는 request를 만들기 전에 terminal에서 거부되므로, request hook도 `Db::with_request_log`의 request log도 그 request를 받지 않는다([CORE-190](../spec/core.ko.md)).
 - model은 자기가 연결된 handle을 거친다. transaction 안에서 연결이 없는 model은 transaction을 시작한 handle을 거친다. hook이 있는 handle로 읽거나 만든 행은 그 handle을 지키므로, 그 뒤의 `update`, `delete`, `restore`도 hook을 지난다. hook이 있는 handle에서 시작한 transaction은 callback의 model에 hook을 지키며, 그 안에서 연결의 다른 handle에 연결한 model은 그 handle의 hook으로 실행된다.
 - 만든 행은 호출자가 지정한 값을 가진다. hook이 지정한 값은 써지지만 행으로 다시 읽히지 않는다.
 - hook이 없는 handle은 model이 만든 request를 복사하거나 부르는 일 없이 그대로 plan한다.
