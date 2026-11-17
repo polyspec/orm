@@ -323,7 +323,7 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
         const env = serverEnvironment(mariadbEnv);
         const lease = process.env.LEASE;
         const leases = env['ORM_TEST_MARIADB_LEASES'];
-        if (!lease || !leases) throw new Error(`${mariadbEnv} names no ORM_TEST_MARIADB_LEASES; run make orm-test-mariadb, which writes it`);
+        if (!lease || !leases) throw new Error(`${mariadbEnv} names no ORM_TEST_MARIADB_LEASES; run make orm-test-mariadb <target> in one command, which writes it`);
         const held = spawnSync(lease, ['hold', leases, 'shared', '--pid', String(process.pid)], { encoding: 'utf8' });
         if (held.status !== 0) throw new Error(`${lease} hold ${leases} shared exited with ${held.status}: ${(held.stderr || held.stdout).trim()}`);
         step(`holding the shared lease of ${leases}`);

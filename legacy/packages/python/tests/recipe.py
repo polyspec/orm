@@ -3263,7 +3263,7 @@ def _op_replica_await(step: dict, context: dict) -> dict:
     replica = os.environ.get(variable)
     if not replica:
         raise AssertionError(
-            f"replica.await: {variable} is required; run make orm-test-servers, which starts the databases and writes it"
+            f"replica.await: {variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
         )
     mariadb = context["database"] == "mariadb"
     status = native_query(
@@ -3377,7 +3377,7 @@ def _op_session_end(step: dict, context: dict) -> dict:
     server = os.environ.get(variable)
     if not server:
         raise AssertionError(
-            f"{variable} is required; run make orm-test-servers, which starts the databases and writes it"
+            f"{variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
         )
     session = with_database(server, urlsplit(context["dsn"]).path.lstrip("/"))
     query = (
@@ -3491,7 +3491,7 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
         dsn = os.environ.get(name, "")
         if not dsn:
             raise AssertionError(
-                f"dsn.connect: {name} is unset; run make orm-test-servers"
+                f"dsn.connect: {name} is unset; run make orm-test-servers <target> in one command"
             )
     return {
         "value": {"text": _connect_driver(dsn, step.get("config"), context["database"])}

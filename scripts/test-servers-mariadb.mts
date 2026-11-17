@@ -118,7 +118,7 @@ export const MARIADB_VARIABLES = ['ORM_TEST_MARIADB_DSN', 'ORM_TEST_MARIADB_SERV
 export function mariadbEnvironmentPorts(text: string, file: string): MariadbPorts {
   const port = (name: string): number => {
     const match = new RegExp(`^export ${name}='[^@]*@127\\.0\\.0\\.1:(\\d+)/`, 'm').exec(text);
-    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop and make orm-test-mariadb, which rewrite it`);
+    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop, then make orm-test-mariadb <target> in one command, which rewrites it`);
     return checkedPort(match[1] ?? '');
   };
   return { mariadb: port('ORM_TEST_MARIADB_SERVER_DSN'), mariadbReplica: port('ORM_TEST_MARIADB_REPLICA_DSN'),

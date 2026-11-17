@@ -68,6 +68,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 ## Quick start (MySQL 8.4 and PostgreSQL 17)
 ```sh
 make orm-test-servers                                                   # servers, databases, bench schema + 100k rows
+# The servers stay up while this shell runs (its owner, ORM_SERVERS_OWNER); in a shell of one command, run make orm-test-servers <targets>
 . .runtime/servers/env                                              # the DSN variables of the tests
 (cd legacy/packages/go/model && go generate)                                # Go models
 vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'

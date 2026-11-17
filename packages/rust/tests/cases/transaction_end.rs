@@ -17,8 +17,8 @@ use or_panic::OrPanic;
 fn required_dsn(name: &str) -> String {
     match std::env::var(name) {
         Ok(dsn) if !dsn.is_empty() => dsn,
-        Ok(_) => panic!("{name} is set but empty; database tests never skip; run make orm-test-servers or make orm-test-container, which write it"),
-        Err(error) => panic!("{name} is required ({error}); database tests never skip; run make orm-test-servers or make orm-test-container, which write it"),
+        Ok(_) => panic!("{name} is set but empty; database tests never skip; run make orm-test-servers <target> in one command, or make orm-test-container, which write it"),
+        Err(error) => panic!("{name} is required ({error}); database tests never skip; run make orm-test-servers <target> in one command, or make orm-test-container, which write it"),
     }
 }
 

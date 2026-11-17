@@ -170,7 +170,7 @@ caseTest('database commands report unreadable server configuration before callin
       const result = f.run(['scripts/check/databases.mts', action, path, dir, 'orm_x']);
       assert.equal(result.status, status, result.stdout + result.stderr);
       assert.match(result.stderr, expected);
-      assert.match(result.stderr, /run make orm-test-servers to rewrite it/);
+      assert.match(result.stderr, /run make orm-test-servers <target> in one command to rewrite it/);
       assert.ok(!existsSync(join(f.base, 'ran.log')), 'a database client ran before configuration was rejected');
     };
     run('create', '', /create: .* names no ORM_RUN_MYSQL_DSN/);

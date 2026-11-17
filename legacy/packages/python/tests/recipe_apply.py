@@ -61,7 +61,7 @@ def _required(name: str) -> str:
     value = os.environ.get(name)
     if not value:
         raise AssertionError(
-            f"{name} is required; run make orm-test-servers, which starts the databases and writes it"
+            f"{name} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
         )
     return value
 

@@ -18,7 +18,7 @@ final class MysqlSessionNativeTest extends TestCase
         self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
         $dsn = requiredDsn('ORM_TEST_POSTGRES_DSN');
         if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException('ORM_TEST_POSTGRES_DSN is not set; run make orm-test-servers');
+            throw new RuntimeException('ORM_TEST_POSTGRES_DSN is not set; run make orm-test-servers <target> in one command');
         }
         \Polyspec\Orm\Tests\PostgresSessionSettings::assertStartupParameters($dsn);
     }

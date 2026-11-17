@@ -836,7 +836,7 @@ const OPS = {
     if (s.dsn.startsWith('env:')) {
       const variable = serverVariable(s.dsn.slice(4), context.database);
       const dsn = process.env[variable];
-      if (!dsn) throw new Error(`dsn.connect: ${variable} is unset; run make orm-test-servers`);
+      if (!dsn) throw new Error(`dsn.connect: ${variable} is unset; run make orm-test-servers <target> in one command`);
       return { value: { text: await connectDriver(dsn, s.config, context.database) } };
     }
     if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config, context.database) } };
@@ -1061,7 +1061,7 @@ const OPS = {
     // MariaDB names the two SHOW BINLOG STATUS and MASTER_POS_WAIT.
     const variable = serverVariable('ORM_TEST_MYSQL_REPLICA_DSN', context.database);
     const replica = process.env[variable];
-    if (!replica) throw new Error(`replica.await: ${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+    if (!replica) throw new Error(`replica.await: ${variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it`);
     const mariadb = context.database === 'mariadb';
     const [[status]] = await nativeQuery('mysql', context.dsn, [mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS']);
     const wait = mariadb ? 'MASTER_POS_WAIT' : 'SOURCE_POS_WAIT';
@@ -1122,7 +1122,7 @@ const OPS = {
   async 'session.end'(s, context) {
     const variable = `ORM_TEST_${context.database.toUpperCase()}_SERVER_DSN`;
     const server = process.env[variable];
-    if (!server) throw new Error(`${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+    if (!server) throw new Error(`${variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it`);
     const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
     const postgres = context.database === 'postgres';
     // On MySQL and MariaDB alike, the session is the one, other than this one, that holds a granted transaction metadata lock on the

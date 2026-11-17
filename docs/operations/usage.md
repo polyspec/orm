@@ -999,6 +999,7 @@ Python SQL connections can derive a cancellation handle with `db.with_future(fut
 
 ```sh
 make orm-test-servers                                        # MySQL, PostgreSQL, their replicas, ProxySQL, PgBouncer, and the seeded bench databases
+# The servers stay up while this shell runs (its owner, ORM_SERVERS_OWNER); in a shell of one command, run make orm-test-servers <targets>
 . .runtime/servers/env                                   # the DSN variables of the tests
 go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client

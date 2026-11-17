@@ -28,7 +28,7 @@ if (fixture.schema !== 1 || typeof code !== 'string' || code === '' || typeof me
 
 const DRIVERS = ['sqlite', 'mysql', 'postgres'];
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
+  if (!process.env[env]) throw new Error(`${env} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
 }
 
 let failures = 0;

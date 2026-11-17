@@ -29,7 +29,7 @@ Each probe runs in its own disposable object:
 ## Run
 
 ```sh
-make dialect-facts-check TEST_ENV=<path of the environment file of make orm-test-servers>
+make orm-test-servers dialect-facts-check TEST_ENV=<path of the environment file of make orm-test-servers>
 ```
 
 The target first checks probe IDs without a database, then runs

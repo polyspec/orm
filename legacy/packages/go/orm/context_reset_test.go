@@ -18,7 +18,7 @@ func TestTransactionReportsFailedLocalReset(t *testing.T) {
 	testcase.Start(t)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if dsn == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers")
+		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make orm-test-servers <target> in one command, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers")
 	}
 	useFailingDriver(t, "mysql")
 	inject(t, injectedFailure{statement: func(query string) bool {

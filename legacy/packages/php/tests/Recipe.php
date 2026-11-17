@@ -3703,7 +3703,7 @@ final class Recipe
                 Assert::assertNotSame(
                     '',
                     $replica,
-                    "$variable is required; run make orm-test-servers, which starts the databases and writes it"
+                    "$variable is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
                 );
                 $mariadb = $context['database'] === 'mariadb';
                 $status = $source->query($mariadb ? 'SHOW BINLOG STATUS' : 'SHOW BINARY LOG STATUS')
@@ -3771,7 +3771,7 @@ final class Recipe
                 Assert::assertNotSame(
                     '',
                     $server,
-                    "$variable is required; run make orm-test-servers, which starts the databases and writes it"
+                    "$variable is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
                 );
                 $pdo = case_admin(
                     case_dsn_with_database($server, ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/'))
@@ -3914,7 +3914,7 @@ final class Recipe
                 if (str_starts_with($dsn, 'env:')) {
                     $name = self::serverVariable(substr($dsn, 4), $context['database']);
                     $dsn = (string) getenv($name);
-                    Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers");
+                    Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers <target> in one command");
                 }
                 return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [], $context['database'])]];
             case 'dsn.sqlite_file':

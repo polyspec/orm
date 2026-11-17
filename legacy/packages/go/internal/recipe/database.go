@@ -415,7 +415,7 @@ func firstInteger(rows *sql.Rows) (int64, error) {
 func casePoolerDSN(caseDSN string) (string, error) {
 	pooler, err := url.Parse(os.Getenv("ORM_TEST_PGBOUNCER_DSN"))
 	if err != nil || pooler.Host == "" {
-		return "", errors.New("dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it")
+		return "", errors.New("dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers <target> in one command, which starts the databases and writes it")
 	}
 	target, err := url.Parse(caseDSN)
 	if err != nil {
@@ -431,7 +431,7 @@ func caseReplicaDSN(database, caseDSN string) (string, error) {
 	variable := "ORM_TEST_" + strings.ToUpper(database) + "_REPLICA_DSN"
 	replica, err := url.Parse(os.Getenv(variable))
 	if err != nil || replica.Host == "" {
-		return "", fmt.Errorf("dsn case-replica: %s is required; run make orm-test-servers, which starts the databases and writes it", variable)
+		return "", fmt.Errorf("dsn case-replica: %s is required; run make orm-test-servers <target> in one command, which starts the databases and writes it", variable)
 	}
 	target, err := url.Parse(caseDSN)
 	if err != nil {
@@ -446,7 +446,7 @@ func caseServerDSN(database, caseDSN string) (string, error) {
 	variable := "ORM_TEST_" + strings.ToUpper(database) + "_SERVER_DSN"
 	server, err := url.Parse(os.Getenv(variable))
 	if err != nil || server.Host == "" {
-		return "", fmt.Errorf("dsn case-server: %s is required; run make orm-test-servers, which starts the databases and writes it", variable)
+		return "", fmt.Errorf("dsn case-server: %s is required; run make orm-test-servers <target> in one command, which starts the databases and writes it", variable)
 	}
 	target, err := url.Parse(caseDSN)
 	if err != nil {
@@ -482,7 +482,7 @@ func connectDSN(dsn, database, caseDSN string) (string, error) {
 		variable := "ORM_TEST_" + strings.ToUpper(database) + "_SOCKET"
 		socket := os.Getenv(variable)
 		if socket == "" {
-			return "", fmt.Errorf("dsn case-socket: %s is unset; run make orm-test-servers or make orm-test-mariadb", variable)
+			return "", fmt.Errorf("dsn case-socket: %s is unset; run make orm-test-servers <target> or make orm-test-mariadb <target> in one command", variable)
 		}
 		return caseSocketDSN(caseDSN, socket)
 	}
@@ -1523,7 +1523,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			name = serverVariable(name, c.database)
 			dsn = os.Getenv(name)
 			if dsn == "" {
-				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers", name)
+				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers <target> in one command", name)
 			}
 		}
 		driver, err := connectDriver(dsn, c.database, s.k("config").Config)
@@ -1716,7 +1716,7 @@ func endSession(table string, c *databaseContext) error {
 	variable := "ORM_TEST_" + strings.ToUpper(c.database) + "_SERVER_DSN"
 	server := os.Getenv(variable)
 	if server == "" {
-		return fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", variable)
+		return fmt.Errorf("%s is required; run make orm-test-servers <target> in one command, which starts the databases and writes it", variable)
 	}
 	raw := testdb.Open(c.t, c.database, testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, c.dsn)))
 	defer testcase.Close(c.t, raw)
@@ -1786,7 +1786,7 @@ func awaitReplica(c *databaseContext) error {
 	variable := serverVariable("ORM_TEST_MYSQL_REPLICA_DSN", c.database)
 	replica := os.Getenv(variable)
 	if replica == "" {
-		return fmt.Errorf("replica.await: %s is required; run make orm-test-servers, which starts the databases and writes it", variable)
+		return fmt.Errorf("replica.await: %s is required; run make orm-test-servers <target> in one command, which starts the databases and writes it", variable)
 	}
 	target := testdb.Open(c.t, c.database, replica)
 	defer testcase.Close(c.t, target)

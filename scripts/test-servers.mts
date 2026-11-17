@@ -257,7 +257,7 @@ function writeEnvironment(p: Paths, ports: Ports): void {
 export function environmentPorts(text: string, file: string): Ports {
   const port = (name: string): number => {
     const match = new RegExp(`^export ${name}='[^@]*@127\\.0\\.0\\.1:(\\d+)/`, 'm').exec(text);
-    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop and make orm-test-servers, which rewrite it`);
+    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop, then make orm-test-servers <target> in one command, which rewrites it`);
     return checkedPort(match[1] ?? '');
   };
   return { mysql: port('ORM_TEST_MYSQL_SERVER_DSN'), postgres: port('ORM_TEST_POSTGRES_SERVER_DSN'), mysqlReplica: port('ORM_TEST_MYSQL_REPLICA_DSN'),
@@ -544,7 +544,7 @@ function mysqlPrivilegeReady(p: Paths): boolean {
 }
 
 function startMysqlPrivilege(p: Paths): void {
-  if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers, which starts the shared database servers`);
+  if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers <target> in one command, which starts the shared database servers`);
   if (mysqlPrivilegeReady(p)) {
     console.log('test-servers: MySQL privilege probe server is already ready');
     return;
@@ -1018,7 +1018,7 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
     case 'tls': {
       // tls loads the TLS files into the running servers, on the ports of their environment file.
       arity(0);
-      if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers, which starts the servers`);
+      if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers <target> in one command, which starts the servers`);
       const ports = environmentPorts(readFileSync(p.env, 'utf8'), p.env);
       tls(p, ports);
       return writeEnvironment(p, ports);
