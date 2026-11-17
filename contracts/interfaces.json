@@ -155,7 +155,7 @@
           "cases": [
             {
               "test": "packages/rust/tests/cases/zone.rs",
-              "id": "dropping_a_query_cancels_it"
+              "id": "dropping_a_query_cancels_it_servers"
             }
           ]
         },

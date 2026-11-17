@@ -272,7 +272,7 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   // The Rust cases that drop a waiting statement or transaction drop it after the LOG message of the PostgreSQL wait or the
   // answer of a probe, not after a timer.
   const zone = text('packages/rust/tests/cases/zone.rs');
-  const dropping = zone.slice(zone.indexOf('async fn dropping_a_query_cancels_it()'), zone.indexOf('pub fn trials()'));
+  const dropping = zone.slice(zone.indexOf('async fn dropping_a_query_cancels_it_servers()'), zone.indexOf('pub fn trials()'));
   assert.doesNotMatch(dropping, polled, 'the dropping cases of zone.rs wait on no timer');
   assert.doesNotMatch(dropping, /tokio::time::timeout/, 'the dropping cases of zone.rs drop on no timer');
   assert.match(dropping, /statement_waits/, 'the dropping cases of zone.rs drop after the wait of the statement');
