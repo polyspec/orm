@@ -68,12 +68,13 @@ def run_sample(*names: str) -> subprocess.CompletedProcess:
 
 
 # The one run of unittest that a Makefile line may start without the harness: the generated tests of the binding package
-# (packages/python), which the interpreter of the binding's own venv discovers inside packages/python/generated/tests. That
-# package is not this one: its tests are generated from the interface contract, import no testcase and write no step, and
-# its venv holds the built wheel and not this client.
+# (packages/python), which the interpreter of the binding's own venv runs inside packages/python/generated/tests, the
+# module test_generated or the tests of it that a selection names (binding_select, T582-1). That package is not this one:
+# its tests are generated from the interface contract, import no testcase and write no step, and its venv holds the built
+# wheel and not this client.
 GENERATED_BINDING_RUN = re.compile(
-    r"^\$\(BINDING_PYTHON_VENV\)/bin/python -m unittest discover"
-    r"(?: -v)? -s packages/python/generated/tests -t packages/python/generated/tests$"
+    r"^\$\(BINDING_SERVERS\) cd packages/python/generated/tests && "
+    r"\$\(BINDING_PYTHON_VENV\)/bin/python -m unittest -v \$\(call binding_select,.*,test_generated\)$"
 )
 
 
@@ -217,7 +218,7 @@ class EveryTestTest(unittest.TestCase):
     def test_discovery_runs_through_the_harness(self) -> None:
         # The rule on the lines of a Makefile, on each side: a line that starts unittest itself on the tests of this package
         # is found, with any interpreter, and the line of the generated tests of the binding is not.
-        generated = "$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -v -s packages/python/generated/tests -t packages/python/generated/tests"
+        generated = "$(BINDING_SERVERS) cd packages/python/generated/tests && $(BINDING_PYTHON_VENV)/bin/python -m unittest -v $(call binding_select,$$(cat $(BINDING_SELECTED)),$$(cat $(BINDING_SELECTED)),test_generated)"
         found = [
             "$(PYTHON_VENV)/bin/python -m unittest discover -s legacy/packages/python/tests -t .",
             "$(PYTHON_VENV)/bin/python -m unittest legacy.packages.python.tests.test_markdown",
@@ -225,6 +226,8 @@ class EveryTestTest(unittest.TestCase):
             "$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -s packages/python/generated/tests -t .",
             "python3 -m unittest discover -s packages/python/generated/tests -t packages/python/generated/tests",
             "cd legacy/packages/python && $(BINDING_PYTHON_VENV)/bin/python -m unittest discover -s tests",
+            "$(BINDING_SERVERS) cd legacy/packages/python/tests && $(BINDING_PYTHON_VENV)/bin/python -m unittest -v test_values",
+            "cd packages/python/generated/tests && $(BINDING_PYTHON_VENV)/bin/python -m unittest discover -v",
         ]
         self.assertEqual(
             bare_unittest_lines("\n".join(["\t" + generated, *found])), found

@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 5d9a4e4fc0a9d9f404148bc9af7d15596af30cdaa7be49337981b2d53633e7d9 -->
+<!-- source-sha256: 25bc6ba199e59f8aeede9f1ee7644e5b141fe7cbc15e511fc773c44474931374 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -354,12 +354,13 @@
   아닌 이름, 열이 허용하지 않는 연산자, key 수와 다른 값의 수는 `config`이고, 생성된 모델의 builder 오류처럼 다음
   terminal이 돌려준다. `order_by(spec)`는 `SeqDescAndLabelAsc` 같은 이름의 순서를 더하며 key마다 열과 `Asc`나
   `Desc`이고, 같은 crate의 `parse_order`가 읽는다.
-- **CORE-137** `where_none(connector)`는 어떤 행도 만족하지 않는 조건을 더한다. 허용된 값 목록이 빈 호출자가 raw
-  SQL 없이 어떤 행도 읽거나 세거나 쓰지 않게 하기 위한 것이다(T563). `connector`는 CORE-82의 연결어인 `""`, `And`,
-  `Or` 중 하나다: `""`와 `And`는 조건을 앞선 조건에 `and`로, `Or`는 `or`로 잇는다. 첫 조건은 CORE-82처럼 연결어를
-  갖지 않는다. 다른 글은 다음 terminal에서 `config`이고 메시지는 `where_none takes "", "And" or "Or", not <text>`이다.
-  이 조건은 `ir_version` 2 요청의 predicate `none`이다(PRT-92): `get`과 `get_by`는 행을 찾지 못하고, `gets`는 빈 `Collection`을,
-  `get_count`는 0을 돌려준다. 모든 데이터베이스에서 `X And none`은 어떤 행도 고르지 않고 `X Or none`은 `X`의 행을 고른다.
+- **CORE-137** `where_none(connector)`는 어떤 행도 만족하지 않는 조건을 더한다. 허용된 값 목록이 빈 호출자가 raw SQL 없이 어떤 행도 읽거나 세거나 쓰지 않게 하기 위한
+  것이다(T563). `connector`는 CORE-82의 연결어인 `""`, `And`, `Or` 중 하나다: `And`는 조건을 앞선 조건에 `and`로, `Or`는 `or`로 잇는다. `""`는 연결어가
+  없다는 뜻이며 첫 조건의 형태다. 첫 조건에 쓴 연결어는 버려지고(DSL-18), 다른 조건 뒤의 `""`는 다음 terminal에서 `config`이며 메시지는
+  `condition without and/or after another condition`이다(DSL-19). 다른 글은 다음 terminal에서 `config`이고 메시지는
+  `where_none takes "", "And" or "Or", not <text>`이다. 이 조건은 `ir_version` 2 요청의 predicate `none`이다(PRT-92): `get`과
+  `get_by`는 행을 찾지 못하고, `gets`는 빈 `Collection`을, `get_count`는 0을 돌려준다. 모든 데이터베이스에서 `X And none`은 어떤 행도 고르지 않고
+  `X Or none`은 `X`의 행을 고른다.
 - **CORE-83** terminal `get`, `gets`, `get_count`, `get_query`는 생성된 모델의 terminal처럼 질의를 실행하고,
   `get_by(chain, values)`, `gets_by(chain, values)`, `get_count_by(chain, values)`는 그 chain의 조건을 `and`로 이어
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
@@ -404,41 +405,57 @@
   그 열 하나가 없는 subquery는 `config`이고 메시지는
   `a subquery model must add exactly one column with add_column_<col>()`이며, 자기 relation이나 연결을 가진 subquery는 `config`이고, limit이나 lock을 가진 subquery는
   `ir_invalid`이고 메시지는 `subquery may not use limit, relations, lock or columns`다. 각각 다음 terminal이 돌려준다.
-- **CORE-91** `Query`의 쓰기는 생성된 모델의 쓰기와 같다(DSL-100, DSL-103, DSL-106, DSL-108, DSL-110):
-  `set(column, value)`는 다음 쓰기를 위해 열에 `orm_value`를 배정하고, `create`는 배정한 행을 넣고 만든 행을 돌려주며,
-  `update`는 배정한 값을 행에 쓰고, `delete`는 행을 지우며, `expect_revision(column, revision)`은 다음 `update`나
-  `delete`가 정수 열이 `revision`을 가지고 있는 동안에만 쓰게 한다. `update`와 `delete`의 행은 `Query`가 읽은 행이고,
-  행을 읽지 않은 `Query`에서는 `set`이 배정한 primary key의 행이다. 둘 다 없으면 쓰기는 `config`이고 메시지는
+- **CORE-91** `Query`의 쓰기는 생성된 모델의 쓰기와 같다(DSL-100, DSL-103, DSL-106, DSL-108, DSL-110): `set(column, value)`는 다음 쓰기를 위해
+  열에 `orm_value`를 배정하고, `create`는 배정한 행을 넣고 만든 행을 돌려주며, `update`는 배정한 값을 행에 쓰고, `delete`는 행을 지우며,
+  `expect_revision(column, revision)`은 다음 `update`나 `delete`가 정수 열이 `revision`을 가지고 있는 동안에만 쓰게 한다. `update`와 `delete`의
+  행은 `Query`가 읽은 행이고, 행을 읽지 않은 `Query`에서는 `set`이 배정한 primary key의 행이다. 둘 다 없으면 쓰기는 `config`이고 메시지는
   `<entity> requires a loaded row or a set primary key <column>`이다. 엔티티의 열이 아닌 이름은 `config`이고 메시지는
-  `<column> is not a column of <entity>`이며, list나 map은 `codec_encode`이고 메시지는 `the value of a column is a list`나 `a map`이고,
-  열이 받을 수 없는 값은 쓰기에서 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그
-  원인의 kind로 실패한다(CORE-10).
+  `<column> is not a column of <entity>`이며, list나 map은 `codec_encode`이고 메시지는 `the value of a column is a list`나
+  `a map`이고, 열이 받을 수 없는 값은 쓰기에서 `codec_encode`다(CORE-62). 쓰기는 `duplicate_key` 같은 그 원인의 kind로 실패한다(CORE-10).
+  `expect_revision`의 `revision_changed`는 `require_match`가 없을 때 성립한다. 그것이 있으면 어떤 행과도 일치하지 않은 쓰기는 `no_rows`다(CORE-142).
 - **CORE-138** `Query`의 조건(`where`, `where_in`, `where_none`; CORE-82, CORE-137)은 그 `update`와 `delete`(CORE-91)에도 적용된다:
   문장은 key의 행이 조건을 만족할 때만 그 행을 쓰고, 조건을 key에 `and`로 잇는다. 그래서 `where_none`을 가진 query는 어떤 행도 쓰지 않는다. key는 여전히 한 행을 가리키고,
   `expect_revision`과 soft delete 열은 전처럼 이어진다 (PRT-93). 아무 행도 바꾸지 않은 쓰기는 오류가 아니다. 다만 `expect_revision` 아래에서는
   `revision_changed`로 남는다(CORE-91). 한 문장으로는 revision과 조건을 구별할 수 없기 때문이다. 그때 메시지는
-  `the row's <column> is not <revision> or the row does not meet the conditions`다. 재귀 delete는 cascade 자식을 행보다 먼저 지우므로,
-  cascade relation을 가진 행에 조건을 둔 재귀 delete는 `config`다:
+  `the row's <column> is not <revision> or the row does not meet the conditions`다. 두 문장은 `require_match`가 없을 때 성립한다. 그것이
+  있으면 어떤 행과도 일치하지 않은 쓰기는 `expect_revision` 아래에서도 `no_rows`다(CORE-142). 재귀 delete는 cascade 자식을 행보다 먼저 지우므로, cascade
+  relation을 가진 행에 조건을 둔 재귀 delete는 `config`다:
   `a recursive delete of a row with cascading relations takes no conditions`. 언어 구현(legacy/)은 조건이 고른 모든 행을 쓰는 집합 쓰기였다.
   core는 key의 한 행을 그 조건 아래에서 쓴다(T563-3).
+- **CORE-142** core의 요청은 `require_match`를 받는다(PRT-90): 요청 form(FMS-31)의 boolean member이고, 없으면 `false`다. `true`이면 문장이 어떤
+  행과도 일치하지 않은 `update`, `delete`, `restore`는 `no_rows`로 실패하고 메시지는 `no_rows: the <kind> of <entity> matched no row`다.
+  `<kind>`는 요청의 kind이고 `<entity>`는 그 엔티티다(CORE-12). 그 밖의 kind의 요청, 곧 읽기, insert, `on_duplicate`를 가진 insert에서 `true`는
+  `ir_invalid`이고 메시지는 `require_match is only valid on update, delete or restore`이며, boolean이 아닌 값도 `ir_invalid`다. 요청
+  텍스트에서 `null`도 form의 모든 member처럼 `ir_invalid`다(FMS-31). 언어 구현은 그것을 없는 것으로 읽었다. `Query`의 `require_match()`는 그 뒤로 query가
+  보내는 쓰기 요청, 곧 `update`, `delete`, `restore`의 요청에 이 member를 두고, 읽기와 insert에는 넣지 않는다. `restore_or_create`의 restore 요청에도
+  넣지 않는다. 그 member는 복원할 행이 없으면 만드는 것이고, 어떤 행과도 일치하지 않은 restore가 create로 가는 길이기 때문이다. 그래서 option 아래에서도 어떤 행도 가지지 않은 key의
+  행을 만들고, 삭제되지 않은 행에는 여전히 `row_not_deleted`다. 이것은 언어 구현과 다르다. 거기서는 request hook이 한 kind의 모든 요청에 option을 두었고
+  `restoreOrCreate`의 restore도 그랬다. request hook은 이 member를 두거나 지울 수 있다. 거절은 hook이 남긴 요청을 읽기 때문이다. 그래서 `Query`의 member는
+  `restore_or_create` 안의 restore에 option을 넣지 않고, 요청에 `require_match`를 둔 request hook은 그 hook이 남긴 요청대로 적용된다. `Db` step은 이
+  member를 call `require_match`로 받는다(CORE-92). 세는 것은 문장의 일치 수이고 읽기를 더하지 않는다: 같은 값을 쓰더라도 행과 일치하는 update는 성공하고, soft
+  delete는 그 update가 일치한 행을 세며, 이미 soft delete된 행은 어떤 update와 delete에도 일치하지 않는다. 배정이 없고 기대 revision도 없는 `update`는 요청을 보내지
+  않으므로 전처럼 돌아온다. 거절은 쓰기의 다른 규칙과 이 순서로 합쳐진다. driver의 오류가 먼저이고, optimistic update의 `optimistic_lock`도 먼저다. match 거절은
+  `expect_revision`의 검사보다 먼저다: `require_match` 아래에서 어떤 행과도 일치하지 않은 쓰기는 조건이 있든 없든 CORE-91과 CORE-138의 `revision_changed`가
+  아니라 `no_rows`다. 한 문장으로는 없는 행과 revision과 조건을 구별할 수 없기 때문이다. 행이 query의 조건(CORE-138)을 만족하지 않는 쓰기도 마찬가지로 `no_rows`다. 삭제되지
+  않은 행의 key와 어떤 행도 가지지 않은 key의 `restore`는 restore의 메시지를 가진 `no_rows`이고 아무것도 쓰지 않는다. CORE-94의 행 반환과
+  `no_rows: query returned no rows`를 대신한다. audit record가 있는 transaction에서는 쓰기의 guard가 거절 전에 0으로 정산하므로(DBS-87), 거절된 쓰기는
+  자기 audit record를 남기지 않고 그 transaction의 앞선 쓰기의 record는 남는다.
 - **CORE-92** `Db` step은 다른 library의 코어가 데이터로 가진 질의이고, host는 자기 판단 없이 그것을 orm으로 실행한다:
-  `StepRunner::new(schema, connection)`는 그 step을 `connection`에서 실행하고, `run(step)`은 step 하나를 JSON 텍스트로
-  받아 그 결과를 JSON 텍스트로 돌려준다. 질의 step은 `{"kind": "query", "query": <query>, "terminal": <terminal>}`이다.
-  `<query>`는 `{"entity": <name>, "calls": [<call>, ...]}`이고, call은 각각 `Query`의 member와 그 인자이며 call의
-  순서대로 실행된다(`{"call": "where", "chain": .., "values": [..]}`, `chain`과 `query`를 가진 `where_in`, `spec`을 가진
-  `order_by`, `offset`과 `count`를 가진 `limit`, lock 넷, `add_all_columns`, `remove_all_columns`, `column`을 가진
-  `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
-  `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
-  `group_by`, `connector`와 `query`를 가진 `where_group`, `query`를 가진
-  `duplication`, `column`을 가진 `sum`, `count`를 가진 `group_limit`, `column`과 `value`를
-  가진 `plus`와 `minus`).
-  `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
-  형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
-  `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
-  `{"error": {"kind": <kind>, "message": <message>}}`이므로, 부탁한 코어가 실패의 뜻을 정한다. `get`과 `create`의 result는
-  `{"row": <row>}`이고 행이 없으면 `null`이며, `gets`의 result는 collection의 순서와 그 key(CORE-89)를 가진
-  `{"rows": [{"key": <key>, "row": <row>}, ...]}`, `get_count`의 result는 `{"count": <n>}`, `update`, `delete`, CORE-93의 step의
-  result는 `{}`다. 행은 그 행이 읽은 열을 가진
+  `StepRunner::new(schema, connection)`는 그 step을 `connection`에서 실행하고, `run(step)`은 step 하나를 JSON 텍스트로 받아 그 결과를 JSON
+  텍스트로 돌려준다. 질의 step은 `{"kind": "query", "query": <query>, "terminal": <terminal>}`이다. `<query>`는
+  `{"entity": <name>, "calls": [<call>, ...]}`이고, call은 각각 `Query`의 member와 그 인자이며 call의 순서대로
+  실행된다(`{"call": "where", "chain": .., "values": [..]}`, `chain`과 `query`를 가진 `where_in`, `spec`을 가진 `order_by`,
+  `offset`과 `count`를 가진 `limit`, lock 넷, `add_all_columns`, `remove_all_columns`, `column`을 가진 `add_column`,
+  `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진 `relation`과 `relations`,
+  `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진 `group_by`, `connector`와
+  `query`를 가진 `where_group`, `query`를 가진 `duplication`, `column`을 가진 `sum`, `count`를 가진 `group_limit`, `column`과
+  `value`를 가진 `plus`와 `minus`, 인자가 없는 `require_match`, CORE-142). `<terminal>`은 `get`, `gets`, `get_count`, `create`,
+  `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case 형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는
+  `{"hex": ..}`, JSON 값은 `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예:
+  `duplicate_key`)를 가진 `{"error": {"kind": <kind>, "message": <message>}}`이므로, 부탁한 코어가 실패의 뜻을 정한다. `get`과 `create`의
+  result는 `{"row": <row>}`이고 행이 없으면 `null`이며, `gets`의 result는 collection의 순서와 그 key(CORE-89)를 가진
+  `{"rows": [{"key": <key>, "row": <row>}, ...]}`, `get_count`의 result는 `{"count": <n>}`, `update`, `delete`, CORE-93의
+  step의 result는 `{}`다. 행은 그 행이 읽은 열을 가진
   `{"values": {<column>: <value>}, "related": {<name>: <row> | null | [<row>, ...]}}`이다. step이 아닌 텍스트는 `config`다.
 - **CORE-93** transaction step `{"kind": "transaction", "options": {..}}`는 뒤따르는 step을 callback이 실행하는
   transaction을 열고(CORE-20), savepoint step `{"kind": "savepoint"}`는 가장 안쪽 것의 savepoint를 열며 그 callback이
@@ -450,12 +467,13 @@
   rollback하고, 그것들이 끝난 뒤 결과 `{"ok": {}}`이나 rollback의 첫 실패를 돌려준다. 열린 transaction을 가진 채 놓인
   runner는, 그 callback이 더는 step이 올 수 없음을 알 때 그것을 rollback한다. transaction step은 `Db` 위의 runner와
   열린 transaction이 없음을 요구한다. 중첩 transaction이 열 것은 savepoint step이 열기 때문이다. 그 밖은 `config`다.
-- **CORE-94** `Query`의 `restore`와 `restore_or_create`는 생성된 모델의 것과 같다(INT-38, INT-39). `soft_delete` 설정이 있는 엔티티에서 `restore`는 `set`이 배정한 값의 restore 요청을 보내고 복원한 행을
-  돌려준다. 그 key는 planner가 배정한 값이 가진 primary key와 unique key 가운데에서 고른다. 그 key의 행이 지워지지
-  않았으면 그 행을 돌려주고 아무것도 쓰지 않으며, 그 key의 행이 없으면 `no_rows`다. `restore_or_create`는 한 transaction 안에서 그 key의 soft-delete된 행을 복원하거나, 그 key를 가진
-  행이 없으면 배정한 행을 넣고, 그 행을 돌려준다. 그 key의 행이 지워지지 않았으면 `row_not_deleted`이고 아무것도 쓰지
-  않는다. 둘 다 연결을 요구하기 전에 빈 list의 `empty_in` 같은 query의 조건을 거부한다. 둘 다 행을 돌려줄 때 배정을 비운다. `Db` step은 이 둘을 terminal `restore`와 `restore_or_create`로 받고 결과는
-  `{"row": <row>}`다(CORE-92). `soft_delete`가 없는 엔티티는 `ir_invalid`다.
+- **CORE-94** `Query`의 `restore`와 `restore_or_create`는 생성된 모델의 것과 같다(INT-38, INT-39). `soft_delete` 설정이 있는 엔티티에서
+  `restore`는 `set`이 배정한 값의 restore 요청을 보내고 복원한 행을 돌려준다. 그 key는 planner가 배정한 값이 가진 primary key와 unique key 가운데에서 고른다. 그
+  key의 행이 지워지지 않았으면 그 행을 돌려주고 아무것도 쓰지 않으며, 그 key의 행이 없으면 `no_rows`다. `restore_or_create`는 한 transaction 안에서 그 key의
+  soft-delete된 행을 복원하거나, 그 key를 가진 행이 없으면 배정한 행을 넣고, 그 행을 돌려준다. 그 key의 행이 지워지지 않았으면 `row_not_deleted`이고 아무것도 쓰지 않는다. 둘 다
+  연결을 요구하기 전에 빈 list의 `empty_in` 같은 query의 조건을 거부한다. 둘 다 행을 돌려줄 때 배정을 비운다. `restore`가 그 key의 지워지지 않은 행과 없는 행에 하는 일은
+  `require_match`가 없을 때 성립한다. 그것이 있으면 둘 다 CORE-142의 `no_rows`이고, `restore_or_create`는 그 option을 받지 않는다. `Db` step은 이 둘을
+  terminal `restore`와 `restore_or_create`로 받고 결과는 `{"row": <row>}`다(CORE-92). `soft_delete`가 없는 엔티티는 `ir_invalid`다.
 - **CORE-120** `Query`의 행의 `to_array()`는 map을 돌려준다. key는 행이 읽은 엔티티 열의 이름이고 순서는 schema의 순서이며,
   값은 `value(column)`이 돌려주는 `orm_value`다(CORE-62). 행이 읽지 않은 열은 key가 없다. 그래서 읽지 않은 열과 값이 null인
   열을 구별한다. relation 결과는 이 map의 key가 아니고 `related`와 `related_rows`가 돌려준다(CORE-88). 행을 읽지 않은

@@ -42,6 +42,10 @@
       "kind": "ecosystem",
       "tool": "cargo build"
     },
+    "scripts/cargo-link.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that every cargo starts through the cargo link of kit (T531), so a polyspec crate of a checkout that .links names is built from that checkout; it runs kit's link and cargo and builds nothing itself"
+    },
     "scripts/case-database-check.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that client cases leave the shared test database as they found it (T25), comparing its tables, rows and schemas before and after; it reads them with mysql2 and pg"
@@ -49,6 +53,14 @@
     "scripts/check-rust-150.mts": {
       "kind": "policy",
       "reason": "the scale budget of this repository: 150 generated entities must compile in one Rust crate; it runs polyspec-orm-build and cargo"
+    },
+    "scripts/check/ci-job.mts": {
+      "kind": "policy",
+      "reason": "the runner of the recipe of one CI job of this repository (make ci-<job>, T497): it records each setup and check line in the state of the job so a local run does what CI does; no ecosystem tool runs a Makefile recipe as a job"
+    },
+    "scripts/check/ci-plan.mts": {
+      "kind": "policy",
+      "reason": "the plan of the CI group jobs of this repository (make ci-plan, T497): which group sets up PHP and Rust, from the needs that its targets declare; no ecosystem tool states the groups of this Makefile"
     },
     "scripts/check/ci-setup.mts": {
       "kind": "policy",
@@ -198,6 +210,10 @@
       "kind": "policy",
       "reason": "installs dbspec-fmt under a declared prefix without a symbolic link, the path rule of polyspec (as polyspec/template installs template-fmt); npm link would make a symlink"
     },
+    "scripts/ir/raise-version.mts": {
+      "kind": "policy",
+      "reason": "the rewrite of this repository that raises ir_version 1 to 2 in the requests of the shared cases that the core reads (PRT-92); no ecosystem tool knows which case files hold a request"
+    },
     "scripts/json/formats.mts": {
       "kind": "ecosystem",
       "tool": "ajv"
@@ -242,6 +258,10 @@
       "kind": "policy",
       "reason": "publishes a build output by rename so a reader never sees a half file, the crash-safety rule of polyspec"
     },
+    "scripts/repo/binding-tests.mts": {
+      "kind": "policy",
+      "reason": "the selection of the generated tests of a binding of this repository into the tests that read a test server and the others (T582-1), read from the generated test file; the generator writes no group that a test runner could select"
+    },
     "scripts/repo/check.mts": {
       "kind": "policy",
       "reason": "the repository check of this repository: the CI workflow gives the database servers through make orm-test-servers and runs the one declared Node"
@@ -266,13 +286,25 @@
       "kind": "policy",
       "reason": "the rule FCV-2 of this repository over contracts/implementations.json: a behaviour of more than one runtime is the cases of a recipe, and a native test stays only where FCV-2 names it"
     },
+    "scripts/repo/offline-tests.mts": {
+      "kind": "policy",
+      "reason": "the selection by name of the Rust and Python tests of this repository that read neither a database server nor flowmark (T570, T580), for the offline test targets; it reads the listing of cargo test and of unittest, and the naming rule is this repository's"
+    },
     "scripts/repo/node.mts": {
       "kind": "policy",
       "reason": "the rule (kit K171) that one Node version declared in mise.toml runs every check and workflow"
     },
+    "scripts/repo/pin-deps.mts": {
+      "kind": "policy",
+      "reason": "the pins of the polyspec binding and json releases that this repository builds with, written into its Cargo.toml and package.json files; the choice of the files and of the release form is this repository's, and cargo update and npm install write the locks"
+    },
     "scripts/repo/probes.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that a client sends no probing statement on connect"
+    },
+    "scripts/repo/recipes.mts": {
+      "kind": "policy",
+      "reason": "the commands that a workflow job of this repository runs through the Makefile (T497), read from the recipe of make ci-<job> and the targets it reaches, for the rules of make repo-check"
     },
     "scripts/repo/release-run.mts": {
       "kind": "policy",
@@ -422,6 +454,10 @@
     "scripts/check/job-context.mts": {
       "kind": "policy",
       "reason": "the servers and run databases of one CI job of this repository (the php-ext job), prepared and cleaned up in separate workflow steps that share them only through GITHUB_ENV; no ecosystem tool owns a check context across steps"
+    },
+    "scripts/service-state.mts": {
+      "kind": "policy",
+      "reason": "the state program of the services of the interface cases of this repository (docs/spec/service-state.md SVC-3 to SVC-6): it sets up, checks and changes the state of a test server with the client program of that server"
     },
     "scripts/suite-test.mts": {
       "kind": "policy",

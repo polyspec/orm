@@ -437,13 +437,15 @@ implementation is eligible for removal on that evidence.
   operator that its column does not allow and a number of values other than the number of keys are `config`, which
   the next terminal returns, as it returns a builder error of a generated model. `order_by(spec)` adds the order of a
   name such as `SeqDescAndLabelAsc`, each key a column and `Asc` or `Desc`, read by `parse_order` of the same crate.
-- **CORE-137** `where_none(connector)` adds a condition that no row satisfies, so that a caller whose list of
-  allowed values is empty reads, counts and writes no row without raw SQL (T563). `connector` is `""`, `And` or
-  `Or`, the connector words of CORE-82: `""` and `And` join the condition to the conditions before it with `and`,
-  and `Or` with `or`; a first condition takes no connector, as in CORE-82. Any other text is `config` at the next
-  terminal, with the message `where_none takes "", "And" or "Or", not <text>`. The condition is the predicate
-  `none` of a request of `ir_version` 2 (PRT-92): `get` and `get_by` find no row, `gets` returns an empty `Collection`,
-  `get_count` returns 0, `X And none` selects no row and `X Or none` selects the rows of `X`, on every database.
+- **CORE-137** `where_none(connector)` adds a condition that no row satisfies, so that a caller whose list of allowed
+  values is empty reads, counts and writes no row without raw SQL (T563). `connector` is `""`, `And` or `Or`, the
+  connector words of CORE-82: `And` joins the condition to the conditions before it with `and`, and `Or` with `or`; `""`
+  names no connector and is the form of a first condition. A connector on a first condition is dropped (DSL-18), and
+  `""` after another condition is `config` at the next terminal, with the message
+  `condition without and/or after another condition` (DSL-19). Any other text is `config` at the next terminal, with the
+  message `where_none takes "", "And" or "Or", not <text>`. The condition is the predicate `none` of a request of
+  `ir_version` 2 (PRT-92): `get` and `get_by` find no row, `gets` returns an empty `Collection`, `get_count` returns 0,
+  `X And none` selects no row and `X Or none` selects the rows of `X`, on every database.
 - **CORE-83** The terminals `get`, `gets`, `get_count` and `get_query` run the query as the terminals of a generated
   model do, and `get_by(chain, values)`, `gets_by(chain, values)` and `get_count_by(chain, values)` run it with the
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
@@ -492,42 +494,76 @@ implementation is eligible for removal on that evidence.
   the message `a subquery model must add exactly one column with add_column_<col>()`, one with a relation or a connection
   of its own is `config`, and one with a limit or a lock is `ir_invalid` with the message `subquery may not use limit,
   relations, lock or columns`. Each is returned by the next terminal.
-- **CORE-91** The writes of a `Query`, as the writes of a generated model (DSL-100, DSL-103, DSL-106, DSL-108, DSL-110): `set(column, value)`
-  assigns an `orm_value` to a column for the next write, `create` inserts the row of the assignments and returns the
-  created row, `update` writes the assignments to the row, `delete` deletes the row, and `expect_revision(column,
-  revision)` makes the next `update` or `delete` write only while the integer column holds `revision`. The row of
-  `update` and `delete` is the row that the `Query` read, or, in a `Query` that read no row, the row of the primary key
-  that `set` assigned; with neither the write is `config` with the message
-  `<entity> requires a loaded row or a set primary key <column>`. A name that is no column of the entity is `config` with the message
-  `<column> is not a column of <entity>`, a list or a map is `codec_encode` with the message `the value of a column is a list` or `a map`, and a
-  value that the column cannot take is `codec_encode` at the write (CORE-62). A write fails with the kind of its
-  cause, such as `duplicate_key` (CORE-10).
+- **CORE-91** The writes of a `Query`, as the writes of a generated model (DSL-100, DSL-103, DSL-106, DSL-108, DSL-110):
+  `set(column, value)` assigns an `orm_value` to a column for the next write, `create` inserts the row of the
+  assignments and returns the created row, `update` writes the assignments to the row, `delete` deletes the row, and
+  `expect_revision(column, revision)` makes the next `update` or `delete` write only while the integer column holds
+  `revision`. The row of `update` and `delete` is the row that the `Query` read, or, in a `Query` that read no row, the
+  row of the primary key that `set` assigned; with neither the write is `config` with the message
+  `<entity> requires a loaded row or a set primary key <column>`. A name that is no column of the entity is `config`
+  with the message `<column> is not a column of <entity>`, a list or a map is `codec_encode` with the message
+  `the value of a column is a list` or `a map`, and a value that the column cannot take is `codec_encode` at the write
+  (CORE-62). A write fails with the kind of its cause, such as `duplicate_key` (CORE-10). The `revision_changed` of
+  `expect_revision` holds without `require_match`; with it a write that matched no row is `no_rows` (CORE-142).
 - **CORE-138** The conditions of a `Query` (`where`, `where_in`, `where_none`; CORE-82, CORE-137) also hold for its
-  `update` and `delete` (CORE-91): the statement writes the row of the key only while the row meets them, and joins
-  them to the key with `and`, so a query with `where_none` writes no row. The key still names the one row, and
-  `expect_revision` and the soft-delete column join as before (PRT-93). A write that changed no row is not an error, except under `expect_revision`, where it stays
-  `revision_changed` (CORE-91), since one statement cannot tell the revision from the conditions: its message then
-  reads `the row's <column> is not <revision> or the row does not meet the conditions`.
-  A recursive delete deletes the cascading children before the row, so one with conditions on a row that has
-  cascading relations is `config`: `a recursive delete of a row with cascading relations takes no conditions`.
-  The language implementations (legacy/) wrote every row that the conditions selected, a write of a set; the core writes
-  one row of its key, under its conditions (T563-3).
+  `update` and `delete` (CORE-91): the statement writes the row of the key only while the row meets them, and joins them
+  to the key with `and`, so a query with `where_none` writes no row. The key still names the one row, and
+  `expect_revision` and the soft-delete column join as before (PRT-93). A write that changed no row is not an error,
+  except under `expect_revision`, where it stays `revision_changed` (CORE-91), since one statement cannot tell the
+  revision from the conditions: its message then reads
+  `the row's <column> is not <revision> or the row does not meet the conditions`. Both sentences hold without
+  `require_match`; with it a write that matched no row is `no_rows`, under `expect_revision` too (CORE-142). A recursive
+  delete deletes the cascading children before the row, so one with conditions on a row that has cascading relations is
+  `config`: `a recursive delete of a row with cascading relations takes no conditions`. The language implementations
+  (legacy/) wrote every row that the conditions selected, a write of a set; the core writes one row of its key, under
+  its conditions (T563-3).
+- **CORE-142** The request of the core takes `require_match` (PRT-90): a boolean member of the request form (FMS-31),
+  `false` when absent. With `true`, an `update`, `delete` or `restore` whose statement matched no row fails with
+  `no_rows` and the message `no_rows: the <kind> of <entity> matched no row`, where `<kind>` is the kind of the request
+  and `<entity>` its entity (CORE-12). `true` on a request of any other kind, a read, an insert and an insert with
+  `on_duplicate` included, is `ir_invalid` with the message `require_match is only valid on update, delete or restore`,
+  and a value that is no boolean is `ir_invalid`. In the text of a request `null` is `ir_invalid` too, as for every
+  member of the form (FMS-31); the language implementations read it as absent. `require_match()` of a `Query` sets the
+  member on the requests of the writes that the query sends from then on, those of `update`, `delete` and `restore`, and
+  never on a read or an insert. It does not set it on the restore request of `restore_or_create`, which restores or
+  creates when there is no row to restore: a restore that matches no row is its way to the create, so under the option
+  it still creates the row of a key that no row holds and is still `row_not_deleted` for a row that is not deleted. This
+  differs from the language implementations, where a request hook set the option on every request of a kind, the restore
+  of `restoreOrCreate` included. A request hook may set or clear the member, since the refusal reads the request as the
+  hook left it. So the member of a `Query` does not set the option on the restore inside `restore_or_create`, and a
+  request hook that sets `require_match` on a request is applied as it left the request. The `Db` step takes the member
+  as the call `require_match` (CORE-92). The count is the count of the statement, and no read is added: an update of the
+  same values that matches its row succeeds, a soft delete counts the row that its update matches, and a row that is
+  already soft-deleted matches no update and no delete. An `update` with no assignment and no expected revision sends no
+  request, so it returns as before. The refusal composes with the other rules of a write in this order. An error of the
+  driver comes first, and so does `optimistic_lock` of an optimistic update. The match refusal comes before the check of
+  `expect_revision`: under `require_match` a write that matched no row is `no_rows` and not the `revision_changed` of
+  CORE-91 and CORE-138, with or without conditions, since one statement cannot tell the missing row, the revision and
+  the conditions apart; a write whose row does not meet the conditions of the query (CORE-138) is `no_rows` likewise. A
+  `restore` of a key whose row is not deleted, and of a key that no row holds, is `no_rows` with the message of the
+  restore, and nothing is written, in place of the row and of the `no_rows: query returned no rows` of CORE-94. In a
+  transaction with an audit record the guard of the write settles with zero before the refusal (DBS-87), so the refused
+  write keeps no audit record of its own and the records of the earlier writes of the transaction stay.
 - **CORE-92** The `Db` step is a query of the core of another library, held as data, that a host runs with orm without a
   judgement of its own: `StepRunner::new(schema, connection)` runs its steps on `connection` and `run(step)` takes one
   step as JSON text and returns its outcome as JSON text. A query step is
-  `{"kind": "query", "query": <query>, "terminal": <terminal>}`: `<query>` is `{"entity": <name>, "calls": [<call>, ...]}`, each call a member of `Query`
-  with its arguments in the order of the calls (`{"call": "where", "chain": .., "values": [..]}`, `where_in` with
-  `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
-  `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
-  with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
-  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, `sum` with `column`, `group_limit` with `count`, and `plus` and `minus` with `column` and `value`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
-  value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
-  value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
-  `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
-  a failure means. The result of `get` and `create` is `{"row": <row>}` with `null` for no row, of `gets` `{"rows": [{"key": <key>, "row": <row>}, ...]}` in the order of the collection with its key (CORE-89), of `get_count`
-  `{"count": <n>}`, and of `update`, `delete` and the steps of CORE-93 `{}`. A row is
-  `{"values": {<column>: <value>}, "related": {<name>: <row> | null | [<row>, ...]}}` with the columns that it read. A text that is no step
-  is `config`.
+  `{"kind": "query", "query": <query>, "terminal": <terminal>}`: `<query>` is
+  `{"entity": <name>, "calls": [<call>, ...]}`, each call a member of `Query` with its arguments in the order of the
+  calls (`{"call": "where", "chain": .., "values": [..]}`, `where_in` with `chain` and `query`, `order_by` with
+  `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`, `remove_all_columns`, `add_column`,
+  `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias` with `name`, `relation` and
+  `relations` with `query`, `set` with `column` and `value`, `expect_revision` with `column` and `revision`,
+  `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, `sum` with
+  `column`, `group_limit` with `count`, `plus` and `minus` with `column` and `value`, and `require_match` with no
+  argument, CORE-142), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A value
+  is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON value
+  as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
+  `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core
+  that asked decides what a failure means. The result of `get` and `create` is `{"row": <row>}` with `null` for no
+  row, of `gets` `{"rows": [{"key": <key>, "row": <row>}, ...]}` in the order of the collection with its key
+  (CORE-89), of `get_count` `{"count": <n>}`, and of `update`, `delete` and the steps of CORE-93 `{}`. A row is
+  `{"values": {<column>: <value>}, "related": {<name>: <row> | null | [<row>, ...]}}` with the columns that it read. A
+  text that is no step is `config`.
 - **CORE-93** A transaction step `{"kind": "transaction", "options": {..}}` opens a transaction (CORE-20) whose callback
   runs the steps that follow, and a savepoint step `{"kind": "savepoint"}` opens a savepoint of the innermost one
   (CORE-21) whose callback runs the steps that follow; the step `{"kind": "end", "rollback": <bool>}` ends the callback
@@ -539,15 +575,17 @@ implementation is eligible for removal on that evidence.
   or the first failure of a rollback; a runner dropped with an open transaction rolls it back when its callback sees
   that no step can come. A transaction step needs a runner on a `Db` and no open transaction, since a savepoint step
   opens what a nested transaction would; another is `config`.
-- **CORE-94** `restore` and `restore_or_create` of a `Query` are those of a generated model (INT-38, INT-39). On an entity with a `soft_delete` setting, `restore` sends the restore request of the assignments of
-  `set`, whose key the planner picks among the primary key and the unique keys that they hold, and returns the restored
-  row; a row of that key that is not deleted is returned and nothing is written, and with no row of that key it is
-  `no_rows`. `restore_or_create` restores the soft-deleted row of that
-  key or, when no row holds the key, inserts the row of the assignments, in one transaction, and returns the row; a row
-  of the key that is not deleted is `row_not_deleted`, and nothing is written. Both refuse a condition of the query, such
-  as `empty_in` of an empty list, before they ask for a connection. Both clear the assignments when they return a row. The `Db` step
-  takes them as the terminals `restore` and `restore_or_create`, whose result is `{"row": <row>}` (CORE-92). An entity
-  without `soft_delete` is `ir_invalid`.
+- **CORE-94** `restore` and `restore_or_create` of a `Query` are those of a generated model (INT-38, INT-39). On an
+  entity with a `soft_delete` setting, `restore` sends the restore request of the assignments of `set`, whose key the
+  planner picks among the primary key and the unique keys that they hold, and returns the restored row; a row of that
+  key that is not deleted is returned and nothing is written, and with no row of that key it is `no_rows`.
+  `restore_or_create` restores the soft-deleted row of that key or, when no row holds the key, inserts the row of the
+  assignments, in one transaction, and returns the row; a row of the key that is not deleted is `row_not_deleted`, and
+  nothing is written. Both refuse a condition of the query, such as `empty_in` of an empty list, before they ask for a
+  connection. Both clear the assignments when they return a row. What `restore` does with a row of the key that is not
+  deleted and with no row of the key holds without `require_match`; with it both are the `no_rows` of CORE-142, and
+  `restore_or_create` does not take the option. The `Db` step takes them as the terminals `restore` and
+  `restore_or_create`, whose result is `{"row": <row>}` (CORE-92). An entity without `soft_delete` is `ir_invalid`.
 - **CORE-120** `to_array()` of a row of a `Query` returns a map whose keys are the names of the columns of the entity that
   the row read, in the order of the schema, and whose values are the `orm_value` that `value(column)` returns (CORE-62).
   A column that the row did not read has no key, so a column that was not read and a column whose value is null are

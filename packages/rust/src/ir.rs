@@ -15,6 +15,10 @@ pub struct Request {
     /// table with an identity requires; not valid with `on_duplicate`.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub load: bool,
+    /// update, delete and restore only: a statement that matched no row fails with `no_rows` (docs/spec/protocol.md
+    /// PRT-90, docs/spec/core.md CORE-142).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub require_match: bool,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub set: Vec<Assign>,
     /// insert only: assignments applied when the unique key already exists (never PK/auto).
@@ -353,6 +357,7 @@ mod form {
         ("manifest_hash", Member::Plain),
         ("kind", Member::Plain),
         ("load", Member::Plain),
+        ("require_match", Member::Plain),
         ("set", Member::List(Form::Assign)),
         ("on_duplicate", Member::List(Form::Assign)),
         ("rows", Member::Plain),

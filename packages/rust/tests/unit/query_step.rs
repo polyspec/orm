@@ -106,6 +106,13 @@ async fn a_write_step_returns_its_row_or_the_kind_of_its_failure() {
     assert_eq!(run(&mut runner, &query_step(rename.clone(), "update")).await, json!({"ok": {}}));
     let stale = run(&mut runner, &query_step(rename, "update")).await;
     assert_eq!(error_kind(&stale), "revision_changed", "the revision is 1 after the first update: {stale}");
+    let unmatched = json!({"entity": "account", "calls": [
+        {"call": "set", "column": "seq", "value": int64(9)},
+        {"call": "set", "column": "name", "value": text("Nobody")},
+        {"call": "require_match"},
+    ]});
+    let refused = run(&mut runner, &query_step(unmatched, "update")).await;
+    assert_eq!(refused, json!({"error": {"kind": "no_rows", "message": "no_rows: the update of account matched no row"}}), "CORE-142");
     let named = json!({"entity": "account", "calls": [{"call": "where", "chain": "Name", "values": [text("Bea")]}]});
     assert_eq!(run(&mut runner, &query_step(named, "get_count")).await, json!({"ok": {"count": 1}}));
     let remove = json!({"entity": "account_key", "calls": [{"call": "set", "column": "seq", "value": int64(3)}]});

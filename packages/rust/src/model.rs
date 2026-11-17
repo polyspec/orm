@@ -1321,10 +1321,14 @@ fn condition_not_met(entity: &str) -> Error {
     Error::new(crate::Kind::ConditionNotMet, format!("the condition of the insert into {entity} does not hold; no row was written"))
 }
 
-/// Fails an optimistic update that changed no row.
+/// Fails an optimistic update that changed no row, and then a write that requires a match and matched no row
+/// (docs/spec/protocol.md PRT-90, docs/spec/core.md CORE-142). The audit guard of the write is settled before it.
 fn finish_write(req: &Req, key: Val, affected: u64) -> Result<(Val, u64)> {
     if req.ir.kind == "update" && req.ir.optimistic.is_some() && affected == 0 {
         return Err(Error::optimistic_lock());
+    }
+    if req.ir.require_match && affected == 0 {
+        return Err(Error::new(crate::Kind::NoRows, format!("the {} of {} matched no row", req.ir.kind, req.ir.query.entity)));
     }
     Ok((key, affected))
 }
@@ -1554,6 +1558,7 @@ pub async fn update<M: AnyModel + Clone>(m: &mut M, optimistic: bool) -> Result<
     let c = m.core_dyn();
     let ent = c.ent.entity_schema()?;
     let mut req = write_req(c, "update");
+    req.ir.require_match = c.require_match;
     let keys = key_values(c, &ent)?;
     let loaded = c.row.as_ref().map(|r| r.loaded).unwrap_or(false);
     for s in with_aes_columns(m, &ent)? {
@@ -1664,7 +1669,7 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
 /// is returned unchanged and nothing is written; a missing row returns NO_ROWS.
 /// Reads never return a soft-deleted row: restore names it explicitly.
 pub async fn restore<M: AnyModel + Clone>(m: &M) -> Result<M> {
-    let (_, q) = restore_step(m).await?;
+    let (_, q) = restore_step(m, m.core_dyn().require_match).await?;
     first_row(&q).await
 }
 
@@ -1687,7 +1692,8 @@ pub async fn restore_or_create<M: AnyModel + Clone>(m: &M) -> Result<M> {
         let mut m = m.clone();
         m.core_dyn_mut().conn = Some(unit);
         let m = &m;
-        let (restored, q) = restore_step(m).await?;
+        // A restore that matches no row is the way to the create, so the option of the query is not sent (CORE-142).
+        let (restored, q) = restore_step(m, false).await?;
         if restored > 0 {
             return first_row(&q).await;
         }
@@ -1702,12 +1708,13 @@ pub async fn restore_or_create<M: AnyModel + Clone>(m: &M) -> Result<M> {
 
 /// Sends the restore request of the set values and returns the number of rows
 /// it restored and the query of the row by the values of the key that the
-/// planner picked.
-async fn restore_step<M: AnyModel>(m: &M) -> Result<(u64, Core)> {
+/// planner picked. With `require_match` the request requires a match (CORE-142).
+async fn restore_step<M: AnyModel>(m: &M, require_match: bool) -> Result<(u64, Core)> {
     let c = m.core_dyn();
     let ex = terminal(c)?;
     let ent = c.ent.entity_schema()?;
     let mut req = build(&Core::of(c.ent.clone()), "restore");
+    req.ir.require_match = require_match;
     // own maps the parameter of each value the model sets to that set value; the hook adds parameters after them.
     let mut own: HashMap<usize, &SetSpec> = HashMap::new();
     for s in &c.sets {
@@ -1815,6 +1822,7 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool, unit: Option<&
     }
     let ent = c.ent.entity_schema()?;
     let mut req = write_req(c, "delete");
+    req.ir.require_match = c.require_match;
     let keys = key_values(c, &ent)?;
     key_where(&mut req, &ent, &keys);
     crate::request::write_condition(&mut req, c)?;

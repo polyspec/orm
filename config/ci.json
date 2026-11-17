@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "runtimes": ["go", "php", "php-ext", "python", "rust", "ts"],
-  "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context. The go, php-ext, python and ts jobs run the offline selection of the generated tests of their binding (T582-1), which builds the binding crate, so each installs the Rust toolchain and its crates, and the ts job the wasm-bindgen CLI of node-package.",
+  "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context. The go, php-ext, python and ts jobs run the offline selection of the generated tests of their binding (T582-1), which builds the binding crate, so each installs the Rust toolchain and its crates, and the ts job the wasm-bindgen CLI of node-package. test-bindings, the tests of the five binding crates, builds the PHP extension crate against the PHP of the checkout, so the php-ext job runs it: that job holds PHP, the tools of the extension, Go and Rust, and the rust job holds no PHP.",
   "setup": {
     "shared": [
       "orm-install-go-lease"
@@ -61,13 +61,11 @@
         "test-go-bindings-offline"
       ],
       "php-ext": [
-        "test-binding-php-offline"
+        "test-binding-php-offline",
+        "test-bindings"
       ],
       "python": [
         "test-binding-python-offline"
-      ],
-      "rust": [
-        "test-bindings"
       ],
       "ts": [
         "test-wasm",

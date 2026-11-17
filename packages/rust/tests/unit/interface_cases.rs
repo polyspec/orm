@@ -672,6 +672,10 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.expect_revision(&text(args, "column", member), revision);
             Returned::Value(Value::Null)
         }
+        ("query.require_match", Some(Instance::Query(query))) => {
+            query.require_match();
+            Returned::Value(Value::Null)
+        }
         ("query.create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.create().await?))),
         ("query.creates", Some(Instance::Query(query))) => {
             let given = field(args, "rows", member).as_array().unwrap_or_else(|| panic!("{member}: rows is no list"));

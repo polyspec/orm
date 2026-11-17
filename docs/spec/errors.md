@@ -34,7 +34,7 @@
 | `empty_in` | value | engine | in()/notIn() with no values |
 | `entity_not_joined` | value | engine | joined placement or column reference to a join missing from this statement |
 | `limit_in_relation` | value | engine | limit() on a relation child (use limitPerParent) |
-| `no_rows` | value | executor | strict one-row query matched no row |
+| `no_rows` | value | executor | strict one-row query matched no row, or a write under `require_match` matched no row (CORE-142) |
 | `row_not_deleted` | value | executor | restoreOrCreate found its key on a row that is not deleted; nothing was written |
 | `batch_too_large` | value | executor | a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written |
 | `revision_changed` | value | executor | an update or delete given an expected revision found the row at another revision, or no row; nothing was written |

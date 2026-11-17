@@ -79,6 +79,7 @@ int32_t polyspec_orm__query__key_name(const uint8_t *args, size_t len, polyspec_
 int32_t polyspec_orm__query__where_in(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__query__set(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__query__expect_revision(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
+int32_t polyspec_orm__query__require_match(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__query__create(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__query__update(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__query__delete(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
@@ -606,6 +607,13 @@ func Query_Set(args []byte) (*Reader, error) {
 func Query_ExpectRevision(args []byte) (*Reader, error) {
 	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
 		return C.polyspec_orm__query__expect_revision(pointer, length, result)
+	}, args)
+}
+
+// Query_RequireMatch calls polyspec_orm__query__require_match with the encoded arguments (B-8).
+func Query_RequireMatch(args []byte) (*Reader, error) {
+	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
+		return C.polyspec_orm__query__require_match(pointer, length, result)
 	}, args)
 }
 

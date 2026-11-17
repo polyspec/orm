@@ -237,8 +237,10 @@ impl Query {
     }
 
     /// Adds a condition that no row satisfies, the predicate `none` of the request (CORE-137, PRT-92). `connector` is
-    /// `""`, `And` or `Or`, the connector words of CORE-82: `""` and `And` join it with `and` and `Or` with `or`. Any
-    /// other text fails the query with `config` at the next terminal.
+    /// `""`, `And` or `Or`, the connector words of CORE-82: `And` joins it to the conditions before it with `and` and `Or`
+    /// with `or`; `""` names no connector and is the form of a first condition. A connector on a first condition is
+    /// dropped (DSL-18), and `""` after another condition, like any other text, fails the query with `config` at the
+    /// next terminal (DSL-19).
     pub fn where_none(&mut self, connector: &str) {
         if let Some(conn) = self.connector_of("where_none", connector) {
             self.core.add_none(conn);
@@ -577,6 +579,12 @@ impl Query {
     /// stores `revision + 1` (CORE-91, DSL-108).
     pub fn expect_revision(&mut self, column: &str, revision: i64) {
         self.core.expect_revision(column, revision);
+    }
+
+    /// Makes the `update`, `delete` and `restore` of the query from then on fail with `no_rows` when the statement of
+    /// the write matched no row; `restore_or_create` does not take it (CORE-142, PRT-90).
+    pub fn require_match(&mut self) {
+        self.core.require_match();
     }
 
     /// Inserts the row of the assignments and returns the created row with its identity (CORE-91). The assignments are

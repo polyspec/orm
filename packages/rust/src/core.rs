@@ -174,6 +174,8 @@ pub struct Core {
     pub(crate) delete_lock: bool,
     /// The revision column and the expected revision of the next update or delete (docs/spec/dsl.md "Writes").
     pub(crate) expected_revision: Option<(String, i64)>,
+    /// The update, delete and restore requests of the model require a match (docs/spec/core.md CORE-142).
+    pub(crate) require_match: bool,
     pub(crate) key_name: String,
     pub(crate) fetch_key: Option<KeyFn>,
     pub(crate) fetch_value: Option<ValueFn>,
@@ -226,6 +228,7 @@ impl Core {
             group_limit: 0,
             delete_lock: false,
             expected_revision: None,
+            require_match: false,
             key_name: String::new(),
             fetch_key: None,
             fetch_value: None,
@@ -526,6 +529,12 @@ impl Core {
     /// `revision + 1`. A mismatch fails with REVISION_CHANGED and changes nothing (docs/spec/dsl.md "Writes").
     pub fn expect_revision(&mut self, column: &str, revision: i64) {
         self.expected_revision = Some((column.to_owned(), revision));
+    }
+
+    /// Makes an update, delete or restore from then on fail with NO_ROWS when its statement matched no row
+    /// (docs/spec/protocol.md PRT-90, docs/spec/core.md CORE-142).
+    pub fn require_match(&mut self) {
+        self.require_match = true;
     }
 
     pub fn key_name(&mut self, column: &str) {

@@ -362,17 +362,38 @@ test-python: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 # The tests run through the case harness of the package (legacy.packages.python.tests.testcase), as every other Python run of the
 # repository does: it gives each case the step lines that testcase.step writes, which fails with
 # `step outside a case` under another runner (T452).
-test-python: python-venv-check bind-python-models ## Run the unit tests of the Python package with CASES=<pattern>; offline
-	$(PYTHON_TESTS) -- discover -s legacy/packages/python/tests -t . -p 'test_*.py' $(if $(CASES),-k '$(CASES)')
+# The run is offline, so it selects by name the tests that read neither a database server nor flowmark (T580):
+# scripts/repo/offline-tests.mts lists the tests of every module test_*.py with the unittest of the venv, leaves the modules
+# test_<recipe>_mysql, _postgres and _markdown and the tests whose method ends in _mysql or _postgres to make
+# suite-python-check, which runs every test file with the servers and flowmark, prints their numbers and fails on a
+# selection of no test. A test that reads a server and whose name does not say so fails here with its own message.
+# A checkout whose test servers run has their file TEST_ENV, and make exports every variable of it to every recipe (T299),
+# so the tests of an offline run would read the servers of the machine and pass on them. WITHOUT_SERVERS starts the run of
+# the tests without the variables of TEST_ENV and of DECIMAL_ENV and without FLOWMARK: the run reads what a runtime job
+# without servers reads, whatever the checkout holds.
+OFFLINE_TESTS = $(NODE) $(abspath scripts/repo/offline-tests.mts)
+WITHOUT_SERVERS = env $(foreach v,FLOWMARK $(sort $(TEST_ENV_NAMES) $(DECIMAL_DSN_NAMES)),-u $(v))
+test-python: python-venv-check bind-python-models ## Run the unit tests of the Python package that need no server, with CASES=<pattern>; offline
+	$(PUBLISH) $(RUN_DIR)/offline-tests $(OFFLINE_TESTS) python $(PYTHON_VENV)/bin/python
+	$(WITHOUT_SERVERS) $(PYTHON_TESTS) -- $$(cat $(RUN_DIR)/offline-tests) $(if $(CASES),-k '$(CASES)'); status=$$?; rm -rf $(RUN_DIR); exit $$status
 # The Rust recipe public_interface runs tests/interfaces/check/main.mts, which reads legacy/packages/ts/dist, so test-rust builds
 # the TypeScript client (typescript-current) and holds it while its tests run (T339-5-1).
 # The tests environment_subprocess and load_requires_out_dir of the build crate read the folder of that crate from
 # ORM_BUILD_TEST_ROOT, which the recipe gives as rust-build-environment-check and rust-build-outdir-check give it; without it
 # both fail with `ORM_BUILD_TEST_ROOT is unset` (T570). A test that is marked ignored needs the test servers and runs in
 # the target that its ignore names.
-test-rust: typescript-current ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline
+# The run is offline, so it selects by name the tests that read neither a database server nor flowmark (T570): cargo test
+# -- --list prints the tests of the workspace, and scripts/repo/offline-tests.mts writes the --skip arguments of the groups
+# <recipe>_mysql, _postgres and _markdown of the test program all, of the tests of its other groups whose name ends in
+# _mysql or _postgres, and of the tests that scripts/client-db-test.mts leaves to markdown-conformance-check/rust and
+# feature-performance-check. make client-db-rust-check runs the workspace with the servers and flowmark. The script prints
+# the numbers of the tests it left and fails on a selection of no test; a test that reads a server and whose name does not
+# say so fails here with its own message.
+test-rust: typescript-current lease-tool ## Run the unit tests of the Rust workspace that need no server, with CASES=<pattern>; offline
 	$(READ_TYPESCRIPT)
-	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --test-threads=1
+	$(RUN_LONG) rust-build/test-rust -- $(CARGO_LEASED) $(PUBLISH) $(RUN_DIR)/listing $(CARGO_LINK) test --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --list
+	$(PUBLISH) $(RUN_DIR)/offline-tests $(OFFLINE_TESTS) rust $(RUN_DIR)/listing
+	$(WITHOUT_SERVERS) ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --test-threads=1 $$(cat $(RUN_DIR)/offline-tests); status=$$?; rm -rf $(RUN_DIR); exit $$status
 test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots legacy/packages/ts -- --test-concurrency=1
 
@@ -393,8 +414,15 @@ bindings:
 bindings-check:
 	$(NODE) $(BINDING) check $(CURDIR)/packages/rust/interface.json --cargo "$(CARGO_LINK)"
 # The lint and the tests of the binding crates, after make bindings writes their generated folders. The PHP extension
-# crate builds against the headers of the PHP of .php-version, whose php-config ext-php-rs reads.
-BINDING_ENV := PHP=$(KIT_TOOLS)/bin/php PHP_CONFIG=$(KIT_TOOLS)/bin/php-config
+# crate builds against the headers of the PHP of .php-version, whose php-config ext-php-rs reads. The bindgen of ext-php-rs
+# loads the libclang of the highest LLVM that clang-sys finds and asks the clang of PATH for its headers, and the two differ
+# on a machine with several LLVM releases, as the ubuntu-26.04 runners are. So every build of the crate takes the libclang
+# (LIBCLANG_PATH) and the clang (CLANG_PATH) of the one LLVM whose major release config/toolchain.json pins (llvm.version),
+# as make release-php-ext of packages/release.mk does: LLVM_MAJOR and LLVM_ROOT are written as that file writes them, and
+# its own definitions (?=) keep these values.
+LLVM_MAJOR ?= $(shell sed -n '/"llvm": {/,/}/s/^ *"version": "\([0-9]*\)".*/\1/p' config/toolchain.json 2>/dev/null)
+LLVM_ROOT ?= $(if $(filter Darwin,$(shell uname -s)),/opt/homebrew/opt/llvm@$(LLVM_MAJOR),/usr/lib/llvm-$(LLVM_MAJOR))
+BINDING_ENV := PHP=$(KIT_TOOLS)/bin/php PHP_CONFIG=$(KIT_TOOLS)/bin/php-config LIBCLANG_PATH=$(LLVM_ROOT)/lib CLANG_PATH=$(LLVM_ROOT)/bin/clang
 # The test features of a binding crate are the features of its manifest whose names end in -test, which gate the entry
 # points that only the generated tests call (binding GN-5, GN-13b); every manifest that binding scaffold writes declares
 # no other feature. No recipe writes their names: binding_test_features reads them from [features] of the Cargo.toml in
@@ -559,9 +587,12 @@ test-binding-php test-binding-php-offline test-binding-php-service: bindings lea
 # The recipes of the platform assets (release-go-static, release-wheel, release-php-ext, release-npm-platform, release-npm,
 # release-go-module, release-binding-check, release-platform-assets, install-llvm and install-wasm-bindgen) are the file that
 # binding release-recipes writes for the contract; Git ignores it, and make release-recipes writes it again before a release
-# runs a recipe, because no recipe of these targets is written by hand (CK-94). The file reads BINDING_RUN, NODE, NPM and UV,
-# which this Makefile defines before the include; a checkout that has not written the file yet reads none of its targets.
+# runs a recipe, because no recipe of these targets is written by hand (CK-94). The file reads BINDING_RUN, CARGO, NODE, NPM
+# and UV, which this Makefile defines before the include; a checkout that has not written the file yet reads none of its
+# targets. CARGO is the cargo command of the repository, the cargo link (CARGO_LINK, T531), which a recipe reads when it
+# runs; a recipe of the file stops with `needs CARGO` without it.
 BINDING_RUN := $(NODE) $(BINDING)
+CARGO = $(CARGO_LINK)
 .PHONY: release-recipes
 release-recipes:
 	$(BINDING_RUN) release-recipes --root $(CURDIR)
@@ -746,6 +777,7 @@ ci-assets-platform:
 	@$(CI_JOB) begin $(CI_NAME)
 	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
+	@$(CI_JOB) setup $(CI_NAME) go-modules -- orm-install-go-binding
 	@$(CI_JOB) setup $(CI_NAME) uv-python -- install-tools 'TOOLS=uv python'
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
 	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
@@ -761,6 +793,7 @@ ci-assets-npm:
 	@$(CI_JOB) begin $(CI_NAME)
 	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
+	@$(CI_JOB) setup $(CI_NAME) go-modules -- orm-install-go-binding
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
 	@$(CI_JOB) setup $(CI_NAME) wasm-bindgen -- install-wasm-bindgen
 	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
@@ -1989,7 +2022,7 @@ comment-language-check/run:
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	$(RUN_TESTS) node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/binding-tests.test.mts scripts/ir/raise-version.test.mts scripts/repo/pin-deps.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/binding-tests.test.mts scripts/repo/offline-tests.test.mts scripts/ir/raise-version.test.mts scripts/repo/pin-deps.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
 repo-check/run:
 	$(NODE) scripts/repo/check.mts
 
@@ -3944,7 +3977,13 @@ build-go: go-models
 # The runtime build compiles TypeScript packages that import generated models.
 build-ts: typescript-build
 
-orm-install-go:
+# packages/go, the Go binding, is a module of its own outside go.work, so the download of the workspace leaves its modules
+# out; binding check reads them with go mod download -json all, offline. orm-install-go-binding downloads them, for
+# orm-install-go and for the asset jobs, which install no other Go module.
+.PHONY: orm-install-go-binding
+orm-install-go-binding:
+	cd packages/go && $(ONLINE) GOWORK=off $(GO) mod download
+orm-install-go: orm-install-go-binding
 	$(ONLINE) $(GO) mod download
 	$(MAKE) --no-print-directory go-models
 # check-run builds tests/lease in every CI group. Its only external Go module is x/sys through legacy/packages/go/procevent; keep the
