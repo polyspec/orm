@@ -582,7 +582,15 @@ func mysqlProbes() []Probe {
 			if e.Err != nil {
 				return
 			}
-			user := "'" + e.Name + "'@'127.0.0.1'"
+			// The login is created for the host that the server sees for this client, which USER() of the admin session
+			// reports: 127.0.0.1 or localhost for a server of the same machine, the address of the host for a server in a
+			// container. The host stays one, so the case still proves that this login lacks SUPER.
+			var host string
+			if err := e.Admin.QueryRowContext(e.Ctx, "SELECT SUBSTRING_INDEX(USER(), '@', -1)").Scan(&host); err != nil {
+				e.fail("read the client host of the admin session: %v", err)
+				return
+			}
+			user := "'" + e.Name + "'@'" + host + "'"
 			for _, s := range []string{"CREATE USER " + user + " IDENTIFIED BY ''", "GRANT ALL ON `" + e.Name + "`.* TO " + user} {
 				if _, err := e.Admin.ExecContext(e.Ctx, s); err != nil {
 					e.fail("%s: %v", s, err)
