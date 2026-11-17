@@ -107,7 +107,7 @@ caseTest('generate', async () => {
       const nestedResult = run('gen', '--set', join(root, 'contracts/fixtures/dbspec-set.json'), '--out', nested, '--scan', usage);
       check(nestedResult.status === 0, `nested generated model exit ${nestedResult.status}: ${nestedResult.stderr}`);
       const nestedText = await readFile(join(nested, 'models.ts'), 'utf8');
-      check(nestedText.includes("from '../../../../packages/index.js'"), 'nested model imports its client runtime');
+      check(nestedText.includes("from '../../index.js'"), 'nested model imports its client runtime');
       check(nestedText.includes('  amount decimal(13,4)\n'), 'nested model keeps decimal metadata');
     } finally {
       await rm(nested, { recursive: true, force: true });
@@ -161,7 +161,7 @@ assert.equal(price, 17);
 assert.equal(Object.hasOwn(item, 'price'), false);
 assert.equal('price' in item, false);
 `);
-    const tsc = join(root, 'node_modules/typescript/bin/tsc');
+    const tsc = join(root, '../node_modules/typescript/bin/tsc');
     const compiled = join(consumerDir, 'compiled');
     const positive = await runLogged('typescript-generated-getter-positive-compile', [
       tsc, '--ignoreConfig', '--strict', '--types', 'node', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
@@ -233,7 +233,7 @@ if (row.getMoment() !== '2026-01-02 03:04:05.006' || row.getDay() !== '2026-01-0
   throw new Error('generated temporal getters did not preserve canonical dbspec text');
 }
 `);
-    const tsc = join(root, 'node_modules/typescript/bin/tsc');
+    const tsc = join(root, '../node_modules/typescript/bin/tsc');
     const compiled = join(dir, 'compiled');
     const checked = await runLogged('typescript-generated-field-types-consumer', [
       tsc, '--ignoreConfig', '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--rootDir', dir, '--outDir', compiled, consumer,
@@ -306,7 +306,7 @@ try {
     assert.equal(generatedRun.passed, true, generatedRun.output);
     assert.equal(generatedRun.code, 0, generatedRun.output);
     const compiled = join(consumerDir, 'compiled');
-    const tsc = join(root, 'node_modules/typescript/bin/tsc');
+    const tsc = join(root, '../node_modules/typescript/bin/tsc');
     const checked = await runLogged('typescript-generated-external-compile', [
       tsc, '--ignoreConfig', '--strict', '--types', 'node', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
       '--rootDir', consumerDir, '--outDir', compiled, consumer,
