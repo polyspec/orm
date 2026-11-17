@@ -333,10 +333,10 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
   let holder;
   const stop = () => spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'stop'], { encoding: 'utf8', env: isolatedEnvironment({ LEASE: lease, STOP_PROCESS: stopProcess }) });
   try {
-    // The script runs from the temporary root with the modules it imports (../tests/errors.mts, 0dfe45bc6, and the MariaDB servers).
+    // The script runs from the temporary root with the modules it imports (../tests/errors.mts, 0dfe45bc6, the MariaDB servers and the owner of the servers).
     mkdirSync(join(root, 'scripts'));
     mkdirSync(join(root, 'tests'));
-    for (const file of ['test-servers.mts', 'test-servers-mariadb.mts', 'mariadb-build.mts'])
+    for (const file of ['test-servers.mts', 'test-servers-mariadb.mts', 'test-servers-owner.mts', 'mariadb-build.mts'])
       copyFileSync(new URL(`./${file}`, import.meta.url), join(root, 'scripts', file));
     copyFileSync(new URL('../tests/errors.mts', import.meta.url), join(root, 'tests/errors.mts'));
     mkdirSync(join(root, '.runtime/servers'), { recursive: true });
