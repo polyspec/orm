@@ -5,7 +5,7 @@ use std::process::{Command, Output};
 const CASE: &str = "POLYSPEC_ORM_OUT_DIR_CASE";
 
 fn package_dir() -> PathBuf {
-    PathBuf::from(std::env::var_os("ORM_BUILD_TEST_ROOT").expect("Makefile supplies ORM_BUILD_TEST_ROOT"))
+    PathBuf::from(std::env::var_os("ORM_BUILD_TEST_ROOT").expect("ORM_BUILD_TEST_ROOT is unset; make test-rust and make rust-build-outdir-check give it"))
 }
 
 fn set_path() -> PathBuf {

@@ -4,7 +4,7 @@ use std::process::{Command, Output};
 
 const CHILD_CASE: &str = "POLYSPEC_ORM_BUILD_ENV_CASE";
 fn package_dir() -> PathBuf {
-    PathBuf::from(std::env::var_os("ORM_BUILD_TEST_ROOT").expect("Makefile supplies ORM_BUILD_TEST_ROOT"))
+    PathBuf::from(std::env::var_os("ORM_BUILD_TEST_ROOT").expect("ORM_BUILD_TEST_ROOT is unset; make test-rust and make rust-build-environment-check give it"))
 }
 
 fn run_child(case: &str, manifest_dir: Option<&str>, out_dir: Option<&str>) -> Output {

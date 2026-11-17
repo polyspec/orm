@@ -44,6 +44,16 @@ In 0.0.x the polyspec packages are distributed through GitHub only, as release a
 
   `polyspec/orm-php-ext` has the type `php-ext`: PIE builds and installs it, and Composer does not.
 
+- PHP extension of the binding: `config/release.json` declares `packages/php-ext` as the Composer package `polyspec/orm`, the name of `packages.php.package` of `packages/rust/interface.json`, so a release from the one after 0.0.33 carries `polyspec-orm-php-ext-<version>.zip`, the `git archive` of `packages/php-ext` at the tag, and lists that package in `packages.json` under the version `v<version>` (T495). Its `composer.json` has the type `php-ext` and the `download-url-method` `pre-packaged-binary`, so the `dist` of `packages.json` carries no shasum and PIE downloads, in place of the source zip, the binary of the same release for the PHP minor, the platform and the thread safety of the PHP that runs it, `php_polyspec_orm-v<version>_php<minor>-<platform>-nts.zip`, which `make release-php-ext` builds and `make release-platform-assets` uploads. A release carries six binaries, PHP 8.4 and 8.5 (`phpExtension.minors` of config/toolchain.json) for `arm64-darwin-bsdlibc`, `arm64-linux-glibc` and `x86_64-linux-glibc`, each NTS, and none for ZTS, musl, `x86_64-darwin` or Windows. The extension requires `ext-polyspec_json` and `polyspec/json` `0.0.34`, so a consumer adds the repository of that json release too:
+
+  ```sh
+  pie repository:add composer https://github.com/polyspec/json/releases/download/v0.0.34/packages.json
+  pie repository:add composer https://github.com/polyspec/orm/releases/download/v<version>/packages.json
+  pie install polyspec/orm:<version>
+  ```
+
+  No release carries this package yet, so `pie install polyspec/orm` has not been run against a release.
+
 ## Python client release
 
 The Python client, `legacy/packages/python/pyproject.toml` (distribution `polyspec-orm`), is released as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`, one of the assets of its GitHub Release beside the npm and Composer archives. `make release-assets TAG=vX.Y.Z` builds the wheel from the tagged commit with `uv build`, which takes the build backend from `build-system.requires` of the pyproject.toml (`setuptools==84.0.0`). The wheel keeps the PEP 427 name, which its packer gives and pip parses, because it is not an archive of the npm or Composer form.

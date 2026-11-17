@@ -366,9 +366,13 @@ test-python: python-venv-check bind-python-models ## Run the unit tests of the P
 	$(PYTHON_TESTS) -- discover -s legacy/packages/python/tests -t . -p 'test_*.py' $(if $(CASES),-k '$(CASES)')
 # The Rust recipe public_interface runs tests/interfaces/check/main.mts, which reads legacy/packages/ts/dist, so test-rust builds
 # the TypeScript client (typescript-current) and holds it while its tests run (T339-5-1).
+# The tests environment_subprocess and load_requires_out_dir of the build crate read the folder of that crate from
+# ORM_BUILD_TEST_ROOT, which the recipe gives as rust-build-environment-check and rust-build-outdir-check give it; without it
+# both fail with `ORM_BUILD_TEST_ROOT is unset` (T570). A test that is marked ignored needs the test servers and runs in
+# the target that its ignore names.
 test-rust: typescript-current ## Run the unit tests of the Rust workspace with CASES=<pattern>; offline
 	$(READ_TYPESCRIPT)
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --test-threads=1
+	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --test-threads=1
 test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots legacy/packages/ts -- --test-concurrency=1
 
@@ -1330,6 +1334,10 @@ interface-cases-rust: lease-tool
 SERVICE_STATE = $(abspath scripts/service-state.mts)
 interface-service-cases-rust:
 	$(WITH_TEST_ENV) export ORM_TEST_SERVICE_STATE=$(SERVICE_STATE) && cd packages/rust && $(CARGO_TEST) interface-service-cases-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib interface_service_cases -- --ignored --nocapture
+# The test of the service cases is marked ignored, so no other run of the core runs it: the target runs in the group of the
+# Rust client that prepares the databases (T596).
+CHECK_TARGETS += interface-service-cases-rust
+CI_TARGETS_client_db_rust += interface-service-cases-rust
 
 # The service selections of the generated tests of the four bindings (BINDING_SERVICE_TARGETS) run the same cases through
 # each binding, in the group of their runtime that prepares the databases; the runtime jobs of config/ci.json, which have
@@ -4158,6 +4166,17 @@ catalog-value-rust-check: lease-tool
 .PHONY: catalog-tool-errors-rust-check
 catalog-tool-errors-rust-check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) catalog-tool-errors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib catalog::tool_error_tests:: -- --test-threads=1
+
+# read-only-disposal-servers-rust-check runs the test of packages/rust/build/tests/unit/read_only_disposal.rs that needs MySQL
+# and PostgreSQL: a connection that an aborted task held in a read-only transaction is not returned to the pool (INT-137).
+# The test is marked ignored and reads ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN of the servers of make
+# orm-test-servers (WITH_TEST_ENV); the SQLite test of the same file makes its own database file and runs in every run of
+# the crate, make test-rust among them (T570). The target runs in the group of the Rust client that prepares the databases.
+.PHONY: read-only-disposal-servers-rust-check
+read-only-disposal-servers-rust-check:
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) read-only-disposal-servers-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib catalog::disposal_tests::aborted_read_only_connections_of_a_server_are_not_returned_to_the_pool -- --ignored --exact --nocapture
+CHECK_TARGETS += read-only-disposal-servers-rust-check
+CI_TARGETS_client_db_rust += read-only-disposal-servers-rust-check
 
 .PHONY: php-catalog-bounds-check
 php-catalog-bounds-check: php-vendor-check php-models

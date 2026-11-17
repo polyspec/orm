@@ -5684,6 +5684,34 @@
         "packages/rust/tests/unit/interface_cases.rs"
       ]
     },
+    "interface-service-cases-rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/interface/service.json",
+        "packages/rust/interface.json",
+        "packages/rust/tests/unit/interface_cases.rs",
+        "packages/rust/tests/unit/interface_service_cases.rs",
+        "scripts/service-state.mts"
+      ]
+    },
+    "read-only-disposal-servers-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "packages/rust/build/src/catalog/mod.rs",
+        "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/src/tool_db/**",
+        "packages/rust/build/tests/unit/read_only_disposal.rs",
+        "packages/rust/test-support/src/fixture_dsn.rs"
+      ]
+    },
     "test-go-bindings-service": {
       "scope": "owner",
       "needs": [

@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 00a0c3a9248883a8b92a58bc5bfa8d13a61de74a9163cf417085745482ea21d5 -->
+<!-- source-sha256: b37fbb050435e0ceec0e2a48dd57dede0676674aa1aaa477dd30d09b8627b2b8 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -44,6 +44,16 @@
   client는 `purrphp/yaml` `1.0.0-p3`을 요구한다. 이는 fork https://github.com/min-0-max/yaml 의 release로, c-printable(5.1절) 밖의 문자를 escape로 쓰며, upstream 1.0.0 release는 그렇게 하지 않는다. client는 YAML을 fork의 Dumper로 쓰고, library가 아니라 orm의 YAML reader(`docs/spec/codec.md` COD-74)로 읽는다. Composer는 `repositories`를 project의 root manifest에서만 읽고 의존성의 manifest에서는 읽지 않으므로, orm package는 이 source를 consumer에게 전달할 수 없다: consumer가 위처럼 `vcs` repository를 직접 선언한다. `no-api`는 Composer가 GitHub API에 묻지 않고 공개 repository를 HTTPS로 clone하게 한다. 그렇지 않으면 API의 익명 rate limit(HTTP 403)이 Composer가 key가 필요한 SSH clone으로 넘어간다.
 
   `polyspec/orm-php-ext`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
+
+- 바인딩의 PHP extension: `config/release.json`이 `packages/php-ext`를 Composer package `polyspec/orm`으로 선언한다. 이 이름은 `packages/rust/interface.json`의 `packages.php.package`다. 그래서 0.0.33 다음 release부터 release에는 tag의 `packages/php-ext`를 `git archive`한 `polyspec-orm-php-ext-<version>.zip`이 있고, `packages.json`은 그 package를 version `v<version>`으로 포함한다(T495). 그 `composer.json`은 type이 `php-ext`이고 `download-url-method`가 `pre-packaged-binary`이므로 `packages.json`의 `dist`에는 shasum이 없고, PIE는 source zip 대신 같은 release에서 자신을 실행하는 PHP의 minor, platform, thread safety에 맞는 binary `php_polyspec_orm-v<version>_php<minor>-<platform>-nts.zip`을 내려받는다. 이 binary는 `make release-php-ext`가 만들고 `make release-platform-assets`가 올린다. release에는 binary가 여섯 개 있다: PHP 8.4와 8.5(config/toolchain.json의 `phpExtension.minors`) 각각에 `arm64-darwin-bsdlibc`, `arm64-linux-glibc`, `x86_64-linux-glibc`용이며 모두 NTS다. ZTS, musl, `x86_64-darwin`, Windows용은 없다. extension은 `ext-polyspec_json`과 `polyspec/json` `0.0.34`를 요구하므로 consumer는 그 json release의 저장소도 추가한다:
+
+  ```sh
+  pie repository:add composer https://github.com/polyspec/json/releases/download/v0.0.34/packages.json
+  pie repository:add composer https://github.com/polyspec/orm/releases/download/v<version>/packages.json
+  pie install polyspec/orm:<version>
+  ```
+
+  이 package를 가진 release는 아직 없으므로 `pie install polyspec/orm`을 release에 대해 실행한 적은 없다.
 
 ## Python client release
 

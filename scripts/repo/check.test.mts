@@ -2414,6 +2414,21 @@ caseTest('ci.yml ignores no package file of config/release.json and no VERSION, 
   for (const file of ['VERSION', ...Object.keys(manifests)]) assert.ok(workflowStarts(ciPush(), [file]), `ci.yml ignores ${file}`);
 });
 
+caseTest('T495: config/release.json releases the Composer package of the PHP extension of the binding under the name of the contract', () => {
+  const release = parseJsonValue(text('config/release.json'), 'config/release.json');
+  const contract = parseJsonValue(text('packages/rust/interface.json'), 'packages/rust/interface.json');
+  const member = (value: Json | undefined, key: string): Json | undefined => (typeof value === 'object' && value !== null && !Array.isArray(value) ? value[key] : undefined);
+  const name = member(member(member(contract, 'packages'), 'php'), 'package');
+  assert.equal(typeof name, 'string', 'packages/rust/interface.json names the PHP package in packages.php.package');
+  assert.equal(readComposer(join(repositoryRoot, 'packages/php-ext/composer.json')).name, name, 'packages/php-ext/composer.json has the name of the contract');
+  const packages = member(release, 'packages');
+  const declared = Array.isArray(packages) ? packages.filter(item => member(item, 'directory') === 'packages/php-ext') : [];
+  // PIE installs the extension from packages.json, which the release tool writes only for a package of the kind composer.
+  assert.deepEqual(declared, [{ kind: 'composer', directory: 'packages/php-ext', name, product: 'orm', runtime: 'php-ext' }]);
+  // The release tool packs a package only when its manifest is an archive manifest; git-tag names a manifest that no asset carries.
+  assert.equal(member(member(release, 'manifests'), 'packages/php-ext/composer.json'), 'archive');
+});
+
 caseTest('a push trigger without a path filter starts on every push, and paths-ignore reads * within one segment', () => {
   assert.equal(workflowStarts({ branches: ['main'] }, ['README.md']), true);
   assert.equal(workflowStarts({ 'paths-ignore': ['*.md'] }, ['README.md']), false);
@@ -3004,6 +3019,90 @@ caseTest('T582-1: a CI job runs the offline selection of the generated tests of 
     assert.match(serviceRun, new RegExp(`scripts/repo/binding-tests\\.mts ${runtime} service\\b`), `${service} does not select its tests through scripts/repo/binding-tests.mts`);
     assert.match(serviceRun, /ORM_TEST_SERVICE_STATE=/, `${service} gives its tests no state program of the services (WITH_TEST_ENV, SERVICE_STATE)`);
     assert.doesNotMatch(dryRun(name), /scripts\/repo\/binding-tests\.mts/, `${name} selects tests; it runs every generated test`);
+  }
+});
+
+// A target whose recipe reads the test servers (WITH_TEST_ENV) runs in a CI group that prepares the databases, and declares
+// the need databases in contracts/check-inputs.json. serverTargetErrors names what misses for one such target.
+function serverTargetErrors(target: string): string[] {
+  const makefile = text('Makefile');
+  const { groups, targets } = ciGroups(makefile);
+  const needs = declaredNeeds(repository.pathname);
+  const errors: string[] = [];
+  if (!makeTargets(makefile).some(entry => entry.target === target)) errors.push(`the Makefile defines no target ${target}`);
+  const jobs = groups.filter(group => (targets[group] ?? []).includes(target));
+  if (jobs.length === 0) errors.push(`no CI group runs ${target}: name it in the CI_TARGETS_<group> of a group that prepares the databases`);
+  if (!checkTargets(makefile).includes(target)) errors.push(`CHECK_TARGETS does not name ${target}`);
+  for (const need of ['rust', 'databases']) {
+    if (!(needs[target] ?? []).includes(need)) errors.push(`${target} declares no need ${need} in contracts/check-inputs.json`);
+  }
+  for (const group of jobs) {
+    if (groupOutputs(targets[group] ?? [], needs).databases !== true) errors.push(`the group ${group} of ${target} prepares no databases`);
+  }
+  return errors;
+}
+function makeDryRun(target: string): string {
+  const result = spawnSync('make', ['-n', '--no-print-directory', target], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, `make -n ${target}: ${result.stderr}`);
+  return result.stdout;
+}
+
+// interface-service-cases-rust runs the cases of contracts/interface/service.json in the core with the test servers. Its
+// test is marked ignored, so no other run of the core runs it: a CI group that prepares the databases names the target (T596).
+caseTest('T596: a CI group that prepares the databases runs the service cases of the core', () => {
+  const target = 'interface-service-cases-rust';
+  assert.deepEqual(serverTargetErrors(target), []);
+  const run = makeDryRun(target);
+  assert.match(run, /ORM_TEST_SERVICE_STATE=/, `${target} gives its test no state program of the services (WITH_TEST_ENV, SERVICE_STATE)`);
+  assert.match(run, /-p polyspec-orm --lib interface_service_cases -- --ignored\b/, `${target} does not run the ignored test of the service cases`);
+});
+
+// The three tests of the build crate that failed in the offline make test-rust run where their inputs are (T570). The
+// test of the discarded read-only connection is two tests: the SQLite one makes its own database file and runs in every
+// run, and the one of MySQL and PostgreSQL is marked ignored and names the target that runs it with the test servers.
+// The tests that read ORM_BUILD_TEST_ROOT name the targets that give it, and make test-rust is one of them.
+caseTest('T570: the tests of the build crate that read a server or a variable of make name the target that gives it, and that target does', () => {
+  const makefile = text('Makefile');
+  const defined = new Set(makeTargets(makefile).map(entry => entry.target));
+  const file = 'packages/rust/build/tests/unit/read_only_disposal.rs';
+  const source = text(file);
+  const tests = [...source.matchAll(/^((?:#\[[^\n]*\]\n|\/\/[^\n]*\n)*)async fn (\w+)\(\)/gm)].map(match => ({ attributes: match[1] ?? '', name: match[2] ?? '' })).filter(entry => entry.attributes.includes('#[tokio::test'));
+  const ignored = tests.filter(entry => entry.attributes.includes('#[ignore'));
+  const always = tests.filter(entry => !entry.attributes.includes('#[ignore'));
+  assert.equal(always.length, 1, `${file} holds one test that every run runs, the SQLite one; found ${always.map(entry => entry.name).join(', ') || 'none'}`);
+  assert.equal(ignored.length, 1, `${file} holds one ignored test, the one of the servers; found ${ignored.map(entry => entry.name).join(', ') || 'none'}`);
+  const server = ignored[0];
+  assert.ok(server !== undefined);
+  // The test that every run runs reads no server: server_dsn is called by the ignored test alone.
+  const body = (name: string) => {
+    const start = source.indexOf(`async fn ${name}()`);
+    const end = source.indexOf('\n}\n', start);
+    return source.slice(start, end);
+  };
+  const [unit] = always;
+  assert.ok(unit !== undefined);
+  assert.doesNotMatch(body(unit.name), /server_dsn|ORM_TOOLS_/, `${unit.name} of ${file} reads the DSN of a server; it runs in make test-rust, which has none`);
+  assert.match(body(server.name), /server_dsn\("ORM_TOOLS_MYSQL_DSN"\)|ORM_TOOLS_MYSQL_DSN/, `${server.name} of ${file} runs no MySQL`);
+  assert.match(body(server.name), /ORM_TOOLS_POSTGRES_DSN/, `${server.name} of ${file} runs no PostgreSQL`);
+  const named = /#\[ignore = "needs the database servers of make orm-test-servers; make ([a-z0-9-]+) runs it"\]/.exec(server.attributes);
+  assert.ok(named !== null, `the ignore of ${server.name} names no target: #[ignore = "needs the database servers of make orm-test-servers; make <target> runs it"]`);
+  const target = named[1] ?? '';
+  assert.deepEqual(serverTargetErrors(target), []);
+  const run = makeDryRun(target);
+  assert.match(run, /ORM_TEST_SERVERS_LEASES/, `${target} reads no test servers (WITH_TEST_ENV)`);
+  assert.ok(run.includes(`-p polyspec-orm-build --lib catalog::disposal_tests::${server.name} -- --ignored --exact`), `${target} does not run the ignored test ${server.name} alone: ${run}`);
+  const inputs = readCheckInputs(repository.pathname).targets[target]?.inputs ?? [];
+  assert.ok(inputs.includes(file), `${target} does not name ${file} in its inputs of contracts/check-inputs.json`);
+
+  // make test-rust gives ORM_BUILD_TEST_ROOT as the owner targets of the two tests do, and each message names targets that give it.
+  for (const [test, owner] of [['packages/rust/build/src/tests/build_environment.rs', 'rust-build-environment-check'], ['packages/rust/build/src/tests/out_dir.rs', 'rust-build-outdir-check']] as const) {
+    const message = /var_os\("ORM_BUILD_TEST_ROOT"\)\s*\.expect\("([^"]*)"\)/.exec(text(test))?.[1] ?? '';
+    const givers = [...message.matchAll(/\bmake ([a-z0-9-]+)/g)].map(match => match[1] ?? '');
+    assert.deepEqual(givers, ['test-rust', owner], `the message of ${test} for a missing ORM_BUILD_TEST_ROOT names the targets that give it, make test-rust and make ${owner}; it is "${message}"`);
+    for (const giver of givers) {
+      assert.ok(defined.has(giver), `the Makefile defines no target ${giver}, which ${test} names`);
+      assert.match(makeDryRun(giver), /ORM_BUILD_TEST_ROOT=\S*packages\/rust\/build /, `make ${giver} gives its tests no ORM_BUILD_TEST_ROOT, and ${test} names it`);
+    }
   }
 });
 
