@@ -3231,6 +3231,25 @@ caseTest('bindings-scaffold runs binding scaffold as bindings runs binding gener
   assert.deepEqual(jobRecipeLines(makefile, 'bindings-scaffold'), ['$(NODE) $(BINDING) scaffold --root $(CURDIR) --cargo "$(CARGO_LINK)"']);
 });
 
+// The release of TAG carries the Go module as binding 0.0.21 writes its recipes (GN-19f): rehearse-go-module rehearses
+// release-go-module on HEAD before release-go-module makes the tag of the Go module (B2.479), release-go-module only adds
+// the reference of that tag to the release, and release-go-module-push pushes it after release-go-module and before the
+// publish (B2.488). All three are recipes of packages/release.mk, so they run after release-recipes writes it.
+caseTest('ci-release rehearses the Go module before its tag and pushes the tag after release-go-module', () => {
+  const lines = jobRecipeLines(text('Makefile'), 'ci-release');
+  const step = (target: string) => lines.findIndex(line => new RegExp(`^@\\$\\(CI_JOB\\) setup \\$\\(CI_NAME\\) [a-z-]+ -- ${target}(?: |$)`).test(line));
+  const recipes = step('release-recipes');
+  const rehearse = step('rehearse-go-module');
+  const carry = step('release-go-module');
+  const push = step('release-go-module-push');
+  const publish = step('release-publish');
+  assert.ok(recipes >= 0, 'ci-release does not write packages/release.mk with release-recipes');
+  assert.ok(rehearse > recipes, 'ci-release does not run rehearse-go-module after release-recipes');
+  assert.ok(carry > rehearse, 'ci-release does not run release-go-module after rehearse-go-module');
+  assert.ok(push > carry, 'ci-release does not run release-go-module-push after release-go-module');
+  assert.ok(publish > push, 'ci-release publishes before release-go-module-push pushes the tag of the Go module');
+});
+
 // packages/go is a module outside go.work, so go mod download of the workspace leaves its modules out, and binding check
 // reads them offline (go mod download -json all under GOPROXY=off). orm-install-go-binding downloads them: orm-install-go
 // runs it, and each asset job runs it after it installs Go and before its binding check.

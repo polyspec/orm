@@ -20,7 +20,10 @@
 #   ci-release-platform-assets adds the downloaded assets of each platform to var/release/assets
 #   orm-install-rust, install-tools TOOLS=go and release-recipes prepare the Rust, the crates, the Go and the release
 #                    recipes of binding (packages/release.mk) for the next step
-#   release-go-module commits the static libraries into the Go module of the tag (binding GN-19f), as the actor of the run
+#   rehearse-go-module rehearses release-go-module on HEAD before the tag of the Go module, and pushes nothing (binding B2.479)
+#   release-go-module commits the static libraries into the Go module of the tag (binding GN-19f), as the actor of the run, and
+#                    records the reference of that tag
+#   release-go-module-push pushes the recorded tags of the Go modules with one atomic push (binding B2.488)
 #   release-publish creates the GitHub Release of the tag as a draft, with its notes and those files
 #   release-platform-assets uploads the binding assets of each platform to that draft
 #   release-undraft makes the release public

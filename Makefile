@@ -742,7 +742,9 @@ release-tag-output: ## Give the later jobs of the release workflow TAG and VERSI
 # TAG and VERSION, which release-tag wrote into GITHUB_ENV, to the later jobs. ci-release (job release) builds and publishes
 # the release of TAG; its steps run in order and stop at the first failure, and the tools of var/tools are on its PATH. The
 # assets of each platform, which the uses: step before it downloads into var/release/platform, join var/release/assets after
-# release-assets writes that folder.
+# release-assets writes that folder. The Go module of TAG follows the recipes of binding (GN-19f): rehearse-go-module
+# rehearses it on HEAD before release-go-module makes its tag (B2.479), and release-go-module-push pushes that tag, which
+# release-go-module only records, before the publish (B2.488).
 .PHONY: ci-release-tag ci-release-tag-run ci-release-tag-output ci-release ci-release-zip ci-release-platform-assets
 ci-release-tag: CI_NAME = $(CI_RUN)-release-tag
 ci-release-tag:
@@ -770,7 +772,9 @@ ci-release:
 	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
+	@$(CI_JOB) setup $(CI_NAME) go-module-rehearsal -- rehearse-go-module
 	@$(CI_JOB) setup $(CI_NAME) go-module -- release-go-module $(if $(GITHUB_ACTOR),GIT_AUTHOR_NAME=$(GITHUB_ACTOR) GIT_AUTHOR_EMAIL=$(GITHUB_ACTOR)@users.noreply.github.com GIT_COMMITTER_NAME=$(GITHUB_ACTOR) GIT_COMMITTER_EMAIL=$(GITHUB_ACTOR)@users.noreply.github.com)
+	@$(CI_JOB) setup $(CI_NAME) go-module-push -- release-go-module-push
 	@$(CI_JOB) setup $(CI_NAME) publish -- release-publish
 	@$(CI_JOB) setup $(CI_NAME) upload -- release-platform-assets
 	@$(CI_JOB) setup $(CI_NAME) undraft -- release-undraft TAG=$(TAG)
