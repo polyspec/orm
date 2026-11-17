@@ -117,7 +117,7 @@ func TestFixtureFindsTheRootFromAnyDirectory(t *testing.T) {
 		output, err := command.CombinedOutput()
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) {
-			return fmt.Errorf("fixture run from the repository root: want a failing exit, got %v\n%s", err, output)
+			return fmt.Errorf("fixture run from the repository root: want a failing exit, got %w\n%s", err, output)
 		}
 		for _, name := range names {
 			if !strings.Contains(string(output), "FAIL "+name+" ") {
