@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 25bc6ba199e59f8aeede9f1ee7644e5b141fe7cbc15e511fc773c44474931374 -->
+<!-- source-sha256: 3541144b5e06b425dae26b5866efd6c193292ac9631c3973eee33388129abd7c -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -762,6 +762,51 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   매개변수를 거부하므로, 옵션을 정하지 않는 호출자는 빈 record를 넘긴다.
 - **CORE-105** `Db::close`의 상태 기계는 `Io` 단계 하나, 곧 CORE-31의 pool 닫기를 내고 `Done(Ok(()))`로 끝난다. 언어 코드를
   호출하지 않으므로 `Call`도 `Await`도 내지 않고, 그 `settle`은 호출되지 않는다.
+- **CORE-143** `Db::before_transaction(hook)`은 연결에 hook을 등록하고 `BeforeTransactionHook`을 돌려준다. 그 `remove`가
+  hook을 제거한다: 제거 뒤에 시작하는 시도는 그 hook을 호출하지 않고, 두 번째 `remove`는 아무것도 하지 않는다. 연결의 모든
+  handle이 hook을 공유한다. clone과 `Db::with_request_hook`, `Db::with_cancel`(CORE-45)의 handle도 그렇다. 그래서 handle에
+  등록한 hook은 그 연결의 hook이다. `Db::transaction`이나 `Db::transaction_async`가 연결의 handle에서 시작하는 모든
+  트랜잭션 전에, CORE-24의 재시도가 다시 실행하는 시도마다(CORE-104), 코어는 그 순간에 등록된 hook을 등록 순서대로
+  호출한다. 각 hook은 트랜잭션이 read-only인지를 나타내는 `read_only`(INT-41)를 받고, 앞의 hook이 끝난 뒤에 호출된다.
+  코어는 트랜잭션 전에 실행된 요청들 뒤에, 그리고 트랜잭션이 pool의 연결을 가져가거나 문장을 보내기 전에 hook을 호출한다.
+  INT-49의 SQLite row lock table도 그 문장에 포함된다. 그래서 트랜잭션이 연결도 lock도 갖지 않은 동안 hook은 다른 연결과
+  같은 연결에서 문장과 트랜잭션을 실행할 수 있다. SQLite에서는 트랜잭션의 `BEGIN IMMEDIATE`가 쓰기 lock을 잡기 전에 다른
+  연결이 그 시점에 commit할 수 있다(CFG-11). CORE-131의 audit source는 첫 시도의 hook 전에 한 번 호출된다. 실패한 hook은
+  트랜잭션을 시작 전에 끝낸다: 코어는 뒤의 hook을 호출하지 않고, 연결을 가져가지 않고, 문장을 보내지 않고, 콜백을 호출하지
+  않고, 실패의 kind가 `deadlock`이어도 시도를 다시 실행하지 않으며, 그 실패를 그대로 돌려준다. 언어의 예외는 같은
+  객체로 돌아간다(`Failure::Raised`). panic한 hook은 `internal`이다(CORE-26). 닫힌 연결과 cancellation이 발동한 handle은
+  hook을 호출하지 않고, 트랜잭션은 `closed`나 `canceled`로 끝난다(CORE-31, CORE-46).
+  hook은 어떤 호출이 시작하든 `Db::transaction`의 트랜잭션에 속한다: 콜백이나 hook이 시작하는 `Db::transaction`은 pool의
+  다른 연결에서 실행되는 독립 트랜잭션이므로(CORE-20) hook을 다시 호출한다. 자기 트랜잭션에서 실행되는 `Utils::run`과
+  `Db`의 utility(INT-150), 곧 PostgreSQL과 SQLite의 `install`, PostgreSQL의 `add_tables_and_columns`, `grant_table`,
+  `revoke_table`, AES rotation도 호출한다. `Db`에 연결된 model이나 collection의 terminal 가운데 자기 트랜잭션 하나에서
+  문장을 실행하는 `creates`, `restore_or_create`(INT-39), model의 재귀 `delete`, collection의 `delete`도 호출하고, step
+  runner의 transaction step(CORE-93)도 호출한다. `Tx::savepoint`는 hook을 호출하지 않는다. `Tx`를 통해 실행되어 그 트랜잭션에 합류하거나 savepoint를 여는
+  utility와 terminal도 호출하지 않는다. 코어가 `Db::transaction` 없이 보내는 begin은 hook을 호출하지 않는다: MySQL이
+  트랜잭션 밖에서 실행하는 schema 문장, `add_tables_and_columns`가 예약한 연결에서 하는 SQLite rebuild, `stale_plan` 뒤에
+  PostgreSQL 문장을 다시 실행하는 트랜잭션, 자기 연결을 가진 dbspec apply의 exclusive 트랜잭션이 그렇다.
+  이 규칙은 INT-193을 코어로 옮기며 코어의 어떤 규칙도 대체하지 않는다. 차이는 하나다. INT-193의 언어 client에서는 실행
+  흐름의 활성 트랜잭션 안의 `transaction`이 savepoint이고 hook을 호출하지 않는다. 코어에는 흐름의 활성 트랜잭션이
+  없으므로(CORE-20), 콜백 안의 `Db::transaction`은 독립 트랜잭션이고 hook을 호출하며, `Tx::savepoint`만 호출하지 않는다.
+  `Db::transaction`의 상태 기계(CORE-103)에서 각 시도는 1단계 전에 hook마다 단계 하나를 준다: 계약의 hook에는 `Call`을
+  내고 `Machine::call`이 기계를 구동하는 스레드에서 그 hook을 호출하며, Rust 코드의 hook에는 `Io`를 내고 driver가 그
+  future를 기다린다. 실패한 hook 다음 단계는 그 실패를 가진 `Done(Err)`다.
+  계약의 member `db.before_transaction`은 hook을 코어가 보관하는 함수로 받는다(`keeps: true`, binding GN-6z, GN-6aa). 그
+  타입은 `Box<dyn Fn(bool) -> Result<(), Failure<Error>> + Send + Sync>`이고, member는 `remove`를 가진 class
+  `before_transaction_hook`을 돌려준다. `Db::before_transaction_async(hook)`은 future를 돌려주는 함수를 받고, 코어는 다음
+  hook을 호출하기 전에 그 future를 기다린다. 구현되지 않음: 생성된 binding의 hook은 기다려지지 않는다. binding 0.0.17의
+  생성기는 코어가 보관하는 함수를 `async_allowed` 없이 쓰므로, member의 함수 타입은 `async_allowed: false`를 적고 계약의
+  어떤 member도 `Db::before_transaction_async`에 닿지 않는다: PHP, Python, Go의 hook은 호출 안에서 문장을 실행하고, 문장이
+  promise를 돌려주는 Node와 WASM의 hook은 문장을 기다릴 수 없다. `Db::transaction_async`는 계약의 hook을 자신을 poll하는
+  스레드에서 호출하는데, 그 스레드가 언어 코드의 스레드인 것은 상태 기계에서뿐이다. 다음은 생성기의 규칙(binding GN-6z)에서
+  읽은 것이고 실행으로 관찰하지 않았다: 상태 기계가 아니면서 자기 트랜잭션을 시작하는 member, 곧
+  `query.restore_or_create`나 `step_runner.run`은 Node나 PHP의 hook을 runtime의 스레드에서 호출하고, binding이 그 호출을
+  거부하므로(`wrong_thread`) 트랜잭션은 시작 전에 `internal`로 끝난다.
+  case는 group `db.before_transaction`, `before_transaction_hook.remove`와 `db.transaction`의 case 다섯 개다. case는
+  코어가 보관하는 함수를 행 `{args, once}`로 주는데, 행은 예외를 던질 수도, step을 실행할 수도, 함수의 호출을 적을 수도
+  없다(binding CK-22). 그래서 코어의 case runner는 `once`가 있는 모든 행이 호출 하나에 답했을 것도 요구하고, case가 적을 수
+  없는 것은 crate의 unit test가 갖는다: begin 전의 순서, commit된 행의 읽기, 재시도, 순서와 제거, 실패하는 hook,
+  `Utils::run`, schema install의 트랜잭션이다.
 
 - **CORE-127** binding member `db.execute`는 database handle, compiled-step text, parameter 값을 소유하는 machine인
   `Db::execute_text_machine(self, step: String, params: Vec<OrmValue>)`를 사용한다. 첫 advance는 기존 `execute_text`

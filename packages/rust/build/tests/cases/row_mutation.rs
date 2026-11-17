@@ -15,7 +15,7 @@ use crate::lock_probe;
 // Runtime-unique (FCV-14): the phase publisher, the cancellation flag and a commit future that can be dropped exist only in
 // the Rust update_row, delete_row and insert_row; what any runtime answers is the recipe case row_mutation_lifecycle.
 // Requirements: INT-106a, INT-118, PRT-79.
-async fn mutation_phases_follow_the_transaction() {
+async fn mutation_phases_follow_the_transaction_servers() {
     let _case = polyspec_orm_testcase::case!();
     check().await;
 }
@@ -269,5 +269,5 @@ fn cancel_at_phase(flag: &Arc<AtomicBool>, target: MutationPhase) -> Arc<dyn Fn(
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("row_mutation": mutation_phases_follow_the_transaction)
+    polyspec_orm_testcase::native_trials!("row_mutation": mutation_phases_follow_the_transaction_servers)
 }

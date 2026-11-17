@@ -617,7 +617,7 @@ async fn installed_section(driver: &str, body: impl AsyncFn(&Target)) {
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
-async fn conditions() {
+async fn conditions_servers() {
     check_bench_set();
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("conditions/{driver}"));
@@ -627,7 +627,7 @@ async fn conditions() {
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
-async fn columns_and_subqueries() {
+async fn columns_and_subqueries_servers() {
     check_bench_set();
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("columns_and_subqueries/{driver}"));
@@ -637,7 +637,7 @@ async fn columns_and_subqueries() {
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
-async fn writes() {
+async fn writes_servers() {
     check_bench_set();
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("writes/{driver}"));
@@ -647,7 +647,7 @@ async fn writes() {
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
-async fn json_values() {
+async fn json_values_servers() {
     check_bench_set();
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("json_values/{driver}"));
@@ -659,7 +659,7 @@ async fn json_values() {
 /// SQLite reads a database file it may only read; MySQL and PostgreSQL read through a replica of the primary, whose DSN is
 /// ORM_TEST_<DRIVER>_REPLICA_DSN.
 #[tokio::main(flavor = "multi_thread", worker_threads = 1)]
-async fn primary_and_replica() {
+async fn primary_and_replica_servers() {
     check_bench_set();
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("primary_and_replica/{driver}"));
@@ -691,5 +691,5 @@ fn txt(t: chrono::NaiveDateTime) -> String {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("integration_program": generated_typed_getter_is_a_checked_public_consumer_api, external_relation_getter_returns_the_external_entity_model, generated_external_model_reads_its_table, generated_nonnull_styled_setter_rejects_sql_null, generated_fields_require_selection_or_assignment, conditions, columns_and_subqueries, writes, json_values, primary_and_replica)
+    polyspec_orm_testcase::native_trials!("integration_program": generated_typed_getter_is_a_checked_public_consumer_api, external_relation_getter_returns_the_external_entity_model, generated_external_model_reads_its_table, generated_nonnull_styled_setter_rejects_sql_null, generated_fields_require_selection_or_assignment, conditions_servers, columns_and_subqueries_servers, writes_servers, json_values_servers, primary_and_replica_servers)
 }

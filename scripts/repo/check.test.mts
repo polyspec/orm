@@ -273,7 +273,7 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   // The Rust cases that drop a waiting statement or transaction drop it after the LOG message of the PostgreSQL wait or the
   // answer of a probe, not after a timer.
   const zone = text('packages/rust/tests/cases/zone.rs');
-  const dropping = zone.slice(zone.indexOf('async fn dropping_a_query_cancels_it()'), zone.indexOf('pub fn trials()'));
+  const dropping = zone.slice(zone.indexOf('async fn dropping_a_query_cancels_it_servers()'), zone.indexOf('pub fn trials()'));
   assert.doesNotMatch(dropping, polled, 'the dropping cases of zone.rs wait on no timer');
   assert.doesNotMatch(dropping, /tokio::time::timeout/, 'the dropping cases of zone.rs drop on no timer');
   assert.match(dropping, /statement_waits/, 'the dropping cases of zone.rs drop after the wait of the statement');
@@ -286,7 +286,7 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   for (const path of ['legacy/packages/ts/tests/idle-connection-end.mjs', 'legacy/packages/go/orm/timezone_test.go', 'legacy/packages/python/tests/connection_pool.py', 'packages/rust/tests/cases/zone.rs']) {
     // zone.rs holds other cases; the INT-92 case and its release helper end before the next case.
     const whole = text(path);
-    const source = path.endsWith('zone.rs') ? whole.slice(whole.indexOf('async fn pool_discards_ended_idle_connection'), whole.indexOf('fn statement_timeout_negative_is_unrepresentable')) : whole;
+    const source = path.endsWith('zone.rs') ? whole.slice(whole.indexOf('async fn pool_discards_ended_idle_connection_servers'), whole.indexOf('fn statement_timeout_negative_is_unrepresentable')) : whole;
     assert.match(source, /IS_USED_LOCK/, `${path} reads once that the idle connection holds the named lock`);
     assert.match(source, /GET_LOCK\(\?, 30\)|GET_LOCK\(%s, 30\)/, `${path} waits for the end of the killed thread with GET_LOCK`);
     assert.doesNotMatch(source, /setTimeout|time\.sleep|time\.Sleep|tokio::time::sleep|Instant::now|monotonic|time\.Now\(\)\.Add|deadline/, `${path} waits on no timer`);
@@ -375,8 +375,8 @@ caseTest('the Rust unit tests build and hold the TypeScript client that the inte
   const lines = result.stdout.split('\n');
   const build = lines.findIndex(line => line.includes('scripts/typescript/build.mts --current'));
   const hold = lines.findIndex(line => / hold \S+ shared --wait --pid /.test(line));
-  const tests = lines.findIndex(line => /runtime-targets\.(?:mjs|mts) test --runner cargo /.test(line));
-  assert.ok(tests >= 0, `test-rust runs no cargo tests: ${result.stdout}`);
+  const tests = lines.findIndex(line => /tests\/cargo-test\.mts test-rust -- cargo test /.test(line));
+  assert.ok(tests >= 0, `test-rust runs no cargo tests through tests/cargo-test.mts: ${result.stdout}`);
   assert.ok(build >= 0 && build < tests, `test-rust runs the cargo tests without building the TypeScript client first (typescript-current): ${result.stdout}`);
   assert.ok(hold > build && hold < tests, `test-rust does not hold the TypeScript client while its tests read it ($(READ_TYPESCRIPT)): ${result.stdout}`);
 });
@@ -3271,7 +3271,7 @@ caseTest('T570, T580: the offline test targets of Rust and Python select their t
     assert.doesNotMatch(run, /\$\{ORM_TEST_SERVERS_LEASES:\?|\bFLOWMARK=|ORM_TEST_\w*DSN=/, `${target} reads the test servers or flowmark, and it is offline`);
     // make exports the variables of the file TEST_ENV of a checkout whose servers run, and the run of the tests starts without them.
     const [line = ''] = tests;
-    assert.match(line, /^env -u FLOWMARK (?:-u [A-Z0-9_]+ )+/, `${target} starts its tests with the variables that make exports from TEST_ENV; start them through WITHOUT_SERVERS`);
+    assert.match(line, /^(?:cd \S+ && )?env -u FLOWMARK (?:-u [A-Z0-9_]+ )+/, `${target} starts its tests with the variables that make exports from TEST_ENV; start them through WITHOUT_SERVERS`);
     const environment = join(mkdtempSync(join(tmpdir(), 'orm-offline-env-')), 'env');
     try {
       writeFileSync(environment, "export ORM_TEST_MYSQL_DSN='mysql://u@127.0.0.1:1/d'\nexport ORM_TOOLS_POSTGRES_DSN='postgres://u@127.0.0.1:1/d'\n");

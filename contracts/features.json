@@ -358,7 +358,7 @@
         },
         {
           "id": "idle-connection-end-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::pool_discards_ended_idle_connection --exact --test-threads=1",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- zone::pool_discards_ended_idle_connection_servers --exact --test-threads=1",
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/cases/zone.rs",
@@ -8438,7 +8438,7 @@
         },
         {
           "id": "tool-db-native-typed-binds-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_binds_preserve_values_and_typed_nulls --exact",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-binds-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_binds_preserve_values_and_typed_nulls_servers --exact",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/cases/typed_binds.rs"
@@ -8446,7 +8446,7 @@
         },
         {
           "id": "tool-db-native-typed-writes-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_writes_roundtrip_reject_and_rollback --exact",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts tool-db-native-typed-writes-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace $ORM_RUST_EXCLUDE_BINDINGS --features \"$ORM_RUST_TEST_FEATURES\" --test all -- typed_binds::native_typed_writes_roundtrip_reject_and_rollback_servers --exact",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/cases/typed_binds.rs"

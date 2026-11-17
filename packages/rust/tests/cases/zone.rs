@@ -70,7 +70,7 @@ fn only_the_named_parameters_reach_sqlx() {
 /// connection without retaining an idle server session, so this lifetime case uses the direct server DSN.
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-92.
-async fn pool_discards_ended_idle_connection() {
+async fn pool_discards_ended_idle_connection_servers() {
     let _case = polyspec_orm_testcase::case!();
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
@@ -230,7 +230,7 @@ fn statement_timeout_negative_is_unrepresentable() {
 /// of the simple protocol and in the binary format of prepared statements.
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-32.
-async fn postgres_float_round_trip() {
+async fn float_round_trip_postgres() {
     let _case = polyspec_orm_testcase::case!();
     let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, polyspec_orm::Config::default()).await.unwrap();
     let Pool::Postgres(pool) = db.pool() else { panic!("a postgres pool") };
@@ -248,12 +248,12 @@ async fn postgres_float_round_trip() {
 /// Dropping the future of a statement cancels the statement, and the
 /// connection it ran on stays usable. The statement is an update of a row
 /// that another connection holds (the write lock of the file on SQLite), so it
-/// waits until its future is dropped.
+/// waits until its future is dropped. It runs on SQLite, MySQL and PostgreSQL, so its name ends in _servers.
 /// `dropping_a_query_cancels_it_mariadb` is the case on MariaDB, a server of the
 /// MySQL dialect (DIA-200), which the program mariadb runs (mariadb_trials).
 #[tokio::main(flavor = "current_thread")]
 // Requirements: CFG-9.
-async fn dropping_a_query_cancels_it() {
+async fn dropping_a_query_cancels_it_servers() {
     let _case = polyspec_orm_testcase::case!();
     dropping_a_query_cancels_it_on(&["sqlite", "mysql", "postgres"]).await;
 }
@@ -307,7 +307,7 @@ async fn dropping_a_query_cancels_it_on(drivers: &[&str]) {
 /// `dropping_a_transaction_frees_a_single_connection_mariadb` is the case on MariaDB (DIA-200).
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-67.
-async fn dropping_a_transaction_frees_a_single_connection() {
+async fn dropping_a_transaction_frees_a_single_connection_servers() {
     let _case = polyspec_orm_testcase::case!();
     dropping_a_transaction_frees_a_single_connection_on(&["sqlite", "mysql", "postgres"]).await;
 }
@@ -356,7 +356,7 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
         }
         // The drop closed the connection of the statement on the spot, without the five-second close path of SQLx (INT-67).
         assert_eq!(db.stats().in_use, 0, "{driver}: the dropped statement still holds its pool connection");
-        // The holder ends first, as in dropping_a_query_cancels_it: a SQLite transaction begins with the write lock (DIA-221),
+        // The holder ends first, as in dropping_a_query_cancels_it_servers: a SQLite transaction begins with the write lock (DIA-221),
         // which the holder has. The pool holds one connection, so the next transaction proves the dropped one released it.
         held.release().await;
         holder.close_async().await;
@@ -373,7 +373,7 @@ async fn dropping_a_transaction_frees_a_single_connection_on(drivers: &[&str]) {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("zone": only_the_named_parameters_reach_sqlx, pool_discards_ended_idle_connection, statement_timeout_negative_is_unrepresentable, postgres_float_round_trip, dropping_a_query_cancels_it, dropping_a_transaction_frees_a_single_connection)
+    polyspec_orm_testcase::native_trials!("zone": only_the_named_parameters_reach_sqlx, pool_discards_ended_idle_connection_servers, statement_timeout_negative_is_unrepresentable, float_round_trip_postgres, dropping_a_query_cancels_it_servers, dropping_a_transaction_frees_a_single_connection_servers)
 }
 
 /// The cancellation cases on MariaDB, which need the MariaDB servers; the program mariadb runs them (DIA-200).

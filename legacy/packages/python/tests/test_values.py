@@ -195,7 +195,7 @@ class RuntimeValueTypesDatabaseTest(unittest.TestCase):
 
     # Requirements: INT-99, DBS-68, COD-20.
     # Requirements: INT-147, DIA-48, PRT-67.
-    def test_runtime_value_types_and_styled_sql_null_read(self):
+    def test_runtime_value_types_and_styled_sql_null_read_servers(self):
         uuid = "0f0e0d0c-0b0a-4908-8706-050403020100"
         for driver in ("sqlite", "mysql", "postgres"):
             with self.subTest(driver=driver):

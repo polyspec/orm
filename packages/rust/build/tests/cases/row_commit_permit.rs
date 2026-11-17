@@ -11,7 +11,7 @@ use std::sync::{
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-105.
-async fn rejected_commit_permits_rollback_all_native_mutations() {
+async fn rejected_commit_permits_rollback_all_native_mutations_servers() {
     let _case = polyspec_orm_testcase::case!();
     async {
         let path = physical_fixture::sqlite_path("commit-permit");
@@ -75,5 +75,5 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("row_commit_permit": rejected_commit_permits_rollback_all_native_mutations)
+    polyspec_orm_testcase::native_trials!("row_commit_permit": rejected_commit_permits_rollback_all_native_mutations_servers)
 }

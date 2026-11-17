@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
 use binding_core::{Failure, Handle, HostText, HostValue, HostValues, IntOut, OrderedMap, Raised, ValueKind};
@@ -17,8 +18,8 @@ use serde_json::{Map, Value};
 use crate::or_panic::OrPanic as _;
 use crate::test_support::Scratch;
 use crate::{
-    AesKeyring, AesUtils, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest, MapValue, OrmValue, PrivilegeUtils, Query,
-    Rows, Schema, SchemaUtils, StepRunner, TransactionOptions, Tx, Utils,
+    AesKeyring, AesUtils, BeforeTransaction, BeforeTransactionHook, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest,
+    MapValue, OrmValue, PrivilegeUtils, Query, Rows, Schema, SchemaUtils, StepRunner, TransactionOptions, Tx, Utils,
 };
 
 const CONTRACT: &str = include_str!("../../interface.json");
@@ -27,6 +28,7 @@ const CASES: &str = include_str!("../../../../contracts/interface/core.json");
 /// An instance of a class unit that a case made.
 enum Instance {
     Db(Db),
+    Hook(BeforeTransactionHook),
     Tx(Tx),
     Utils(Utils),
     SchemaUtils(SchemaUtils),
@@ -70,6 +72,88 @@ thread_local! {
     /// The arguments that a function fixture named and kept when it returned, which a call of `after` calls with
     /// `"on": "<name>"` (binding GN-13o).
     static KEPT: RefCell<BTreeMap<String, Instance>> = const { RefCell::new(BTreeMap::new()) };
+    /// The functions that the core keeps and that the case gave by their rows (binding GN-6z), which the case reads when
+    /// it ends.
+    static KEPT_FUNCTIONS: RefCell<Vec<Arc<KeptFunction>>> = const { RefCell::new(Vec::new()) };
+}
+
+/// A row of a function that the core keeps: the arguments by their positions, whether it answers one call, and how many
+/// calls it answered.
+struct KeptRow {
+    args: Value,
+    once: bool,
+    answered: u32,
+}
+
+/// A function of a case that the core keeps, `{"function": [<row>]}` (binding GN-6z, CK-22): a call takes the first row
+/// that is left and whose arguments equal its own, and a row with `once` answers one call. A call that no row answers is
+/// recorded and fails. The case fails when such a call is recorded, as a generated test requires, and also when a row
+/// with `once` answered no call, which this runner requires so that a case shows that the core called the function
+/// (CORE-143).
+struct KeptFunction {
+    what: String,
+    rows: Mutex<Vec<KeptRow>>,
+    unanswered: Mutex<Vec<String>>,
+}
+
+impl KeptFunction {
+    /// The rows of the function value `value`, whose function returns none.
+    fn new(value: &Value, what: &str) -> Arc<Self> {
+        let rows = value
+            .as_object()
+            .filter(|fields| fields.len() == 1)
+            .and_then(|fields| fields.get("function"))
+            .and_then(Value::as_array)
+            .unwrap_or_else(|| panic!("{what}: a function that the core keeps is {{\"function\": [<row>]}}"));
+        let rows = rows
+            .iter()
+            .map(|row| {
+                let fields = row.as_object().unwrap_or_else(|| panic!("{what}: a row of a function is an object"));
+                for key in fields.keys() {
+                    assert!(["args", "result", "once"].contains(&key.as_str()), "{what}: a row of a function has no key {key}");
+                }
+                assert!(fields.get("result").is_none_or(Value::is_null), "{what}: the function returns none, so a row states no result");
+                let args = fields.get("args").cloned().unwrap_or_else(|| Value::Object(Map::new()));
+                KeptRow { args, once: fields.get("once") == Some(&Value::Bool(true)), answered: 0 }
+            })
+            .collect();
+        let function = Arc::new(Self { what: what.to_owned(), rows: Mutex::new(rows), unanswered: Mutex::new(Vec::new()) });
+        KEPT_FUNCTIONS.with_borrow_mut(|kept| kept.push(Arc::clone(&function)));
+        function
+    }
+
+    /// Answers a call with the arguments `args`, or records it and fails.
+    fn answer(&self, args: &Value) -> Result<(), Failure<Error>> {
+        let mut rows = self.rows.lock().expect("the rows of a function of a case");
+        if let Some(row) = rows.iter_mut().find(|row| &row.args == args && !(row.once && row.answered > 0)) {
+            row.answered += 1;
+            return Ok(());
+        }
+        self.unanswered.lock().expect("the calls that no row answers").push(args.to_string());
+        Err(Failure::Kind(Error::config(format!("{}: no row of the function answers the call {args}", self.what))))
+    }
+
+    /// What the case did not expect of the function: each call that no row answered and each row with `once` that
+    /// answered none.
+    fn failures(&self) -> Vec<String> {
+        let mut failures: Vec<String> = self
+            .unanswered
+            .lock()
+            .expect("the calls that no row answers")
+            .iter()
+            .map(|call| format!("{}: no row of the function answers the call {call}", self.what))
+            .collect();
+        for row in self.rows.lock().expect("the rows of a function of a case").iter().filter(|row| row.once && row.answered == 0) {
+            failures.push(format!("{}: the row {} with once answered no call", self.what, row.args));
+        }
+        failures
+    }
+}
+
+/// The hook before a transaction of a case (CORE-143): the function of its rows, which gets `read_only` at the position 0.
+fn before_transaction_hook(value: &Value, what: &str) -> BeforeTransaction {
+    let function = KeptFunction::new(value, what);
+    Box::new(move |read_only| function.answer(&serde_json::json!({"0": read_only})))
 }
 
 /// Another handle of a named instance for an argument `{"bound"}`: a database and a transaction handle share their state, and
@@ -545,7 +629,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         "integer_value" | "float_value" | "bytes_value" | "map_value" => Box::pin(call_values(member, receiver, args)).await,
         "query" => Box::pin(call_query(member, receiver, args)).await,
         "page" | "lookahead_page" | "group_lookahead_page" | "rows" => Box::pin(call_pages(member, receiver, args)).await,
-        "db" | "tx" => Box::pin(call_db(member, receiver, args)).await,
+        "db" | "tx" | "before_transaction_hook" => Box::pin(call_db(member, receiver, args)).await,
         "utils" | "schema_utils" | "privilege_utils" | "aes_utils" | "aes_keyring" => Box::pin(call_utils(member, receiver, args)).await,
         "schema" | "step_runner" | "orm" | "runtime_model" => Box::pin(call_core(member, receiver, args)).await,
         "dbspec" | "codec" => Box::pin(call_codec(member, receiver, args)).await,
@@ -824,7 +908,7 @@ async fn call_pages(member: &str, receiver: Option<&mut Instance>, args: &Map<St
     })
 }
 
-/// The members of `db`, `tx` (`call`).
+/// The members of `db`, `tx`, `before_transaction_hook` (`call`).
 async fn call_db(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
     Ok(match (member, receiver) {
         ("db.connect", None) => {
@@ -865,6 +949,13 @@ async fn call_db(member: &str, receiver: Option<&mut Instance>, args: &Map<Strin
         }
         ("db.execute", Some(Instance::Db(db))) => {
             db.execute_text(&text(args, "step", member), orm_values(args, "params", member)?).await?;
+            Returned::Value(Value::Null)
+        }
+        ("db.before_transaction", Some(Instance::Db(db))) => {
+            Returned::Instance(Instance::Hook(db.before_transaction(before_transaction_hook(field(args, "hook", member), &format!("{member}: hook")))))
+        }
+        ("before_transaction_hook.remove", Some(Instance::Hook(hook))) => {
+            hook.remove();
             Returned::Value(Value::Null)
         }
         ("db.transaction", Some(Instance::Db(db))) => {
@@ -1176,6 +1267,11 @@ pub(crate) async fn run_case(member: &str, case: &Value, failures: &mut Vec<Stri
     run_case_in(member, fields, &what, failures).await;
     NAMED.with_borrow_mut(BTreeMap::clear);
     KEPT.with_borrow_mut(BTreeMap::clear);
+    // The functions that the core kept are read after the case: a call without a row and a row with once that answered
+    // no call fail it (binding GN-6z, CORE-143).
+    for function in KEPT_FUNCTIONS.with_borrow_mut(std::mem::take) {
+        failures.extend(function.failures().into_iter().map(|failure| format!("{what}: {failure}")));
+    }
     for db in OPENED.with_borrow_mut(std::mem::take) {
         db.close_async().await;
     }

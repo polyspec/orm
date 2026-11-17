@@ -37,9 +37,11 @@ int32_t polyspec_orm__db__transaction_active(const uint8_t *args, size_t len, po
 int32_t polyspec_orm__db__sql_driver(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__analyze_restore(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__transaction(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
+int32_t polyspec_orm__db__before_transaction(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__with_cancel(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__connect_schema(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__db__execute(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
+int32_t polyspec_orm__before_transaction_hook__remove(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__tx__execute(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__tx__savepoint(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 int32_t polyspec_orm__tx__transaction_active(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
@@ -96,6 +98,7 @@ int32_t polyspec_orm__runtime_model__compile(const uint8_t *args, size_t len, po
 int32_t polyspec_orm__runtime_model__operator_allowed(const uint8_t *args, size_t len, polyspec_orm__buffer *result);
 void polyspec_orm___free(polyspec_orm__buffer buffer);
 void polyspec_orm___release_db(uint64_t handle);
+void polyspec_orm___release_before_transaction_hook(uint64_t handle);
 void polyspec_orm___release_tx(uint64_t handle);
 void polyspec_orm___release_aes_keyring(uint64_t handle);
 void polyspec_orm___release_schema(uint64_t handle);
@@ -316,6 +319,13 @@ func Db_Transaction(args []byte) (*Reader, error) {
 	}, args)
 }
 
+// Db_BeforeTransaction calls polyspec_orm__db__before_transaction with the encoded arguments (B-8).
+func Db_BeforeTransaction(args []byte) (*Reader, error) {
+	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
+		return C.polyspec_orm__db__before_transaction(pointer, length, result)
+	}, args)
+}
+
 // Db_WithCancel calls polyspec_orm__db__with_cancel with the encoded arguments (B-8).
 func Db_WithCancel(args []byte) (*Reader, error) {
 	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
@@ -334,6 +344,13 @@ func Db_ConnectSchema(args []byte) (*Reader, error) {
 func Db_Execute(args []byte) (*Reader, error) {
 	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
 		return C.polyspec_orm__db__execute(pointer, length, result)
+	}, args)
+}
+
+// BeforeTransactionHook_Remove calls polyspec_orm__before_transaction_hook__remove with the encoded arguments (B-8).
+func BeforeTransactionHook_Remove(args []byte) (*Reader, error) {
+	return invoke(func(pointer *C.uint8_t, length C.size_t, result *C.polyspec_orm__buffer) C.int32_t {
+		return C.polyspec_orm__before_transaction_hook__remove(pointer, length, result)
 	}, args)
 }
 
@@ -718,6 +735,11 @@ func RuntimeModel_OperatorAllowed(args []byte) (*Reader, error) {
 // ReleaseDb releases the value of an instance of Db (T-5).
 func ReleaseDb(handle uint64) {
 	C.polyspec_orm___release_db(C.uint64_t(handle))
+}
+
+// ReleaseBeforeTransactionHook releases the value of an instance of BeforeTransactionHook (T-5).
+func ReleaseBeforeTransactionHook(handle uint64) {
+	C.polyspec_orm___release_before_transaction_hook(C.uint64_t(handle))
 }
 
 // ReleaseTx releases the value of an instance of Tx (T-5).

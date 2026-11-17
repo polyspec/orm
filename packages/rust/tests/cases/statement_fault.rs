@@ -105,14 +105,15 @@ fn every_fixture_case_has_a_test_per_driver() {
     }
 }
 
-/// Every fixture case on SQLite, MySQL and PostgreSQL, each the trial `statement_fault_cases::<case>`: a case
-/// passes when it passes on every database. A panic in one database run is caught, and its message fails the case.
+/// Every fixture case on SQLite, MySQL and PostgreSQL, each the trial `statement_fault_cases::<case>_servers`, whose
+/// name says that it runs on the servers: a case passes when it passes on every database. A panic in one database run is
+/// caught, and its message fails the case.
 fn statement_fault_cases() -> Vec<polyspec_orm_testcase::Trial> {
     fixture()
         .cases
         .into_iter()
         .map(|case| {
-            polyspec_orm_testcase::async_trial(format!("statement_fault::statement_fault_cases::{case}"), move || async move {
+            polyspec_orm_testcase::async_trial(format!("statement_fault::statement_fault_cases::{case}_servers"), move || async move {
                 for driver in ["sqlite", "mysql", "postgres"] {
                     let outcome = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(bounded(driver, &case))).await;
                     if let Err(payload) = outcome {

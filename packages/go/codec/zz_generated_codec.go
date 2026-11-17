@@ -105,7 +105,7 @@ func BlindIndex(value_ any, key string) (string, error) {
 // FromHandle of its package (GN-15a); nil for any other number.
 func aliasInstance(class uint64, handle uint64) any {
 	switch class {
-	case 4:
+	case 5:
 		return orm.IntegerValueFromHandle(binding.Token{}, handle)
 	}
 	return nil

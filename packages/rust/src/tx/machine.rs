@@ -12,9 +12,10 @@ use binding_core::machine::{Machine, Step};
 use binding_core::{Failure, Passthrough, Raised};
 
 use super::{
-    audit_record, begin, commit, lock, panicked, retry_wait, rollback, rollback_fault, rollback_savepoint, AuditInsert, AuditKey, Isolation,
-    TransactionOptions, Tx, TxShared, DEFAULT_RETRY,
+    audit_record, await_hook, begin, call_hook, commit, lock, panicked, retry_wait, rollback, rollback_fault, rollback_savepoint, AuditInsert, AuditKey,
+    Isolation, TransactionOptions, Tx, TxShared, DEFAULT_RETRY,
 };
+use crate::db::TransactionHook;
 use crate::events::{KIND_RELEASE, KIND_SAVEPOINT};
 use crate::{Db, Error, Kind, Result};
 
@@ -28,6 +29,10 @@ enum Stage {
     Start,
     /// The driver calls the audit source before the first `BEGIN` (CORE-131).
     Source,
+    /// The driver calls a hook before the transaction (CORE-143).
+    Hook,
+    /// The future of a hook of Rust code is awaited (CORE-143).
+    Hooking,
     /// The opening is awaited.
     Opening,
     /// The driver calls the callback.
@@ -64,6 +69,7 @@ where
 pub struct TransactionIo(TransactionOutput);
 
 enum TransactionOutput {
+    Hooked(Result<()>),
     Opened(Result<Arc<TxShared>>),
     Ended(Result<()>),
     Waited,
@@ -82,6 +88,12 @@ pub struct Transaction<F> {
     /// The audit record that the call of the source made, until the machine reads it.
     sourced: Option<std::result::Result<AuditInsert, Failure<Error>>>,
     record: Option<Arc<AuditInsert>>,
+    /// The hooks of the attempt that are not called yet, in the order of their registration (CORE-143).
+    hooks: std::vec::IntoIter<Arc<TransactionHook>>,
+    /// The hook that the driver calls in the step `Hook`.
+    hook: Option<Arc<TransactionHook>>,
+    /// What the call of that hook returned, until the machine reads it.
+    hooked: Option<std::result::Result<(), Failure<Error>>>,
     attempt: u32,
     stage: Stage,
     shared: Option<Arc<TxShared>>,
@@ -110,6 +122,9 @@ impl<F> Transaction<F> {
             audit,
             sourced: None,
             record: None,
+            hooks: Vec::new().into_iter(),
+            hook: None,
+            hooked: None,
             attempt: 0,
             stage: Stage::Start,
             shared: None,
@@ -133,6 +148,41 @@ impl<F> Transaction<F> {
             }
         }
         Step::Done(outcome)
+    }
+
+    /// Starts an attempt: reads the hooks registered at this moment (CORE-143) and calls them before the opening.
+    fn start_attempt(&mut self) -> Step<TransactionIo, Outcome> {
+        match self.db.transaction_hooks() {
+            Ok(hooks) => {
+                self.hooks = hooks.into_iter();
+                self.next_hook()
+            }
+            Err(error) => self.end(Err(Failure::Kind(error))),
+        }
+    }
+
+    /// Calls the next hook of the attempt, each after the one before it ended, and opens the transaction after the last:
+    /// a hook of a binding in a step `Call`, on the thread that drives the machine, and a hook of Rust code in a step
+    /// `Io` that awaits its future (CORE-143).
+    fn next_hook(&mut self) -> Step<TransactionIo, Outcome> {
+        let Some(hook) = self.hooks.next() else {
+            return self.open();
+        };
+        if matches!(*hook, TransactionHook::Call(_)) {
+            self.hook = Some(hook);
+            self.stage = Stage::Hook;
+            return Step::Call;
+        }
+        self.stage = Stage::Hooking;
+        let read_only = self.read_only;
+        Step::Io(Box::pin(async move { TransactionIo(TransactionOutput::Hooked(await_hook(&hook, read_only).await)) }))
+    }
+
+    /// A hook failed: the transaction ends before it begins, with that failure unchanged and without another attempt
+    /// (CORE-143).
+    fn refuse(&mut self, failure: Failure<Error>) -> Step<TransactionIo, Outcome> {
+        self.hooks = Vec::new().into_iter();
+        self.end(Err(failure))
     }
 
     /// Step 1: borrows a connection and sends `BEGIN` with the options.
@@ -208,16 +258,23 @@ where
                     self.stage = Stage::Source;
                     return Step::Call;
                 }
-                self.open()
+                self.start_attempt()
             }
             (Stage::Source, None) => match self.sourced.take() {
                 Some(Ok(record)) => {
                     self.record = Some(Arc::new(record));
-                    self.open()
+                    self.start_attempt()
                 }
                 Some(Err(failure)) => self.end(Err(failure)),
                 None => self.end(Err(out_of_order("a transaction", Stage::Source))),
             },
+            (Stage::Hook, None) => match self.hooked.take() {
+                Some(Ok(())) => self.next_hook(),
+                Some(Err(failure)) => self.refuse(failure),
+                None => self.end(Err(out_of_order("a transaction", Stage::Hook))),
+            },
+            (Stage::Hooking, Some(TransactionOutput::Hooked(Ok(())))) => self.next_hook(),
+            (Stage::Hooking, Some(TransactionOutput::Hooked(Err(error)))) => self.refuse(Failure::Kind(error)),
             (Stage::Opening, Some(TransactionOutput::Opened(Ok(shared)))) => {
                 // Each attempt starts with the pending record and no inserted audit.
                 match lock(&shared.pending_audit) {
@@ -262,7 +319,7 @@ where
                 (Err(rollback), Some(failure)) => self.end(Err(Failure::Kind(Error::rollback_failed(failure, rollback)))),
                 (_, None) => self.end(Err(out_of_order("a transaction", Stage::Reverting))),
             },
-            (Stage::Waiting, Some(TransactionOutput::Waited)) => self.open(),
+            (Stage::Waiting, Some(TransactionOutput::Waited)) => self.start_attempt(),
             (stage, _) => self.end(Err(out_of_order("a transaction", stage))),
         }
     }
@@ -276,6 +333,15 @@ where
                     Ok(sourced) => sourced,
                     Err(payload) => Err(Failure::Kind(panicked(payload))),
                 });
+            }
+            return;
+        }
+        if self.stage == Stage::Hook {
+            // A hook of a binding is language code, which is called on the thread that drives the machine (CORE-143).
+            if let Some(hook) = self.hook.take() {
+                if let TransactionHook::Call(call) = &*hook {
+                    self.hooked = Some(call_hook(call, self.read_only));
+                }
             }
             return;
         }

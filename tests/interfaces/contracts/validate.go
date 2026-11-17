@@ -178,7 +178,7 @@ var inputs = map[string]map[string]string{
 	"SchemaName":             {"go": "namestring", "php": "string$schema", "rust": "name:&str", "typescript": "name:string", "python": "name:str"},
 	"SchemaTable":            {"go": "name,tablestring", "php": "string$schema,string$table", "rust": "name:&str,table:&str", "typescript": "name:string,table:string", "python": "name:str,table:str"},
 	"Request":                {"go": "r*ir.Request", "php": "array$request", "rust": "request:&str", "typescript": "request:Request", "python": "request:IRRequest"},
-	"TransactionHook":        {"go": "hookfunc(ctxcontext.Context,readOnlybool)error", "php": "Closure$hook", "rust": "hook:implFn(bool)->BoxFuture<'static,Result<()>>+Send+Sync+'static", "typescript": "hook:(readOnly:boolean)=>void|Promise<void>", "python": "hook:Callable[[bool],None]"},
+	"TransactionHook":        {"go": "hookfunc(ctxcontext.Context,readOnlybool)error", "php": "Closure$hook", "rust": "hook:implFn(bool)->Fut+Send+Sync+'static", "typescript": "hook:(readOnly:boolean)=>void|Promise<void>", "python": "hook:Callable[[bool],None]"},
 	"EntityName,SequenceKey": {"go": "entitystring,keyint64", "php": "string$entity,int$sequence", "rust": "entity:&str,sequence:i64", "typescript": "entity:string,sequence:number", "python": "entity:str,sequence:int"},
 }
 

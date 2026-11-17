@@ -22,7 +22,7 @@ func TestB5cQueryRefusesAPoisonedObject(t *testing.T) {
 	if failure3 != nil {
 		t.Fatalf("GN-13f: %v", failure3)
 	}
-	if err := binding.PanicTestHeld(5, made2.handle()); err == nil {
+	if err := binding.PanicTestHeld(6, made2.handle()); err == nil {
 		t.Fatal("B-5c: the poison entry point did not panic")
 	}
 	{
@@ -60,7 +60,7 @@ func TestB5cStepRunnerRefusesAPoisonedObject(t *testing.T) {
 	if failure5 != nil {
 		t.Fatalf("GN-13f: %v", failure5)
 	}
-	if err := binding.PanicTestHeld(6, made4.handle()); err == nil {
+	if err := binding.PanicTestHeld(7, made4.handle()); err == nil {
 		t.Fatal("B-5c: the poison entry point did not panic")
 	}
 	{

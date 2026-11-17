@@ -4,7 +4,7 @@ use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: SCH-3.
-async fn physical_tool_queries_reject_budgets_without_partial_success() {
+async fn physical_tool_queries_reject_budgets_without_partial_success_servers() {
     let _case = polyspec_orm_testcase::case!();
     check_databases().await;
 }
@@ -72,5 +72,5 @@ async fn tool_sqlite_file_name_is_the_path() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("tool_limits": physical_tool_queries_reject_budgets_without_partial_success, tool_sqlite_file_name_is_the_path)
+    polyspec_orm_testcase::native_trials!("tool_limits": physical_tool_queries_reject_budgets_without_partial_success_servers, tool_sqlite_file_name_is_the_path)
 }

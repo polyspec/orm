@@ -64,7 +64,7 @@ fn connected(db: &Db) -> Record {
 
 #[tokio::main(flavor = "current_thread")]
 // Requirements: INT-99, COD-20.
-async fn runtime_value_types() {
+async fn runtime_value_types_servers() {
     let _case = polyspec_orm_testcase::case!();
     let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";
     let day = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap();
@@ -93,5 +93,5 @@ async fn runtime_value_types() {
 }
 
 pub fn trials() -> Vec<polyspec_orm_testcase::Trial> {
-    polyspec_orm_testcase::native_trials!("value_types": runtime_value_types)
+    polyspec_orm_testcase::native_trials!("value_types": runtime_value_types_servers)
 }

@@ -501,6 +501,39 @@ func (this *Db) Transaction(callback func(*Tx) (any, error), options Transaction
 	return value0, nil
 }
 
+// BeforeTransaction calls polyspec_orm::Db::before_transaction (contract member db.before_transaction).
+func (this *Db) BeforeTransaction(hook func(bool) error) (*BeforeTransactionHook, error) {
+	var zero0 *BeforeTransactionHook
+	call := binding.NewCall()
+	defer call.Close()
+	enc := binding.NewWriter()
+	enc.Uint(this.handle())
+	if hook == nil {
+		enc.Tag(false)
+	} else {
+		enc.Tag(true)
+		call.Keep(enc, func(call *binding.Call, dec *binding.Reader, enc *binding.Writer) error {
+			var arg0 bool
+			arg0 = dec.Bool()
+			if err := dec.Finish(); err != nil {
+				return err
+			}
+			return hook(arg0)
+		})
+	}
+	dec, err := binding.Db_BeforeTransaction(enc.Done())
+	runtime.KeepAlive(this)
+	if err != nil {
+		return zero0, err
+	}
+	var value0 *BeforeTransactionHook
+	value0 = newBeforeTransactionHook(dec.Uint())
+	if err := dec.Finish(); err != nil {
+		return zero0, err
+	}
+	return value0, nil
+}
+
 // WithCancel calls polyspec_orm::Db::with_cancel (contract member db.with_cancel).
 func (this *Db) WithCancel(ctx context.Context) (*Db, error) {
 	var zero0 *Db
@@ -645,6 +678,39 @@ func (this *Db) Execute(step string, params []any) error {
 		call.Value(enc, item0)
 	}
 	dec, err := binding.Db_Execute(enc.Done())
+	runtime.KeepAlive(this)
+	if err != nil {
+		return err
+	}
+	if err := dec.Finish(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// BeforeTransactionHook is the class before_transaction_hook (T-5): it holds a value of polyspec_orm::BeforeTransactionHook in the static library, which
+// the binding releases when the Go runtime finds the BeforeTransactionHook unreachable. nil and the zero value hold no value: a call
+// that takes one fails with kind invalid_argument_type.
+type BeforeTransactionHook struct{ ref *binding.Ref }
+
+// newBeforeTransactionHook holds the value under the handle that a call gave.
+func newBeforeTransactionHook(handle uint64) *BeforeTransactionHook {
+	return &BeforeTransactionHook{ref: binding.NewRef(handle, binding.ReleaseBeforeTransactionHook)}
+}
+
+// handle is the handle of the value, 0 for nil and for the zero value.
+func (this *BeforeTransactionHook) handle() uint64 {
+	if this == nil || this.ref == nil {
+		return 0
+	}
+	return this.ref.Handle()
+}
+
+// Remove calls polyspec_orm::BeforeTransactionHook::remove (contract member before_transaction_hook.remove).
+func (this *BeforeTransactionHook) Remove() error {
+	enc := binding.NewWriter()
+	enc.Uint(this.handle())
+	dec, err := binding.BeforeTransactionHook_Remove(enc.Done())
 	runtime.KeepAlive(this)
 	if err != nil {
 		return err
@@ -1823,7 +1889,7 @@ func IntegerValueFromHandle(_ binding.Token, handle uint64) *IntegerValue {
 // FromHandle of its package (GN-15a); nil for any other number.
 func aliasInstance(class uint64, handle uint64) any {
 	switch class {
-	case 4:
+	case 5:
 		return newIntegerValue(handle)
 	}
 	return nil

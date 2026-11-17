@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::{FixedOffset, NaiveDateTime, Utc};
@@ -54,6 +54,62 @@ pub type HookFuture<'a> = futures_util::future::BoxFuture<'a, Result<()>>;
 /// and adds parameters with [`RequestParams::add`], in the future it returns, which the
 /// client awaits. An error it returns fails the operation unchanged, before any statement.
 pub type RequestHook = Arc<dyn for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync>;
+
+/// A hook before a transaction (CORE-143) in the form of a function of the contract: the core calls it with whether the
+/// transaction is read-only, on the thread that drives the transaction, and a failure that it returns ends the
+/// transaction before it begins, unchanged.
+pub type BeforeTransaction = Box<dyn Fn(bool) -> std::result::Result<(), binding_core::Failure<Error>> + Send + Sync>;
+
+/// The future of a hook of [`Db::before_transaction_async`], which the core awaits before it calls the next hook
+/// (CORE-143).
+pub type BeforeTransactionFuture = futures_util::future::BoxFuture<'static, Result<()>>;
+
+/// One hook before a transaction (CORE-143).
+pub(crate) enum TransactionHook {
+    /// A function that the core calls on the thread that drives the transaction: the hook of a binding.
+    Call(BeforeTransaction),
+    /// A function of Rust code whose future the core awaits.
+    Future(Box<dyn Fn(bool) -> BeforeTransactionFuture + Send + Sync>),
+}
+
+/// The hooks before a transaction of a connection, in the order of their registration (CORE-143). Every handle of the
+/// connection shares them.
+#[derive(Default)]
+pub(crate) struct TransactionHooks {
+    list: Mutex<Vec<(u64, Arc<TransactionHook>)>>,
+    /// The number of the next hook.
+    next: AtomicU64,
+}
+
+impl TransactionHooks {
+    /// The list. No code panics while it holds this lock, so the list of a poisoned lock is whole.
+    fn list(&self) -> std::sync::MutexGuard<'_, Vec<(u64, Arc<TransactionHook>)>> {
+        match self.list.lock() {
+            Ok(list) => list,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
+
+    /// The hooks registered at this moment, in the order of their registration.
+    pub(crate) fn registered(&self) -> Vec<Arc<TransactionHook>> {
+        self.list().iter().map(|(_, hook)| Arc::clone(hook)).collect()
+    }
+}
+
+/// A registered hook before a transaction (CORE-143): [`BeforeTransactionHook::remove`] removes it.
+#[must_use = "dropping a BeforeTransactionHook keeps the hook registered; call remove to remove it"]
+pub struct BeforeTransactionHook {
+    hooks: Arc<TransactionHooks>,
+    id: u64,
+}
+
+impl BeforeTransactionHook {
+    /// Removes the hook: no attempt of a transaction that starts after this call calls it, and an attempt that read the
+    /// hooks before this call still calls it. A second call does nothing.
+    pub fn remove(&self) {
+        self.hooks.list().retain(|(id, _)| *id != self.id);
+    }
+}
 
 /// The parameters of the request a [`RequestHook`] receives: it reads the values that the request binds and adds
 /// parameters.
@@ -690,6 +746,8 @@ pub(crate) struct DbInner {
     pub(crate) sqlite_lock_ready: AtomicBool,
     /// The connection's statement event subscribers and transaction number. All clones of the connection share them.
     pub(crate) subscribers: Subscribers,
+    /// The hooks before a transaction of the connection (CORE-143). All handles of the connection share them.
+    pub(crate) transaction_hooks: Arc<TransactionHooks>,
     /// The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature
     /// Can be set only in builds with `test-faults`.
     pub(crate) rollback_fault: AtomicBool,
@@ -1036,6 +1094,7 @@ impl Db {
                 idle_trim: tokio::sync::Mutex::new(()),
                 sqlite_lock_ready: AtomicBool::new(false),
                 subscribers: Subscribers::default(),
+                transaction_hooks: Arc::new(TransactionHooks::default()),
                 rollback_fault: AtomicBool::new(false),
                 #[cfg(feature = "test-faults")]
                 statement_fault: Mutex::new(None),
@@ -1063,6 +1122,50 @@ impl Db {
     /// replaces the hook of a hooked handle.
     pub fn with_request_hook(&self, hook: impl for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync + 'static) -> Db {
         Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)), cancel: self.cancel.clone(), log: self.log.clone() }
+    }
+
+    /// Registers `hook` on the connection and returns what removes it (CORE-143): the member `db.before_transaction` of
+    /// the contract. Every handle of the connection shares the hooks: its clones and the handles of
+    /// [`Db::with_request_hook`] and [`Db::with_cancel`]. Before every transaction that [`Db::transaction`] or
+    /// [`Db::transaction_async`] begins on a handle of the connection, in each attempt of the retry (CORE-24), the core
+    /// calls the hooks registered at that moment in the order of their registration, each with whether the transaction
+    /// is read-only, before the transaction takes a connection of the pool or sends a statement. A hook that fails ends
+    /// the transaction before it begins: the core calls no later hook, takes no connection, sends no statement, does not
+    /// call the callback, does not run the attempt again and returns the failure unchanged. A savepoint calls no hook.
+    /// The core calls `hook` on the thread that drives the transaction. A hook that holds a handle of the connection
+    /// keeps the connection until the hook is removed.
+    pub fn before_transaction(&self, hook: BeforeTransaction) -> BeforeTransactionHook {
+        self.add_transaction_hook(TransactionHook::Call(hook))
+    }
+
+    /// Registers a hook that returns a future as [`Db::before_transaction`] does (CORE-143): the core awaits the future
+    /// that `hook` returns before it calls the next hook, so the hook can run statements and transactions on a handle
+    /// of the connection. No member of the contract reaches it yet, because a generated binding does not await a
+    /// function that the core keeps.
+    pub fn before_transaction_async<Fut>(&self, hook: impl Fn(bool) -> Fut + Send + Sync + 'static) -> BeforeTransactionHook
+    where
+        Fut: std::future::Future<Output = Result<()>> + Send + 'static,
+    {
+        self.add_transaction_hook(TransactionHook::Future(Box::new(move |read_only| -> BeforeTransactionFuture { Box::pin(hook(read_only)) })))
+    }
+
+    fn add_transaction_hook(&self, hook: TransactionHook) -> BeforeTransactionHook {
+        let hooks = &self.inner.transaction_hooks;
+        let id = hooks.next.fetch_add(1, Ordering::Relaxed);
+        hooks.list().push((id, Arc::new(hook)));
+        BeforeTransactionHook { hooks: Arc::clone(hooks), id }
+    }
+
+    /// The hooks before a transaction that an attempt on this handle calls (CORE-143): the hooks registered at this
+    /// moment. A closed connection and a handle whose cancellation has fired call none, and the transaction ends with
+    /// `closed` or `canceled`.
+    pub(crate) fn transaction_hooks(&self) -> Result<Vec<Arc<TransactionHook>>> {
+        let hooks = self.inner.transaction_hooks.registered();
+        if !hooks.is_empty() {
+            self.ensure_open()?;
+            self.ensure_not_canceled()?;
+        }
+        Ok(hooks)
     }
 
     /// Returns a handle on the same connection that carries the cancellation `cancel` (CORE-45). The handle shares the

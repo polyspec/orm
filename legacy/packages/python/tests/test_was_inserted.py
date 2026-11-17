@@ -42,7 +42,7 @@ class WasInsertedTest(unittest.TestCase):
         return caught.exception.code
 
     # Requirements: INT-53.
-    def test_postgres_reports_a_backend_waiting_for_lock(self):
+    def test_reports_a_backend_waiting_for_lock_postgres(self):
         def body(db, dsn):
             utils = db.utils()
             held = []
