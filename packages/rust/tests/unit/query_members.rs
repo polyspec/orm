@@ -769,3 +769,39 @@ async fn gets_page_reads_a_page_and_counts_the_rows_of_every_page() {
     assert_eq!(error.to_string(), "config: gets_page cannot be combined with limit");
     db.close_async().await;
 }
+
+/// The entries of a group row, in their order.
+fn group(row: &binding_core::OrderedMap<OrmValue>) -> Vec<(String, OrmValue)> {
+    row.iter().map(|(name, value)| (name.to_owned(), value.clone())).collect()
+}
+
+// Requirements: CORE-201. gets_count returns one map for each group, the group columns and then row_count, in the order
+// of the query; get_count of a grouped query counts its groups; a query without group_by, an order by a column outside
+// the group and a name that is no column are refused.
+#[tokio::test]
+async fn gets_count_counts_the_rows_of_each_group() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-gets-count");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut keys = query(&schema, "account_key", &db);
+    keys.group_by("account_seq");
+    keys.order_by("AccountSeqDesc");
+    let groups = keys.gets_count().await.expect("gets_count");
+    let of = |account: i64, count: i64| vec![("account_seq".to_owned(), int(account)), ("row_count".to_owned(), int(count))];
+    assert_eq!(groups.iter().map(group).collect::<Vec<_>>(), [of(2, 1), of(1, 2)], "one row for each group, in the order of the query");
+    assert_eq!(keys.get_count().await.expect("get_count"), 2, "the count of a grouped query is the number of its groups");
+    let mut one = keys.clone();
+    one.where_chain("AccountSeq", &[int(1)]);
+    assert_eq!(one.gets_count().await.expect("gets_count").iter().map(group).collect::<Vec<_>>(), [of(1, 2)]);
+    let plain = query(&schema, "account_key", &db);
+    assert_eq!(failure(plain.gets_count().await, "no group_by").to_string(), "ir_invalid: group_count needs group_by");
+    let mut outside = keys.clone();
+    outside.order_by("SeqAsc");
+    assert_eq!(failure(outside.gets_count().await, "an order outside the group").to_string(), "ir_invalid: order by seq, which is not a group column");
+    assert_eq!(failure(keys.gets().await, "gets of a grouped query").to_string(), "ir_invalid: group_by is only valid on count or group_count, not all");
+    let mut unknown = query(&schema, "account_key", &db);
+    unknown.group_by("missing");
+    assert_eq!(failure(unknown.gets_count().await, "no column").to_string(), "config: missing is not a column of account_key");
+    db.close_async().await;
+}

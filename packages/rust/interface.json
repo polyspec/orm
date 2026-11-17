@@ -4386,11 +4386,76 @@
             "polyspec_orm::Kind::Driver",
             "polyspec_orm::Kind::Canceled",
             "polyspec_orm::Kind::PoolTimeout",
-            "polyspec_orm::Kind::Closed"
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
           ],
           "wait": "async_driver",
           "core": {
             "path": "polyspec_orm::Query::gets_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.group_by",
+          "name": [
+            "group",
+            "by"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::group_by",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.gets_count",
+          "name": [
+            "gets",
+            "count"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "map": {
+                "unit": "orm_value"
+              }
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_count",
             "receiver": "&self"
           }
         }
@@ -6038,6 +6103,44 @@
       "member": "rows.keys",
       "file": "contracts/interface/core.json",
       "group": "rows.keys.page",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.group_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_by"
+    },
+    {
+      "member": "query.group_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_by.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets_count",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count"
+    },
+    {
+      "member": "query.gets_count",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count.sqlite",
       "only": {
         "targets": [
           "php",

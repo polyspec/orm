@@ -646,6 +646,11 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("page.page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.page())),
         ("page.per_page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.per_page())),
         ("page.rows", Some(Instance::Page(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
+        ("query.group_by", Some(Instance::Query(query))) => {
+            query.group_by(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.gets_count", Some(Instance::Query(query))) => Returned::Value(query.gets_count().await?.iter().map(|row| case_map(row, member)).collect()),
         ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
         ("query.where", Some(Instance::Query(query))) => {
             query.where_chain(&text(args, "chain", member), &orm_values(args, "values", member)?);

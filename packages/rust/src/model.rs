@@ -942,11 +942,11 @@ pub async fn gets_core<M: Model>(c: &Core, kind: &str) -> Result<Collection<M>> 
 }
 
 /// Runs a grouped count and returns only grouping values and row counts.
-pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
-    let ex = terminal(m.core())?;
-    let mut request = build(m.core(), "group_count");
-    let result = select(&ex, &m.core().conn, &mut request).await?;
-    group_rows(m.core(), &result)
+pub async fn gets_count<M: AnyModel + Clone>(m: &M) -> Result<GroupRows> {
+    let ex = terminal(m.core_dyn())?;
+    let mut request = build(m.core_dyn(), "group_count");
+    let result = select(&ex, &m.core_dyn().conn, &mut request).await?;
+    group_rows(m.core_dyn(), &result)
 }
 
 /// Returns one page of the models of `gets` and whether a next page exists, read by one statement that reads one row past

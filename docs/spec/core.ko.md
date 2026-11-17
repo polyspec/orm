@@ -309,7 +309,7 @@
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `join`, `leftJoin`, 묶음
-  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
+  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
@@ -371,7 +371,8 @@
   순서대로 실행된다(`{"call": "where", "chain": .., "values": [..]}`, `chain`과 `query`를 가진 `where_in`, `spec`을 가진
   `order_by`, `offset`과 `count`를 가진 `limit`, lock 넷, `add_all_columns`, `remove_all_columns`, `column`을 가진
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
-  `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`).
+  `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
+  `group_by`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
   형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
   `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
@@ -535,6 +536,20 @@
   terminal은 `Query`를 바꾸지 않는다(DSL-69). 계약에서 `page`는 class이고 그 member `total_count`, `total_pages`,
   `page`, `per_page`는 property이며 member `rows`는 unit `rows`를 돌려준다(CORE-70). `Db` step(CORE-92)에는 이것의
   terminal이 없다.
+- **CORE-201** `group_by(column)`은 `Query`의 grouping에 열 하나를 더한다. 언어 구현의 member `groupBy<Col>()`이다
+  (DSL-99). `gets_count()`는 조건이 고르는 행의 group마다 행 하나를 돌려준다. member `getsCount()`다(DSL-61, INT-31,
+  INT-68). 요청은 `group_count`이고 그 `group_by`는 부른 순서대로 열을 가진다(PRT-2). group 행은 map이다: grouping
+  열마다 그 이름으로 `value`가 그 열에 돌려주는 `orm_value`를 가지며(CORE-62, CORE-83) null도 그렇고, 그다음에 그
+  group의 행 수인 `row_count`를 `int64`로 가진다. 다른 열은 없고 엔티티의 행이 아니다(INT-68). 행은 `Query`의
+  순서대로이고, 순서의 항목은 grouping 열만 가리킨다. 다른 열은 `ir_invalid`이고 메시지는
+  `order by <column>, which is not a group column`이다. `group_by`가 없는 `Query`의 `gets_count`는 `ir_invalid`이고
+  메시지는 `group_count needs group_by`다. group된 `Query`의 `get_count`는 group의 수를 세고(PRT-2), 그 밖의 모든
+  terminal은 `ir_invalid`이며 메시지는 `group_by is only valid on count or group_count, not <kind>`다. `gets_page`도
+  그렇다(CORE-200, DSL-99). `relation`, `relations`, `where_in`에 준 group된 `Query`는 `ir_invalid`이고 메시지는
+  `group_by is only valid on the request's root query`다. 엔티티의 열이 아닌 이름은 다음 terminal에서 `config`이고
+  메시지는 `<column> is not a column of <entity>`다(CORE-87). 0 이상의 정확한 정수가 아닌 count는 `codec_decode`다
+  (INT-68). `Db` step은 `column`을 가진 call `group_by`를 받고(CORE-92) `gets_count`의 terminal은 없다. 계약은 group
+  행을 `orm_value`의 map의 list로 돌려준다. Rust 값 `Val`을 가진 `GroupRow`와 `GroupRows`는 선언하지 않는다(CORE-70).
 
 ## 상태 기계
 

@@ -255,6 +255,14 @@ impl Query {
         }
     }
 
+    /// Adds the column `column` to the grouping of the query, which `gets_count` and `get_count` read (CORE-201). A name
+    /// that is no column of the entity is `config` at the next terminal.
+    pub fn group_by(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.group_by(column);
+        }
+    }
+
     /// Reads at most `count` rows after the first `offset` rows of the order (CORE-85). A `count` of 0 is `config` at
     /// the next terminal.
     pub fn limit(&mut self, offset: u32, count: u32) {
@@ -469,6 +477,35 @@ impl Query {
     /// change. A `page` or a `per_page` of 0 and a query with `limit` are `config`.
     pub async fn gets_page(&self, page: u32, per_page: u32) -> Result<QueryPage> {
         crate::model::gets_page(self, page, per_page).await
+    }
+
+    /// Runs the grouped count of the query and returns one map for each group, in the order of the query: the columns of
+    /// `group_by` by name and then `row_count`, the number of rows of the group (CORE-201). A query without `group_by`
+    /// is `ir_invalid`; the query does not change.
+    pub async fn gets_count(&self) -> Result<Vec<OrderedMap<OrmValue>>> {
+        let groups = crate::model::gets_count(self).await?;
+        let manifest = self.core.entity().schema().manifest()?;
+        let entity = manifest.entity(self.core.entity().name())?;
+        let mut out = Vec::with_capacity(groups.len());
+        for group in groups.iter() {
+            let mut row = OrderedMap::with_capacity(group.values().len());
+            for (name, cell) in group.values() {
+                // A group row repeats no name, so `row_count` is the count and never a column of that name (INT-68).
+                let value = if name == "row_count" {
+                    OrmValue::Int64(group.count())
+                } else {
+                    let field = entity
+                        .field(name)
+                        .ok_or_else(|| Error::internal(format!("a group row of {} holds {name}, which is no column of it", self.entity())))?;
+                    OrmValue::of_column(field, cell.clone())?
+                };
+                if row.insert(name.clone(), value).is_some() {
+                    return Err(Error::internal(format!("a group row of {} names {name} twice", self.entity())));
+                }
+            }
+            out.push(row);
+        }
+        Ok(out)
     }
 
     /// Runs the count of the query (CORE-83).

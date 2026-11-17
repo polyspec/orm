@@ -374,7 +374,7 @@ implementation is eligible for removal on that evidence.
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
-  groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
+  groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
@@ -443,8 +443,8 @@ implementation is eligible for removal on that evidence.
   with its arguments in the order of the calls (`{"call": "where", "chain": .., "values": [..]}`, `where_in` with
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
-  with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, and `expect_revision` with
-  `column` and `revision`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
+  `column` and `revision`, and `group_by` with `column`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
   value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
   `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
@@ -632,6 +632,22 @@ implementation is eligible for removal on that evidence.
   (CORE-81). The terminal does not change the `Query` (DSL-69). In the contract `page` is a class whose members
   `total_count`, `total_pages`, `page` and `per_page` are properties and whose member `rows` returns the unit `rows`
   (CORE-70). The `Db` step (CORE-92) has no terminal for it.
+- **CORE-201** `group_by(column)` adds a column to the grouping of a `Query`, the member `groupBy<Col>()` of the
+  language implementations (DSL-99), and `gets_count()` returns one row for each group of the rows that the conditions
+  select: the member `getsCount()` (DSL-61, INT-31, INT-68). The request is `group_count`, and its `group_by` holds
+  the columns in the order of the calls (PRT-2). A group row is a map: each grouping column under its name, with the
+  `orm_value` that `value` returns for the column (CORE-62, CORE-83), null included, and then `row_count`, the number
+  of rows of the group as `int64`. It holds no other column and is no row of the entity (INT-68). The rows are in the
+  order of the `Query`, whose order items name grouping columns alone: another column is `ir_invalid` with the message
+  `order by <column>, which is not a group column`. `gets_count` of a `Query` without `group_by` is `ir_invalid` with
+  the message `group_count needs group_by`. `get_count` of a grouped `Query` counts its groups (PRT-2), and every
+  other terminal of one is `ir_invalid` with the message `group_by is only valid on count or group_count, not <kind>`,
+  `gets_page` among them (CORE-200, DSL-99); a grouped `Query` given to `relation`, `relations` or `where_in` is
+  `ir_invalid` with the message `group_by is only valid on the request's root query`. A name that is no column of the
+  entity is `config` at the next terminal with the message `<column> is not a column of <entity>` (CORE-87). A count
+  that is no exact integer from 0 is `codec_decode` (INT-68). The `Db` step takes the call `group_by` with `column`
+  (CORE-92) and has no terminal for `gets_count`. The contract returns the group rows as a list of maps of
+  `orm_value`; `GroupRow` and `GroupRows`, which hold the Rust value `Val`, stay undeclared (CORE-70).
 
 ## State machines
 
