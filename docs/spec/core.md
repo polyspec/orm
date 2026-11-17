@@ -135,6 +135,41 @@ implementation is eligible for removal on that evidence.
   with `closed`. A second `close` succeeds.
 - **CORE-32** `Db` takes concurrent calls. A statement borrows one connection of the pool and its result does not depend
   on other calls. The number of a transaction is counted when its `BEGIN` is sent.
+- **CORE-190** `Db::with_request_log()` returns a handle of the same pool that records each request of the handle, and
+  `Db::observed_requests()` returns the records of the handle in the order of their requests and empties the log, so a
+  second read returns only what was recorded after the first. The log has no limit of size: while a handle records, its
+  log grows by one record for each request until `observed_requests` reads it, so a caller that turns the log on reads
+  it.
+  A record is `{request, params}`, the record `observed_request` of the contract (`polyspec_orm::ObservedRequest`).
+  `request` is the request as the JSON text of [FMS-31](flowmark-surface.md), which `Request::to_json` writes with the
+  serializer whose bytes the key of the plan cache hashes. `params` is the list of the values that the request binds, by
+  their index in the request, each an `orm_value` (CORE-62). A parameter has no column, so the value decides its kind:
+  null is `null`, a boolean `bool`, an integer `int64` whatever the width of its column, as an integer that enters the
+  core is (CORE-123), a float `float`, a text `text`, bytes `bytes`, a date its canonical text, and a date-time its
+  canonical text with six fraction digits, which is the text that the core binds.
+  The record is taken after the request hook of the handle succeeded and before the request is planned. Its text
+  therefore holds what the hook changed and the parameters that the hook added, and its parameter indexes are those of
+  the request before the planner numbers them in walk order. A request whose hook failed is not recorded. A request that
+  the core refuses after that point is recorded, as far as it was built: a row lock on a count, a column that the entity
+  lacks, a row lock outside a transaction.
+  The log is a slot of the handle apart from its request hook and its cancellation. `with_request_log` keeps both and
+  changes nothing of the handle it is called on. `with_request_hook` and `with_cancel` of a recording handle return a
+  handle that records in the same log, and so does a clone of the handle (CORE-101). `with_request_log` of a recording
+  handle returns a handle with a new, empty log, and a request of that handle is not recorded in the first log.
+  `observed_requests` of a handle without a log returns an empty list and is no failure, as a handle without a request
+  hook changes no request and a handle without a cancellation cancels no statement.
+  The log records where the request hook applies and nowhere else: the request of a read, a count, a sum, an average, a
+  page, an insert, an update, a delete, a restore and `get_query` of a model or a `Query`. Such a request is recorded in
+  the log of the handle that the model is connected to; a model connected to the `Tx` of a transaction is recorded in
+  the log of the handle that began the transaction. A step of `Db::execute` and of `Tx::execute`, a statement of
+  `Tx::run` and the members of `Utils` make no request of a model, pass no request hook and are not recorded.
+  The log is the observer that the tests of an application need: after a call they read the kind, the entity, the lock,
+  the relations and their locks, the conditions and the bound values of each request. It changes no request. The
+  contract declares `db.with_request_log` and `db.observed_requests`, whose cases are the groups of the same names of
+  `contracts/interface/core.json`. Not implemented: `with_request_text_hook`, a hook that receives a request as its text
+  and returns the changed text; it is no part of this rule. It waits until the generator calls a kept function of a
+  member without `machine` on the thread of the call, awaits it and returns what it raised. Whether a returned text with
+  a wrong `n_params` is refused or its `n_params` is ignored is open.
 
 ## Cancellation
 

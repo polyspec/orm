@@ -119,6 +119,32 @@
   번째 `close`는 성공한다.
 - **CORE-32** `Db`는 동시 호출을 받는다. 문장은 pool 연결 하나를 빌리고 그 결과는 다른 호출과 무관하다. 트랜잭션 번호는
   `BEGIN`을 보낼 때 하나씩 더한다.
+- **CORE-190** `Db::with_request_log()`는 그 handle의 request를 하나씩 기록하는 같은 pool의 handle을 돌려준다.
+  `Db::observed_requests()`는 그 handle의 기록을 request 순서대로 돌려주고 log를 비운다. 그래서 두 번째 읽기는 첫 읽기 뒤에 기록된 것만 돌려준다. log에는
+  크기 한도가 없다. handle이 기록하는 동안 log는 `observed_requests`가 읽을 때까지 request마다 기록 하나씩 커지므로, log를 켠 호출자는 log를 읽어야 한다.
+  기록은 `{request, params}`이고, 계약의 record `observed_request`(`polyspec_orm::ObservedRequest`)다. `request`는
+  [FMS-31](flowmark-surface.md)의 JSON text로 쓴 request다. `Request::to_json`이 쓰며, plan cache의 key가 hash하는 byte를
+  쓰는 serializer를 쓴다. `params`는 request가 bind하는 값의 목록이고, request 안의 index 순서이며, 각 값은 `orm_value`다(CORE-62).
+  parameter에는 column이 없으므로 값이 kind를 정한다. null은 `null`, boolean은 `bool`, 정수는 column의 폭과 무관하게 `int64`(코어에 들어오는
+  정수와 같다, CORE-123), float는 `float`, text는 `text`, bytes는 `bytes`, date는 canonical text, date-time은 소수 여섯 자리의
+  canonical text이며, 이는 코어가 bind하는 text다.
+  기록하는 시점은 handle의 request hook이 성공한 뒤이고 request를 plan하기 전이다. 그래서 기록의 text에는 hook이 바꾼 내용과 hook이 더한 parameter가
+  들어 있고, parameter index는 planner가 walk 순서로 번호를 다시 매기기 전의 index다. hook이 실패한 request는 기록하지 않는다. 그 시점 뒤에 코어가 거부한
+  request는 만들어진 데까지 기록한다. count의 row lock, entity에 없는 column, 트랜잭션 밖의 row lock이 그런 경우다.
+  log는 handle의 request hook, 취소와 별개인 slot이다. `with_request_log`는 둘을 유지하고, 호출된 handle의 어떤 것도 바꾸지 않는다. 기록하는
+  handle의 `with_request_hook`과 `with_cancel`은 같은 log에 기록하는 handle을 돌려주고, 그 handle의 clone도 같은 log에
+  기록한다(CORE-101). 기록하는 handle의 `with_request_log`는 비어 있는 새 log를 가진 handle을 돌려주며, 그 handle의 request는 첫 log에
+  기록되지 않는다. log가 없는 handle의 `observed_requests`는 빈 목록을 돌려주며 실패가 아니다. request hook이 없는 handle이 request를 바꾸지 않고,
+  취소가 없는 handle이 문장을 취소하지 않는 것과 같다.
+  log는 request hook이 적용되는 곳에서만 기록한다. 모델이나 `Query`의 읽기, count, 합계, 평균, page, insert, update, delete, restore,
+  `get_query`의 request가 그것이다. 그런 request는 모델이 연결된 handle의 log에 기록된다. 트랜잭션의 `Tx`에 연결된 모델의 request는 그 트랜잭션을 시작한
+  handle의 log에 기록된다. `Db::execute`와 `Tx::execute`의 step, `Tx::run`의 문장, `Utils`의 멤버는 모델의 request를 만들지 않고
+  request hook을 거치지 않으므로 기록되지 않는다.
+  log는 애플리케이션의 테스트에 필요한 관찰 수단이다. 테스트는 호출 뒤에 각 request의 kind, entity, lock, relation과 그 lock, 조건, bind된 값을 읽는다.
+  log는 request를 바꾸지 않는다. 계약은 `db.with_request_log`와 `db.observed_requests`를 선언하고, 그 case는
+  `contracts/interface/core.json`의 같은 이름의 group이다. 구현되지 않음: request를 text로 받아 바꾼 text를 돌려주는 hook
+  `with_request_text_hook`. 이 규칙에 속하지 않는다. generator가 `machine`이 없는 멤버의 kept function을 호출의 thread에서 부르고, 기다리고,
+  그 function이 raise한 것을 돌려줄 때까지 기다린다. 돌려받은 text의 `n_params`가 틀렸을 때 거부할지 그 `n_params`를 무시할지는 정해지지 않았다.
 
 ## 취소
 
