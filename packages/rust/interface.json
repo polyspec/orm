@@ -1602,7 +1602,9 @@
               "unit": "isolation"
             }
           },
-          "required": true,
+          "default": {
+            "literal": null
+          },
           "reason": "INT-40"
         },
         {
@@ -1613,7 +1615,9 @@
           "type": {
             "optional": "bool"
           },
-          "required": true,
+          "default": {
+            "literal": null
+          },
           "reason": "INT-41"
         },
         {
@@ -1624,7 +1628,9 @@
           "type": {
             "optional": "uint"
           },
-          "required": true,
+          "default": {
+            "literal": null
+          },
           "reason": "INT-42"
         },
         {
@@ -1634,7 +1640,9 @@
           "type": {
             "optional": "uint"
           },
-          "required": true,
+          "default": {
+            "computed": "INT-43"
+          },
           "reason": "INT-43"
         },
         {
@@ -1648,7 +1656,9 @@
               }
             }
           },
-          "required": true,
+          "default": {
+            "literal": null
+          },
           "reason": "INT-44"
         }
       ]
@@ -1921,7 +1931,9 @@
               "type": {
                 "unit": "transaction_options"
               },
-              "required": true
+              "default": {
+                "empty": "object"
+              }
             }
           ],
           "returns": {

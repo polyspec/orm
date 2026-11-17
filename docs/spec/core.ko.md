@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 3541144b5e06b425dae26b5866efd6c193292ac9631c3973eee33388129abd7c -->
+<!-- source-sha256: e8279d87e7af6e818431d61e34e5600a063105d00844060752a397db1c91d8f0 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -77,8 +77,16 @@
 
 - **CORE-20** `Db::transaction(callback, options)`은 pool 연결 하나에서 새 트랜잭션으로 `callback`을 실행하고 트랜잭션
   handle `Tx`를 넘긴다. options는 `isolation`, `read_only`, `timeout_ms`, `retry`(기본 `3`), `audit`이며 뜻은 INT-40~
-  INT-44다. handle이 트랜잭션에 들어가는 유일한 길이다: 모델은 `connect(&tx)` 뒤에 그 안에서 실행되고, 트랜잭션의 문장
-  실행기는 `Tx::run`이다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
+  INT-44다. 각 option은 기본값을 가지며 생략할 수 있고, `options` 전체도 생략할 수 있다. 그래서
+  `transaction(callback)`은 온전한 호출이다: `isolation`이 없으면 서버의 level을 그대로 두고, `read_only`가 없으면
+  false이며, `timeout_ms`가 없으면 한도가 없고(INT-42), `retry`가 없으면 `3`이며(INT-43), `audit`이 없으면 audit
+  값을 주지 않는다. 계약이 이 기본값을 선언한다. handle이 트랜잭션에 들어가는 유일한 길이다: 모델은 `connect(&tx)` 뒤에
+  그 안에서 실행되고, 트랜잭션의 문장 실행기는 `Tx::run`이다. 매개변수를 선언하지 않은 callback은 트랜잭션이 열리기 전에
+  바인딩의 kind `invalid_callback`(category `type`)으로 거절되고 호출되지 않는다: 그런 callback은 handle을 받지 못하므로 그
+  문장이 `Db`를 거쳐 트랜잭션 밖에서 실행되기 때문이다. 선언된 매개변수의 검사는 바인딩의 생성된 호출이 하고(binding
+  B2.467), 그 증거는 각 바인딩의 생성된 시험이다: Node의 `GN-6bu: Db.transaction refuses a callback that takes no
+  argument`, Python의 `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument`, PHP의
+  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument`. Go에서는 callback의 type이 handle을 받는다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
   모델은 `config`로 실패한다. callback 안의 `Db::transaction`은 pool의 다른 연결에서 독립된 트랜잭션을 연다. 그 트랜잭션이
   바깥 트랜잭션이 잡은 행 잠금을 기다리면 대기 한도에서 `canceled`나 `deadlock`으로 끝난다. callback이 `Db`를 거쳐 보내는
   문장은 그 트랜잭션 밖의 문장이다: `Db`는 pool이므로 그 문장은 pool의 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이

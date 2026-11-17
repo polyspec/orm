@@ -86,8 +86,17 @@ implementation is eligible for removal on that evidence.
 
 - **CORE-20** `Db::transaction(callback, options)` runs `callback` in a new transaction of a connection of the pool and
   passes it a transaction handle `Tx`. The options are `isolation`, `read_only`, `timeout_ms`, `retry` (default `3`) and
-  `audit`, with the meanings of INT-40 to INT-44. The handle is the only way into the transaction: a model runs in it
-  after `connect(&tx)`, and the statement runner of the transaction is `Tx::run`. There is no active transaction of an
+  `audit`, with the meanings of INT-40 to INT-44. Each option has a default and may be left out, and so may `options`
+  as a whole, so `transaction(callback)` is a whole call: an absent `isolation` keeps the level of the server, an absent
+  `read_only` is false, an absent `timeout_ms` sets no bound (INT-42), an absent `retry` is `3` (INT-43) and an absent
+  `audit` gives no audit values; the contract declares these defaults. The handle is the only way into the transaction: a
+  model runs in it after `connect(&tx)`, and the statement runner of the transaction is `Tx::run`. A callback that declares
+  no parameter is refused before the transaction opens, with the kind `invalid_callback` of the binding (category `type`),
+  and is not called: such a callback has no handle, so its statements would run through the `Db`, outside the
+  transaction. The check of the declared parameters is the generated call of the binding (binding B2.467), and its proof
+  is the generated test of each binding: `GN-6bu: Db.transaction refuses a callback that takes no argument` of Node,
+  `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument` of Python and
+  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument` of PHP; the type of the callback in Go takes the handle. There is no active transaction of an
   execution flow: this replaces INT-45, INT-161 and the first sentence of DSL-10. A model with no connection fails with
   `config`. A `Db::transaction` inside a callback opens an independent transaction on another connection of the pool; when
   it waits for a row lock that the outer transaction holds, it ends with `canceled` at the bound of the wait or with
