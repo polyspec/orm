@@ -384,10 +384,10 @@ test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; o
 # members of the root workspace (binding design L-1, L-2, GN-4). binding is the npm package @polyspec/binding of
 # package.json, the asset of the GitHub Release of the tag that every dependency line on polyspec-binding-core names, so
 # that the tool and the crate are one release (binding CK-20, CK-70); package-lock.json pins it by its integrity. bindings
-# writes the generated folders, which Git ignores, and the Go files zz_generated_*.go of packages/go, which are tracked
-# (binding GN-3); bindings-check runs the contract check, which also compares the tracked binding packages with what
-# binding scaffold writes (binding L-2, CK-19) and the version of binding_core that Cargo.lock pins with the version of
-# the tool (CK-20).
+# writes the generated folders and the Go files zz_generated_*.go of packages/go, all of which Git ignores (binding GN-3,
+# GN-15g): no tracked tree holds a generated file, so a target that reads one runs bindings first; bindings-check runs
+# the contract check, which also compares the tracked binding packages with what binding scaffold writes (binding L-2,
+# CK-19) and the version of binding_core that Cargo.lock pins with the version of the tool (CK-20).
 .PHONY: bindings bindings-check lint-bindings test-bindings node-package test-wasm test-go-bindings
 BINDING := $(CURDIR)/node_modules/.bin/binding
 bindings:
