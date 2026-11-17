@@ -110,6 +110,8 @@ class ConnectionAndToolRuleNativesTest(InterfaceSnapshotTest):
     RULE_IDS = (
         "AesUtils.rotate",
         "AesUtils.status",
+        "Db.analyzeRestore",
+        "Db.beforeTransaction",
         "Db.close",
         "Db.connect",
         "Db.connectSchema",
@@ -117,6 +119,7 @@ class ConnectionAndToolRuleNativesTest(InterfaceSnapshotTest):
         "Db.stats",
         "Db.subscribe",
         "Db.transaction",
+        "Db.transactionActive",
         "Db.utils",
         "Db.withRequestHook",
         "SchemaUtils.addTablesAndColumns",

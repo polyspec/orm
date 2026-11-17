@@ -408,14 +408,15 @@ caseTest('the Python unit tests take the slot models of the bind recipes (T451)'
   assert.equal(result.status, 0, result.stderr);
   const lines = result.stdout.split('\n');
   // The tests run through the case harness of the package, which gives testcase.step its case (T452).
-  const tests = lines.findIndex(line => /run-tests\.(?:mjs|mts) python .*--module legacy\.packages\.python\.tests\.testcase -- discover /.test(line));
+  // The tests are the offline selection of scripts/repo/offline-tests.mts, which the line before wrote (T580).
+  const tests = lines.findIndex(line => /run-tests\.(?:mjs|mts) python .*--module legacy\.packages\.python\.tests\.testcase -- \$\(cat \S+\/offline-tests\)/.test(line));
   assert.ok(tests >= 0, `test-python runs no python tests through the case harness: ${result.stdout}`);
   const models = join(root, '.runtime/run/bind-python-models');
   const written = lines.findIndex(line => line.includes('orm-gen gen --set legacy/tests/bind/dbspec-set.json') && line.includes(`${models}.tmp`));
   assert.ok(written >= 0 && written < tests, `test-python runs the python tests without writing the slot models first (bind-python-models): ${result.stdout}`);
   const selected = spawnSync('make', ['-n', '--no-print-directory', 'test-python', 'CASES=test_split_plan'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(selected.status, 0, selected.stderr);
-  assert.match(selected.stdout, /-- discover .* -k '?test_split_plan'?$/m, `test-python does not give CASES to the run as -k: ${selected.stdout}`);
+  assert.match(selected.stdout, /-- \$\(cat \S+\/offline-tests\) -k '?test_split_plan'?;/, `test-python does not give CASES to the run as -k: ${selected.stdout}`);
   const variable = /^test-python: export ORM_PYTHON_BIND_MODELS = \$\(BIND_PY_MODELS\)$/m;
   assert.match(text('Makefile'), variable, 'test-python does not export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)');
 });
@@ -428,9 +429,9 @@ caseTest('run-tests counts the Python tests that the case harness runs (T569)', 
   const root = new URL('../..', import.meta.url).pathname;
   const dry = spawnSync('make', ['-n', '--no-print-directory', 'test-python'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(dry.status, 0, dry.stderr);
-  const recipe = dry.stdout.split('\n').find(line => /run-tests\.(?:mjs|mts) python .*--module legacy\.packages\.python\.tests\.testcase -- discover /.test(line));
+  const recipe = dry.stdout.split('\n').find(line => /run-tests\.(?:mjs|mts) python .*--module legacy\.packages\.python\.tests\.testcase -- \$\(cat \S+\/offline-tests\)/.test(line));
   assert.ok(recipe !== undefined, `test-python runs no python tests through the case harness: ${dry.stdout}`);
-  const runner = recipe.slice(0, recipe.indexOf(' -- discover ')).trim();
+  const runner = recipe.slice(0, recipe.indexOf(' -- $(cat ')).trim();
   const venv = / --venv (\S+)/.exec(runner)?.[1];
   assert.ok(venv !== undefined, `the recipe of test-python names no venv: ${recipe}`);
   assert.ok(existsSync(join(venv, 'bin/python')), `${join(venv, 'bin/python')} is missing; run make orm-install-python, which writes it`);
@@ -3126,4 +3127,157 @@ caseTest('T584: the asset jobs install Go before the binding check of the CI run
     assert.ok(first > go, `${target} runs a binding check before the setup go`);
   }
   assert.match(makefile, /^CI_NOT_RELEASE = \$\(if \$\(filter true,\$\(RELEASE\)\),,true\)$/m, 'CI_NOT_RELEASE is true unless RELEASE=true');
+});
+
+// packages/release.mk, which binding release-recipes writes, reads CARGO, the cargo command of the repository, and each of
+// its recipes stops with `needs CARGO` when the Makefile defines none before the include. CARGO is the cargo link, through
+// which every cargo of a recipe starts (T531).
+caseTest('the Makefile defines CARGO, the cargo link, before it includes packages/release.mk', () => {
+  const lines = text('Makefile').split('\n');
+  const include = lines.indexOf('-include packages/release.mk');
+  assert.ok(include >= 0, 'the Makefile includes packages/release.mk with -include');
+  const cargo = lines.indexOf('CARGO = $(CARGO_LINK)');
+  assert.ok(cargo >= 0 && cargo < include, 'the Makefile defines no CARGO = $(CARGO_LINK) before -include packages/release.mk; every recipe of that file stops with `needs CARGO`');
+  // A checkout that has written the file shows it: no recipe of the file tests an empty variable that it requires.
+  if (existsSync(new URL('packages/release.mk', repository))) {
+    for (const target of ['release-binding-check', 'release-go-static', 'release-wheel', 'release-npm-platform', 'release-npm', 'release-go-module']) {
+      assert.doesNotMatch(makeDryRun(target), /^test -n "" \|\| \{ echo "[a-z-]+ needs /m, `make ${target} reads a variable of packages/release.mk that the Makefile does not define before the include`);
+    }
+  }
+});
+
+// packages/go is a module outside go.work, so go mod download of the workspace leaves its modules out, and binding check
+// reads them offline (go mod download -json all under GOPROXY=off). orm-install-go-binding downloads them: orm-install-go
+// runs it, and each asset job runs it after it installs Go and before its binding check.
+caseTest('the modules of the Go binding are downloaded by orm-install-go and by the asset jobs before their binding check', () => {
+  const makefile = text('Makefile');
+  assert.doesNotMatch(text('go.work'), /^\s*\.\/packages\/go\s*$/m, 'go.work names packages/go, so go mod download of the workspace downloads its modules, and orm-install-go-binding is not needed');
+  assert.deepEqual(jobRecipeLines(makefile, 'orm-install-go-binding'), ['cd packages/go && $(ONLINE) GOWORK=off $(GO) mod download']);
+  assert.match(makefile, /^orm-install-go: orm-install-go-binding$/m, 'orm-install-go does not download the modules of packages/go: name orm-install-go-binding as its prerequisite');
+  for (const target of ['ci-assets-platform', 'ci-assets-npm']) {
+    const lines = jobRecipeLines(makefile, target);
+    const go = lines.indexOf('@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go');
+    const modules = lines.indexOf('@$(CI_JOB) setup $(CI_NAME) go-modules -- orm-install-go-binding');
+    const check = lines.findIndex(line => /-- (?:release-binding-check|bindings-check)\b/.test(line));
+    assert.ok(go >= 0 && modules > go, `${target} does not download the modules of packages/go after it installs Go: add the setup go-modules -- orm-install-go-binding`);
+    assert.ok(check > modules, `${target} runs a binding check before the setup go-modules, which downloads what the check reads`);
+  }
+});
+
+// test-bindings builds the five binding crates, and the PHP extension crate among them builds against the PHP of the
+// checkout (BINDING_ENV). A runtime job has only the tools of what it runs, so the job that runs test-bindings is one for
+// which ci-pipeline.yml sets PHP up, and it installs the Rust toolchain.
+caseTest('the runtime job that runs test-bindings has PHP and Rust', () => {
+  const config = parseJsonValue(text('config/ci.json'), 'config/ci.json');
+  const section = (name: string, part: string): Record<string, unknown> => (isRecord(config) && isRecord(config[name]) && isRecord(config[name][part]) ? config[name][part] : {});
+  const names = (value: unknown): string[] => (Array.isArray(value) ? value.map(String) : []);
+  const jobs = Object.entries(section('targets', 'runtimes')).filter(([, targets]) => names(targets).includes('test-bindings')).map(([runtime]) => runtime);
+  assert.equal(jobs.length, 1, `one runtime job of config/ci.json runs test-bindings; found ${jobs.join(', ') || 'none'}`);
+  // The step of the runtime jobs is the setup-php step whose condition reads the runtime of the matrix.
+  const conditions = [...text('.github/workflows/ci-pipeline.yml').matchAll(/uses: shivammathur\/setup-php@[0-9a-f]+\n\s+if: \$\{\{ ([^}]*) \}\}/g)].map(match => match[1] ?? '');
+  const withPhp = conditions.flatMap(condition => [...condition.matchAll(/matrix\.runtime == '([a-z-]+)'/g)].map(match => match[1] ?? ''));
+  assert.ok(withPhp.length > 0, 'ci-pipeline.yml sets PHP up for the runtimes that its setup-php step names');
+  const setup = section('setup', 'runtimes');
+  for (const job of jobs) {
+    assert.ok(withPhp.includes(job), `the runtime job ${job} runs test-bindings, which builds the PHP extension crate, and ci-pipeline.yml sets PHP up for ${withPhp.join(', ')} alone`);
+    assert.ok(names(setup[job]).includes('orm-install-rust'), `the runtime job ${job} runs test-bindings and installs no Rust (orm-install-rust in setup.runtimes of config/ci.json)`);
+  }
+});
+
+// The bindgen of ext-php-rs takes the libclang of the highest LLVM of the machine and the clang of PATH, which differ on a
+// runner with several LLVM releases. Every build of the PHP extension crate of the binding takes both from the LLVM that
+// config/toolchain.json pins, as make release-php-ext of packages/release.mk does, by the same two definitions.
+caseTest('a build of the PHP extension crate of the binding takes the libclang and the clang of the pinned LLVM', () => {
+  const makefile = text('Makefile');
+  const definition = (source: string, name: string) => new RegExp(`^${name} \\?= (.*)$`, 'm').exec(source)?.[1];
+  const major = definition(makefile, 'LLVM_MAJOR');
+  const root = definition(makefile, 'LLVM_ROOT');
+  assert.ok(major !== undefined && root !== undefined, 'the Makefile defines LLVM_MAJOR and LLVM_ROOT (?=) for BINDING_ENV');
+  const environment = /^BINDING_ENV := (.*)$/m.exec(makefile)?.[1] ?? '';
+  assert.match(environment, /(?:^| )LIBCLANG_PATH=\$\(LLVM_ROOT\)\/lib(?: |$)/, 'BINDING_ENV sets no LIBCLANG_PATH=$(LLVM_ROOT)/lib');
+  assert.match(environment, /(?:^| )CLANG_PATH=\$\(LLVM_ROOT\)\/bin\/clang(?: |$)/, 'BINDING_ENV sets no CLANG_PATH=$(LLVM_ROOT)/bin/clang');
+  const lines = makefile.split('\n');
+  assert.ok(lines.findIndex(line => line.startsWith('LLVM_ROOT ?= ')) < lines.findIndex(line => line.startsWith('BINDING_ENV := ')), 'BINDING_ENV is assigned at once (:=), so LLVM_ROOT is defined above it');
+  const toolchain = parseJsonValue(text('config/toolchain.json'), 'config/toolchain.json');
+  const version = isRecord(toolchain) && isRecord(toolchain['llvm']) ? toolchain['llvm']['version'] : undefined;
+  const pinned = typeof version === 'string' ? version : '';
+  assert.match(pinned, /^[0-9]+$/, 'config/toolchain.json pins the major release of LLVM (llvm.version)');
+  for (const target of ['test-binding-php-offline', 'test-binding-php-service', 'test-bindings', 'lint-bindings']) {
+    const run = makeDryRun(target);
+    assert.match(run, new RegExp(` LIBCLANG_PATH=\\S*llvm[@-]${pinned}/lib CLANG_PATH=\\S*llvm[@-]${pinned}/bin/clang `), `make ${target} builds the PHP extension crate without the libclang and the clang of LLVM ${pinned}`);
+  }
+  // The recipes of the release read the same LLVM: a checkout that has written packages/release.mk shows its definitions.
+  if (existsSync(new URL('packages/release.mk', repository))) {
+    const release = text('packages/release.mk');
+    assert.equal(major, definition(release, 'LLVM_MAJOR'), 'LLVM_MAJOR of the Makefile is not the definition of packages/release.mk');
+    assert.equal(root, definition(release, 'LLVM_ROOT'), 'LLVM_ROOT of the Makefile is not the definition of packages/release.mk');
+    assert.match(release, /LIBCLANG_PATH=\$\(LLVM_ROOT\)\/lib CLANG_PATH=\$\(LLVM_ROOT\)\/bin\/clang /, 'make release-php-ext of packages/release.mk sets LIBCLANG_PATH and CLANG_PATH from LLVM_ROOT');
+  }
+});
+
+// make test-rust and make test-python are offline: their help says so, and they run in the runtime jobs, which start no
+// server. A test that reads a database server or flowmark fails without it, so each recipe selects by name the tests that
+// read neither (scripts/repo/offline-tests.mts) and reads no environment of the servers; a selection of no test is an
+// error. The tests that it leaves run in a target of a CI group that prepares the databases and flowmark: the Rust ones in
+// client-db-rust-check, which runs the workspace, and the Python ones in suite-python-check, which runs every test file
+// (T570, T580).
+caseTest('T570, T580: the offline test targets of Rust and Python select their tests by name, and a group with the databases runs the tests they leave', () => {
+  const makefile = text('Makefile');
+  const { groups, targets } = ciGroups(makefile);
+  const needs = declaredNeeds(repository.pathname);
+  for (const [runtime, target, servers] of [['rust', 'test-rust', 'client-db-rust-check'], ['python', 'test-python', 'suite-python-check']] as const) {
+    assert.match(makefile, new RegExp(`^${target}: [^#\\n]*## [^\\n]*; offline$`, 'm'), `the help of ${target} calls it offline`);
+    const run = makeDryRun(target);
+    assert.match(run, new RegExp(`scripts/repo/offline-tests\\.mts ${runtime} \\S+\\n`), `${target} does not select its tests through scripts/repo/offline-tests.mts ${runtime}`);
+    // The selection is the argument of the run of the tests, which follows it.
+    const selected = /publish-output\.mts (\S+\/offline-tests) /.exec(run)?.[1] ?? '';
+    assert.ok(selected !== '', `${target} writes its selection into no file (PUBLISH)`);
+    const tests = run.split('\n').filter(line => line.includes(`$(cat ${selected})`));
+    assert.equal(tests.length, 1, `one line of ${target} runs the tests of the selection ${selected}`);
+    assert.doesNotMatch(run, /\$\{ORM_TEST_SERVERS_LEASES:\?|\bFLOWMARK=|ORM_TEST_\w*DSN=/, `${target} reads the test servers or flowmark, and it is offline`);
+    // make exports the variables of the file TEST_ENV of a checkout whose servers run, and the run of the tests starts without them.
+    const [line = ''] = tests;
+    assert.match(line, /^env -u FLOWMARK (?:-u [A-Z0-9_]+ )+/, `${target} starts its tests with the variables that make exports from TEST_ENV; start them through WITHOUT_SERVERS`);
+    const environment = join(mkdtempSync(join(tmpdir(), 'orm-offline-env-')), 'env');
+    try {
+      writeFileSync(environment, "export ORM_TEST_MYSQL_DSN='mysql://u@127.0.0.1:1/d'\nexport ORM_TOOLS_POSTGRES_DSN='postgres://u@127.0.0.1:1/d'\n");
+      const withServers = spawnSync('make', ['-n', '--no-print-directory', target, `TEST_ENV=${environment}`], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
+      assert.equal(withServers.status, 0, `make -n ${target} TEST_ENV=${environment}: ${withServers.stderr}`);
+      const started = withServers.stdout.split('\n').find(entry => entry.includes('/offline-tests)')) ?? '';
+      for (const name of ['ORM_TEST_MYSQL_DSN', 'ORM_TOOLS_POSTGRES_DSN', 'DECIMAL_MYSQL_DSN']) {
+        assert.ok(started.split(' ').includes(name) && started.includes(` -u ${name} `), `${target} starts its tests with ${name} of a checkout whose servers run: ${started.slice(0, 200)}`);
+      }
+    } finally {
+      rmSync(join(environment, '..'), { recursive: true, force: true });
+    }
+    assert.doesNotMatch(run, / discover /, `${target} runs every test of its tree; it runs the tests of its selection`);
+    assert.ok(!(needs[target] ?? []).includes('databases'), `${target} declares the need databases, and it runs without the servers`);
+    // The tests that the selection leaves run where the servers and flowmark are.
+    assert.ok(makeTargets(makefile).some(entry => entry.target === servers), `the Makefile defines no target ${servers}`);
+    assert.ok((needs[servers] ?? []).includes('databases'), `${servers} declares no need databases in contracts/check-inputs.json`);
+    const jobs = groups.filter(group => (targets[group] ?? []).includes(servers));
+    assert.ok(jobs.length > 0, `no CI group runs ${servers}, which runs the tests that ${target} leaves`);
+    for (const group of jobs) {
+      const outputs = groupOutputs(targets[group] ?? [], needs);
+      assert.equal(outputs.databases, true, `the group ${group} of ${servers} prepares no databases`);
+      assert.equal(outputs.flowmark, true, `the group ${group} of ${servers} installs no flowmark`);
+    }
+    assert.match(makeDryRun(servers), /ORM_TEST_SERVERS_LEASES/, `${servers} reads no test servers (WITH_TEST_ENV)`);
+  }
+  // The listing of the Rust tests is what cargo prints for the workspace of the run, under the lease of its target directory.
+  assert.match(makeDryRun('test-rust'), /lease run \S+ exclusive --wait -- node \S+publish-output\.mts (\S+)\/listing \S+ \S+cargo-link\.mts \. test --locked --workspace [^\n]* -- --list\n[^\n]*offline-tests\.mts rust \1\/listing\n/, 'test-rust lists no tests of its workspace for its selection');
+  // A selection of no test fails the recipe before a test runs.
+  const work = mkdtempSync(join(tmpdir(), 'orm-offline-tests-'));
+  try {
+    const listing = join(work, 'listing');
+    writeFileSync(listing, '0 tests, 0 benchmarks\n');
+    const empty = spawnSync(process.execPath, [fileURLToPath(new URL('scripts/repo/offline-tests.mts', repository)), 'rust', listing], { encoding: 'utf8', env: isolatedEnvironment() });
+    assert.equal(empty.status, 1, `offline-tests.mts rust passes on a listing of no test: ${empty.stderr}`);
+    assert.match(empty.stderr, /holds no test \(0 tests listed\)/);
+    assert.equal(empty.stdout, '');
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+  // The unit test of the selection runs in repo-check.
+  assert.ok(jobRecipeLines(makefile, 'repo-check/unit').some(line => line.includes(' scripts/repo/offline-tests.test.mts ')), 'repo-check/unit does not run scripts/repo/offline-tests.test.mts');
 });
