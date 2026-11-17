@@ -3222,6 +3222,15 @@ caseTest('cargo-lock-update updates both Rust locks through the cargo link', () 
   ]);
 });
 
+// bindings-scaffold writes the binding packages that binding scaffold writes for the contract (binding L-2, CK-19) with the
+// tool and the arguments with which bindings runs binding generate.
+caseTest('bindings-scaffold runs binding scaffold as bindings runs binding generate', () => {
+  const makefile = text('Makefile');
+  assert.match(makefile, /^\.PHONY: bindings bindings-scaffold /m, 'the Makefile declares no phony bindings-scaffold beside bindings');
+  assert.deepEqual(jobRecipeLines(makefile, 'bindings'), ['$(NODE) $(BINDING) generate --root $(CURDIR) --cargo "$(CARGO_LINK)"']);
+  assert.deepEqual(jobRecipeLines(makefile, 'bindings-scaffold'), ['$(NODE) $(BINDING) scaffold --root $(CURDIR) --cargo "$(CARGO_LINK)"']);
+});
+
 // packages/go is a module outside go.work, so go mod download of the workspace leaves its modules out, and binding check
 // reads them offline (go mod download -json all under GOPROXY=off). orm-install-go-binding downloads them: orm-install-go
 // runs it, and each asset job runs it after it installs Go and before its binding check.

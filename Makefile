@@ -418,10 +418,14 @@ test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; o
 # GN-15g): no tracked tree holds a generated file, so a target that reads one runs bindings first; bindings-check runs
 # the contract check, which also compares the tracked binding packages with what binding scaffold writes (binding L-2,
 # CK-19) and the version of binding_core that Cargo.lock pins with the version of the tool (CK-20).
-.PHONY: bindings bindings-check lint-bindings test-bindings node-package test-wasm test-go-bindings
+.PHONY: bindings bindings-scaffold bindings-check lint-bindings test-bindings node-package test-wasm test-go-bindings
 BINDING := $(CURDIR)/node_modules/.bin/binding
 bindings:
 	$(NODE) $(BINDING) generate --root $(CURDIR) --cargo "$(CARGO_LINK)"
+# bindings-scaffold writes the tracked binding packages as binding scaffold writes them for the contract (binding L-2), the
+# files that bindings-check compares (CK-19), with the tool and the arguments of bindings.
+bindings-scaffold:
+	$(NODE) $(BINDING) scaffold --root $(CURDIR) --cargo "$(CARGO_LINK)"
 bindings-check:
 	$(NODE) $(BINDING) check $(CURDIR)/packages/rust/interface.json --cargo "$(CARGO_LINK)"
 # The lint and the tests of the binding crates, after make bindings writes their generated folders. The PHP extension
