@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- `Db::with_request_log()`의 handle은 그 모델의 request를 request hook이 성공한 뒤, plan하기 전에 하나씩 기록하고, `Db::observed_requests()`는 기록을 돌려주고 log를 비운다(CORE-190, T600): 기록은 FMS-31의 JSON text로 쓴 request(`Request::to_json`)와 `orm_value`로 쓴 bind 값이고, log에는 읽을 때까지 크기 한도가 없으며, `with_request_hook`과 `with_cancel`은 log를 유지한다. 계약은 `db.with_request_log`, `db.observed_requests`, record `observed_request`를 그 case와 함께 선언한다. request를 text로 바꾸는 hook은 구현되지 않았다.
 - `Query`는 `where_none(connector)`(TypeScript와 PHP `whereNone`, Python과 Rust `where_none`, Go `WhereNone`; CORE-137, PRT-92)로 어떤 행도 만족하지 않는 조건을 가진다: `""`나 `And`는 그것을 `and`로, `Or`는 `or`로 잇고, 모든 dialect가 `1 = 0`으로 쓰며, 빈 key 목록이 raw SQL 없이 아무것도 고르지 않는다(T563-2).
 - `Query`의 조건은 그 `update`와 `delete`에도 적용된다(CORE-138): 문장은 key의 행이 조건을 만족할 때만 그 행을 쓴다. 그래서 `where_none`은 어떤 행도 쓰지 않는다. 전에는 key가 조건을 말없이 대신했다. `expect_revision` 아래에서 아무 행도 바꾸지 않은 쓰기는 `revision_changed`로 남고, 메시지가 조건을 말한다(T563-3).
 - 최상위에서 `or`로 조건을 잇는 `where`로 `soft_delete` 설정을 가진 table을 읽으면 soft delete된 행을 읽지 않고, 그런 `where`의 update나 soft delete는 그런 행을 쓰지 않는다: planner가 그 group을 soft delete 열과 기대 revision 옆에 괄호로 쓴다(PRT-93, T572, T572-1).
