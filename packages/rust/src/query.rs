@@ -520,6 +520,45 @@ impl Query {
         }
     }
 
+    /// Assigns to the column `column`, for the next write, its stored value plus `value` (CORE-150). A name that is no
+    /// column of the entity is `config` and a list, a map or a JSON value is `codec_encode`, each at the next terminal.
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub fn plus(&mut self, column: &str, value: &OrmValue) {
+        if let Some(amount) = self.amount(column, value) {
+            self.core.plus(column, amount);
+        }
+    }
+
+    /// Assigns to the column `column`, for the next write, its stored value minus `value`, and never a negative value
+    /// (CORE-150). A name that is no column of the entity is `config` and a list, a map or a JSON value is
+    /// `codec_encode`, each at the next terminal.
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub fn minus(&mut self, column: &str, value: &OrmValue) {
+        if let Some(amount) = self.amount(column, value) {
+            self.core.minus(column, amount);
+        }
+    }
+
+    /// The parameter of the amount `value` of `plus` or `minus` on the column `column`; a name that is no column and a
+    /// value that is no one value fail the query (CORE-150).
+    fn amount(&mut self, column: &str, value: &OrmValue) -> Option<crate::value::Param> {
+        if !self.known_column(column) {
+            return None;
+        }
+        match value.clone().scalar() {
+            Ok(param) => Some(param),
+            Err(refused) => {
+                let what = match refused {
+                    OrmValue::Map(_) => "a map",
+                    OrmValue::List(_) => "a list",
+                    _ => "a JSON value",
+                };
+                self.core.fail_err(Error::new(Kind::CodecEncode, format!("the value of a column is {what}")));
+                None
+            }
+        }
+    }
+
     /// Makes the next `create` an insert with a duplicate-key update that writes the assignments of `query`, a query of
     /// the same entity, to the row that the insert met (CORE-151). A query of another entity is `config` at the next
     /// terminal, and a query that a member failed fails this query with its error.

@@ -1085,3 +1085,51 @@ async fn the_lookahead_pages_read_a_page_and_whether_another_follows() {
     assert!(!last.has_next());
     db.close_async().await;
 }
+
+// Requirements: CORE-150. plus and minus write the stored value plus or minus their amount, minus never a negative
+// value; each takes the place of set and set theirs; a column that is no number is operator_not_allowed, an insert
+// takes neither, and a list is no amount.
+#[tokio::test]
+async fn plus_and_minus_write_the_stored_value_changed_by_an_amount() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-plus-minus");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let keyed = || {
+        let mut first = query(&schema, "account", &db);
+        first.set("seq", &int(1));
+        first
+    };
+    let revision = || async { account(&schema, &db, 1).await.expect("the row 1").value("revision").expect("revision") };
+    let mut more = keyed();
+    more.plus("revision", &int(5));
+    more.update().await.expect("update with plus");
+    assert_eq!(revision().await, int(5));
+    let mut less = keyed();
+    less.minus("revision", &int(2));
+    less.update().await.expect("update with minus");
+    assert_eq!(revision().await, int(3));
+    let mut floor = keyed();
+    floor.minus("revision", &int(9));
+    floor.update().await.expect("update with a minus below zero");
+    assert_eq!(revision().await, int(0), "minus never stores a negative value");
+    let mut replaced = keyed();
+    replaced.set("revision", &int(100));
+    replaced.plus("revision", &int(1));
+    replaced.update().await.expect("plus in the place of set");
+    assert_eq!(revision().await, int(1));
+    let mut text = keyed();
+    text.plus("email", &int(1));
+    assert_eq!(failure(text.update().await, "no number").to_string(), "operator_not_allowed: plus/minus on account.email (varchar(64))");
+    let mut insert = new_account(&schema, "d@x");
+    insert.connect(Connection::from(&db));
+    insert.plus("revision", &int(1));
+    assert_eq!(failure(insert.create().await, "an insert").to_string(), "ir_invalid: insert cannot assign revision by plus or minus");
+    let mut list = keyed();
+    list.plus("revision", &OrmValue::List(vec![int(1)]));
+    assert_eq!(failure(list.update().await, "a list").to_string(), "codec_encode: the value of a column is a list");
+    let mut unknown = keyed();
+    unknown.minus("missing", &int(1));
+    assert_eq!(failure(unknown.update().await, "no column").to_string(), "config: missing is not a column of account");
+    db.close_async().await;
+}

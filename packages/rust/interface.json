@@ -4220,7 +4220,8 @@
             "polyspec_orm::Kind::Canceled",
             "polyspec_orm::Kind::PoolTimeout",
             "polyspec_orm::Kind::Closed",
-            "polyspec_orm::Kind::RevisionChanged"
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::OperatorNotAllowed"
           ],
           "wait": "async_driver",
           "core": {
@@ -4526,7 +4527,8 @@
             "polyspec_orm::Kind::Closed",
             "polyspec_orm::Kind::ConditionNotMet",
             "polyspec_orm::Kind::RevisionChanged",
-            "polyspec_orm::Kind::IrInvalid"
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::OperatorNotAllowed"
           ],
           "wait": "async_driver",
           "core": {
@@ -4804,6 +4806,72 @@
           "core": {
             "path": "polyspec_orm::Query::gets_count_lookahead_page",
             "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.plus",
+          "name": [
+            "plus"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "value"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::plus",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.minus",
+          "name": [
+            "minus"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "value"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::minus",
+            "receiver": "&mut self"
           }
         }
       ]
@@ -6990,6 +7058,72 @@
       "member": "rows.keys",
       "file": "contracts/interface/core.json",
       "group": "rows.keys.lookahead_page",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.plus",
+      "file": "contracts/interface/core.json",
+      "group": "query.plus"
+    },
+    {
+      "member": "query.plus",
+      "file": "contracts/interface/core.json",
+      "group": "query.plus.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.minus",
+      "file": "contracts/interface/core.json",
+      "group": "query.minus"
+    },
+    {
+      "member": "query.minus",
+      "file": "contracts/interface/core.json",
+      "group": "query.minus.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.update",
+      "file": "contracts/interface/core.json",
+      "group": "query.update.plus",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.create",
+      "file": "contracts/interface/core.json",
+      "group": "query.create.plus",
       "only": {
         "targets": [
           "php",

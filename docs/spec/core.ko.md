@@ -373,7 +373,8 @@
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
   `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
   `group_by`, `connector`와 `query`를 가진 `where_group`, `query`를 가진
-  `duplication`, `column`을 가진 `sum`, `count`를 가진 `group_limit`).
+  `duplication`, `column`을 가진 `sum`, `count`를 가진 `group_limit`, `column`과 `value`를
+  가진 `plus`와 `minus`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
   형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
   `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
@@ -407,10 +408,11 @@
   값을 배정한다. 언어 구현의 member `plus<Col>(n)`과 `minus<Col>(n)`이다(DSL-102). 배정은 요청의 `plus_p`나
   `minus_p`이고, 같은 열에 대한 `set`의 배정을 대신하며 `set`도 이것을 대신한다. `minus`는 음수 값을 저장하지 않는다.
   `update`가 이것을 받고, `duplication`에 준 `Query`도 받는다(CORE-151). 엔티티의 열이 아닌 이름은 `config`이고
-  메시지는 `<column> is not a column of <entity>`다(CORE-91). 수가 아닌 열은 쓰기에서 `operator_not_allowed`이고
+  메시지는 `<column> is not a column of <entity>`이며(CORE-91), list, map, JSON 값인 `value`는 `codec_encode`이고
+  메시지는 `the value of a column is a list`, `a map`, `a JSON value`다. 각각 다음 terminal에서다. 수가 아닌 열은 쓰기에서 `operator_not_allowed`이고
   메시지는 `plus/minus on <entity>.<column> (<type>)`이며, 그런 배정을 가진 `create`는 `ir_invalid`이고 메시지는
-  `insert cannot assign <column> by plus or minus`다. insert에는 읽을 저장된 값이 없기 때문이다. 구현되지 않았다:
-  `Query`의 `plus`와 `minus`. 생성된 Rust 모델은 `plus_<col>`과 `minus_<col>`을 가진다.
+  `insert cannot assign <column> by plus or minus`다. insert에는 읽을 저장된 값이 없기 때문이다. `Db` step은
+  `column`과 `value`를 가진 call `plus`와 `minus`를 받는다(CORE-92).
 - **CORE-151** `duplication(query)`는 다음 `create`를 duplicate-key update가 있는 insert로 만든다. unique key 하나의 행을
   만난 행은 넣지 않고, 같은 엔티티의 `Query`인 `query`의 배정을 만난 행에 쓴다(DSL-105). 그 배정은 요청의
   `on_duplicate`이고 `create`가 그것을 비운다. 다른 엔티티의 `query`는 `config`이고 메시지는

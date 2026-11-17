@@ -620,6 +620,14 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.set(&text(args, "column", member), &orm_value(field(args, "value", member), member)?);
             Returned::Value(Value::Null)
         }
+        ("query.plus", Some(Instance::Query(query))) => {
+            query.plus(&text(args, "column", member), &orm_value(field(args, "value", member), member)?);
+            Returned::Value(Value::Null)
+        }
+        ("query.minus", Some(Instance::Query(query))) => {
+            query.minus(&text(args, "column", member), &orm_value(field(args, "value", member), member)?);
+            Returned::Value(Value::Null)
+        }
         ("query.expect_revision", Some(Instance::Query(query))) => {
             let revision = field(args, "revision", member).as_i64().unwrap_or_else(|| panic!("{member}: revision is no integer"));
             query.expect_revision(&text(args, "column", member), revision);

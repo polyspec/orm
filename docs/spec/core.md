@@ -444,7 +444,7 @@ implementation is eligible for removal on that evidence.
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
   with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
-  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, `sum` with `column`, and `group_limit` with `count`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, `sum` with `column`, `group_limit` with `count`, and `plus` and `minus` with `column` and `value`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
   value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
   `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
@@ -484,10 +484,12 @@ implementation is eligible for removal on that evidence.
   (DSL-102). The assignment is `plus_p` or `minus_p` of the request, takes the place of an assignment of `set` to the
   same column, as `set` takes its place, and `minus` never stores a negative value. `update` takes it, and so does the
   `Query` given to `duplication` (CORE-151). A name that is no column of the entity is `config` with the message
-  `<column> is not a column of <entity>` (CORE-91). A column that is no number is `operator_not_allowed` at the write
+  `<column> is not a column of <entity>` (CORE-91), and a `value` that is a list, a map or a JSON value is
+  `codec_encode` with the message `the value of a column is a list`, `a map` or `a JSON value`, each at the next
+  terminal. A column that is no number is `operator_not_allowed` at the write
   with the message `plus/minus on <entity>.<column> (<type>)`, and `create` with such an assignment is `ir_invalid`
   with the message `insert cannot assign <column> by plus or minus`, since an insert has no stored value to read.
-  Not implemented: `plus` and `minus` of a `Query`; the generated Rust models have `plus_<col>` and `minus_<col>`.
+  The `Db` step takes the calls `plus` and `minus` with `column` and `value` (CORE-92).
 - **CORE-151** `duplication(query)` makes the next `create` an insert with a duplicate-key update: a row that meets a
   row of one unique key is not inserted, and the assignments of `query`, a `Query` of the same entity, are written to
   the row that it met (DSL-105). They are `on_duplicate` of the request, and `create` clears them. A `query` of

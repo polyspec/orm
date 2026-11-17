@@ -122,6 +122,8 @@ pub enum Call {
     Duplication { query: QueryTree },
     Sum { column: String },
     GroupLimit { count: u32 },
+    Plus { column: String, value: StepValue },
+    Minus { column: String, value: StepValue },
 }
 
 /// The terminal of a query step (CORE-92).
@@ -410,6 +412,8 @@ fn build(schema: &Schema, tree: QueryTree) -> Result<Query> {
             Call::Duplication { query: other } => query.duplication(build(schema, other)?),
             Call::Sum { column } => query.sum(&column),
             Call::GroupLimit { count } => query.group_limit(count),
+            Call::Plus { column, value } => query.plus(&column, &value.0),
+            Call::Minus { column, value } => query.minus(&column, &value.0),
         }
     }
     Ok(query)
