@@ -593,7 +593,7 @@ A user of the generated bindings has this today:
 - No binding has `utils()`: the statement runner, the lock and the local values, the schema utilities `register`, `install` and `addTablesAndColumns`, the privileges and the AES rotation are in the core and not in the contract (CORE-70). A binding registers one schema, at `db.connect_schema`.
 - The members that CORE-84 names as not implemented are members of a generated Rust model alone: `Query` has none of them, so no binding has them.
 - Seventeen more members of a generated Rust model are missing from `Query`, and no rule of the core names them. They have a table of their own below.
-- The core has no hook before a transaction, and the contract does not declare the request hook, the statement event subscription, `notify` and `listen`.
+- The contract does not declare the request hook, the statement event subscription, `notify` and `listen`.
 - The callback of `db.transaction` receives a `Tx`, and a model runs in the transaction after `connect` with that handle (CORE-20); `db.transaction_active` is always `false` (CORE-140).
 
 ### Connection
@@ -601,26 +601,26 @@ A user of the generated bindings has this today:
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
 | `Db.connect(dsn, options)` (PHP `Orm::connect(dsn, Config)`) | INT-12 to INT-15 | present, changed: `db.connect(dsn, pool_size, cfg)`; the pool size is a required argument and `cfg` a required record (CORE-131, CORE-132) | `packages/rust/interface.json:1609`, `contracts/interfaces.json:1977` |
-| `Db.connectSchema(dsn, schema, options)` | INT-132 | present, changed: the same arguments as `db.connect`; `schema` is a value of `schema.load` (CORE-125) | `packages/rust/interface.json:1872`, `contracts/interfaces.json:2017` |
+| `Db.connectSchema(dsn, schema, options)` | INT-132 | present, changed: the same arguments as `db.connect`; `schema` is a value of `schema.load` (CORE-125) | `packages/rust/interface.json:1908`, `contracts/interfaces.json:2017` |
 | `connect(dsn, options)`, `SCHEMA`, `MANIFEST_TEXT` and `MANIFEST_HASH` of a generated module | INT-15, INT-132 | not implemented; no binding has a generated module | `legacy/packages/ts/src/generate/typescript.ts:235` |
 | `Db.transaction(callback, options)` | INT-72 | present, changed: the callback receives a `Tx` (CORE-20); `options` is required (CORE-104) and the contract declares its five fields required; through a binding only a `deadlock` of the commit is retried (CORE-104) | `packages/rust/interface.json:1777`, `contracts/interfaces.json:2056` |
 | the active transaction of an execution flow, which a model without `connect` uses | INT-45, DSL-10 | replaced by a rule of the core: CORE-20 | `docs/spec/core.md:87` |
-| a `transaction` inside a transaction is a savepoint | INT-46 | replaced by a rule of the core: CORE-21, `tx.savepoint`; a `Db::transaction` inside a callback is an independent transaction (CORE-20) | `packages/rust/interface.json:2068` |
-| `Db.transactionActive()` | INT-192 | present, changed: `db.transaction_active` is always `false`, and `tx.transaction_active` answers for its handle (CORE-140) | `packages/rust/interface.json:1711`, `packages/rust/interface.json:2123`, `packages/rust/src/db.rs:1062` |
-| `Db.beforeTransaction(hook)` | INT-193 | not implemented; the core has no such member; the declaration inventory names a Rust symbol that does not exist (T598) | `contracts/interfaces.json:2323` |
-| `Db.analyzeRestore(request)`, `RestoreAnalysis` | INT-191, PRT-91 | present, changed: `db.analyze_restore` takes the request as JSON text and returns the JSON text of `key` and `assignments` (CORE-141); `runtime_model.restore_key` classifies and refuses | `contracts/interfaces.json:2244`, `packages/rust/interface.json:1745`, `packages/rust/interface.json:4757` |
-| `Db.withRequestHook(hook)`, `RequestHook` | INT-78 | in the core, not in the contract; CORE-70: the request of the protocol is no type of the contract (T600) | `packages/rust/src/db.rs:1043`, `packages/rust/src/db.rs:56` |
+| a `transaction` inside a transaction is a savepoint | INT-46 | replaced by a rule of the core: CORE-21, `tx.savepoint`; a `Db::transaction` inside a callback is an independent transaction (CORE-20) | `packages/rust/interface.json:2146` |
+| `Db.transactionActive()` | INT-192 | present, changed: `db.transaction_active` is always `false`, and `tx.transaction_active` answers for its handle (CORE-140) | `packages/rust/interface.json:1711`, `packages/rust/interface.json:2201`, `packages/rust/src/db.rs:1165` |
+| `Db.beforeTransaction(hook)` | INT-193 | present, changed: `db.before_transaction` takes a function that the core keeps and returns `before_transaction_hook`, whose `remove` removes the hook; the hook of a binding is not awaited, and a `Db::transaction` inside a callback calls the hooks (CORE-143) | `contracts/interfaces.json:2323`, `packages/rust/interface.json:1845` |
+| `Db.analyzeRestore(request)`, `RestoreAnalysis` | INT-191, PRT-91 | present, changed: `db.analyze_restore` takes the request as JSON text and returns the JSON text of `key` and `assignments` (CORE-141); `runtime_model.restore_key` classifies and refuses | `contracts/interfaces.json:2244`, `packages/rust/interface.json:1745`, `packages/rust/interface.json:4835` |
+| `Db.withRequestHook(hook)`, `RequestHook` | INT-78 | in the core, not in the contract; CORE-70: the request of the protocol is no type of the contract (T600) | `packages/rust/src/db.rs:1102`, `packages/rust/src/db.rs:56` |
 | `Db.root()` (TypeScript, Python, Go) | INT-78a | not implemented | `legacy/packages/ts/src/database.ts:684` |
 | `Db.subscribe(subscriber)`, `StatementEvent`, `StatementKind`, `StatementSubscriber` | INT-77, INT-91 | in the core, not in the contract; CORE-70: the event borrows its statement; CORE-28 returns the exception of a subscriber unchanged | `packages/rust/src/events.rs:133`, `packages/rust/src/events.rs:40` |
-| `Db.execute(step, params)` | INT-76 | present, changed: the step is JSON text and the parameters are `orm_value` (CORE-127); `tx.execute` runs in the transaction (CORE-133) | `packages/rust/interface.json:1933`, `packages/rust/interface.json:2015` |
+| `Db.execute(step, params)` | INT-76 | present, changed: the step is JSON text and the parameters are `orm_value` (CORE-127); `tx.execute` runs in the transaction (CORE-133) | `packages/rust/interface.json:1969`, `packages/rust/interface.json:2093` |
 | `Db.close()` | INT-67 | present | `packages/rust/interface.json:1659` |
 | `Db.stats()`, `PoolStats` with four counts | INT-61, INT-79 | present | `packages/rust/interface.json:1677`, `packages/rust/interface.json:1258` |
-| `Db.utils()` | INT-73, INT-134 | in the core, not in the contract; CORE-70: `Utils` and its parts borrow their handle | `packages/rust/src/utils.rs:31`, `packages/rust/src/tx.rs:405` |
+| `Db.utils()` | INT-73, INT-134 | in the core, not in the contract; CORE-70: `Utils` and its parts borrow their handle | `packages/rust/src/utils.rs:31`, `packages/rust/src/tx.rs:451` |
 | `Db.driver` property | no rule | present, changed: the method `db.driver()`; `db.sql_driver()` is new | `packages/rust/interface.json:1695`, `packages/rust/interface.json:1728` |
 | `Db.closed` property (TypeScript, Python) | no rule | not implemented | `legacy/packages/ts/src/database.ts:618` |
-| `Db.withSignal` (PHP `withCancellation` and `Cancellation`, Python `with_future`, Go `WithContext`) | CFG-9 | replaced by a rule of the core: CORE-45, `db.with_cancel`; CORE-47 and CORE-110 state what is not implemented of it | `packages/rust/interface.json:1845`, `contracts/interfaces.json:59` |
+| `Db.withSignal` (PHP `withCancellation` and `Cancellation`, Python `with_future`, Go `WithContext`) | CFG-9 | replaced by a rule of the core: CORE-45, `db.with_cancel`; CORE-47 and CORE-110 state what is not implemented of it | `packages/rust/interface.json:1881`, `contracts/interfaces.json:59` |
 | `Db.notify`, `Db.listen`, `Subscription`, `Notification` | DIA-193, DIA-196 | in the core, not in the contract; no rule of the core names them | `packages/rust/src/listen.rs:32`, `packages/rust/src/listen.rs:72` |
-| `TxFrame.run(kind, tables, sql, params)`, `Utils.run(fn)` | INT-150 | in the core, not in the contract; CORE-70: the tables of `Tx::run` are borrowed texts and a row is a list of cells with no column | `packages/rust/src/tx.rs:514`, `packages/rust/src/utils.rs:157` |
+| `TxFrame.run(kind, tables, sql, params)`, `Utils.run(fn)` | INT-150 | in the core, not in the contract; CORE-70: the tables of `Tx::run` are borrowed texts and a row is a list of cells with no column | `packages/rust/src/tx.rs:560`, `packages/rust/src/utils.rs:157` |
 | Python `Db.active_frame()` | INT-161 | replaced by a rule of the core: CORE-20 | `docs/spec/core.md:87` |
 | the properties `zone`, `signal`, `requestHook`, `aesKey`, `blindIndexKey`, `aesVersion`, `aesKeyring` and the methods `clockMicros()` and `now()` of the TypeScript `Db` | no rule | not implemented | `legacy/packages/ts/src/database.ts:550`, `legacy/packages/ts/src/database.ts:1209` |
 | `registerModel` (Python `register_model`, PHP `Registry`), `CORE`, `Core`, `EntityDef`, `ModelClass`, `ChainKey`, `SetSpec` | no rule | not implemented; they serve generated models, which no binding has | `legacy/packages/ts/src/index.ts:13`, `legacy/packages/ts/src/index.ts:44` |
@@ -630,30 +630,30 @@ A user of the generated bindings has this today:
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
 | the options `isolation`, `readOnly`, `timeoutMs`, `retry`, `audit` | INT-40 to INT-44 | present | `packages/rust/interface.json:1480`, `packages/rust/interface.json:1209` |
-| `transactionConflict(message)` | INT-48 | in the core, not in the contract; CORE-24 names it; CORE-70 does not list it | `packages/rust/src/tx.rs:1015` |
+| `transactionConflict(message)` | INT-48 | in the core, not in the contract; CORE-24 names it; CORE-70 does not list it | `packages/rust/src/tx.rs:1063` |
 | the error `ROLLBACK` with its cause and its `rollback` | INT-46, INT-72 | replaced by a rule of the core: CORE-25, the kind `rollback_failed` | `docs/spec/core.md:126` |
 | an error on concurrent use of one transaction | INT-47 | replaced by a rule of the core: CORE-22, the kind `busy` | `docs/spec/core.md:102` |
 | `CONFIG` on a frame used after its transaction ended | INT-150a | replaced by a rule of the core: CORE-23, the kind `transaction_ended` | `docs/spec/core.md:107` |
-| `forUpdate`, `forShare`, `forUpdateNoWait`, `forShareNoWait` | INT-49 | present | `packages/rust/interface.json:3628`, `packages/rust/interface.json:3681` |
+| `forUpdate`, `forShare`, `forUpdateNoWait`, `forShareNoWait` | INT-49 | present | `packages/rust/interface.json:3706`, `packages/rust/interface.json:3759` |
 | `utils().lock`, `setLocal`, `local`, `wasInserted`, `backendWaitingForLock` | INT-50 to INT-53 | in the core, not in the contract | `packages/rust/src/utils.rs:173`, `packages/rust/src/utils.rs:197`, `packages/rust/src/utils.rs:239`, `packages/rust/src/utils.rs:220`, `packages/rust/src/utils.rs:231` |
 
 ### Model and query builder
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| `relation`, `relations`, `expectRevision`, `create`, `restore`, `restoreOrCreate`, `addAllColumns`, `removeAllColumns` | INT-87, INT-34, INT-38, INT-39, DSL-76, DSL-77, DSL-108 | present | `packages/rust/interface.json:3835`, `packages/rust/interface.json:3862`, `packages/rust/interface.json:4047`, `packages/rust/interface.json:4096`, `packages/rust/interface.json:4205`, `packages/rust/interface.json:4244`, `packages/rust/interface.json:3700`, `packages/rust/interface.json:3718` |
-| a model class per entity; `connect(db)` returns the model | INT-16, INT-17 | present, changed: `Query.new(schema, entity)` names the entity by text, and `connect` returns nothing (CORE-81) | `packages/rust/interface.json:3264`, `packages/rust/interface.json:3317` |
-| the condition chains `<Chain>()`, `and<Chain>()`, `or<Chain>()`, the connectors `and()` and `or()`, the operators and `tuple<A>With<B>` | DSL-12 to DSL-35 | present, changed: `where(chain, values)` takes the chain name as text (CORE-82) | `packages/rust/interface.json:3343` |
-| a model as the value of a condition, `IN (SELECT …)` | DSL-53 | present, changed: `where_in(chain, query)` (CORE-90) | `packages/rust/interface.json:3979` |
-| `orderBy<Col>Asc()`, `orderBy<Col>Desc()` | DSL-99 | present, changed: `order_by(spec)`; it takes no column function (CORE-82) | `packages/rust/interface.json:3403` |
-| `getBy<Chain>()`, `getCountBy<Chain>()` | INT-27, INT-28 | present, changed: `get_by(chain, values)`, `get_count_by(chain, values)` (CORE-83) | `packages/rust/interface.json:3490`, `packages/rust/interface.json:3546` |
-| `getCount()` | INT-33 | present, changed: the result is `int64`, a `bigint` in Node | `packages/rust/interface.json:3428` |
-| `limit(offset, count)` | INT-159 | present, changed: both are `uint`, so a negative offset has no form (CORE-85) | `packages/rust/interface.json:3597` |
-| `set<Col>(value)`, `get<Col>()` | DSL-100, DSL-71 | present, changed: `set(column, value)` and `value(column)`, whose value is an untyped `orm_value` (CORE-83, CORE-91) | `packages/rust/interface.json:4014`, `packages/rust/interface.json:3459` |
-| `addColumn<Col>()`, `removeColumn<Col>()`, `keyName<Col>()`, `match<L>With<R>()`, `alias<Name>()` | DSL-72, DSL-75, DSL-70, DSL-82, DSL-83 | present, changed: `add_column`, `remove_column`, `key_name`, `match_pair`, `alias` take the name as text (CORE-87 to CORE-89) | `packages/rust/interface.json:3736`, `packages/rust/interface.json:3761`, `packages/rust/interface.json:3954`, `packages/rust/interface.json:3786`, `packages/rust/interface.json:3811` |
-| the relation getters `get<Table>Model()`, `get<Table>Models()` | DSL-89 | present, changed: `related(name)`, `related_rows(name)` (CORE-88) | `packages/rust/interface.json:3889`, `packages/rust/interface.json:3920` |
-| `update(optimistic)` | INT-36, DSL-106, DSL-107 | present, changed: `update()` takes no argument and writes the one row of its key under the conditions of the query (CORE-138) | `packages/rust/interface.json:4133`, `packages/rust/build/src/fixed.rs.txt:135` |
-| `delete(recursive)` | INT-37, DSL-110, DSL-111 | present, changed: `delete()` takes no argument and deletes the one row of its key under the conditions of the query (CORE-138); no member of the contract deletes recursively | `packages/rust/interface.json:4169`, `packages/rust/build/src/fixed.rs.txt:145` |
+| `relation`, `relations`, `expectRevision`, `create`, `restore`, `restoreOrCreate`, `addAllColumns`, `removeAllColumns` | INT-87, INT-34, INT-38, INT-39, DSL-76, DSL-77, DSL-108 | present | `packages/rust/interface.json:3913`, `packages/rust/interface.json:3940`, `packages/rust/interface.json:4125`, `packages/rust/interface.json:4174`, `packages/rust/interface.json:4283`, `packages/rust/interface.json:4322`, `packages/rust/interface.json:3778`, `packages/rust/interface.json:3796` |
+| a model class per entity; `connect(db)` returns the model | INT-16, INT-17 | present, changed: `Query.new(schema, entity)` names the entity by text, and `connect` returns nothing (CORE-81) | `packages/rust/interface.json:3342`, `packages/rust/interface.json:3395` |
+| the condition chains `<Chain>()`, `and<Chain>()`, `or<Chain>()`, the connectors `and()` and `or()`, the operators and `tuple<A>With<B>` | DSL-12 to DSL-35 | present, changed: `where(chain, values)` takes the chain name as text (CORE-82) | `packages/rust/interface.json:3421` |
+| a model as the value of a condition, `IN (SELECT …)` | DSL-53 | present, changed: `where_in(chain, query)` (CORE-90) | `packages/rust/interface.json:4057` |
+| `orderBy<Col>Asc()`, `orderBy<Col>Desc()` | DSL-99 | present, changed: `order_by(spec)`; it takes no column function (CORE-82) | `packages/rust/interface.json:3481` |
+| `getBy<Chain>()`, `getCountBy<Chain>()` | INT-27, INT-28 | present, changed: `get_by(chain, values)`, `get_count_by(chain, values)` (CORE-83) | `packages/rust/interface.json:3568`, `packages/rust/interface.json:3624` |
+| `getCount()` | INT-33 | present, changed: the result is `int64`, a `bigint` in Node | `packages/rust/interface.json:3506` |
+| `limit(offset, count)` | INT-159 | present, changed: both are `uint`, so a negative offset has no form (CORE-85) | `packages/rust/interface.json:3675` |
+| `set<Col>(value)`, `get<Col>()` | DSL-100, DSL-71 | present, changed: `set(column, value)` and `value(column)`, whose value is an untyped `orm_value` (CORE-83, CORE-91) | `packages/rust/interface.json:4092`, `packages/rust/interface.json:3537` |
+| `addColumn<Col>()`, `removeColumn<Col>()`, `keyName<Col>()`, `match<L>With<R>()`, `alias<Name>()` | DSL-72, DSL-75, DSL-70, DSL-82, DSL-83 | present, changed: `add_column`, `remove_column`, `key_name`, `match_pair`, `alias` take the name as text (CORE-87 to CORE-89) | `packages/rust/interface.json:3814`, `packages/rust/interface.json:3839`, `packages/rust/interface.json:4032`, `packages/rust/interface.json:3864`, `packages/rust/interface.json:3889` |
+| the relation getters `get<Table>Model()`, `get<Table>Models()` | DSL-89 | present, changed: `related(name)`, `related_rows(name)` (CORE-88) | `packages/rust/interface.json:3967`, `packages/rust/interface.json:3998` |
+| `update(optimistic)` | INT-36, DSL-106, DSL-107 | present, changed: `update()` takes no argument and writes the one row of its key under the conditions of the query (CORE-138) | `packages/rust/interface.json:4211`, `packages/rust/build/src/fixed.rs.txt:135` |
+| `delete(recursive)` | INT-37, DSL-110, DSL-111 | present, changed: `delete()` takes no argument and deletes the one row of its key under the conditions of the query (CORE-138); no member of the contract deletes recursively | `packages/rust/interface.json:4247`, `packages/rust/build/src/fixed.rs.txt:145` |
 | `get()` | INT-29 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:356`, `contracts/interfaces.json:1014` |
 | `gets()`, `Collection<T>` and its members `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80 to INT-86 | in the core, not in the contract; CORE-70: `Collection` takes the type of a generated model | `packages/rust/src/query.rs:362`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
 | `getsBy<Chain>()` | INT-27 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:384` |
@@ -707,33 +707,33 @@ A user of the generated bindings has this today:
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| the `Schema` value with `manifestText`, `manifestHash`, `externalText` | INT-133 | present, changed: a class that `schema.load` makes, with `hash()` and no public text (CORE-80, CORE-125) | `packages/rust/interface.json:2258`, `packages/rust/interface.json:2303` |
+| the `Schema` value with `manifestText`, `manifestHash`, `externalText` | INT-133 | present, changed: a class that `schema.load` makes, with `hash()` and no public text (CORE-80, CORE-125) | `packages/rust/interface.json:2336`, `packages/rust/interface.json:2381` |
 | `schema().register`, `install`, `addTablesAndColumns`, `exists`, `installed`, `empty` | INT-54 to INT-58 | in the core, not in the contract; `db.connect_schema` registers one schema at the connection | `packages/rust/src/utils.rs:275`, `packages/rust/src/utils.rs:289`, `packages/rust/src/utils.rs:341`, `packages/rust/src/utils.rs:391`, `packages/rust/src/utils.rs:409`, `packages/rust/src/utils.rs:440` |
 | `privileges().grantTable`, `revokeTable`, `inspectTable`, `TablePrivileges` | INT-59 | in the core, not in the contract | `packages/rust/src/utils.rs:490`, `packages/rust/src/utils.rs:505`, `packages/rust/src/utils.rs:526` |
 | `aes().status`, `aes().rotate`, `AesRotationStatus` | INT-60, INT-75, INT-131 | in the core, not in the contract; both take a generated model | `packages/rust/src/utils.rs:627`, `packages/rust/src/utils.rs:650` |
 | `utils().stats()` | INT-61 | in the core, not in the contract; `db.stats` returns the same counts | `packages/rust/src/utils.rs:100` |
-| `readDbspecBytes`, `readDbspecSet`, `emitDbspec`, `dbspecManifest`, `renderDbspecStatements`, `parseDbspecSet` | FMS-20 to FMS-25 | present, changed: the documents and the results are JSON text (FMS-2); `dbspec.read_set` is not of the target `wasm` (FMS-7) | `packages/rust/interface.json:4434`, `packages/rust/interface.json:4401`, `packages/rust/interface.json:4521`, `packages/rust/interface.json:4498`, `packages/rust/interface.json:4544`, `packages/rust/interface.json:4463` |
-| `parseDbspec` | `Dbspec.parse` of the inventory | replaced by a rule of the core: FMS-22, one call of `dbspec.parse_set` | `contracts/interfaces.json:3216`, `packages/rust/interface.json:4463` |
-| `renderDbspec` | `Dbspec.render` of the inventory | replaced by a rule of the core: FMS-25, the `sql` of each statement of `dbspec.render_statements` | `contracts/interfaces.json:3396`, `packages/rust/interface.json:4544` |
+| `readDbspecBytes`, `readDbspecSet`, `emitDbspec`, `dbspecManifest`, `renderDbspecStatements`, `parseDbspecSet` | FMS-20 to FMS-25 | present, changed: the documents and the results are JSON text (FMS-2); `dbspec.read_set` is not of the target `wasm` (FMS-7) | `packages/rust/interface.json:4512`, `packages/rust/interface.json:4479`, `packages/rust/interface.json:4599`, `packages/rust/interface.json:4576`, `packages/rust/interface.json:4622`, `packages/rust/interface.json:4541` |
+| `parseDbspec` | `Dbspec.parse` of the inventory | replaced by a rule of the core: FMS-22, one call of `dbspec.parse_set` | `contracts/interfaces.json:3216`, `packages/rust/interface.json:4541` |
+| `renderDbspec` | `Dbspec.render` of the inventory | replaced by a rule of the core: FMS-25, the `sql` of each statement of `dbspec.render_statements` | `contracts/interfaces.json:3396`, `packages/rust/interface.json:4622` |
 | `readDbspecFile`, `analyzeDbspec`, `formatDbspec` | `Dbspec.readFile`, `Dbspec.analyze`, `Dbspec.format` of the inventory | in the core, not in the contract | `packages/rust/schema/src/dbspec/file.rs:37`, `packages/rust/schema/src/dbspec/mod.rs:288`, `packages/rust/schema/src/dbspec/mod.rs:298` |
 | `introspectDbspec`, `externalDifferences`, `compareSchemas`, `installedDifferences`, `addTablesAndColumnsSteps` | `Dbspec.introspect` to `Dbspec.addTablesAndColumnsSteps` of the inventory | in the core, not in the contract | `packages/rust/src/dbspec/introspect.rs:49`, `packages/rust/schema/src/dbspec/mod.rs:522`, `packages/rust/schema/src/dbspec/compare.rs:48`, `packages/rust/schema/src/dbspec/add_tables_and_columns.rs:59`, `packages/rust/schema/src/dbspec/add_tables_and_columns.rs:79` |
 | `parsePlan`, `emitPlan`, `chainPlans`, `diffPlan`, `planSteps` | `Dbspec.parsePlan` to `Dbspec.planSteps` of the inventory | in the core, not in the contract | `packages/rust/schema/src/dbspec/plan.rs:124`, `packages/rust/schema/src/dbspec/plan.rs:240`, `packages/rust/schema/src/dbspec/plan.rs:270`, `packages/rust/schema/src/dbspec/plan_diff.rs:55`, `packages/rust/schema/src/dbspec/plan_steps.rs:76` |
 | `applyPlans`, `recoverPlans`, `rollbackPlans`, `finalizePlans`, `DbspecApplyError` | `Dbspec.apply` to `Dbspec.finalize` of the inventory | in the core, not in the contract | `packages/rust/src/dbspec/apply.rs:344`, `contracts/interfaces.json:3792` |
 | `exportMermaid`, `importMermaid` | `Dbspec.exportMermaid`, `Dbspec.importMermaid` of the inventory | in the core, not in the contract | `packages/rust/schema/src/dbspec/mermaid.rs:23`, `packages/rust/schema/src/dbspec/mermaid.rs:236` |
-| `Engine` with `compile` and `manifestHash`, `loadSet`, `RuntimeModel`, `Entity`, `Field` (Python `model_of_documents`, `parse_document_set`) | no rule | present, changed: `dbspec.runtime_model` and the class `runtime_model`, whose members take and return JSON text (FMS-27, FMS-30) | `packages/rust/interface.json:4610`, `packages/rust/interface.json:4650`, `packages/rust/interface.json:4787` |
+| `Engine` with `compile` and `manifestHash`, `loadSet`, `RuntimeModel`, `Entity`, `Field` (Python `model_of_documents`, `parse_document_set`) | no rule | present, changed: `dbspec.runtime_model` and the class `runtime_model`, whose members take and return JSON text (FMS-27, FMS-30) | `packages/rust/interface.json:4688`, `packages/rust/interface.json:4728`, `packages/rust/interface.json:4865` |
 | `connectCatalog`, `CatalogConnection` with `close`, `currentNamespace`, `describeTable`, `tablePage`, `readOnlyQuery`, `readOnlyGridQuery`, `rowSnapshotFromPage`, `insertRow`, `updateRow`, `deleteRow`, and `CatalogRowSnapshot`, `CatalogFloat` | INT-97 to INT-125, INT-165 to INT-186 | in the core, not in the contract; they are of the crate `polyspec-orm-build`, not of the crate `polyspec-orm` | `packages/rust/build/src/catalog/mod.rs:81`, `packages/rust/build/src/catalog/mod.rs:216`, `packages/rust/build/src/catalog/row_insert.rs:25` |
 
 ### Codec, errors, utilities and the command
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| `hostEncode`, `hostDecode` | COD-1 | present | `packages/rust/interface.json:4936`, `packages/rust/interface.json:4983` |
-| `decode(styles, raw)` | COD-1 | present, changed: the result is an `orm_value`, not a `StyledValue` | `packages/rust/interface.json:4898` |
-| `blindIndex(value, key)` | COD-4 | present, changed: the result is a text and never null | `packages/rust/interface.json:5030` |
+| `hostEncode`, `hostDecode` | COD-1 | present | `packages/rust/interface.json:5014`, `packages/rust/interface.json:5061` |
+| `decode(styles, raw)` | COD-1 | present, changed: the result is an `orm_value`, not a `StyledValue` | `packages/rust/interface.json:4976` |
+| `blindIndex(value, key)` | COD-4 | present, changed: the result is a text and never null | `packages/rust/interface.json:5108` |
 | `encode(styles, state)` | COD-1 | in the core, not in the contract | `packages/rust/src/codec.rs:247` |
 | `CodecError` | no rule | replaced by a rule of the core: CORE-11 and CORE-139, the class of the category `value` | `docs/spec/core.md:79` |
-| `AesKeyring(keys, current)`, `versions()` | INT-130, INT-74 | present | `packages/rust/interface.json:2164`, `packages/rust/interface.json:2216` |
-| `AesKeyring.currentVersion` property | INT-130 | present, changed: the method `current()` | `packages/rust/interface.json:2200` |
+| `AesKeyring(keys, current)`, `versions()` | INT-130, INT-74 | present | `packages/rust/interface.json:2242`, `packages/rust/interface.json:2294` |
+| `AesKeyring.currentVersion` property | INT-130 | present, changed: the method `current()` | `packages/rust/interface.json:2278` |
 | `AesKeyring.key(version)`, `rotateRow`, `storedVersion` | no rule | not implemented | `legacy/packages/ts/src/aes.ts:39`, `packages/rust/src/utils.rs:543` |
 | `OrmError` (PHP `OrmException`) with `code` (PHP `code_`) | INT-89 | replaced by a rule of the core: CORE-10 and CORE-11, a class per category with `kind` | `packages/rust/interface.json:579` |
 | the constants `codes.*` (PHP `Code::*`) | INT-65 | replaced by a rule of the core: CORE-10, the enum `ErrorKind` | `packages/rust/interface.json:579` |
@@ -749,7 +749,7 @@ A user of the generated bindings has this today:
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| `require_match` of a request | PRT-90 | present, changed: a boolean member of the request form; `query.require_match` sets it on `update`, `delete` and `restore` and not on the restore of `restore_or_create` (CORE-142) | `packages/rust/src/ir.rs:21`, `packages/rust/interface.json:4079`, `legacy/packages/go/engine/ir/ir.go:33` |
+| `require_match` of a request | PRT-90 | present, changed: a boolean member of the request form; `query.require_match` sets it on `update`, `delete` and `restore` and not on the restore of `restore_or_create` (CORE-142) | `packages/rust/src/ir.rs:21`, `packages/rust/interface.json:4157`, `legacy/packages/go/engine/ir/ir.go:33` |
 | `ir_version`, `manifest_hash`, `kind`, `load`, `set`, `on_duplicate`, `rows`, `optimistic`, `agg`, `n_params` of a request | `IRRequest` of the inventory | present | `packages/rust/src/ir.rs:349`, `contracts/interfaces.json:4393` |
 | the value of `ir_version` | PRT-92 | present, changed: the core takes 2 and answers `version_mismatch` to 1, the version of the language implementations (PRT-92) | `packages/rust/src/ir.rs:272`, `packages/rust/src/engine/validate.rs:174`, `legacy/packages/go/engine/ir/ir.go:19` |
 | `entity`, `columns`, `on`, `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, `key_by`, `flatten`, `limit_per_parent`, `if_parent`, `no_cascade_delete` of a query | `IRQuery` of the inventory | present | `packages/rust/src/ir.rs:329`, `contracts/interfaces.json:4426` |
@@ -758,18 +758,18 @@ A user of the generated bindings has this today:
 | an item of a group, `IRItem` | FMS-31 | present, changed: it holds exactly one of `pred`, `group` and `joined` | `packages/rust/src/ir.rs:441` |
 | a limit, `IRLimit` | FMS-31 | present, changed: it is the pair `offset` and `count` or the pair `offset_p` and `count_p`, with both members | `packages/rust/src/ir.rs:443` |
 | the fourteen kinds of a request | no rule | present | `packages/rust/src/engine/validate.rs:195` |
-| a request as the argument of a member that runs it | INT-78 | not implemented; `runtime_model.validate`, `compile`, `param_uses` and `restore_key` take the text of a request and run nothing | `packages/rust/interface.json:4677` |
+| a request as the argument of a member that runs it | INT-78 | not implemented; `runtime_model.validate`, `compile`, `param_uses` and `restore_key` take the text of a request and run nothing | `packages/rust/interface.json:4755` |
 
 ### Connect options
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| `aesKey`, `blindIndexKey`, `aesVersion`, `aesKeys`, `planCacheSize`, `statementCacheSize`, `statementTimeoutMs`, `poolIdleSize`, `poolLifetimeMs` | COD-8, CFG-5 | present | `packages/rust/interface.json:1313`, `packages/rust/src/db.rs:106` |
+| `aesKey`, `blindIndexKey`, `aesVersion`, `aesKeys`, `planCacheSize`, `statementCacheSize`, `statementTimeoutMs`, `poolIdleSize`, `poolLifetimeMs` | COD-8, CFG-5 | present | `packages/rust/interface.json:1313`, `packages/rust/src/db.rs:162` |
 | `poolSize` | CFG-4 | present, changed: the required argument `pool_size` of `db.connect` and `db.connect_schema`, and no field of `config` | `packages/rust/interface.json:1609` |
-| `auditSource` | CFG-8 | present, changed: it returns a map of `orm_value` scalars (CORE-131) | `packages/rust/src/db.rs:133` |
+| `auditSource` | CFG-8 | present, changed: it returns a map of `orm_value` scalars (CORE-131) | `packages/rust/src/db.rs:189` |
 | Python `aesKeyring`, an `AesKeyring` as an option | no rule | not implemented; `aes_keys` and `aes_version` state the key ring | `legacy/packages/python/src/polyspec/orm/database.py:2129` |
 | PHP `Config::keyring()` | no rule | not implemented | `legacy/packages/php/src/Config.php:56` |
-| no option of the language implementations | CORE-30 | present; `pool_acquire_timeout_ms` is new in the core | `packages/rust/src/db.rs:130` |
+| no option of the language implementations | CORE-30 | present; `pool_acquire_timeout_ms` is new in the core | `packages/rust/src/db.rs:186` |
 
 ### Generated models
 
@@ -778,4 +778,4 @@ A user of the generated bindings has this today:
 | a generated class per entity with typed getters, setters and condition members | INT-16, DSL-37, DSL-71 | not implemented; for PHP, Python, TypeScript and Go; CORE-50 states it | `docs/spec/core.md:269`, `legacy/packages/ts/src/generate/typescript.ts:319` |
 | the generator command of each language, `orm-gen` | DSL-39 to DSL-44 | not implemented; the bindings ship no command | `legacy/packages/ts/src/bin/orm-gen.ts:2`, `packages/ts/package.json:2` |
 | the generated Rust models of `polyspec_orm_build::Builder` | DSL-41 | present; for Rust alone; it scans the source, which CORE-50 ends | `packages/rust/build/src/lib.rs:78`, `packages/rust/build/src/generate.rs:736` |
-| a query on a schema loaded at run time | CORE-80, CORE-81 | present; the class `query` is what a binding has in place of a generated model | `packages/rust/interface.json:2258`, `packages/rust/interface.json:3264` |
+| a query on a schema loaded at run time | CORE-80, CORE-81 | present; the class `query` is what a binding has in place of a generated model | `packages/rust/interface.json:2336`, `packages/rust/interface.json:3342` |

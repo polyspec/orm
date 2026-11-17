@@ -279,6 +279,160 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
     close(&runtime, &db);
 }
 
+/// The calls of the hooks of a case, in order: the name of the hook, whether its transaction is read-only and how many
+/// connections of the pool were in use at the call.
+type HookCalls = std::sync::Arc<std::sync::Mutex<Vec<(&'static str, bool, u32)>>>;
+
+/// Registers a hook in the form of the contract that records its call.
+fn recording_hook(db: &Db, calls: &HookCalls, name: &'static str) -> crate::BeforeTransactionHook {
+    let (calls, handle) = (std::sync::Arc::clone(calls), db.clone());
+    db.before_transaction(Box::new(move |read_only| {
+        calls.lock().expect("the calls of the hooks").push((name, read_only, handle.stats().in_use));
+        Ok(())
+    }))
+}
+
+fn hook_calls(calls: &HookCalls) -> Vec<(&'static str, bool, u32)> {
+    std::mem::take(&mut *calls.lock().expect("the calls of the hooks"))
+}
+
+// Requirements: CORE-143, CORE-104, INT-193. The machine calls the hooks of the connection in steps Call of each
+// attempt, before the Io step of its opening, in the order of their registration and with read_only, while the
+// transaction holds no connection. A savepoint calls none, and a removed hook is not called again.
+#[test]
+fn a_transaction_machine_calls_the_hooks_before_each_opening() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-machine-hooks");
+    let (runtime, db) = probe_db(&scratch);
+    let calls = HookCalls::default();
+    let first = recording_hook(&db, &calls, "first");
+    let second = recording_hook(&db, &calls, "second");
+    let mut runs = 0u32;
+    let mut machine = db.clone().transaction(
+        |tx: Tx| {
+            runs += 1;
+            if runs == 1 {
+                return Err(Failure::Kind(crate::transaction_conflict("conflict")));
+            }
+            let mut savepoint = tx.clone().savepoint(|_savepoint: Tx| Ok(passed(1)));
+            let (_steps, kept) = drive(&runtime, &mut savepoint);
+            drop(kept?);
+            Ok(passed(2))
+        },
+        TransactionOptions { retry: Some(1), ..TransactionOptions::default() },
+    );
+    let (steps, done) = drive(&runtime, &mut machine);
+    let failed = ["Call", "Call", "Io", "Call", "Io", "Io"];
+    assert_eq!(
+        steps,
+        [&failed[..], &["Call", "Call", "Io", "Call", "Await", "Io", "Done"][..]].concat(),
+        "two hooks, begin, call, rollback and wait, then two hooks again and a commit"
+    );
+    assert_eq!(done.expect("the second attempt commits").into_handle().raw(), 2);
+    drop(machine);
+    assert_eq!(runs, 2);
+    let attempt = [("first", false, 0), ("second", false, 0)];
+    assert_eq!(hook_calls(&calls), [attempt, attempt].concat(), "each attempt calls both hooks, and the savepoint calls none");
+
+    first.remove();
+    let mut machine = db.clone().transaction(|_tx: Tx| Ok(passed(3)), TransactionOptions { read_only: Some(true), ..once() });
+    let (steps, done) = drive(&runtime, &mut machine);
+    assert_eq!(steps, ["Call", "Io", "Call", "Await", "Io", "Done"]);
+    assert_eq!(done.expect("the read-only transaction commits").into_handle().raw(), 3);
+    drop(machine);
+    assert_eq!(hook_calls(&calls), [("second", true, 0)], "the removed hook is not called");
+    second.remove();
+    released();
+    close(&runtime, &db);
+}
+
+// Requirements: CORE-143, CORE-20. A Db::transaction that a callback begins is a transaction of its own on another
+// connection of the pool, so its machine calls the hooks again, while the transaction of the callback holds its
+// connection.
+#[test]
+fn a_transaction_machine_in_a_callback_calls_the_hooks_again() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-machine-hooks-inside");
+    let (runtime, db) = probe_db(&scratch);
+    let calls = HookCalls::default();
+    let hook = recording_hook(&db, &calls, "first");
+    let own = db.clone();
+    let mut machine = db.clone().transaction(
+        |_tx: Tx| {
+            // The transaction of the callback holds the write lock of SQLite, so the other one only reads.
+            let mut inside = own.clone().transaction(|_own: Tx| Ok(passed(1)), TransactionOptions { read_only: Some(true), ..once() });
+            let (steps, kept) = drive(&runtime, &mut inside);
+            assert_eq!(steps, ["Call", "Io", "Call", "Await", "Io", "Done"]);
+            drop(kept?);
+            Ok(passed(2))
+        },
+        once(),
+    );
+    let (steps, done) = drive(&runtime, &mut machine);
+    assert_eq!(steps, ["Call", "Io", "Call", "Await", "Io", "Done"]);
+    assert_eq!(done.expect("the outer transaction commits").into_handle().raw(), 2);
+    drop(machine);
+    assert_eq!(hook_calls(&calls), [("first", false, 0), ("first", true, 1)], "once for the outer transaction and once for the one in its callback");
+    hook.remove();
+    released();
+    close(&runtime, &db);
+}
+
+// Requirements: CORE-143, INT-193. A hook that fails ends the machine in the step after its call: no later hook, no Io
+// step, no statement, no callback and no other attempt, and the result is its failure unchanged, the same exception or
+// the same error, also when its kind is deadlock. A hook of Rust code is awaited in an Io step.
+#[test]
+fn a_transaction_machine_ends_with_the_failure_of_a_hook_before_it_begins() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-machine-hooks-failure");
+    let (runtime, db) = probe_db(&scratch);
+    let sent = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let count = std::sync::Arc::clone(&sent);
+    let subscription = db
+        .subscribe(move |_event: &crate::StatementEvent<'_>| {
+            count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(())
+        })
+        .expect("subscribe");
+    let calls = HookCalls::default();
+    let raising = db.before_transaction(Box::new(|_read_only| Err(Failure::Raised(raised(7)))));
+    let later = recording_hook(&db, &calls, "later");
+    let mut runs = 0u32;
+    let mut machine = db.clone().transaction(
+        |_tx: Tx| {
+            runs += 1;
+            Ok(passed(1))
+        },
+        TransactionOptions::default(),
+    );
+    let (steps, done) = drive(&runtime, &mut machine);
+    assert_eq!(steps, ["Call", "Done"]);
+    assert!(matches!(&done, Err(Failure::Raised(exception)) if raised_id(exception) == Some(7)), "{done:?}");
+    drop(machine);
+    raising.remove();
+
+    let refusing = db.before_transaction_async(|_read_only| async { Err::<(), Error>(crate::transaction_conflict("refused")) });
+    let mut machine = db.clone().transaction(
+        |_tx: Tx| {
+            runs += 1;
+            Ok(passed(1))
+        },
+        TransactionOptions::default(),
+    );
+    let (steps, done) = drive(&runtime, &mut machine);
+    assert_eq!(steps, ["Call", "Io", "Done"], "the hook that records, then the hook of Rust code, and no other attempt");
+    assert!(matches!(&done, Err(Failure::Kind(error)) if error.kind() == Kind::Deadlock && error.text() == "refused"), "{done:?}");
+    drop(machine);
+    assert_eq!(runs, 0, "the callback does not run");
+    assert_eq!(hook_calls(&calls), [("later", false, 0)], "the hook after the one that raised is not called");
+    assert_eq!(sent.load(std::sync::atomic::Ordering::SeqCst), 0, "no statement is sent");
+    assert_eq!(db.stats().in_use, 0, "no connection is taken");
+    refusing.remove();
+    later.remove();
+    subscription.unsubscribe();
+    close(&runtime, &db);
+}
+
 // Requirements: CORE-103. A failure of the opening ends the machine after its Io step, and the callback does not run.
 #[test]
 fn a_transaction_machine_whose_opening_fails_does_not_call_its_callback() {

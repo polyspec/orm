@@ -1842,6 +1842,42 @@
           }
         },
         {
+          "id": "db.before_transaction",
+          "name": [
+            "before",
+            "transaction"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "hook"
+              ],
+              "type": {
+                "function": {
+                  "parameters": [
+                    "bool"
+                  ],
+                  "returns": "none",
+                  "async_allowed": false
+                }
+              },
+              "required": true,
+              "keeps": true
+            }
+          ],
+          "returns": {
+            "unit": "before_transaction_hook"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Db::before_transaction",
+            "receiver": "&self"
+          }
+        },
+        {
           "id": "db.with_cancel",
           "name": [
             "with",
@@ -1980,6 +2016,48 @@
             "receiver": "&self",
             "machine": true,
             "result": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "before_transaction_hook",
+      "name": [
+        "before",
+        "transaction",
+        "hook"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::BeforeTransactionHook",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "before_transaction_hook.remove",
+          "name": [
+            "remove"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::BeforeTransactionHook::remove",
+            "receiver": "&self"
           }
         }
       ]
@@ -5739,6 +5817,34 @@
       "member": "db.transaction",
       "file": "contracts/interface/core.json",
       "group": "db.transaction",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.before_transaction",
+      "file": "contracts/interface/core.json",
+      "group": "db.before_transaction",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "before_transaction_hook.remove",
+      "file": "contracts/interface/core.json",
+      "group": "before_transaction_hook.remove",
       "only": {
         "targets": [
           "php",

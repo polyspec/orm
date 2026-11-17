@@ -212,3 +212,36 @@ async fn a_canceled_savepoint_still_ends() {
     }
     db.close_async().await;
 }
+
+// Requirements: CORE-143, INT-193, INT-55. The install of the schema tools on a Db runs in a transaction of its own on
+// SQLite, which calls the hooks of the connection once, with read_only false, before the connection sends any
+// statement and so before its BEGIN.
+#[tokio::test]
+async fn the_transaction_of_a_schema_install_calls_the_hooks() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-install-hook");
+    let schema = Schema::load(CLOCK, "", CLOCK_HASH).expect("clock.dbs loads");
+    let db = Db::connect(&format!("sqlite://{}", scratch.join("clock.sqlite").display()), 1, Config::default()).await.expect("connect");
+    // The calls of the hook and the kinds of the statements that the connection sent, in one order.
+    let events = Arc::new(Mutex::new(Vec::<String>::new()));
+    let list = Arc::clone(&events);
+    let subscription = db
+        .subscribe(move |event: &crate::StatementEvent<'_>| {
+            list.lock().expect("the events of the install").push(event.kind.to_owned());
+            Ok(())
+        })
+        .expect("subscribe");
+    let list = Arc::clone(&events);
+    let hook = db.before_transaction(Box::new(move |read_only| {
+        list.lock().expect("the events of the install").push(format!("hook {read_only}"));
+        Ok(())
+    }));
+    db.utils().schema().install(&schema).await.expect("install");
+    let events = events.lock().expect("the events of the install").clone();
+    assert_eq!(events.first().map(String::as_str), Some("hook false"), "the hook is called before any statement: {events:?}");
+    assert_eq!(events.iter().filter(|event| event.starts_with("hook ")).count(), 1, "one transaction, one call: {events:?}");
+    assert!(events.iter().any(|event| event == crate::events::KIND_BEGIN), "the install begins a transaction: {events:?}");
+    hook.remove();
+    subscription.unsubscribe();
+    db.close_async().await;
+}

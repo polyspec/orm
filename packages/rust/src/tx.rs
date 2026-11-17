@@ -83,6 +83,52 @@ fn native_failure(failure: binding_core::Failure<Error>) -> Error {
     }
 }
 
+/// The error `internal` of a hook before a transaction that panicked (CORE-143, CORE-26).
+fn hook_panicked(payload: Box<dyn std::any::Any + Send>) -> Error {
+    let text = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
+        (Some(text), _) => (*text).to_owned(),
+        (None, Some(text)) => text.clone(),
+        (None, None) => "a panic without a text payload".to_owned(),
+    };
+    Error::internal(format!("the hook before the transaction panicked: {text}"))
+}
+
+/// Calls a hook before a transaction on this thread (CORE-143) and gives its failure unchanged.
+fn call_hook(hook: &crate::db::BeforeTransaction, read_only: bool) -> std::result::Result<(), binding_core::Failure<Error>> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| hook(read_only))) {
+        Ok(called) => called,
+        Err(payload) => Err(binding_core::Failure::Kind(hook_panicked(payload))),
+    }
+}
+
+/// Awaits the future of a hook of Rust code (CORE-143) and gives its error unchanged.
+async fn await_hook(hook: &crate::db::TransactionHook, read_only: bool) -> Result<()> {
+    let crate::db::TransactionHook::Future(make) = hook else {
+        return Err(Error::internal("a hook that the driver calls was awaited as a hook of Rust code"));
+    };
+    match std::panic::AssertUnwindSafe(async { make(read_only).await }).catch_unwind().await {
+        Ok(awaited) => awaited,
+        Err(payload) => Err(hook_panicked(payload)),
+    }
+}
+
+/// Calls the hooks before a transaction of an attempt that Rust code awaits (CORE-143): the hooks registered now, in
+/// the order of their registration, each after the one before it ended. The first failure ends the calls and is returned
+/// unchanged; an exception of a language, which a hook of a binding raised on this path, has no error of the core and
+/// is `internal`.
+async fn call_hooks(db: &Db, read_only: bool) -> Result<()> {
+    for hook in db.transaction_hooks()? {
+        match &*hook {
+            crate::db::TransactionHook::Call(call) => call_hook(call, read_only).map_err(|failure| match failure {
+                binding_core::Failure::Kind(error) => error,
+                other => Error::internal(format!("a hook before the transaction raised a failure of a language in a transaction of Rust code: {other:?}")),
+            })?,
+            crate::db::TransactionHook::Future(_) => await_hook(&hook, read_only).await?,
+        }
+    }
+    Ok(())
+}
+
 /// The audit record the transaction inserts: the schema of the registered set that has the record table as an entity, that entity, and the column
 /// name-ordered values.
 pub(crate) struct AuditInsert {
@@ -705,6 +751,8 @@ impl Db {
         let record = audit.as_ref().map(|values| audit_record(self, values)).transpose().map_err(native_failure)?.map(Arc::new);
         let mut attempt = 0u32;
         loop {
+            // The hooks of the connection are called before each attempt takes a connection (CORE-143).
+            call_hooks(self, read_only).await?;
             let shared = Arc::new(begin(self, isolation, read_only, timeout_ms).await?);
             // Each attempt starts with the pending record and no inserted audit.
             *lock(&shared.pending_audit)? = record.clone();
@@ -1239,6 +1287,278 @@ mod tests {
         assert_eq!(retry_wait(1, 0), std::time::Duration::from_millis(50));
         assert_eq!(retry_wait(2, 19), std::time::Duration::from_millis(119));
         assert_eq!(retry_wait(3, 0), std::time::Duration::from_millis(200));
+    }
+
+    /// The calls of the hooks of a test, in order: the name of the hook and whether its transaction is read-only.
+    type HookCalls = Arc<Mutex<Vec<(&'static str, bool)>>>;
+
+    /// Registers a hook in the form of the contract that records its call.
+    fn recording_hook(db: &Db, calls: &HookCalls, name: &'static str) -> crate::BeforeTransactionHook {
+        let calls = Arc::clone(calls);
+        db.before_transaction(Box::new(move |read_only| {
+            calls.lock().expect("the calls of the hooks").push((name, read_only));
+            Ok(())
+        }))
+    }
+
+    fn hook_calls(calls: &HookCalls) -> Vec<(&'static str, bool)> {
+        calls.lock().expect("the calls of the hooks").clone()
+    }
+
+    /// A SQLite database with the table `orm_hook_probe` and a pool of `pool_size` connections.
+    async fn hook_db(tmp: &Scratch, pool_size: u32) -> Db {
+        let db = Db::connect(&format!("sqlite://{}", tmp.join("hook.sqlite").display()), pool_size, crate::Config::default()).await.expect("connect");
+        let Pool::Sqlite(pool) = db.pool() else { panic!("the test database is SQLite") };
+        // The connection is back in the pool before the first hook reads the statistics of the pool.
+        let mut connection = pool.acquire().await.expect("acquire the fixture connection");
+        sqlx::query("CREATE TABLE orm_hook_probe (id INTEGER PRIMARY KEY)").execute(&mut *connection).await.expect("create the table");
+        connection.return_to_pool().await;
+        db
+    }
+
+    async fn commits(db: &Db, options: TransactionOptions) {
+        db.transaction_async(|_tx: Tx| async { Ok(()) }, options).await.expect("the transaction commits");
+    }
+
+    /// A request hook that changes nothing.
+    fn passing_request_hook<'a>(_request: &'a mut crate::ir::Request, _params: &'a mut crate::RequestParams) -> crate::HookFuture<'a> {
+        Box::pin(async { Ok(()) })
+    }
+
+    // A hook runs before the transaction takes a connection of the pool or sends a statement: the hook reads through
+    // the one connection of the pool, on SQLite another connection that does not wait for a lock commits a row there,
+    // before BEGIN IMMEDIATE takes the write lock, and the transaction then reads the committed row (CORE-143).
+    #[tokio::test]
+    // Requirements: CORE-143, INT-193, CFG-11.
+    async fn a_hook_runs_before_the_transaction_takes_a_connection() {
+        let _case = polyspec_orm_testcase::case!();
+        let tmp = Scratch::new("orm-before-transaction");
+        let db = hook_db(&tmp, 1).await;
+        let other = Db::connect(&format!("sqlite://{}?_pragma=busy_timeout(0)", tmp.join("hook.sqlite").display()), 1, crate::Config::default())
+            .await
+            .expect("connect the other connection");
+        let sent = Arc::new(Mutex::new(Vec::<String>::new()));
+        let list = Arc::clone(&sent);
+        let subscription = db
+            .subscribe(move |event: &crate::StatementEvent<'_>| {
+                list.lock().expect("the sent statements").push(event.kind.to_owned());
+                Ok(())
+            })
+            .expect("subscribe");
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let (hooked, writer, statements, saw) = (db.clone(), other.clone(), Arc::clone(&sent), Arc::clone(&seen));
+        let hook = db.before_transaction_async(move |read_only| {
+            let (hooked, writer, statements, saw) = (hooked.clone(), writer.clone(), Arc::clone(&statements), Arc::clone(&saw));
+            async move {
+                let before = statements.lock().expect("the sent statements").len();
+                let in_use = hooked.stats().in_use;
+                // The read takes the one connection of the pool, which the transaction does not hold yet.
+                let rows = probe_row_count_of(&hooked, "orm_hook_probe").await;
+                writer
+                    .transaction_async(
+                        |tx: Tx| async move { tx.run(KIND_UTILITY, &[], "INSERT INTO orm_hook_probe (id) VALUES (1)", &[]).await.map(drop) },
+                        once(),
+                    )
+                    .await?;
+                saw.lock().expect("what the hook saw").push((read_only, before, in_use, rows));
+                Ok(())
+            }
+        });
+        let ended = db
+            .transaction_async(
+                |tx: Tx| async move {
+                    let rows = tx.run(KIND_UTILITY, &[], "SELECT id FROM orm_hook_probe", &[]).await?;
+                    assert_eq!(rows.len(), 1, "the transaction reads the row that the hook committed");
+                    tx.run(KIND_UTILITY, &[], "INSERT INTO orm_hook_probe (id) VALUES (1)", &[]).await.map(drop)
+                },
+                once(),
+            )
+            .await;
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::DuplicateKey), "{ended:?}");
+        assert_eq!(*seen.lock().expect("what the hook saw"), [(false, 0, 0, 0)], "one call, before any statement and any connection");
+        assert_eq!(probe_row_count_of(&db, "orm_hook_probe").await, 1, "the row of the hook is kept");
+        hook.remove();
+        subscription.unsubscribe();
+        other.close_async().await;
+        db.close_async().await;
+    }
+
+    // Each attempt calls the hooks with read_only, a savepoint calls none, and a transaction that a callback begins on
+    // the connection is a transaction of its own, which calls them again (CORE-143, CORE-20).
+    #[tokio::test]
+    // Requirements: CORE-143, CORE-20, CORE-24, INT-193, INT-41, INT-43.
+    async fn each_attempt_and_each_transaction_of_its_own_calls_the_hooks() {
+        let _case = polyspec_orm_testcase::case!();
+        let tmp = Scratch::new("orm-before-transaction-attempts");
+        let db = hook_db(&tmp, 2).await;
+        let calls = HookCalls::default();
+        let hook = recording_hook(&db, &calls, "first");
+        commits(&db, TransactionOptions { read_only: Some(true), ..once() }).await;
+        commits(&db, once()).await;
+        assert_eq!(hook_calls(&calls), [("first", true), ("first", false)], "the hook gets read_only");
+
+        calls.lock().expect("the calls of the hooks").clear();
+        let runs = &AtomicU32::new(0);
+        let ended = db
+            .transaction_async(
+                |_tx: Tx| async move {
+                    if runs.fetch_add(1, Ordering::SeqCst) == 0 {
+                        return Err(transaction_conflict("conflict"));
+                    }
+                    Ok(())
+                },
+                TransactionOptions { retry: Some(1), ..Default::default() },
+            )
+            .await;
+        assert!(ended.is_ok() && runs.load(Ordering::SeqCst) == 2, "one conflict, then a commit: {ended:?}");
+        assert_eq!(hook_calls(&calls), [("first", false), ("first", false)], "each attempt calls the hook");
+
+        calls.lock().expect("the calls of the hooks").clear();
+        let inner = db.clone();
+        db.transaction_async(
+            |tx: Tx| {
+                let inner = inner.clone();
+                async move {
+                    tx.savepoint_async(|savepoint: Tx| async move {
+                        savepoint.run(KIND_UTILITY, &[], "INSERT INTO orm_hook_probe (id) VALUES (2)", &[]).await.map(drop)
+                    })
+                    .await?;
+                    // The transaction of the callback holds the write lock of SQLite, so the other one only reads.
+                    inner.transaction_async(|_own: Tx| async { Ok(()) }, TransactionOptions { read_only: Some(true), ..once() }).await
+                }
+            },
+            once(),
+        )
+        .await
+        .expect("the outer transaction commits");
+        assert_eq!(hook_calls(&calls), [("first", false), ("first", true)], "the savepoint calls no hook, and the transaction in the callback calls it");
+        hook.remove();
+        db.close_async().await;
+    }
+
+    // The hooks are called in the order of their registration until they are removed, and every handle of the
+    // connection shares them: a hook of a handle with a request hook or a cancellation is a hook of the connection
+    // (CORE-143).
+    #[tokio::test]
+    // Requirements: CORE-143, CORE-45, INT-193, INT-78.
+    async fn the_handles_of_a_connection_share_its_hooks_in_order_until_removed() {
+        let _case = polyspec_orm_testcase::case!();
+        let tmp = Scratch::new("orm-before-transaction-order");
+        let db = hook_db(&tmp, 1).await;
+        let calls = HookCalls::default();
+        let first = recording_hook(&db, &calls, "first");
+        let second = recording_hook(&db, &calls, "second");
+        commits(&db, once()).await;
+        first.remove();
+        commits(&db, once()).await;
+        second.remove();
+        // A second removal does nothing.
+        second.remove();
+        commits(&db, once()).await;
+        assert_eq!(hook_calls(&calls), [("first", false), ("second", false), ("second", false)]);
+
+        calls.lock().expect("the calls of the hooks").clear();
+        let hooked = db.with_request_hook(passing_request_hook);
+        let (trigger, cancel) = binding_core::cancel_pair();
+        let cancellable = db.with_cancel(cancel);
+        let of_the_connection = recording_hook(&db, &calls, "connection");
+        commits(&hooked, once()).await;
+        let of_the_handle = recording_hook(&hooked, &calls, "handle");
+        commits(&db, once()).await;
+        commits(&cancellable, once()).await;
+        assert_eq!(
+            hook_calls(&calls),
+            [("connection", false), ("connection", false), ("handle", false), ("connection", false), ("handle", false)],
+            "a transaction of any handle calls the hooks of the connection"
+        );
+
+        // A handle whose cancellation has fired calls no hook, and its transaction is canceled (CORE-46).
+        calls.lock().expect("the calls of the hooks").clear();
+        trigger.cancel();
+        let ended = cancellable.transaction_async(|_tx: Tx| async { Ok(()) }, once()).await;
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::Canceled), "{ended:?}");
+        assert!(hook_calls(&calls).is_empty(), "no hook of a canceled handle");
+        of_the_connection.remove();
+        of_the_handle.remove();
+        db.close_async().await;
+    }
+
+    // A hook that fails ends the transaction before it begins: no later hook, no connection, no statement, no callback
+    // and no other attempt, and its error is returned unchanged, also when its kind is deadlock; a hook that panics is
+    // internal (CORE-143).
+    #[tokio::test]
+    // Requirements: CORE-143, CORE-26, INT-193, INT-43, INT-79.
+    async fn a_hook_that_fails_ends_the_transaction_before_it_begins() {
+        let _case = polyspec_orm_testcase::case!();
+        let tmp = Scratch::new("orm-before-transaction-failure");
+        let db = hook_db(&tmp, 1).await;
+        let sent = Arc::new(Mutex::new(Vec::<String>::new()));
+        let list = Arc::clone(&sent);
+        let subscription = db
+            .subscribe(move |event: &crate::StatementEvent<'_>| {
+                list.lock().expect("the sent statements").push(event.kind.to_owned());
+                Ok(())
+            })
+            .expect("subscribe");
+        let calls = HookCalls::default();
+        let refused = Arc::clone(&calls);
+        let first = db.before_transaction_async(move |read_only| {
+            refused.lock().expect("the calls of the hooks").push(("first", read_only));
+            async { Err::<(), Error>(transaction_conflict("before-transaction hook refused")) }
+        });
+        let second = recording_hook(&db, &calls, "second");
+        let runs = &AtomicU32::new(0);
+        let callback = |_tx: Tx| async move {
+            runs.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        };
+        let ended = db.transaction_async(callback, TransactionOptions { retry: Some(1), ..Default::default() }).await;
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::Deadlock && error.text() == "before-transaction hook refused"), "{ended:?}");
+        assert_eq!(runs.load(Ordering::SeqCst), 0, "the callback does not run");
+        assert_eq!(hook_calls(&calls), [("first", false)], "one attempt, and no hook after the one that failed");
+        assert!(sent.lock().expect("the sent statements").is_empty(), "no statement is sent");
+        assert_eq!(db.stats().in_use, 0, "no connection is taken");
+        first.remove();
+        second.remove();
+
+        let panicking = db.before_transaction(Box::new(|_read_only| panic!("hook panicked")));
+        let ended = db.transaction_async(callback, once()).await;
+        assert!(
+            matches!(&ended, Err(error) if error.kind() == Kind::Internal && error.text() == "the hook before the transaction panicked: hook panicked"),
+            "{ended:?}"
+        );
+        assert_eq!(runs.load(Ordering::SeqCst), 0, "the callback does not run");
+        panicking.remove();
+        commits(&db, once()).await;
+        assert_eq!(runs.load(Ordering::SeqCst), 0);
+        subscription.unsubscribe();
+        db.close_async().await;
+    }
+
+    // The statement runner of the utilities begins a transaction of its own on a Db, which calls the hooks, and joins
+    // the transaction of a Tx, which calls none (CORE-143, INT-150).
+    #[tokio::test]
+    // Requirements: CORE-143, INT-193, INT-150.
+    async fn the_statement_runner_of_a_db_calls_the_hooks() {
+        let _case = polyspec_orm_testcase::case!();
+        let tmp = Scratch::new("orm-before-transaction-run");
+        let db = hook_db(&tmp, 1).await;
+        let calls = HookCalls::default();
+        let hook = recording_hook(&db, &calls, "first");
+        db.utils().run(async |tx: &Tx| tx.run(KIND_UTILITY, &[], "INSERT INTO orm_hook_probe (id) VALUES (3)", &[]).await.map(drop)).await.expect("run");
+        assert_eq!(hook_calls(&calls), [("first", false)], "the transaction of run calls the hook");
+        db.transaction_async(
+            |tx: Tx| async move {
+                tx.utils().run(async |joined: &Tx| joined.run(KIND_UTILITY, &[], "INSERT INTO orm_hook_probe (id) VALUES (4)", &[]).await.map(drop)).await
+            },
+            once(),
+        )
+        .await
+        .expect("the transaction commits");
+        assert_eq!(hook_calls(&calls), [("first", false), ("first", false)], "run inside a transaction joins it and calls no hook");
+        assert_eq!(probe_row_count_of(&db, "orm_hook_probe").await, 2);
+        hook.remove();
+        db.close_async().await;
     }
 
     // A panic of the callback rolls the transaction back and is internal; it is not resumed (CORE-26).

@@ -24,8 +24,7 @@ This release is not a replacement of the hand-written packages. [The table of th
 - The members of a model that no rule of the core names: `getPagePlanSteps`, `duplication`, the optimistic `update(true)`, the recursive `delete(true)`, `orderByRandom`, `parentNode`, `groupLimit`, `deleteLock`, `fetchKey`, `fetchValue`, `possible<Col>`, `forceIndex<Name>`, the increments `plus<Col>` and `minus<Col>`, `new<Name>` with `get<Name>`, `toJSON`, an order by a column function, and the aggregates `groupBy<Col>`, `sum<Col>` and `avg<Col>`.
 - Statement events: the core has `subscribe`, and the contract does not declare it, so no binding has it.
 - The request hook: the core has `withRequestHook`, and the contract does not declare it, so no binding has it.
-- `beforeTransaction`: the core has no hook before a transaction.
-- `require_match` of a request: the core refuses the member with `ir_invalid`, and an update or a delete that matches no row succeeds.
+- A hook of `beforeTransaction` that does asynchronous work. In Node and WASM a function that the core keeps and that returns a promise is not awaited: the promise is dropped and its rejection reaches no caller. binding refuses a declaration that allows it (`async_allowed` on a kept function), so a hook that must run a statement on another connection cannot be written with a binding yet.
 - The end of a statement in progress at a cancellation. `withCancel` derives a handle, and a statement of a handle whose cancellation has fired fails with `canceled` before it is sent. A statement that is in progress when the cancellation fires is not ended on its server: it runs to its end and returns its own result ([CORE-47](../spec/core.md), "Not implemented").
 - `StyledValue`: the value of a column with a style leaves the core as an `orm_value`, the untyped value of the contract, and `decode` returns such a value.
 
@@ -41,6 +40,21 @@ analysis = db.analyze_restore(request)  # generated test: test_gn13e_db_analyze_
 ```
 ```php
 $analysis = $db->analyzeRestore($request); // generated test: testGn13eDbAnalyzeRestorePrimaryKey
+```
+
+`beforeTransaction` is a member of `Db` in this release ([CORE-143](../spec/core.md)): its hook is a plain function that the core calls with the read-only flag before each transaction, and the member returns an object whose `remove` removes the hook. The hook must not do asynchronous work.
+
+```typescript
+const hook = db.beforeTransaction((readOnly) => { /* runs before each transaction; no await */ });
+hook.remove();
+// generated tests: GN-13e: Db.beforeTransaction a_hook_is_registered_on_the_connection,
+// GN-13e: Db.transaction a_hook_is_called_before_the_transaction, GN-13e: BeforeTransactionHook.remove a_registered_hook_is_removed
+```
+
+`requireMatch` is a member of `Query` in this release ([CORE-142](../spec/core.md)): an `update`, a `delete` or a `restore` of the query whose statement matched no row then fails with `no_rows`, and `restoreOrCreate` does not take the option.
+
+```typescript
+query.requireMatch(); // generated test: GN-13e: Query.requireMatch the_option
 ```
 
 ### Installation
@@ -871,7 +885,7 @@ The same statement produces the same result on all three databases, although sta
 | Execute a compiled statement, such as a load with its keys | `execute` on the connection ([execute a compiled statement](#execute-a-compiled-statement)) |
 | Change every request of a handle before planning | `withRequestHook` on the connection ([request hook](#request-hook)) |
 | Refuse an action outside the database while a transaction is active | `transactionActive()` on the connection (Go `TransactionActive`, Python `transaction_active`); true inside a transaction of the connection in the calling flow, sends no statement ([INT-192](../spec/interfaces.md)). The Rust core and the generated bindings answer for the handle ([Transactions](#transactions)) |
-| Run code before a transaction begins, such as a write on another connection | `beforeTransaction(hook)` on the connection (Go `BeforeTransaction`, Python `before_transaction`; the Rust core has none); the hook runs before each outermost transaction of `transaction`, before it takes a connection or sends a statement, and returns a function that removes it ([INT-193](../spec/interfaces.md)) |
+| Run code before a transaction begins, such as a write on another connection | `beforeTransaction(hook)` on the connection (Go `BeforeTransaction`, Python `before_transaction`; the Rust core `before_transaction` and `before_transaction_async`, [CORE-143](../spec/core.md)); the hook runs before each outermost transaction of `transaction`, before it takes a connection or sends a statement, and returns a function that removes it ([INT-193](../spec/interfaces.md)) |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](../spec/dsl.md)) |
 | View the statements of a page without executing | `getPagePlanSteps(page, perPage)` on a connected model ([dsl.md](../spec/dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |

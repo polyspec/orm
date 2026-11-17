@@ -2347,8 +2347,8 @@
           "signature": "def before_transaction(self, hook: Callable[[bool], None]) -> Callable[[], None]"
         },
         "rust": {
-          "symbol": "packages/rust/src/db.rs::Db::before_transaction",
-          "signature": "pub fn before_transaction(&self, hook: impl Fn(bool) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static) -> BeforeTransactionHook"
+          "symbol": "packages/rust/src/db.rs::Db::before_transaction_async",
+          "signature": "pub fn before_transaction_async<Fut>(&self, hook: impl Fn(bool) -> Fut + Send + Sync + 'static) -> BeforeTransactionHook where Fut: std::future::Future<Output = Result<()>> + Send + 'static,"
         },
         "php-extension": {
           "symbol": "legacy/packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::beforeTransaction",

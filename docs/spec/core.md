@@ -606,6 +606,62 @@ no member gives a `tx` that a case can name.
   with `machine`, so a caller that sets no option passes the empty record.
 - **CORE-105** The machine of `Db::close` gives one `Io` step, the close of the pool of CORE-31, and ends with
   `Done(Ok(()))`; it calls no language code, so it gives neither `Call` nor `Await`, and its `settle` is never called.
+- **CORE-143** `Db::before_transaction(hook)` registers a hook on the connection and returns a `BeforeTransactionHook`,
+  whose `remove` removes it: an attempt that starts after the removal does not call the hook, and a second `remove`
+  does nothing. Every handle of the connection shares the hooks, its clones and the handles of `Db::with_request_hook`
+  and `Db::with_cancel` (CORE-45) included, so a hook registered on a handle is a hook of its connection. Before every
+  transaction that `Db::transaction` or `Db::transaction_async` begins on a handle of the connection, in each attempt
+  that the retry of CORE-24 runs again (CORE-104), the core calls the hooks registered at that moment, in the order of
+  their registration, each with `read_only`, whether the transaction is read-only (INT-41), and each after the one
+  before it ended. It calls them after the requests that ran before the transaction and before the transaction takes a
+  connection of the pool or sends any statement, the SQLite row lock table of INT-49 included, so a hook can run
+  statements and transactions on another connection, and on the same connection, while the transaction holds no
+  connection and no lock; on SQLite another connection can commit there, before the `BEGIN IMMEDIATE` of the
+  transaction takes the write lock (CFG-11). The audit source of CORE-131 is called once, before the hooks of the first
+  attempt. A hook that fails ends the transaction before it begins: the core calls no later hook, takes no connection,
+  sends no statement, does not call the callback, does not run the attempt again, also when the kind of the failure is
+  `deadlock`, and returns the failure unchanged, an exception of a language as the same object (`Failure::Raised`). A
+  hook that panics is `internal` (CORE-26). A closed connection and a handle whose cancellation has fired call no hook,
+  and the transaction ends with `closed` or `canceled` (CORE-31, CORE-46).
+  The hooks belong to the transactions of `Db::transaction`, whatever call begins one: a `Db::transaction` that a
+  callback or a hook begins, which is an independent transaction on another connection of the pool (CORE-20) and calls
+  the hooks again; `Utils::run` and the utilities of a `Db` that run in a transaction of their own (INT-150), which are
+  `install` on PostgreSQL and SQLite, `add_tables_and_columns` on PostgreSQL, `grant_table`, `revoke_table` and the
+  AES rotation; a terminal of a model or a collection connected to a `Db` that runs its
+  statements in one transaction of its own, which are `creates`, `restore_or_create` (INT-39), the recursive `delete`
+  of a model and the `delete` of a collection; and a transaction step of the step runner (CORE-93). `Tx::savepoint`
+  calls no hook, and neither does a utility or a terminal that runs through a `Tx`, which joins the transaction or
+  opens a savepoint. A begin that the
+  core sends without `Db::transaction` calls no hook: the schema statements that MySQL runs outside any transaction,
+  the SQLite rebuild of `add_tables_and_columns` on the connection that it reserves, the transaction in which a
+  PostgreSQL statement runs again after `stale_plan`, and the exclusive transaction of the dbspec apply, which has a
+  connection of its own.
+  This carries INT-193 into the core and replaces no rule of it, with one difference. In the language clients of
+  INT-193 a `transaction` inside an active transaction of the execution flow is a savepoint and calls no hook. The core
+  has no active transaction of a flow (CORE-20), so a `Db::transaction` inside a callback is a transaction of its own
+  and calls the hooks, and only `Tx::savepoint` calls none.
+  In the machine of `Db::transaction` (CORE-103) each attempt gives, before step 1, one step for each hook: `Call` for a
+  hook of the contract, which `Machine::call` calls on the thread that drives the machine, or `Io` for a hook of Rust
+  code, whose future the driver awaits. The step after a hook that failed is `Done(Err)` with its failure.
+  The member `db.before_transaction` of the contract takes the hook as a function that the core keeps (`keeps: true`;
+  binding GN-6z, GN-6aa), `Box<dyn Fn(bool) -> Result<(), Failure<Error>> + Send + Sync>`, and returns the class
+  `before_transaction_hook`, whose member is `remove`. `Db::before_transaction_async(hook)` takes a function that
+  returns a future, which the core awaits before it calls the next hook. Not implemented: the hook of a generated
+  binding is not awaited. The generator of binding 0.0.17 writes a function that the core keeps without
+  `async_allowed`, so the function type of the member states `async_allowed: false` and no member of the contract
+  reaches `Db::before_transaction_async`: a hook of PHP, Python or Go runs its statements inside its call, and a hook
+  of Node or WASM, whose statements return a promise, cannot wait for a statement. `Db::transaction_async` calls a hook
+  of the contract on the thread that polls it, which is the thread of the language code only in a machine. Read from
+  the rule of the generator (binding GN-6z) and not observed in a run: a member that is no machine and begins a
+  transaction of its own, `query.restore_or_create` or `step_runner.run`, calls a hook of Node or PHP on a thread of
+  the runtime, where binding refuses the call (`wrong_thread`), and the transaction ends with `internal` before it
+  begins.
+  The cases are the groups `db.before_transaction` and `before_transaction_hook.remove` and five cases of
+  `db.transaction`. A case gives a function that the core keeps by its rows `{args, once}`, which can neither raise nor
+  run a step nor state the calls of the function (binding CK-22), so the case runner of the core also requires that
+  every row with `once` answered one call, and the unit tests of the crate hold what a case cannot state: the order
+  before the begin, the read of the committed row, the retry, the order and the removal, the hook that fails,
+  `Utils::run` and the transaction of a schema install.
 
 - **CORE-127** The binding member `db.execute` uses `Db::execute_text_machine(self, step: String, params: Vec<OrmValue>)`,
   a machine that owns the database handle, compiled-step text and parameter values. Its first advance gives one `Io`

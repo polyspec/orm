@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 6328673f9ba0122f63b37687becb6f8a95e39034daff57ff0a65ac47a0e0d629 -->
+<!-- source-sha256: fc24428b6fcb63707dbda181bfefe2ab51adcca734c32d34ff42a322a9620d9c -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 테스트 명령을 선언한다. 그 명령은 자기 recipe의 entry(FCV-12)이거나 FCV-2의 네이티브 테스트다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-unit-check`가 실패한다.
@@ -588,7 +588,7 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 - 어느 바인딩에도 `utils()`가 없다. statement runner, lock과 local 값, schema utility `register`, `install`, `addTablesAndColumns`, privilege, AES rotation은 코어에 있고 계약에 없다(CORE-70). 바인딩은 `db.connect_schema`에서 schema 하나를 등록한다.
 - CORE-84가 구현되지 않았다고 적는 member는 generated Rust model에만 있다. `Query`에는 그 가운데 어느 것도 없어서 어느 바인딩에도 없다.
 - generated Rust model의 member 열일곱 개가 더 `Query`에 없고, 코어의 어느 규칙도 그것을 적지 않는다. 아래에 따로 표가 있다.
-- 코어에는 transaction 전의 hook이 없고, 계약은 request hook, statement event 구독, `notify`와 `listen`을 선언하지 않는다.
+- 계약은 request hook, statement event 구독, `notify`와 `listen`을 선언하지 않는다.
 - `db.transaction`의 callback은 `Tx`를 받고, model은 그 handle로 `connect`한 뒤에 transaction 안에서 실행된다(CORE-20). `db.transaction_active`는 언제나 `false`다(CORE-140).
 
 ### 연결
@@ -596,26 +596,26 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 | Legacy 이름 | 규칙 | 상태 | 근거 |
 | --- | --- | --- | --- |
 | `Db.connect(dsn, options)` (PHP `Orm::connect(dsn, Config)`) | INT-12~INT-15 | 있음, 바뀜: `db.connect(dsn, pool_size, cfg)`. pool 크기는 필수 인자이고 `cfg`는 필수 record다(CORE-131, CORE-132) | `packages/rust/interface.json:1609`, `contracts/interfaces.json:1977` |
-| `Db.connectSchema(dsn, schema, options)` | INT-132 | 있음, 바뀜: 인자는 `db.connect`와 같다. `schema`는 `schema.load`가 만든 값이다(CORE-125) | `packages/rust/interface.json:1872`, `contracts/interfaces.json:2017` |
+| `Db.connectSchema(dsn, schema, options)` | INT-132 | 있음, 바뀜: 인자는 `db.connect`와 같다. `schema`는 `schema.load`가 만든 값이다(CORE-125) | `packages/rust/interface.json:1908`, `contracts/interfaces.json:2017` |
 | 생성된 module의 `connect(dsn, options)`, `SCHEMA`, `MANIFEST_TEXT`, `MANIFEST_HASH` | INT-15, INT-132 | 구현 없음. 생성된 module을 가진 바인딩이 없다 | `legacy/packages/ts/src/generate/typescript.ts:235` |
 | `Db.transaction(callback, options)` | INT-72 | 있음, 바뀜: callback이 `Tx`를 받는다(CORE-20). `options`가 필수이고(CORE-104) 계약은 그 다섯 field를 필수로 선언한다. 바인딩을 거치면 commit의 `deadlock`만 다시 시도한다(CORE-104) | `packages/rust/interface.json:1777`, `contracts/interfaces.json:2056` |
 | `connect` 없는 model이 쓰는 실행 흐름의 활성 transaction | INT-45, DSL-10 | 코어의 규칙이 대체: CORE-20 | `docs/spec/core.md:87` |
-| transaction 안의 `transaction`은 savepoint다 | INT-46 | 코어의 규칙이 대체: CORE-21, `tx.savepoint`. callback 안의 `Db::transaction`은 독립된 transaction이다(CORE-20) | `packages/rust/interface.json:2068` |
-| `Db.transactionActive()` | INT-192 | 있음, 바뀜: `db.transaction_active`는 언제나 `false`이고 `tx.transaction_active`가 자기 handle에 대한 값을 돌려준다(CORE-140) | `packages/rust/interface.json:1711`, `packages/rust/interface.json:2123`, `packages/rust/src/db.rs:1062` |
-| `Db.beforeTransaction(hook)` | INT-193 | 구현 없음. 코어에 그런 member가 없다. 선언 목록은 존재하지 않는 Rust symbol을 적는다(T598) | `contracts/interfaces.json:2323` |
-| `Db.analyzeRestore(request)`, `RestoreAnalysis` | INT-191, PRT-91 | 있음, 바뀜: `db.analyze_restore`는 요청을 JSON text로 받고 `key`와 `assignments`의 JSON text를 돌려준다(CORE-141). `runtime_model.restore_key`는 분류하고 거절한다 | `contracts/interfaces.json:2244`, `packages/rust/interface.json:1745`, `packages/rust/interface.json:4757` |
-| `Db.withRequestHook(hook)`, `RequestHook` | INT-78 | 코어에 있고 계약에 없음. CORE-70: protocol의 요청은 계약의 type이 아니다(T600) | `packages/rust/src/db.rs:1043`, `packages/rust/src/db.rs:56` |
+| transaction 안의 `transaction`은 savepoint다 | INT-46 | 코어의 규칙이 대체: CORE-21, `tx.savepoint`. callback 안의 `Db::transaction`은 독립된 transaction이다(CORE-20) | `packages/rust/interface.json:2146` |
+| `Db.transactionActive()` | INT-192 | 있음, 바뀜: `db.transaction_active`는 언제나 `false`이고 `tx.transaction_active`가 자기 handle에 대한 값을 돌려준다(CORE-140) | `packages/rust/interface.json:1711`, `packages/rust/interface.json:2201`, `packages/rust/src/db.rs:1165` |
+| `Db.beforeTransaction(hook)` | INT-193 | 있음, 바뀜: `db.before_transaction`은 코어가 보관하는 함수를 받고 `before_transaction_hook`을 돌려주며, 그 `remove`가 hook을 제거한다. binding의 hook은 기다려지지 않고, callback 안의 `Db::transaction`은 hook을 호출한다(CORE-143) | `contracts/interfaces.json:2323`, `packages/rust/interface.json:1845` |
+| `Db.analyzeRestore(request)`, `RestoreAnalysis` | INT-191, PRT-91 | 있음, 바뀜: `db.analyze_restore`는 요청을 JSON text로 받고 `key`와 `assignments`의 JSON text를 돌려준다(CORE-141). `runtime_model.restore_key`는 분류하고 거절한다 | `contracts/interfaces.json:2244`, `packages/rust/interface.json:1745`, `packages/rust/interface.json:4835` |
+| `Db.withRequestHook(hook)`, `RequestHook` | INT-78 | 코어에 있고 계약에 없음. CORE-70: protocol의 요청은 계약의 type이 아니다(T600) | `packages/rust/src/db.rs:1102`, `packages/rust/src/db.rs:56` |
 | `Db.root()` (TypeScript, Python, Go) | INT-78a | 구현 없음 | `legacy/packages/ts/src/database.ts:684` |
 | `Db.subscribe(subscriber)`, `StatementEvent`, `StatementKind`, `StatementSubscriber` | INT-77, INT-91 | 코어에 있고 계약에 없음. CORE-70: event가 statement를 빌린다. CORE-28은 subscriber의 예외를 그대로 돌려준다 | `packages/rust/src/events.rs:133`, `packages/rust/src/events.rs:40` |
-| `Db.execute(step, params)` | INT-76 | 있음, 바뀜: step은 JSON text이고 parameter는 `orm_value`다(CORE-127). `tx.execute`는 transaction 안에서 실행한다(CORE-133) | `packages/rust/interface.json:1933`, `packages/rust/interface.json:2015` |
+| `Db.execute(step, params)` | INT-76 | 있음, 바뀜: step은 JSON text이고 parameter는 `orm_value`다(CORE-127). `tx.execute`는 transaction 안에서 실행한다(CORE-133) | `packages/rust/interface.json:1969`, `packages/rust/interface.json:2093` |
 | `Db.close()` | INT-67 | 있음 | `packages/rust/interface.json:1659` |
 | `Db.stats()`, 네 개의 수를 가진 `PoolStats` | INT-61, INT-79 | 있음 | `packages/rust/interface.json:1677`, `packages/rust/interface.json:1258` |
-| `Db.utils()` | INT-73, INT-134 | 코어에 있고 계약에 없음. CORE-70: `Utils`와 그 부분은 handle을 빌린다 | `packages/rust/src/utils.rs:31`, `packages/rust/src/tx.rs:405` |
+| `Db.utils()` | INT-73, INT-134 | 코어에 있고 계약에 없음. CORE-70: `Utils`와 그 부분은 handle을 빌린다 | `packages/rust/src/utils.rs:31`, `packages/rust/src/tx.rs:451` |
 | `Db.driver` property | 규칙 없음 | 있음, 바뀜: method `db.driver()`. `db.sql_driver()`가 새로 있다 | `packages/rust/interface.json:1695`, `packages/rust/interface.json:1728` |
 | `Db.closed` property (TypeScript, Python) | 규칙 없음 | 구현 없음 | `legacy/packages/ts/src/database.ts:618` |
-| `Db.withSignal` (PHP `withCancellation`과 `Cancellation`, Python `with_future`, Go `WithContext`) | CFG-9 | 코어의 규칙이 대체: CORE-45, `db.with_cancel`. 그 가운데 구현되지 않은 것은 CORE-47과 CORE-110이 적는다 | `packages/rust/interface.json:1845`, `contracts/interfaces.json:59` |
+| `Db.withSignal` (PHP `withCancellation`과 `Cancellation`, Python `with_future`, Go `WithContext`) | CFG-9 | 코어의 규칙이 대체: CORE-45, `db.with_cancel`. 그 가운데 구현되지 않은 것은 CORE-47과 CORE-110이 적는다 | `packages/rust/interface.json:1881`, `contracts/interfaces.json:59` |
 | `Db.notify`, `Db.listen`, `Subscription`, `Notification` | DIA-193, DIA-196 | 코어에 있고 계약에 없음. 코어의 어느 규칙도 그것들을 적지 않는다 | `packages/rust/src/listen.rs:32`, `packages/rust/src/listen.rs:72` |
-| `TxFrame.run(kind, tables, sql, params)`, `Utils.run(fn)` | INT-150 | 코어에 있고 계약에 없음. CORE-70: `Tx::run`의 table은 빌린 text이고 row는 column 없는 cell 목록이다 | `packages/rust/src/tx.rs:514`, `packages/rust/src/utils.rs:157` |
+| `TxFrame.run(kind, tables, sql, params)`, `Utils.run(fn)` | INT-150 | 코어에 있고 계약에 없음. CORE-70: `Tx::run`의 table은 빌린 text이고 row는 column 없는 cell 목록이다 | `packages/rust/src/tx.rs:560`, `packages/rust/src/utils.rs:157` |
 | Python `Db.active_frame()` | INT-161 | 코어의 규칙이 대체: CORE-20 | `docs/spec/core.md:87` |
 | TypeScript `Db`의 property `zone`, `signal`, `requestHook`, `aesKey`, `blindIndexKey`, `aesVersion`, `aesKeyring`과 method `clockMicros()`, `now()` | 규칙 없음 | 구현 없음 | `legacy/packages/ts/src/database.ts:550`, `legacy/packages/ts/src/database.ts:1209` |
 | `registerModel` (Python `register_model`, PHP `Registry`), `CORE`, `Core`, `EntityDef`, `ModelClass`, `ChainKey`, `SetSpec` | 규칙 없음 | 구현 없음. 어느 바인딩에도 없는 generated model을 위한 것이다 | `legacy/packages/ts/src/index.ts:13`, `legacy/packages/ts/src/index.ts:44` |
@@ -625,30 +625,30 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 | Legacy 이름 | 규칙 | 상태 | 근거 |
 | --- | --- | --- | --- |
 | option `isolation`, `readOnly`, `timeoutMs`, `retry`, `audit` | INT-40~INT-44 | 있음 | `packages/rust/interface.json:1480`, `packages/rust/interface.json:1209` |
-| `transactionConflict(message)` | INT-48 | 코어에 있고 계약에 없음. CORE-24가 이름을 적고 CORE-70의 목록에는 없다 | `packages/rust/src/tx.rs:1015` |
+| `transactionConflict(message)` | INT-48 | 코어에 있고 계약에 없음. CORE-24가 이름을 적고 CORE-70의 목록에는 없다 | `packages/rust/src/tx.rs:1063` |
 | 원인과 `rollback`을 가진 오류 `ROLLBACK` | INT-46, INT-72 | 코어의 규칙이 대체: CORE-25, kind `rollback_failed` | `docs/spec/core.md:126` |
 | 한 transaction을 동시에 쓸 때의 오류 | INT-47 | 코어의 규칙이 대체: CORE-22, kind `busy` | `docs/spec/core.md:102` |
 | transaction이 끝난 뒤에 쓴 frame의 `CONFIG` | INT-150a | 코어의 규칙이 대체: CORE-23, kind `transaction_ended` | `docs/spec/core.md:107` |
-| `forUpdate`, `forShare`, `forUpdateNoWait`, `forShareNoWait` | INT-49 | 있음 | `packages/rust/interface.json:3628`, `packages/rust/interface.json:3681` |
+| `forUpdate`, `forShare`, `forUpdateNoWait`, `forShareNoWait` | INT-49 | 있음 | `packages/rust/interface.json:3706`, `packages/rust/interface.json:3759` |
 | `utils().lock`, `setLocal`, `local`, `wasInserted`, `backendWaitingForLock` | INT-50~INT-53 | 코어에 있고 계약에 없음 | `packages/rust/src/utils.rs:173`, `packages/rust/src/utils.rs:197`, `packages/rust/src/utils.rs:239`, `packages/rust/src/utils.rs:220`, `packages/rust/src/utils.rs:231` |
 
 ### Model과 query builder
 
 | Legacy 이름 | 규칙 | 상태 | 근거 |
 | --- | --- | --- | --- |
-| `relation`, `relations`, `expectRevision`, `create`, `restore`, `restoreOrCreate`, `addAllColumns`, `removeAllColumns` | INT-87, INT-34, INT-38, INT-39, DSL-76, DSL-77, DSL-108 | 있음 | `packages/rust/interface.json:3835`, `packages/rust/interface.json:3862`, `packages/rust/interface.json:4047`, `packages/rust/interface.json:4096`, `packages/rust/interface.json:4205`, `packages/rust/interface.json:4244`, `packages/rust/interface.json:3700`, `packages/rust/interface.json:3718` |
-| entity마다 하나의 model class. `connect(db)`는 model을 돌려준다 | INT-16, INT-17 | 있음, 바뀜: `Query.new(schema, entity)`가 entity를 text로 지정하고 `connect`는 아무것도 돌려주지 않는다(CORE-81) | `packages/rust/interface.json:3264`, `packages/rust/interface.json:3317` |
-| 조건 chain `<Chain>()`, `and<Chain>()`, `or<Chain>()`, 연결자 `and()`와 `or()`, 연산자, `tuple<A>With<B>` | DSL-12~DSL-35 | 있음, 바뀜: `where(chain, values)`가 chain 이름을 text로 받는다(CORE-82) | `packages/rust/interface.json:3343` |
-| 조건의 값으로 준 model, `IN (SELECT …)` | DSL-53 | 있음, 바뀜: `where_in(chain, query)`(CORE-90) | `packages/rust/interface.json:3979` |
-| `orderBy<Col>Asc()`, `orderBy<Col>Desc()` | DSL-99 | 있음, 바뀜: `order_by(spec)`. column function은 받지 않는다(CORE-82) | `packages/rust/interface.json:3403` |
-| `getBy<Chain>()`, `getCountBy<Chain>()` | INT-27, INT-28 | 있음, 바뀜: `get_by(chain, values)`, `get_count_by(chain, values)`(CORE-83) | `packages/rust/interface.json:3490`, `packages/rust/interface.json:3546` |
-| `getCount()` | INT-33 | 있음, 바뀜: 결과가 `int64`이고 Node에서는 `bigint`다 | `packages/rust/interface.json:3428` |
-| `limit(offset, count)` | INT-159 | 있음, 바뀜: 둘 다 `uint`라서 음수 offset은 표현할 수 없다(CORE-85) | `packages/rust/interface.json:3597` |
-| `set<Col>(value)`, `get<Col>()` | DSL-100, DSL-71 | 있음, 바뀜: `set(column, value)`와 `value(column)`. 값은 type 없는 `orm_value`다(CORE-83, CORE-91) | `packages/rust/interface.json:4014`, `packages/rust/interface.json:3459` |
-| `addColumn<Col>()`, `removeColumn<Col>()`, `keyName<Col>()`, `match<L>With<R>()`, `alias<Name>()` | DSL-72, DSL-75, DSL-70, DSL-82, DSL-83 | 있음, 바뀜: `add_column`, `remove_column`, `key_name`, `match_pair`, `alias`가 이름을 text로 받는다(CORE-87~CORE-89) | `packages/rust/interface.json:3736`, `packages/rust/interface.json:3761`, `packages/rust/interface.json:3954`, `packages/rust/interface.json:3786`, `packages/rust/interface.json:3811` |
-| relation getter `get<Table>Model()`, `get<Table>Models()` | DSL-89 | 있음, 바뀜: `related(name)`, `related_rows(name)`(CORE-88) | `packages/rust/interface.json:3889`, `packages/rust/interface.json:3920` |
-| `update(optimistic)` | INT-36, DSL-106, DSL-107 | 있음, 바뀜: `update()`는 인자가 없고 query의 조건 아래에서 key의 한 row를 쓴다(CORE-138) | `packages/rust/interface.json:4133`, `packages/rust/build/src/fixed.rs.txt:135` |
-| `delete(recursive)` | INT-37, DSL-110, DSL-111 | 있음, 바뀜: `delete()`는 인자가 없고 query의 조건 아래에서 key의 한 row를 지운다(CORE-138). 계약의 어느 member도 recursive로 지우지 않는다 | `packages/rust/interface.json:4169`, `packages/rust/build/src/fixed.rs.txt:145` |
+| `relation`, `relations`, `expectRevision`, `create`, `restore`, `restoreOrCreate`, `addAllColumns`, `removeAllColumns` | INT-87, INT-34, INT-38, INT-39, DSL-76, DSL-77, DSL-108 | 있음 | `packages/rust/interface.json:3913`, `packages/rust/interface.json:3940`, `packages/rust/interface.json:4125`, `packages/rust/interface.json:4174`, `packages/rust/interface.json:4283`, `packages/rust/interface.json:4322`, `packages/rust/interface.json:3778`, `packages/rust/interface.json:3796` |
+| entity마다 하나의 model class. `connect(db)`는 model을 돌려준다 | INT-16, INT-17 | 있음, 바뀜: `Query.new(schema, entity)`가 entity를 text로 지정하고 `connect`는 아무것도 돌려주지 않는다(CORE-81) | `packages/rust/interface.json:3342`, `packages/rust/interface.json:3395` |
+| 조건 chain `<Chain>()`, `and<Chain>()`, `or<Chain>()`, 연결자 `and()`와 `or()`, 연산자, `tuple<A>With<B>` | DSL-12~DSL-35 | 있음, 바뀜: `where(chain, values)`가 chain 이름을 text로 받는다(CORE-82) | `packages/rust/interface.json:3421` |
+| 조건의 값으로 준 model, `IN (SELECT …)` | DSL-53 | 있음, 바뀜: `where_in(chain, query)`(CORE-90) | `packages/rust/interface.json:4057` |
+| `orderBy<Col>Asc()`, `orderBy<Col>Desc()` | DSL-99 | 있음, 바뀜: `order_by(spec)`. column function은 받지 않는다(CORE-82) | `packages/rust/interface.json:3481` |
+| `getBy<Chain>()`, `getCountBy<Chain>()` | INT-27, INT-28 | 있음, 바뀜: `get_by(chain, values)`, `get_count_by(chain, values)`(CORE-83) | `packages/rust/interface.json:3568`, `packages/rust/interface.json:3624` |
+| `getCount()` | INT-33 | 있음, 바뀜: 결과가 `int64`이고 Node에서는 `bigint`다 | `packages/rust/interface.json:3506` |
+| `limit(offset, count)` | INT-159 | 있음, 바뀜: 둘 다 `uint`라서 음수 offset은 표현할 수 없다(CORE-85) | `packages/rust/interface.json:3675` |
+| `set<Col>(value)`, `get<Col>()` | DSL-100, DSL-71 | 있음, 바뀜: `set(column, value)`와 `value(column)`. 값은 type 없는 `orm_value`다(CORE-83, CORE-91) | `packages/rust/interface.json:4092`, `packages/rust/interface.json:3537` |
+| `addColumn<Col>()`, `removeColumn<Col>()`, `keyName<Col>()`, `match<L>With<R>()`, `alias<Name>()` | DSL-72, DSL-75, DSL-70, DSL-82, DSL-83 | 있음, 바뀜: `add_column`, `remove_column`, `key_name`, `match_pair`, `alias`가 이름을 text로 받는다(CORE-87~CORE-89) | `packages/rust/interface.json:3814`, `packages/rust/interface.json:3839`, `packages/rust/interface.json:4032`, `packages/rust/interface.json:3864`, `packages/rust/interface.json:3889` |
+| relation getter `get<Table>Model()`, `get<Table>Models()` | DSL-89 | 있음, 바뀜: `related(name)`, `related_rows(name)`(CORE-88) | `packages/rust/interface.json:3967`, `packages/rust/interface.json:3998` |
+| `update(optimistic)` | INT-36, DSL-106, DSL-107 | 있음, 바뀜: `update()`는 인자가 없고 query의 조건 아래에서 key의 한 row를 쓴다(CORE-138) | `packages/rust/interface.json:4211`, `packages/rust/build/src/fixed.rs.txt:135` |
+| `delete(recursive)` | INT-37, DSL-110, DSL-111 | 있음, 바뀜: `delete()`는 인자가 없고 query의 조건 아래에서 key의 한 row를 지운다(CORE-138). 계약의 어느 member도 recursive로 지우지 않는다 | `packages/rust/interface.json:4247`, `packages/rust/build/src/fixed.rs.txt:145` |
 | `get()` | INT-29 | 코어에 있고 계약에 없음. CORE-70 | `packages/rust/src/query.rs:356`, `contracts/interfaces.json:1014` |
 | `gets()`, `Collection<T>`와 그 member `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80~INT-86 | 코어에 있고 계약에 없음. CORE-70: `Collection`은 generated model의 type을 받는다 | `packages/rust/src/query.rs:362`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
 | `getsBy<Chain>()` | INT-27 | 코어에 있고 계약에 없음. CORE-70 | `packages/rust/src/query.rs:384` |
@@ -702,33 +702,33 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 
 | Legacy 이름 | 규칙 | 상태 | 근거 |
 | --- | --- | --- | --- |
-| `manifestText`, `manifestHash`, `externalText`를 가진 `Schema` 값 | INT-133 | 있음, 바뀜: `schema.load`가 만드는 class다. `hash()`가 있고 공개된 text는 없다(CORE-80, CORE-125) | `packages/rust/interface.json:2258`, `packages/rust/interface.json:2303` |
+| `manifestText`, `manifestHash`, `externalText`를 가진 `Schema` 값 | INT-133 | 있음, 바뀜: `schema.load`가 만드는 class다. `hash()`가 있고 공개된 text는 없다(CORE-80, CORE-125) | `packages/rust/interface.json:2336`, `packages/rust/interface.json:2381` |
 | `schema().register`, `install`, `addTablesAndColumns`, `exists`, `installed`, `empty` | INT-54~INT-58 | 코어에 있고 계약에 없음. `db.connect_schema`가 연결할 때 schema 하나를 등록한다 | `packages/rust/src/utils.rs:275`, `packages/rust/src/utils.rs:289`, `packages/rust/src/utils.rs:341`, `packages/rust/src/utils.rs:391`, `packages/rust/src/utils.rs:409`, `packages/rust/src/utils.rs:440` |
 | `privileges().grantTable`, `revokeTable`, `inspectTable`, `TablePrivileges` | INT-59 | 코어에 있고 계약에 없음 | `packages/rust/src/utils.rs:490`, `packages/rust/src/utils.rs:505`, `packages/rust/src/utils.rs:526` |
 | `aes().status`, `aes().rotate`, `AesRotationStatus` | INT-60, INT-75, INT-131 | 코어에 있고 계약에 없음. 둘 다 generated model을 받는다 | `packages/rust/src/utils.rs:627`, `packages/rust/src/utils.rs:650` |
 | `utils().stats()` | INT-61 | 코어에 있고 계약에 없음. `db.stats`가 같은 수를 돌려준다 | `packages/rust/src/utils.rs:100` |
-| `readDbspecBytes`, `readDbspecSet`, `emitDbspec`, `dbspecManifest`, `renderDbspecStatements`, `parseDbspecSet` | FMS-20~FMS-25 | 있음, 바뀜: 문서와 결과가 JSON text다(FMS-2). `dbspec.read_set`은 target `wasm`에 없다(FMS-7) | `packages/rust/interface.json:4434`, `packages/rust/interface.json:4401`, `packages/rust/interface.json:4521`, `packages/rust/interface.json:4498`, `packages/rust/interface.json:4544`, `packages/rust/interface.json:4463` |
-| `parseDbspec` | `Dbspec.parse`(선언 목록) | 코어의 규칙이 대체: FMS-22, `dbspec.parse_set` 한 번의 호출 | `contracts/interfaces.json:3216`, `packages/rust/interface.json:4463` |
-| `renderDbspec` | `Dbspec.render`(선언 목록) | 코어의 규칙이 대체: FMS-25, `dbspec.render_statements`의 각 statement의 `sql` | `contracts/interfaces.json:3396`, `packages/rust/interface.json:4544` |
+| `readDbspecBytes`, `readDbspecSet`, `emitDbspec`, `dbspecManifest`, `renderDbspecStatements`, `parseDbspecSet` | FMS-20~FMS-25 | 있음, 바뀜: 문서와 결과가 JSON text다(FMS-2). `dbspec.read_set`은 target `wasm`에 없다(FMS-7) | `packages/rust/interface.json:4512`, `packages/rust/interface.json:4479`, `packages/rust/interface.json:4599`, `packages/rust/interface.json:4576`, `packages/rust/interface.json:4622`, `packages/rust/interface.json:4541` |
+| `parseDbspec` | `Dbspec.parse`(선언 목록) | 코어의 규칙이 대체: FMS-22, `dbspec.parse_set` 한 번의 호출 | `contracts/interfaces.json:3216`, `packages/rust/interface.json:4541` |
+| `renderDbspec` | `Dbspec.render`(선언 목록) | 코어의 규칙이 대체: FMS-25, `dbspec.render_statements`의 각 statement의 `sql` | `contracts/interfaces.json:3396`, `packages/rust/interface.json:4622` |
 | `readDbspecFile`, `analyzeDbspec`, `formatDbspec` | `Dbspec.readFile`, `Dbspec.analyze`, `Dbspec.format`(선언 목록) | 코어에 있고 계약에 없음 | `packages/rust/schema/src/dbspec/file.rs:37`, `packages/rust/schema/src/dbspec/mod.rs:288`, `packages/rust/schema/src/dbspec/mod.rs:298` |
 | `introspectDbspec`, `externalDifferences`, `compareSchemas`, `installedDifferences`, `addTablesAndColumnsSteps` | `Dbspec.introspect`~`Dbspec.addTablesAndColumnsSteps`(선언 목록) | 코어에 있고 계약에 없음 | `packages/rust/src/dbspec/introspect.rs:49`, `packages/rust/schema/src/dbspec/mod.rs:522`, `packages/rust/schema/src/dbspec/compare.rs:48`, `packages/rust/schema/src/dbspec/add_tables_and_columns.rs:59`, `packages/rust/schema/src/dbspec/add_tables_and_columns.rs:79` |
 | `parsePlan`, `emitPlan`, `chainPlans`, `diffPlan`, `planSteps` | `Dbspec.parsePlan`~`Dbspec.planSteps`(선언 목록) | 코어에 있고 계약에 없음 | `packages/rust/schema/src/dbspec/plan.rs:124`, `packages/rust/schema/src/dbspec/plan.rs:240`, `packages/rust/schema/src/dbspec/plan.rs:270`, `packages/rust/schema/src/dbspec/plan_diff.rs:55`, `packages/rust/schema/src/dbspec/plan_steps.rs:76` |
 | `applyPlans`, `recoverPlans`, `rollbackPlans`, `finalizePlans`, `DbspecApplyError` | `Dbspec.apply`~`Dbspec.finalize`(선언 목록) | 코어에 있고 계약에 없음 | `packages/rust/src/dbspec/apply.rs:344`, `contracts/interfaces.json:3792` |
 | `exportMermaid`, `importMermaid` | `Dbspec.exportMermaid`, `Dbspec.importMermaid`(선언 목록) | 코어에 있고 계약에 없음 | `packages/rust/schema/src/dbspec/mermaid.rs:23`, `packages/rust/schema/src/dbspec/mermaid.rs:236` |
-| `compile`과 `manifestHash`를 가진 `Engine`, `loadSet`, `RuntimeModel`, `Entity`, `Field` (Python `model_of_documents`, `parse_document_set`) | 규칙 없음 | 있음, 바뀜: `dbspec.runtime_model`과 class `runtime_model`. member는 JSON text를 받고 돌려준다(FMS-27, FMS-30) | `packages/rust/interface.json:4610`, `packages/rust/interface.json:4650`, `packages/rust/interface.json:4787` |
+| `compile`과 `manifestHash`를 가진 `Engine`, `loadSet`, `RuntimeModel`, `Entity`, `Field` (Python `model_of_documents`, `parse_document_set`) | 규칙 없음 | 있음, 바뀜: `dbspec.runtime_model`과 class `runtime_model`. member는 JSON text를 받고 돌려준다(FMS-27, FMS-30) | `packages/rust/interface.json:4688`, `packages/rust/interface.json:4728`, `packages/rust/interface.json:4865` |
 | `connectCatalog`, `CatalogConnection`과 그 `close`, `currentNamespace`, `describeTable`, `tablePage`, `readOnlyQuery`, `readOnlyGridQuery`, `rowSnapshotFromPage`, `insertRow`, `updateRow`, `deleteRow`, 그리고 `CatalogRowSnapshot`, `CatalogFloat` | INT-97~INT-125, INT-165~INT-186 | 코어에 있고 계약에 없음. crate `polyspec-orm`이 아니라 crate `polyspec-orm-build`에 있다 | `packages/rust/build/src/catalog/mod.rs:81`, `packages/rust/build/src/catalog/mod.rs:216`, `packages/rust/build/src/catalog/row_insert.rs:25` |
 
 ### Codec, 오류, utility, 명령
 
 | Legacy 이름 | 규칙 | 상태 | 근거 |
 | --- | --- | --- | --- |
-| `hostEncode`, `hostDecode` | COD-1 | 있음 | `packages/rust/interface.json:4936`, `packages/rust/interface.json:4983` |
-| `decode(styles, raw)` | COD-1 | 있음, 바뀜: 결과가 `StyledValue`가 아니라 `orm_value`다 | `packages/rust/interface.json:4898` |
-| `blindIndex(value, key)` | COD-4 | 있음, 바뀜: 결과가 text이고 null이 아니다 | `packages/rust/interface.json:5030` |
+| `hostEncode`, `hostDecode` | COD-1 | 있음 | `packages/rust/interface.json:5014`, `packages/rust/interface.json:5061` |
+| `decode(styles, raw)` | COD-1 | 있음, 바뀜: 결과가 `StyledValue`가 아니라 `orm_value`다 | `packages/rust/interface.json:4976` |
+| `blindIndex(value, key)` | COD-4 | 있음, 바뀜: 결과가 text이고 null이 아니다 | `packages/rust/interface.json:5108` |
 | `encode(styles, state)` | COD-1 | 코어에 있고 계약에 없음 | `packages/rust/src/codec.rs:247` |
 | `CodecError` | 규칙 없음 | 코어의 규칙이 대체: CORE-11과 CORE-139, category `value`의 class | `docs/spec/core.md:79` |
-| `AesKeyring(keys, current)`, `versions()` | INT-130, INT-74 | 있음 | `packages/rust/interface.json:2164`, `packages/rust/interface.json:2216` |
-| `AesKeyring.currentVersion` property | INT-130 | 있음, 바뀜: method `current()` | `packages/rust/interface.json:2200` |
+| `AesKeyring(keys, current)`, `versions()` | INT-130, INT-74 | 있음 | `packages/rust/interface.json:2242`, `packages/rust/interface.json:2294` |
+| `AesKeyring.currentVersion` property | INT-130 | 있음, 바뀜: method `current()` | `packages/rust/interface.json:2278` |
 | `AesKeyring.key(version)`, `rotateRow`, `storedVersion` | 규칙 없음 | 구현 없음 | `legacy/packages/ts/src/aes.ts:39`, `packages/rust/src/utils.rs:543` |
 | `code`(PHP `code_`)를 가진 `OrmError` (PHP `OrmException`) | INT-89 | 코어의 규칙이 대체: CORE-10과 CORE-11, `kind`를 가진 category별 class | `packages/rust/interface.json:579` |
 | 상수 `codes.*` (PHP `Code::*`) | INT-65 | 코어의 규칙이 대체: CORE-10, enum `ErrorKind` | `packages/rust/interface.json:579` |
@@ -744,7 +744,7 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 
 | Legacy 이름 | 규칙 | 상태 | 근거 |
 | --- | --- | --- | --- |
-| 요청의 `require_match` | PRT-90 | 있음, 바뀜: 요청 form의 boolean member다. `query.require_match`는 `update`, `delete`, `restore`에 이 member를 넣고 `restore_or_create`의 restore에는 넣지 않는다(CORE-142) | `packages/rust/src/ir.rs:21`, `packages/rust/interface.json:4079`, `legacy/packages/go/engine/ir/ir.go:33` |
+| 요청의 `require_match` | PRT-90 | 있음, 바뀜: 요청 form의 boolean member다. `query.require_match`는 `update`, `delete`, `restore`에 이 member를 넣고 `restore_or_create`의 restore에는 넣지 않는다(CORE-142) | `packages/rust/src/ir.rs:21`, `packages/rust/interface.json:4157`, `legacy/packages/go/engine/ir/ir.go:33` |
 | 요청의 `ir_version`, `manifest_hash`, `kind`, `load`, `set`, `on_duplicate`, `rows`, `optimistic`, `agg`, `n_params` | `IRRequest`(선언 목록) | 있음 | `packages/rust/src/ir.rs:349`, `contracts/interfaces.json:4393` |
 | `ir_version`의 값 | PRT-92 | 있음, 바뀜: 코어는 2를 받고 언어 구현의 version인 1에는 `version_mismatch`를 돌려준다(PRT-92) | `packages/rust/src/ir.rs:272`, `packages/rust/src/engine/validate.rs:174`, `legacy/packages/go/engine/ir/ir.go:19` |
 | query의 `entity`, `columns`, `on`, `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, `key_by`, `flatten`, `limit_per_parent`, `if_parent`, `no_cascade_delete` | `IRQuery`(선언 목록) | 있음 | `packages/rust/src/ir.rs:329`, `contracts/interfaces.json:4426` |
@@ -753,18 +753,18 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 | group의 item, `IRItem` | FMS-31 | 있음, 바뀜: `pred`, `group`, `joined` 가운데 정확히 하나를 담는다 | `packages/rust/src/ir.rs:441` |
 | limit, `IRLimit` | FMS-31 | 있음, 바뀜: 두 member를 모두 가진 `offset`·`count` 쌍이거나 `offset_p`·`count_p` 쌍이다 | `packages/rust/src/ir.rs:443` |
 | 요청의 열네 kind | 규칙 없음 | 있음 | `packages/rust/src/engine/validate.rs:195` |
-| 요청을 실행하는 member의 인자로서의 요청 | INT-78 | 구현 없음. `runtime_model.validate`, `compile`, `param_uses`, `restore_key`는 요청의 text를 받고 아무것도 실행하지 않는다 | `packages/rust/interface.json:4677` |
+| 요청을 실행하는 member의 인자로서의 요청 | INT-78 | 구현 없음. `runtime_model.validate`, `compile`, `param_uses`, `restore_key`는 요청의 text를 받고 아무것도 실행하지 않는다 | `packages/rust/interface.json:4755` |
 
 ### 연결 option
 
 | Legacy 이름 | 규칙 | 상태 | 근거 |
 | --- | --- | --- | --- |
-| `aesKey`, `blindIndexKey`, `aesVersion`, `aesKeys`, `planCacheSize`, `statementCacheSize`, `statementTimeoutMs`, `poolIdleSize`, `poolLifetimeMs` | COD-8, CFG-5 | 있음 | `packages/rust/interface.json:1313`, `packages/rust/src/db.rs:106` |
+| `aesKey`, `blindIndexKey`, `aesVersion`, `aesKeys`, `planCacheSize`, `statementCacheSize`, `statementTimeoutMs`, `poolIdleSize`, `poolLifetimeMs` | COD-8, CFG-5 | 있음 | `packages/rust/interface.json:1313`, `packages/rust/src/db.rs:162` |
 | `poolSize` | CFG-4 | 있음, 바뀜: `config`의 field가 아니라 `db.connect`와 `db.connect_schema`의 필수 인자 `pool_size`다 | `packages/rust/interface.json:1609` |
-| `auditSource` | CFG-8 | 있음, 바뀜: `orm_value` scalar의 map을 돌려준다(CORE-131) | `packages/rust/src/db.rs:133` |
+| `auditSource` | CFG-8 | 있음, 바뀜: `orm_value` scalar의 map을 돌려준다(CORE-131) | `packages/rust/src/db.rs:189` |
 | Python `aesKeyring`, option으로 주는 `AesKeyring` | 규칙 없음 | 구현 없음. `aes_keys`와 `aes_version`이 key ring을 정한다 | `legacy/packages/python/src/polyspec/orm/database.py:2129` |
 | PHP `Config::keyring()` | 규칙 없음 | 구현 없음 | `legacy/packages/php/src/Config.php:56` |
-| 언어 구현에는 없는 option | CORE-30 | 있음. `pool_acquire_timeout_ms`는 코어에 새로 있다 | `packages/rust/src/db.rs:130` |
+| 언어 구현에는 없는 option | CORE-30 | 있음. `pool_acquire_timeout_ms`는 코어에 새로 있다 | `packages/rust/src/db.rs:186` |
 
 ### Generated model
 
@@ -773,4 +773,4 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 | type이 있는 getter, setter, 조건 member를 가진 entity별 generated class | INT-16, DSL-37, DSL-71 | 구현 없음. PHP, Python, TypeScript, Go에 해당한다. CORE-50이 적는다 | `docs/spec/core.md:269`, `legacy/packages/ts/src/generate/typescript.ts:319` |
 | 각 언어의 generator 명령 `orm-gen` | DSL-39~DSL-44 | 구현 없음. 바인딩은 명령을 포함하지 않는다 | `legacy/packages/ts/src/bin/orm-gen.ts:2`, `packages/ts/package.json:2` |
 | `polyspec_orm_build::Builder`의 generated Rust model | DSL-41 | 있음. Rust에만 해당한다. source를 scan하며, CORE-50은 scan을 없앤다 | `packages/rust/build/src/lib.rs:78`, `packages/rust/build/src/generate.rs:736` |
-| 실행 중에 load한 schema에 대한 query | CORE-80, CORE-81 | 있음. class `query`가 바인딩이 generated model 대신 가진 것이다 | `packages/rust/interface.json:2258`, `packages/rust/interface.json:3264` |
+| 실행 중에 load한 schema에 대한 query | CORE-80, CORE-81 | 있음. class `query`가 바인딩이 generated model 대신 가진 것이다 | `packages/rust/interface.json:2336`, `packages/rust/interface.json:3342` |

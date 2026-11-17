@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 2d9c99bb58986a088f2737290f68f1b8f8c33ed8d2bff80411b723bee8d9fb19 -->
+<!-- source-sha256: d1213098381ea906453db1937e1616dee36a6f5e7bd699c2aee1270d12fb679e -->
 # 사용법
 
 릴리스 v0.0.34는 Rust 코어와, 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩의 첫 릴리스다. 바인딩은 TypeScript와 Node(`packages/ts`), Python(`packages/python`), PHP extension(`packages/php-ext`), Go(`packages/go`)다. 그 릴리스의 사용자가 가진 것은 [생성된 바인딩](#generated-bindings)에 있다. 손으로 쓴 클라이언트는 `legacy/packages`에 보존하며 v0.0.34는 그것을 릴리스하지 않는다([CORE-1](../spec/core.ko.md)). 1절부터 12절까지는 그 클라이언트를 설명하며, [legacy/packages의 언어 구현](#language-implementations-under-legacy-packages)에 그 범위가 있다.
@@ -25,8 +25,7 @@
 - 코어의 어떤 규칙에도 없는 모델 멤버. `getPagePlanSteps`, `duplication`, optimistic `update(true)`, 재귀 `delete(true)`, `orderByRandom`, `parentNode`, `groupLimit`, `deleteLock`, `fetchKey`, `fetchValue`, `possible<Col>`, `forceIndex<Name>`, 증감 `plus<Col>`과 `minus<Col>`, `new<Name>`과 `get<Name>`, `toJSON`, 컬럼 함수로 하는 정렬, 집계 `groupBy<Col>`, `sum<Col>`, `avg<Col>`이다.
 - Statement event. 코어에는 `subscribe`가 있고 contract는 그것을 선언하지 않으므로 어떤 바인딩에도 없다.
 - Request hook. 코어에는 `withRequestHook`이 있고 contract는 그것을 선언하지 않으므로 어떤 바인딩에도 없다.
-- `beforeTransaction`. 코어에는 트랜잭션 전의 hook이 없다.
-- request의 `require_match`. 코어는 이 멤버를 `ir_invalid`로 거절하며, 어떤 행과도 일치하지 않은 update나 delete는 성공한다.
+- 비동기 작업을 하는 `beforeTransaction`의 hook. Node와 WASM에서 코어가 보관하는 함수가 promise를 반환하면 그 promise는 기다려지지 않는다. promise는 버려지고 그 rejection은 어떤 호출자에게도 전달되지 않는다. binding은 그것을 허용하는 선언(보관되는 함수의 `async_allowed`)을 거부하므로, 다른 연결에서 statement를 실행해야 하는 hook은 아직 바인딩으로 작성할 수 없다.
 - 취소 때 진행 중인 statement의 종료. `withCancel`은 handle을 파생하고, 취소가 이미 일어난 handle의 statement는 전송되기 전에 `canceled`로 실패한다. 취소가 일어날 때 진행 중이던 statement는 서버에서 종료되지 않는다. 그 statement는 끝까지 실행되고 자기 결과를 반환한다([CORE-47](../spec/core.ko.md), "Not implemented").
 - `StyledValue`. 스타일이 있는 컬럼의 값은 contract의 타입 없는 값인 `orm_value`로 코어에서 나오고, `decode`도 그런 값을 반환한다.
 
@@ -42,6 +41,21 @@ analysis = db.analyze_restore(request)  # generated test: test_gn13e_db_analyze_
 ```
 ```php
 $analysis = $db->analyzeRestore($request); // generated test: testGn13eDbAnalyzeRestorePrimaryKey
+```
+
+`beforeTransaction`은 이 릴리스에서 `Db`의 멤버다([CORE-143](../spec/core.ko.md)). 그 hook은 코어가 각 트랜잭션 전에 read-only 여부와 함께 호출하는 일반 함수이고, 이 멤버는 `remove`로 hook을 제거하는 객체를 반환한다. hook은 비동기 작업을 하면 안 된다.
+
+```typescript
+const hook = db.beforeTransaction((readOnly) => { /* runs before each transaction; no await */ });
+hook.remove();
+// generated tests: GN-13e: Db.beforeTransaction a_hook_is_registered_on_the_connection,
+// GN-13e: Db.transaction a_hook_is_called_before_the_transaction, GN-13e: BeforeTransactionHook.remove a_registered_hook_is_removed
+```
+
+`requireMatch`는 이 릴리스에서 `Query`의 멤버다([CORE-142](../spec/core.ko.md)). 그 뒤로 query의 `update`, `delete`, `restore`는 statement가 어떤 행과도 일치하지 않으면 `no_rows`로 실패하며, `restoreOrCreate`는 이 option을 받지 않는다.
+
+```typescript
+query.requireMatch(); // generated test: GN-13e: Query.requireMatch the_option
 ```
 
 ### 설치 {#installation}
@@ -871,7 +885,7 @@ $b->getJsonSetting()['a'];
 | key를 가진 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | handle의 모든 request를 plan 전에 바꾸기 | 연결의 `withRequestHook`([request hook](#request-hook)) |
 | transaction이 활성인 동안 데이터베이스 밖의 작업 거절 | 연결의 `transactionActive()`(Go `TransactionActive`, Python `transaction_active`). 호출한 flow에 그 연결의 transaction이 있으면 true이며 문장을 보내지 않는다([INT-192](../spec/interfaces.ko.md)). Rust 코어와 생성된 바인딩은 handle에 대해 반환한다([트랜잭션](#transactions)) |
-| transaction이 시작하기 전에 code 실행, 예를 들어 다른 연결의 write | 연결의 `beforeTransaction(hook)`(Go `BeforeTransaction`, Python `before_transaction`. Rust 코어에는 없다). hook는 `transaction`의 가장 바깥 transaction마다, connection을 잡거나 statement를 보내기 전에 실행되며, 등록은 hook를 지우는 함수를 돌려준다([INT-193](../spec/interfaces.md)) |
+| transaction이 시작하기 전에 code 실행, 예를 들어 다른 연결의 write | 연결의 `beforeTransaction(hook)`(Go `BeforeTransaction`, Python `before_transaction`. Rust 코어는 `before_transaction`과 `before_transaction_async`, [CORE-143](../spec/core.ko.md)). hook는 `transaction`의 가장 바깥 transaction마다, connection을 잡거나 statement를 보내기 전에 실행되며, 등록은 hook를 지우는 함수를 돌려준다([INT-193](../spec/interfaces.md)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](../spec/dsl.md)) |
 | 실행 없이 페이지의 문장 보기 | 연결한 모델의 `getPagePlanSteps(page, perPage)` ([dsl.md](../spec/dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |
