@@ -121,7 +121,8 @@ final class RecipeApply
     {
         $value = (string) getenv($name);
         if ($value === '') {
-            Assert::fail("$name is required; run make orm-test-servers <target> in one command, which starts the databases and writes it");
+            Assert::fail("$name is required; run make orm-test-servers <target> in one command, which starts the "
+                . "databases and writes it");
         }
         return $value;
     }

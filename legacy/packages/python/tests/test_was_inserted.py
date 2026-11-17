@@ -20,7 +20,6 @@ CHILD = Path(__file__).resolve().parent / "was_inserted_child.py"
 
 
 class WasInsertedTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory(prefix="orm-was-inserted-")

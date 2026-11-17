@@ -74,6 +74,7 @@ _.ir_version
 _.offset_p  # PRT-78 page-limit IR field, read dynamically by key before cache lookup
 _.count_p  # PRT-78 page-limit IR field, read dynamically by key before cache lookup
 _.on_duplicate
+_.require_match  # PRT-90 IR field, read by key in src/polyspec/orm/database.py:3719 and engine/validate.py:952; Go RequireMatch, json:"require_match,omitempty", legacy/packages/go/engine/ir/ir.go:33
 _.n_params
 _.plus_p
 _.minus_p

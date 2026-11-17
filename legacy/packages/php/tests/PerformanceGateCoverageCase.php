@@ -24,7 +24,8 @@ abstract class PerformanceGateCoverageCase extends TestCase
         $dsn = getenv($name);
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException(
-                "$name is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
+                "$name is required; run make orm-test-servers <target> in one command, which starts the databases "
+                    . "and writes it"
             );
         }
         if (static::NATIVE_EXTENSION) {

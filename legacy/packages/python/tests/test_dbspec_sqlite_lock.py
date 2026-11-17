@@ -64,7 +64,6 @@ def failing_session(error, locked=False):
 
 
 class SqliteLockResultTest(unittest.TestCase):
-
     def assert_restored(self, connection, locked=False):
         self.assertEqual(
             connection.pragmas,

@@ -120,7 +120,6 @@ def check_rollback(case: unittest.TestCase, error, subject: str):
 
 
 class RollbackFaultTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix="orm-rollback-")
@@ -325,7 +324,6 @@ class RollbackFaultTest(unittest.TestCase):
 
 
 class RollbackFaultEntryTest(unittest.TestCase):
-
     def test_the_package_entry_point_does_not_export_the_fault(self):
         # Requirements: PRT-47.
         import polyspec.orm

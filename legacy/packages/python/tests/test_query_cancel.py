@@ -23,7 +23,6 @@ from .coverage_case import native_query
 
 
 class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
-
     async def test_cancel_state_is_observed_before_done_callback_dispatch(self):
         loop = asyncio.get_running_loop()
         admission_future = loop.create_future()
@@ -292,7 +291,6 @@ class AbandonedQueryCase:
     statement with CANCELED, and the transaction rolls back. AbandonedQueryTest runs it on SQLite and PostgreSQL, the
     entry test_query_cancel_mysql on MySQL, and the entry query_cancel_mariadb on MariaDB, a server of the MySQL dialect
     (DIA-200)."""
-
 
     async def abandon(self, dialect):
         with tempfile.TemporaryDirectory(prefix="orm-abandoned-query-") as directory:

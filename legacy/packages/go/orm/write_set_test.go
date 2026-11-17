@@ -56,7 +56,7 @@ func TestBackendWaitingForLockReportsPostgresWaiter(t *testing.T) {
 		case <-childWaits:
 		case err := <-childDone:
 			childStarted = false
-			return fmt.Errorf("the child update ended before it waited on the held row: %v", err)
+			return fmt.Errorf("the child update ended before it waited on the held row: %w", err)
 		}
 		var err error
 		waiting, err = db.Utils().BackendWaitingForLock(t.Context())

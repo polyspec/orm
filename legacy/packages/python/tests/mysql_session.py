@@ -12,7 +12,9 @@ class MysqlSessionTest(unittest.TestCase):
     def test_postgres_session_settings_are_startup_parameters(self):
         dsn = os.environ.get("ORM_TEST_POSTGRES_DSN", "")
         if not dsn:
-            self.fail("ORM_TEST_POSTGRES_DSN is not set; run make orm-test-servers <target> in one command")
+            self.fail(
+                "ORM_TEST_POSTGRES_DSN is not set; run make orm-test-servers <target> in one command"
+            )
         connection = _PostgresConnection(parse_dsn(dsn), statement_timeout_ms=237)
         try:
             rows = connection.execute(

@@ -10,7 +10,6 @@ DIAGRAM = "erDiagram\n    account {\n        i64 id PK\n    }\n"
 
 
 class MermaidErrorBoundaryTest(unittest.TestCase):
-
     def test_unexpected_catalog_error_keeps_identity(self):
         cause = RuntimeError("unexpected catalog failure")
 

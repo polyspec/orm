@@ -28,7 +28,6 @@ CASES = [
 
 
 class ModelFieldsTest(unittest.TestCase):
-
     # Requirements: DBS-112, COD-2.
     def test_field_types(self):
         for model, column, getter, setter in CASES:

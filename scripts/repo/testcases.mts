@@ -672,7 +672,7 @@ function maturinProjects(segment: string, read: Read): string[] {
   const front = /(?:^|[\s;&|(/])(?:uv\s+build|uv\s+pip\s+install|pip3?\s+wheel|python3?(?:\.\d+)?\s+-m\s+build)\b/.exec(segment);
   if (!front) return [];
   const words = segment.slice(front.index + front[0].length).split(/\s+/).map(word => word.replace(/^['"]|['"]$/g, '')).filter(Boolean);
-  const roots = [...segment.matchAll(/--(?:roots|directory)[=\s]+(\S+)/g)].flatMap(match => match[1].replace(/^['"]|['"]$/g, '').split(','));
+  const roots = [...segment.matchAll(/--(?:roots|directory)[=\s]+(\S+)/g)].flatMap(match => (match[1] === undefined ? [] : match[1].replace(/^['"]|['"]$/g, '').split(',')));
   const candidates = [...words.filter(word => !word.startsWith('-')), ...roots, '.'];
   const found = new Set<string>();
   for (const candidate of candidates) {

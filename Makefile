@@ -312,6 +312,11 @@ lint-php: ## Lint the PHP: phpcs, and PHPStan on each Composer package; offline
 	$(NODE) $(KIT)/lint-php.$(KIT_EXT) --memory-limit=-1
 lint-python: ## Lint the Python: ruff, and vulture on each package; offline
 	$(NODE) $(KIT)/lint-python.$(KIT_EXT)
+# python-format writes the format that the ruff format --check . of lint-python checks: the ruff of mise.toml from the root,
+# so it formats the same files under the same ruff.toml, the Python blocks of the Markdown documents among them.
+.PHONY: python-format
+python-format: ## Format the Python with the ruff of mise.toml, on the files that lint-python checks; offline
+	$(RUFF) format .
 # lint-go lints every Go module of the checkout, a go.mod: those of legacy, tests and examples, and the binding module
 # packages/go, whose Go files make bindings writes (binding design L-1), so it runs after bindings and fails with it.
 lint-go: bindings ## Lint the Go: golangci-lint and deadcode -test in each Go module; offline once the modules are downloaded

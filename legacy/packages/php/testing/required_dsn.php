@@ -7,7 +7,8 @@ function requiredDsn(string $name): string
 {
     $value = getenv($name);
     if (!is_string($value) || $value === '') {
-        throw new RuntimeException("$name is not set; run the test through make orm-test-servers <its make target> in one command");
+        throw new RuntimeException("$name is not set; run the test through make orm-test-servers <its make target> "
+            . "in one command");
     }
     return $value;
 }

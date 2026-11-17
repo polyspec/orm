@@ -137,7 +137,6 @@ def installed_sqlite(test, path: str, models):
 
 
 class SqliteEndToEndTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix="orm-sqlite-")
@@ -278,7 +277,6 @@ class SqliteEndToEndTest(unittest.TestCase):
 
 
 class SqliteAuditTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix="orm-audit-")
