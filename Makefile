@@ -104,7 +104,7 @@ export CARGO_PROFILE_DEV_DEBUG = $(if $(KIT_WORKTREE),0,line-tables-only)
 export ORM_RUST_TEST_FEATURES := polyspec-orm/test-faults,polyspec-orm-build/live-db
 # ORM_RUST_EXCLUDE_BINDINGS leaves the binding crates out of a command that takes the whole root workspace (--workspace): their
 # sources are the generated folders that make bindings writes (binding design L-1), so they build only after it, in
-# make lint-bindings and make test-bindings. The feature commands of contracts/features.json read it from the environment.
+# make lint-bindings. The feature commands of contracts/features.json read it from the environment.
 BINDING_CRATES := polyspec-orm-node polyspec-orm-wasm polyspec-orm-python polyspec-orm-php-ext polyspec-orm-go
 export ORM_RUST_EXCLUDE_BINDINGS := $(foreach crate,$(BINDING_CRATES),--exclude $(crate))
 # check does not read the network: make install downloads what check reads, and every recipe and the
@@ -423,7 +423,7 @@ test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; o
 # GN-15g): no tracked tree holds a generated file, so a target that reads one runs bindings first; bindings-check runs
 # the contract check, which also compares the tracked binding packages with what binding scaffold writes (binding L-2,
 # CK-19) and the version of binding_core that Cargo.lock pins with the version of the tool (CK-20).
-.PHONY: bindings bindings-scaffold bindings-check lint-bindings test-bindings node-package test-wasm test-go-bindings
+.PHONY: bindings bindings-scaffold bindings-check lint-bindings node-package test-wasm test-go-bindings
 BINDING := $(CURDIR)/node_modules/.bin/binding
 bindings:
 	$(NODE) $(BINDING) generate --root $(CURDIR) --cargo "$(CARGO_LINK)"
@@ -459,11 +459,12 @@ binding_package = $(shell sed -n 's/^name = "\(.*\)"$$/\1/p' $(1)/Cargo.toml | h
 BINDING_TEST_FEATURES = $(subst $(binding_space),$(binding_comma),$(strip $(foreach dir,$(BINDING_CRATE_DIRS),$(addprefix $(call binding_package,$(dir))/,$(subst $(binding_comma), ,$(call binding_test_features,$(dir)))))))
 binding_go_tags = $(subst $(binding_space),$(binding_comma),$(strip $(foreach feature,$(subst $(binding_comma), ,$(call binding_test_features,$(1))),polyspec_orm_$(subst -,_,$(feature)))))
 # Each build of a binding crate runs under RUN_LONG and the lease of the shared target directory, and a program that a
-# recipe runs is the copy in RUN_TARGET of its run (CARGO_COPY); the tests of the binding crates run through CARGO_TEST.
+# recipe runs is the copy in RUN_TARGET of its run (CARGO_COPY). The binding crates hold no Rust test: binding generate
+# writes the tests of a binding in the language of its target, which the test-binding targets run, and binding scaffold
+# writes test = false for the PHP extension crate; so lint-bindings, which builds all five with their test features, is
+# their build in CI, and no recipe runs cargo test on them (T624).
 lint-bindings: bindings lease-tool
 	$(RUN_LONG) rust-clippy/bindings -- $(CARGO_LEASED) env $(BINDING_ENV) $(CARGO_LINK) clippy --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --all-targets --features $(BINDING_TEST_FEATURES) -- -D warnings
-test-bindings: bindings lease-tool
-	$(BINDING_ENV) $(CARGO_TEST) test-bindings -- cargo test --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --features $(BINDING_TEST_FEATURES)
 
 # The WASM module and its glue, which wasm-bindgen writes into packages/ts/wasm/generated before the package is packed
 # (binding GN-18, P-5), and the Node package with the addon of this machine's platform, packed and installed into

@@ -162,7 +162,7 @@ export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
 }
 
 // The binding crates of the targets of packages/rust/interface.json, which the whole workspace leaves out: their sources are
-// the generated folders of make bindings, and make test-bindings tests them (ORM_RUST_EXCLUDE_BINDINGS of the Makefile).
+// the generated folders of make bindings, and make lint-bindings builds them (ORM_RUST_EXCLUDE_BINDINGS of the Makefile).
 const BINDING_SUFFIX: Record<string, string> = { php: 'php-ext', python: 'python', node: 'node', go: 'go', wasm: 'wasm' };
 export function bindingExcludeArguments(repository: string): string[] {
   const file = resolve(repository, 'packages/rust/interface.json');
