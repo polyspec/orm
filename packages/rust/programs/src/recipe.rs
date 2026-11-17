@@ -196,9 +196,9 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             if database != "mysql" && database != "mariadb" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));
             }
-            let socket = socket
-                .filter(|s| !s.is_empty())
-                .ok_or_else(|| format!("dsn case-socket: ORM_TEST_{}_SOCKET is unset; run make orm-test-servers <target> in one command", database.to_uppercase()))?;
+            let socket = socket.filter(|s| !s.is_empty()).ok_or_else(|| {
+                format!("dsn case-socket: ORM_TEST_{}_SOCKET is unset; run make orm-test-servers <target> in one command", database.to_uppercase())
+            })?;
             let not_mysql = || format!("dsn case-socket: the case DSN {case_dsn} is not a mysql DSN");
             let rest = case_dsn.strip_prefix("mysql://").ok_or_else(not_mysql)?;
             let (user, rest) = rest.split_once('@').ok_or_else(not_mysql)?;
@@ -4860,7 +4860,8 @@ mod database {
                     (text, _) => match text.strip_prefix("env:") {
                         Some(name) => {
                             let name = server_variable(name, context.database);
-                            std::env::var(&name).map_err(|error| fault(format!("dsn.connect: {name}: {error}; run make orm-test-servers <target> in one command")))?
+                            std::env::var(&name)
+                                .map_err(|error| fault(format!("dsn.connect: {name}: {error}; run make orm-test-servers <target> in one command")))?
                         }
                         None => text.to_owned(),
                     },
@@ -5857,8 +5858,11 @@ mod database {
     async fn mysql_replica_wait(pool: &sqlx::MySqlPool, database: &str) -> Result<(), String> {
         let mariadb = database == MARIADB;
         let variable = server_variable("ORM_TEST_MYSQL_REPLICA_DSN", database);
-        let replica = std::env::var(&variable)
-            .map_err(|error| format!("replica.await: {variable} is required ({error}); run make orm-test-servers <target> in one command, which starts the databases and writes it"))?;
+        let replica = std::env::var(&variable).map_err(|error| {
+            format!(
+                "replica.await: {variable} is required ({error}); run make orm-test-servers <target> in one command, which starts the databases and writes it"
+            )
+        })?;
         let row = sqlx::query(if mariadb { "SHOW BINLOG STATUS" } else { "SHOW BINARY LOG STATUS" })
             .fetch_one(pool)
             .await
@@ -5881,8 +5885,9 @@ mod database {
     /// The DSN of the case database on the server itself, past a pooler.
     fn case_session_dsn(context: &Context<'_>) -> Result<String, String> {
         let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
-        let server = std::env::var(&variable)
-            .map_err(|error| format!("{variable} is required ({error}); run make orm-test-servers <target> in one command, which starts the databases and writes it"))?;
+        let server = std::env::var(&variable).map_err(|error| {
+            format!("{variable} is required ({error}); run make orm-test-servers <target> in one command, which starts the databases and writes it")
+        })?;
         let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
         let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
         Ok(polyspec_orm_case_database::with_database(&server, name))
