@@ -51,10 +51,11 @@ var outputs = map[string]map[string]string{
 	"ModelSuccess": {"go": "error", "php": "void", "rust": "polyspec_orm::Result<()>", "typescript": "Promise<void>", "python": "None"},
 	"Success":      {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>", "python": "None"},
 	// Registration reads and writes no database, so it is also a synchronous call in Rust and TypeScript.
-	"Registered":        {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "void", "python": "None"},
-	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "polyspec_orm::Result<polyspec_orm::ArrayValue>", "typescript": "Record<string,unknown>", "python": "dict"},
-	"Db":                {"go": "(*DB,error)", "php": "Polyspec\\Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>", "python": "Db"},
-	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Transaction<'_,F>", "typescript": "Promise<T>", "python": "T"},
+	"Registered": {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "void", "python": "None"},
+	"RowMap":     {"go": "map[string]any", "php": "array", "rust": "polyspec_orm::Result<polyspec_orm::ArrayValue>", "typescript": "Record<string,unknown>", "python": "dict"},
+	"Db":         {"go": "(*DB,error)", "php": "Polyspec\\Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>", "python": "Db"},
+	// Rust's transaction_async returns the result of its callback under the exact bounds of the callback and of its future (INT-17c).
+	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Result<T>whereF:Fn(Tx)->Fut,Fut:Future<Output=Result<T>>", "typescript": "Promise<T>", "python": "T"},
 	"Utils":             {"go": "*Utils", "php": "Polyspec\\Orm\\Utils", "rust": "Utils<'_>", "typescript": "Utils", "python": "Utils"},
 	"SchemaUtils":       {"go": "*SchemaUtils", "php": "Polyspec\\Orm\\SchemaUtils", "rust": "SchemaUtils<'_>", "typescript": "SchemaUtils", "python": "SchemaUtils"},
 	"AesUtils":          {"go": "*AESUtils", "php": "Polyspec\\Orm\\AesUtils", "rust": "AesUtils<'_>", "typescript": "AesUtils", "python": "AesUtils"},
@@ -106,7 +107,13 @@ var outputs = map[string]map[string]string{
 	"Inspected":       {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "Promise<boolean>", "python": "bool"},
 	"LocalInspection": {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "boolean", "python": "bool"},
 	// A keyring lists the versions it declares, in ascending order.
-	"KeyVersions": {"go": "[]int32", "php": "array", "rust": "Vec<i32>", "typescript": "number[]", "python": "list"},
+	// The restore analysis is a synchronous call that sends no statement; Rust returns it as the JSON text of the contract (INT-191).
+	"RestoreAnalysis": {"go": "(RestoreAnalysis,error)", "php": "array", "rust": "Result<String>", "typescript": "RestoreAnalysis", "python": "RestoreAnalysis"},
+	// Rust's handle of the core is never the handle of an open transaction, so its declaration has no error (INT-192).
+	"TransactionActive": {"go": "(bool,error)", "php": "bool", "rust": "bool", "typescript": "boolean", "python": "bool"},
+	// Registering a transaction hook is a synchronous call that reads or writes no database (INT-193).
+	"TransactionHookRemoval": {"go": "(removefunc(),errerror)", "php": "Closure", "rust": "BeforeTransactionHook", "typescript": "()=>void", "python": "Callable[[],None]"},
+	"KeyVersions":            {"go": "[]int32", "php": "array", "rust": "Vec<i32>", "typescript": "number[]", "python": "list"},
 }
 
 // The extension exposes the PHP library's logical API and types. Its native
@@ -135,9 +142,9 @@ var inputs = map[string]map[string]string{
 	"ColumnRevision":         {"go": "columnstring,revisionint64", "php": "string$column,int$revision", "rust": "column:&str,revision:i64", "typescript": "column:string,revision:number|bigint", "python": "column:str,revision:int"},
 	"Optimistic":             {"go": "optimistic...bool", "php": "bool$optimistic=false", "rust": "optimistic:bool", "typescript": "optimistic=false", "python": "optimistic:bool=False"},
 	"Recursive":              {"go": "recursive...bool", "php": "bool$recursive=false", "rust": "recursive:bool", "typescript": "recursive=false", "python": "recursive:bool=False"},
-	"ConnectionOptions":      {"go": "dsnstring,cfgConfig", "php": "string$dsn,Polyspec\\Orm\\Config$config", "rust": "dsn:&str,pool_size:u32,mutcfg:Config", "typescript": "dsn:string,options:ConnectOptions={}", "python": "dsn:str,options:dict|None=None"},
+	"ConnectionOptions":      {"go": "dsnstring,cfgConfig", "php": "string$dsn,Polyspec\\Orm\\Config$config", "rust": "dsn:&str,pool_size:u32,cfg:Config", "typescript": "dsn:string,options:ConnectOptions={}", "python": "dsn:str,options:dict|None=None"},
 	"SchemaConnection":       {"go": "dsnstring,s*Schema,cfgConfig", "php": "string$dsn,Polyspec\\Orm\\Schema$schema,Polyspec\\Orm\\Config$config", "rust": "dsn:&str,schema:&Schema,pool_size:u32,cfg:Config", "typescript": "dsn:string,schema:Schema,options:ConnectOptions={}", "python": "dsn:str,schema:Schema,options:dict|None=None"},
-	"TransactionCallback":    {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3,?array$audit=null", "rust": "f:F", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}", "python": "callback:Callable[[],T],options:dict|None=None"},
+	"TransactionCallback":    {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3,?array$audit=null", "rust": "callback:F,options:TransactionOptions", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}", "python": "callback:Callable[[],T],options:dict|None=None"},
 	"LockKey":                {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string", "python": "key:str"},
 	"GeneratedSchema":        {"go": "schema*Schema", "php": "Polyspec\\Orm\\Schema$schema", "rust": "schema:&Schema", "typescript": "schema:Schema", "python": "schema:Schema"},
 	"ModelKeyring":           {"go": "mModel,keyringAESKeyring", "php": "Polyspec\\Orm\\Model$model,Polyspec\\Orm\\AesKeyring$keyring", "rust": "m:&M,keyring:&AesKeyring", "typescript": "model:unknown,keyring:AesKeyring", "python": "model:Model,keyring:AesKeyring"},
@@ -170,6 +177,8 @@ var inputs = map[string]map[string]string{
 	"LocalKeyValue":          {"go": "key,valuestring", "php": "string$key,string$value", "rust": "key:&str,value:&str", "typescript": "key:string,value:string", "python": "key:str,value:str"},
 	"SchemaName":             {"go": "namestring", "php": "string$schema", "rust": "name:&str", "typescript": "name:string", "python": "name:str"},
 	"SchemaTable":            {"go": "name,tablestring", "php": "string$schema,string$table", "rust": "name:&str,table:&str", "typescript": "name:string,table:string", "python": "name:str,table:str"},
+	"Request":                {"go": "r*ir.Request", "php": "array$request", "rust": "request:&str", "typescript": "request:Request", "python": "request:IRRequest"},
+	"TransactionHook":        {"go": "hookfunc(ctxcontext.Context,readOnlybool)error", "php": "Closure$hook", "rust": "hook:implFn(bool)->BoxFuture<'static,Result<()>>+Send+Sync+'static", "typescript": "hook:(readOnly:boolean)=>void|Promise<void>", "python": "hook:Callable[[bool],None]"},
 	"EntityName,SequenceKey": {"go": "entitystring,keyint64", "php": "string$entity,int$sequence", "rust": "entity:&str,sequence:i64", "typescript": "entity:string,sequence:number", "python": "entity:str,sequence:int"},
 }
 
@@ -222,7 +231,8 @@ func validateRules(d document) error {
 			case "python":
 				got, ret = pythonParts(got, ret)
 			case "rust":
-				ret = strings.TrimPrefix(ret, "->")
+				// A trailing comma that rustfmt leaves after the last bound of a where clause is syntax only.
+				ret = strings.TrimSuffix(strings.TrimPrefix(ret, "->"), ",")
 				receiver, rest, _ := strings.Cut(got, ",")
 				if strings.HasSuffix(receiver, "self") {
 					got = rest
@@ -230,11 +240,13 @@ func validateRules(d document) error {
 						return fmt.Errorf("%s Rust receiver %s, want %s", r.ID, receiver, wantReceiver)
 					}
 				}
-				// An operation with an error runs against the database, so it is async. A transaction
-				// builder, and registration returns a synchronous result without a database. Subscription also does not touch the database, and its errors
-				// are only the markdown connection's rejection, which sends no statement.
-				// local reads the value that setLocal left in the transaction and never reaches the database.
-				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && r.Output != "Unsubscribe" && r.Output != "LocalValue" && r.Output != "LocalInspection" && !strings.Contains(sig, "asyncfn") {
+				// An operation with an error runs against the database, so it is async; the transaction adapter is
+				// transaction_async (INT-17c). Registration returns a synchronous result without a database. Subscription
+				// and the registration of a transaction hook also do not touch the database. local reads the value that
+				// setLocal left in the transaction, and the restore analysis and transactionActive send no statement.
+				// Closing has no error and is the async close_async (INT-17d).
+				synchronous := []string{"Registered", "Unsubscribe", "TransactionHookRemoval", "LocalValue", "LocalInspection", "RestoreAnalysis", "TransactionActive"}
+				if (len(r.Errors) > 0 && !slices.Contains(synchronous, r.Output) || r.Output == "Closed") && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
 				}
 			}

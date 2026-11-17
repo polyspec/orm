@@ -9,7 +9,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// Requirements: INT-17a. The admitted connection adapter remains part of the checked native contract.
+// Requirements: INT-17a, INT-17b, INT-17c, INT-17d. The admitted connection, transaction and close adapters remain part of the checked native contract.
 func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 	testcase.Start(t)
 	if _, err := load(); err != nil {
@@ -61,6 +61,29 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 			n.Signature = strings.Replace(n.Signature, "connection : impl Into < crate :: Connection >", "db : & crate :: Db", 1)
 			r.Native["rust"] = n
 		},
+		"rust transaction machine": func(d *document) {
+			rewriteRust(t, d, "Db.transaction", "pub async fn transaction_async<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T> where F: Fn(Tx) -> Fut, Fut: Future<Output = Result<T>>,", "pub fn transaction<F>(self, callback: F, options: TransactionOptions) -> Transaction<F>")
+		},
+		"rust transaction inputs": func(d *document) {
+			rewriteRust(t, d, "Db.transaction", "callback: F, options: TransactionOptions", "callback: F")
+		},
+		"rust transaction result":   func(d *document) { rewriteRust(t, d, "Db.transaction", "-> Result<T>", "-> Result<()>") },
+		"rust transaction receiver": func(d *document) { rewriteRust(t, d, "Db.transaction", "(&self, ", "(self, ") },
+		"rust transaction async":    func(d *document) { rewriteRust(t, d, "Db.transaction", "pub async fn", "pub fn") },
+		"rust transaction callback bound": func(d *document) {
+			rewriteRust(t, d, "Db.transaction", "F: Fn(Tx) -> Fut", "F: FnOnce(Tx) -> Fut")
+		},
+		"rust transaction future bound": func(d *document) {
+			rewriteRust(t, d, "Db.transaction", "Fut: Future<Output = Result<T>>", "Fut: Future<Output = T>")
+		},
+		"rust close machine": func(d *document) {
+			rewriteRust(t, d, "Db.close", "pub async fn close_async(&self)", "pub fn close(self) -> Close")
+		},
+		"rust close receiver": func(d *document) { rewriteRust(t, d, "Db.close", "(&self)", "(self)") },
+		"rust close async":    func(d *document) { rewriteRust(t, d, "Db.close", "pub async fn", "pub fn") },
+		"rust connect mutable configuration": func(d *document) {
+			rewriteRust(t, d, "Db.connect", "cfg: Config", "mut cfg: Config")
+		},
 	} {
 		var d document
 		if err := json.Unmarshal(source, &d); err != nil {
@@ -71,6 +94,35 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 			t.Fatalf("%s: inconsistent logical/native contract accepted", name)
 		}
 	}
+}
+
+// Requirements: INT-17c, INT-17d. The Rust adapters of Db.transaction and Db.close are the retained native forms, not the machines of the binding contract.
+func TestRustNativeAdaptersAreTheRetainedForms(t *testing.T) {
+	testcase.Start(t)
+	var d document
+	if err := json.Unmarshal(source, &d); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]native{
+		"Db.transaction": {Symbol: "packages/rust/src/tx.rs::Db::transaction_async", Signature: "pub async fn transaction_async<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T> where F: Fn(Tx) -> Fut, Fut: Future<Output = Result<T>>,"},
+		"Db.close":       {Symbol: "packages/rust/src/db.rs::Db::close_async", Signature: "pub async fn close_async(&self)"},
+	} {
+		if got := findRule(t, &d, id).Native["rust"]; got.Symbol != want.Symbol || compact(got.Signature) != compact(want.Signature) {
+			t.Errorf("%s Rust adapter is %s %q, want %s %q", id, got.Symbol, got.Signature, want.Symbol, want.Signature)
+		}
+	}
+}
+
+// rewriteRust replaces from with to in the Rust signature of the rule id; a signature without from fails the test, so a mutation cannot pass by changing nothing.
+func rewriteRust(t *testing.T, d *document, id, from, to string) {
+	t.Helper()
+	r := findRule(t, d, id)
+	n := r.Native["rust"]
+	if !strings.Contains(n.Signature, from) {
+		t.Fatalf("%s Rust signature %q does not contain %q", id, n.Signature, from)
+	}
+	n.Signature = strings.Replace(n.Signature, from, to, 1)
+	r.Native["rust"] = n
 }
 
 func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {

@@ -1997,7 +1997,7 @@
         },
         "rust": {
           "symbol": "packages/rust/src/db.rs::Db::connect",
-          "signature": "pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db>"
+          "signature": "pub async fn connect(dsn: &str, pool_size: u32, cfg: Config) -> Result<Db>"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/database.ts::Db.connect",
@@ -2075,8 +2075,8 @@
           "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, ?array $audit=null): mixed"
         },
         "rust": {
-          "symbol": "packages/rust/src/tx.rs::Db::transaction",
-          "signature": "pub async fn transaction<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T> where F: Fn(Tx) -> Fut, Fut: Future<Output = Result<T>>,"
+          "symbol": "packages/rust/src/tx.rs::Db::transaction_async",
+          "signature": "pub async fn transaction_async<T, F, Fut>(&self, callback: F, options: TransactionOptions) -> Result<T> where F: Fn(Tx) -> Fut, Fut: Future<Output = Result<T>>,"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/database.ts::Db.transaction",
@@ -2274,7 +2274,7 @@
         },
         "rust": {
           "symbol": "packages/rust/src/db.rs::Db::analyze_restore",
-          "signature": "pub fn analyze_restore(&self, request: &crate::ir::Request) -> Result<RestoreAnalysis>"
+          "signature": "pub fn analyze_restore(&self, request: &str) -> Result<String>"
         },
         "php-extension": {
           "symbol": "legacy/packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::analyzeRestore",
@@ -2310,7 +2310,7 @@
         },
         "rust": {
           "symbol": "packages/rust/src/db.rs::Db::transaction_active",
-          "signature": "pub fn transaction_active(&self) -> Result<bool>"
+          "signature": "pub fn transaction_active(&self) -> bool"
         },
         "php-extension": {
           "symbol": "legacy/packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::transactionActive",
@@ -2324,7 +2324,7 @@
       "inputs": [
         "TransactionHook"
       ],
-      "output": "Unsubscribe",
+      "output": "TransactionHookRemoval",
       "errors": [
         "CONFIG"
       ],
@@ -2374,8 +2374,8 @@
           "signature": "public function close(): void"
         },
         "rust": {
-          "symbol": "packages/rust/src/db.rs::Db::close",
-          "signature": "pub async fn close (& self)"
+          "symbol": "packages/rust/src/db.rs::Db::close_async",
+          "signature": "pub async fn close_async(&self)"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/database.ts::Db.close",
@@ -3447,7 +3447,7 @@
           "signature": "public static function introspect(PDO $connection, string $dialect, string $server, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
         },
         "rust": {
-          "symbol": "packages/rust/src/dbspec.rs::introspect",
+          "symbol": "packages/rust/src/dbspec/introspect.rs::introspect",
           "signature": "pub async fn introspect < Q : CatalogQuerier + ? Sized > (connection : & mut Q , dialect : Dialect , server : Server , name : & str) -> Result < Introspection , IntrospectError >"
         },
         "typescript": {
