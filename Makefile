@@ -570,6 +570,14 @@ BINDING_RUN := $(NODE) $(BINDING)
 .PHONY: release-recipes
 release-recipes:
 	$(BINDING_RUN) release-recipes --root $(CURDIR)
+# The Go crate builds C (libsqlite3-sys, through the crate cc) for the musl target of its arch, for which cc looks for
+# <arch>-linux-musl-gcc, which no runner holds. The C compiler and the archiver of each musl target of rust-toolchain.toml
+# are the clang and the llvm-ar of the LLVM of config/toolchain.json, by their paths in LLVM_ROOT of packages/release.mk,
+# which the release recipes read (binding B2.442).
+CC_x86_64_unknown_linux_musl = $(LLVM_ROOT)/bin/clang
+AR_x86_64_unknown_linux_musl = $(LLVM_ROOT)/bin/llvm-ar
+CC_aarch64_unknown_linux_musl = $(LLVM_ROOT)/bin/clang
+AR_aarch64_unknown_linux_musl = $(LLVM_ROOT)/bin/llvm-ar
 -include packages/release.mk
 
 # The CI pipeline of orm (.github/workflows/ci-pipeline.yml): the plan of its jobs from config/ci.json, the targets of a job
