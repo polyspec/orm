@@ -6035,6 +6035,20 @@
       }
     },
     {
+      "member": "rows.keys",
+      "file": "contracts/interface/core.json",
+      "group": "rows.keys.page",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
       "alias": "orm_value",
       "file": "contracts/interface/core.json",
       "group": "orm_value",
