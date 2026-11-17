@@ -11,3 +11,7 @@
 #![allow(unsafe_code, reason = "B-4")]
 
 include!(concat!(env!("CARGO_MANIFEST_DIR"), "/generated/lib.rs"));
+
+// GN-3j: the build script writes this file: it fails the build when the ext-php-rs of the target directory is built
+// for another PHP than the PHP of this build.
+include!(concat!(env!("OUT_DIR"), "/php_build.rs"));

@@ -2,8 +2,76 @@
 // BD-9: PHP resolves the symbols of an extension when it loads it, so on macOS the linker
 // leaves them undefined, for the cdylib of this crate alone. The target OS is the one that
 // Cargo gives the build script, not the OS of the host.
+// GN-3j: the PHP of the build is an input of this crate. Cargo does not build ext-php-rs
+// again when the PHP behind one path changes, so the script compares the PHP that
+// ext-php-rs is built for with the PHP of this build, and the build fails when they differ.
+
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 const TARGET_OS: &str = "CARGO_CFG_TARGET_OS";
+
+/// GN-3j: the executable that the build script of ext-php-rs runs: the path that the
+/// variable names, or the first file of that name in PATH.
+fn tool(variable: &str, name: &str) -> Result<PathBuf, String> {
+    if let Some(path) = std::env::var_os(variable) {
+        return Ok(PathBuf::from(path));
+    }
+    let path = std::env::var_os("PATH").ok_or("PATH is not set")?;
+    for dir in std::env::split_paths(&path) {
+        let file = dir.join(name);
+        if file.is_file() {
+            return Ok(file);
+        }
+    }
+    Err(format!("no {name} in PATH, and {variable} names none"))
+}
+
+/// GN-3j: the value of the line `<name> => <value>` of `php -n -i`.
+fn line<'a>(info: &'a str, name: &str) -> Result<&'a str, String> {
+    let prefix = format!("{name} => ");
+    let found = info.lines().find_map(|line| line.strip_prefix(&prefix));
+    found.ok_or_else(|| format!("php -n -i has no line {name}"))
+}
+
+/// GN-3j: the inputs that name the PHP of the build, and the comparison with the PHP that
+/// ext-php-rs is built for, which the entry of the crate includes.
+fn php_build() -> Result<(), String> {
+    for name in ["PHP", "PHP_CONFIG", "PATH", "POLYSPEC_PHP_API"] {
+        println!("cargo:rerun-if-env-changed={name}");
+    }
+    println!("cargo:rerun-if-changed=build.rs");
+    let php = tool("PHP", "php")?;
+    let config = tool("PHP_CONFIG", "php-config")?;
+    println!("cargo:rerun-if-changed={}", php.display());
+    println!("cargo:rerun-if-changed={}", config.display());
+    let run = Command::new(&php).args(["-n", "-i"]).output();
+    let output = run.map_err(|error| format!("{}: {error}", php.display()))?;
+    if !output.status.success() {
+        return Err(format!("{} -n -i: {}", php.display(), output.status));
+    }
+    let info = String::from_utf8_lossy(&output.stdout);
+    let api = line(&info, "PHP Extension")?;
+    if api.is_empty() || !api.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err(format!("php -n -i: PHP Extension is {api}, no number"));
+    }
+    let zts = line(&info, "Thread Safety")? == "enabled";
+    let debug = line(&info, "Debug Build")? == "yes";
+    let message = format!(
+        "GN-3j: the ext-php-rs of this target directory is built for another PHP than {} (module API {api}, {}{}): run cargo clean -p ext-php-rs with the profile and the target of this build and build again, or build for each PHP in a target directory of its own",
+        php.display(),
+        if zts { "zts" } else { "nts" },
+        if debug { ", debug" } else { "" },
+    );
+    let text = format!(
+        "const _: () = assert!(\n    ext_php_rs::ffi::ZEND_MODULE_API_NO == {api} && {}ext_php_rs::PHP_ZTS && {}ext_php_rs::PHP_DEBUG,\n    {message:?}\n);\n",
+        if zts { "" } else { "!" },
+        if debug { "" } else { "!" },
+    );
+    let out = std::env::var("OUT_DIR").map_err(|error| format!("OUT_DIR: {error}"))?;
+    let file = Path::new(&out).join("php_build.rs");
+    std::fs::write(&file, text).map_err(|error| format!("{}: {error}", file.display()))
+}
 
 fn main() -> Result<(), String> {
     let os = std::env::var(TARGET_OS).map_err(|error| format!("{TARGET_OS}: {error}"))?;
@@ -11,5 +79,5 @@ fn main() -> Result<(), String> {
         println!("cargo:rustc-cdylib-link-arg=-undefined");
         println!("cargo:rustc-cdylib-link-arg=dynamic_lookup");
     }
-    Ok(())
+    php_build()
 }
