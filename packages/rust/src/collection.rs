@@ -353,6 +353,11 @@ impl GroupRow {
         self.count
     }
 
+    /// The selected values by name, in result order, with `row_count` among them.
+    pub(crate) fn values(&self) -> &[(String, Val)] {
+        &self.values
+    }
+
     pub fn value(&self, name: &str) -> Result<&Val> {
         self.values
             .iter()

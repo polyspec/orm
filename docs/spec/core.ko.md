@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 24cef658d9959467285086369481f97de591c0a1dd368aac158c896ad39c6a9b -->
+<!-- source-sha256: 994bb5e227507755d7e317c6d58bc50f16caf4085f9518eed7d693513283d1fa -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -337,9 +337,9 @@
   실행한다. 어떤 terminal도 질의를 바꾸지 않는다(DSL-69). 행은 같은 엔티티의 `Query`이고 `gets`는 행을
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
-- **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `join`, `leftJoin`, 묶음
-  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`, `getsPage`,
-  `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
+- **CORE-84** 구현되지 않았다: `Query`의 `join`, `leftJoin`, 묶음
+  (`not`, `andNot`, `orNot`, `on`. `andGroup`과 `orGroup`은 `where_group`이다, CORE-202), `andModel`, `orModel`, `compare`,
+  `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
   `uint`여서 음수 값은 형식이 없다. `count`가 0이면 다음 terminal에서 `config`이고 메시지는 `limit requires a
@@ -400,7 +400,10 @@
   순서대로 실행된다(`{"call": "where", "chain": .., "values": [..]}`, `chain`과 `query`를 가진 `where_in`, `spec`을 가진
   `order_by`, `offset`과 `count`를 가진 `limit`, lock 넷, `add_all_columns`, `remove_all_columns`, `column`을 가진
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
-  `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`).
+  `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
+  `group_by`, `connector`와 `query`를 가진 `where_group`, `query`를 가진
+  `duplication`, `column`을 가진 `sum`, `count`를 가진 `group_limit`, `column`과 `value`를
+  가진 `plus`와 `minus`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
   형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
   `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
@@ -428,23 +431,29 @@
 - **CORE-120** `Query`의 행의 `to_array()`는 map을 돌려준다. key는 행이 읽은 엔티티 열의 이름이고 순서는 schema의 순서이며,
   값은 `value(column)`이 돌려주는 `orm_value`다(CORE-62). 행이 읽지 않은 열은 key가 없다. 그래서 읽지 않은 열과 값이 null인
   열을 구별한다. relation 결과는 이 map의 key가 아니고 `related`와 `related_rows`가 돌려준다(CORE-88). 행을 읽지 않은
-  `Query`는 빈 map을 돌려준다.
+  `Query`는 빈 map을 돌려준다. 언어 구현의 `toArray`는 붙인 값(`new<Name>`, CORE-160)과 `parent_node` 자식의 열
+  (CORE-157)도 가졌다. 코어의 `to_array`는 둘 다 가지지 않고, 행의 JSON 텍스트가 그것들을 쓴다(CORE-161).
 - **CORE-150** `plus(column, value)`와 `minus(column, value)`는 다음 쓰기를 위해 열에 저장된 값에 `value`를 더하거나 뺀
   값을 배정한다. 언어 구현의 member `plus<Col>(n)`과 `minus<Col>(n)`이다(DSL-102). 배정은 요청의 `plus_p`나
   `minus_p`이고, 같은 열에 대한 `set`의 배정을 대신하며 `set`도 이것을 대신한다. `minus`는 음수 값을 저장하지 않는다.
   `update`가 이것을 받고, `duplication`에 준 `Query`도 받는다(CORE-151). 엔티티의 열이 아닌 이름은 `config`이고
-  메시지는 `<column> is not a column of <entity>`다(CORE-91). 수가 아닌 열은 쓰기에서 `operator_not_allowed`이고
+  메시지는 `<column> is not a column of <entity>`이며(CORE-91), list, map, JSON 값인 `value`는 `codec_encode`이고
+  메시지는 `the value of a column is a list`, `a map`, `a JSON value`다. 각각 다음 terminal에서다. 수가 아닌 열은 쓰기에서 `operator_not_allowed`이고
   메시지는 `plus/minus on <entity>.<column> (<type>)`이며, 그런 배정을 가진 `create`는 `ir_invalid`이고 메시지는
-  `insert cannot assign <column> by plus or minus`다. insert에는 읽을 저장된 값이 없기 때문이다. 구현되지 않았다:
-  `Query`의 `plus`와 `minus`. 생성된 Rust 모델은 `plus_<col>`과 `minus_<col>`을 가진다.
+  `insert cannot assign <column> by plus or minus`다. insert에는 읽을 저장된 값이 없기 때문이다. `Db` step은
+  `column`과 `value`를 가진 call `plus`와 `minus`를 받는다(CORE-92).
 - **CORE-151** `duplication(query)`는 다음 `create`를 duplicate-key update가 있는 insert로 만든다. unique key 하나의 행을
   만난 행은 넣지 않고, 같은 엔티티의 `Query`인 `query`의 배정을 만난 행에 쓴다(DSL-105). 그 배정은 요청의
-  `on_duplicate`이고 `create`가 그것을 비운다. 다른 엔티티의 `query`는 `config`이고, 배정이 없는 `query`는 `create`에서
+  `on_duplicate`이고 `create`가 그것을 비운다. 다른 엔티티의 `query`는 `config`이고 메시지는
+  `duplication takes a query of <entity>, not of <other>`이며, member가 실패시킨 `query`는 그 오류로 `Query`를
+  실패시킨다. 각각 다음 terminal에서다. 배정이 없는 `query`는 `create`에서
   `config`이며 메시지는 `duplication model has no set_<col> values`다. `query`가 primary key의 열이나 identity 열에
   배정하면 `ir_invalid`이고 메시지는 `on_duplicate cannot assign <entity>.<column>`이며(DSL-113), 어떤 unique key로도
   행을 만날 수 없거나 둘 이상으로 만날 수 있는 insert는 `ir_invalid`이고 메시지는
   `on_duplicate needs exactly one conflict key`로 시작한다. `Query`의 조건은 DSL-162가 적은 대로 insert에 적용되고,
-  조건을 만족하지 않는 행은 `condition_not_met`이다. 구현되지 않았다: `Query`의 `duplication`.
+  조건을 만족하지 않는 행은 `condition_not_met`이다. `create`가 돌려주는 행은 insert의 배정과 데이터베이스가 돌려준
+  key를 가지며, update가 저장한 값을 가지지 않는다. `query`에서는 배정만 읽는다. `Db` step은 `query`를 가진 call
+  `duplication`을 받는다(CORE-92).
 - **CORE-152** `update_optimistic()`은 엔티티의 update time 열이 행이 읽은 값을 아직 가지고 있는 동안에만 쓰는
   CORE-91의 `update`다. 언어 구현의 member `update(true)`이다(DSL-107, DSL-155). 그 값은 요청의 `optimistic`이고
   (PRT-7), 아무 행도 바꾸지 않은 문장은 `optimistic_lock`이며 메시지는 `row changed since it was read`다. 행을 읽지
@@ -452,8 +461,9 @@
   `update(true) requires a row loaded with its update time column`이다. 행을 먼저 다시 읽는다. `expect_revision`과
   함께 쓰면 `config`이고 메시지는 `expectRevision does not combine with update(true)`다(DSL-114). update time은 코어가
   쓰는 값이고 revision은 호출자가 가진 값이므로 둘은 서로 다른 member다. `Query`의 조건은 key에 이어지고(CORE-138),
-  한 문장으로는 조건과 update time을 구별할 수 없으므로 조건을 만족하지 않는 행도 `optimistic_lock`이다. 구현되지
-  않았다: `Query`의 `update_optimistic`. 그 `update`는 인자를 받지 않는다. 생성된 Rust 모델은
+  한 문장으로는 조건과 update time을 구별할 수 없으므로 조건을 만족하지 않는 행도 `optimistic_lock`이다.
+  `update_optimistic`은 코어의 terminal의 이름이다. 생성된 wrapper가 호출 `update(true)`를 유지하는지는 generator의
+  일이다. 구현되지 않았다: `Query`의 `update_optimistic`. 그 `update`는 인자를 받지 않는다. 생성된 Rust 모델은
   `update(optimistic)`을 가진다.
 - **CORE-153** `delete_recursive()`는 `delete`처럼 `Query`의 행을 지우고(CORE-91), 그보다 먼저 그 행이 가진 relation
   결과(CORE-88)의 행을, 각 행이 가진 결과의 행과 함께 자식부터 지운다. 언어 구현의 member `delete(true)`이다
@@ -461,7 +471,8 @@
   실행되고, 연결이 `Tx`이면 savepoint에서 실행된다(CORE-21). 그래서 실패하면 아무것도 지우지 않으며, 그 행의
   `revision_changed`도 그렇다(DSL-114). 조건을 가진 `Query`의 행이 지워질 결과를 가지고 있으면 어떤 문장보다도 먼저
   `config`이고 메시지는 `a recursive delete of a row with cascading relations takes no conditions`다(CORE-138). 이것은
-  자기 key의 행 하나를 지우고, 조건이 고른 행들을 지우지 않는다(CORE-138). 구현되지 않았다: `Query`의
+  자기 key의 행 하나를 지우고, 조건이 고른 행들을 지우지 않는다(CORE-138). `delete_recursive`는 코어의 terminal의
+  이름이다. 생성된 wrapper가 호출 `delete(true)`를 유지하는지는 generator의 일이다. 구현되지 않았다: `Query`의
   `delete_recursive`. 그 `delete`는 인자를 받지 않는다. 생성된 Rust 모델은 `delete(recursive)`를 가진다.
 - **CORE-154** `order_by_random()`은 행을 dialect의 함수로 무작위로 정렬하는 항목을 순서의 앞선 항목 뒤에 더한다
   (DSL-99). 요청의 항목 `random`이다. 이것을 가진 추가 열의 subquery는 `ir_invalid`이고 메시지는
@@ -475,8 +486,9 @@
   `order_by_function`. 계약의 어떤 타입도 DSL-131의 함수가 아니다(CORE-84).
 - **CORE-156** `force_index(name)`은 `Query`의 문장이 그 엔티티의 index나 unique key `name`을 쓰게 한다. 언어 구현의
   member `forceIndex<Name>()`이다(DSL-78). 요청의 query의 `force_index`이고, 마지막에 부른 것이 남는다. 엔티티의
-  index도 unique key도 아닌 이름은 다음 terminal에서 `index_unknown`이고 메시지는 `<entity>.<name>`이다. 구현되지
-  않았다: `Query`의 `force_index`.
+  index도 unique key도 아닌 이름은 다음 terminal에서 `config`이고 메시지는 `<name> is not an index of <entity>`다.
+  `Query`의 모든 builder가 엔티티에 없는 이름을 거부하는 kind다(CORE-82, CORE-87, CORE-89, CORE-91). planner만이
+  메시지 `<entity>.<name>`의 `index_unknown`을 준다. 구현되지 않았다: `Query`의 `force_index`.
 - **CORE-157** member 셋은 `relation`이나 `relations`에 준 `Query`를 어떻게 붙일지 정하며(CORE-88, PRT-14), 어느
   쪽에도 주지 않은 `Query`에는 효과가 없다. `parent_node()`는 `relation` 결과의 행을 그것을 가진 행에 합친다
   (DSL-84). 요청의 `flatten`이고, 이것에 따라 행의 JSON 텍스트(CORE-161)는 자기 member 뒤에 자식의 member를 쓰며 행이
@@ -485,13 +497,16 @@
   `count`개 행까지만 읽는다(DSL-86). 요청의 `limit_per_parent`다. `count`는 `uint`이고, 0이면 다음 terminal에서
   `config`이며 메시지는 `group_limit requires a positive count`다. 행 lock과 함께 쓰면 `ir_invalid`다(CORE-86,
   DSL-123). `delete_lock()`은 결과의 행을 `delete_recursive`에서 뺀다(CORE-153, DSL-87). 요청의
-  `no_cascade_delete`다. 구현되지 않았다: `Query`의 `parent_node`, `group_limit`, `delete_lock`.
+  `no_cascade_delete`다. `Query`는 `group_limit`을 가지고, `Db` step은 `count`를 가진 call `group_limit`을 받는다
+  (CORE-92). 구현되지 않았다: `Query`의 `parent_node`, `delete_lock`.
 - **CORE-158** `possible(column, value)`는 `relation`이나 `relations`에 준 `Query`의 결과를 부모의 열 `column`이
   `value`와 같은 행에만 붙인다. 언어 구현의 member `possible<Col>(value)`이다(DSL-85). `column`은 부모 엔티티의 열이고
   `value`는 `orm_value`이며 열의 타입으로 비교한다. 요청의 `if_parent`이고(PRT-14), 마지막에 부른 것이 남는다. 어느
   쪽에도 주지 않은 `Query`, 곧 terminal의 root나 `where_in`의 subquery 같은 것에서는 다음 terminal에서 `config`이고
   메시지는 `possible applies only to a relation child`다. 부모 엔티티의 열이 아닌 이름은 부모의 다음 terminal에서
-  `config`이고 메시지는 `<column> is not a column of <entity>`다(CORE-130). 구현되지 않았다: `Query`의 `possible`.
+  `config`이고 메시지는 `<column> is not a column of <entity>`다(CORE-130). `Query`의 모든 builder가 엔티티에 없는
+  열에 주는 kind와 메시지다(CORE-87, CORE-89, CORE-91). 행을 읽는 `value`만 `column_unknown`이다(CORE-83). 구현되지
+  않았다: `Query`의 `possible`.
 - **CORE-159** `fetch_key(function)`은 `gets`의 `Collection`을 primary key와 `key_name`(CORE-89) 대신 `function`이 각
   행에 대해 돌려주는 값으로 key하고, `fetch_value(function)`은 각 행의 값 하나를 계산하며 `Collection`은 그 값을 행
   옆에 그 key로 가진다(DSL-70). 함수는 행인 `Query`를 받고, 행과 그 relation 결과를 읽은 뒤 행의 순서대로 행마다 한
@@ -519,7 +534,7 @@
   거부를 그대로 받는다: 메시지 `gets_page requires a positive page and per_page`나
   `gets_page cannot be combined with limit`의 `config`, 연결이 없는 `Query`의 `config`(CORE-81), planner의 거부,
   markdown에서의 `capability_unsupported`. 연결의 request hook이 그 요청을 본다. 구현되지 않았다: `Query`의
-  `get_page_plan_steps`. `gets_page`가 구현되지 않았기 때문이다(CORE-84).
+  `get_page_plan_steps`. `gets_page`는 CORE-200이다.
 - **CORE-163** 여러 열에 대한 조건, 곧 언어 구현의 member `tuple<ColA>With<ColB>(list)`(DSL-35)는 chain key
   `Tuple<ColA>With<ColB>`, `not in`이면 `NeTuple<ColA>With<ColB>`와 값 하나를 받는 `where`다. 그 값은 값 묶음의
   `list`이고 각 묶음은 열마다 값 하나를 가진 `list`다(CORE-82). list의 list가 아닌 값은 `codec_encode`이고 메시지는
@@ -555,6 +570,95 @@
 - **CORE-172** 계약의 member `orm.fulltext_boolean(value)`는 `value::fulltext_boolean`이다. 이것은 MySQL boolean mode
   match의 검색 텍스트를 쓰는 DIA-6의 변환이다(DSL-33). 데이터베이스를 읽지 않고 어떤 kind도 내지 않으므로 `wasm`을
   포함한 모든 target에 있다.
+- **CORE-200** `gets_page(page, per_page)`는 `Query`의 행 가운데 한 page를 읽고 모든 page의 행을 센다. 언어 구현의
+  member `getsPage(page, perPage)`다(DSL-64, DSL-67, INT-32). 돌려주는 것은 `page`다: `rows`는 `gets`가 돌려주는
+  그대로의 그 page의 행이고(CORE-83), `total_count`는 조건이 고르는 행의 수, `total_pages`는 `total_count`를
+  `per_page`로 나누어 올림한 값, `page`와 `per_page`는 받은 그대로다. 요청은 `paginate`다(PRT-2): 행의 문장은
+  `(page - 1) * per_page`개 행 뒤에서 `per_page`개 행을 읽고, count 문장은 같은 조건을 가지며 순서가 없다. 순서가
+  없는 `Query`는 primary key 오름차순으로, key 열의 순서대로 정렬되므로 이어지는 page가 행을 되풀이하거나 건너뛰지
+  않는다. 마지막 page 뒤의 page는 행이 없고 오류가 아니다. `page`와 `per_page`는 `uint`다. 어느 하나가 0이면
+  `config`이고 메시지는 `gets_page requires a positive page and per_page`이며, `limit`(CORE-85)가 있는 `Query`는
+  `config`이고 메시지는 `gets_page cannot be combined with limit`이다. 둘 다 연결을 구하기 전이다(CORE-81). `uint`의
+  범위를 넘는 offset은 어떤 문장보다도 먼저 `config`이고 메시지는 `page offset exceeds u32 range`다. 이
+  terminal은 `Query`를 바꾸지 않는다(DSL-69). 계약에서 `page`는 class이고 그 member `total_count`, `total_pages`,
+  `page`, `per_page`는 property이며 member `rows`는 unit `rows`를 돌려준다(CORE-70). `Db` step(CORE-92)에는 이것의
+  terminal이 없다.
+- **CORE-201** `group_by(column)`은 `Query`의 grouping에 열 하나를 더한다. 언어 구현의 member `groupBy<Col>()`이다
+  (DSL-99). `gets_count()`는 조건이 고르는 행의 group마다 행 하나를 돌려준다. member `getsCount()`다(DSL-61, INT-31,
+  INT-68). 요청은 `group_count`이고 그 `group_by`는 부른 순서대로 열을 가진다(PRT-2). group 행은 map이다: grouping
+  열마다 그 이름으로 `value`가 그 열에 돌려주는 `orm_value`를 가지며(CORE-62, CORE-83) null도 그렇고, 그다음에 그
+  group의 행 수인 `row_count`를 `int64`로 가진다. 다른 열은 없고 엔티티의 행이 아니다(INT-68). 행은 `Query`의
+  순서대로이고, 순서의 항목은 grouping 열만 가리킨다. 다른 열은 `ir_invalid`이고 메시지는
+  `order by <column>, which is not a group column`이다. `group_by`가 없는 `Query`의 `gets_count`는 `ir_invalid`이고
+  메시지는 `group_count needs group_by`다. group된 `Query`의 `get_count`는 group의 수를 세고(PRT-2), 그 밖의 모든
+  terminal은 `ir_invalid`이며 메시지는 `group_by is only valid on count or group_count, not <kind>`다. `gets_page`도
+  그렇다(CORE-200, DSL-99). `relation`, `relations`, `where_in`에 준 group된 `Query`는 `ir_invalid`이고 메시지는
+  `group_by is only valid on the request's root query`다. 엔티티의 열이 아닌 이름은 다음 terminal에서 `config`이고
+  메시지는 `<column> is not a column of <entity>`다(CORE-87). 0 이상의 정확한 정수가 아닌 count는 `codec_decode`다
+  (INT-68). `Db` step은 `column`을 가진 call `group_by`를 받고(CORE-92) `gets_count`의 terminal은 없다. 계약은 group
+  행을 `orm_value`의 map의 list로 돌려준다. Rust 값 `Val`을 가진 `GroupRow`와 `GroupRows`는 선언하지 않는다(CORE-70).
+- **CORE-202** `where_group(connector, query)`는 같은 엔티티의 `Query`인 `query`의 조건을 괄호로 묶은 group 하나로
+  더한다. 언어 구현의 member `and(fn)`과 `or(fn)`이다(DSL-15, DSL-21). `connector`는 `where_none`이 받는 낱말 `""`,
+  `And`, `Or`다(CORE-137): `And`와 `Or`는 group을 앞선 조건에 잇고, 첫 조건인 group은 connector를 받지 않으며(DSL-18),
+  다른 조건 뒤의 `""`는 `config`이고 메시지는 `condition without and/or after another condition`이다(DSL-19). 그 밖의
+  텍스트는 `config`이고 메시지는 `where_group takes "", "And" or "Or", not <text>`다. group은 `query`의 조건을 그
+  순서와 connector대로 가진다. `where`, `where_in`, `where_none`, `where_group`의 조건이므로 group은 겹친다. `query`의
+  다른 것은 가지지 않는다: 그 순서, 열, limit, lock, grouping, 배정, relation, 연결은 효과가 없다. 언어 구현은 함수에
+  빈 모델을 주고 함수가 그 위에 group을 만든다(DSL-20). 코어는 `where_in`이 subquery를 받듯(CORE-90) 만들어진
+  `Query`를 받으므로 함수를 보관하지 않고, `Db` step은 group을 data로, 곧 `connector`와 `query`를 가진 call
+  `where_group`으로 나른다(CORE-92). 조건이 없는 `query`는 `config`이고 메시지는
+  `the query of where_group has no condition`이며(DSL-22), 다른 엔티티의 `query`는 `config`이고 메시지는
+  `where_group takes a query of <entity>, not of <other>`이고, member가 실패시킨 `query`는 그 오류로 `Query`를
+  실패시킨다. 각각 다음 terminal이 돌려준다. group의 조건은 모든 조건처럼 `update`와 `delete`에도 적용된다(CORE-138).
+- **CORE-203** `save()`는 `Query`의 배정(CORE-91)을, 그 행을 알면 `update`로, 모르면 `create`로 쓴다. 언어 구현의
+  member `save()`다(DSL-109). 행을 안다는 것은 `Query`가 행을 읽었거나 `set`이 primary key의 모든 열을 배정했다는
+  것이고, `update`가 요구하는 바로 그것이다(CORE-91). 그때 `save`는 그 `update`이고 `expect_revision`과 `Query`의
+  조건(CORE-138)을 그대로 가지며, `update`가 남긴 그대로의 `Query`를 돌려준다. 먼저 행을 읽지 않는다: 어떤 행도
+  가지지 않은 key와 조건을 만족하지 않는 행은 아무것도 바꾸지 않고 오류가 아니며 아무것도 넣지 않는다. 그렇지 않으면
+  `save`는 `create`이고 만든 행을 돌려준다. 그래서 identity key의 행은 key 없이 만들고 key와 함께 고친다(DSL-113).
+  실패는 그 `update`나 `create`의 실패이고, 연결이 없는 `Query`는 어느 쪽보다도 먼저 `config`다(CORE-81). `Db`
+  step(CORE-92)에는 이것의 terminal이 없다.
+- **CORE-204** `creates(rows, batch)`는 `rows`의 각 `Query`의 배정으로 된 행을 그 순서대로 넣고, 넣은 행의 수를
+  돌려준다. 언어 구현의 member `creates(models, batch)`다(DSL-104). 행은 `batch`개씩의 batch로 넣고, batch 하나는 여러
+  행의 문장 하나이며, 모두 `Query`의 연결의 transaction 하나에서, 연결이 `Tx`이면 savepoint에서 실행된다(CORE-21).
+  그래서 실패하면 아무것도 넣지 않는다. `Query`는 엔티티와 연결과 insert의 조건을 주고, 조건은 DSL-162가 적은 대로
+  모든 행에 적용된다(`condition_not_met`). `rows`의 각 `Query`는 `set`의 배정만 주며(CORE-91) 그 연결과 조건은
+  효과가 없다. `batch`는 `uint`이고 0은 `config`이며 메시지는 `creates batch must be a positive integer, got 0`이다.
+  다른 엔티티의 `rows`의 `Query`는 `config`이고 메시지는 `creates takes rows of <entity>, not of <other>`이며,
+  member가 실패시킨 것은 그 오류로 `creates`를 실패시키고, 배정이 없는 첫 `Query`는 `config`이고 메시지는
+  `creates requires models with set_<col> values`이며, 배정이 첫 `Query`의 열과 그 순서가 아닌 것은 `config`이고
+  메시지는 `every model of creates must set the same columns`나 `... in the same order`다. 값과 조건 parameter가
+  데이터베이스의 문장이 받는 수(SQLite 999, MySQL과 PostgreSQL 65535)보다 많은 batch는 어떤 문장보다도 먼저
+  `batch_too_large`이고 메시지는
+  `creates batch <n> of <rows> rows binds <binds> parameters, over the <driver> limit of <limit>`이다. identity 열의
+  값은 `ir_invalid`다(DSL-113). 빈 `rows`는 연결이 있는 `Query`에서 0을 돌려주고 문장을 보내지 않는다(CORE-81).
+  행은 돌려주지 않고, insert 뒤에 행을 읽지 않는다. `Db` step(CORE-92)에는 이것의 terminal이 없다.
+- **CORE-205** `sum(column)`은 `get_sum()`이 그 합을 돌려줄 열을 정한다. 언어 구현의 member `sum<Col>()`과
+  `getSum()`이다(DSL-62). 요청은 `sum`이고 그 열은 요청의 `agg`다(PRT-2). 마지막에 부른 `sum`이 남고, `Query`의
+  조건이 행을 고른다. 결과는 `float`다: 합은 가장 가까운 binary64 값으로 한 번 바뀔 때까지 정확하고(DSL-66,
+  DSL-161), 맞는 행이 없든 모든 값이 null이든 값이 남지 않으면 0이다. `sum`이 없는 `Query`의 `get_sum`은 연결을
+  구하기 전에 `config`이고 메시지는 `get_sum requires sum_<col>()`다. 엔티티의 열이 아닌 이름은 다음 terminal에서
+  `config`이고 메시지는 `<column> is not a column of <entity>`이며(CORE-87), 수가 아닌 열은 `operator_not_allowed`이고
+  메시지는 `sum on <entity>.<column> (<type>)`이고, 유한한 수가 아닌 scalar는 `codec_decode`이고 메시지는
+  `aggregate scalar is not a finite number`이며, group된 `Query`는 `ir_invalid`다(CORE-201). `sum`은 다른 terminal에
+  효과가 없다. `Db` step은 `column`을 가진 call `sum`을 받고(CORE-92) `get_sum`의 terminal은 없다.
+- **CORE-206** `gets_lookahead_page(page, per_page)`는 `Query`의 행 가운데 한 page와 그 뒤의 행 하나를 읽고, 아무것도
+  세지 않는다. 언어 구현의 member `getsLookaheadPage(page, perPage)`다(INT-164). 돌려주는 것은 `lookahead_page`다:
+  `rows`는 `gets`가 돌려주는 그대로의 그 page의 행이고(CORE-83), `page`와 `per_page`는 받은 그대로이며, `has_next`는
+  문장이 page 뒤의 행을 읽었는지다. 그 행은 돌려주지 않는다. 요청은 `lookahead_paginate`이고,
+  `(page - 1) * per_page`개 행 뒤에서 `per_page + 1`개 행을 읽는 문장 하나이며 count 문장이 없다(PRT-38).
+  `gets_count_lookahead_page(page, per_page)`는 `gets_count`의 group 행(CORE-201)의 같은 page이고, member
+  `getsCountLookaheadPage(page, perPage)`다. 요청은 `group_lookahead_paginate`이고, 돌려주는
+  `group_lookahead_page`의 `rows`는 `gets_count`의 map의 list다. 순서가 없는 `Query`는 primary key 오름차순으로,
+  group된 것은 grouping 열의 순서대로 오름차순으로 정렬되므로 이어지는 page가 행을 되풀이하거나 건너뛰지 않는다.
+  마지막 page 뒤의 page는 행이 없고 `has_next`가 false이며 오류가 아니다. 둘 다, `page`나 `per_page`가 0이면
+  `config`이고 메시지는 `gets_lookahead_page requires a positive page and per_page`이며, `limit`가 있는 `Query`는
+  `config`이고 메시지는 `gets_lookahead_page cannot be combined with limit`다. 각각 연결을 구하기 전이다(CORE-81).
+  `uint`의 범위를 넘는 offset이나 `per_page + 1`은 `config`이고 메시지는 `page offset exceeds u32 range`나
+  `page size exceeds u32 range`다. `group_by`가 없는 `Query`의 `gets_count_lookahead_page`는 `ir_invalid`이고 메시지는
+  `group_lookahead_paginate needs group_by`이며, group된 `Query`의 `gets_lookahead_page`는 `ir_invalid`다(CORE-201).
+  어느 것도 `Query`를 바꾸지 않는다. 계약에서 두 결과는 class이고 `page`, `per_page`, `has_next`는 property다.
+  `lookahead_page`의 `rows`는 unit `rows`를 돌려준다(CORE-170). `Db` step(CORE-92)에는 이것들의 terminal이 없다.
 
 ## 상태 기계
 
@@ -637,10 +741,9 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `Param`과 `Key`다). `Utils`와 그 부분은 자기 연결의 handle을 소유하고 CORE-180~CORE-186이 적은 대로 선언하며,
   `Utils::run`, `Utils::local`, `Utils::was_inserted`는 뺀다(CORE-180). `Query`의 terminal `get`, `gets`, `gets_by`와 행의
   `to_array`는 선언하고, `gets`와 `gets_by`는 class `rows`를 돌려준다(CORE-170). `Collection`, `Page`, `LookaheadPage`는
-  타입으로 선언하지 않는다: 각각 자기 모델에 대해 generic이어서 `core_type`의 Rust 경로가 적을 수 없고, `Query`에는 page를
-  돌려주는 terminal이 없다(CORE-84). `get_query`는 `Statement`를 돌려주므로 선언하지 않는다. `Page`, `LookaheadPage`,
-  `GroupRow`, `GroupRows`는 `Query`의 어떤 member도 돌려주지 않고(CORE-84) 생성된 Rust 모델만 돌려주며, 바인딩에는 생성된
-  모델이 없다(CORE-50).
+  타입으로 선언하지 않는다: 각각 자기 모델에 대해 generic이어서 `core_type`의 Rust 경로가 적을 수 없고, `Query`에서 page를
+  돌려주는 terminal은 `gets_page`뿐이고 그 `Page`는 class `page`다(CORE-200). `get_query`는 `Statement`를 돌려주므로
+  선언하지 않는다.
 - **CORE-180** 계약은 연결의 유틸리티를 legacy 클라이언트의 호출 모양 그대로 선언한다(INT-73, INT-134): member `db.utils`와
   `tx.utils`는 class `utils`(`Utils`)를 돌려주고, 그 member `schema`, `privileges`, `aes`는 class
   `schema_utils`(`SchemaUtils`), `privilege_utils`(`PrivilegeUtils`), `aes_utils`(`AesUtils`, INT-131)를 돌려준다. 그래서

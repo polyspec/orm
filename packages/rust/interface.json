@@ -5218,7 +5218,8 @@
             "polyspec_orm::Kind::Canceled",
             "polyspec_orm::Kind::PoolTimeout",
             "polyspec_orm::Kind::Closed",
-            "polyspec_orm::Kind::ConditionNotMet"
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::IrInvalid"
           ],
           "wait": "async_driver",
           "core": {
@@ -5253,7 +5254,8 @@
             "polyspec_orm::Kind::Canceled",
             "polyspec_orm::Kind::PoolTimeout",
             "polyspec_orm::Kind::Closed",
-            "polyspec_orm::Kind::RevisionChanged"
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::OperatorNotAllowed"
           ],
           "wait": "async_driver",
           "core": {
@@ -5376,6 +5378,834 @@
           "core": {
             "path": "polyspec_orm::Query::restore_or_create",
             "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.gets_page",
+          "name": [
+            "gets",
+            "page"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            },
+            {
+              "name": [
+                "per",
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "page"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.group_by",
+          "name": [
+            "group",
+            "by"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::group_by",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.gets_count",
+          "name": [
+            "gets",
+            "count"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "map": {
+                "unit": "orm_value"
+              }
+            }
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_count",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.where_group",
+          "name": [
+            "where",
+            "group"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "connector"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "query"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::where_group",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.save",
+          "name": [
+            "save"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "query"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::OperatorNotAllowed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::save",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.creates",
+          "name": [
+            "creates"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "rows"
+              ],
+              "type": {
+                "list": {
+                  "unit": "query"
+                }
+              },
+              "required": true
+            },
+            {
+              "name": [
+                "batch"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": "int64",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::DuplicateKey",
+            "polyspec_orm::Kind::ForeignKey",
+            "polyspec_orm::Kind::Constraint",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::ConditionNotMet",
+            "polyspec_orm::Kind::BatchTooLarge",
+            "polyspec_orm::Kind::IrInvalid",
+            "polyspec_orm::Kind::RollbackFailed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::creates",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.duplication",
+          "name": [
+            "duplication"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "query"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::duplication",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.sum",
+          "name": [
+            "sum"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::sum",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.get_sum",
+          "name": [
+            "get",
+            "sum"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "float",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::OperatorNotAllowed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::get_sum",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.group_limit",
+          "name": [
+            "group",
+            "limit"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "count"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::group_limit",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.gets_lookahead_page",
+          "name": [
+            "gets",
+            "lookahead",
+            "page"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            },
+            {
+              "name": [
+                "per",
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "lookahead_page"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_lookahead_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.gets_count_lookahead_page",
+          "name": [
+            "gets",
+            "count",
+            "lookahead",
+            "page"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            },
+            {
+              "name": [
+                "per",
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "group_lookahead_page"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_count_lookahead_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.plus",
+          "name": [
+            "plus"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "value"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::plus",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.minus",
+          "name": [
+            "minus"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "value"
+              ],
+              "type": {
+                "unit": "orm_value"
+              },
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::minus",
+            "receiver": "&mut self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page",
+      "name": [
+        "page"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::QueryPage",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "page.total_count",
+          "name": [
+            "total",
+            "count"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "int64",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryPage::total_count",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "page.total_pages",
+          "name": [
+            "total",
+            "pages"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "int64",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryPage::total_pages",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "page.page",
+          "name": [
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryPage::page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "page.per_page",
+          "name": [
+            "per",
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryPage::per_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "page.rows",
+          "name": [
+            "rows"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "rows"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::QueryPage::rows",
+            "receiver": "&self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "lookahead_page",
+      "name": [
+        "lookahead",
+        "page"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::QueryLookaheadPage",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "lookahead_page.page",
+          "name": [
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "lookahead_page.per_page",
+          "name": [
+            "per",
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::per_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "lookahead_page.has_next",
+          "name": [
+            "has",
+            "next"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "bool",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::has_next",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "lookahead_page.rows",
+          "name": [
+            "rows"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "rows"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::rows",
+            "receiver": "&self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "group_lookahead_page",
+      "name": [
+        "group",
+        "lookahead",
+        "page"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::GroupLookaheadRows",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "group_lookahead_page.page",
+          "name": [
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "group_lookahead_page.per_page",
+          "name": [
+            "per",
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::per_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "group_lookahead_page.has_next",
+          "name": [
+            "has",
+            "next"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "bool",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::has_next",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "group_lookahead_page.rows",
+          "name": [
+            "rows"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "map": {
+                "unit": "orm_value"
+              }
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::rows",
+            "receiver": "&self"
           }
         }
       ]
@@ -6819,6 +7649,524 @@
       "member": "query.restore_or_create",
       "file": "contracts/interface/core.json",
       "group": "query.restore_or_create"
+    },
+    {
+      "member": "query.gets_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_page"
+    },
+    {
+      "member": "query.gets_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "page.total_count",
+      "file": "contracts/interface/core.json",
+      "group": "page.total_count.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "page.total_pages",
+      "file": "contracts/interface/core.json",
+      "group": "page.total_pages.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "page.page",
+      "file": "contracts/interface/core.json",
+      "group": "page.page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "page.per_page",
+      "file": "contracts/interface/core.json",
+      "group": "page.per_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "page.rows",
+      "file": "contracts/interface/core.json",
+      "group": "page.rows.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.keys",
+      "file": "contracts/interface/core.json",
+      "group": "rows.keys.page",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.group_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_by"
+    },
+    {
+      "member": "query.group_by",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_by.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets_count",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count"
+    },
+    {
+      "member": "query.gets_count",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.where_group",
+      "file": "contracts/interface/core.json",
+      "group": "query.where_group"
+    },
+    {
+      "member": "query.where_group",
+      "file": "contracts/interface/core.json",
+      "group": "query.where_group.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.save",
+      "file": "contracts/interface/core.json",
+      "group": "query.save"
+    },
+    {
+      "member": "query.save",
+      "file": "contracts/interface/core.json",
+      "group": "query.save.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.value",
+      "file": "contracts/interface/core.json",
+      "group": "query.value.save",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.creates",
+      "file": "contracts/interface/core.json",
+      "group": "query.creates"
+    },
+    {
+      "member": "query.creates",
+      "file": "contracts/interface/core.json",
+      "group": "query.creates.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.duplication",
+      "file": "contracts/interface/core.json",
+      "group": "query.duplication"
+    },
+    {
+      "member": "query.duplication",
+      "file": "contracts/interface/core.json",
+      "group": "query.duplication.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.create",
+      "file": "contracts/interface/core.json",
+      "group": "query.create.duplication",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.sum",
+      "file": "contracts/interface/core.json",
+      "group": "query.sum"
+    },
+    {
+      "member": "query.get_sum",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_sum"
+    },
+    {
+      "member": "query.get_sum",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_sum.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.group_limit",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_limit"
+    },
+    {
+      "member": "query.group_limit",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_limit.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_lookahead_page"
+    },
+    {
+      "member": "query.gets_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_lookahead_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets_count_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count_lookahead_page"
+    },
+    {
+      "member": "query.gets_count_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count_lookahead_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.has_next",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.has_next.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.has_next",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.has_next.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.page",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.page",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.per_page",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.per_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.per_page",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.per_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.rows",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.rows.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.rows",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.rows.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.keys",
+      "file": "contracts/interface/core.json",
+      "group": "rows.keys.lookahead_page",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.plus",
+      "file": "contracts/interface/core.json",
+      "group": "query.plus"
+    },
+    {
+      "member": "query.plus",
+      "file": "contracts/interface/core.json",
+      "group": "query.plus.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.minus",
+      "file": "contracts/interface/core.json",
+      "group": "query.minus"
+    },
+    {
+      "member": "query.minus",
+      "file": "contracts/interface/core.json",
+      "group": "query.minus.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.update",
+      "file": "contracts/interface/core.json",
+      "group": "query.update.plus",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.create",
+      "file": "contracts/interface/core.json",
+      "group": "query.create.plus",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
     },
     {
       "alias": "orm_value",

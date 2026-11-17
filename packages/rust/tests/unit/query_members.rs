@@ -730,3 +730,406 @@ async fn to_array_holds_the_columns_that_the_row_read() {
     assert_eq!(pairs(&row), vec![("seq".to_owned(), int(3)), ("revision".to_owned(), int(0))]);
     db.close_async().await;
 }
+
+fn page_seqs(page: &crate::QueryPage) -> Vec<OrmValue> {
+    page.rows().values().iter().map(|row| row.value("seq").expect("seq")).collect()
+}
+
+// Requirements: CORE-200. gets_page reads the rows of one page in the order of the query, by the primary key when the
+// query has none, and counts the rows that the conditions select; a page after the last has no rows, and a page or a
+// per_page of 0 and a query with a limit are config.
+#[tokio::test]
+async fn gets_page_reads_a_page_and_counts_the_rows_of_every_page() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-gets-page");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let accounts = query(&schema, "account", &db);
+    let second = accounts.gets_page(2, 2).await.expect("the second page");
+    assert_eq!(page_seqs(&second), [int(3)], "the rows after the first page, in the order of the primary key");
+    assert_eq!((second.total_count(), second.total_pages(), second.page(), second.per_page()), (3, 2, 2, 2));
+    let past = accounts.gets_page(3, 2).await.expect("a page after the last");
+    assert!(past.rows().is_empty(), "a page after the last has no rows");
+    assert_eq!((past.total_count(), past.total_pages()), (3, 2), "and counts the rows all the same");
+    let mut newest = accounts.clone();
+    newest.order_by("SeqDesc");
+    assert_eq!(page_seqs(&newest.gets_page(1, 2).await.expect("the first page of an order")), [int(3), int(2)]);
+    let mut later = accounts.clone();
+    later.where_chain("GtSeq", &[int(1)]);
+    let page = later.gets_page(1, 5).await.expect("a page of a condition");
+    assert_eq!(page_seqs(&page), [int(2), int(3)]);
+    assert_eq!((page.total_count(), page.total_pages()), (2, 1), "the count holds the conditions of the page");
+    for (page, per_page) in [(0, 1), (1, 0)] {
+        let error = failure(accounts.gets_page(page, per_page).await, "a page or a per_page of 0");
+        assert_eq!(error.to_string(), "config: gets_page requires a positive page and per_page");
+    }
+    let mut limited = accounts.clone();
+    limited.limit(0, 1);
+    let error = failure(limited.gets_page(1, 1).await, "a query with a limit");
+    assert_eq!(error.to_string(), "config: gets_page cannot be combined with limit");
+    db.close_async().await;
+}
+
+/// The entries of a group row, in their order.
+fn group(row: &binding_core::OrderedMap<OrmValue>) -> Vec<(String, OrmValue)> {
+    row.iter().map(|(name, value)| (name.to_owned(), value.clone())).collect()
+}
+
+// Requirements: CORE-201. gets_count returns one map for each group, the group columns and then row_count, in the order
+// of the query; get_count of a grouped query counts its groups; a query without group_by, an order by a column outside
+// the group and a name that is no column are refused.
+#[tokio::test]
+async fn gets_count_counts_the_rows_of_each_group() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-gets-count");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut keys = query(&schema, "account_key", &db);
+    keys.group_by("account_seq");
+    keys.order_by("AccountSeqDesc");
+    let groups = keys.gets_count().await.expect("gets_count");
+    let of = |account: i64, count: i64| vec![("account_seq".to_owned(), int(account)), ("row_count".to_owned(), int(count))];
+    assert_eq!(groups.iter().map(group).collect::<Vec<_>>(), [of(2, 1), of(1, 2)], "one row for each group, in the order of the query");
+    assert_eq!(keys.get_count().await.expect("get_count"), 2, "the count of a grouped query is the number of its groups");
+    let mut one = keys.clone();
+    one.where_chain("AccountSeq", &[int(1)]);
+    assert_eq!(one.gets_count().await.expect("gets_count").iter().map(group).collect::<Vec<_>>(), [of(1, 2)]);
+    let plain = query(&schema, "account_key", &db);
+    assert_eq!(failure(plain.gets_count().await, "no group_by").to_string(), "ir_invalid: group_count needs group_by");
+    let mut outside = keys.clone();
+    outside.order_by("SeqAsc");
+    assert_eq!(failure(outside.gets_count().await, "an order outside the group").to_string(), "ir_invalid: order by seq, which is not a group column");
+    assert_eq!(failure(keys.gets().await, "gets of a grouped query").to_string(), "ir_invalid: group_by is only valid on count or group_count, not all");
+    let mut unknown = query(&schema, "account_key", &db);
+    unknown.group_by("missing");
+    assert_eq!(failure(unknown.gets_count().await, "no column").to_string(), "config: missing is not a column of account_key");
+    db.close_async().await;
+}
+
+/// A query of `account` with no connection and the conditions of `chains`, each of one integer.
+fn conditions(schema: &Schema, chains: &[(&str, i64)]) -> Query {
+    let mut query = Query::new(schema, "account").expect("query");
+    for (chain, value) in chains {
+        query.where_chain(chain, &[int(*value)]);
+    }
+    query
+}
+
+// Requirements: CORE-202. where_group adds the conditions of a query as one group in parentheses, joined by its
+// connector; groups nest; a group without a condition, of another entity, with a refused connector or without a
+// connector after a condition is config.
+#[tokio::test]
+async fn where_group_adds_the_conditions_of_a_query_as_one_group() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-where-group");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut grouped = query(&schema, "account", &db);
+    grouped.where_chain("GtSeq", &[int(1)]);
+    grouped.where_group("And", conditions(&schema, &[("Seq", 2), ("OrSeq", 1)]));
+    grouped.order_by("SeqAsc");
+    assert_eq!(seqs(&grouped.gets().await.expect("gets")), [int(2)], "seq > 1 and (seq = 2 or seq = 1)");
+    let mut flat = query(&schema, "account", &db);
+    flat.where_chain("GtSeq", &[int(1)]);
+    flat.where_chain("AndSeq", &[int(2)]);
+    flat.where_chain("OrSeq", &[int(1)]);
+    flat.order_by("SeqAsc");
+    assert_eq!(seqs(&flat.gets().await.expect("gets")), [int(1), int(2)], "the same conditions without the group");
+    let mut first = query(&schema, "account", &db);
+    first.where_group("Or", conditions(&schema, &[("Seq", 3)]));
+    assert_eq!(seqs(&first.gets().await.expect("gets")), [int(3)], "a group that is the first condition takes no connector");
+    let mut inner = conditions(&schema, &[("GtSeq", 1)]);
+    inner.where_group("And", conditions(&schema, &[("Seq", 2), ("OrSeq", 3)]));
+    let mut nested = query(&schema, "account", &db);
+    nested.where_chain("Seq", &[int(1)]);
+    nested.where_group("Or", inner);
+    assert_eq!(nested.get_count().await.expect("get_count"), 3, "seq = 1 or (seq > 1 and (seq = 2 or seq = 3))");
+    let refusals: [(&str, &str, Query, &str); 5] = [
+        ("", "", conditions(&schema, &[]), "config: the query of where_group has no condition"),
+        ("", "", Query::new(&schema, "account_key").expect("query"), "config: where_group takes a query of account, not of account_key"),
+        ("", "Xor", conditions(&schema, &[("Seq", 1)]), "config: where_group takes \"\", \"And\" or \"Or\", not Xor"),
+        ("Seq", "", conditions(&schema, &[("Seq", 1)]), "config: condition without and/or after another condition"),
+        ("", "", conditions(&schema, &[("Missing", 1)]), "config: Missing is not a column of account"),
+    ];
+    for (before, connector, group, message) in refusals {
+        let mut refused = query(&schema, "account", &db);
+        if !before.is_empty() {
+            refused.where_chain(before, &[int(1)]);
+        }
+        refused.where_group(connector, group);
+        assert_eq!(failure(refused.get_count().await, message).to_string(), message);
+    }
+    db.close_async().await;
+}
+
+// Requirements: CORE-203. save updates the row of a set primary key or of a read row and creates a row otherwise; a
+// key that no row holds changes nothing and inserts nothing.
+#[tokio::test]
+async fn save_updates_a_known_row_and_creates_another() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-save");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let text = |value: &str| OrmValue::Text(value.into());
+    let mut created = query(&schema, "account", &db);
+    created.set("email", &text("d@x"));
+    created.set("revision", &int(0));
+    let row = created.save().await.expect("save creates");
+    assert_eq!(row.value("seq").expect("seq"), int(4), "the created row holds its identity");
+    let mut keyed = query(&schema, "account", &db);
+    keyed.set("seq", &int(2));
+    keyed.set("email", &text("bea@x"));
+    keyed.save().await.expect("save updates the row of a set key");
+    let second = account(&schema, &db, 2).await.expect("the row 2");
+    assert_eq!(second.value("email").expect("email"), text("bea@x"));
+    let mut read = account(&schema, &db, 3).await.expect("the row 3");
+    read.set("email", &text("cy@x"));
+    read.save().await.expect("save updates a read row");
+    assert_eq!(account(&schema, &db, 3).await.expect("the row 3").value("email").expect("email"), text("cy@x"));
+    let mut absent = query(&schema, "account", &db);
+    absent.set("seq", &int(9));
+    absent.set("email", &text("z@x"));
+    absent.set("revision", &int(0));
+    absent.save().await.expect("a key that no row holds is no error");
+    assert_eq!(query(&schema, "account", &db).get_count().await.expect("get_count"), 4, "and inserts nothing");
+    let unconnected = Query::new(&schema, "account").expect("query").save().await;
+    assert_eq!(failure(unconnected, "no connection").to_string(), "config: the model has no connection; connect it to a Db or to the Tx of a transaction");
+    db.close_async().await;
+}
+
+/// A query of `account` with no connection that assigns `email` and the revision 0.
+fn new_account(schema: &Schema, email: &str) -> Query {
+    let mut row = Query::new(schema, "account").expect("query");
+    row.set("email", &OrmValue::Text(email.into()));
+    row.set("revision", &int(0));
+    row
+}
+
+// Requirements: CORE-204. creates inserts the rows of the assignments in batches in one transaction and returns their
+// number; a failure inserts nothing; a batch of 0, a row of another entity, a row without assignments and a row of
+// other columns are config, and a batch over the bind limit is batch_too_large.
+#[tokio::test]
+async fn creates_inserts_the_rows_in_batches_of_one_transaction() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-creates");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let accounts = query(&schema, "account", &db);
+    let rows = vec![new_account(&schema, "d@x"), new_account(&schema, "e@x"), new_account(&schema, "f@x")];
+    assert_eq!(accounts.creates(rows, 2).await.expect("creates"), 3);
+    assert_eq!(accounts.get_count().await.expect("get_count"), 6);
+    assert_eq!(accounts.creates(Vec::new(), 1).await.expect("no rows"), 0);
+    let duplicate = vec![new_account(&schema, "g@x"), new_account(&schema, "a@x")];
+    assert_eq!(failure(accounts.creates(duplicate, 1).await, "a duplicate key").kind().as_str(), "duplicate_key");
+    assert_eq!(accounts.get_count().await.expect("get_count"), 6, "a failure of a later batch inserts nothing");
+    let message = |rows: Vec<Query>, batch: u32, what: &str| {
+        let accounts = accounts.clone();
+        let what = what.to_owned();
+        async move { failure(accounts.creates(rows, batch).await, &what).to_string() }
+    };
+    assert_eq!(message(vec![new_account(&schema, "h@x")], 0, "a batch of 0").await, "config: creates batch must be a positive integer, got 0");
+    let key = Query::new(&schema, "account_key").expect("query");
+    assert_eq!(message(vec![key], 1, "another entity").await, "config: creates takes rows of account, not of account_key");
+    let bare = Query::new(&schema, "account").expect("query");
+    assert_eq!(message(vec![bare], 1, "no assignment").await, "config: creates requires models with set_<col> values");
+    let mut other = Query::new(&schema, "account").expect("query");
+    other.set("email", &OrmValue::Text("i@x".into()));
+    assert_eq!(message(vec![new_account(&schema, "h@x"), other], 2, "other columns").await, "config: every model of creates must set the same columns");
+    let many = (0..500).map(|n| new_account(&schema, &format!("{n}@many"))).collect::<Vec<_>>();
+    assert_eq!(
+        message(many, 500, "a batch over the bind limit").await,
+        "batch_too_large: creates batch 1 of 500 rows binds 1000 parameters, over the sqlite limit of 999"
+    );
+    assert_eq!(accounts.get_count().await.expect("get_count"), 6, "a refused creates inserts nothing");
+    db.close_async().await;
+}
+
+// Requirements: CORE-151. duplication makes the next create write the assignments of its query to the row that the
+// insert met on the unique key; a row that meets none is inserted; create clears it; a query of another entity and a
+// query without an assignment are config.
+#[tokio::test]
+async fn duplication_updates_the_row_that_a_create_meets() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-duplication");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let text = |value: &str| OrmValue::Text(value.into());
+    let named = |name: &str| {
+        let mut other = Query::new(&schema, "account").expect("query");
+        other.set("name", &text(name));
+        other
+    };
+    let mut met = new_account(&schema, "a@x");
+    met.connect(Connection::from(&db));
+    met.duplication(named("Met"));
+    met.create().await.expect("create meets the row of a@x");
+    let mut first = query(&schema, "account", &db);
+    first.add_all_columns();
+    first.where_chain("Seq", &[int(1)]);
+    assert_eq!(first.get().await.expect("get").expect("the row 1").value("name").expect("name"), text("Met"));
+    assert_eq!(query(&schema, "account", &db).get_count().await.expect("get_count"), 3, "no row is inserted");
+    met.set("email", &text("a@x"));
+    met.set("revision", &int(0));
+    assert_eq!(failure(met.create().await, "create cleared the duplication").kind().as_str(), "duplicate_key");
+    let mut fresh = new_account(&schema, "d@x");
+    fresh.connect(Connection::from(&db));
+    fresh.duplication(named("Met"));
+    fresh.create().await.expect("create inserts a row that meets none");
+    assert_eq!(query(&schema, "account", &db).get_count().await.expect("get_count"), 4);
+    let mut bare = new_account(&schema, "a@x");
+    bare.connect(Connection::from(&db));
+    bare.duplication(Query::new(&schema, "account").expect("query"));
+    assert_eq!(failure(bare.create().await, "no assignment").to_string(), "config: duplication model has no set_<col> values");
+    let mut other = new_account(&schema, "a@x");
+    other.connect(Connection::from(&db));
+    other.duplication(Query::new(&schema, "account_key").expect("query"));
+    assert_eq!(failure(other.create().await, "another entity").to_string(), "config: duplication takes a query of account, not of account_key");
+    db.close_async().await;
+}
+
+// Requirements: CORE-205. get_sum returns the sum of the column that sum named over the rows of the conditions and 0
+// for no row; without sum it is config, and a column that is no number is operator_not_allowed.
+#[tokio::test]
+async fn get_sum_sums_the_column_that_sum_named() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-get-sum");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut keys = query(&schema, "account_key", &db);
+    keys.sum("account_seq");
+    assert!((keys.get_sum().await.expect("get_sum") - 4.0).abs() < f64::EPSILON, "the keys reference the accounts 1, 1 and 2");
+    keys.where_chain("AccountSeq", &[int(1)]);
+    assert!((keys.get_sum().await.expect("get_sum") - 2.0).abs() < f64::EPSILON, "the sum of the rows of the condition");
+    keys.where_none("And");
+    assert!(keys.get_sum().await.expect("get_sum").abs() < f64::EPSILON, "no row sums to 0");
+    let plain = query(&schema, "account_key", &db);
+    assert_eq!(failure(plain.get_sum().await, "no sum").to_string(), "config: get_sum requires sum_<col>()");
+    let mut label = query(&schema, "account_key", &db);
+    label.sum("label");
+    assert_eq!(failure(label.get_sum().await, "no number").to_string(), "operator_not_allowed: sum on account_key.label (varchar(32))");
+    let mut unknown = query(&schema, "account_key", &db);
+    unknown.sum("missing");
+    assert_eq!(failure(unknown.get_sum().await, "no column").to_string(), "config: missing is not a column of account_key");
+    db.close_async().await;
+}
+
+// Requirements: CORE-157. group_limit reads at most its count of rows per row of the parent, the first of the order of
+// the child; a count of 0 is config, and a root query takes no effect of it.
+#[tokio::test]
+async fn group_limit_reads_the_first_rows_of_each_parent() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-group-limit");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let child = |count: u32| {
+        let mut keys = Query::new(&schema, "account_key").expect("query");
+        keys.match_pair("SeqWithAccountSeq");
+        keys.order_by("SeqDesc");
+        keys.alias("Keys");
+        keys.group_limit(count);
+        keys
+    };
+    let mut accounts = query(&schema, "account", &db);
+    accounts.order_by("SeqAsc");
+    accounts.relations(child(1));
+    let rows = accounts.gets().await.expect("gets");
+    let rows: Vec<&Query> = rows.models().collect();
+    let k = |label: &str| OrmValue::Text(label.into());
+    assert_eq!(labels(rows[0], "keys"), Some(vec![k("k2")]), "the first key of the order of the child");
+    assert_eq!(labels(rows[1], "keys"), Some(vec![k("k3")]));
+    assert_eq!(labels(rows[2], "keys"), Some(vec![]));
+    let mut refused = query(&schema, "account", &db);
+    refused.relations(child(0));
+    assert_eq!(failure(refused.gets().await, "a count of 0").to_string(), "config: group_limit requires a positive count");
+    let mut root = query(&schema, "account", &db);
+    root.group_limit(1);
+    assert_eq!(root.get_count().await.expect("get_count"), 3, "a query that is no relation child takes no effect of it");
+    db.close_async().await;
+}
+
+// Requirements: CORE-206. gets_lookahead_page reads a page and whether a row follows it, and
+// gets_count_lookahead_page the same page of the group rows; a page of 0 and a query with a limit are config, and the
+// grouped page needs group_by.
+#[tokio::test]
+async fn the_lookahead_pages_read_a_page_and_whether_another_follows() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-lookahead");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let accounts = query(&schema, "account", &db);
+    let seqs_of = |page: &crate::QueryLookaheadPage| page.rows().values().iter().map(|row| row.value("seq").expect("seq")).collect::<Vec<_>>();
+    let first = accounts.gets_lookahead_page(1, 2).await.expect("the first page");
+    assert_eq!(seqs_of(&first), [int(1), int(2)], "the row past the page is not returned");
+    assert_eq!((first.page(), first.per_page(), first.has_next()), (1, 2, true));
+    let last = accounts.gets_lookahead_page(2, 2).await.expect("the last page");
+    assert_eq!(seqs_of(&last), [int(3)]);
+    assert!(!last.has_next(), "no row follows the last page");
+    let past = accounts.gets_lookahead_page(5, 2).await.expect("a page after the last");
+    assert!(past.rows().is_empty() && !past.has_next());
+    let error = failure(accounts.gets_lookahead_page(0, 2).await, "a page of 0");
+    assert_eq!(error.to_string(), "config: gets_lookahead_page requires a positive page and per_page");
+    let mut limited = accounts.clone();
+    limited.limit(0, 1);
+    let error = failure(limited.gets_lookahead_page(1, 2).await, "a query with a limit");
+    assert_eq!(error.to_string(), "config: gets_lookahead_page cannot be combined with limit");
+    let mut keys = query(&schema, "account_key", &db);
+    let error = failure(keys.gets_count_lookahead_page(1, 1).await, "no group_by");
+    assert_eq!(error.to_string(), "ir_invalid: group_lookahead_paginate needs group_by");
+    keys.group_by("account_seq");
+    let of = |account: i64, count: i64| vec![("account_seq".to_owned(), int(account)), ("row_count".to_owned(), int(count))];
+    let first = keys.gets_count_lookahead_page(1, 1).await.expect("the first page of groups");
+    assert_eq!(first.rows().iter().map(group).collect::<Vec<_>>(), [of(1, 2)], "the groups in the order of the group column");
+    assert_eq!((first.page(), first.per_page(), first.has_next()), (1, 1, true));
+    let last = keys.gets_count_lookahead_page(2, 1).await.expect("the last page of groups");
+    assert_eq!(last.rows().iter().map(group).collect::<Vec<_>>(), [of(2, 1)]);
+    assert!(!last.has_next());
+    db.close_async().await;
+}
+
+// Requirements: CORE-150. plus and minus write the stored value plus or minus their amount, minus never a negative
+// value; each takes the place of set and set theirs; a column that is no number is operator_not_allowed, an insert
+// takes neither, and a list is no amount.
+#[tokio::test]
+async fn plus_and_minus_write_the_stored_value_changed_by_an_amount() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-plus-minus");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let keyed = || {
+        let mut first = query(&schema, "account", &db);
+        first.set("seq", &int(1));
+        first
+    };
+    let revision = || async { account(&schema, &db, 1).await.expect("the row 1").value("revision").expect("revision") };
+    let mut more = keyed();
+    more.plus("revision", &int(5));
+    more.update().await.expect("update with plus");
+    assert_eq!(revision().await, int(5));
+    let mut less = keyed();
+    less.minus("revision", &int(2));
+    less.update().await.expect("update with minus");
+    assert_eq!(revision().await, int(3));
+    let mut floor = keyed();
+    floor.minus("revision", &int(9));
+    floor.update().await.expect("update with a minus below zero");
+    assert_eq!(revision().await, int(0), "minus never stores a negative value");
+    let mut replaced = keyed();
+    replaced.set("revision", &int(100));
+    replaced.plus("revision", &int(1));
+    replaced.update().await.expect("plus in the place of set");
+    assert_eq!(revision().await, int(1));
+    let mut text = keyed();
+    text.plus("email", &int(1));
+    assert_eq!(failure(text.update().await, "no number").to_string(), "operator_not_allowed: plus/minus on account.email (varchar(64))");
+    let mut insert = new_account(&schema, "d@x");
+    insert.connect(Connection::from(&db));
+    insert.plus("revision", &int(1));
+    assert_eq!(failure(insert.create().await, "an insert").to_string(), "ir_invalid: insert cannot assign revision by plus or minus");
+    let mut list = keyed();
+    list.plus("revision", &OrmValue::List(vec![int(1)]));
+    assert_eq!(failure(list.update().await, "a list").to_string(), "codec_encode: the value of a column is a list");
+    let mut unknown = keyed();
+    unknown.minus("missing", &int(1));
+    assert_eq!(failure(unknown.update().await, "no column").to_string(), "config: missing is not a column of account");
+    db.close_async().await;
+}

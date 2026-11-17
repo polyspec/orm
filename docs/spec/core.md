@@ -412,9 +412,9 @@ implementation is eligible for removal on that evidence.
   conditions of the chain joined by `and`; no terminal changes the query (DSL-69). A row is a `Query` of the same
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
-- **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
-  groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
-  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
+- **CORE-84** Not implemented: `join`, `leftJoin`, the
+  groups (`not`, `andNot`, `orNot`, `on`; `andGroup` and `orGroup` are `where_group`, CORE-202), `andModel`, `orModel`, `compare`,
+  `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
 - **CORE-85** `limit(offset, count)` reads at most `count` rows after the first `offset` rows of the order (DSL-99).
@@ -482,8 +482,8 @@ implementation is eligible for removal on that evidence.
   with its arguments in the order of the calls (`{"call": "where", "chain": .., "values": [..]}`, `where_in` with
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
-  with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, and `expect_revision` with
-  `column` and `revision`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
+  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, `sum` with `column`, `group_limit` with `count`, and `plus` and `minus` with `column` and `value`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
   value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
   `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
@@ -515,25 +515,32 @@ implementation is eligible for removal on that evidence.
   the row read, in the order of the schema, and whose values are the `orm_value` that `value(column)` returns (CORE-62).
   A column that the row did not read has no key, so a column that was not read and a column whose value is null are
   told apart. A relation result is no key of the map; `related` and `related_rows` return it (CORE-88). A `Query` that
-  read no row returns the empty map.
+  read no row returns the empty map. The `toArray` of the language implementations also held the attached values
+  (`new<Name>`, CORE-160) and the columns of a `parent_node` child (CORE-157); `to_array` of the core holds neither,
+  and the JSON text of the row writes them (CORE-161).
 - **CORE-150** `plus(column, value)` and `minus(column, value)` assign to a column, for the next write, its stored
   value plus or minus `value`: the members `plus<Col>(n)` and `minus<Col>(n)` of the language implementations
   (DSL-102). The assignment is `plus_p` or `minus_p` of the request, takes the place of an assignment of `set` to the
   same column, as `set` takes its place, and `minus` never stores a negative value. `update` takes it, and so does the
   `Query` given to `duplication` (CORE-151). A name that is no column of the entity is `config` with the message
-  `<column> is not a column of <entity>` (CORE-91). A column that is no number is `operator_not_allowed` at the write
+  `<column> is not a column of <entity>` (CORE-91), and a `value` that is a list, a map or a JSON value is
+  `codec_encode` with the message `the value of a column is a list`, `a map` or `a JSON value`, each at the next
+  terminal. A column that is no number is `operator_not_allowed` at the write
   with the message `plus/minus on <entity>.<column> (<type>)`, and `create` with such an assignment is `ir_invalid`
   with the message `insert cannot assign <column> by plus or minus`, since an insert has no stored value to read.
-  Not implemented: `plus` and `minus` of a `Query`; the generated Rust models have `plus_<col>` and `minus_<col>`.
+  The `Db` step takes the calls `plus` and `minus` with `column` and `value` (CORE-92).
 - **CORE-151** `duplication(query)` makes the next `create` an insert with a duplicate-key update: a row that meets a
   row of one unique key is not inserted, and the assignments of `query`, a `Query` of the same entity, are written to
   the row that it met (DSL-105). They are `on_duplicate` of the request, and `create` clears them. A `query` of
-  another entity is `config`, and one with no assignment is `config` at `create` with the message
+  another entity is `config` with the message `duplication takes a query of <entity>, not of <other>`, one that a
+  member failed fails the `Query` with that error, each at the next terminal, and one with no assignment is `config` at `create` with the message
   `duplication model has no set_<col> values`. An assignment of `query` to a column of the primary key or to the
   identity column is `ir_invalid` with the message `on_duplicate cannot assign <entity>.<column>` (DSL-113), and an
   insert that can meet a row on no unique key or on more than one is `ir_invalid` with a message that starts with
   `on_duplicate needs exactly one conflict key`. The conditions of the `Query` hold for the insert as DSL-162 states,
-  and a row that does not meet them is `condition_not_met`. Not implemented: `duplication` of a `Query`.
+  and a row that does not meet them is `condition_not_met`. The row that `create` returns holds the assignments of
+  the insert and the key that the database returned, and not the values that the update stored. Nothing of `query`
+  but its assignments is read. The `Db` step takes the call `duplication` with `query` (CORE-92).
 - **CORE-152** `update_optimistic()` is the `update` of CORE-91 that writes only while the update time column of the
   entity still holds the value that the row read: the member `update(true)` of the language implementations (DSL-107,
   DSL-155). The value is `optimistic` of the request (PRT-7), and a statement that changed no row is `optimistic_lock`
@@ -543,7 +550,9 @@ implementation is eligible for removal on that evidence.
   `expect_revision` it is `config` with the message `expectRevision does not combine with update(true)` (DSL-114):
   the update time is a value that the core writes and the revision a value that the caller holds, so they are two
   members. The conditions of the `Query` join the key (CORE-138), and one statement cannot tell them from the update
-  time, so a row that does not meet them is `optimistic_lock` too. Not implemented: `update_optimistic` of a `Query`,
+  time, so a row that does not meet them is `optimistic_lock` too. `update_optimistic` is the name of the terminal of
+  the core; whether a generated wrapper keeps the call `update(true)` is the matter of the generator. Not implemented:
+  `update_optimistic` of a `Query`,
   whose `update` takes no argument; the generated Rust models have `update(optimistic)`.
 - **CORE-153** `delete_recursive()` deletes the row of a `Query` as `delete` does (CORE-91) and, before it, the rows
   of the relation results that the row holds (CORE-88), each with the rows of its own results, children first: the
@@ -552,7 +561,9 @@ implementation is eligible for removal on that evidence.
   connection is a `Tx` (CORE-21), so a failure deletes nothing, a `revision_changed` of the row included (DSL-114). A
   `Query` with conditions whose row holds a result that is deleted is `config` before any statement, with the message
   `a recursive delete of a row with cascading relations takes no conditions` (CORE-138). It deletes one row of its key
-  and never the rows that conditions select (CORE-138). Not implemented: `delete_recursive` of a `Query`, whose
+  and never the rows that conditions select (CORE-138). `delete_recursive` is the name of the terminal of the core;
+  whether a generated wrapper keeps the call `delete(true)` is the matter of the generator. Not implemented:
+  `delete_recursive` of a `Query`, whose
   `delete` takes no argument; the generated Rust models have `delete(recursive)`.
 - **CORE-154** `order_by_random()` adds to the order an item that orders the rows randomly, by the function of the
   dialect, after the items before it (DSL-99); it is the item `random` of the request. A subquery of an added column
@@ -568,8 +579,10 @@ implementation is eligible for removal on that evidence.
   implemented: `order_by_function` of a `Query`, and no type of the contract is a function of DSL-131 (CORE-84).
 - **CORE-156** `force_index(name)` makes the statement of the `Query` use the index or the unique key `name` of its
   entity: the member `forceIndex<Name>()` of the language implementations (DSL-78). It is `force_index` of the query of
-  the request, and the last one called holds. A name that is no index and no unique key of the entity is
-  `index_unknown` at the next terminal with the message `<entity>.<name>`. Not implemented: `force_index` of a `Query`.
+  the request, and the last one called holds. A name that is no index and no unique key of the entity is `config` at
+  the next terminal with the message `<name> is not an index of <entity>`: the kind by which every builder of a
+  `Query` refuses a name that its entity does not have (CORE-82, CORE-87, CORE-89, CORE-91), where the planner alone
+  gives `index_unknown` with the message `<entity>.<name>`. Not implemented: `force_index` of a `Query`.
 - **CORE-157** Three members set how a `Query` given to `relation` or `relations` is attached (CORE-88, PRT-14), and
   have no effect on a `Query` that is given to neither. `parent_node()` merges the row of a `relation` result into the
   row that holds it (DSL-84): `flatten` of the request, by which the JSON text of the row (CORE-161) writes the
@@ -578,8 +591,9 @@ implementation is eligible for removal on that evidence.
   `count` rows per row of the parent, the first of the order of the child (DSL-86): `limit_per_parent` of the request.
   `count` is `uint`, and 0 is `config` at the next terminal with the message `group_limit requires a positive count`;
   with a row lock it is `ir_invalid` (CORE-86, DSL-123). `delete_lock()` keeps the rows of the result out of
-  `delete_recursive` (CORE-153, DSL-87): `no_cascade_delete` of the request. Not implemented: `parent_node`,
-  `group_limit` and `delete_lock` of a `Query`.
+  `delete_recursive` (CORE-153, DSL-87): `no_cascade_delete` of the request. `Query` has `group_limit`, and the
+  `Db` step takes the call `group_limit` with `count` (CORE-92). Not implemented: `parent_node` and `delete_lock` of a
+  `Query`.
 - **CORE-158** `possible(column, value)` attaches the result of a `Query` given to `relation` or `relations` only to
   the rows of the parent whose column `column` equals `value`: the member `possible<Col>(value)` of the language
   implementations (DSL-85). `column` is a column of the entity of the parent and `value` an `orm_value`, compared as
@@ -587,7 +601,8 @@ implementation is eligible for removal on that evidence.
   is given to neither, the root of a terminal and the subquery of `where_in` among them, it is `config` at the next
   terminal with the message `possible applies only to a relation child`. A name that is no column of the entity of the
   parent is `config` at the next terminal of the parent with the message `<column> is not a column of <entity>`
-  (CORE-130). Not implemented: `possible` of a `Query`.
+  (CORE-130), the kind and the message of every builder of a `Query` for a column that its entity does not have
+  (CORE-87, CORE-89, CORE-91); `value` alone, which reads a row, is `column_unknown` (CORE-83). Not implemented: `possible` of a `Query`.
 - **CORE-159** `fetch_key(function)` keys the `Collection` of `gets` by what `function` returns for each row, in place
   of the primary key and of `key_name` (CORE-89), and `fetch_value(function)` computes a value for each row, which the
   `Collection` holds beside the row under its key (DSL-70). The function takes the row, a `Query`, and is called once
@@ -619,8 +634,8 @@ implementation is eligible for removal on that evidence.
   of its statement, and its `sql`. It takes the arguments and the refusals of `gets_page`: `config` with the message
   `gets_page requires a positive page and per_page`, with `gets_page cannot be combined with limit`, and for a `Query`
   with no connection (CORE-81); the refusals of the planner; and `capability_unsupported` on markdown. The request
-  hook of the connection sees the request. Not implemented: `get_page_plan_steps` of a `Query`, as `gets_page` is not
-  (CORE-84).
+  hook of the connection sees the request. Not implemented: `get_page_plan_steps` of a `Query`; `gets_page` is
+  CORE-200.
 - **CORE-163** The condition on several columns, the member `tuple<ColA>With<ColB>(list)` of the language
   implementations (DSL-35), is `where` with the chain key `Tuple<ColA>With<ColB>`, or `NeTuple<ColA>With<ColB>` for
   `not in`, and one value, a `list` of value groups, each a `list` of one value per column (CORE-82). A value that is
@@ -660,6 +675,108 @@ implementation is eligible for removal on that evidence.
 - **CORE-172** The member `orm.fulltext_boolean(value)` of the contract is `value::fulltext_boolean`, the transform of
   DIA-6 that writes the search text of a MySQL boolean-mode match (DSL-33). It reads no database and raises no kind,
   so every target has it, `wasm` among them.
+- **CORE-200** `gets_page(page, per_page)` reads one page of the rows of a `Query` and counts the rows of every page:
+  the member `getsPage(page, perPage)` of the language implementations (DSL-64, DSL-67, INT-32). It returns a `page`:
+  `rows`, the rows of the page as `gets` returns them (CORE-83); `total_count`, the number of rows that the conditions
+  select; `total_pages`, `total_count` divided by `per_page` and rounded up; and `page` and `per_page` as given. The
+  request is `paginate` (PRT-2): the statement of the rows reads `per_page` rows after `(page - 1) * per_page` rows,
+  and the count statement holds the same conditions and no order. A `Query` with no order is ordered by its primary
+  key ascending, in the order of the key columns, so that consecutive pages neither repeat nor skip a row. A page
+  after the last one has no rows and is no error. `page` and `per_page` are `uint`; 0 of either is `config` with the
+  message `gets_page requires a positive page and per_page`, a `Query` with `limit` (CORE-85) is `config` with the
+  message `gets_page cannot be combined with limit`, each before the connection is asked for (CORE-81), and an
+  offset over the range of `uint` is `config` with the message `page offset exceeds u32 range`, before any statement. The terminal does not change the `Query` (DSL-69). In the contract `page` is a class whose members
+  `total_count`, `total_pages`, `page` and `per_page` are properties and whose member `rows` returns the unit `rows`
+  (CORE-70). The `Db` step (CORE-92) has no terminal for it.
+- **CORE-201** `group_by(column)` adds a column to the grouping of a `Query`, the member `groupBy<Col>()` of the
+  language implementations (DSL-99), and `gets_count()` returns one row for each group of the rows that the conditions
+  select: the member `getsCount()` (DSL-61, INT-31, INT-68). The request is `group_count`, and its `group_by` holds
+  the columns in the order of the calls (PRT-2). A group row is a map: each grouping column under its name, with the
+  `orm_value` that `value` returns for the column (CORE-62, CORE-83), null included, and then `row_count`, the number
+  of rows of the group as `int64`. It holds no other column and is no row of the entity (INT-68). The rows are in the
+  order of the `Query`, whose order items name grouping columns alone: another column is `ir_invalid` with the message
+  `order by <column>, which is not a group column`. `gets_count` of a `Query` without `group_by` is `ir_invalid` with
+  the message `group_count needs group_by`. `get_count` of a grouped `Query` counts its groups (PRT-2), and every
+  other terminal of one is `ir_invalid` with the message `group_by is only valid on count or group_count, not <kind>`,
+  `gets_page` among them (CORE-200, DSL-99); a grouped `Query` given to `relation`, `relations` or `where_in` is
+  `ir_invalid` with the message `group_by is only valid on the request's root query`. A name that is no column of the
+  entity is `config` at the next terminal with the message `<column> is not a column of <entity>` (CORE-87). A count
+  that is no exact integer from 0 is `codec_decode` (INT-68). The `Db` step takes the call `group_by` with `column`
+  (CORE-92) and has no terminal for `gets_count`. The contract returns the group rows as a list of maps of
+  `orm_value`; `GroupRow` and `GroupRows`, which hold the Rust value `Val`, stay undeclared (CORE-70).
+- **CORE-202** `where_group(connector, query)` adds the conditions of `query`, a `Query` of the same entity, as one
+  group in parentheses: the members `and(fn)` and `or(fn)` of the language implementations (DSL-15, DSL-21).
+  `connector` is `""`, `And` or `Or`, the words that `where_none` takes (CORE-137): `And` and `Or` join the group to
+  the conditions before it, a group that is the first condition takes no connector (DSL-18), and `""` after another
+  condition is `config` with the message `condition without and/or after another condition` (DSL-19). Any other text
+  is `config` with the message `where_group takes "", "And" or "Or", not <text>`. The group holds the conditions of
+  `query` in their order with their connectors, those of `where`, `where_in`, `where_none` and `where_group`, so
+  groups nest, and nothing else of `query`: its order, columns, limit, lock, grouping, assignments, relations and
+  connection have no effect. A language implementation gives a function an empty model on which the function builds
+  the group (DSL-20); the core takes the built `Query`, as `where_in` takes its subquery (CORE-90), so it keeps no
+  function and the `Db` step carries the group as data, the call `where_group` with `connector` and `query`
+  (CORE-92). A `query` with no condition is `config` with the message `the query of where_group has no condition`
+  (DSL-22), a `query` of another entity is `config` with the message
+  `where_group takes a query of <entity>, not of <other>`, and a `query` that one of its members failed fails the
+  `Query` with that error. Each is returned by the next terminal. The conditions of a group hold for `update` and
+  `delete` as every condition does (CORE-138).
+- **CORE-203** `save()` writes the assignments of a `Query` (CORE-91) by `update` when its row is known and by
+  `create` when it is not: the member `save()` of the language implementations (DSL-109). The row is known when the
+  `Query` read a row or `set` assigned every column of the primary key, which is what `update` asks for (CORE-91).
+  Then `save` is that `update`, with its `expect_revision` and under the conditions of the `Query` (CORE-138), and
+  returns the `Query` as the `update` left it. It reads no row first: a key that no row holds, and a row that does not
+  meet the conditions, change nothing, are no error and insert nothing. Otherwise `save` is `create` and returns the
+  created row; a row with an identity key is therefore created without its key and updated with it (DSL-113). A
+  failure is the failure of that `update` or `create`, and a `Query` with no connection is `config` before either
+  (CORE-81). The `Db` step (CORE-92) has no terminal for it.
+- **CORE-204** `creates(rows, batch)` inserts the rows of the assignments of each `Query` of `rows`, in their order,
+  and returns the number of rows that it inserted: the member `creates(models, batch)` of the language implementations
+  (DSL-104). The rows are inserted in batches of `batch` rows, each batch one statement of several rows, all in one
+  transaction of the connection of the `Query`, a savepoint when the connection is a `Tx` (CORE-21), so a failure
+  inserts nothing. The `Query` gives the entity, the connection and the conditions of the insert, which hold for
+  every row as DSL-162 states (`condition_not_met`); each `Query` of `rows` gives the assignments of `set` alone
+  (CORE-91), and its connection and conditions have no effect. `batch` is `uint`, and 0 is `config` with the message
+  `creates batch must be a positive integer, got 0`. A `Query` of `rows` of another entity is `config` with the
+  message `creates takes rows of <entity>, not of <other>`, one that a member failed fails `creates` with that error,
+  the first without an assignment is `config` with the message `creates requires models with set_<col> values`, and
+  one whose assignments are not the columns of the first, in its order, is `config` with the message
+  `every model of creates must set the same columns` or `... in the same order`. A batch whose values and condition
+  parameters are more than the statement of the database takes, 999 on SQLite and 65535 on MySQL and PostgreSQL, is
+  `batch_too_large` before any statement, with the message
+  `creates batch <n> of <rows> rows binds <binds> parameters, over the <driver> limit of <limit>`. A value for the
+  identity column is `ir_invalid` (DSL-113). An empty `rows` returns 0 and sends no statement, on a `Query` with a
+  connection (CORE-81). The rows are not returned, and no row is read after the insert. The `Db` step (CORE-92) has
+  no terminal for it.
+- **CORE-205** `sum(column)` names the column whose sum `get_sum()` returns: the members `sum<Col>()` and `getSum()`
+  of the language implementations (DSL-62). The request is `sum` and the column its `agg` (PRT-2); the last `sum`
+  called holds, and the conditions of the `Query` select the rows. The result is a `float`: the sum, which stays exact
+  until it is converted once to the nearest binary64 value (DSL-66, DSL-161), and 0 when no value is left, whether no
+  row matches or every value is null. `get_sum` of a `Query` without `sum` is `config` with the message
+  `get_sum requires sum_<col>()`, before the connection is asked for. A name that is no column of the entity is
+  `config` at the next terminal with the message `<column> is not a column of <entity>` (CORE-87), a column that is
+  no number is `operator_not_allowed` with the message `sum on <entity>.<column> (<type>)`, a scalar that is no
+  finite number is `codec_decode` with the message `aggregate scalar is not a finite number`, and a grouped `Query`
+  is `ir_invalid` (CORE-201). `sum` has no effect on another terminal. The `Db` step takes the call `sum` with
+  `column` (CORE-92) and has no terminal for `get_sum`.
+- **CORE-206** `gets_lookahead_page(page, per_page)` reads one page of the rows of a `Query` and one row past it, and
+  counts nothing: the member `getsLookaheadPage(page, perPage)` of the language implementations (INT-164). It returns
+  a `lookahead_page`: `rows`, the rows of the page as `gets` returns them (CORE-83), `page` and `per_page` as given,
+  and `has_next`, whether the statement read a row past the page; that row is not returned. The request is
+  `lookahead_paginate`, one statement that reads `per_page + 1` rows after `(page - 1) * per_page` rows and no count
+  statement (PRT-38). `gets_count_lookahead_page(page, per_page)` is the same page of the group rows of `gets_count`
+  (CORE-201), the member `getsCountLookaheadPage(page, perPage)`: the request is `group_lookahead_paginate`, and it
+  returns a `group_lookahead_page` whose `rows` is the list of maps of `gets_count`. A `Query` with no order is
+  ordered by its primary key ascending, and a grouped one by its grouping columns ascending in their order, so that
+  consecutive pages neither repeat nor skip a row. A page after the last one has no rows and `has_next` false, and is
+  no error. For both, a `page` or a `per_page` of 0 is `config` with the message
+  `gets_lookahead_page requires a positive page and per_page` and a `Query` with `limit` is `config` with the message
+  `gets_lookahead_page cannot be combined with limit`, each before the connection is asked for (CORE-81); an offset
+  or a `per_page + 1` over the range of `uint` is `config` with the message `page offset exceeds u32 range` or
+  `page size exceeds u32 range`. `gets_count_lookahead_page` of a `Query` without `group_by` is `ir_invalid` with the
+  message `group_lookahead_paginate needs group_by`, and `gets_lookahead_page` of a grouped one is `ir_invalid`
+  (CORE-201). Neither changes the `Query`. In the contract the two results are classes whose `page`, `per_page` and
+  `has_next` are properties; `rows` of `lookahead_page` returns the unit `rows` (CORE-170). The `Db` step (CORE-92)
+  has no terminal for them.
 
 ## State machines
 
@@ -754,9 +871,8 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   (CORE-180). The terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row are declared, and `gets`
   and `gets_by` return the class `rows` (CORE-170). `Collection`, `Page` and `LookaheadPage` are not declared as types:
   each is generic over its model, which the Rust path of a `core_type` cannot name, and a `Query` has no terminal that
-  returns a page (CORE-84). `get_query` is not declared, because it returns `Statement`. `Page`, `LookaheadPage`,
-  `GroupRow` and `GroupRows` are returned by no member of `Query` (CORE-84) but by the generated Rust models alone, and
-  a binding has no generated model (CORE-50).
+  returns a page but `gets_page`, whose `Page` is the class `page` (CORE-200). `get_query` is not declared, because it
+  returns `Statement`.
 - **CORE-180** The contract declares the utilities of a connection with the call shape of the legacy clients (INT-73,
   INT-134): the members `db.utils` and `tx.utils` return the class `utils` (`Utils`), whose members `schema`,
   `privileges` and `aes` return the classes `schema_utils` (`SchemaUtils`), `privilege_utils` (`PrivilegeUtils`) and

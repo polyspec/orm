@@ -942,17 +942,17 @@ pub async fn gets_core<M: Model>(c: &Core, kind: &str) -> Result<Collection<M>> 
 }
 
 /// Runs a grouped count and returns only grouping values and row counts.
-pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
-    let ex = terminal(m.core())?;
-    let mut request = build(m.core(), "group_count");
-    let result = select(&ex, &m.core().conn, &mut request).await?;
-    group_rows(m.core(), &result)
+pub async fn gets_count<M: AnyModel + Clone>(m: &M) -> Result<GroupRows> {
+    let ex = terminal(m.core_dyn())?;
+    let mut request = build(m.core_dyn(), "group_count");
+    let result = select(&ex, &m.core_dyn().conn, &mut request).await?;
+    group_rows(m.core_dyn(), &result)
 }
 
 /// Returns one page of the models of `gets` and whether a next page exists, read by one statement that reads one row past
 /// the page and counts nothing (INT-164).
-pub async fn gets_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<LookaheadPage<M>> {
-    let (ex, q, mut req) = lookahead_request(m.core(), "lookahead_paginate", page, per_page)?;
+pub async fn gets_lookahead_page<M: AnyModel + Clone>(m: &M, page: u32, per_page: u32) -> Result<LookaheadPage<M>> {
+    let (ex, q, mut req) = lookahead_request(m.core_dyn(), "lookahead_paginate", page, per_page)?;
     let res = select_page(&ex, &q.conn, &mut req, Some(per_page as usize)).await?;
     let loaded = assemble(&q, &req, &res).await?;
     Ok(LookaheadPage { items: Collection::from_boxes(loaded.items, loaded.fetched), page, per_page, has_next: res.has_next })
@@ -960,10 +960,10 @@ pub async fn gets_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> R
 
 /// Returns one page of the group rows of `gets_count` and whether a next page exists, read by one statement that reads one
 /// group past the page and counts nothing (INT-164).
-pub async fn gets_count_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<GroupLookaheadPage> {
-    let (ex, q, mut req) = lookahead_request(m.core(), "group_lookahead_paginate", page, per_page)?;
+pub async fn gets_count_lookahead_page<M: AnyModel + Clone>(m: &M, page: u32, per_page: u32) -> Result<GroupLookaheadPage> {
+    let (ex, q, mut req) = lookahead_request(m.core_dyn(), "group_lookahead_paginate", page, per_page)?;
     let res = select_page(&ex, &q.conn, &mut req, Some(per_page as usize)).await?;
-    Ok(GroupLookaheadPage { items: group_rows(m.core(), &res)?, page, per_page, has_next: res.has_next })
+    Ok(GroupLookaheadPage { items: group_rows(m.core_dyn(), &res)?, page, per_page, has_next: res.has_next })
 }
 
 /// The arguments of a lookahead page checked and its request of `kind` built, whose root limit reads one row past the page.
@@ -1018,8 +1018,8 @@ fn group_rows(core: &Core, result: &QueryResult) -> Result<GroupRows> {
 }
 
 /// Returns one page and the total count.
-pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page<M>> {
-    let (ex, q, mut req) = page_request(m.core(), page, per_page)?;
+pub async fn gets_page<M: AnyModel + Clone>(m: &M, page: u32, per_page: u32) -> Result<Page<M>> {
+    let (ex, q, mut req) = page_request(m.core_dyn(), page, per_page)?;
     let res = select(&ex, &q.conn, &mut req).await?;
     // A select reads its count step in plan order.
     let total = res.count.ok_or_else(|| Error::internal("paginate plan has no count result"))?;
@@ -1403,17 +1403,17 @@ pub async fn create<M: AnyModel + Clone>(m: &mut M) -> Result<M> {
 /// Inserts models in batches of `batch` rows, each batch one multi-row INSERT, in one transaction (a savepoint
 /// inside an active one) and returns the inserted row count. A `batch` of 0 is CONFIG and a batch whose binds exceed
 /// the bind limit is BATCH_TOO_LARGE, both before any statement.
-pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64> {
+pub async fn creates<M: AnyModel + Clone>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64> {
     if batch == 0 {
         return Err(config("creates batch must be a positive integer, got 0"));
     }
-    let c = m.core();
+    let c = m.core_dyn();
     let ex = terminal(c)?;
     if rows.is_empty() {
         return Ok(0);
     }
     let ent = c.ent.entity_schema()?;
-    let first = rows[0].core();
+    let first = rows[0].core_dyn();
     if first.sets.is_empty() {
         return Err(config("creates requires models with set_<col> values"));
     }
@@ -1432,7 +1432,7 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64>
             start += part;
             let mut req = write_req(c, "insert");
             for (i, row) in chunk.iter().enumerate() {
-                let rc = row.core();
+                let rc = row.core_dyn();
                 if rc.sets.len() != columns.len() {
                     return Err(config("every model of creates must set the same columns"));
                 }
@@ -1618,10 +1618,10 @@ pub async fn update<M: AnyModel + Clone>(m: &mut M, optimistic: bool) -> Result<
 }
 
 /// Updates the row when its primary key is known, otherwise creates it.
-pub async fn save<M: Model>(m: &mut M) -> Result<M> {
-    terminal(m.core())?;
-    let ent = m.core().ent.entity_schema()?;
-    if key_values(m.core(), &ent).is_ok() {
+pub async fn save<M: AnyModel + Clone>(m: &mut M) -> Result<M> {
+    terminal(m.core_dyn())?;
+    let ent = m.core_dyn().ent.entity_schema()?;
+    if key_values(m.core_dyn(), &ent).is_ok() {
         update(m, false).await?;
         return Ok(m.clone());
     }

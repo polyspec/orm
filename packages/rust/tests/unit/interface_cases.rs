@@ -36,7 +36,10 @@ enum Instance {
     Keyring(AesKeyring),
     Schema(Schema),
     Query(Box<Query>),
+    Page(Box<crate::QueryPage>),
     Rows(Box<Rows>),
+    LookaheadPage(Box<crate::QueryLookaheadPage>),
+    GroupPage(Box<crate::GroupLookaheadRows>),
     Model(Box<Manifest>),
     Integer(IntegerValue),
     Float(FloatValue),
@@ -656,12 +659,32 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.set(&text(args, "column", member), &orm_value(field(args, "value", member), member)?);
             Returned::Value(Value::Null)
         }
+        ("query.plus", Some(Instance::Query(query))) => {
+            query.plus(&text(args, "column", member), &orm_value(field(args, "value", member), member)?);
+            Returned::Value(Value::Null)
+        }
+        ("query.minus", Some(Instance::Query(query))) => {
+            query.minus(&text(args, "column", member), &orm_value(field(args, "value", member), member)?);
+            Returned::Value(Value::Null)
+        }
         ("query.expect_revision", Some(Instance::Query(query))) => {
             let revision = field(args, "revision", member).as_i64().unwrap_or_else(|| panic!("{member}: revision is no integer"));
             query.expect_revision(&text(args, "column", member), revision);
             Returned::Value(Value::Null)
         }
         ("query.create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.create().await?))),
+        ("query.creates", Some(Instance::Query(query))) => {
+            let given = field(args, "rows", member).as_array().unwrap_or_else(|| panic!("{member}: rows is no list"));
+            let mut rows = Vec::with_capacity(given.len());
+            for row in given {
+                match Box::pin(instance(row, member)).await {
+                    Instance::Query(row) => rows.push(*row),
+                    _ => panic!("{member}: a row is no query"),
+                }
+            }
+            Returned::Value(returned_integer(query.creates(rows, uint(args, "batch", member)).await?))
+        }
+        ("query.save", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.save().await?))),
         ("query.restore", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore().await?))),
         ("query.restore_or_create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore_or_create().await?))),
         ("query.update", Some(Instance::Query(query))) => {
@@ -676,6 +699,56 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)
         }
+        ("query.gets_page", Some(Instance::Query(query))) => {
+            Returned::Instance(Instance::Page(Box::new(query.gets_page(uint(args, "page", member), uint(args, "per_page", member)).await?)))
+        }
+        ("page.total_count", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_count())),
+        ("page.total_pages", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_pages())),
+        ("page.page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.page())),
+        ("page.per_page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.per_page())),
+        ("page.rows", Some(Instance::Page(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
+        ("query.where_group", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "query", member), member)).await {
+            Instance::Query(group) => {
+                query.where_group(&text(args, "connector", member), *group);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: query is no query"),
+        },
+        ("query.duplication", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "query", member), member)).await {
+            Instance::Query(other) => {
+                query.duplication(*other);
+                Returned::Value(Value::Null)
+            }
+            _ => panic!("{member}: query is no query"),
+        },
+        ("query.sum", Some(Instance::Query(query))) => {
+            query.sum(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.get_sum", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_sum().await?)),
+        ("query.group_limit", Some(Instance::Query(query))) => {
+            query.group_limit(uint(args, "count", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.gets_lookahead_page", Some(Instance::Query(query))) => Returned::Instance(Instance::LookaheadPage(Box::new(
+            query.gets_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?,
+        ))),
+        ("query.gets_count_lookahead_page", Some(Instance::Query(query))) => Returned::Instance(Instance::GroupPage(Box::new(
+            query.gets_count_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?,
+        ))),
+        ("lookahead_page.page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.page())),
+        ("lookahead_page.per_page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.per_page())),
+        ("lookahead_page.has_next", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.has_next())),
+        ("lookahead_page.rows", Some(Instance::LookaheadPage(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
+        ("group_lookahead_page.page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.page())),
+        ("group_lookahead_page.per_page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.per_page())),
+        ("group_lookahead_page.has_next", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.has_next())),
+        ("group_lookahead_page.rows", Some(Instance::GroupPage(page))) => Returned::Value(page.rows().iter().map(|row| case_map(row, member)).collect()),
+        ("query.group_by", Some(Instance::Query(query))) => {
+            query.group_by(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.gets_count", Some(Instance::Query(query))) => Returned::Value(query.gets_count().await?.iter().map(|row| case_map(row, member)).collect()),
         ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
         ("query.where", Some(Instance::Query(query))) => {
             query.where_chain(&text(args, "chain", member), &orm_values(args, "values", member)?);

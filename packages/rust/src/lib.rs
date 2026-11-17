@@ -103,7 +103,7 @@ pub use model::{AnyModel, Entity, EntityRef, LoadedEntity, Model};
 pub use orm_value::{BytesValue, FloatValue, IntegerValue, JsonValue, MapValue, OrmValue};
 pub use polyspec_json;
 #[cfg(feature = "runtime")]
-pub use query::{Query, Rows};
+pub use query::{GroupLookaheadRows, Query, QueryLookaheadPage, QueryPage, Rows};
 pub use schema::{Manifest, Schema, SchemaRef};
 pub use serde;
 pub use serde_json;

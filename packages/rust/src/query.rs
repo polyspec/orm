@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use polyspec_orm_schema::chain::{parse_chain, parse_order, split_pair, ChainKey};
 
 use crate::args::Value;
-use crate::collection::{AnyCollection, Collection, Key};
+use crate::collection::{AnyCollection, Collection, GroupRows, Key, LookaheadPage, Page};
 use crate::core::{Arg, Core};
 use crate::db::Statement;
 use crate::model::{AnyModel, Boxed, LoadedEntity, RelatedValue};
@@ -23,6 +23,107 @@ pub struct Query {
     core: Core,
     /// The values of the columns of the entity that a row read, by column name.
     values: IndexMap<String, Val>,
+}
+
+/// One page of the rows of a `Query`, the core type of the class `page` of the contract (CORE-200).
+pub type QueryPage = Page<Query>;
+
+impl Page<Query> {
+    /// The number of rows that the conditions of the query select, on every page (CORE-200).
+    #[must_use]
+    pub fn total_count(&self) -> i64 {
+        self.total_count
+    }
+
+    /// The number of pages: the count divided by the rows of a page and rounded up (CORE-200).
+    #[must_use]
+    pub fn total_pages(&self) -> i64 {
+        self.total_pages
+    }
+
+    /// The number of the page, from 1, as `gets_page` received it (CORE-200).
+    #[must_use]
+    pub fn page(&self) -> u32 {
+        self.page
+    }
+
+    /// The number of rows of a page, as `gets_page` received it (CORE-200).
+    #[must_use]
+    pub fn per_page(&self) -> u32 {
+        self.per_page
+    }
+
+    /// The rows of the page, as `gets` returns them (CORE-200).
+    #[must_use]
+    pub fn rows(&self) -> Rows {
+        Rows(self.items.clone())
+    }
+}
+
+/// One page of the rows of a `Query` read one row past its end, the core type of the class `lookahead_page` of the
+/// contract (CORE-206).
+pub type QueryLookaheadPage = LookaheadPage<Query>;
+
+impl LookaheadPage<Query> {
+    /// The number of the page, from 1, as `gets_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn page(&self) -> u32 {
+        self.page
+    }
+
+    /// The number of rows of a page, as `gets_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn per_page(&self) -> u32 {
+        self.per_page
+    }
+
+    /// Whether the query has a row past the page (CORE-206).
+    #[must_use]
+    pub fn has_next(&self) -> bool {
+        self.has_next
+    }
+
+    /// The rows of the page, as `gets` returns them (CORE-206).
+    #[must_use]
+    pub fn rows(&self) -> Rows {
+        Rows(self.items.clone())
+    }
+}
+
+/// One page of the group rows of a `Query` read one group past its end, the core type of the class
+/// `group_lookahead_page` of the contract (CORE-206).
+#[derive(Clone)]
+pub struct GroupLookaheadRows {
+    rows: Vec<OrderedMap<OrmValue>>,
+    page: u32,
+    per_page: u32,
+    has_next: bool,
+}
+
+impl GroupLookaheadRows {
+    /// The number of the page, from 1, as `gets_count_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn page(&self) -> u32 {
+        self.page
+    }
+
+    /// The number of groups of a page, as `gets_count_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn per_page(&self) -> u32 {
+        self.per_page
+    }
+
+    /// Whether the query has a group past the page (CORE-206).
+    #[must_use]
+    pub fn has_next(&self) -> bool {
+        self.has_next
+    }
+
+    /// The group rows of the page, as `gets_count` returns them (CORE-201, CORE-206).
+    #[must_use]
+    pub fn rows(&self) -> Vec<OrderedMap<OrmValue>> {
+        self.rows.clone()
+    }
 }
 
 fn new_query(core: Core) -> Box<dyn AnyModel> {
@@ -139,13 +240,42 @@ impl Query {
     /// `""`, `And` or `Or`, the connector words of CORE-82: `""` and `And` join it with `and` and `Or` with `or`. Any
     /// other text fails the query with `config` at the next terminal.
     pub fn where_none(&mut self, connector: &str) {
-        let conn = match connector {
-            "" => "",
-            "And" => "and",
-            "Or" => "or",
-            other => return self.core.fail(format!("where_none takes \"\", \"And\" or \"Or\", not {other}")),
-        };
-        self.core.add_none(conn);
+        if let Some(conn) = self.connector_of("where_none", connector) {
+            self.core.add_none(conn);
+        }
+    }
+
+    /// The connector of the word `connector`, `""`, `And` or `Or` (CORE-82); any other text fails the query with `config`
+    /// in the name of `member`.
+    fn connector_of(&mut self, member: &str, connector: &str) -> Option<&'static str> {
+        match connector {
+            "" => Some(""),
+            "And" => Some("and"),
+            "Or" => Some("or"),
+            other => {
+                self.core.fail(format!("{member} takes \"\", \"And\" or \"Or\", not {other}"));
+                None
+            }
+        }
+    }
+
+    /// Adds the conditions of `query`, a query of the same entity, as one group in parentheses (CORE-202). `connector` is
+    /// `""`, `And` or `Or`, as `where_none` takes it. Nothing but the conditions of `query` is read. A query with no
+    /// condition, a query of another entity and a refused connector are `config` at the next terminal, and a query that
+    /// a member failed fails this query with its error.
+    pub fn where_group(&mut self, connector: &str, query: Query) {
+        if let Some(error) = query.core.err() {
+            return self.core.fail_err(error);
+        }
+        let Some(conn) = self.connector_of("where_group", connector) else { return };
+        if query.entity() != self.entity() {
+            let message = format!("where_group takes a query of {}, not of {}", self.entity(), query.entity());
+            return self.core.fail(message);
+        }
+        if query.core.where_.items.is_empty() {
+            return self.core.fail("the query of where_group has no condition");
+        }
+        self.core.add_group(conn, query.core);
     }
 
     /// Adds the condition that the column of the chain name `chain`, one key with no operator or with `Ne`, is in, or
@@ -220,10 +350,32 @@ impl Query {
         }
     }
 
+    /// Adds the column `column` to the grouping of the query, which `gets_count` and `get_count` read (CORE-201). A name
+    /// that is no column of the entity is `config` at the next terminal.
+    pub fn group_by(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.group_by(column);
+        }
+    }
+
+    /// Names the column `column` whose sum `get_sum` returns; the last one called holds (CORE-205). A name that is no
+    /// column of the entity is `config` at the next terminal.
+    pub fn sum(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.aggregate("sum", column);
+        }
+    }
+
     /// Reads at most `count` rows after the first `offset` rows of the order (CORE-85). A `count` of 0 is `config` at
     /// the next terminal.
     pub fn limit(&mut self, offset: u32, count: u32) {
         self.core.limit(offset, count);
+    }
+
+    /// Reads at most `count` rows per row of the parent, the first of the order of this query, when the query is given to
+    /// `relation` or `relations` (CORE-157). A `count` of 0 is `config` at the next terminal.
+    pub fn group_limit(&mut self, count: u32) {
+        self.core.group_limit(count);
     }
 
     /// Locks the rows that `get` and `gets` read with the lock `update`, the member `forUpdate` of the language
@@ -368,6 +520,59 @@ impl Query {
         }
     }
 
+    /// Assigns to the column `column`, for the next write, its stored value plus `value` (CORE-150). A name that is no
+    /// column of the entity is `config` and a list, a map or a JSON value is `codec_encode`, each at the next terminal.
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub fn plus(&mut self, column: &str, value: &OrmValue) {
+        if let Some(amount) = self.amount(column, value) {
+            self.core.plus(column, amount);
+        }
+    }
+
+    /// Assigns to the column `column`, for the next write, its stored value minus `value`, and never a negative value
+    /// (CORE-150). A name that is no column of the entity is `config` and a list, a map or a JSON value is
+    /// `codec_encode`, each at the next terminal.
+    /// The value argument is borrowed, as a generated binding passes it (binding design T-1).
+    pub fn minus(&mut self, column: &str, value: &OrmValue) {
+        if let Some(amount) = self.amount(column, value) {
+            self.core.minus(column, amount);
+        }
+    }
+
+    /// The parameter of the amount `value` of `plus` or `minus` on the column `column`; a name that is no column and a
+    /// value that is no one value fail the query (CORE-150).
+    fn amount(&mut self, column: &str, value: &OrmValue) -> Option<crate::value::Param> {
+        if !self.known_column(column) {
+            return None;
+        }
+        match value.clone().scalar() {
+            Ok(param) => Some(param),
+            Err(refused) => {
+                let what = match refused {
+                    OrmValue::Map(_) => "a map",
+                    OrmValue::List(_) => "a list",
+                    _ => "a JSON value",
+                };
+                self.core.fail_err(Error::new(Kind::CodecEncode, format!("the value of a column is {what}")));
+                None
+            }
+        }
+    }
+
+    /// Makes the next `create` an insert with a duplicate-key update that writes the assignments of `query`, a query of
+    /// the same entity, to the row that the insert met (CORE-151). A query of another entity is `config` at the next
+    /// terminal, and a query that a member failed fails this query with its error.
+    pub fn duplication(&mut self, query: Query) {
+        if let Some(error) = query.core.err() {
+            return self.core.fail_err(error);
+        }
+        if query.entity() != self.entity() {
+            let message = format!("duplication takes a query of {}, not of {}", self.entity(), query.entity());
+            return self.core.fail(message);
+        }
+        self.core.duplication(query.core);
+    }
+
     /// Makes the next `update` or `delete` write only while the integer column `column` holds `revision`; `update` also
     /// stores `revision + 1` (CORE-91, DSL-108).
     pub fn expect_revision(&mut self, column: &str, revision: i64) {
@@ -384,6 +589,29 @@ impl Query {
     /// key that `set` assigned (CORE-91).
     pub async fn update(&mut self) -> Result<()> {
         crate::model::update(self, false).await
+    }
+
+    /// Inserts the rows of the assignments of `rows`, queries of the same entity, in batches of `batch` rows in one
+    /// transaction, under the conditions of this query, and returns the number of rows inserted (CORE-204). A `batch` of
+    /// 0 and a row of another entity are `config`, and a batch over the bind limit of the database is `batch_too_large`.
+    pub async fn creates(&self, rows: Vec<Query>, batch: u32) -> Result<i64> {
+        for row in &rows {
+            if row.entity() != self.entity() {
+                return Err(Error::config(format!("creates takes rows of {}, not of {}", self.entity(), row.entity())));
+            }
+            if let Some(error) = row.core.err() {
+                return Err(error);
+            }
+        }
+        let batch = usize::try_from(batch).map_err(|error| Error::internal(format!("the batch {batch} is no size: {error}")))?;
+        let inserted = crate::model::creates(self, rows, batch).await?;
+        i64::try_from(inserted).map_err(|error| Error::internal(format!("the count {inserted} of inserted rows is no int64: {error}")))
+    }
+
+    /// Writes the assignments by `update` when the query read a row or `set` assigned its primary key, and by `create`
+    /// otherwise (CORE-203). It returns the query as `update` left it, or the row that `create` returned.
+    pub async fn save(&mut self) -> Result<Query> {
+        crate::model::save(self).await
     }
 
     /// Deletes the row that the query read or, in a query that read no row, the row of the primary key that `set`
@@ -428,6 +656,68 @@ impl Query {
     pub async fn gets(&self) -> Result<Collection<Query>> {
         let rows = crate::model::load(&self.core, "all").await?;
         Ok(Collection::from_boxes(rows.items, rows.fetched))
+    }
+
+    /// Reads the page `page` of `per_page` rows and counts the rows of every page (CORE-200); the query does not
+    /// change. A `page` or a `per_page` of 0 and a query with `limit` are `config`.
+    pub async fn gets_page(&self, page: u32, per_page: u32) -> Result<QueryPage> {
+        crate::model::gets_page(self, page, per_page).await
+    }
+
+    /// Runs the grouped count of the query and returns one map for each group, in the order of the query: the columns of
+    /// `group_by` by name and then `row_count`, the number of rows of the group (CORE-201). A query without `group_by`
+    /// is `ir_invalid`; the query does not change.
+    pub async fn gets_count(&self) -> Result<Vec<OrderedMap<OrmValue>>> {
+        self.group_maps(&crate::model::gets_count(self).await?)
+    }
+
+    /// Reads the page `page` of `per_page` rows and one row past it, and counts nothing (CORE-206); the query does not
+    /// change. A `page` or a `per_page` of 0 and a query with `limit` are `config`.
+    pub async fn gets_lookahead_page(&self, page: u32, per_page: u32) -> Result<QueryLookaheadPage> {
+        crate::model::gets_lookahead_page(self, page, per_page).await
+    }
+
+    /// Reads the page `page` of `per_page` group rows of `gets_count` and one group past it (CORE-206); the query does
+    /// not change. A query without `group_by` is `ir_invalid`.
+    pub async fn gets_count_lookahead_page(&self, page: u32, per_page: u32) -> Result<GroupLookaheadRows> {
+        let read = crate::model::gets_count_lookahead_page(self, page, per_page).await?;
+        Ok(GroupLookaheadRows { rows: self.group_maps(&read.items)?, page: read.page, per_page: read.per_page, has_next: read.has_next })
+    }
+
+    /// The group rows `groups` as maps: the columns of `group_by` by name and then `row_count` (CORE-201).
+    fn group_maps(&self, groups: &GroupRows) -> Result<Vec<OrderedMap<OrmValue>>> {
+        let manifest = self.core.entity().schema().manifest()?;
+        let entity = manifest.entity(self.core.entity().name())?;
+        let mut out = Vec::with_capacity(groups.len());
+        for group in groups.iter() {
+            let mut row = OrderedMap::with_capacity(group.values().len());
+            for (name, cell) in group.values() {
+                // A group row repeats no name, so `row_count` is the count and never a column of that name (INT-68).
+                let value = if name == "row_count" {
+                    OrmValue::Int64(group.count())
+                } else {
+                    let field = entity
+                        .field(name)
+                        .ok_or_else(|| Error::internal(format!("a group row of {} holds {name}, which is no column of it", self.entity())))?;
+                    OrmValue::of_column(field, cell.clone())?
+                };
+                if row.insert(name.clone(), value).is_some() {
+                    return Err(Error::internal(format!("a group row of {} names {name} twice", self.entity())));
+                }
+            }
+            out.push(row);
+        }
+        Ok(out)
+    }
+
+    /// The sum of the column that `sum` named over the rows that the conditions select, 0 when no value is left
+    /// (CORE-205). A query without `sum` is `config`; the query does not change.
+    pub async fn get_sum(&self) -> Result<f64> {
+        // A refused `sum` named no column, so its error comes before the refusal of a query without `sum`.
+        if let Some(error) = self.core.err() {
+            return Err(error);
+        }
+        crate::model::get_sum(&self.core).await
     }
 
     /// Runs the count of the query (CORE-83).
