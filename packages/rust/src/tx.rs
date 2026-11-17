@@ -1016,6 +1016,12 @@ pub fn transaction_conflict(message: impl Into<String>) -> Error {
     Error::new(crate::Kind::Deadlock, message)
 }
 
+/// `transaction_conflict` as the member `orm.transaction_conflict` of the contract calls it (CORE-171): a member of the
+/// contract returns no error value, so the function fails with the error.
+pub fn fail_transaction_conflict(message: &str) -> Result<()> {
+    Err(transaction_conflict(message))
+}
+
 /// The cleanup of a MySQL transaction whose connection the server killed, for the tests of the test entry point
 /// (`polyspec_orm::testing`), which reach the end steps of a transaction that no public call can make fail.
 #[cfg(feature = "test-faults")]

@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: a7d31e83462c4ed548482e2575a50e1f1d459b4272743566bbdea8cab8b01056 -->
+<!-- source-sha256: b3c1d4051877994fd41f1669477e2351d2e0fb60c36081b9cbec280f2ac0e37c -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -527,6 +527,34 @@
   `tuple condition received an empty list`이고, 길이가 다른 묶음은 `config`이고 메시지는
   `every tuple needs one value per column`이며, 열이 둘보다 적은 key나 codec stage가 있는 열 또는 list 연산자가 없는
   열의 key는 `config`다. 각각 다음 terminal이 돌려준다. `Query`는 이것을 가진다.
+- **CORE-170** 계약은 `Query`의 terminal `get`, `gets`, `gets_by`와 행의 `to_array`를 선언한다(CORE-83, CORE-120).
+  `query.get`은 `query.get_by`처럼 행을 돌려주거나 아무것도 돌려주지 않는다. `query.gets`와 `query.gets_by`는
+  `Query::gets_rows()`와 `Query::gets_rows_by(chain, values)`다. 이 둘은 `gets`와 `gets_by`를 실행하고 그 `Collection`을
+  계약의 class `rows`인 `Rows`로 돌려준다. `rows`에는 행의 수 `len()`, 첫 행이나 없음을 돌려주는 `first()`, key의 행이나
+  없음을 돌려주는 `get(key)`, 행의 순서대로 key를 돌려주는 `keys()`, 순서대로 행을 돌려주는 `values()`, 그 순서대로 각
+  행의 `to_array`를 돌려주는 `to_array()`가 있다. key는 `orm_value`다: 정수 key는 `int64`, bool key는 `bool`, bytes key는
+  `bytes`, 텍스트 key는 `text`이고, date-time key는 소수 자리가 여섯인 텍스트 `YYYY-MM-DD hh:mm:ss.ffffff`다. 행의 key는
+  `key_name`의 열(CORE-89)의 값이고, 그것이 없으면 primary key의 값이다. 열이 둘 이상인 primary key의 key는 각 성분을
+  타입의 tag와 길이를 붙여 이은 텍스트 하나다(`Key::of_values`). `get(key)`는 `int`를 같은 수의 `int64`로 받고, 텍스트를
+  텍스트 key로 받으며 그 key의 행이 없으면 그 텍스트가 적는 date-time의 key로 받는다. 다른 종류의 값은 어떤 행의 key도
+  아니므로 `get`은 아무것도 돌려주지 않고 어떤 kind도 내지 않는다. `Query`의 `to_array`는 계약의 map인 `orm_value`의
+  `OrderedMap`을 돌려준다. `Query`에는 fetch key와 fetch value가 없으므로, `rows`가 `Query`의 `Collection`에서 빼는 것은
+  `connect`, `delete`, JSON 텍스트뿐이다. 선언하지 않는 것: key와 값으로 하는 `rows`의 iteration(binding GN-6f). binding이
+  `iterate` member의 case를 정하지 않았고 계약의 모든 group에는 case가 있어야 하기 때문이다(CORE-71). `keys()`와
+  `values()`가 같은 쌍을 준다. case는 SQLite 데이터베이스에서 실행된다(CORE-129). member가 돌려준 행은 receiver가 instance
+  value `{"from": <member>, "pick": [<step>]}`(binding GN-13f)인 `query.value`의 case로 관찰한다. step `"?"`는 optional의
+  값이고 `{"index": n}`은 list의 항목이다. 코어의 case runner는 생성된 시험이 하듯 그런 값을 만든다. 이유: `query`의
+  list는 key와 key로 찾는 일을 잃고, `Collection<Query>`에는 `core_type`이 적을 수 있는 Rust 경로가 없으므로, 코어가
+  `Query`의 collection에 자기 타입을 준다.
+- **CORE-171** 계약의 member `orm.transaction_conflict(message)`는 `tx::fail_transaction_conflict(message)`다. 이것은
+  `transaction_conflict(message)`가 만드는 오류(INT-48), 곧 메시지가 `message`인 kind `deadlock`으로 실패한다. 계약의
+  member는 오류 값을 돌려주지 않으므로, 언어 구현의 함수가 오류를 돌려주는 자리에서 이 member는 오류를 낸다. 언어의
+  `throw transactionConflict(message)`는 같은 `throw`에 한 단계 먼저 닿고, Go 함수는 전과 같이 error를 돌려준다. 이것을
+  부르는 `db.transaction`의 callback은 kind `deadlock`으로 끝나고 트랜잭션은 이를 재시도한다(CORE-24). target `wasm`에는
+  트랜잭션이 없어서 이 member가 없다(CORE-134).
+- **CORE-172** 계약의 member `orm.fulltext_boolean(value)`는 `value::fulltext_boolean`이다. 이것은 MySQL boolean mode
+  match의 검색 텍스트를 쓰는 DIA-6의 변환이다(DSL-33). 데이터베이스를 읽지 않고 어떤 kind도 내지 않으므로 `wasm`을
+  포함한 모든 target에 있다.
 
 ## 상태 기계
 
@@ -606,12 +634,12 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다),
   `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
-  `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의
-  타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다. 이 가운데
-  `Statement`와 `Collection`은 `Query`가 가진 member(`get_query`, `gets`, `gets_by`; CORE-83)가 돌려주므로 선언만
-  없다. `Page`, `LookaheadPage`, `GroupRow`, `GroupRows`는 `Query`의 어떤 member도 돌려주지 않고(CORE-84) 생성된 Rust
-  모델만 돌려주며, 바인딩에는 생성된 모델이 없다(CORE-50). 바인딩에는 이것들을 대신하는 것이 없고, 바인딩은 query의
-  여러 행을 `related_rows`(CORE-88)나 `StepRunner`의 terminal `gets`(CORE-92)로만 읽는다.
+  `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리므로 이것들도 선언하지 않는다. `Query`의 terminal `get`, `gets`,
+  `gets_by`와 행의 `to_array`는 선언하고, `gets`와 `gets_by`는 class `rows`를 돌려준다(CORE-170). `Collection`, `Page`,
+  `LookaheadPage`는 타입으로 선언하지 않는다: 각각 자기 모델에 대해 generic이어서 `core_type`의 Rust 경로가 적을 수 없고,
+  `Query`에는 page를 돌려주는 terminal이 없다(CORE-84). `get_query`는 `Statement`를 돌려주므로 선언하지 않는다. `Page`,
+  `LookaheadPage`, `GroupRow`, `GroupRows`는 `Query`의 어떤 member도 돌려주지 않고(CORE-84) 생성된 Rust 모델만 돌려주며,
+  바인딩에는 생성된 모델이 없다(CORE-50).
 - **CORE-133** member `tx.execute`는 `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`이다. 이것은
   `Db::execute_text_machine`이 `Db::execute_text`를 실행하듯 `Tx::execute_text`를 실행한다(CORE-127). step과 parameter는
   `db.execute`가 읽는 대로 읽고, 문장은 handle의 트랜잭션에서 실행된다. 이유: `db.transaction`의 callback은 handle로만
