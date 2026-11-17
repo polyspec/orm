@@ -944,28 +944,27 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   `schema_utils.register`, have `wait: none`. No member of the four classes calls language code.
 - **CORE-182** The class `schema_utils` carries INT-54 to INT-58; its argument `schema` is the class `schema`
   (INT-133, CORE-80).
-  - `register(schema)` returns nothing and sends no statement (INT-54). A connection holds the sets that it
-    registered by their manifest hash, and a request is planned only for a set of its connection, else it is
-    `schema_hash_mismatch: manifest <hash> is not registered on this connection: connect through its generated models
-    or install it`. `db.connect_schema` (INT-132) registers one set when it connects; `register` adds a set to a
-    connection of `db.connect` or of `db.connect_schema`, so one connection plans the requests of several sets. A set
-    that is registered again changes nothing. The registration compares no table: two sets that name one table with
-    different columns are both registered, each request is planned from the set of its query, and the statement of the
-    set that the database does not match fails on the database. A schema of the contract is made by `schema.load`,
-    which refuses a text that does not hash to its hash before any registration, so `register` raises no kind through
-    a binding; the `config` of INT-54 remains for a schema of generated Rust code.
+  - `register(schema)` returns nothing and sends no statement (INT-54). A connection holds the sets that it registered
+    by their manifest hash, and a request is planned only for a set of its connection, else it is
+    `schema_hash_mismatch: manifest <hash> is not registered on this connection: connect through its generated models or install it`.
+    `db.connect_schema` (INT-132) registers one set when it connects; `register` adds a set to a connection of
+    `db.connect` or of `db.connect_schema`, so one connection plans the requests of several sets. A set that is
+    registered again changes nothing. The registration compares no table: two sets that name one table with different
+    columns are both registered, each request is planned from the set of its query, and the statement of the set that
+    the database does not match fails on the database. A schema of the contract is made by `schema.load`, which
+    refuses a text that does not hash to its hash before any registration, so `register` raises no kind through a
+    binding; the `config` of INT-54 remains for a schema of generated Rust code.
   - `install(schema)` returns nothing (INT-55): it creates every table of the set when the database has none of them,
     changes nothing when it has all, then compares the database with the set, and registers the set. The failures are
-    `config`: `install found only some tables of the document set: <tables>`, `the database differs from the document
-    set: <differences>`, `the tables that the set uses from external documents differ from the database:
-    <differences>`, and on MySQL inside a transaction `MySQL commits schema statements implicitly; install outside a
-    transaction`.
+    `config`: `install found only some tables of the document set: <tables>`,
+    `the database differs from the document set: <differences>`,
+    `the tables that the set uses from external documents differ from the database: <differences>`, and on MySQL
+    inside a transaction `MySQL commits schema statements implicitly; install outside a transaction`.
   - `add_tables_and_columns(schema)` returns the list of what it added, a created table as `table` and an added column
-    as `table.column` (INT-56), and registers nothing. A difference that it does not add is `schema_differs: the
-    existing tables of the document set differ beyond missing tables, missing columns that are null or have a default
-    and missing indexes: <differences>` before any statement, and on MySQL and SQLite inside a transaction it is
-    `config`: `<driver> adds tables and columns outside a transaction: MySQL commits schema statements implicitly and
-    SQLite turns foreign keys off to rebuild a table`.
+    as `table.column` (INT-56), and registers nothing. A difference that it does not add is
+    `schema_differs: the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: <differences>`
+    before any statement, and on MySQL and SQLite inside a transaction it is `config`:
+    `<driver> adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`.
   - `exists(name)` and `installed(name, table)` return a boolean (INT-57): on SQLite, which has no schemas, a schema
     `name` exists when a table or a view is named `<name>__<any>`, and its table `table` is the table or the view
     `<name>__<table>`. A name that is empty, longer than 64 bytes, starts with `.` or holds a byte other than an ASCII
@@ -975,12 +974,12 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
 - **CORE-183** The members `utils.lock(key)` and `utils.set_local(key, value)` return nothing (INT-50, INT-51), and
   `utils.backend_waiting_for_lock()` returns a boolean (INT-53), which is `false` without a statement on every
   connection other than PostgreSQL, a markdown connection among them. `lock` and `set_local` need the utilities of a
-  `Tx`: on the utilities of a `Db` they are `config`: `<name> requires a transaction: call it on the utils of the Tx of
-  a transaction`, where `<name>` is `lock` or `set_local` (`local` and `wasInserted` for the two members that the
-  contract leaves out, CORE-180). A key that is no identifier of CORE-182 is `config`: `lock key "<key>" is invalid` or
-  `local key "<key>" is invalid`. On SQLite `lock` takes the row lock of the transaction (INT-49) and `set_local`
-  keeps the value in the transaction; a lock that MySQL did not give within its wait is `deadlock`: `lock <key> was
-  not acquired`.
+  `Tx`: on the utilities of a `Db` they are `config`:
+  `<name> requires a transaction: call it on the utils of the Tx of a transaction`, where `<name>` is `lock` or
+  `set_local` (`local` and `wasInserted` for the two members that the contract leaves out, CORE-180). A key that is no
+  identifier of CORE-182 is `config`: `lock key "<key>" is invalid` or `local key "<key>" is invalid`. On SQLite
+  `lock` takes the row lock of the transaction (INT-49) and `set_local` keeps the value in the transaction; a lock
+  that MySQL did not give within its wait is `deadlock`: `lock <key> was not acquired`.
 - **CORE-184** The class `privilege_utils` carries INT-59: `grant_table(table, role)` and `revoke_table(table,
   privilege, role)` return nothing, and `inspect_table(table)` returns the record `table_privileges`
   (`TablePrivileges`) of the booleans `insert`, `select`, `update`, `delete` and `truncate`. The arguments are checked
@@ -988,15 +987,15 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   `unsupported table privilege "<privilege>"`; a connection other than PostgreSQL then raises `capability_unsupported:
   table privileges are supported only by postgres`.
 - **CORE-185** The class `aes_utils` carries INT-60, INT-75 and INT-131. Its members take the entity as `model`, a
-  `query` (CORE-81), in place of the generated model of the legacy clients, and read only the entity of the query:
-  the query needs no connection, and its set need not be registered. The core functions are
+  `query` (CORE-81), in place of the generated model of the legacy clients, and read only the entity of the query: the
+  query needs no connection, and its set need not be registered. The core functions are
   `AesUtils::status_query(&self, query: &Query, keyring: &AesKeyring)` and `rotate_query`, beside the generic `status`
   and `rotate` that take a generated Rust model. `status(model, keyring)` returns the record `aes_rotation_status`
   (`AesRotationStatus`): `current`, `total`, `pending` and `versions`, a keyed map from each stored version, an
-  integer key, to its number of rows, in ascending order of the version; the field of the core is a
-  `KeyedMap<i64>`, as `Config.aes_keys` is a `KeyedMap` (CORE-131). `rotate(model, keyring)` returns the number of
-  rows that it wrote. An entity without an AES column and a version column is `config`: `entity <entity> has no AES
-  columns with a key version`.
+  integer key, to its number of rows, in ascending order of the version; the field of the core is a `KeyedMap<i64>`,
+  as `Config.aes_keys` is a `KeyedMap` (CORE-131). `rotate(model, keyring)` returns the number of rows that it wrote.
+  An entity without an AES column and a version column is `config`:
+  `entity <entity> has no AES columns with a key version`.
 - **CORE-186** The member `utils.stats` returns the record `db_stats` that `db.stats` returns, of the same pool
   (INT-61, INT-79): `Utils::stats` calls `Db::stats` of its connection.
 - **CORE-133** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which

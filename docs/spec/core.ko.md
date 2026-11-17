@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 3677fd591304b26d8568f2da1afb5bb3598b7ebc9339b20c0124b788010d1c5b -->
+<!-- source-sha256: 89a19c05b41ae5be37efa7d9bc727095cadce18e5f6351713a1fad3578cfcfff -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -541,7 +541,7 @@
   번 불린다. 실패한 함수는 그 실패를 바꾸지 않고 terminal을 끝낸다. key는 `Key`의 값이다(INT-11). 둘 다 요청을
   바꾸지 않는다. `Db` step(CORE-92)에는 이것들의 형식이 없다. step은 data이기 때문이다. 구현되지 않았다: `Query`의
   `fetch_key`와 `fetch_value`. `Collection`과 `Key`는 선언되지 않았다(CORE-70).
-- **CORE-160** `attach(name, value)`는 열이 아닌 이름으로 `orm_value`를 `Query`에 두고, `attached(name)`은 그것을
+- **CORE-160** `attach(name, value)`는 열이 아닌 이름 아래에 `orm_value`를 `Query`에 두고, `attached(name)`은 그것을
   돌려준다. 언어 구현의 member `new<Name>(value)`와 `get<Name>()`이다(DSL-101, DSL-115, DSL-44). 어떤 문장도 그 값을
   받지 않는다. `Query`가 읽는 행과 그 `create`가 돌려주는 행이 그 값을 가지고, 행의 JSON 텍스트(CORE-161)가 그것을
   쓴다. `to_array`는 열만 가진다(CORE-120). `Query`가 붙이지 않은 이름의 `attached`는 `None`을 돌려준다. 행의 이름은
@@ -591,14 +591,14 @@
   `Query`의 collection에 자기 타입을 준다.
 - **CORE-171** 계약의 member `orm.transaction_conflict(message)`는 `tx::fail_transaction_conflict(message)`다. 이것은
   `transaction_conflict(message)`가 만드는 오류(INT-48), 곧 메시지가 `message`인 kind `deadlock`으로 실패한다. 계약의
-  member는 오류 값을 돌려주지 않으므로, 언어 구현의 함수가 오류를 돌려주는 자리에서 이 member는 오류를 낸다. 언어의
+  member는 오류 값을 돌려주지 않으므로, 언어 구현의 함수가 오류를 돌려주는 곳에서 이 member는 오류를 raise한다. 언어의
   `throw transactionConflict(message)`는 같은 `throw`에 한 단계 먼저 닿고, Go 함수는 전과 같이 error를 돌려준다. 이것을
   부르는 `db.transaction`의 callback은 kind `deadlock`으로 끝나고 트랜잭션은 이를 재시도한다(CORE-24). target `wasm`에는
   트랜잭션이 없어서 이 member가 없다(CORE-134).
 - **CORE-172** 계약의 member `orm.fulltext_boolean(value)`는 `value::fulltext_boolean`이다. 이것은 MySQL boolean mode
   match의 검색 텍스트를 쓰는 DIA-6의 변환이다(DSL-33). 데이터베이스를 읽지 않고 어떤 kind도 내지 않으므로 `wasm`을
   포함한 모든 target에 있다.
-- **CORE-200** `gets_page(page, per_page)`는 `Query`의 행 가운데 한 page를 읽고 모든 page의 행을 센다. 언어 구현의
+- **CORE-200** `gets_page(page, per_page)`는 `Query`의 행 가운데 한 page를 읽고 모든 page의 행 수를 구한다. 언어 구현의
   member `getsPage(page, perPage)`다(DSL-64, DSL-67, INT-32). 돌려주는 것은 `page`다: `rows`는 `gets`가 돌려주는
   그대로의 그 page의 행이고(CORE-83), `total_count`는 조건이 고르는 행의 수, `total_pages`는 `total_count`를
   `per_page`로 나누어 올림한 값, `page`와 `per_page`는 받은 그대로다. 요청은 `paginate`다(PRT-2): 행의 문장은
@@ -614,9 +614,9 @@
 - **CORE-201** `group_by(column)`은 `Query`의 grouping에 열 하나를 더한다. 언어 구현의 member `groupBy<Col>()`이다
   (DSL-99). `gets_count()`는 조건이 고르는 행의 group마다 행 하나를 돌려준다. member `getsCount()`다(DSL-61, INT-31,
   INT-68). 요청은 `group_count`이고 그 `group_by`는 부른 순서대로 열을 가진다(PRT-2). group 행은 map이다: grouping
-  열마다 그 이름으로 `value`가 그 열에 돌려주는 `orm_value`를 가지며(CORE-62, CORE-83) null도 그렇고, 그다음에 그
+  열마다 그 열의 이름 아래에 `value`가 그 열에 돌려주는 `orm_value`를 가지며(CORE-62, CORE-83) null도 그렇고, 그다음에 그
   group의 행 수인 `row_count`를 `int64`로 가진다. 다른 열은 없고 엔티티의 행이 아니다(INT-68). 행은 `Query`의
-  순서대로이고, 순서의 항목은 grouping 열만 가리킨다. 다른 열은 `ir_invalid`이고 메시지는
+  순서대로이고, 순서의 항목은 grouping 열만 적는다. 다른 열은 `ir_invalid`이고 메시지는
   `order by <column>, which is not a group column`이다. `group_by`가 없는 `Query`의 `gets_count`는 `ir_invalid`이고
   메시지는 `group_count needs group_by`다. group된 `Query`의 `get_count`는 group의 수를 세고(PRT-2), 그 밖의 모든
   terminal은 `ir_invalid`이며 메시지는 `group_by is only valid on count or group_count, not <kind>`다. `gets_page`도
@@ -641,7 +641,7 @@
   `where_group takes a query of <entity>, not of <other>`이고, member가 실패시킨 `query`는 그 오류로 `Query`를
   실패시킨다. 각각 다음 terminal이 돌려준다. group의 조건은 모든 조건처럼 `update`와 `delete`에도 적용된다(CORE-138).
 - **CORE-203** `save()`는 `Query`의 배정(CORE-91)을, 그 행을 알면 `update`로, 모르면 `create`로 쓴다. 언어 구현의
-  member `save()`다(DSL-109). 행을 안다는 것은 `Query`가 행을 읽었거나 `set`이 primary key의 모든 열을 배정했다는
+  member `save()`다(DSL-109). 행이 알려졌다는 것은 `Query`가 행을 읽었거나 `set`이 primary key의 모든 열을 배정했다는
   것이고, `update`가 요구하는 바로 그것이다(CORE-91). 그때 `save`는 그 `update`이고 `expect_revision`과 `Query`의
   조건(CORE-138)을 그대로 가지며, `update`가 남긴 그대로의 `Query`를 돌려준다. 먼저 행을 읽지 않는다: 어떤 행도
   가지지 않은 key와 조건을 만족하지 않는 행은 아무것도 바꾸지 않고 오류가 아니며 아무것도 넣지 않는다. 그래서 key를
@@ -786,7 +786,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `Utils`의 member 셋은 선언하지 않는다. `Utils::run(f)`(INT-150)는 새 트랜잭션(재시도 없음)이나 활성 트랜잭션의 handle로
   함수를 부른다: 바인딩에서는 옵션 `retry` 0의 `db.transaction`이나 활성 트랜잭션의 callback이 그것이고, 문장은
   `tx.execute`(CORE-133)로 실행한다. `Utils::local`과 `Utils::was_inserted`(INT-51, INT-52)는 `Tx`의 유틸리티에서만
-  답하고 거기서 wait 없이 `no_rows`, `busy`, `transaction_ended`를 낸다. binding의 case 형식은 함수의 step이 돌려준 값에
+  답하고 거기서 wait 없이 `no_rows`, `busy`, `transaction_ended`를 raise한다. binding의 case 형식은 함수의 step이 돌려준 값에
   member를 부르지 못하므로 이 둘에 닿는 case가 없고, 계약 검사는 그 kind를 거부한다(CK-22: "no case of utils.local
   raises the kind no_rows", 두 member의 `busy`와 `transaction_ended`도 같다). case 형식이 닿을 때까지 둘은 코어의
   member로 남는다. 같은 이유로 `utils.lock`과 `utils.set_local`의 case는 `Db`의 유틸리티에서의 거부만 보이고, 트랜잭션
@@ -804,43 +804,40 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   받는다. 아무것도 보내지 않는 member, 곧 `db.utils`, `tx.utils`, `utils.schema`, `utils.privileges`, `utils.aes`,
   `utils.stats`, `schema_utils.register`는 `wait: none`이다. 네 class의 어떤 member도 언어 코드를 부르지 않는다.
 - **CORE-182** class `schema_utils`는 INT-54~INT-58을 담는다. 인자 `schema`는 class `schema`다(INT-133, CORE-80).
-  - `register(schema)`는 아무것도 돌려주지 않고 문장을 보내지 않는다(INT-54). 연결은 등록한 set을 manifest hash로
-    가지고, request는 그 연결의 set에 대해서만 plan된다. 아니면 `schema_hash_mismatch: manifest <hash> is not registered
-    on this connection: connect through its generated models or install it`다. `db.connect_schema`(INT-132)는 연결할 때
-    set 하나를 등록한다. `register`는 `db.connect`나 `db.connect_schema`의 연결에 set을 더하므로, 한 연결이 여러 set의
-    request를 plan한다. 다시 등록한 set은 아무것도 바꾸지 않는다. 등록은 테이블을 비교하지 않는다: 한 테이블을 다른
-    열로 이름하는 두 set은 둘 다 등록되고, 각 request는 그 query의 set으로 plan되며, 데이터베이스와 맞지 않는 set의
-    문장은 데이터베이스에서 실패한다. 계약의 schema는 `schema.load`가 만들고, 이것은 자기 hash로 hash되지 않는 텍스트를
-    등록 전에 거부하므로, 바인딩에서 `register`는 어떤 kind도 내지 않는다. INT-54의 `config`는 생성된 Rust 코드의
-    schema에 남는다.
-  - `install(schema)`는 아무것도 돌려주지 않는다(INT-55): 데이터베이스에 set의 테이블이 하나도 없으면 모두 만들고, 모두
-    있으면 아무것도 바꾸지 않고, 그다음 데이터베이스를 set과 비교하고, set을 등록한다. 실패는 `config`다: `install found
-    only some tables of the document set: <tables>`, `the database differs from the document set: <differences>`, `the
-    tables that the set uses from external documents differ from the database: <differences>`, 그리고 MySQL의 트랜잭션
+  - `register(schema)`는 아무것도 돌려주지 않고 문장을 보내지 않는다(INT-54). 연결은 등록한 set을 manifest hash로 가지고, request는 그 연결의 set에 대해서만
+    plan된다. 아니면
+    `schema_hash_mismatch: manifest <hash> is not registered on this connection: connect through its generated models or install it`다.
+    `db.connect_schema`(INT-132)는 연결할 때 set 하나를 등록한다. `register`는 `db.connect`나 `db.connect_schema`의 연결에 set을 더하므로, 한
+    연결이 여러 set의 request를 plan한다. 다시 등록한 set은 아무것도 바꾸지 않는다. 등록은 테이블을 비교하지 않는다: 한 테이블을 다른 열로 이름하는 두 set은 둘 다 등록되고, 각
+    request는 그 query의 set으로 plan되며, 데이터베이스와 맞지 않는 set의 문장은 데이터베이스에서 실패한다. 계약의 schema는 `schema.load`가 만들고, 이것은 자기 hash로
+    hash되지 않는 텍스트를 등록 전에 거부하므로, 바인딩에서 `register`는 어떤 kind도 내지 않는다. INT-54의 `config`는 생성된 Rust 코드의 schema에 남는다.
+  - `install(schema)`는 아무것도 돌려주지 않는다(INT-55): 데이터베이스에 set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않고, 그다음 데이터베이스를 set과
+    비교하고, set을 등록한다. 실패는 `config`다: `install found only some tables of the document set: <tables>`,
+    `the database differs from the document set: <differences>`,
+    `the tables that the set uses from external documents differ from the database: <differences>`, 그리고 MySQL의 트랜잭션
     안에서는 `MySQL commits schema statements implicitly; install outside a transaction`.
-  - `add_tables_and_columns(schema)`는 더한 것의 list를 돌려준다. 만든 테이블은 `table`, 더한 열은 `table.column`이다
-    (INT-56). 아무것도 등록하지 않는다. 더하지 못하는 차이는 어떤 문장보다 먼저 `schema_differs: the existing tables of
-    the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes:
-    <differences>`이고, MySQL과 SQLite의 트랜잭션 안에서는 `config`다: `<driver> adds tables and columns outside a
-    transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`.
+  - `add_tables_and_columns(schema)`는 더한 것의 list를 돌려준다. 만든 테이블은 `table`, 더한 열은 `table.column`이다 (INT-56). 아무것도 등록하지
+    않는다. 더하지 못하는 차이는 어떤 문장보다 먼저
+    `schema_differs: the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: <differences>`이고,
+    MySQL과 SQLite의 트랜잭션 안에서는 `config`다:
+    `<driver> adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`.
   - `exists(name)`과 `installed(name, table)`은 boolean을 돌려준다(INT-57): schema가 없는 SQLite에서는 테이블이나 view의
     이름이 `<name>__<any>`이면 schema `name`이 있고, 그 테이블 `table`은 테이블이나 view `<name>__<table>`이다. 비었거나,
     64바이트보다 길거나, `.`으로 시작하거나, ASCII 글자, 숫자, `_`, `.` 밖의 바이트를 가진 이름은 `config`다: `exists`는
     `identifier <name> is invalid`, `installed`는 `schema and table names are required`.
   - `empty()`는 데이터베이스에 사용자 내용이 없는지를 돌려준다. 각 데이터베이스의 뜻은 INT-58이 적는다.
 - **CORE-183** member `utils.lock(key)`와 `utils.set_local(key, value)`는 아무것도 돌려주지 않고(INT-50, INT-51),
-  `utils.backend_waiting_for_lock()`은 boolean을 돌려준다(INT-53). PostgreSQL이 아닌 모든 연결에서는, markdown 연결도,
-  문장 없이 `false`다. `lock`과 `set_local`은 `Tx`의 유틸리티가 필요하다: `Db`의 유틸리티에서는 `config`다: `<name>
-  requires a transaction: call it on the utils of the Tx of a transaction`. `<name>`은 `lock`이나 `set_local`이다(계약이
-  빼는 두 member는 `local`과 `wasInserted`, CORE-180). CORE-182의 식별자가 아닌 key는 `config`다: `lock key "<key>" is
-  invalid`나 `local key "<key>" is invalid`. SQLite에서 `lock`은 트랜잭션의 row lock을 잡고(INT-49) `set_local`은 값을
-  트랜잭션에 둔다. MySQL이 기다림 안에 주지 않은 lock은 `deadlock`이다: `lock <key> was not acquired`.
-- **CORE-184** class `privilege_utils`는 INT-59를 담는다: `grant_table(table, role)`과 `revoke_table(table, privilege,
-  role)`은 아무것도 돌려주지 않고, `inspect_table(table)`은 boolean `insert`, `select`, `update`, `delete`, `truncate`의
-  record `table_privileges`(`TablePrivileges`)를 돌려준다. 인자는 모든 데이터베이스에서 먼저 검사하고, 각 실패는
-  `config`다: `a qualified table name is required`, `role <role> is invalid`, `unsupported table privilege
-  "<privilege>"`. 그다음 PostgreSQL이 아닌 연결은 `capability_unsupported: table privileges are supported only by
-  postgres`를 낸다.
+  `utils.backend_waiting_for_lock()`은 boolean을 돌려준다(INT-53). PostgreSQL이 아닌 모든 연결에서는, markdown 연결도, 문장 없이 `false`다.
+  `lock`과 `set_local`은 `Tx`의 유틸리티가 필요하다: `Db`의 유틸리티에서는 `config`다:
+  `<name> requires a transaction: call it on the utils of the Tx of a transaction`. `<name>`은 `lock`이나
+  `set_local`이다(계약이 빼는 두 member는 `local`과 `wasInserted`, CORE-180). CORE-182의 식별자가 아닌 key는 `config`다:
+  `lock key "<key>" is invalid`나 `local key "<key>" is invalid`. SQLite에서 `lock`은 트랜잭션의 row lock을 잡고(INT-49)
+  `set_local`은 값을 트랜잭션에 둔다. MySQL이 기다림 안에 주지 않은 lock은 `deadlock`이다: `lock <key> was not acquired`.
+- **CORE-184** class `privilege_utils`는 INT-59를 담는다: `grant_table(table, role)`과
+  `revoke_table(table, privilege, role)`은 아무것도 돌려주지 않고, `inspect_table(table)`은 boolean `insert`, `select`, `update`,
+  `delete`, `truncate`의 record `table_privileges`(`TablePrivileges`)를 돌려준다. 인자는 모든 데이터베이스에서 먼저 검사하고, 각 실패는 `config`다:
+  `a qualified table name is required`, `role <role> is invalid`, `unsupported table privilege "<privilege>"`. 그다음
+  PostgreSQL이 아닌 연결은 `capability_unsupported: table privileges are supported only by postgres`를 raise한다.
 - **CORE-185** class `aes_utils`는 INT-60, INT-75, INT-131을 담는다. member는 entity를 `model`, 곧 `query`(CORE-81)로
   받는다. legacy 클라이언트의 생성된 모델 자리이고, query의 entity만 읽는다: query는 연결이 필요 없고 그 set은 등록되어
   있지 않아도 된다. 코어 함수는 `AesUtils::status_query(&self, query: &Query, keyring: &AesKeyring)`와 `rotate_query`이고,
