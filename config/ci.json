@@ -1,14 +1,15 @@
 {
   "schema": 1,
   "runtimes": ["go", "php", "php-ext", "python", "rust", "ts"],
-  "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context.",
+  "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context. The go, php-ext, python and ts jobs run the offline selection of the generated tests of their binding (T582-1), which builds the binding crate, so each installs the Rust toolchain and its crates, and the ts job the wasm-bindgen CLI of node-package.",
   "setup": {
     "shared": [
       "orm-install-go-lease"
     ],
     "runtimes": {
       "go": [
-        "orm-install-go"
+        "orm-install-go",
+        "orm-install-rust"
       ],
       "php": [
         "orm-install-php"
@@ -17,16 +18,20 @@
         "orm-install-php-extension-runtime",
         "orm-install-server-programs",
         "orm-install-go-lease",
-        "orm-install-flowmark"
+        "orm-install-flowmark",
+        "orm-install-rust"
       ],
       "python": [
         "orm-install-python",
+        "orm-install-rust",
         "orm-install-binding-python"
       ],
       "rust": [],
       "ts": [
         "orm-install-interfaces-typescript",
-        "orm-install-typescript-runtime"
+        "orm-install-typescript-runtime",
+        "orm-install-rust",
+        "orm-install-wasm-bindgen"
       ]
     }
   },
@@ -53,20 +58,20 @@
   "targets": {
     "runtimes": {
       "go": [
-        "test-go-bindings"
+        "test-go-bindings-offline"
       ],
       "php-ext": [
-        "test-binding-php"
+        "test-binding-php-offline"
       ],
       "python": [
-        "test-binding-python"
+        "test-binding-python-offline"
       ],
       "rust": [
         "test-bindings"
       ],
       "ts": [
         "test-wasm",
-        "test-binding-node"
+        "test-binding-node-offline"
       ]
     }
   },

@@ -5683,6 +5683,73 @@
         "packages/rust/interface.json",
         "packages/rust/tests/unit/interface_cases.rs"
       ]
+    },
+    "test-go-bindings-service": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "go",
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/interface/service.json",
+        "packages/rust/interface.json",
+        "scripts/repo/binding-tests.mts",
+        "scripts/service-state.mts",
+        "packages/go/**"
+      ]
+    },
+    "test-binding-node-service": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "node-modules",
+        "wasm-bindgen",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/interface/service.json",
+        "packages/rust/interface.json",
+        "scripts/repo/binding-tests.mts",
+        "scripts/service-state.mts",
+        "packages/ts/**"
+      ]
+    },
+    "test-binding-python-service": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "python",
+        "binding-python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/interface/service.json",
+        "packages/rust/interface.json",
+        "scripts/repo/binding-tests.mts",
+        "scripts/service-state.mts",
+        "packages/python/**",
+        "config/binding-python-siblings.txt"
+      ]
+    },
+    "test-binding-php-service": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/interface/service.json",
+        "packages/rust/interface.json",
+        "scripts/repo/binding-tests.mts",
+        "scripts/service-state.mts",
+        "packages/php-ext/**"
+      ]
     }
   },
   "paths": {

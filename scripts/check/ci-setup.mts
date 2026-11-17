@@ -28,6 +28,11 @@ export const CI_SETUP: Record<string, string> = {
   'server-programs': 'server-programs',
   servers: 'databases',
   'orm-install-python': 'python',
+  // The service selections of the generated tests of the bindings (T582-1) run in the groups that prepare the databases:
+  // the Python one needs the wheel of packages/python in its venv (make orm-install-binding-python), and the Node one the
+  // wasm-bindgen CLI that make node-package runs (make orm-install-wasm-bindgen).
+  'binding-python': 'binding-python',
+  'wasm-bindgen': 'wasm-bindgen',
   flowmark: 'flowmark',
 };
 
@@ -59,6 +64,8 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
   mariadb: ['mariadb-server'],
   databases: ['databases'],
   python: ['python'],
+  'binding-python': ['binding-python'],
+  'wasm-bindgen': ['wasm-bindgen'],
   flowmark: ['flowmark'],
 };
 
@@ -79,6 +86,9 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   servers: 'databases',
   // orm-install-python installs the Python and venv backend of mise.toml and makes the venv from that Python (make python-venv).
   'orm-install-python': 'python',
+  // The wheel of the Python binding and the wasm-bindgen CLI are installed only for a group that runs their tests.
+  'binding-python': 'binding-python',
+  'wasm-bindgen': 'wasm-bindgen',
   // flowmark installs the flowmark build that markdown-conformance-check runs (make orm-install-flowmark).
   flowmark: 'flowmark',
 };
@@ -98,6 +108,10 @@ export const SETUP_NEEDS: Record<string, string[]> = {
   'php-min': ['node-modules'],
   'php-extension-tools': ['php', 'composer', 'node-modules'],
   'interfaces-typescript': ['node-modules'],
+  // make orm-install-binding-python builds the wheel with cargo in the venv of the Python of mise.toml and runs binding,
+  // an npm package; make orm-install-wasm-bindgen runs binding release-recipes and the mise of the checkout.
+  'binding-python': ['rust', 'python', 'node-modules'],
+  'wasm-bindgen': ['node-modules'],
 };
 
 // expandNeeds is the need list with the needs that SETUP_NEEDS names appended transitively (declared order first, then the order added).

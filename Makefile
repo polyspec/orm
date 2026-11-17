@@ -446,6 +446,15 @@ node-package: bindings lease-tool
 	cd $(NODE_PACKAGE_DIR) && $(NPM) install --no-audit --no-fund --omit=optional ./*.tgz
 	rm -rf $(RUN_DIR)
 
+# orm-install-wasm-bindgen installs the wasm-bindgen CLI of mise.toml alone, for a job that runs node-package and needs no
+# other tool of mise.toml: the recipe is install-wasm-bindgen of packages/release.mk, which Git ignores and release-recipes
+# writes first. It downloads, so it is an install target, which the ts job of config/ci.json and the setup step wasm-bindgen
+# of the group jobs run.
+.PHONY: orm-install-wasm-bindgen
+orm-install-wasm-bindgen:
+	$(MAKE) --no-print-directory release-recipes
+	$(MAKE) --no-print-directory install-wasm-bindgen
+
 # The generated tests of the WASM binding through the subpath ./wasm of the installed package (binding P-5);
 # --expose-gc serves the generated tests that collect instances (binding GN-18a).
 test-wasm: node-package
@@ -466,19 +475,49 @@ GOFMT := $(KIT_TOOLS)/mise/shims/gofmt
 GO_BINDING_RELEASE = $(shell sed -n 's/^go \(.*\)$$/\1/p' packages/go/go.mod)
 GO_BINDING_ENV = GOWORK=off GOTOOLCHAIN=local GOFLAGS=-tags=$(call binding_go_tags,packages/go/internal/ffi)
 GO_BINDING_LDFLAGS = $(RUN_DIR)/cgo-ldflags
-test-go-bindings: bindings lease-tool
+# The two selections of the generated tests of a binding (T582-1). The tests of a runtime are one generated file, and a test
+# of a case of contracts/interface/service.json reads the address of its test server and fails without it: binding skips no
+# test for a missing service and writes no group or tag that tells those tests apart (binding GN-13j). So each of the four
+# test targets has two more names. <target>-offline runs every test but the service tests and needs no server, and
+# <target>-service runs the service tests alone with the servers of make orm-test-servers (WITH_TEST_ENV) and the state
+# program scripts/service-state.mts, as interface-service-cases-rust runs the same cases on the core; <target> itself runs
+# the whole file as before. scripts/repo/binding-tests.mts reads the service tests from the generated file, the tests whose
+# own lines call the helper of the address or of the state of a service, and writes the argument of the test runner into
+# BINDING_SELECTED: one pattern of their names for go test (-skip, -run), node --test (--test-skip-pattern,
+# --test-name-pattern) and PHPUnit (--exclude-filter, --filter), and the names of the selected tests for unittest, which
+# leaves out no test by name. It fails on a selection of no test, and the runner of kit (RUN_TESTS) of Go, Node and PHP and
+# unittest fail a run in which no test ran, so no selection passes on nothing. binding_select gives $(1) to the offline target, $(2) to the
+# service target and $(3) to the target of the whole file. A failure that is no missing server stays a failure in both
+# selections: no recipe skips a test or accepts a failed one.
+BINDING_TESTS = $(NODE) $(abspath scripts/repo/binding-tests.mts)
+BINDING_OFFLINE_TARGETS := test-go-bindings-offline test-binding-node-offline test-binding-php-offline test-binding-python-offline
+BINDING_SERVICE_TARGETS := test-go-bindings-service test-binding-node-service test-binding-php-service test-binding-python-service
+.PHONY: $(BINDING_OFFLINE_TARGETS) $(BINDING_SERVICE_TARGETS)
+$(BINDING_OFFLINE_TARGETS): BINDING_SELECTION = offline
+$(BINDING_SERVICE_TARGETS): BINDING_SELECTION = service
+$(BINDING_SERVICE_TARGETS): BINDING_SERVERS = $(WITH_TEST_ENV) export ORM_TEST_SERVICE_STATE=$(SERVICE_STATE) &&
+binding_select = $(if $(filter offline,$(BINDING_SELECTION)),$(1),$(if $(filter service,$(BINDING_SELECTION)),$(2),$(3)))
+binding_selected = $(if $(BINDING_SELECTION),$(PUBLISH) $(BINDING_SELECTED) $(BINDING_TESTS) $(1) $(BINDING_SELECTION))
+# The Go tests run on go test through the runner of kit. The offline selection and the whole file run every package of the
+# module; the service tests are tests of the package orm, the root of the module.
+test-go-bindings test-go-bindings-offline test-go-bindings-service: BINDING_SELECTED = $(RUN_DIR)/selected-tests
+test-go-bindings test-go-bindings-offline test-go-bindings-service: bindings lease-tool
 	test "$$($(GO_BINDING_ENV) $(GO) env GOVERSION)" = "go$(GO_BINDING_RELEASE)"
 	$(RUN_LONG) rust-build/orm-go -- $(CARGO_LEASED) $(PUBLISH) $(GO_BINDING_LDFLAGS) $(NODE) $(BINDING) go-link --cargo "$(CARGO_LINK)" --manifest $(CURDIR)/packages/go/internal/ffi/Cargo.toml --target-dir $(RUN_TARGET) --features $(call binding_test_features,packages/go/internal/ffi)
 	test -z "$$(cd packages/go && $(GOFMT) -l .)"
 	cd packages/go && CGO_LDFLAGS="$$(cat $(GO_BINDING_LDFLAGS))" $(GO_BINDING_ENV) $(GO) vet ./...
-	cd packages/go && CGO_LDFLAGS="$$(cat $(GO_BINDING_LDFLAGS))" $(GO_BINDING_ENV) $(GO) test -count=1 -v ./...
+	$(call binding_selected,go)
+	$(BINDING_SERVERS) CGO_LDFLAGS="$$(cat $(GO_BINDING_LDFLAGS))" $(GO_BINDING_ENV) $(RUN_TESTS) go --cwd packages/go -- -count=1 $(call binding_select,-skip "$$(cat $(BINDING_SELECTED))" ./...,-run "$$(cat $(BINDING_SELECTED))" .,./...)
 	rm -rf $(RUN_DIR)
 
-# The generated tests of the Node binding (binding GN-13) through the package that node-package installs into var/node.
+# The generated tests of the Node binding (binding GN-13) through the package that node-package installs into var/node,
+# where the selection is written too, since node-package makes that folder anew.
 .PHONY: orm-install-binding-python test-binding-python test-binding-node test-binding-php
-test-binding-node: node-package
+test-binding-node test-binding-node-offline test-binding-node-service: BINDING_SELECTED = $(NODE_PACKAGE_DIR)/selected-tests
+test-binding-node test-binding-node-offline test-binding-node-service: node-package
 	cp packages/ts/generated/tests/generated.test.mjs $(NODE_PACKAGE_DIR)/generated.test.mjs
-	cd $(NODE_PACKAGE_DIR) && $(NODE) --expose-gc --test generated.test.mjs
+	$(call binding_selected,node)
+	$(BINDING_SERVERS) $(RUN_TESTS) node --cwd $(NODE_PACKAGE_DIR) -- --expose-gc $(call binding_select,--test-skip-pattern="$$(cat $(BINDING_SELECTED))",--test-name-pattern="$$(cat $(BINDING_SELECTED))",) generated.test.mjs
 
 # The Python binding: orm-install-binding-python builds the wheel of packages/python with the test features through uv and the
 # maturin build backend of its pyproject.toml, as release-wheel builds it (GN-19c), and installs it with its dependencies into the
@@ -494,15 +533,22 @@ orm-install-binding-python: bindings
 	rm -rf $(BINDING_PYTHON_WHEELS)
 	MATURIN_PEP517_ARGS='--locked --features $(call binding_test_features,packages/python)' $(ONLINE) $(UV) build --wheel --python $(BINDING_PYTHON_VENV)/bin/python --out-dir $(BINDING_PYTHON_WHEELS) packages/python
 	$(ONLINE) $(UV) pip install --python $(BINDING_PYTHON_VENV)/bin/python --reinstall --verify-hashes -r config/binding-python-siblings.txt $(BINDING_PYTHON_WHEELS)/*.whl
-test-binding-python: bindings
-	@test -x $(BINDING_PYTHON_VENV)/bin/python || { echo "test-binding-python: $(BINDING_PYTHON_VENV) is missing; run make orm-install-binding-python, which installs the wheel"; exit 1; }
-	$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -v -s packages/python/generated/tests -t packages/python/generated/tests
+# The tests are the module test_generated of that folder, which unittest of the venv reads from there: the whole module, or
+# the names of a selection, written beside the venv. The runner of kit runs the Python tests of the client through its
+# harness (PYTHON_TESTS) and is not used here; unittest itself ends with status 5 when no test ran.
+test-binding-python test-binding-python-offline test-binding-python-service: BINDING_SELECTED = $(abspath var/binding-python)/selected-tests-$@
+test-binding-python test-binding-python-offline test-binding-python-service: bindings
+	@test -x $(BINDING_PYTHON_VENV)/bin/python || { echo "$@: $(BINDING_PYTHON_VENV) is missing; run make orm-install-binding-python, which installs the wheel"; exit 1; }
+	$(call binding_selected,python)
+	$(BINDING_SERVERS) cd packages/python/generated/tests && $(BINDING_PYTHON_VENV)/bin/python -m unittest -v $(call binding_select,$$(cat $(BINDING_SELECTED)),$$(cat $(BINDING_SELECTED)),test_generated)
 
 # The generated tests of the PHP binding on the PHPUnit of vendor-php, with the extension of the crate polyspec-orm-php-ext built
 # with its test features for the PHP of .php-version (BINDING_ENV) and copied into the RUN_TARGET of the run.
-test-binding-php: bindings lease-tool php-vendor-check
+test-binding-php test-binding-php-offline test-binding-php-service: BINDING_SELECTED = $(RUN_DIR)/selected-tests
+test-binding-php test-binding-php-offline test-binding-php-service: bindings lease-tool php-vendor-check
 	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) $(CARGO_LINK) build --locked -p polyspec-orm-php-ext --features $(call binding_test_features,packages/php-ext)
-	$(RUN_TESTS) phpunit --php-extension $(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) -- packages/php-ext/generated/tests
+	$(call binding_selected,php)
+	$(BINDING_SERVERS) $(RUN_TESTS) phpunit --php-extension $(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) -- $(call binding_select,--exclude-filter "$$(cat $(BINDING_SELECTED))",--filter "$$(cat $(BINDING_SELECTED))",) packages/php-ext/generated/tests
 	rm -rf $(RUN_DIR)
 
 # ---- Release recipes of the bindings: packages/release.mk, which binding release-recipes writes (binding GN-19h) -----------
@@ -679,6 +725,10 @@ ci-release-platform-assets:
 # check of binding first. Every build is a check of the job, so one run names every asset that does not build. The uses:
 # steps of the job platform set up each PHP minor of phpExtension.minors of config/toolchain.json before the run step, and
 # ci-assets-php-ext builds the extension for the PHP of one minor (MINOR) with its php-config.
+# Both recipes install Go after Rust and before the binding check, since binding check runs go mod download when
+# packages/go/go.mod requires a release. The run without RELEASE=true, the CI run (CI_NOT_RELEASE), runs bindings-check
+# at the same place, so a tool that the check misses fails the CI run before a tag exists (T584).
+CI_NOT_RELEASE = $(if $(filter true,$(RELEASE)),,true)
 .PHONY: ci-assets-platform ci-assets-npm ci-assets-php-ext
 # The job provisions the LLVM of config/toolchain.json before this recipe (binding GN-19i): the ubuntu-26.04 images hold it at
 # /usr/lib/llvm-<major>, the default LLVM_ROOT of packages/release.mk, and on macOS install-llvm-action installs it and sets
@@ -691,9 +741,11 @@ ci-assets-platform: CI_NAME = $(CI_RUN)-assets-platform
 ci-assets-platform:
 	@$(CI_JOB) begin $(CI_NAME)
 	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
+	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
 	@$(CI_JOB) setup $(CI_NAME) uv-python -- install-tools 'TOOLS=uv python'
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
 	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
+	@$(if $(CI_NOT_RELEASE),$(CI_JOB) setup $(CI_NAME) binding-check -- bindings-check,:)
 	@$(CI_JOB) check $(CI_NAME) -- release-go-static
 	@$(CI_JOB) check $(CI_NAME) -- release-wheel
 	@$(CI_JOB) check $(CI_NAME) -- ci-assets-php-ext MINOR=8.4
@@ -704,9 +756,11 @@ ci-assets-npm: CI_NAME = $(CI_RUN)-assets-npm
 ci-assets-npm:
 	@$(CI_JOB) begin $(CI_NAME)
 	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
+	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
 	@$(CI_JOB) setup $(CI_NAME) wasm-bindgen -- install-wasm-bindgen
 	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
+	@$(if $(CI_NOT_RELEASE),$(CI_JOB) setup $(CI_NAME) binding-check -- bindings-check,:)
 	@$(CI_JOB) check $(CI_NAME) -- release-npm
 	@$(CI_JOB) end $(CI_NAME)
 # The PHP of a minor that setup-php installed is php<minor> with php-config<minor> on Linux, and the keg php@<minor> of
@@ -986,6 +1040,8 @@ ci-test:
 	@$(CI_JOB) setup $(CI_NAME) rust --when rust -- orm-install-rust-toolchain
 	@$(CI_JOB) setup $(CI_NAME) rust-crates --when rust -- orm-install-rust-crates
 	@$(CI_JOB) setup $(CI_NAME) orm-install-python --when python -- orm-install-python
+	@$(CI_JOB) setup $(CI_NAME) binding-python --when binding-python -- orm-install-binding-python
+	@$(CI_JOB) setup $(CI_NAME) wasm-bindgen --when wasm-bindgen -- orm-install-wasm-bindgen
 	@$(CI_JOB) setup $(CI_NAME) composer --when php -- orm-install-php
 	@$(CI_JOB) setup $(CI_NAME) php-extension-tools --when php-extension-tools -- orm-install-php-extension-tools
 	@$(CI_JOB) setup $(CI_NAME) server-programs --when server-programs -- orm-install-server-programs
@@ -1274,6 +1330,18 @@ interface-cases-rust: lease-tool
 SERVICE_STATE = $(abspath scripts/service-state.mts)
 interface-service-cases-rust:
 	$(WITH_TEST_ENV) export ORM_TEST_SERVICE_STATE=$(SERVICE_STATE) && cd packages/rust && $(CARGO_TEST) interface-service-cases-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib interface_service_cases -- --ignored --nocapture
+
+# The service selections of the generated tests of the four bindings (BINDING_SERVICE_TARGETS) run the same cases through
+# each binding, in the group of their runtime that prepares the databases; the runtime jobs of config/ci.json, which have
+# no server, run the offline selections (T582-1).
+CHECK_TARGETS += test-go-bindings-service
+CI_TARGETS_client_db_go += test-go-bindings-service
+CHECK_TARGETS += test-binding-node-service
+CI_TARGETS_client_db_typescript += test-binding-node-service
+CHECK_TARGETS += test-binding-python-service
+CI_TARGETS_client_db_python += test-binding-python-service
+CHECK_TARGETS += test-binding-php-service
+CI_TARGETS_client_db_php_extension += test-binding-php-service
 
 # The core without its feature runtime compiles for wasm32-unknown-unknown, the target of the WASM binding, which builds
 # the core with no feature (docs/spec/core.md CORE-134, binding I-1).
@@ -1913,7 +1981,7 @@ comment-language-check/run:
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	$(RUN_TESTS) node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/ir/raise-version.test.mts scripts/repo/pin-deps.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
+	$(RUN_TESTS) node -- --test-concurrency=1 scripts/repo/check.test.mts scripts/repo/binding-tests.test.mts scripts/ir/raise-version.test.mts scripts/repo/pin-deps.test.mts scripts/repo/python-venv.test.mts scripts/repo/worktree-stop.test.mts
 repo-check/run:
 	$(NODE) scripts/repo/check.mts
 

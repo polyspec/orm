@@ -27,6 +27,7 @@ import { type Json, parseJsonValue } from '../json/schema.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
+import { recipeLines as jobRecipeLines } from './recipes.mts';
 import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
@@ -1312,7 +1313,7 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
   // A group of the MariaDB servers installs the MariaDB packages, which conflict with the MySQL ones, so it starts no MySQL server.
   assert.deepEqual(groupOutputs(['m'], { m: ['go', 'mariadb-server'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, mariadb: true, databases: false, python: false, flowmark: false });
+    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, mariadb: true, databases: false, python: false, 'binding-python': false, 'wasm-bindgen': false, flowmark: false });
   assert.deepEqual(groupSetupErrors({ both: ['m', 'd'] }, { m: ['go', 'mariadb-server'], d: ['go', 'databases'] }).filter(line => line.includes('mariadb-server')),
     ['CI group both needs both databases and mariadb-server; the runner installs the MySQL or the MariaDB packages, which conflict, so the targets of MariaDB are a group of their own']);
 });
@@ -2962,4 +2963,68 @@ caseTest('a line of FCV-2 that names no native test is a finding', () => {
     [`${spec} line "${unnamed.trim()}" names no native test; name each test it keeps as in \`file\`, \`test\`, or remove the line`]);
   const reasonless = '  - In `legacy/packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test.';
   assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, reasonless])), [`${spec} line "${reasonless.trim()}" states no reason after a colon; state why its tests stay native`]);
+});
+
+// The generated tests of a binding (binding G-5) are one file for each runtime, and a test of a case of
+// contracts/interface/service.json fails without the address of its test server (binding GN-13j). So each of the four test
+// targets has two selections by test name (scripts/repo/binding-tests.mts): <target>-offline, which a job without the
+// servers runs, and <target>-service, which a job that prepares the databases runs. The runtime jobs of ci-pipeline.yml run
+// the targets of targets.runtimes of config/ci.json, and the group jobs of ci.yml the targets of CI_TARGETS_<group> (T582-1).
+caseTest('T582-1: a CI job runs the offline selection of the generated tests of each binding, and a job with the databases the service selection', () => {
+  const makefile = text('Makefile');
+  const config = parseJsonValue(text('config/ci.json'), 'config/ci.json');
+  const declared = isRecord(config) && isRecord(config['targets']) && isRecord(config['targets']['runtimes']) ? config['targets']['runtimes'] : {};
+  const runtimeJobs = Object.values(declared).flatMap(list => (Array.isArray(list) ? list.map(String) : []));
+  const { groups, targets } = ciGroups(makefile);
+  const groupJobs = groups.flatMap(group => targets[group] ?? []);
+  const needs = declaredNeeds(repository.pathname);
+  const defined = new Set(makeTargets(makefile).map(entry => entry.target));
+  const dryRun = (target: string) => {
+    const result = spawnSync('make', ['-n', '--no-print-directory', target], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
+    assert.equal(result.status, 0, `make -n ${target}: ${result.stderr}`);
+    return result.stdout;
+  };
+  for (const [runtime, name] of Object.entries({ go: 'test-go-bindings', node: 'test-binding-node', php: 'test-binding-php', python: 'test-binding-python' })) {
+    const offline = `${name}-offline`;
+    const service = `${name}-service`;
+    for (const target of [name, offline, service]) assert.ok(defined.has(target), `the Makefile defines no target ${target}`);
+    assert.ok([...runtimeJobs, ...groupJobs].includes(offline), `no CI job runs ${offline}: name it in targets.runtimes of config/ci.json or in a CI_TARGETS_<group> of the Makefile`);
+    // The whole file fails without the servers, so no job runs it in place of the two selections.
+    assert.ok(![...runtimeJobs, ...groupJobs].includes(name), `a CI job runs ${name}, every generated test of ${runtime}; it runs ${offline}, and a job with the databases ${service}`);
+    const jobs = groups.filter(group => (targets[group] ?? []).includes(service));
+    assert.ok(jobs.length > 0, `no CI group runs ${service}: name it in the CI_TARGETS_<group> of a group that prepares the databases`);
+    assert.ok((needs[service] ?? []).includes('databases'), `${service} declares no need databases in contracts/check-inputs.json`);
+    for (const group of jobs) assert.equal(groupOutputs(targets[group] ?? [], needs).databases, true, `the group ${group} of ${service} prepares no databases`);
+    assert.ok(!(needs[offline] ?? []).includes('databases'), `${offline} declares the need databases, and it runs without the servers`);
+    // Each selection is read from the generated file by its name, and only the service selection reads the servers of the run.
+    const offlineRun = dryRun(offline);
+    assert.match(offlineRun, new RegExp(`scripts/repo/binding-tests\\.mts ${runtime} offline\\b`), `${offline} does not select its tests through scripts/repo/binding-tests.mts`);
+    assert.doesNotMatch(offlineRun, /ORM_TEST_SERVICE_STATE=/, `${offline} reads the test servers`);
+    const serviceRun = dryRun(service);
+    assert.match(serviceRun, new RegExp(`scripts/repo/binding-tests\\.mts ${runtime} service\\b`), `${service} does not select its tests through scripts/repo/binding-tests.mts`);
+    assert.match(serviceRun, /ORM_TEST_SERVICE_STATE=/, `${service} gives its tests no state program of the services (WITH_TEST_ENV, SERVICE_STATE)`);
+    assert.doesNotMatch(dryRun(name), /scripts\/repo\/binding-tests\.mts/, `${name} selects tests; it runs every generated test`);
+  }
+});
+
+// binding check runs go mod download when packages/go/go.mod requires a release, so the asset jobs install Go before it.
+// The release run (RELEASE=true) runs release-binding-check and the CI run bindings-check, both after the setups rust and
+// go, so a tool that the check misses fails the CI run before a tag exists (T584).
+caseTest('T584: the asset jobs install Go before the binding check of the CI run and of the release run', () => {
+  const makefile = text('Makefile');
+  for (const target of ['ci-assets-platform', 'ci-assets-npm']) {
+    const lines = jobRecipeLines(makefile, target);
+    const at = (pattern: RegExp) => lines.findIndex(line => pattern.test(line));
+    const rust = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) rust -- orm-install-rust$/);
+    const go = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) go -- install-tools TOOLS=go$/);
+    const release = at(/^@\$\(if \$\(filter true,\$\(RELEASE\)\),\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- release-binding-check,:\)$/);
+    const ci = at(/^@\$\(if \$\(CI_NOT_RELEASE\),\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- bindings-check,:\)$/);
+    assert.ok(rust >= 0, `${target} has no setup rust`);
+    assert.ok(go > rust, `${target} installs no Go after the setup rust: add the setup go -- install-tools TOOLS=go`);
+    assert.ok(release > go, `${target} runs release-binding-check of RELEASE=true before the setup go, or not at all`);
+    assert.ok(ci > go, `${target} runs no bindings-check after the setup go in the CI run, the run without RELEASE=true`);
+    const first = at(/-- (?:release-binding-check|bindings-check)\b/);
+    assert.ok(first > go, `${target} runs a binding check before the setup go`);
+  }
+  assert.match(makefile, /^CI_NOT_RELEASE = \$\(if \$\(filter true,\$\(RELEASE\)\),,true\)$/m, 'CI_NOT_RELEASE is true unless RELEASE=true');
 });
