@@ -605,6 +605,28 @@
             ],
             "reason": "CORE-134"
           }
+        },
+        {
+          "id": "orm.fulltext_boolean",
+          "name": [
+            "fulltext",
+            "boolean"
+          ],
+          "kind": "function",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "value"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "text",
+          "raises": [],
+          "wait": "none",
+          "core": "polyspec_orm::value::fulltext_boolean"
         }
       ]
     },
@@ -5846,6 +5868,11 @@
         ],
         "reason": "CORE-134"
       }
+    },
+    {
+      "member": "orm.fulltext_boolean",
+      "file": "contracts/interface/core.json",
+      "group": "orm.fulltext_boolean"
     },
     {
       "member": "dbspec.read_bytes",

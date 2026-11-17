@@ -25789,5 +25789,31 @@
         "message": "deadlock: "
       }
     }
+  ],
+  "orm.fulltext_boolean": [
+    {
+      "id": "each_term_is_required_and_the_last_is_a_prefix",
+      "rule": "DIA-6",
+      "value": "apple +banana  (cherry)",
+      "result": "+apple +banana +cherry*"
+    },
+    {
+      "id": "one_term",
+      "rule": "DIA-6",
+      "value": "sale",
+      "result": "+sale*"
+    },
+    {
+      "id": "a_value_of_operators_alone_has_no_term",
+      "rule": "DIA-6",
+      "value": "~* @",
+      "result": ""
+    },
+    {
+      "id": "the_empty_text",
+      "rule": "DIA-6",
+      "value": "",
+      "result": ""
+    }
   ]
 }

@@ -747,6 +747,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             crate::tx::fail_transaction_conflict(&text(args, "message", member))?;
             Returned::Value(Value::Null)
         }
+        ("orm.fulltext_boolean", None) => Returned::Value(Value::from(crate::value::fulltext_boolean(&text(args, "value", member)))),
         ("dbspec.read_bytes", None) => Returned::Value(Value::from(crate::dbspec_json::read_bytes(&text(args, "name", member), &bytes(args, "bytes", member)))),
         ("dbspec.parse_set", None) => {
             Returned::Value(Value::from(crate::dbspec_json::parse_set(&texts(args, "owned", member), &texts(args, "external", member))?))

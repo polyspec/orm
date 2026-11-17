@@ -501,6 +501,9 @@ implementation is eligible for removal on that evidence.
   one step earlier, and the Go function returns the error as before. A callback of `db.transaction` that calls it ends
   with the kind `deadlock`, which the transaction retries (CORE-24). The target `wasm` has no transaction and does not
   have the member (CORE-134).
+- **CORE-172** The member `orm.fulltext_boolean(value)` of the contract is `value::fulltext_boolean`, the transform of
+  DIA-6 that writes the search text of a MySQL boolean-mode match (DSL-33). It reads no database and raises no kind,
+  so every target has it, `wasm` among them.
 
 ## State machines
 

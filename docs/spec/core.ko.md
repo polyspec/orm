@@ -420,6 +420,9 @@
   `throw transactionConflict(message)`는 같은 `throw`에 한 단계 먼저 닿고, Go 함수는 전과 같이 error를 돌려준다. 이것을
   부르는 `db.transaction`의 callback은 kind `deadlock`으로 끝나고 트랜잭션은 이를 재시도한다(CORE-24). target `wasm`에는
   트랜잭션이 없어서 이 member가 없다(CORE-134).
+- **CORE-172** 계약의 member `orm.fulltext_boolean(value)`는 `value::fulltext_boolean`이다. 이것은 MySQL boolean mode
+  match의 검색 텍스트를 쓰는 DIA-6의 변환이다(DSL-33). 데이터베이스를 읽지 않고 어떤 kind도 내지 않으므로 `wasm`을
+  포함한 모든 target에 있다.
 
 ## 상태 기계
 
