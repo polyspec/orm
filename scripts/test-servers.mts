@@ -944,8 +944,11 @@ const TOOLS = ['mysqld', 'initdb', 'postgres', 'pg_ctl', 'pg_basebackup', 'proxy
 const onPath = (tool: string): boolean => spawnSync('sh', ['-c', 'command -v "$1"', 'sh', tool], { stdio: 'ignore' }).status === 0;
 
 async function start(p: Paths): Promise<void> {
-  // The owner is named and its lease held first, so a start that names none changes nothing, and running servers are read
-  // only while they have an owner.
+  // The socket paths of the declaration are checked first: the check reads no server, so a start whose paths cannot fit
+  // fails before it needs an owner. The owner is named and its lease held next, so a start that names none changes nothing,
+  // and running servers are read only while they have an owner.
+  const [socketError] = socketPathErrors(p.sockets);
+  if (socketError) throw new TestServerError(socketError);
   const owner = claimOwner(p, 'servers');
   if (existsSync(p.env) && allRunning(p)) {
     const ports = environmentPorts(readFileSync(p.env, 'utf8'), p.env);
@@ -963,8 +966,6 @@ async function start(p: Paths): Promise<void> {
     process.stdout.write(readFileSync(p.env, 'utf8'));
     return;
   }
-  const [socketError] = socketPathErrors(p.sockets);
-  if (socketError) throw new TestServerError(socketError);
   for (const tool of TOOLS)
     if (!onPath(tool)) throw new TestServerError(`test-servers: ${tool} is not installed; run make orm-install-server-programs, or install it with the package manager of the machine`);
   if (!onPath('openssl')) throw new TestServerError('test-servers: openssl is not installed; run make orm-install-server-programs, or install it with the package manager of the machine');
