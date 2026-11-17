@@ -56,9 +56,9 @@ var outputs = map[string]map[string]string{
 	"Db":         {"go": "(*DB,error)", "php": "Polyspec\\Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>", "python": "Db"},
 	// Rust's transaction_async returns the result of its callback under the exact bounds of the callback and of its future (INT-17c).
 	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Result<T>whereF:Fn(Tx)->Fut,Fut:Future<Output=Result<T>>", "typescript": "Promise<T>", "python": "T"},
-	"Utils":             {"go": "*Utils", "php": "Polyspec\\Orm\\Utils", "rust": "Utils<'_>", "typescript": "Utils", "python": "Utils"},
-	"SchemaUtils":       {"go": "*SchemaUtils", "php": "Polyspec\\Orm\\SchemaUtils", "rust": "SchemaUtils<'_>", "typescript": "SchemaUtils", "python": "SchemaUtils"},
-	"AesUtils":          {"go": "*AESUtils", "php": "Polyspec\\Orm\\AesUtils", "rust": "AesUtils<'_>", "typescript": "AesUtils", "python": "AesUtils"},
+	"Utils":             {"go": "*Utils", "php": "Polyspec\\Orm\\Utils", "rust": "Utils", "typescript": "Utils", "python": "Utils"},
+	"SchemaUtils":       {"go": "*SchemaUtils", "php": "Polyspec\\Orm\\SchemaUtils", "rust": "SchemaUtils", "typescript": "SchemaUtils", "python": "SchemaUtils"},
+	"AesUtils":          {"go": "*AESUtils", "php": "Polyspec\\Orm\\AesUtils", "rust": "AesUtils", "typescript": "AesUtils", "python": "AesUtils"},
 	"AesRotationStatus": {"go": "(AESRotationStatus,error)", "php": "Polyspec\\Orm\\AesRotationStatus", "rust": "Result<AesRotationStatus>", "typescript": "Promise<AesRotationStatus>", "python": "AesRotationStatus"},
 	"RotatedRows":       {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>", "python": "int"},
 	// dbspec parse returns the document or every diagnostic, never both.
@@ -102,7 +102,7 @@ var outputs = map[string]map[string]string{
 	"LocalValue": {"go": "(string,error)", "php": "string", "rust": "Result<String>", "typescript": "Promise<string>", "python": "str"},
 	// Pool statistics are read from the client, not the database, so they are synchronous and cannot fail.
 	"Stats":          {"go": "DBStats", "php": "Polyspec\\Orm\\Stats", "rust": "DbStats", "typescript": "PoolStats", "python": "DbStats"},
-	"PrivilegeUtils": {"go": "*PrivilegeUtils", "php": "Polyspec\\Orm\\PrivilegeUtils", "rust": "PrivilegeUtils<'_>", "typescript": "PrivilegeUtils", "python": "PrivilegeUtils"},
+	"PrivilegeUtils": {"go": "*PrivilegeUtils", "php": "Polyspec\\Orm\\PrivilegeUtils", "rust": "PrivilegeUtils", "typescript": "PrivilegeUtils", "python": "PrivilegeUtils"},
 	// A schema inspection reads the database and reports one boolean.
 	"Inspected":       {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "Promise<boolean>", "python": "bool"},
 	"LocalInspection": {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "boolean", "python": "bool"},
@@ -111,8 +111,9 @@ var outputs = map[string]map[string]string{
 	"RestoreAnalysis": {"go": "(RestoreAnalysis,error)", "php": "array", "rust": "Result<String>", "typescript": "RestoreAnalysis", "python": "RestoreAnalysis"},
 	// Rust's handle of the core is never the handle of an open transaction, so its declaration has no error (INT-192).
 	"TransactionActive": {"go": "(bool,error)", "php": "bool", "rust": "bool", "typescript": "boolean", "python": "bool"},
-	// Registering a transaction hook is a synchronous call that reads or writes no database (INT-193).
-	"TransactionHookRemoval": {"go": "(removefunc(),errerror)", "php": "Closure", "rust": "BeforeTransactionHook", "typescript": "()=>void", "python": "Callable[[],None]"},
+	// Registering a transaction hook is a synchronous call that reads or writes no database (INT-193). The Rust adapter
+	// before_transaction_async returns the removal handle under the bound of the future of its hook (T598).
+	"TransactionHookRemoval": {"go": "(removefunc(),errerror)", "php": "Closure", "rust": "BeforeTransactionHookwhereFut:std::future::Future<Output=Result<()>>+Send+'static", "typescript": "()=>void", "python": "Callable[[],None]"},
 	"KeyVersions":            {"go": "[]int32", "php": "array", "rust": "Vec<i32>", "typescript": "number[]", "python": "list"},
 }
 
