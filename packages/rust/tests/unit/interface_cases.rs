@@ -537,8 +537,27 @@ fn opened(db: Db) -> Returned {
     Returned::Instance(Instance::Db(db))
 }
 
-/// Calls the core function that the contract names for `member`.
+/// Calls the core function that the contract names for `member`. Each group of classes is its own async function whose
+/// future is boxed, so no frame of a call holds the locals of every member.
 async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
+    let class = member.split_once('.').map_or(member, |(class, _)| class);
+    match class {
+        "integer_value" | "float_value" | "bytes_value" | "map_value" => Box::pin(call_values(member, receiver, args)).await,
+        "query" => Box::pin(call_query(member, receiver, args)).await,
+        "page" | "lookahead_page" | "group_lookahead_page" | "rows" => Box::pin(call_pages(member, receiver, args)).await,
+        "db" | "tx" => Box::pin(call_db(member, receiver, args)).await,
+        "utils" | "schema_utils" | "privilege_utils" | "aes_utils" | "aes_keyring" => Box::pin(call_utils(member, receiver, args)).await,
+        "schema" | "step_runner" | "orm" | "runtime_model" => Box::pin(call_core(member, receiver, args)).await,
+        "dbspec" | "codec" => Box::pin(call_codec(member, receiver, args)).await,
+        _ => match receiver {
+            Some(_) => panic!("the case runner calls no member {member} on that receiver"),
+            None => panic!("the case runner calls no member {member} without a receiver"),
+        },
+    }
+}
+
+/// The members of `integer_value`, `float_value`, `bytes_value`, `map_value` (`call`).
+async fn call_values(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
     Ok(match (member, receiver) {
         ("integer_value.constructor", None) => {
             let value = int64(field(args, "value", member), member);
@@ -565,12 +584,14 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("map_value.entries", Some(Instance::Map(value))) => {
             Returned::Value(value.entries().iter().map(|(key, value)| (key.to_owned(), case_value(value, member))).collect::<Map<String, Value>>().into())
         }
-        ("schema.load", None) => Returned::Instance(Instance::Schema(Schema::load(
-            &text(args, "manifest_text", member),
-            &text(args, "external_text", member),
-            &text(args, "manifest_hash", member),
-        )?)),
-        ("schema.hash", Some(Instance::Schema(schema))) => Returned::Value(Value::from(schema.hash())),
+        (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
+        (other, None) => panic!("the case runner calls no member {other} without a receiver"),
+    })
+}
+
+/// The members of `query` (`call`).
+async fn call_query(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
+    Ok(match (member, receiver) {
         ("query.new", None) => {
             let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
                 panic!("{member}: schema is no instance of schema")
@@ -706,11 +727,6 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("query.gets_page", Some(Instance::Query(query))) => {
             Returned::Instance(Instance::Page(Box::new(query.gets_page(uint(args, "page", member), uint(args, "per_page", member)).await?)))
         }
-        ("page.total_count", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_count())),
-        ("page.total_pages", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_pages())),
-        ("page.page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.page())),
-        ("page.per_page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.per_page())),
-        ("page.rows", Some(Instance::Page(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
         ("query.where_group", Some(Instance::Query(query))) => match Box::pin(instance(field(args, "query", member), member)).await {
             Instance::Query(group) => {
                 query.where_group(&text(args, "connector", member), *group);
@@ -740,14 +756,6 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("query.gets_count_lookahead_page", Some(Instance::Query(query))) => Returned::Instance(Instance::GroupPage(Box::new(
             query.gets_count_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?,
         ))),
-        ("lookahead_page.page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.page())),
-        ("lookahead_page.per_page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.per_page())),
-        ("lookahead_page.has_next", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.has_next())),
-        ("lookahead_page.rows", Some(Instance::LookaheadPage(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
-        ("group_lookahead_page.page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.page())),
-        ("group_lookahead_page.per_page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.per_page())),
-        ("group_lookahead_page.has_next", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.has_next())),
-        ("group_lookahead_page.rows", Some(Instance::GroupPage(page))) => Returned::Value(page.rows().iter().map(|row| case_map(row, member)).collect()),
         ("query.group_by", Some(Instance::Query(query))) => {
             query.group_by(&text(args, "column", member));
             Returned::Value(Value::Null)
@@ -773,6 +781,34 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             Returned::Instance(Instance::Rows(Box::new(query.gets_rows_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?)))
         }
         ("query.to_array", Some(Instance::Query(query))) => Returned::Value(case_map(&query.to_array()?, member)),
+        ("query.get_count_by", Some(Instance::Query(query))) => {
+            Returned::Value(Value::from(query.get_count_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?))
+        }
+        ("query.connect", Some(Instance::Query(query))) => {
+            query.connect(connection(field(args, "connection", member), member).await);
+            Returned::Value(Value::Null)
+        }
+        (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
+        (other, None) => panic!("the case runner calls no member {other} without a receiver"),
+    })
+}
+
+/// The members of `page`, `lookahead_page`, `group_lookahead_page`, `rows` (`call`).
+async fn call_pages(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
+    Ok(match (member, receiver) {
+        ("page.total_count", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_count())),
+        ("page.total_pages", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_pages())),
+        ("page.page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.page())),
+        ("page.per_page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.per_page())),
+        ("page.rows", Some(Instance::Page(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
+        ("lookahead_page.page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.page())),
+        ("lookahead_page.per_page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.per_page())),
+        ("lookahead_page.has_next", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.has_next())),
+        ("lookahead_page.rows", Some(Instance::LookaheadPage(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
+        ("group_lookahead_page.page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.page())),
+        ("group_lookahead_page.per_page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.per_page())),
+        ("group_lookahead_page.has_next", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.has_next())),
+        ("group_lookahead_page.rows", Some(Instance::GroupPage(page))) => Returned::Value(page.rows().iter().map(|row| case_map(row, member)).collect()),
         ("rows.len", Some(Instance::Rows(rows))) => Returned::Value(Value::from(rows.len())),
         ("rows.first", Some(Instance::Rows(rows))) => optional_row(rows.first()),
         ("rows.get", Some(Instance::Rows(rows))) => optional_row(rows.get(&orm_value(field(args, "key", member), member)?)),
@@ -783,9 +819,14 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             items => Returned::Instances(items.into_iter().map(|row| Instance::Query(Box::new(row))).collect()),
         },
         ("rows.to_array", Some(Instance::Rows(rows))) => Returned::Value(rows.to_array()?.iter().map(|row| case_map(row, member)).collect()),
-        ("query.get_count_by", Some(Instance::Query(query))) => {
-            Returned::Value(Value::from(query.get_count_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?))
-        }
+        (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
+        (other, None) => panic!("the case runner calls no member {other} without a receiver"),
+    })
+}
+
+/// The members of `db`, `tx` (`call`).
+async fn call_db(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
+    Ok(match (member, receiver) {
         ("db.connect", None) => {
             opened(Db::connect(&text(args, "dsn", member), uint(args, "pool_size", member), config(field(args, "cfg", member), member)).await?)
         }
@@ -843,6 +884,14 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         }
         ("db.utils", Some(Instance::Db(db))) => Returned::Instance(Instance::Utils(db.utils())),
         ("tx.utils", Some(Instance::Tx(tx))) => Returned::Instance(Instance::Utils(tx.utils())),
+        (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
+        (other, None) => panic!("the case runner calls no member {other} without a receiver"),
+    })
+}
+
+/// The members of `utils`, `schema_utils`, `privilege_utils`, `aes_utils`, `aes_keyring` (`call`).
+async fn call_utils(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
+    Ok(match (member, receiver) {
         ("utils.stats", Some(Instance::Utils(utils))) => {
             let stats = utils.stats();
             Returned::Value(serde_json::json!({
@@ -906,22 +955,6 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             let (model, keyring) = model_and_keyring(args, member).await;
             Returned::Value(Value::from(aes.rotate_query(&model, &keyring).await?))
         }
-        ("query.connect", Some(Instance::Query(query))) => {
-            query.connect(connection(field(args, "connection", member), member).await);
-            Returned::Value(Value::Null)
-        }
-        ("step_runner.new", None) => {
-            let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
-                panic!("{member}: schema is no instance of schema")
-            };
-            Returned::Instance(Instance::Runner(Box::new(StepRunner::new(&schema, connection(field(args, "connection", member), member).await))))
-        }
-        ("step_runner.run", Some(Instance::Runner(runner))) => Returned::Value(Value::from(runner.run(&text(args, "step", member)).await)),
-        ("step_runner.close", Some(Instance::Runner(runner))) => Returned::Value(Value::from(runner.close().await)),
-        ("dbspec.read_set", None) => {
-            let path = case_path(&text(args, "path", member), member);
-            Returned::Value(Value::from(crate::dbspec_json::read_set(binding_core::Io::for_generated_call(), &path)?))
-        }
         ("aes_keyring.constructor", None) => Returned::Instance(Instance::Keyring(AesKeyring::new(
             &{
                 let mut keys = binding_core::KeyedMap::new();
@@ -934,25 +967,34 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         )?)),
         ("aes_keyring.current", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.current())),
         ("aes_keyring.versions", Some(Instance::Keyring(keyring))) => Returned::Value(Value::from(keyring.versions())),
+        (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
+        (other, None) => panic!("the case runner calls no member {other} without a receiver"),
+    })
+}
+
+/// The members of `schema`, `step_runner`, `orm`, `runtime_model` (`call`).
+async fn call_core(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
+    Ok(match (member, receiver) {
+        ("schema.load", None) => Returned::Instance(Instance::Schema(Schema::load(
+            &text(args, "manifest_text", member),
+            &text(args, "external_text", member),
+            &text(args, "manifest_hash", member),
+        )?)),
+        ("schema.hash", Some(Instance::Schema(schema))) => Returned::Value(Value::from(schema.hash())),
+        ("step_runner.new", None) => {
+            let Instance::Schema(schema) = Box::pin(instance(field(args, "schema", member), member)).await else {
+                panic!("{member}: schema is no instance of schema")
+            };
+            Returned::Instance(Instance::Runner(Box::new(StepRunner::new(&schema, connection(field(args, "connection", member), member).await))))
+        }
+        ("step_runner.run", Some(Instance::Runner(runner))) => Returned::Value(Value::from(runner.run(&text(args, "step", member)).await)),
+        ("step_runner.close", Some(Instance::Runner(runner))) => Returned::Value(Value::from(runner.close().await)),
         ("orm.value_function_unit", None) => Returned::Value(optional_text(crate::engine::value_function_unit(&text(args, "name", member)))),
         ("orm.transaction_conflict", None) => {
             crate::tx::fail_transaction_conflict(&text(args, "message", member))?;
             Returned::Value(Value::Null)
         }
         ("orm.fulltext_boolean", None) => Returned::Value(Value::from(crate::value::fulltext_boolean(&text(args, "value", member)))),
-        ("dbspec.read_bytes", None) => Returned::Value(Value::from(crate::dbspec_json::read_bytes(&text(args, "name", member), &bytes(args, "bytes", member)))),
-        ("dbspec.parse_set", None) => {
-            Returned::Value(Value::from(crate::dbspec_json::parse_set(&texts(args, "owned", member), &texts(args, "external", member))?))
-        }
-        ("dbspec.manifest", None) => Returned::Value(Value::from(crate::dbspec_json::manifest(&text(args, "documents", member))?)),
-        ("dbspec.emit", None) => Returned::Value(Value::from(crate::dbspec_json::emit(&text(args, "document", member))?)),
-        ("dbspec.render_statements", None) => {
-            Returned::Value(Value::from(crate::dbspec_json::render_statements(&text(args, "documents", member), &text(args, "dialect", member))?))
-        }
-        ("dbspec.canonical_literal", None) => {
-            Returned::Value(optional_text(crate::dbspec_json::canonical_literal(&text(args, "column_type", member), &text(args, "literal", member))?))
-        }
-        ("dbspec.runtime_model", None) => Returned::Value(Value::from(crate::dbspec_json::runtime_model(&text(args, "documents", member))?)),
         ("runtime_model.load", None) => Returned::Instance(Instance::Model(Box::new(Manifest::from_json(&text(args, "model", member))?))),
         ("runtime_model.validate", Some(Instance::Model(model))) => {
             model.validate(&text(args, "request", member))?;
@@ -968,6 +1010,31 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             &text(args, "column", member),
             &text(args, "operator", member),
         )?)),
+        (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
+        (other, None) => panic!("the case runner calls no member {other} without a receiver"),
+    })
+}
+
+/// The members of `dbspec`, `codec` (`call`).
+async fn call_codec(member: &str, receiver: Option<&mut Instance>, args: &Map<String, Value>) -> Result<Returned, Error> {
+    Ok(match (member, receiver) {
+        ("dbspec.read_set", None) => {
+            let path = case_path(&text(args, "path", member), member);
+            Returned::Value(Value::from(crate::dbspec_json::read_set(binding_core::Io::for_generated_call(), &path)?))
+        }
+        ("dbspec.read_bytes", None) => Returned::Value(Value::from(crate::dbspec_json::read_bytes(&text(args, "name", member), &bytes(args, "bytes", member)))),
+        ("dbspec.parse_set", None) => {
+            Returned::Value(Value::from(crate::dbspec_json::parse_set(&texts(args, "owned", member), &texts(args, "external", member))?))
+        }
+        ("dbspec.manifest", None) => Returned::Value(Value::from(crate::dbspec_json::manifest(&text(args, "documents", member))?)),
+        ("dbspec.emit", None) => Returned::Value(Value::from(crate::dbspec_json::emit(&text(args, "document", member))?)),
+        ("dbspec.render_statements", None) => {
+            Returned::Value(Value::from(crate::dbspec_json::render_statements(&text(args, "documents", member), &text(args, "dialect", member))?))
+        }
+        ("dbspec.canonical_literal", None) => {
+            Returned::Value(optional_text(crate::dbspec_json::canonical_literal(&text(args, "column_type", member), &text(args, "literal", member))?))
+        }
+        ("dbspec.runtime_model", None) => Returned::Value(Value::from(crate::dbspec_json::runtime_model(&text(args, "documents", member))?)),
         ("codec.decode", None) => {
             let cell = orm_value(field(args, "cell", member), member)?;
             Returned::Value(case_value(&crate::orm_value::decode(&texts(args, "stages", member), &cell)?, member))
