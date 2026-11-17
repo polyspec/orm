@@ -310,7 +310,7 @@
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 `join`, `leftJoin`, 묶음
   (`not`, `andNot`, `orNot`, `on`. `andGroup`과 `orGroup`은 `where_group`이다, CORE-202), `andModel`, `orModel`, `compare`,
-  `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
+  `getsLookaheadPage`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
   `uint`여서 음수 값은 형식이 없다. `count`가 0이면 다음 terminal에서 `config`이고 메시지는 `limit requires a
@@ -373,7 +373,7 @@
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
   `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
   `group_by`, `connector`와 `query`를 가진 `where_group`, `query`를 가진
-  `duplication`).
+  `duplication`, `column`을 가진 `sum`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
   형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
   `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
@@ -592,6 +592,15 @@
   `creates batch <n> of <rows> rows binds <binds> parameters, over the <driver> limit of <limit>`이다. identity 열의
   값은 `ir_invalid`다(DSL-113). 빈 `rows`는 연결이 있는 `Query`에서 0을 돌려주고 문장을 보내지 않는다(CORE-81).
   행은 돌려주지 않고, insert 뒤에 행을 읽지 않는다. `Db` step(CORE-92)에는 이것의 terminal이 없다.
+- **CORE-205** `sum(column)`은 `get_sum()`이 그 합을 돌려줄 열을 정한다. 언어 구현의 member `sum<Col>()`과
+  `getSum()`이다(DSL-62). 요청은 `sum`이고 그 열은 요청의 `agg`다(PRT-2). 마지막에 부른 `sum`이 남고, `Query`의
+  조건이 행을 고른다. 결과는 `float`다: 합은 가장 가까운 binary64 값으로 한 번 바뀔 때까지 정확하고(DSL-66,
+  DSL-161), 맞는 행이 없든 모든 값이 null이든 값이 남지 않으면 0이다. `sum`이 없는 `Query`의 `get_sum`은 연결을
+  구하기 전에 `config`이고 메시지는 `get_sum requires sum_<col>()`다. 엔티티의 열이 아닌 이름은 다음 terminal에서
+  `config`이고 메시지는 `<column> is not a column of <entity>`이며(CORE-87), 수가 아닌 열은 `operator_not_allowed`이고
+  메시지는 `sum on <entity>.<column> (<type>)`이고, 유한한 수가 아닌 scalar는 `codec_decode`이고 메시지는
+  `aggregate scalar is not a finite number`이며, group된 `Query`는 `ir_invalid`다(CORE-201). `sum`은 다른 terminal에
+  효과가 없다. `Db` step은 `column`을 가진 call `sum`을 받고(CORE-92) `get_sum`의 terminal은 없다.
 
 ## 상태 기계
 

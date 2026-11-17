@@ -986,3 +986,29 @@ async fn duplication_updates_the_row_that_a_create_meets() {
     assert_eq!(failure(other.create().await, "another entity").to_string(), "config: duplication takes a query of account, not of account_key");
     db.close_async().await;
 }
+
+// Requirements: CORE-205. get_sum returns the sum of the column that sum named over the rows of the conditions and 0
+// for no row; without sum it is config, and a column that is no number is operator_not_allowed.
+#[tokio::test]
+async fn get_sum_sums_the_column_that_sum_named() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-get-sum");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut keys = query(&schema, "account_key", &db);
+    keys.sum("account_seq");
+    assert!((keys.get_sum().await.expect("get_sum") - 4.0).abs() < f64::EPSILON, "the keys reference the accounts 1, 1 and 2");
+    keys.where_chain("AccountSeq", &[int(1)]);
+    assert!((keys.get_sum().await.expect("get_sum") - 2.0).abs() < f64::EPSILON, "the sum of the rows of the condition");
+    keys.where_none("And");
+    assert!(keys.get_sum().await.expect("get_sum").abs() < f64::EPSILON, "no row sums to 0");
+    let plain = query(&schema, "account_key", &db);
+    assert_eq!(failure(plain.get_sum().await, "no sum").to_string(), "config: get_sum requires sum_<col>()");
+    let mut label = query(&schema, "account_key", &db);
+    label.sum("label");
+    assert_eq!(failure(label.get_sum().await, "no number").to_string(), "operator_not_allowed: sum on account_key.label (varchar(32))");
+    let mut unknown = query(&schema, "account_key", &db);
+    unknown.sum("missing");
+    assert_eq!(failure(unknown.get_sum().await, "no column").to_string(), "config: missing is not a column of account_key");
+    db.close_async().await;
+}

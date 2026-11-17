@@ -292,6 +292,14 @@ impl Query {
         }
     }
 
+    /// Names the column `column` whose sum `get_sum` returns; the last one called holds (CORE-205). A name that is no
+    /// column of the entity is `config` at the next terminal.
+    pub fn sum(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.aggregate("sum", column);
+        }
+    }
+
     /// Reads at most `count` rows after the first `offset` rows of the order (CORE-85). A `count` of 0 is `config` at
     /// the next terminal.
     pub fn limit(&mut self, offset: u32, count: u32) {
@@ -572,6 +580,16 @@ impl Query {
             out.push(row);
         }
         Ok(out)
+    }
+
+    /// The sum of the column that `sum` named over the rows that the conditions select, 0 when no value is left
+    /// (CORE-205). A query without `sum` is `config`; the query does not change.
+    pub async fn get_sum(&self) -> Result<f64> {
+        // A refused `sum` named no column, so its error comes before the refusal of a query without `sum`.
+        if let Some(error) = self.core.err() {
+            return Err(error);
+        }
+        crate::model::get_sum(&self.core).await
     }
 
     /// Runs the count of the query (CORE-83).

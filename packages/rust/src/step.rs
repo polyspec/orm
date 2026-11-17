@@ -120,6 +120,7 @@ pub enum Call {
     GroupBy { column: String },
     WhereGroup { connector: String, query: QueryTree },
     Duplication { query: QueryTree },
+    Sum { column: String },
 }
 
 /// The terminal of a query step (CORE-92).
@@ -406,6 +407,7 @@ fn build(schema: &Schema, tree: QueryTree) -> Result<Query> {
             Call::GroupBy { column } => query.group_by(&column),
             Call::WhereGroup { connector, query: group } => query.where_group(&connector, build(schema, group)?),
             Call::Duplication { query: other } => query.duplication(build(schema, other)?),
+            Call::Sum { column } => query.sum(&column),
         }
     }
     Ok(query)

@@ -375,7 +375,7 @@ implementation is eligible for removal on that evidence.
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: `join`, `leftJoin`, the
   groups (`not`, `andNot`, `orNot`, `on`; `andGroup` and `orGroup` are `where_group`, CORE-202), `andModel`, `orModel`, `compare`,
-  `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
+  `getsLookaheadPage`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
 - **CORE-85** `limit(offset, count)` reads at most `count` rows after the first `offset` rows of the order (DSL-99).
@@ -444,7 +444,7 @@ implementation is eligible for removal on that evidence.
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
   with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
-  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, and `duplication` with `query`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, and `sum` with `column`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
   value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
   `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
@@ -696,6 +696,17 @@ implementation is eligible for removal on that evidence.
   identity column is `ir_invalid` (DSL-113). An empty `rows` returns 0 and sends no statement, on a `Query` with a
   connection (CORE-81). The rows are not returned, and no row is read after the insert. The `Db` step (CORE-92) has
   no terminal for it.
+- **CORE-205** `sum(column)` names the column whose sum `get_sum()` returns: the members `sum<Col>()` and `getSum()`
+  of the language implementations (DSL-62). The request is `sum` and the column its `agg` (PRT-2); the last `sum`
+  called holds, and the conditions of the `Query` select the rows. The result is a `float`: the sum, which stays exact
+  until it is converted once to the nearest binary64 value (DSL-66, DSL-161), and 0 when no value is left, whether no
+  row matches or every value is null. `get_sum` of a `Query` without `sum` is `config` with the message
+  `get_sum requires sum_<col>()`, before the connection is asked for. A name that is no column of the entity is
+  `config` at the next terminal with the message `<column> is not a column of <entity>` (CORE-87), a column that is
+  no number is `operator_not_allowed` with the message `sum on <entity>.<column> (<type>)`, a scalar that is no
+  finite number is `codec_decode` with the message `aggregate scalar is not a finite number`, and a grouped `Query`
+  is `ir_invalid` (CORE-201). `sum` has no effect on another terminal. The `Db` step takes the call `sum` with
+  `column` (CORE-92) and has no terminal for `get_sum`.
 
 ## State machines
 

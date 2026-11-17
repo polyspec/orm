@@ -672,6 +672,11 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             }
             _ => panic!("{member}: query is no query"),
         },
+        ("query.sum", Some(Instance::Query(query))) => {
+            query.sum(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.get_sum", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_sum().await?)),
         ("query.group_by", Some(Instance::Query(query))) => {
             query.group_by(&text(args, "column", member));
             Returned::Value(Value::Null)
