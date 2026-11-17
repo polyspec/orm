@@ -153,10 +153,11 @@ type Config struct {
 	PoolIdleSize         *uint64
 	PoolLifetimeMs       *uint64
 	PoolAcquireTimeoutMs *uint64
-	AuditSource          *func() (*Map[any], error)
+	AuditSource          func() (*Map[any], error)
 }
 
-// TransactionOptions is the record transaction_options (T-4): the last argument of the functions that take it, and a result.
+// TransactionOptions is the record transaction_options (T-4): the last argument of the functions that take it, and a result. A field that is a pointer has a default: nil leaves it to
+// the core (U-2).
 type TransactionOptions struct {
 	Isolation *Isolation
 	ReadOnly  *bool
@@ -290,27 +291,23 @@ func DbConnect(dsn string, poolSize uint64, cfg Config) (*Db, error) {
 		enc.Tag(false)
 	} else {
 		enc.Tag(true)
-		if (*cfg.AuditSource) == nil {
-			enc.Tag(false)
-		} else {
-			enc.Tag(true)
-			call.Keep(enc, func(call *binding.Call, dec *binding.Reader, enc *binding.Writer) error {
-				if err := dec.Finish(); err != nil {
-					return err
-				}
-				returned, err := (*cfg.AuditSource)()
-				if err != nil {
-					return err
-				}
-				enc.Len(returned.Len())
-				for _, key0 := range returned.Keys() {
-					entry0, _ := returned.Get(key0)
-					enc.Text(key0)
-					call.Value(enc, entry0)
-				}
-				return nil
-			})
-		}
+		enc.Tag(true)
+		call.Keep(enc, func(call *binding.Call, dec *binding.Reader, enc *binding.Writer) error {
+			if err := dec.Finish(); err != nil {
+				return err
+			}
+			returned, err := cfg.AuditSource()
+			if err != nil {
+				return err
+			}
+			enc.Len(returned.Len())
+			for _, key0 := range returned.Keys() {
+				entry0, _ := returned.Get(key0)
+				enc.Text(key0)
+				call.Value(enc, entry0)
+			}
+			return nil
+		})
 	}
 	dec, err := binding.Db_Connect(enc.Done())
 	if err != nil {
@@ -598,27 +595,23 @@ func DbConnectSchema(dsn string, schema *Schema, poolSize uint64, cfg Config) (*
 		enc.Tag(false)
 	} else {
 		enc.Tag(true)
-		if (*cfg.AuditSource) == nil {
-			enc.Tag(false)
-		} else {
-			enc.Tag(true)
-			call.Keep(enc, func(call *binding.Call, dec *binding.Reader, enc *binding.Writer) error {
-				if err := dec.Finish(); err != nil {
-					return err
-				}
-				returned, err := (*cfg.AuditSource)()
-				if err != nil {
-					return err
-				}
-				enc.Len(returned.Len())
-				for _, key0 := range returned.Keys() {
-					entry0, _ := returned.Get(key0)
-					enc.Text(key0)
-					call.Value(enc, entry0)
-				}
-				return nil
-			})
-		}
+		enc.Tag(true)
+		call.Keep(enc, func(call *binding.Call, dec *binding.Reader, enc *binding.Writer) error {
+			if err := dec.Finish(); err != nil {
+				return err
+			}
+			returned, err := cfg.AuditSource()
+			if err != nil {
+				return err
+			}
+			enc.Len(returned.Len())
+			for _, key0 := range returned.Keys() {
+				entry0, _ := returned.Get(key0)
+				enc.Text(key0)
+				call.Value(enc, entry0)
+			}
+			return nil
+		})
 	}
 	dec, err := binding.Db_ConnectSchema(enc.Done())
 	runtime.KeepAlive(schema)

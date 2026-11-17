@@ -91,3 +91,9 @@ func TestB4DbTransactionARollbackThatFailsAfterTheCallbackRaisedKeepsNothingThro
 		t.Fatalf("GN-6ae: %d values that were thrown are kept after the call (%v)", count, err)
 	}
 }
+
+// GN-13bf: this file was built with its tags.
+func init() {
+	builtTags["polyspec_orm_thrown_count_test"] = true
+	builtTags["polyspec_orm_fault_test"] = true
+}

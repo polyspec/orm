@@ -98,3 +98,8 @@ func TestB2Int64InTakesAValueOfItsType(t *testing.T) {
 		}
 	}
 }
+
+// GN-13bf: this file was built with its tags.
+func init() {
+	builtTags["polyspec_orm_codec_test"] = true
+}

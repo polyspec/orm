@@ -389,13 +389,15 @@ async fn connection(value: &Value, what: &str) -> Connection {
     }
 }
 
-/// The record `transaction_options`: each field is required and may be null (INT-40 to INT-43).
-fn transaction_options(value: &Value, member: &str) -> TransactionOptions {
+/// The record `transaction_options`: each field has a default and may be left out or null (CORE-20, INT-40 to INT-43), and
+/// so may the record, which is then `None`.
+fn transaction_options(value: Option<&Value>, member: &str) -> TransactionOptions {
+    let Some(value) = value else { return TransactionOptions::default() };
     let fields = value.as_object().unwrap_or_else(|| panic!("{member}: options is no record"));
     for name in fields.keys() {
         assert!(["isolation", "read_only", "timeout_ms", "retry", "audit"].contains(&name.as_str()), "{member}: options has no field {name}");
     }
-    let given = |name: &str| fields.get(name).unwrap_or_else(|| panic!("{member}: options gives no {name}")).clone();
+    let given = |name: &str| fields.get(name).cloned().unwrap_or(Value::Null);
     let isolation = match given("isolation").as_str() {
         None => None,
         Some("read_uncommitted") => Some(Isolation::ReadUncommitted),
@@ -684,7 +686,7 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         }
         ("db.transaction", Some(Instance::Db(db))) => {
             let fixture = field(args, "callback", member).clone();
-            let options = transaction_options(field(args, "options", member), member);
+            let options = transaction_options(args.get("options"), member);
             let what = format!("{member}: callback");
             Returned::Value(db.transaction_async(|tx| run_function(fixture.clone(), Instance::Tx(tx), what.clone()), options).await?)
         }

@@ -14,3 +14,8 @@ func TestB7APanicIsKindInternal(t *testing.T) {
 		t.Fatalf("B-7: %#v", err)
 	}
 }
+
+// GN-13bf: this file was built with its tags.
+func init() {
+	builtTags["polyspec_orm_panic_test"] = true
+}

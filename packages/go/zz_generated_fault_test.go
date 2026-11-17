@@ -112,3 +112,8 @@ func TestB4RuntimeModelCompileAColumnThatThePlanDoesNotProjectIsInternal(t *test
 		t.Fatalf("G-5: the faults %v did not fire (%v)", left, leftErr)
 	}
 }
+
+// GN-13bf: this file was built with its tags.
+func init() {
+	builtTags["polyspec_orm_fault_test"] = true
+}

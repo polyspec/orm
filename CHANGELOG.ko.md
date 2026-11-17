@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ee256df3d6f99ab71e68a543c0e061f54e11c9a406ae25257cbd0bcce0aae4b4 -->
+<!-- source-sha256: daf3af3039534ad7679bde564f06d79e43b3b6633297df0519b114344e945276 -->
 # 변경 이력
 
 ## Unreleased
 
+- `db.transaction`은 매개변수를 선언하지 않은 callback을 트랜잭션이 열리기 전에 바인딩의 kind `invalid_callback`으로 거절하고 호출하지 않는다(CORE-20, T590): 그런 callback은 `Tx`를 받지 못하며, Node와 PHP에서는 그 문장이 실패 없이 `Db`를 거쳐 트랜잭션 밖에서 실행되었다. binding 0.0.21의 생성된 호출이 선언된 매개변수를 검사하고(B2.467), Node, Python, PHP의 생성된 시험 `GN-6bu`가 이를 담는다. 트랜잭션의 options는 계약에서 기본값을 가진다(CORE-20, T594): `transaction_options`의 각 field와 매개변수 `options`를 생략할 수 있으므로 `db.transaction(callback)`은 모든 바인딩에서 온전한 호출이다. `db.transaction`의 case `a_callback_alone_takes_the_defaults_of_the_options`와 `an_empty_record_of_options_takes_the_defaults`가 이를 담는다.
 - 코어는 restore 분석을 `Db::analyze_restore(request)`, contract의 member `db.analyze_restore`로 가진다(CORE-141, PRT-91): restore 요청을 JSON text로 받아 `{"assignments": [..], "key": [..]}`를 돌려준다. 고른 key는 schema 순서이고 assignments는 key가 가져가지 않은 set의 컬럼이며, 문장을 보내지 않고 hook를 부르지 않는다. set의 알 수 없는 컬럼은 key를 고르기 전에 보고하고, primary key, identity, soft delete 할당의 거절은 쓰기에 맡긴다: `restore_key`를 분류기와 그 거절로 나누었고, `restore_key`와 `runtime_model.restore_key`는 전에 돌려주던 것을 돌려준다. `contracts/interface/core.json`의 group `db.analyze_restore`가 SQLite에서 case 21개를 가진다(T597).
 - handle은 `transaction_active`로 자신이 열린 트랜잭션의 handle인지 말한다(CORE-140, T564): `Tx::transaction_active`는 그 handle을 받은 트랜잭션이나 savepoint의 callback이 실행되는 동안 true이고 그 뒤에는 false이며, `Db::transaction_active`는 자기 트랜잭션의 callback 안에서도 언제나 false다. handle이 트랜잭션에 들어가는 유일한 길이고 `Db`는 pool이기 때문이다. 계약은 `db.transaction_active`와 `tx.transaction_active`를 선언하고, `db.transaction_active`와 `db.transaction`의 case 다섯이 이를 담는다. core의 case runner는 `after`에서 function이 이름 붙인 인자를 부르고, database receiver에 `receiver`라는 이름을 주며, case가 기대한 실패를 낸 호출 뒤에도 `after`를 실행한다.
 - 트랜잭션의 callback이 `Db`를 거쳐 보내는 문장은 그 트랜잭션 밖의 문장이다(CORE-20, T591): `Db`는 pool이므로 그 문장은 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이 롤백된 뒤에도 남는다. `db.transaction`의 case `a_row_written_through_the_db_in_a_callback_that_raises_stays`가 이를 담는다.
