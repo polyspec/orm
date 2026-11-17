@@ -6,27 +6,20 @@
 //! (step 3), and the read of each file with its identity from the same handle (step 4). Steps 1
 //! and 2 stop at their first error; steps 3 and 4 report each path that breaks them.
 
-#[cfg(any(unix, windows))]
-use serde::de::{self, MapAccess, Visitor};
-#[cfg(any(unix, windows))]
-use serde::Deserializer as _;
-#[cfg(any(unix, windows))]
-use serde_json::value::RawValue;
 use std::collections::BTreeMap;
-#[cfg(any(unix, windows))]
-use std::collections::HashMap;
-#[cfg(any(unix, windows))]
-use std::collections::HashSet;
-#[cfg(any(unix, windows))]
-use std::ffi::{OsStr, OsString};
 use std::fmt;
-#[cfg(any(unix, windows))]
-use std::fs::File;
-#[cfg(any(unix, windows))]
-use std::io::Read;
-#[cfg(any(unix, windows))]
-use std::path::Path;
 use std::path::PathBuf;
+#[cfg(any(unix, windows))]
+use {
+    serde::de::{self, MapAccess, Visitor},
+    serde::Deserializer as _,
+    serde_json::value::RawValue,
+    std::collections::{HashMap, HashSet},
+    std::ffi::{OsStr, OsString},
+    std::fs::File,
+    std::io::Read,
+    std::path::Path,
+};
 
 /// The name of every set file.
 pub const SET_FILE_NAME: &str = "dbspec-set.json";

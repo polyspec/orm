@@ -49,6 +49,19 @@ enum Stage {
     Ended,
 }
 
+/// The step after the callback of a transaction or a savepoint: its value is awaited in the stage Settle; otherwise the
+/// failure of the callback to revert, or None when the callback gave no outcome.
+fn after_call<I>(called: Option<Outcome>, stage: &mut Stage) -> std::result::Result<Step<I, Outcome>, Option<Failure<Error>>> {
+    match called {
+        Some(Ok(value)) => {
+            *stage = Stage::Settle;
+            Ok(Step::Await(value))
+        }
+        Some(Err(failure)) => Err(Some(failure)),
+        None => Err(None),
+    }
+}
+
 /// The `internal` failure of a driver that gave a machine a step out of its order.
 fn out_of_order(what: &str, stage: Stage) -> Failure<Error> {
     Failure::Kind(Error::internal(format!("the machine of {what} was advanced out of order at {stage:?}")))
@@ -287,13 +300,10 @@ where
                 Step::Call
             }
             (Stage::Opening, Some(TransactionOutput::Opened(Err(error)))) => self.end(Err(Failure::Kind(error))),
-            (Stage::Call, None) => match self.called.take() {
-                Some(Ok(value)) => {
-                    self.stage = Stage::Settle;
-                    Step::Await(value)
-                }
-                Some(Err(failure)) => self.revert(failure),
-                None => self.end(Err(out_of_order("a transaction", Stage::Call))),
+            (Stage::Call, None) => match after_call(self.called.take(), &mut self.stage) {
+                Ok(step) => step,
+                Err(Some(failure)) => self.revert(failure),
+                Err(None) => self.end(Err(out_of_order("a transaction", Stage::Call))),
             },
             (Stage::Settle, None) => match self.settled.take() {
                 Some(Ok(value)) => {
@@ -532,13 +542,10 @@ where
                 Step::Call
             }
             (Stage::Opening, Some(SavepointOutput::Opened(Err(error)))) => self.end(Err(Failure::Kind(error))),
-            (Stage::Call, None) => match self.called.take() {
-                Some(Ok(value)) => {
-                    self.stage = Stage::Settle;
-                    Step::Await(value)
-                }
-                Some(Err(failure)) => self.revert(failure),
-                None => self.end_opened(Err(out_of_order("a savepoint", Stage::Call))),
+            (Stage::Call, None) => match after_call(self.called.take(), &mut self.stage) {
+                Ok(step) => step,
+                Err(Some(failure)) => self.revert(failure),
+                Err(None) => self.end_opened(Err(out_of_order("a savepoint", Stage::Call))),
             },
             (Stage::Settle, None) => match self.settled.take() {
                 Some(Ok(value)) => {

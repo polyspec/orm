@@ -81,6 +81,52 @@ fn drive<M: Machine>(runtime: &Runtime, machine: &mut M) -> (Vec<&'static str>, 
     drive_with(runtime, machine, Ok)
 }
 
+/// The cell that keeps the handle of a callback after it returns.
+type Kept = Rc<RefCell<Option<Tx>>>;
+
+/// A transaction machine whose callback inserts the row 1 when `insert_row` is set, keeps its handle in the returned
+/// cell and gives what `result` gives.
+fn keeping_transaction<'a>(
+    runtime: &'a Runtime,
+    db: &Db,
+    insert_row: bool,
+    mut result: impl FnMut() -> Outcome + 'a,
+) -> (Kept, crate::Transaction<impl FnMut(Tx) -> Outcome + 'a>) {
+    let kept = Rc::new(RefCell::new(None));
+    let handle = Rc::clone(&kept);
+    let machine = db.clone().transaction(
+        move |tx: Tx| {
+            if insert_row {
+                insert(runtime, &tx, 1).map_err(Failure::Kind)?;
+            }
+            *handle.borrow_mut() = Some(tx);
+            result()
+        },
+        once(),
+    );
+    (kept, machine)
+}
+
+/// Drives a transaction with the default options whose callback counts its runs in `runs`, and gives its steps and result.
+fn drive_counting(runtime: &Runtime, db: &Db, runs: &mut u32) -> (Vec<&'static str>, Outcome) {
+    let mut machine = db.clone().transaction(
+        |_tx: Tx| {
+            *runs += 1;
+            Ok(passed(1))
+        },
+        TransactionOptions::default(),
+    );
+    drive(runtime, &mut machine)
+}
+
+/// Drives `machine` through its opening Io to its Call step and calls its callback.
+fn open_and_call<M: Machine>(runtime: &Runtime, machine: &mut M) {
+    let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
+    let opened = runtime.block_on(opening);
+    assert!(matches!(machine.resume(Some(opened)), Step::Call));
+    machine.call();
+}
+
 fn once() -> TransactionOptions {
     TransactionOptions { retry: Some(0), ..TransactionOptions::default() }
 }
@@ -122,16 +168,7 @@ fn a_transaction_machine_commits_and_returns_the_settled_value() {
     let _case = polyspec_orm_testcase::case!();
     let scratch = Scratch::new("orm-rust-machine-commit");
     let (runtime, db) = probe_db(&scratch);
-    let kept = Rc::new(RefCell::new(None));
-    let handle = Rc::clone(&kept);
-    let mut machine = db.clone().transaction(
-        |tx: Tx| {
-            insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
-            *handle.borrow_mut() = Some(tx);
-            Ok(passed(1))
-        },
-        once(),
-    );
+    let (kept, mut machine) = keeping_transaction(&runtime, &db, true, move || Ok(passed(1)));
     // The awaitable of the language gives another value than the one that the callback returned.
     let (steps, done) = drive_with(&runtime, &mut machine, |value| {
         drop(value);
@@ -398,31 +435,15 @@ fn a_transaction_machine_ends_with_the_failure_of_a_hook_before_it_begins() {
     let raising = db.before_transaction(Box::new(|_read_only| Err(Failure::Raised(raised(7)))));
     let later = recording_hook(&db, &calls, "later");
     let mut runs = 0u32;
-    let mut machine = db.clone().transaction(
-        |_tx: Tx| {
-            runs += 1;
-            Ok(passed(1))
-        },
-        TransactionOptions::default(),
-    );
-    let (steps, done) = drive(&runtime, &mut machine);
+    let (steps, done) = drive_counting(&runtime, &db, &mut runs);
     assert_eq!(steps, ["Call", "Done"]);
     assert!(matches!(&done, Err(Failure::Raised(exception)) if raised_id(exception) == Some(7)), "{done:?}");
-    drop(machine);
     raising.remove();
 
     let refusing = db.before_transaction_async(|_read_only| async { Err::<(), Error>(crate::transaction_conflict("refused")) });
-    let mut machine = db.clone().transaction(
-        |_tx: Tx| {
-            runs += 1;
-            Ok(passed(1))
-        },
-        TransactionOptions::default(),
-    );
-    let (steps, done) = drive(&runtime, &mut machine);
+    let (steps, done) = drive_counting(&runtime, &db, &mut runs);
     assert_eq!(steps, ["Call", "Io", "Done"], "the hook that records, then the hook of Rust code, and no other attempt");
     assert!(matches!(&done, Err(Failure::Kind(error)) if error.kind() == Kind::Deadlock && error.text() == "refused"), "{done:?}");
-    drop(machine);
     assert_eq!(runs, 0, "the callback does not run");
     assert_eq!(hook_calls(&calls), [("later", false, 0)], "the hook after the one that raised is not called");
     assert_eq!(sent.load(std::sync::atomic::Ordering::SeqCst), 0, "no statement is sent");
@@ -651,16 +672,7 @@ fn dropping_a_transaction_machine_discards_its_connection_at_each_stage() {
         let scratch = Scratch::new("orm-machine-drop-transaction");
         let (runtime, db) = probe_db(&scratch);
         let connections = db.stats().open_connections;
-        let kept = Rc::new(RefCell::new(None));
-        let handle = Rc::clone(&kept);
-        let machine = db.clone().transaction(
-            |tx: Tx| {
-                insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
-                *handle.borrow_mut() = Some(tx);
-                Ok(passed(1))
-            },
-            once(),
-        );
+        let (kept, machine) = keeping_transaction(&runtime, &db, true, move || Ok(passed(1)));
         cancel_at(&runtime, machine, pause);
         assert_eq!(db.stats().in_use, 0, "{pause:?}: no connection outlives its cancelled driver");
         let discarded = matches!(pause, Paused::Opened | Paused::Call | Paused::Await | Paused::Keeping);
@@ -735,19 +747,8 @@ fn an_aborted_machine_discards_a_borrowed_connection_when_the_borrow_ends() {
         let scratch = Scratch::new("orm-machine-drop-borrowed");
         let (runtime, db) = probe_db(&scratch);
         let connections = db.stats().open_connections;
-        let kept = Rc::new(RefCell::new(None));
-        let handle = Rc::clone(&kept);
-        let mut machine = db.clone().transaction(
-            |tx: Tx| {
-                *handle.borrow_mut() = Some(tx);
-                Ok(passed(1))
-            },
-            once(),
-        );
-        let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
-        let opened = runtime.block_on(opening);
-        assert!(matches!(machine.resume(Some(opened)), Step::Call));
-        machine.call();
+        let (kept, mut machine) = keeping_transaction(&runtime, &db, false, move || Ok(passed(1)));
+        open_and_call(&runtime, &mut machine);
         let Step::Await(value) = machine.resume(None) else { panic!("awaiting callback") };
         let tx = kept.borrow_mut().take().expect("the callback retained a handle");
         let (release, released) = tokio::sync::oneshot::channel::<()>();
@@ -797,6 +798,31 @@ struct ReturnGate {
     release: tokio::sync::Notify,
 }
 
+/// A pool of one connection on the SQLite file `path` whose return of a connection waits on `gate` while it is armed.
+fn gated_pool(runtime: &Runtime, gate: &std::sync::Arc<ReturnGate>, path: &std::path::Path) -> sqlx::SqlitePool {
+    use std::sync::atomic::Ordering;
+    use std::sync::Arc;
+
+    let on_return = Arc::clone(gate);
+    runtime
+        .block_on(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .max_connections(1)
+                .after_release(move |_, _| {
+                    let gate = Arc::clone(&on_return);
+                    Box::pin(async move {
+                        if gate.armed.swap(false, Ordering::AcqRel) {
+                            gate.entered.notify_one();
+                            gate.release.notified().await;
+                        }
+                        Ok(true)
+                    })
+                })
+                .connect(&format!("sqlite://{}", path.display())),
+        )
+        .expect("the gated pool opens the fixture database")
+}
+
 // Requirements: CORE-128, INT-91. A failed acquisition sends no statement and cannot invoke a subscriber.
 #[test]
 fn sqlite_lock_preparation_machine_on_a_closed_pool_emits_no_statement() {
@@ -836,24 +862,7 @@ fn sqlite_lock_preparation_machine_returns_its_actual_lease_before_completion() 
     let mut db = runtime.block_on(Db::connect(&format!("sqlite://{}", scratch.join("prepare.sqlite").display()), 1, Config::default())).expect("connect");
     runtime.block_on(db.pool().close());
     let gate = Arc::new(ReturnGate::default());
-    let on_return = Arc::clone(&gate);
-    let pool = runtime
-        .block_on(
-            sqlx::sqlite::SqlitePoolOptions::new()
-                .max_connections(1)
-                .after_release(move |_, _| {
-                    let gate = Arc::clone(&on_return);
-                    Box::pin(async move {
-                        if gate.armed.swap(false, Ordering::AcqRel) {
-                            gate.entered.notify_one();
-                            gate.release.notified().await;
-                        }
-                        Ok(true)
-                    })
-                })
-                .connect(&format!("sqlite://{}", scratch.join("prepare.sqlite").display())),
-        )
-        .expect("connect the gated pool");
+    let pool = gated_pool(&runtime, &gate, &scratch.join("prepare.sqlite"));
     Arc::get_mut(&mut db.inner).expect("the fixture owns its Db").pool = Pool::Sqlite(pool);
     gate.armed.store(true, Ordering::Release);
     let preparing_db = db.clone();
@@ -893,39 +902,10 @@ fn an_admitted_clean_return_can_complete_after_its_machine_is_dropped() {
         let (runtime, mut db) = probe_db(&scratch);
         runtime.block_on(db.pool().close());
         let gate = Arc::new(ReturnGate::default());
-        let on_return = Arc::clone(&gate);
-        let pool = runtime
-            .block_on(
-                sqlx::sqlite::SqlitePoolOptions::new()
-                    .max_connections(1)
-                    .after_release(move |_, _| {
-                        let gate = Arc::clone(&on_return);
-                        Box::pin(async move {
-                            if gate.armed.swap(false, Ordering::AcqRel) {
-                                gate.entered.notify_one();
-                                gate.release.notified().await;
-                            }
-                            Ok(true)
-                        })
-                    })
-                    .connect(&format!("sqlite://{}", scratch.join("machine.sqlite").display())),
-            )
-            .expect("the gated pool opens the fixture database");
+        let pool = gated_pool(&runtime, &gate, &scratch.join("machine.sqlite"));
         Arc::get_mut(&mut db.inner).expect("the fixture owns its Db").pool = Pool::Sqlite(pool);
-        let kept = Rc::new(RefCell::new(None));
-        let handle = Rc::clone(&kept);
-        let mut machine = db.clone().transaction(
-            |tx: Tx| {
-                insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
-                *handle.borrow_mut() = Some(tx);
-                Ok(passed(1))
-            },
-            once(),
-        );
-        let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
-        let opened = runtime.block_on(opening);
-        assert!(matches!(machine.resume(Some(opened)), Step::Call));
-        machine.call();
+        let (kept, mut machine) = keeping_transaction(&runtime, &db, true, move || Ok(passed(1)));
+        open_and_call(&runtime, &mut machine);
         let Step::Await(value) = machine.resume(None) else { panic!("awaiting callback") };
         machine.settle(Ok(value));
         let Step::Io(ending) = machine.resume(None) else { panic!("ending") };
@@ -987,20 +967,8 @@ fn cancellation_at_rollback_preserves_terminal_ownership() {
         let scratch = Scratch::new("orm-machine-drop-rollback");
         let (runtime, db) = probe_db(&scratch);
         let connections = db.stats().open_connections;
-        let kept = Rc::new(RefCell::new(None));
-        let handle = Rc::clone(&kept);
-        let mut machine = db.clone().transaction(
-            |tx: Tx| {
-                insert(&runtime, &tx, 1).map_err(Failure::Kind)?;
-                *handle.borrow_mut() = Some(tx);
-                Err(Failure::Raised(raised(1)))
-            },
-            once(),
-        );
-        let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
-        let opened = runtime.block_on(opening);
-        assert!(matches!(machine.resume(Some(opened)), Step::Call));
-        machine.call();
+        let (kept, mut machine) = keeping_transaction(&runtime, &db, true, move || Err(Failure::Raised(raised(1))));
+        open_and_call(&runtime, &mut machine);
         let Step::Io(rollback) = machine.resume(None) else { panic!("rollback") };
         match terminal {
             0 => {
@@ -1136,23 +1104,8 @@ fn cancellation_of_terminal_wire_io_preserves_its_independent_ownership() {
             let mut peer = TerminalPeer::new();
             let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().expect("runtime");
             let db = runtime.block_on(Db::connect(&peer.dsn(), 1, Config::default())).expect("the peer accepts the connection");
-            let kept = Rc::new(RefCell::new(None));
-            let handle = Rc::clone(&kept);
-            let mut machine = db.clone().transaction(
-                |tx: Tx| {
-                    *handle.borrow_mut() = Some(tx);
-                    if commit {
-                        Ok(passed(1))
-                    } else {
-                        Err(Failure::Raised(raised(1)))
-                    }
-                },
-                once(),
-            );
-            let Step::Io(opening) = machine.resume(None) else { panic!("opening") };
-            let opened = runtime.block_on(opening);
-            assert!(matches!(machine.resume(Some(opened)), Step::Call));
-            machine.call();
+            let (kept, mut machine) = keeping_transaction(&runtime, &db, false, move || if commit { Ok(passed(1)) } else { Err(Failure::Raised(raised(1))) });
+            open_and_call(&runtime, &mut machine);
             let step = machine.resume(None);
             let terminal = match step {
                 Step::Await(value) => {

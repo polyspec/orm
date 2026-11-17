@@ -22,6 +22,39 @@ use PHPUnit\Framework\TestCase;
  */
 trait QueryCancellationDbCases
 {
+    /**
+     * A hook before a transaction of the connection `$root` runs before a transaction of its cancellation handle, and a
+     * hook of the handle runs before a transaction of the connection (INT-193, CFG-9). `$root` is closed at the end.
+     */
+    private static function assertBeforeTransactionHooksAreShared(Db $root): void
+    {
+        $handle = $root->withCancellation(new Cancellation());
+        $calls = [];
+        try {
+            $removeRoot = $root->beforeTransaction(static function (bool $readOnly) use (&$calls): void {
+                $calls[] = ['root', $readOnly];
+            });
+            $handle->transaction(static fn(): bool => true, retry: 0);
+            self::assertSame(
+                [['root', false]],
+                $calls,
+                'a hook of the connection runs before a transaction of its cancellation handle'
+            );
+            $removeRoot();
+            $handle->beforeTransaction(static function (bool $readOnly) use (&$calls): void {
+                $calls[] = ['handle', $readOnly];
+            });
+            $root->transaction(static fn(): bool => true, readOnly: true, retry: 0);
+            self::assertSame(
+                [['root', false], ['handle', true]],
+                $calls,
+                'a hook of a cancellation handle runs before a transaction of its connection'
+            );
+        } finally {
+            $root->close();
+        }
+    }
+
     /** The state file of a new Cancellation is private and follows begin (1), cancel (3) and end (2). */
     private static function assertCancellationStateTransitions(Cancellation $cancellation, string $path): void
     {

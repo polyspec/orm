@@ -479,6 +479,16 @@ async fn a_subquery_reads_one_column_and_nothing_else() {
 }
 
 /// The account of `seq`, read with every column.
+/// Updates the name of the account 3 through `fresh` at the revision 0 that the row holds; the row then holds the name
+/// with the revision 1.
+async fn updates_at_revision(schema: &Schema, db: &Db, mut fresh: Query) {
+    fresh.set("name", &OrmValue::Text("Cy".into()));
+    fresh.expect_revision("revision", 0);
+    fresh.update().await.expect("the revision that the row holds");
+    let row = account(schema, db, 3).await.expect("account 3");
+    assert_eq!((row.value("name").expect("name"), row.value("revision").expect("revision")), (OrmValue::Text("Cy".into()), int(1)));
+}
+
 async fn account(schema: &Schema, db: &Db, seq: i64) -> Option<Query> {
     let mut account = query(schema, "account", db);
     account.where_chain("Seq", &[int(seq)]);
@@ -539,12 +549,7 @@ async fn update_writes_the_assignments_to_its_row() {
     stale.expect_revision("revision", 5);
     let error = failure(stale.update().await, "a revision that the row does not hold");
     assert_eq!(error.kind(), crate::Kind::RevisionChanged, "{error}");
-    let mut fresh = account(&schema, &db, 3).await.expect("account 3");
-    fresh.set("name", &OrmValue::Text("Cy".into()));
-    fresh.expect_revision("revision", 0);
-    fresh.update().await.expect("the revision that the row holds");
-    let row = account(&schema, &db, 3).await.expect("account 3");
-    assert_eq!((row.value("name").expect("name"), row.value("revision").expect("revision")), (OrmValue::Text("Cy".into()), int(1)));
+    updates_at_revision(&schema, &db, account(&schema, &db, 3).await.expect("account 3")).await;
     db.close_async().await;
 }
 
@@ -734,12 +739,7 @@ async fn require_match_refuses_a_write_that_matched_no_row() {
     stale.expect_revision("revision", 5);
     let error = failure(stale.update().await, "a revision that the row does not hold");
     assert_eq!(error.to_string(), "no_rows: the update of account matched no row", "the match refusal precedes the check of the revision");
-    let mut fresh = keyed("account", 3);
-    fresh.set("name", &OrmValue::Text("Cy".into()));
-    fresh.expect_revision("revision", 0);
-    fresh.update().await.expect("the revision that the row holds");
-    let row = account(&schema, &db, 3).await.expect("account 3");
-    assert_eq!((row.value("name").expect("name"), row.value("revision").expect("revision")), (OrmValue::Text("Cy".into()), int(1)));
+    updates_at_revision(&schema, &db, keyed("account", 3)).await;
     let mut unassigned = keyed("account", 9);
     unassigned.update().await.expect("an update with no assignment sends no request");
     let error = failure(keyed("account_key", 9).delete().await, "a delete of a key that no row holds");

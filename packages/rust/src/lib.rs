@@ -72,48 +72,42 @@ mod test_support;
 pub mod utils;
 pub mod value;
 
+/// The re-exports of the runtime feature, under one gate.
 #[cfg(feature = "runtime")]
-pub use args::{
-    date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
-    seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
+pub use self::{
+    args::{
+        date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
+        seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
+    },
+    collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page},
+    core::Core,
+    db::{
+        AuditResult, AuditSource, BeforeTransaction, BeforeTransactionFuture, BeforeTransactionHook, Config, Connect, Db, DbStats, Execute, HookFuture,
+        ObservedRequest, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION, DEFAULT_BLIND_INDEX_KEY,
+        DEFAULT_PLAN_CACHE_SIZE, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS, DEFAULT_POOL_IDLE_SIZE, DEFAULT_POOL_LIFETIME_MS, DEFAULT_STATEMENT_CACHE_SIZE,
+        DEFAULT_STATEMENT_TIMEOUT_MS,
+    },
+    events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription},
+    model::{AnyModel, Entity, EntityRef, LoadedEntity, Model},
+    query::{GroupLookaheadRows, Query, QueryLookaheadPage, QueryPage, Rows},
+    step::StepRunner,
+    tx::{transaction_conflict, Close, Connection, Isolation, Savepoint, SavepointIo, Transaction, TransactionIo, TransactionOptions, Tx, DEFAULT_RETRY},
+    utils::{AesKeyring, AesRotationStatus, AesUtils, Operation, PrivilegeUtils, SchemaUtils, TablePrivileges, Utils},
 };
 pub use array::ArrayValue;
 /// The boundary types of `Config` and of the audit values, `OrderedMap`, `KeyedMap`, `Key` and `Failure`, which Rust
 /// code names to build them (CORE-131).
 pub use binding_core;
 pub use chrono;
-#[cfg(feature = "runtime")]
-pub use collection::{Collection, GroupLookaheadPage, GroupRow, GroupRows, Key, LookaheadPage, Page};
-#[cfg(feature = "runtime")]
-pub use core::Core;
-#[cfg(feature = "runtime")]
-pub use db::{
-    AuditResult, AuditSource, BeforeTransaction, BeforeTransactionFuture, BeforeTransactionHook, Config, Connect, Db, DbStats, Execute, HookFuture,
-    ObservedRequest, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION, DEFAULT_BLIND_INDEX_KEY,
-    DEFAULT_PLAN_CACHE_SIZE, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS, DEFAULT_POOL_IDLE_SIZE, DEFAULT_POOL_LIFETIME_MS, DEFAULT_STATEMENT_CACHE_SIZE,
-    DEFAULT_STATEMENT_TIMEOUT_MS,
-};
 pub use engine::Dialect;
 pub use error::{CallbackFailure, Error};
-#[cfg(feature = "runtime")]
-pub use events::{StatementEvent, StatementSubscriber, SubscriberError, Subscription};
 pub use ir::VERSION as IR_VERSION;
 pub use kind::Kind;
-#[cfg(feature = "runtime")]
-pub use model::{AnyModel, Entity, EntityRef, LoadedEntity, Model};
 pub use orm_value::{BytesValue, FloatValue, IntegerValue, JsonValue, MapValue, OrmValue};
 pub use polyspec_json;
-#[cfg(feature = "runtime")]
-pub use query::{GroupLookaheadRows, Query, QueryLookaheadPage, QueryPage, Rows};
 pub use schema::{Manifest, Schema, SchemaRef};
 pub use serde;
 pub use serde_json;
-#[cfg(feature = "runtime")]
-pub use step::StepRunner;
-#[cfg(feature = "runtime")]
-pub use tx::{transaction_conflict, Close, Connection, Isolation, Savepoint, SavepointIo, Transaction, TransactionIo, TransactionOptions, Tx, DEFAULT_RETRY};
-#[cfg(feature = "runtime")]
-pub use utils::{AesKeyring, AesRotationStatus, AesUtils, Operation, PrivilegeUtils, SchemaUtils, TablePrivileges, Utils};
 pub use value::{Param, StyledValue, Val};
 
 /// The catalog code of a MySQL error number that the catalog names (docs/spec/errors.yaml), or None for any other number.

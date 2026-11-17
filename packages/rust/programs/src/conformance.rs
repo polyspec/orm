@@ -88,10 +88,8 @@ async fn main() {
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
     let config = polyspec_orm::Config {
-        aes_key: Some("bench-salt".into()),
-        blind_index_key: Some("bench-blind-index".into()),
         audit_source: Some(Box::new(|| Ok(polyspec_orm::binding_core::OrderedMap::new()))),
-        ..Default::default()
+        ..polyspec_orm_tests::bench_models::bench_config()
     };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
     db.transaction_async(|_tx: Tx| async { Ok(()) }, TransactionOptions { retry: Some(0), ..Default::default() })

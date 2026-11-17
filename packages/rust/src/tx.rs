@@ -85,12 +85,16 @@ fn native_failure(failure: binding_core::Failure<Error>) -> Error {
 
 /// The error `internal` of a hook before a transaction that panicked (CORE-143, CORE-26).
 fn hook_panicked(payload: Box<dyn std::any::Any + Send>) -> Error {
-    let text = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
+    Error::internal(format!("the hook before the transaction panicked: {}", panic_text(&*payload)))
+}
+
+/// The text of a panic payload, or a fixed text for a payload that is not a text.
+fn panic_text(payload: &(dyn std::any::Any + Send)) -> String {
+    match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
         (Some(text), _) => (*text).to_owned(),
         (None, Some(text)) => text.clone(),
         (None, None) => "a panic without a text payload".to_owned(),
-    };
-    Error::internal(format!("the hook before the transaction panicked: {text}"))
+    }
 }
 
 /// Calls a hook before a transaction on this thread (CORE-143) and gives its failure unchanged.
@@ -304,22 +308,23 @@ impl TxShared {
     /// Marks the start of a statement: a finished transaction is `transaction_ended` (CORE-23), and a statement while
     /// another statement of the transaction runs is `busy` (CORE-22).
     pub(crate) fn enter(&self) -> Result<TxGuard<'_>> {
-        if self.aborted.load(Ordering::SeqCst) {
-            return Err(aborted_transaction());
-        }
-        if self.finished.load(Ordering::Acquire) {
-            return Err(Error::new(Kind::TransactionEnded, "the transaction has ended"));
-        }
+        self.open()?;
         let inner = self.inner.try_lock().map_err(|_locked| Error::new(Kind::Busy, "another statement of the transaction is running"))?;
         let guard = TxGuard { shared: self, inner: Some(inner) };
         // Invalidation may have raced with taking the borrow. The guard discards an aborted connection on this path too.
+        self.open()?;
+        Ok(guard)
+    }
+
+    /// An aborted transaction is `aborted`, a finished one `transaction_ended` (CORE-23).
+    fn open(&self) -> Result<()> {
         if self.aborted.load(Ordering::SeqCst) {
             return Err(aborted_transaction());
         }
         if self.finished.load(Ordering::Acquire) {
             return Err(Error::new(Kind::TransactionEnded, "the transaction has ended"));
         }
-        Ok(guard)
+        Ok(())
     }
 
     /// Invalidates all handles now and discards the connection after its independent borrower releases it (CORE-7).
@@ -657,12 +662,7 @@ impl Tx {
 
 /// The error `internal` of a callback that panicked (CORE-26).
 fn panicked(payload: Box<dyn std::any::Any + Send>) -> Error {
-    let text = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
-        (Some(text), _) => (*text).to_owned(),
-        (None, Some(text)) => text.clone(),
-        (None, None) => "a panic without a text payload".to_owned(),
-    };
-    Error::internal(format!("the callback panicked: {text}"))
+    Error::internal(format!("the callback panicked: {}", panic_text(&*payload)))
 }
 
 /// Locks a mutex of the transaction state; a poisoned mutex is `internal` (B-7 of the plan).
@@ -1322,6 +1322,19 @@ mod tests {
         db
     }
 
+    /// The kinds of the statements that `db` sends, recorded while the subscription lives.
+    fn record_kinds(db: &Db) -> (Arc<Mutex<Vec<String>>>, crate::Subscription) {
+        let sent = Arc::new(Mutex::new(Vec::<String>::new()));
+        let list = Arc::clone(&sent);
+        let subscription = db
+            .subscribe(move |event: &crate::StatementEvent<'_>| {
+                list.lock().expect("the sent statements").push(event.kind.to_owned());
+                Ok(())
+            })
+            .expect("subscribe");
+        (sent, subscription)
+    }
+
     async fn commits(db: &Db, options: TransactionOptions) {
         db.transaction_async(|_tx: Tx| async { Ok(()) }, options).await.expect("the transaction commits");
     }
@@ -1343,14 +1356,7 @@ mod tests {
         let other = Db::connect(&format!("sqlite://{}?_pragma=busy_timeout(0)", tmp.join("hook.sqlite").display()), 1, crate::Config::default())
             .await
             .expect("connect the other connection");
-        let sent = Arc::new(Mutex::new(Vec::<String>::new()));
-        let list = Arc::clone(&sent);
-        let subscription = db
-            .subscribe(move |event: &crate::StatementEvent<'_>| {
-                list.lock().expect("the sent statements").push(event.kind.to_owned());
-                Ok(())
-            })
-            .expect("subscribe");
+        let (sent, subscription) = record_kinds(&db);
         let seen = Arc::new(Mutex::new(Vec::new()));
         let (hooked, writer, statements, saw) = (db.clone(), other.clone(), Arc::clone(&sent), Arc::clone(&seen));
         let hook = db.before_transaction_async(move |read_only| {
@@ -1498,14 +1504,7 @@ mod tests {
         let _case = polyspec_orm_testcase::case!();
         let tmp = Scratch::new("orm-before-transaction-failure");
         let db = hook_db(&tmp, 1).await;
-        let sent = Arc::new(Mutex::new(Vec::<String>::new()));
-        let list = Arc::clone(&sent);
-        let subscription = db
-            .subscribe(move |event: &crate::StatementEvent<'_>| {
-                list.lock().expect("the sent statements").push(event.kind.to_owned());
-                Ok(())
-            })
-            .expect("subscribe");
+        let (sent, subscription) = record_kinds(&db);
         let calls = HookCalls::default();
         let refused = Arc::clone(&calls);
         let first = db.before_transaction_async(move |read_only| {
