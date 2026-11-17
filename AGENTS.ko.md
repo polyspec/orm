@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 62e666010decb3115570604e5f58562c0777c18b55e30f08899b8d6cfc2b2830 -->
+<!-- source-sha256: 07346ce6a6e6aeca05ea4767553c15171eb7c773088a7ec011bc7bcb6c88210b -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -258,7 +258,7 @@
 - Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 여섯 dbspec 구현은 동일한 허용·거부 스키마 사례를 실행한다.
   Enforced by: `make conformance-check`
 - Own: SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
-  Enforced by: `make dbspec-introspect-check`
+  Enforced by: `make go-test-check`, recipe dbspec_introspect의 Go 항목을 실행한다
 - Own: 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
   Enforced by: `make feature-verify-other`
 - Own: 이름은 그것이 하는 일을 말하고, 한 개념은 모든 client에서 한 이름을 쓴다. 이름, prefix, suffix가 동작을 고르지 않는다. 동작은 명시적으로 선언한다.
