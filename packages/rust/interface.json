@@ -2567,6 +2567,7 @@
       "kind": "alias",
       "visibility": "public",
       "origin": "value",
+      "sequence_keys": {"keys": "text"},
       "core_type": "polyspec_orm::OrmValue",
       "core": {
         "in": "polyspec_orm::orm_value::from_host",
