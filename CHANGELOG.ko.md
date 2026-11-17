@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- 인터페이스 계약이 연결의 유틸리티를 선언한다(T603, CORE-180~CORE-186): `db.utils()`와 `tx.utils()`는 `stats`, `lock`, `set_local`, `backend_waiting_for_lock`을 가진 class `utils`를 돌려주고, 그 `schema()`, `privileges()`, `aes()`는 `register`, `install`, `add_tables_and_columns`, `exists`, `installed`, `empty`의 class, `grant_table`, `revoke_table`, `inspect_table`의 class, entity를 `Query`로 받는 `status`, `rotate`의 class를 돌려준다. 코어에서 `Utils`, `SchemaUtils`, `PrivilegeUtils`, `AesUtils`는 연결의 handle을 빌리지 않고 소유하고, `AesRotationStatus.versions`는 `BTreeMap<i32, i64>`가 아니라 `KeyedMap<i64>`이며, 문장을 보내는 각 member에는 machine 형식이 있다. `Utils::run`, `Utils::local`, `Utils::was_inserted`는 코어만의 member로 남는다.
 - `Query`는 `where_none(connector)`(TypeScript와 PHP `whereNone`, Python과 Rust `where_none`, Go `WhereNone`; CORE-137, PRT-92)로 어떤 행도 만족하지 않는 조건을 가진다: `""`나 `And`는 그것을 `and`로, `Or`는 `or`로 잇고, 모든 dialect가 `1 = 0`으로 쓰며, 빈 key 목록이 raw SQL 없이 아무것도 고르지 않는다(T563-2).
 - `Query`의 조건은 그 `update`와 `delete`에도 적용된다(CORE-138): 문장은 key의 행이 조건을 만족할 때만 그 행을 쓴다. 그래서 `where_none`은 어떤 행도 쓰지 않는다. 전에는 key가 조건을 말없이 대신했다. `expect_revision` 아래에서 아무 행도 바꾸지 않은 쓰기는 `revision_changed`로 남고, 메시지가 조건을 말한다(T563-3).
 - 최상위에서 `or`로 조건을 잇는 `where`로 `soft_delete` 설정을 가진 table을 읽으면 soft delete된 행을 읽지 않고, 그런 `where`의 update나 soft delete는 그런 행을 쓰지 않는다: planner가 그 group을 soft delete 열과 기대 revision 옆에 괄호로 쓴다(PRT-93, T572, T572-1).
