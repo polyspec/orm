@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8b743117270ebe39c4b32b47012664b0",
+    "content-hash": "56bec0573433ffe4e6c5535743207646",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -103,11 +103,11 @@
         },
         {
             "name": "polyspec/orm",
-            "version": "0.0.33",
+            "version": "0.0.34",
             "dist": {
                 "type": "path",
                 "url": "legacy/packages/php",
-                "reference": "e00aae4be428d3ad04d6d80e2058384009cd3053"
+                "reference": "8d2ef40463ea85bc170f67ffb3a55af9549a8d84"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -129,7 +129,7 @@
                 "ext-pdo_pgsql": "postgres:// PDO handle type and DSNs",
                 "ext-pdo_sqlite": "sqlite:// DSNs",
                 "ext-pgsql": "postgres:// query, notification, and in-flight cancellation support",
-                "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (legacy/packages/php-ext)"
+                "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
             },
             "bin": [
                 "bin/orm-gen",

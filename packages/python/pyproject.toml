@@ -5,7 +5,7 @@ build-backend = "maturin"
 
 [project]
 name = "polyspec-orm"
-version = "0.0.33"
+version = "0.0.34"
 requires-python = ">=3.14"
 license = "MIT"
 dependencies = ["polyspec-json==0.0.38"]

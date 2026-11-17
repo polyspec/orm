@@ -1,8 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c6cb8ae3d5115612cc8bf928791ff5e94cafb63582bee3a34a6151e6b43f6cfe -->
+<!-- source-sha256: b0bded7c9076b0289d5c684cbe97f58f4de34ecc6b981dce0c7471e26296f85f -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.34
+
+- 이 릴리스는 손으로 쓴 패키지를 대체하지 않는다(CORE-1, FCV-21). v0.0.34는 Rust 코어와, binding 0.0.21이 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩을 릴리스한다. 바인딩은 `packages/ts`의 `@polyspec/orm`, `packages/python`의 `polyspec-orm`, `packages/php-ext`의 `polyspec/orm`, `packages/go`의 Go module이다. 손으로 쓴 클라이언트는 `legacy/packages`에 남으며 v0.0.34는 그것을 릴리스하지 않는다. contract에 견준 공개 표면의 표(docs/spec/feature-coverage.ko.md, FCV-21)에 손으로 쓴 패키지의 공개 멤버와 그 상태가 모두 있고, 릴리스 사용자가 가진 것은 docs/operations/usage.ko.md에 있다.
 
 - `db.transaction`은 매개변수를 선언하지 않은 callback을 트랜잭션이 열리기 전에 바인딩의 kind `invalid_callback`으로 거절하고 호출하지 않는다(CORE-20, T590): 그런 callback은 `Tx`를 받지 못하며, Node와 PHP에서는 그 문장이 실패 없이 `Db`를 거쳐 트랜잭션 밖에서 실행되었다. binding 0.0.21의 생성된 호출이 선언된 매개변수를 검사하고(B2.467), Node, Python, PHP의 생성된 시험 `GN-6bu`가 이를 담는다. 트랜잭션의 options는 계약에서 기본값을 가진다(CORE-20, T594): `transaction_options`의 각 field와 매개변수 `options`를 생략할 수 있으므로 `db.transaction(callback)`은 모든 바인딩에서 온전한 호출이다. `db.transaction`의 case `a_callback_alone_takes_the_defaults_of_the_options`와 `an_empty_record_of_options_takes_the_defaults`가 이를 담는다.
 - 코어가 트랜잭션 전의 hook을 갖는다(CORE-143, INT-193): `Db::before_transaction(hook)`은 연결의 모든 handle이 공유하는 hook을 연결에 등록하고, `remove`로 그것을 제거하는 `BeforeTransactionHook`을 돌려준다. `Db::transaction`이나 `Db::transaction_async`가 시작하는 모든 트랜잭션 전에, 재시도의 시도마다, 코어는 트랜잭션이 pool의 연결을 가져가거나 문장을 보내기 전에 hook을 등록 순서대로 `read_only`와 함께 호출한다. 실패한 hook은 다른 시도 없이 트랜잭션을 시작 전에 끝내고 그 실패는 그대로 돌아간다. savepoint는 hook을 호출하지 않는다. 콜백 안의 `Db::transaction`은 코어에서 독립 트랜잭션이므로(CORE-20) hook을 호출하며, 이 점이 INT-193의 언어 client의 savepoint와 다르다. 계약은 코어가 보관하는 함수를 hook으로 받는 `db.before_transaction`과 `remove`를 가진 class `before_transaction_hook`을 그 case, 그리고 `db.transaction`의 case 다섯 개와 함께 선언한다. `Db::before_transaction_async`는 future를 돌려주는 hook을 받고, 코어는 다음 hook을 호출하기 전에 그 future를 기다린다. 구현되지 않았다: 생성된 binding의 hook은 기다려지지 않으므로 Node와 WASM의 hook은 문장을 기다릴 수 없다. 다음은 생성기의 규칙(binding GN-6z)에서 읽었고 실행에서 관찰하지 않았다: 상태 기계가 아니면서 자기 트랜잭션을 시작하는 member인 `query.restore_or_create`나 `step_runner.run`은 Node나 PHP의 hook을 runtime의 스레드에서 호출하고, binding은 거기서 그 호출을 거부한다(T598).
