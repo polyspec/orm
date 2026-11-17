@@ -8775,7 +8775,8 @@
         "legacy/packages/python/tests/test_request_hook_markdown.py",
         "legacy/packages/python/tests/request_hook_mariadb.py",
         "packages/rust/programs/tests/all/request_hook_markdown.rs",
-        "packages/rust/programs/tests/mariadb/request_hook_mariadb.rs"
+        "packages/rust/programs/tests/mariadb/request_hook_mariadb.rs",
+        "packages/rust/tests/unit/request_log.rs"
       ],
       "docs": [
         "docs/operations/usage.md",

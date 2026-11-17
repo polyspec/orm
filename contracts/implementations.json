@@ -1335,6 +1335,10 @@
           "reason": "test: the Rust Machine artifact of compiled-step execution owns its Db, String and OrmValue parameters and exposes Io and Done states; a language recipe cannot inspect its constructor, pause its native driver or retain its Rust future (CORE-127, FCV-2)"
         },
         {
+          "glob": "packages/rust/tests/unit/request_log.rs",
+          "reason": "test: a unit module of db.rs that builds crate-private Request and RequestParams values and reads the records of a logging Db directly; the member behaviour of CORE-190 is the contract cases db.with_request_log and db.observed_requests of contracts/interface/core.json, which every binding and the Rust case runner run (FCV-2)"
+        },
+        {
           "glob": "packages/rust/tests/unit/scratch.rs",
           "reason": "test: the private Rust harness Scratch directory allocator and its per-instance Drop ownership; a language recipe cannot construct or drop these Rust test helper instances (FCV-19, P32)"
         }
