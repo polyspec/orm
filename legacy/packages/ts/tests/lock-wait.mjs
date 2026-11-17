@@ -3,6 +3,22 @@
 import { mysqlConnection, postgresClient } from './case-database.mjs';
 
 /**
+ * A client of its own server session on the PostgreSQL server of dsn, for the database of dsn. The events of this file live
+ * on one server session: the settings of reportLockWaits, the advisory lock of a holder and the pid that a trigger cancels.
+ * Through a transaction pooler (PgBouncer pool_mode = transaction, CFG-27) each statement outside a transaction may run on
+ * another server session, so the waiting session could run on the session that holds the advisory lock and take it at once,
+ * or report its wait on a session other than the one whose settings asked for it. The client therefore connects through
+ * ORM_TEST_POSTGRES_SERVER_DSN, which names the same server without a pooler; the statement under test still runs on dsn.
+ */
+export function postgresSession(dsn) {
+  const variable = 'ORM_TEST_POSTGRES_SERVER_DSN';
+  if (!process.env[variable]) throw new Error(`${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+  const server = new URL(process.env[variable]);
+  server.pathname = new URL(dsn).pathname;
+  return postgresClient(server.toString());
+}
+
+/**
  * Makes the PostgreSQL session of client report its lock waits, and returns a function that returns a promise of the next
  * one. With deadlock_timeout 1 ms, log_lock_waits on and client_min_messages log, the server sends the session the LOG
  * message "process <pid> still waiting for <lock> ..." once its statement has waited 1 ms for a lock, while the statement
@@ -35,8 +51,8 @@ let installed = 0;
  */
 export async function statementStarts(dsn, table) {
   const name = `orm_test_started_${process.pid}_${installed++}`;
-  const owner = postgresClient(dsn);
-  const waiter = postgresClient(dsn);
+  const owner = postgresSession(dsn);
+  const waiter = postgresSession(dsn);
   await owner.connect();
   await waiter.connect();
   await owner.query(`CREATE TABLE "${name}" (pid integer NOT NULL)`);
