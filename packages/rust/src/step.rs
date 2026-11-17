@@ -121,6 +121,7 @@ pub enum Call {
     WhereGroup { connector: String, query: QueryTree },
     Duplication { query: QueryTree },
     Sum { column: String },
+    GroupLimit { count: u32 },
 }
 
 /// The terminal of a query step (CORE-92).
@@ -408,6 +409,7 @@ fn build(schema: &Schema, tree: QueryTree) -> Result<Query> {
             Call::WhereGroup { connector, query: group } => query.where_group(&connector, build(schema, group)?),
             Call::Duplication { query: other } => query.duplication(build(schema, other)?),
             Call::Sum { column } => query.sum(&column),
+            Call::GroupLimit { count } => query.group_limit(count),
         }
     }
     Ok(query)

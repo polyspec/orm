@@ -444,7 +444,7 @@ implementation is eligible for removal on that evidence.
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
   with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
-  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, and `sum` with `column`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  `column` and `revision`, `group_by` with `column`, `where_group` with `connector` and `query`, `duplication` with `query`, `sum` with `column`, and `group_limit` with `count`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
   value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
   `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
@@ -550,8 +550,9 @@ implementation is eligible for removal on that evidence.
   `count` rows per row of the parent, the first of the order of the child (DSL-86): `limit_per_parent` of the request.
   `count` is `uint`, and 0 is `config` at the next terminal with the message `group_limit requires a positive count`;
   with a row lock it is `ir_invalid` (CORE-86, DSL-123). `delete_lock()` keeps the rows of the result out of
-  `delete_recursive` (CORE-153, DSL-87): `no_cascade_delete` of the request. Not implemented: `parent_node`,
-  `group_limit` and `delete_lock` of a `Query`.
+  `delete_recursive` (CORE-153, DSL-87): `no_cascade_delete` of the request. `Query` has `group_limit`, and the
+  `Db` step takes the call `group_limit` with `count` (CORE-92). Not implemented: `parent_node` and `delete_lock` of a
+  `Query`.
 - **CORE-158** `possible(column, value)` attaches the result of a `Query` given to `relation` or `relations` only to
   the rows of the parent whose column `column` equals `value`: the member `possible<Col>(value)` of the language
   implementations (DSL-85). `column` is a column of the entity of the parent and `value` an `orm_value`, compared as

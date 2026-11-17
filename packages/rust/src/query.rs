@@ -306,6 +306,12 @@ impl Query {
         self.core.limit(offset, count);
     }
 
+    /// Reads at most `count` rows per row of the parent, the first of the order of this query, when the query is given to
+    /// `relation` or `relations` (CORE-157). A `count` of 0 is `config` at the next terminal.
+    pub fn group_limit(&mut self, count: u32) {
+        self.core.group_limit(count);
+    }
+
     /// Locks the rows that `get` and `gets` read with the lock `update`, the member `forUpdate` of the language
     /// implementations (CORE-86). The last lock called holds.
     pub fn for_update(&mut self) {

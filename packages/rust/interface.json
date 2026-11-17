@@ -4675,6 +4675,31 @@
             "path": "polyspec_orm::Query::get_sum",
             "receiver": "&self"
           }
+        },
+        {
+          "id": "query.group_limit",
+          "name": [
+            "group",
+            "limit"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "count"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::group_limit",
+            "receiver": "&mut self"
+          }
         }
       ]
     },
@@ -6486,6 +6511,25 @@
       "member": "query.get_sum",
       "file": "contracts/interface/core.json",
       "group": "query.get_sum.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.group_limit",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_limit"
+    },
+    {
+      "member": "query.group_limit",
+      "file": "contracts/interface/core.json",
+      "group": "query.group_limit.sqlite",
       "only": {
         "targets": [
           "php",

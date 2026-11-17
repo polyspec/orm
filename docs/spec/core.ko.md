@@ -373,7 +373,7 @@
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
   `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
   `group_by`, `connector`와 `query`를 가진 `where_group`, `query`를 가진
-  `duplication`, `column`을 가진 `sum`).
+  `duplication`, `column`을 가진 `sum`, `count`를 가진 `group_limit`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
   형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
   `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
@@ -466,7 +466,8 @@
   `count`개 행까지만 읽는다(DSL-86). 요청의 `limit_per_parent`다. `count`는 `uint`이고, 0이면 다음 terminal에서
   `config`이며 메시지는 `group_limit requires a positive count`다. 행 lock과 함께 쓰면 `ir_invalid`다(CORE-86,
   DSL-123). `delete_lock()`은 결과의 행을 `delete_recursive`에서 뺀다(CORE-153, DSL-87). 요청의
-  `no_cascade_delete`다. 구현되지 않았다: `Query`의 `parent_node`, `group_limit`, `delete_lock`.
+  `no_cascade_delete`다. `Query`는 `group_limit`을 가지고, `Db` step은 `count`를 가진 call `group_limit`을 받는다
+  (CORE-92). 구현되지 않았다: `Query`의 `parent_node`, `delete_lock`.
 - **CORE-158** `possible(column, value)`는 `relation`이나 `relations`에 준 `Query`의 결과를 부모의 열 `column`이
   `value`와 같은 행에만 붙인다. 언어 구현의 member `possible<Col>(value)`이다(DSL-85). `column`은 부모 엔티티의 열이고
   `value`는 `orm_value`이며 열의 타입으로 비교한다. 요청의 `if_parent`이고(PRT-14), 마지막에 부른 것이 남는다. 어느

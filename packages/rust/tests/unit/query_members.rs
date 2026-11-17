@@ -1012,3 +1012,37 @@ async fn get_sum_sums_the_column_that_sum_named() {
     assert_eq!(failure(unknown.get_sum().await, "no column").to_string(), "config: missing is not a column of account_key");
     db.close_async().await;
 }
+
+// Requirements: CORE-157. group_limit reads at most its count of rows per row of the parent, the first of the order of
+// the child; a count of 0 is config, and a root query takes no effect of it.
+#[tokio::test]
+async fn group_limit_reads_the_first_rows_of_each_parent() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-group-limit");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let child = |count: u32| {
+        let mut keys = Query::new(&schema, "account_key").expect("query");
+        keys.match_pair("SeqWithAccountSeq");
+        keys.order_by("SeqDesc");
+        keys.alias("Keys");
+        keys.group_limit(count);
+        keys
+    };
+    let mut accounts = query(&schema, "account", &db);
+    accounts.order_by("SeqAsc");
+    accounts.relations(child(1));
+    let rows = accounts.gets().await.expect("gets");
+    let rows: Vec<&Query> = rows.models().collect();
+    let k = |label: &str| OrmValue::Text(label.into());
+    assert_eq!(labels(rows[0], "keys"), Some(vec![k("k2")]), "the first key of the order of the child");
+    assert_eq!(labels(rows[1], "keys"), Some(vec![k("k3")]));
+    assert_eq!(labels(rows[2], "keys"), Some(vec![]));
+    let mut refused = query(&schema, "account", &db);
+    refused.relations(child(0));
+    assert_eq!(failure(refused.gets().await, "a count of 0").to_string(), "config: group_limit requires a positive count");
+    let mut root = query(&schema, "account", &db);
+    root.group_limit(1);
+    assert_eq!(root.get_count().await.expect("get_count"), 3, "a query that is no relation child takes no effect of it");
+    db.close_async().await;
+}
