@@ -9,11 +9,11 @@ declare(strict_types=1);
 // Usage: php packages/php/testing/dbspec/compare/php.php <tests/dbspec dir> <stress document> <ddl.json>
 // <plan-cases.json> <mermaid.json>
 
-require __DIR__ . '/../../../../../vendor-php/autoload.php';
-require __DIR__ . '/../../../../../tests/dbspec/input.php';
-require __DIR__ . '/../../../../../tests/dbspec/vectors.php';
+require_once dirname(__DIR__, 3) . '/tests/repository_root.php';
+require ormRepositoryRoot() . '/vendor-php/autoload.php';
+require ormRepositoryRoot() . '/tests/dbspec/input.php';
+require ormRepositoryRoot() . '/tests/dbspec/vectors.php';
 require __DIR__ . '/../../../tests/dbspec_plan_cases.php';
-require_once __DIR__ . '/../../../tests/repository_root.php';
 require __DIR__ . '/php-interface.php';
 
 if ($argc !== 6) {
