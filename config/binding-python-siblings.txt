@@ -1,0 +1,8 @@
+# The Python packages of polyspec that the wheel of packages/python depends on (packages/python/pyproject.toml names
+# polyspec-json by its version), each by the URL of the asset of its GitHub Release and the sha256 of that asset, one line
+# for each platform that the release builds. No package index holds them, so make orm-install-binding-python installs
+# them from this file beside the wheel, with uv's check of the hashes; the version of a line is the version that
+# pyproject.toml names, and uv refuses the install when they differ.
+polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-macosx_11_0_arm64.whl ; sys_platform == "darwin" and platform_machine == "arm64" --hash=sha256:ba29ddb049a60c499f2b8f2777f257c91fdabef826f22e2e229d8c916ae4a31e
+polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_aarch64.whl ; sys_platform == "linux" and platform_machine == "aarch64" --hash=sha256:e693c7599e7719624c33e3cad916fe1c5c024ef2c2825f5d2c017f531e5fe07b
+polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_x86_64.whl ; sys_platform == "linux" and platform_machine == "x86_64" --hash=sha256:1584be32d8a6be67855bc6419fb9cae6bb0c55257a3a3a077ae1580b16346a6d

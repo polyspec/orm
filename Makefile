@@ -391,17 +391,36 @@ bindings-check:
 # The lint and the tests of the binding crates, after make bindings writes their generated folders. The PHP extension
 # crate builds against the headers of the PHP of .php-version, whose php-config ext-php-rs reads.
 BINDING_ENV := PHP=$(KIT_TOOLS)/bin/php PHP_CONFIG=$(KIT_TOOLS)/bin/php-config
+# The test features of a binding crate are the features of its manifest whose names end in -test, which gate the entry
+# points that only the generated tests call (binding GN-5, GN-13b); every manifest that binding scaffold writes declares
+# no other feature. No recipe writes their names: binding_test_features reads them from [features] of the Cargo.toml in
+# the folder $(1), joined by commas, so a recipe builds its crate with every test feature that the crate declares and
+# with none that it lacks. BINDING_TEST_FEATURES is the same list for a command that takes several crates, each feature
+# written <package>/<feature> with the package name of its manifest, so no crate is asked for a feature of another.
+# binding_go_tags gives the Go build tags of the same features, polyspec_orm_<feature with _ for ->, the names that the
+# generated Go files carry in their //go:build lines (binding GN-13b).
+BINDING_CRATE_DIRS := packages/ts packages/ts/wasm packages/python packages/php-ext packages/go/internal/ffi
+binding_comma := ,
+binding_space := $(subst ,, )
+binding_test_features = $(shell sed -n '/^\[features\]$$/,/^\[/s/^\([a-z0-9-]*-test\) *=.*$$/\1/p' $(1)/Cargo.toml | paste -sd, -)
+binding_package = $(shell sed -n 's/^name = "\(.*\)"$$/\1/p' $(1)/Cargo.toml | head -n 1)
+BINDING_TEST_FEATURES = $(subst $(binding_space),$(binding_comma),$(strip $(foreach dir,$(BINDING_CRATE_DIRS),$(addprefix $(call binding_package,$(dir))/,$(subst $(binding_comma), ,$(call binding_test_features,$(dir)))))))
+binding_go_tags = $(subst $(binding_space),$(binding_comma),$(strip $(foreach feature,$(subst $(binding_comma), ,$(call binding_test_features,$(1))),polyspec_orm_$(subst -,_,$(feature)))))
 # Each build of a binding crate runs under RUN_LONG and the lease of the shared target directory, and a program that a
 # recipe runs is the copy in RUN_TARGET of its run (CARGO_COPY); the tests of the binding crates run through CARGO_TEST.
 lint-bindings: bindings lease-tool
-	$(RUN_LONG) rust-clippy/bindings -- $(CARGO_LEASED) env $(BINDING_ENV) $(CARGO_LINK) clippy --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --all-targets --features panic-test -- -D warnings
+	$(RUN_LONG) rust-clippy/bindings -- $(CARGO_LEASED) env $(BINDING_ENV) $(CARGO_LINK) clippy --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --all-targets --features $(BINDING_TEST_FEATURES) -- -D warnings
 test-bindings: bindings lease-tool
-	$(BINDING_ENV) $(CARGO_TEST) test-bindings -- cargo test --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --features panic-test
+	$(BINDING_ENV) $(CARGO_TEST) test-bindings -- cargo test --locked $(foreach crate,$(BINDING_CRATES),-p $(crate)) --features $(BINDING_TEST_FEATURES)
 
 # The WASM module and its glue, which wasm-bindgen writes into packages/ts/wasm/generated before the package is packed
 # (binding GN-18, P-5), and the Node package with the addon of this machine's platform, packed and installed into
 # var/node as a release installs it (T-2): the addon is the npm package of the platform that the package names in
-# optionalDependencies, and the recipe installs both tarballs, without the other platforms' packages. WASM_BINDGEN is the
+# optionalDependencies, and the recipe installs both tarballs, without the other platforms' packages. The package names
+# @polyspec/json by its version (packages/ts/package.json), and no registry holds a polyspec package, so the install names
+# it as a consumer does: the recipe packs @polyspec/json and its package of this machine's platform from node_modules,
+# where npm ci put the release assets that package-lock.json pins by URL and integrity, and installs those tarballs beside
+# the two of orm; npm refuses the install when their version is not the one that the package names. WASM_BINDGEN is the
 # shim of the wasm-bindgen CLI that mise.toml pins at the release of the wasm-bindgen crate of packages/ts/wasm/Cargo.toml
 # (binding GN-18), which make install-tools installs and node-package compares before it runs it.
 WASM_BINDGEN ?= $(KIT_TOOLS)/mise/shims/wasm-bindgen
@@ -413,15 +432,16 @@ NODE_PLATFORM_DIR := $(CURDIR)/var/node-platform
 node-package: bindings lease-tool
 	@test -n "$(WASM_BINDGEN)" || { echo "node-package: set WASM_BINDGEN to the wasm-bindgen CLI of release $(WASM_BINDGEN_RELEASE)"; exit 1; }
 	test "$$($(WASM_BINDGEN) --version)" = "wasm-bindgen $(WASM_BINDGEN_RELEASE)"
-	$(RUN_LONG) rust-build/orm-wasm -- $(CARGO_COPY) wasm32-unknown-unknown/debug/polyspec_orm_wasm.wasm -- $(CARGO_LINK) build --locked -p polyspec-orm-wasm --target wasm32-unknown-unknown --features panic-test
+	$(RUN_LONG) rust-build/orm-wasm -- $(CARGO_COPY) wasm32-unknown-unknown/debug/polyspec_orm_wasm.wasm -- $(CARGO_LINK) build --locked -p polyspec-orm-wasm --target wasm32-unknown-unknown --features $(call binding_test_features,packages/ts/wasm)
 	$(WASM_BINDGEN) --target web --out-dir packages/ts/wasm/generated --out-name orm_wasm $(RUN_TARGET)/wasm32-unknown-unknown/debug/polyspec_orm_wasm.wasm
-	$(RUN_LONG) rust-build/orm-node -- $(CARGO_COPY) debug/libpolyspec_orm_node.$(CDYLIB) -- $(CARGO_LINK) build --locked -p polyspec-orm-node --features panic-test
+	$(RUN_LONG) rust-build/orm-node -- $(CARGO_COPY) debug/libpolyspec_orm_node.$(CDYLIB) -- $(CARGO_LINK) build --locked -p polyspec-orm-node --features $(call binding_test_features,packages/ts)
 	rm -rf var/node var/node-platform
 	mkdir -p $(NODE_PACKAGE_DIR) $(NODE_PLATFORM_DIR)
 	cp $(RUN_TARGET)/debug/libpolyspec_orm_node.$(CDYLIB) $(NODE_PLATFORM_DIR)/orm.$(NODE_PLATFORM).node
 	$(PUBLISH) $(NODE_PLATFORM_DIR)/package.json printf '{ "name": "@polyspec/orm-%s", "version": "%s", "main": "orm.%s.node" }\n' $(NODE_PLATFORM) "$$($(NODE) -p 'require("./packages/ts/package.json").version')" $(NODE_PLATFORM)
 	cd $(NODE_PLATFORM_DIR) && $(NPM) pack --pack-destination $(NODE_PACKAGE_DIR)
 	cd packages/ts && $(NPM) pack --pack-destination $(NODE_PACKAGE_DIR)
+	$(NPM) pack --pack-destination $(NODE_PACKAGE_DIR) ./node_modules/@polyspec/json ./node_modules/@polyspec/json-$(NODE_PLATFORM)
 	$(PUBLISH) $(NODE_PACKAGE_DIR)/package.json echo '{ "private": true }'
 	cd $(NODE_PACKAGE_DIR) && $(NPM) install --no-audit --no-fund --omit=optional ./*.tgz
 	rm -rf $(RUN_DIR)
@@ -432,20 +452,26 @@ test-wasm: node-package
 	cp packages/ts/wasm/generated/tests/generated.test.mjs $(NODE_PACKAGE_DIR)/generated.wasm.test.mjs
 	cd $(NODE_PACKAGE_DIR) && $(NODE) --expose-gc --test generated.wasm.test.mjs
 
-# test-go-bindings is the part of test-go that tests the Go binding packages/go: the static library with the test
-# features (binding GN-13b), copied into the RUN_TARGET of the run, which Go links through CGO_LDFLAGS, gofmt and go vet,
-# then the generated tests on go test. GOTOOLCHAIN=local: a go of another release than the go directive of
+# test-go-bindings is the part of test-go that tests the Go binding packages/go: binding go-link builds the static
+# library with the test features of its manifest (binding GN-13b) and prints the CGO_LDFLAGS of the Go tests, the
+# directory of the library, the library and the native-static-libs that rustc prints for it (binding GN-15k), so the
+# recipe names no library or framework of a platform; then gofmt and go vet, then the generated tests on go test with
+# the build tags of the same features. go-link starts cargo through CARGO_LINK, under the lease of builds, and builds
+# into the RUN_TARGET of the run, not into the shared target directory: the -L that it prints is the directory that it
+# built into, and the tests of a run link the library of that run, which no build of another run rewrites. Its output is
+# the file GO_BINDING_LDFLAGS of the run, which go vet and go test both read. GOTOOLCHAIN=local: a go of another release than the go directive of
 # packages/go/go.mod fails instead of fetching that release. GOWORK=off: the go.work of the root joins legacy/packages/go,
 # tests and examples and not packages/go, so the binding module is built as a module of its own.
 GOFMT := $(KIT_TOOLS)/mise/shims/gofmt
 GO_BINDING_RELEASE = $(shell sed -n 's/^go \(.*\)$$/\1/p' packages/go/go.mod)
-GO_BINDING_ENV = GOWORK=off GOTOOLCHAIN=local CGO_LDFLAGS=-L$(RUN_TARGET)/debug GOFLAGS=-tags=polyspec_panic_test,polyspec_codec_test
+GO_BINDING_ENV = GOWORK=off GOTOOLCHAIN=local GOFLAGS=-tags=$(call binding_go_tags,packages/go/internal/ffi)
+GO_BINDING_LDFLAGS = $(RUN_DIR)/cgo-ldflags
 test-go-bindings: bindings lease-tool
 	test "$$($(GO_BINDING_ENV) $(GO) env GOVERSION)" = "go$(GO_BINDING_RELEASE)"
-	$(RUN_LONG) rust-build/orm-go -- $(CARGO_COPY) debug/libpolyspec_orm_go.a -- $(CARGO_LINK) build --locked -p polyspec-orm-go --features panic-test,codec-test
+	$(RUN_LONG) rust-build/orm-go -- $(CARGO_LEASED) $(PUBLISH) $(GO_BINDING_LDFLAGS) $(NODE) $(BINDING) go-link --cargo "$(CARGO_LINK)" --manifest $(CURDIR)/packages/go/internal/ffi/Cargo.toml --target-dir $(RUN_TARGET) --features $(call binding_test_features,packages/go/internal/ffi)
 	test -z "$$(cd packages/go && $(GOFMT) -l .)"
-	cd packages/go && $(GO_BINDING_ENV) $(GO) vet ./...
-	cd packages/go && $(GO_BINDING_ENV) $(GO) test -count=1 -v ./...
+	cd packages/go && CGO_LDFLAGS="$$(cat $(GO_BINDING_LDFLAGS))" $(GO_BINDING_ENV) $(GO) vet ./...
+	cd packages/go && CGO_LDFLAGS="$$(cat $(GO_BINDING_LDFLAGS))" $(GO_BINDING_ENV) $(GO) test -count=1 -v ./...
 	rm -rf $(RUN_DIR)
 
 # The generated tests of the Node binding (binding GN-13) through the package that node-package installs into var/node.
@@ -456,7 +482,9 @@ test-binding-node: node-package
 
 # The Python binding: orm-install-binding-python builds the wheel of packages/python with the test features through uv and the
 # maturin build backend of its pyproject.toml, as release-wheel builds it (GN-19c), and installs it with its dependencies into the
-# venv BINDING_PYTHON_VENV; it downloads, so it is an install target, which the python job of config/ci.json runs as setup.
+# venv BINDING_PYTHON_VENV. The wheel names polyspec-json by its version and no package index holds it, so the install names it
+# beside the wheel by the URL and the sha256 of the asset of its GitHub Release for this platform, the lines of
+# config/binding-python-siblings.txt, and uv checks each hash (--verify-hashes) and that the version is the one the wheel names; it downloads, so it is an install target, which the python job of config/ci.json runs as setup.
 # test-binding-python runs the generated tests of packages/python/generated/tests on unittest in that venv, offline.
 BINDING_PYTHON_VENV = $(abspath var/binding-python/venv)
 BINDING_PYTHON_WHEELS = $(abspath var/binding-python/wheels)
@@ -464,8 +492,8 @@ orm-install-binding-python: bindings
 	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
 	$(MAKE) --no-print-directory python-venv DIR=$(BINDING_PYTHON_VENV)
 	rm -rf $(BINDING_PYTHON_WHEELS)
-	MATURIN_PEP517_ARGS='--locked --features panic-test' $(ONLINE) $(UV) build --wheel --python $(BINDING_PYTHON_VENV)/bin/python --out-dir $(BINDING_PYTHON_WHEELS) packages/python
-	$(ONLINE) $(UV) pip install --python $(BINDING_PYTHON_VENV)/bin/python --reinstall $(BINDING_PYTHON_WHEELS)/*.whl
+	MATURIN_PEP517_ARGS='--locked --features $(call binding_test_features,packages/python)' $(ONLINE) $(UV) build --wheel --python $(BINDING_PYTHON_VENV)/bin/python --out-dir $(BINDING_PYTHON_WHEELS) packages/python
+	$(ONLINE) $(UV) pip install --python $(BINDING_PYTHON_VENV)/bin/python --reinstall --verify-hashes -r config/binding-python-siblings.txt $(BINDING_PYTHON_WHEELS)/*.whl
 test-binding-python: bindings
 	@test -x $(BINDING_PYTHON_VENV)/bin/python || { echo "test-binding-python: $(BINDING_PYTHON_VENV) is missing; run make orm-install-binding-python, which installs the wheel"; exit 1; }
 	$(BINDING_PYTHON_VENV)/bin/python -m unittest discover -v -s packages/python/generated/tests -t packages/python/generated/tests
@@ -473,7 +501,7 @@ test-binding-python: bindings
 # The generated tests of the PHP binding on the PHPUnit of vendor-php, with the extension of the crate polyspec-orm-php-ext built
 # with its test features for the PHP of .php-version (BINDING_ENV) and copied into the RUN_TARGET of the run.
 test-binding-php: bindings lease-tool php-vendor-check
-	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) $(CARGO_LINK) build --locked -p polyspec-orm-php-ext --features panic-test
+	$(RUN_LONG) rust-build/orm-php-ext -- $(CARGO_COPY) debug/libpolyspec_orm.$(CDYLIB) -- env $(BINDING_ENV) $(CARGO_LINK) build --locked -p polyspec-orm-php-ext --features $(call binding_test_features,packages/php-ext)
 	$(RUN_TESTS) phpunit --php-extension $(RUN_TARGET)/debug/libpolyspec_orm.$(CDYLIB) -- packages/php-ext/generated/tests
 	rm -rf $(RUN_DIR)
 
