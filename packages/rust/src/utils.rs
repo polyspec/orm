@@ -268,18 +268,21 @@ impl Utils {
     }
 
     /// `lock` as a machine that owns the utilities and the key: the member `utils.lock` of the contract (CORE-181).
-    pub fn lock_machine(self, key: String) -> Operation<()> {
-        Operation::new(async move { self.lock(&key).await })
+    pub fn lock_machine(&self, key: String) -> Operation<()> {
+        let utils = self.clone();
+        Operation::new(async move { utils.lock(&key).await })
     }
 
     /// `set_local` as a machine that owns its arguments: the member `utils.set_local` of the contract (CORE-181).
-    pub fn set_local_machine(self, key: String, value: String) -> Operation<()> {
-        Operation::new(async move { self.set_local(&key, &value).await })
+    pub fn set_local_machine(&self, key: String, value: String) -> Operation<()> {
+        let utils = self.clone();
+        Operation::new(async move { utils.set_local(&key, &value).await })
     }
 
     /// `backend_waiting_for_lock` as a machine: the member `utils.backend_waiting_for_lock` of the contract (CORE-181).
-    pub fn backend_waiting_for_lock_machine(self) -> Operation<bool> {
-        Operation::new(async move { self.backend_waiting_for_lock().await })
+    pub fn backend_waiting_for_lock_machine(&self) -> Operation<bool> {
+        let utils = self.clone();
+        Operation::new(async move { utils.backend_waiting_for_lock().await })
     }
 
     /// Schema installation and inspection.
@@ -442,18 +445,21 @@ impl SchemaUtils {
     }
 
     /// `exists` as a machine that owns its arguments: the member `schema_utils.exists` of the contract (CORE-181).
-    pub fn exists_machine(self, name: String) -> Operation<bool> {
-        Operation::new(async move { self.exists(&name).await })
+    pub fn exists_machine(&self, name: String) -> Operation<bool> {
+        let utils = self.clone();
+        Operation::new(async move { utils.exists(&name).await })
     }
 
     /// `installed` as a machine that owns its arguments: the member `schema_utils.installed` of the contract (CORE-181).
-    pub fn installed_machine(self, name: String, table: String) -> Operation<bool> {
-        Operation::new(async move { self.installed(&name, &table).await })
+    pub fn installed_machine(&self, name: String, table: String) -> Operation<bool> {
+        let utils = self.clone();
+        Operation::new(async move { utils.installed(&name, &table).await })
     }
 
     /// `empty` as a machine: the member `schema_utils.empty` of the contract (CORE-181).
-    pub fn empty_machine(self) -> Operation<bool> {
-        Operation::new(async move { self.empty().await })
+    pub fn empty_machine(&self) -> Operation<bool> {
+        let utils = self.clone();
+        Operation::new(async move { utils.empty().await })
     }
 
     /// Whether a schema exists.
@@ -558,20 +564,23 @@ impl PrivilegeUtils {
 
     /// `grant_table` as a machine that owns its arguments: the member `privilege_utils.grant_table` of the contract
     /// (CORE-181).
-    pub fn grant_table_machine(self, table: String, role: String) -> Operation<()> {
-        Operation::new(async move { self.grant_table(&table, &role).await })
+    pub fn grant_table_machine(&self, table: String, role: String) -> Operation<()> {
+        let utils = self.clone();
+        Operation::new(async move { utils.grant_table(&table, &role).await })
     }
 
     /// `revoke_table` as a machine that owns its arguments: the member `privilege_utils.revoke_table` of the contract
     /// (CORE-181).
-    pub fn revoke_table_machine(self, table: String, privilege: String, role: String) -> Operation<()> {
-        Operation::new(async move { self.revoke_table(&table, &privilege, &role).await })
+    pub fn revoke_table_machine(&self, table: String, privilege: String, role: String) -> Operation<()> {
+        let utils = self.clone();
+        Operation::new(async move { utils.revoke_table(&table, &privilege, &role).await })
     }
 
     /// `inspect_table` as a machine that owns its arguments: the member `privilege_utils.inspect_table` of the contract
     /// (CORE-181).
-    pub fn inspect_table_machine(self, table: String) -> Operation<TablePrivileges> {
-        Operation::new(async move { self.inspect_table(&table).await })
+    pub fn inspect_table_machine(&self, table: String) -> Operation<TablePrivileges> {
+        let utils = self.clone();
+        Operation::new(async move { utils.inspect_table(&table).await })
     }
 
     /// Grants schema usage and SELECT, INSERT, UPDATE, DELETE on a table.

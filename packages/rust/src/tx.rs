@@ -586,8 +586,8 @@ impl Tx {
 
     /// Owns the compiled-step text and parameter values in one I/O machine, as `Db::execute_text_machine` does: the
     /// binding member `tx.execute` (CORE-70, CORE-127).
-    pub fn execute_text_machine(self, step: String, params: Vec<crate::OrmValue>) -> crate::Execute {
-        crate::Execute::new(crate::db::machine_target_tx(self), step, params)
+    pub fn execute_text_machine(&self, step: String, params: Vec<crate::OrmValue>) -> crate::Execute {
+        crate::Execute::new(crate::db::machine_target_tx(self.clone()), step, params)
     }
 
     /// Runs `callback` in a savepoint of the transaction and passes it the handle of the savepoint (CORE-21). A callback
@@ -616,11 +616,11 @@ impl Tx {
     /// its first step, calls `callback` with the handle of the savepoint on the thread that drives it, and releases the
     /// savepoint after the value that the callback returned is settled, or rolls it back after a failure, which it
     /// returns unchanged.
-    pub fn savepoint<F>(self, callback: F) -> Savepoint<F>
+    pub fn savepoint<F>(&self, callback: F) -> Savepoint<F>
     where
         F: FnMut(Tx) -> std::result::Result<binding_core::Passthrough, binding_core::Failure<Error>>,
     {
-        Savepoint::new(self, callback)
+        Savepoint::new(self.clone(), callback)
     }
 
     async fn savepoint_at<T, F, Fut>(&self, depth: u32, callback: F) -> Result<T>
@@ -792,11 +792,11 @@ impl Db {
     /// step, calls `callback` with the transaction handle on the thread that drives it, and commits after the value that
     /// the callback returned is settled, or rolls back after a failure, which it returns unchanged. A failure of the
     /// kind `deadlock` runs these steps again after the wait of CORE-24, and calls `callback` once per attempt.
-    pub fn transaction<F>(self, callback: F, options: TransactionOptions) -> Transaction<F>
+    pub fn transaction<F>(&self, callback: F, options: TransactionOptions) -> Transaction<F>
     where
         F: FnMut(Tx) -> std::result::Result<binding_core::Passthrough, binding_core::Failure<Error>>,
     {
-        Transaction::new(self, callback, options)
+        Transaction::new(self.clone(), callback, options)
     }
 }
 

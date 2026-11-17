@@ -1696,8 +1696,8 @@ impl Db {
 
     /// Owns the compiled-step text and parameter values in one I/O machine (CORE-127). Native Rust callers may still
     /// await `execute_text`; this constructor gives the binding an operation whose future can outlive its driver.
-    pub fn execute_text_machine(self, step: String, params: Vec<crate::OrmValue>) -> Execute {
-        Execute::new(machine::Target::Db(self), step, params)
+    pub fn execute_text_machine(&self, step: String, params: Vec<crate::OrmValue>) -> Execute {
+        Execute::new(machine::Target::Db(self.clone()), step, params)
     }
 
     /// Runs one statement of a plan that reads no rows, as `execute` does, with the step as the JSON text of its form
