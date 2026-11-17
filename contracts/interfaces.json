@@ -2110,7 +2110,7 @@
         },
         "rust": {
           "symbol": "packages/rust/src/utils.rs::Db::utils",
-          "signature": "pub fn utils(&self) -> Utils<'_>"
+          "signature": "pub fn utils(&self) -> Utils"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/database.ts::Db.utils",
@@ -2447,7 +2447,7 @@
           "signature": "public function lock(string $key): void"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::lock",
+          "symbol": "packages/rust/src/utils.rs::Utils::lock",
           "signature": "pub async fn lock(&self, key: &str) -> Result<()>"
         },
         "typescript": {
@@ -2487,7 +2487,7 @@
           "signature": "public function setLocal(string $key, string $value): void"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::set_local",
+          "symbol": "packages/rust/src/utils.rs::Utils::set_local",
           "signature": "pub async fn set_local (& self , key : & str , value : & str) -> Result < () >"
         },
         "typescript": {
@@ -2527,7 +2527,7 @@
           "signature": "public function local(string $key): string"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::local",
+          "symbol": "packages/rust/src/utils.rs::Utils::local",
           "signature": "pub fn local (& self , key : & str) -> Result < String >"
         },
         "typescript": {
@@ -2574,7 +2574,7 @@
           "signature": "def was_inserted(self, entity: str, sequence: int) -> bool"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::was_inserted",
+          "symbol": "packages/rust/src/utils.rs::Utils::was_inserted",
           "signature": "pub fn was_inserted(&self, entity: &str, sequence: i64) -> Result<bool>"
         },
         "php-extension": {
@@ -2610,7 +2610,7 @@
           "signature": "def backend_waiting_for_lock(self) -> bool"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::backend_waiting_for_lock",
+          "symbol": "packages/rust/src/utils.rs::Utils::backend_waiting_for_lock",
           "signature": "pub async fn backend_waiting_for_lock(&self) -> Result<bool>"
         },
         "php-extension": {
@@ -2636,8 +2636,8 @@
           "signature": "public function schema(): Polyspec\\Orm\\SchemaUtils"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::schema",
-          "signature": "pub fn schema(&self) -> SchemaUtils<'_>"
+          "symbol": "packages/rust/src/utils.rs::Utils::schema",
+          "signature": "pub fn schema(&self) -> SchemaUtils"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/utils.ts::Utils.schema",
@@ -2675,7 +2675,7 @@
           "signature": "public function register(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::register",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils::register",
           "signature": "pub fn register(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
@@ -2715,7 +2715,7 @@
           "signature": "public function install(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::install",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils::install",
           "signature": "pub async fn install(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
@@ -2756,7 +2756,7 @@
           "signature": "public function addTablesAndColumns(Polyspec\\Orm\\Schema $schema): array"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils::add_tables_and_columns",
           "signature": "pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>>"
         },
         "typescript": {
@@ -2796,7 +2796,7 @@
           "signature": "public function exists(string $schema): bool"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::exists",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils::exists",
           "signature": "pub async fn exists (& self , name : & str) -> Result < bool >"
         },
         "typescript": {
@@ -2836,7 +2836,7 @@
           "signature": "public function installed(string $schema, string $table): bool"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::installed",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils::installed",
           "signature": "pub async fn installed (& self , name : & str , table : & str) -> Result < bool >"
         },
         "typescript": {
@@ -2873,7 +2873,7 @@
           "signature": "public function empty(): bool"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::SchemaUtils < '_ >::empty",
+          "symbol": "packages/rust/src/utils.rs::SchemaUtils::empty",
           "signature": "pub async fn empty (& self) -> Result < bool >"
         },
         "typescript": {
@@ -2907,8 +2907,8 @@
           "signature": "public function aes(): Polyspec\\Orm\\AesUtils"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::aes",
-          "signature": "pub fn aes(&self) -> AesUtils<'_>"
+          "symbol": "packages/rust/src/utils.rs::Utils::aes",
+          "signature": "pub fn aes(&self) -> AesUtils"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/utils.ts::Utils.aes",
@@ -2941,8 +2941,8 @@
           "signature": "public function privileges(): Polyspec\\Orm\\PrivilegeUtils"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::privileges",
-          "signature": "pub fn privileges (& self) -> PrivilegeUtils < '_ >"
+          "symbol": "packages/rust/src/utils.rs::Utils::privileges",
+          "signature": "pub fn privileges (& self) -> PrivilegeUtils"
         },
         "typescript": {
           "symbol": "legacy/packages/ts/src/utils.ts::Utils.privileges",
@@ -2975,7 +2975,7 @@
           "signature": "public function stats(): Polyspec\\Orm\\Stats"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::Utils < 'a >::stats",
+          "symbol": "packages/rust/src/utils.rs::Utils::stats",
           "signature": "pub fn stats (& self) -> DbStats"
         },
         "typescript": {
@@ -3014,7 +3014,7 @@
           "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::AesUtils < '_ >::status",
+          "symbol": "packages/rust/src/utils.rs::AesUtils::status",
           "signature": "pub async fn status<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<AesRotationStatus>"
         },
         "typescript": {
@@ -3053,7 +3053,7 @@
           "signature": "public function rotate(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): int"
         },
         "rust": {
-          "symbol": "packages/rust/src/utils.rs::AesUtils < '_ >::rotate",
+          "symbol": "packages/rust/src/utils.rs::AesUtils::rotate",
           "signature": "pub async fn rotate<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<u64>"
         },
         "typescript": {
