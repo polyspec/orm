@@ -22,13 +22,30 @@ const FOLDERS = ['tests/ir', 'tests/planner', 'contracts/fixtures', 'contracts/i
 // A member ir_version of value 1, plain or escaped inside a JSON text, with the spacing it is written with.
 const REQUEST_OF_ONE = /(\\?"ir_version\\?":\s*)1(?![0-9])/g;
 
-function trackedFiles(): string[] {
-  const listed = execFileSync('git', ['ls-files', '-z', '--', ...FOLDERS.map(folder => `${folder}/*.json`)], { cwd: ROOT, encoding: 'utf8' });
+function trackedFiles(root: string): string[] {
+  const listed = execFileSync('git', ['ls-files', '-z', '--', ...FOLDERS.map(folder => `${folder}/*.json`)], { cwd: root, encoding: 'utf8' });
   return listed.split('\0').filter(Boolean);
 }
 
 export function raise(text: string): string {
   return text.replace(REQUEST_OF_ONE, (_, member: string) => `${member}2`);
+}
+
+/**
+ * The tracked shared case files of `root` that hold a request of ir_version 1, in the order of git; unless `check`, each is
+ * written with its requests raised to 2.
+ */
+export function run(root: string, check: boolean): string[] {
+  const changed: string[] = [];
+  for (const file of trackedFiles(root)) {
+    const path = join(root, file);
+    const text = readFileSync(path, 'utf8');
+    const raised = raise(text);
+    if (raised === text) continue;
+    changed.push(file);
+    if (!check) writeFileSync(path, raised);
+  }
+  return changed;
 }
 
 function main(args: string[]): number {
@@ -38,15 +55,7 @@ function main(args: string[]): number {
     process.stderr.write(`raise-version: unknown argument ${unknown.join(' ')}; usage: node scripts/ir/raise-version.mts [--check]\n`);
     return 2;
   }
-  const changed: string[] = [];
-  for (const file of trackedFiles()) {
-    const path = join(ROOT, file);
-    const text = readFileSync(path, 'utf8');
-    const raised = raise(text);
-    if (raised === text) continue;
-    changed.push(file);
-    if (!check) writeFileSync(path, raised);
-  }
+  const changed = run(ROOT, check);
   if (check && changed.length > 0) {
     process.stderr.write(`raise-version: these files hold a request of ir_version 1; run node scripts/ir/raise-version.mts:\n${changed.map(file => `  ${file}\n`).join('')}`);
     return 1;
