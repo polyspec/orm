@@ -294,3 +294,30 @@ async fn a_restore_step_returns_its_row_or_the_kind_of_its_failure() {
     runner.close().await;
     db.close_async().await;
 }
+
+// Requirements: CORE-92, CORE-201, CORE-202. A step carries group_by and where_group as calls: the count of a grouped
+// query is the number of its groups, and a group is the query tree of its conditions.
+#[tokio::test]
+async fn a_step_carries_a_grouping_and_a_group_of_conditions() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-step-group");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut runner = StepRunner::new(&schema, Connection::from(&db));
+    let grouped = json!({"entity": "account_key", "calls": [{"call": "group_by", "column": "account_seq"}]});
+    assert_eq!(run(&mut runner, &query_step(grouped, "get_count")).await, json!({"ok": {"count": 2}}));
+    let group = json!({"entity": "account", "calls": [
+        {"call": "where", "chain": "Seq", "values": [int64(2)]},
+        {"call": "where", "chain": "OrSeq", "values": [int64(1)]},
+    ]});
+    let inside = json!({"entity": "account", "calls": [
+        {"call": "where", "chain": "GtSeq", "values": [int64(1)]},
+        {"call": "where_group", "connector": "And", "query": group},
+    ]});
+    assert_eq!(run(&mut runner, &query_step(inside, "get_count")).await, json!({"ok": {"count": 1}}), "seq > 1 and (seq = 2 or seq = 1)");
+    let empty = json!({"entity": "account", "calls": [{"call": "where_group", "connector": "", "query": {"entity": "account"}}]});
+    let refused = run(&mut runner, &query_step(empty, "get_count")).await;
+    assert_eq!(error_kind(&refused), "config", "{refused}");
+    runner.close().await;
+    db.close_async().await;
+}

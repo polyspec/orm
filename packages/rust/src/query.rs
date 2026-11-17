@@ -174,13 +174,42 @@ impl Query {
     /// `""`, `And` or `Or`, the connector words of CORE-82: `""` and `And` join it with `and` and `Or` with `or`. Any
     /// other text fails the query with `config` at the next terminal.
     pub fn where_none(&mut self, connector: &str) {
-        let conn = match connector {
-            "" => "",
-            "And" => "and",
-            "Or" => "or",
-            other => return self.core.fail(format!("where_none takes \"\", \"And\" or \"Or\", not {other}")),
-        };
-        self.core.add_none(conn);
+        if let Some(conn) = self.connector_of("where_none", connector) {
+            self.core.add_none(conn);
+        }
+    }
+
+    /// The connector of the word `connector`, `""`, `And` or `Or` (CORE-82); any other text fails the query with `config`
+    /// in the name of `member`.
+    fn connector_of(&mut self, member: &str, connector: &str) -> Option<&'static str> {
+        match connector {
+            "" => Some(""),
+            "And" => Some("and"),
+            "Or" => Some("or"),
+            other => {
+                self.core.fail(format!("{member} takes \"\", \"And\" or \"Or\", not {other}"));
+                None
+            }
+        }
+    }
+
+    /// Adds the conditions of `query`, a query of the same entity, as one group in parentheses (CORE-202). `connector` is
+    /// `""`, `And` or `Or`, as `where_none` takes it. Nothing but the conditions of `query` is read. A query with no
+    /// condition, a query of another entity and a refused connector are `config` at the next terminal, and a query that
+    /// a member failed fails this query with its error.
+    pub fn where_group(&mut self, connector: &str, query: Query) {
+        if let Some(error) = query.core.err() {
+            return self.core.fail_err(error);
+        }
+        let Some(conn) = self.connector_of("where_group", connector) else { return };
+        if query.entity() != self.entity() {
+            let message = format!("where_group takes a query of {}, not of {}", self.entity(), query.entity());
+            return self.core.fail(message);
+        }
+        if query.core.where_.items.is_empty() {
+            return self.core.fail("the query of where_group has no condition");
+        }
+        self.core.add_group(conn, query.core);
     }
 
     /// Adds the condition that the column of the chain name `chain`, one key with no operator or with `Ne`, is in, or

@@ -309,7 +309,7 @@
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `join`, `leftJoin`, 묶음
-  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`,
+  (`not`, `andNot`, `orNot`, `on`. `andGroup`과 `orGroup`은 `where_group`이다, CORE-202), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
@@ -372,7 +372,7 @@
   `order_by`, `offset`과 `count`를 가진 `limit`, lock 넷, `add_all_columns`, `remove_all_columns`, `column`을 가진
   `add_column`, `remove_column`, `key_name`, `pair`를 가진 `match_pair`, `name`을 가진 `alias`, `query`를 가진
   `relation`과 `relations`, `column`과 `value`를 가진 `set`, `column`과 `revision`을 가진 `expect_revision`, `column`을 가진
-  `group_by`).
+  `group_by`, `connector`와 `query`를 가진 `where_group`).
   `<terminal>`은 `get`, `gets`, `get_count`, `create`, `update`, `delete` 가운데 하나다. 값은 `orm_value`의 case
   형식이다(CORE-71): `{"kind": <kind>, "value": ..}`이고, bytes는 `{"hex": ..}`, JSON 값은
   `{"kind": "json_value", "text": <JSON text>}`다. 결과는 `{"ok": <result>}`이거나, CORE-10의 kind(예: `duplicate_key`)를 가진
@@ -551,6 +551,19 @@
   메시지는 `<column> is not a column of <entity>`다(CORE-87). 0 이상의 정확한 정수가 아닌 count는 `codec_decode`다
   (INT-68). `Db` step은 `column`을 가진 call `group_by`를 받고(CORE-92) `gets_count`의 terminal은 없다. 계약은 group
   행을 `orm_value`의 map의 list로 돌려준다. Rust 값 `Val`을 가진 `GroupRow`와 `GroupRows`는 선언하지 않는다(CORE-70).
+- **CORE-202** `where_group(connector, query)`는 같은 엔티티의 `Query`인 `query`의 조건을 괄호로 묶은 group 하나로
+  더한다. 언어 구현의 member `and(fn)`과 `or(fn)`이다(DSL-15, DSL-21). `connector`는 `where_none`이 받는 낱말 `""`,
+  `And`, `Or`다(CORE-137): `And`와 `Or`는 group을 앞선 조건에 잇고, 첫 조건인 group은 connector를 받지 않으며(DSL-18),
+  다른 조건 뒤의 `""`는 `config`이고 메시지는 `condition without and/or after another condition`이다(DSL-19). 그 밖의
+  텍스트는 `config`이고 메시지는 `where_group takes "", "And" or "Or", not <text>`다. group은 `query`의 조건을 그
+  순서와 connector대로 가진다. `where`, `where_in`, `where_none`, `where_group`의 조건이므로 group은 겹친다. `query`의
+  다른 것은 가지지 않는다: 그 순서, 열, limit, lock, grouping, 배정, relation, 연결은 효과가 없다. 언어 구현은 함수에
+  빈 모델을 주고 함수가 그 위에 group을 만든다(DSL-20). 코어는 `where_in`이 subquery를 받듯(CORE-90) 만들어진
+  `Query`를 받으므로 함수를 보관하지 않고, `Db` step은 group을 data로, 곧 `connector`와 `query`를 가진 call
+  `where_group`으로 나른다(CORE-92). 조건이 없는 `query`는 `config`이고 메시지는
+  `the query of where_group has no condition`이며(DSL-22), 다른 엔티티의 `query`는 `config`이고 메시지는
+  `where_group takes a query of <entity>, not of <other>`이고, member가 실패시킨 `query`는 그 오류로 `Query`를
+  실패시킨다. 각각 다음 terminal이 돌려준다. group의 조건은 모든 조건처럼 `update`와 `delete`에도 적용된다(CORE-138).
 
 ## 상태 기계
 

@@ -374,7 +374,7 @@ implementation is eligible for removal on that evidence.
   entity, and `gets` returns the rows as a `Collection`. `value(column)` returns the value of a column of a row as `orm_value` (CORE-62); a name
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
-  groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`,
+  groups (`not`, `andNot`, `orNot`, `on`; `andGroup` and `orGroup` are `where_group`, CORE-202), `andModel`, `orModel`, `compare`,
   `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
@@ -444,7 +444,7 @@ implementation is eligible for removal on that evidence.
   `chain` and `query`, `order_by` with `spec`, `limit` with `offset` and `count`, the four locks, `add_all_columns`,
   `remove_all_columns`, `add_column`, `remove_column` and `key_name` with `column`, `match_pair` with `pair`, `alias`
   with `name`, `relation` and `relations` with `query`, `set` with `column` and `value`, `expect_revision` with
-  `column` and `revision`, and `group_by` with `column`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
+  `column` and `revision`, `group_by` with `column`, and `where_group` with `connector` and `query`), and `<terminal>` is one of `get`, `gets`, `get_count`, `create`, `update` and `delete`. A
   value is the case form of `orm_value` (CORE-71): `{"kind": <kind>, "value": ..}`, bytes as `{"hex": ..}` and a JSON
   value as `{"kind": "json_value", "text": <JSON text>}`. The outcome is `{"ok": <result>}` or
   `{"error": {"kind": <kind>, "message": <message>}}` with the kind of CORE-10, such as `duplicate_key`, so the core that asked decides what
@@ -650,6 +650,22 @@ implementation is eligible for removal on that evidence.
   that is no exact integer from 0 is `codec_decode` (INT-68). The `Db` step takes the call `group_by` with `column`
   (CORE-92) and has no terminal for `gets_count`. The contract returns the group rows as a list of maps of
   `orm_value`; `GroupRow` and `GroupRows`, which hold the Rust value `Val`, stay undeclared (CORE-70).
+- **CORE-202** `where_group(connector, query)` adds the conditions of `query`, a `Query` of the same entity, as one
+  group in parentheses: the members `and(fn)` and `or(fn)` of the language implementations (DSL-15, DSL-21).
+  `connector` is `""`, `And` or `Or`, the words that `where_none` takes (CORE-137): `And` and `Or` join the group to
+  the conditions before it, a group that is the first condition takes no connector (DSL-18), and `""` after another
+  condition is `config` with the message `condition without and/or after another condition` (DSL-19). Any other text
+  is `config` with the message `where_group takes "", "And" or "Or", not <text>`. The group holds the conditions of
+  `query` in their order with their connectors, those of `where`, `where_in`, `where_none` and `where_group`, so
+  groups nest, and nothing else of `query`: its order, columns, limit, lock, grouping, assignments, relations and
+  connection have no effect. A language implementation gives a function an empty model on which the function builds
+  the group (DSL-20); the core takes the built `Query`, as `where_in` takes its subquery (CORE-90), so it keeps no
+  function and the `Db` step carries the group as data, the call `where_group` with `connector` and `query`
+  (CORE-92). A `query` with no condition is `config` with the message `the query of where_group has no condition`
+  (DSL-22), a `query` of another entity is `config` with the message
+  `where_group takes a query of <entity>, not of <other>`, and a `query` that one of its members failed fails the
+  `Query` with that error. Each is returned by the next terminal. The conditions of a group hold for `update` and
+  `delete` as every condition does (CORE-138).
 
 ## State machines
 

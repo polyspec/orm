@@ -118,6 +118,7 @@ pub enum Call {
     Set { column: String, value: StepValue },
     ExpectRevision { column: String, revision: i64 },
     GroupBy { column: String },
+    WhereGroup { connector: String, query: QueryTree },
 }
 
 /// The terminal of a query step (CORE-92).
@@ -402,6 +403,7 @@ fn build(schema: &Schema, tree: QueryTree) -> Result<Query> {
             Call::Set { column, value } => query.set(&column, &value.0),
             Call::ExpectRevision { column, revision } => query.expect_revision(&column, revision),
             Call::GroupBy { column } => query.group_by(&column),
+            Call::WhereGroup { connector, query: group } => query.where_group(&connector, build(schema, group)?),
         }
     }
     Ok(query)

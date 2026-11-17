@@ -4458,6 +4458,41 @@
             "path": "polyspec_orm::Query::gets_count",
             "receiver": "&self"
           }
+        },
+        {
+          "id": "query.where_group",
+          "name": [
+            "where",
+            "group"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "connector"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "query"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::where_group",
+            "receiver": "&mut self"
+          }
         }
       ]
     },
@@ -6141,6 +6176,25 @@
       "member": "query.gets_count",
       "file": "contracts/interface/core.json",
       "group": "query.gets_count.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.where_group",
+      "file": "contracts/interface/core.json",
+      "group": "query.where_group"
+    },
+    {
+      "member": "query.where_group",
+      "file": "contracts/interface/core.json",
+      "group": "query.where_group.sqlite",
       "only": {
         "targets": [
           "php",

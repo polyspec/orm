@@ -805,3 +805,59 @@ async fn gets_count_counts_the_rows_of_each_group() {
     assert_eq!(failure(unknown.gets_count().await, "no column").to_string(), "config: missing is not a column of account_key");
     db.close_async().await;
 }
+
+/// A query of `account` with no connection and the conditions of `chains`, each of one integer.
+fn conditions(schema: &Schema, chains: &[(&str, i64)]) -> Query {
+    let mut query = Query::new(schema, "account").expect("query");
+    for (chain, value) in chains {
+        query.where_chain(chain, &[int(*value)]);
+    }
+    query
+}
+
+// Requirements: CORE-202. where_group adds the conditions of a query as one group in parentheses, joined by its
+// connector; groups nest; a group without a condition, of another entity, with a refused connector or without a
+// connector after a condition is config.
+#[tokio::test]
+async fn where_group_adds_the_conditions_of_a_query_as_one_group() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-where-group");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let mut grouped = query(&schema, "account", &db);
+    grouped.where_chain("GtSeq", &[int(1)]);
+    grouped.where_group("And", conditions(&schema, &[("Seq", 2), ("OrSeq", 1)]));
+    grouped.order_by("SeqAsc");
+    assert_eq!(seqs(&grouped.gets().await.expect("gets")), [int(2)], "seq > 1 and (seq = 2 or seq = 1)");
+    let mut flat = query(&schema, "account", &db);
+    flat.where_chain("GtSeq", &[int(1)]);
+    flat.where_chain("AndSeq", &[int(2)]);
+    flat.where_chain("OrSeq", &[int(1)]);
+    flat.order_by("SeqAsc");
+    assert_eq!(seqs(&flat.gets().await.expect("gets")), [int(1), int(2)], "the same conditions without the group");
+    let mut first = query(&schema, "account", &db);
+    first.where_group("Or", conditions(&schema, &[("Seq", 3)]));
+    assert_eq!(seqs(&first.gets().await.expect("gets")), [int(3)], "a group that is the first condition takes no connector");
+    let mut inner = conditions(&schema, &[("GtSeq", 1)]);
+    inner.where_group("And", conditions(&schema, &[("Seq", 2), ("OrSeq", 3)]));
+    let mut nested = query(&schema, "account", &db);
+    nested.where_chain("Seq", &[int(1)]);
+    nested.where_group("Or", inner);
+    assert_eq!(nested.get_count().await.expect("get_count"), 3, "seq = 1 or (seq > 1 and (seq = 2 or seq = 3))");
+    let refusals: [(&str, &str, Query, &str); 5] = [
+        ("", "", conditions(&schema, &[]), "config: the query of where_group has no condition"),
+        ("", "", Query::new(&schema, "account_key").expect("query"), "config: where_group takes a query of account, not of account_key"),
+        ("", "Xor", conditions(&schema, &[("Seq", 1)]), "config: where_group takes \"\", \"And\" or \"Or\", not Xor"),
+        ("Seq", "", conditions(&schema, &[("Seq", 1)]), "config: condition without and/or after another condition"),
+        ("", "", conditions(&schema, &[("Missing", 1)]), "config: Missing is not a column of account"),
+    ];
+    for (before, connector, group, message) in refusals {
+        let mut refused = query(&schema, "account", &db);
+        if !before.is_empty() {
+            refused.where_chain(before, &[int(1)]);
+        }
+        refused.where_group(connector, group);
+        assert_eq!(failure(refused.get_count().await, message).to_string(), message);
+    }
+    db.close_async().await;
+}
