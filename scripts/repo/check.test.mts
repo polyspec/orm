@@ -521,6 +521,32 @@ caseTest('a script path must be a tracked file or directory', () => {
 
 const workflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
 
+caseTest('each CI run rehearses the upload of the release after the assets, and ci-passed needs it (T628)', () => {
+  const job = (name: string) => {
+    const start = workflow.indexOf(`\n  ${name}:\n`);
+    assert.notEqual(start, -1, `ci.yml has no job ${name}`);
+    const rest = workflow.slice(start + 1);
+    const end = rest.slice(1).search(/\n  [a-z][a-z-]*:\n/);
+    return end === -1 ? rest : rest.slice(0, end + 1);
+  };
+  const rehearsal = job('release-rehearsal');
+  assert.match(rehearsal, /\n    needs: \[[^\]]*\bassets\b[^\]]*\]/, 'job release-rehearsal runs after the job assets');
+  assert.match(rehearsal, /pattern: assets-\*/, 'job release-rehearsal downloads the artifacts assets-*');
+  assert.match(rehearsal, /path: var\/release\/platform/, 'job release-rehearsal downloads them into var/release/platform');
+  assert.match(rehearsal, /run: make ci-release-rehearsal\n/, 'job release-rehearsal runs make ci-release-rehearsal');
+  assert.match(rehearsal, /\n    permissions:\n      contents: read\n/, 'job release-rehearsal reads the repository only, so it can upload nothing');
+  assert.match(job('ci-passed'), /\n    needs: \[[^\]]*\brelease-rehearsal\b[^\]]*\]/, 'ci-passed needs release-rehearsal');
+  const recipe = text('Makefile').match(/^ci-release-rehearsal:\n((?:\t.*\n)+)/m)?.[1] ?? '';
+  assert.notEqual(recipe, '', 'the Makefile has a recipe ci-release-rehearsal');
+  for (const target of ['release-assets', 'ci-release-platform-assets'])
+    assert.match(recipe, new RegExp(`-- ${target}\\n`), `ci-release-rehearsal gathers var/release/assets with ${target}, as ci-release does`);
+  assert.match(recipe, /-- release-platform-assets TAG=v\$\(RELEASE_REHEARSAL_VERSION\) REHEARSAL=1 WORK=var\/release\/rehearsal\n/,
+    'ci-release-rehearsal runs release-platform-assets with REHEARSAL=1 and WORK');
+  for (const forbidden of ['release-tag', 'release-publish', 'release-undraft', 'release-go-module'])
+    assert.doesNotMatch(recipe, new RegExp(`-- ${forbidden}\\b`), `ci-release-rehearsal runs no ${forbidden}`);
+  assert.doesNotMatch(text('.github/workflows/release.yml'), /REHEARSAL/, 'release.yml gains no run without a tag (K911)');
+});
+
 caseTest('the CI workflow provides every variable of make orm-test-servers', () => {
   const variables = SERVER_VARIABLES;
   for (const variable of ['ORM_TEST_MYSQL_REPLICA_DSN', 'ORM_TEST_POSTGRES_REPLICA_DSN', 'ORM_TEST_PROXYSQL_DSN',
