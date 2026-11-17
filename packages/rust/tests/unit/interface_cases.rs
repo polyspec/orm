@@ -32,6 +32,9 @@ enum Instance {
     Keyring(AesKeyring),
     Schema(Schema),
     Query(Box<Query>),
+    Page(Box<crate::QueryPage>),
+    #[allow(dead_code, reason = "the unit rows is a placeholder without members, so no case reads the rows of a page yet (CORE-200)")]
+    Rows(crate::Rows),
     Model(Box<Manifest>),
     Integer(IntegerValue),
     Float(FloatValue),
@@ -625,6 +628,14 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.limit(uint(args, "offset", member), uint(args, "count", member));
             Returned::Value(Value::Null)
         }
+        ("query.gets_page", Some(Instance::Query(query))) => {
+            Returned::Instance(Instance::Page(Box::new(query.gets_page(uint(args, "page", member), uint(args, "per_page", member)).await?)))
+        }
+        ("page.total_count", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_count())),
+        ("page.total_pages", Some(Instance::Page(page))) => Returned::Value(Value::from(page.total_pages())),
+        ("page.page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.page())),
+        ("page.per_page", Some(Instance::Page(page))) => Returned::Value(Value::from(page.per_page())),
+        ("page.rows", Some(Instance::Page(page))) => Returned::Instance(Instance::Rows(page.rows())),
         ("query.get_count", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_count().await?)),
         ("query.where", Some(Instance::Query(query))) => {
             query.where_chain(&text(args, "chain", member), &orm_values(args, "values", member)?);

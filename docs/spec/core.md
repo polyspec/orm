@@ -375,7 +375,7 @@ implementation is eligible for removal on that evidence.
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: `creates` and `save` of a `Query`, `join`, `leftJoin`, the
   groups (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
-  `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
+  `getsLookaheadPage`, `getSum`, `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
 - **CORE-85** `limit(offset, count)` reads at most `count` rows after the first `offset` rows of the order (DSL-99).
@@ -580,8 +580,8 @@ implementation is eligible for removal on that evidence.
   of its statement, and its `sql`. It takes the arguments and the refusals of `gets_page`: `config` with the message
   `gets_page requires a positive page and per_page`, with `gets_page cannot be combined with limit`, and for a `Query`
   with no connection (CORE-81); the refusals of the planner; and `capability_unsupported` on markdown. The request
-  hook of the connection sees the request. Not implemented: `get_page_plan_steps` of a `Query`, as `gets_page` is not
-  (CORE-84).
+  hook of the connection sees the request. Not implemented: `get_page_plan_steps` of a `Query`; `gets_page` is
+  CORE-200.
 - **CORE-163** The condition on several columns, the member `tuple<ColA>With<ColB>(list)` of the language
   implementations (DSL-35), is `where` with the chain key `Tuple<ColA>With<ColB>`, or `NeTuple<ColA>With<ColB>` for
   `not in`, and one value, a `list` of value groups, each a `list` of one value per column (CORE-82). A value that is
@@ -589,6 +589,20 @@ implementation is eligible for removal on that evidence.
   list is `empty_in` with the message `tuple condition received an empty list`, a group of another length is `config`
   with the message `every tuple needs one value per column`, and a key of fewer than two columns, or of a column with
   a codec stage or without the list operator, is `config`. Each is returned by the next terminal. `Query` has it.
+- **CORE-200** `gets_page(page, per_page)` reads one page of the rows of a `Query` and counts the rows of every page:
+  the member `getsPage(page, perPage)` of the language implementations (DSL-64, DSL-67, INT-32). It returns a `page`:
+  `rows`, the rows of the page as `gets` returns them (CORE-83); `total_count`, the number of rows that the conditions
+  select; `total_pages`, `total_count` divided by `per_page` and rounded up; and `page` and `per_page` as given. The
+  request is `paginate` (PRT-2): the statement of the rows reads `per_page` rows after `(page - 1) * per_page` rows,
+  and the count statement holds the same conditions and no order. A `Query` with no order is ordered by its primary
+  key ascending, in the order of the key columns, so that consecutive pages neither repeat nor skip a row. A page
+  after the last one has no rows and is no error. `page` and `per_page` are `uint`; 0 of either is `config` with the
+  message `gets_page requires a positive page and per_page`, a `Query` with `limit` (CORE-85) is `config` with the
+  message `gets_page cannot be combined with limit`, and an offset over the range of `uint` is `config` with the
+  message `page offset exceeds u32 range`, each before any statement and before the connection is asked for
+  (CORE-81). The terminal does not change the `Query` (DSL-69). In the contract `page` is a class whose members
+  `total_count`, `total_pages`, `page` and `per_page` are properties and whose member `rows` returns the unit `rows`
+  (CORE-70). The `Db` step (CORE-92) has no terminal for it.
 
 ## State machines
 
@@ -681,7 +695,8 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle, and `Collection`,
   `Page` and `LookaheadPage` take the type of a generated model, so they and the members that return them (`get`,
   `gets`, `gets_by`) are not declared either. Of these, `Statement` and `Collection` are returned by members that
-  `Query` has (`get_query`, `gets`, `gets_by`; CORE-83), so their declaration alone is missing. `Page`, `LookaheadPage`,
+  `Query` has (`get_query`, `gets`, `gets_by`; CORE-83), so their declaration alone is missing. The `Page` of a `Query`
+  is declared as the class `page` (CORE-200). `LookaheadPage`,
   `GroupRow` and `GroupRows` are returned by no member of `Query` (CORE-84) but by the generated Rust models alone, and
   a binding has no generated model (CORE-50): it has nothing in their place, and reads the rows of a query only as
   `related_rows` (CORE-88) or through the terminal `gets` of a `StepRunner` (CORE-92).

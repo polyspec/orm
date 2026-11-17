@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use polyspec_orm_schema::chain::{parse_chain, parse_order, split_pair, ChainKey};
 
 use crate::args::Value;
-use crate::collection::{AnyCollection, Collection, Key};
+use crate::collection::{AnyCollection, Collection, Key, Page};
 use crate::core::{Arg, Core};
 use crate::db::Statement;
 use crate::model::{AnyModel, Boxed, LoadedEntity, RelatedValue};
@@ -27,6 +27,41 @@ pub struct Query {
 /// PLACEHOLDER, dropped at the merge: the rows of a `Query`, the core type of the unit `rows` of the contract, which
 /// the branch of `gets` declares with its members. It stands here so that the class `page` (CORE-200) names a unit.
 pub type Rows = Collection<Query>;
+
+/// One page of the rows of a `Query`, the core type of the class `page` of the contract (CORE-200).
+pub type QueryPage = Page<Query>;
+
+impl Page<Query> {
+    /// The number of rows that the conditions of the query select, on every page (CORE-200).
+    #[must_use]
+    pub fn total_count(&self) -> i64 {
+        self.total_count
+    }
+
+    /// The number of pages: the count divided by the rows of a page and rounded up (CORE-200).
+    #[must_use]
+    pub fn total_pages(&self) -> i64 {
+        self.total_pages
+    }
+
+    /// The number of the page, from 1, as `gets_page` received it (CORE-200).
+    #[must_use]
+    pub fn page(&self) -> u32 {
+        self.page
+    }
+
+    /// The number of rows of a page, as `gets_page` received it (CORE-200).
+    #[must_use]
+    pub fn per_page(&self) -> u32 {
+        self.per_page
+    }
+
+    /// The rows of the page, as `gets` returns them (CORE-200).
+    #[must_use]
+    pub fn rows(&self) -> Collection<Query> {
+        self.items.clone()
+    }
+}
 
 fn new_query(core: Core) -> Box<dyn AnyModel> {
     Box::new(Query { core, values: IndexMap::new() })
@@ -358,6 +393,12 @@ impl Query {
     pub async fn gets(&self) -> Result<Collection<Query>> {
         let rows = crate::model::load(&self.core, "all").await?;
         Ok(Collection::from_boxes(rows.items, rows.fetched))
+    }
+
+    /// Reads the page `page` of `per_page` rows and counts the rows of every page (CORE-200); the query does not
+    /// change. A `page` or a `per_page` of 0 and a query with `limit` are `config`.
+    pub async fn gets_page(&self, page: u32, per_page: u32) -> Result<QueryPage> {
+        crate::model::gets_page(self, page, per_page).await
     }
 
     /// Runs the count of the query (CORE-83).

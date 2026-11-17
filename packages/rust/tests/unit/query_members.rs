@@ -693,3 +693,38 @@ async fn to_array_holds_the_columns_that_the_row_read() {
     assert_eq!(pairs(&row), vec![("seq".to_owned(), int(3)), ("revision".to_owned(), int(0))]);
     db.close_async().await;
 }
+
+// Requirements: CORE-200. gets_page reads the rows of one page in the order of the query, by the primary key when the
+// query has none, and counts the rows that the conditions select; a page after the last has no rows, and a page or a
+// per_page of 0 and a query with a limit are config.
+#[tokio::test]
+async fn gets_page_reads_a_page_and_counts_the_rows_of_every_page() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-gets-page");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let accounts = query(&schema, "account", &db);
+    let second = accounts.gets_page(2, 2).await.expect("the second page");
+    assert_eq!(seqs(&second.rows()), [int(3)], "the rows after the first page, in the order of the primary key");
+    assert_eq!((second.total_count(), second.total_pages(), second.page(), second.per_page()), (3, 2, 2, 2));
+    let past = accounts.gets_page(3, 2).await.expect("a page after the last");
+    assert!(past.rows().is_empty(), "a page after the last has no rows");
+    assert_eq!((past.total_count(), past.total_pages()), (3, 2), "and counts the rows all the same");
+    let mut newest = accounts.clone();
+    newest.order_by("SeqDesc");
+    assert_eq!(seqs(&newest.gets_page(1, 2).await.expect("the first page of an order").rows()), [int(3), int(2)]);
+    let mut later = accounts.clone();
+    later.where_chain("GtSeq", &[int(1)]);
+    let page = later.gets_page(1, 5).await.expect("a page of a condition");
+    assert_eq!(seqs(&page.rows()), [int(2), int(3)]);
+    assert_eq!((page.total_count(), page.total_pages()), (2, 1), "the count holds the conditions of the page");
+    for (page, per_page) in [(0, 1), (1, 0)] {
+        let error = failure(accounts.gets_page(page, per_page).await, "a page or a per_page of 0");
+        assert_eq!(error.to_string(), "config: gets_page requires a positive page and per_page");
+    }
+    let mut limited = accounts.clone();
+    limited.limit(0, 1);
+    let error = failure(limited.gets_page(1, 1).await, "a query with a limit");
+    assert_eq!(error.to_string(), "config: gets_page cannot be combined with limit");
+    db.close_async().await;
+}

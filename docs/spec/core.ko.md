@@ -309,7 +309,7 @@
   `Collection`으로 돌려준다. `value(column)`은 행의 열 값을 `orm_value`로 돌려준다(CORE-62). 엔티티의 열이 아닌 이름은 `column_unknown`이고
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 `creates`, `save`, `join`, `leftJoin`, 묶음
-  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`, `getsPage`,
+  (`andGroup`, `orGroup`, `not`, `andNot`, `orNot`, `on`), `andModel`, `orModel`, `compare`, `getsCount`,
   `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
@@ -490,7 +490,7 @@
   거부를 그대로 받는다: 메시지 `gets_page requires a positive page and per_page`나
   `gets_page cannot be combined with limit`의 `config`, 연결이 없는 `Query`의 `config`(CORE-81), planner의 거부,
   markdown에서의 `capability_unsupported`. 연결의 request hook이 그 요청을 본다. 구현되지 않았다: `Query`의
-  `get_page_plan_steps`. `gets_page`가 구현되지 않았기 때문이다(CORE-84).
+  `get_page_plan_steps`. `gets_page`는 CORE-200이다.
 - **CORE-163** 여러 열에 대한 조건, 곧 언어 구현의 member `tuple<ColA>With<ColB>(list)`(DSL-35)는 chain key
   `Tuple<ColA>With<ColB>`, `not in`이면 `NeTuple<ColA>With<ColB>`와 값 하나를 받는 `where`다. 그 값은 값 묶음의
   `list`이고 각 묶음은 열마다 값 하나를 가진 `list`다(CORE-82). list의 list가 아닌 값은 `codec_encode`이고 메시지는
@@ -498,6 +498,19 @@
   `tuple condition received an empty list`이고, 길이가 다른 묶음은 `config`이고 메시지는
   `every tuple needs one value per column`이며, 열이 둘보다 적은 key나 codec stage가 있는 열 또는 list 연산자가 없는
   열의 key는 `config`다. 각각 다음 terminal이 돌려준다. `Query`는 이것을 가진다.
+- **CORE-200** `gets_page(page, per_page)`는 `Query`의 행 가운데 한 page를 읽고 모든 page의 행을 센다. 언어 구현의
+  member `getsPage(page, perPage)`다(DSL-64, DSL-67, INT-32). 돌려주는 것은 `page`다: `rows`는 `gets`가 돌려주는
+  그대로의 그 page의 행이고(CORE-83), `total_count`는 조건이 고르는 행의 수, `total_pages`는 `total_count`를
+  `per_page`로 나누어 올림한 값, `page`와 `per_page`는 받은 그대로다. 요청은 `paginate`다(PRT-2): 행의 문장은
+  `(page - 1) * per_page`개 행 뒤에서 `per_page`개 행을 읽고, count 문장은 같은 조건을 가지며 순서가 없다. 순서가
+  없는 `Query`는 primary key 오름차순으로, key 열의 순서대로 정렬되므로 이어지는 page가 행을 되풀이하거나 건너뛰지
+  않는다. 마지막 page 뒤의 page는 행이 없고 오류가 아니다. `page`와 `per_page`는 `uint`다. 어느 하나가 0이면
+  `config`이고 메시지는 `gets_page requires a positive page and per_page`이며, `limit`(CORE-85)가 있는 `Query`는
+  `config`이고 메시지는 `gets_page cannot be combined with limit`이고, `uint`의 범위를 넘는 offset은 `config`이고
+  메시지는 `page offset exceeds u32 range`다. 각각 어떤 문장보다도, 그리고 연결을 구하기보다도 먼저다(CORE-81). 이
+  terminal은 `Query`를 바꾸지 않는다(DSL-69). 계약에서 `page`는 class이고 그 member `total_count`, `total_pages`,
+  `page`, `per_page`는 property이며 member `rows`는 unit `rows`를 돌려준다(CORE-70). `Db` step(CORE-92)에는 이것의
+  terminal이 없다.
 
 ## 상태 기계
 
@@ -580,7 +593,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의
   타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다. 이 가운데
   `Statement`와 `Collection`은 `Query`가 가진 member(`get_query`, `gets`, `gets_by`; CORE-83)가 돌려주므로 선언만
-  없다. `Page`, `LookaheadPage`, `GroupRow`, `GroupRows`는 `Query`의 어떤 member도 돌려주지 않고(CORE-84) 생성된 Rust
+  없다. `Query`의 `Page`는 class `page`로 선언한다(CORE-200). `LookaheadPage`, `GroupRow`, `GroupRows`는 `Query`의 어떤 member도 돌려주지 않고(CORE-84) 생성된 Rust
   모델만 돌려주며, 바인딩에는 생성된 모델이 없다(CORE-50). 바인딩에는 이것들을 대신하는 것이 없고, 바인딩은 query의
   여러 행을 `related_rows`(CORE-88)나 `StepRunner`의 terminal `gets`(CORE-92)로만 읽는다.
 - **CORE-133** member `tx.execute`는 `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`이다. 이것은

@@ -1018,8 +1018,8 @@ fn group_rows(core: &Core, result: &QueryResult) -> Result<GroupRows> {
 }
 
 /// Returns one page and the total count.
-pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page<M>> {
-    let (ex, q, mut req) = page_request(m.core(), page, per_page)?;
+pub async fn gets_page<M: AnyModel + Clone>(m: &M, page: u32, per_page: u32) -> Result<Page<M>> {
+    let (ex, q, mut req) = page_request(m.core_dyn(), page, per_page)?;
     let res = select(&ex, &q.conn, &mut req).await?;
     // A select reads its count step in plan order.
     let total = res.count.ok_or_else(|| Error::internal("paginate plan has no count result"))?;
