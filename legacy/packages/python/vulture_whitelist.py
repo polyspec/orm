@@ -74,6 +74,7 @@ _.ir_version
 _.offset_p  # PRT-78 page-limit IR field, read dynamically by key before cache lookup
 _.count_p  # PRT-78 page-limit IR field, read dynamically by key before cache lookup
 _.on_duplicate
+_.require_match  # PRT-90 require-match IR field, read dynamically by key in database.py and validate.py
 _.n_params
 _.plus_p
 _.minus_p
