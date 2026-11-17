@@ -385,15 +385,17 @@ test-python: python-venv-check bind-python-models ## Run the unit tests of the P
 # The run is offline, so it selects by name the tests that read neither a database server nor flowmark (T570): cargo test
 # -- --list prints the tests of the workspace, and scripts/repo/offline-tests.mts writes the --skip arguments of the groups
 # <recipe>_mysql, _postgres and _markdown of the test program all, of the tests of its other groups whose name ends in
-# _mysql or _postgres, and of the tests that scripts/client-db-test.mts leaves to markdown-conformance-check/rust and
-# feature-performance-check. make client-db-rust-check runs the workspace with the servers and flowmark. The script prints
+# _mysql or _postgres, and of the tests that scripts/client-db-test.mts leaves to markdown-conformance-check/rust,
+# feature-performance-check and decimal-physical-check. The selected tests run through tests/cargo-test.mts ($(CARGO_TEST)),
+# as the Rust lane of client-db-rust-check runs them: it copies the programs of the package and gives their paths as
+# ORM_PROGRAM_<NAME>, which client_bench_args, client_bench_dsn and example_dsn run (T570). make client-db-rust-check runs the workspace with the servers and flowmark. The script prints
 # the numbers of the tests it left and fails on a selection of no test; a test that reads a server and whose name does not
 # say so fails here with its own message.
 test-rust: typescript-current lease-tool ## Run the unit tests of the Rust workspace that need no server, with CASES=<pattern>; offline
 	$(READ_TYPESCRIPT)
 	$(RUN_LONG) rust-build/test-rust -- $(CARGO_LEASED) $(PUBLISH) $(RUN_DIR)/listing $(CARGO_LINK) test --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --list
 	$(PUBLISH) $(RUN_DIR)/offline-tests $(OFFLINE_TESTS) rust $(RUN_DIR)/listing
-	$(WITHOUT_SERVERS) ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner cargo --roots packages/rust -- --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --test-threads=1 $$(cat $(RUN_DIR)/offline-tests); status=$$?; rm -rf $(RUN_DIR); exit $$status
+	cd packages/rust && $(WITHOUT_SERVERS) ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(CARGO_TEST) test-rust -- cargo test --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) $(CASES) -- --test-threads=1 $$(cat $(RUN_DIR)/offline-tests); status=$$?; rm -rf $(RUN_DIR); exit $$status
 test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
 	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots legacy/packages/ts -- --test-concurrency=1
 

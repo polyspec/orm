@@ -374,8 +374,8 @@ caseTest('the Rust unit tests build and hold the TypeScript client that the inte
   const lines = result.stdout.split('\n');
   const build = lines.findIndex(line => line.includes('scripts/typescript/build.mts --current'));
   const hold = lines.findIndex(line => / hold \S+ shared --wait --pid /.test(line));
-  const tests = lines.findIndex(line => /runtime-targets\.(?:mjs|mts) test --runner cargo /.test(line));
-  assert.ok(tests >= 0, `test-rust runs no cargo tests: ${result.stdout}`);
+  const tests = lines.findIndex(line => /tests\/cargo-test\.mts test-rust -- cargo test /.test(line));
+  assert.ok(tests >= 0, `test-rust runs no cargo tests through tests/cargo-test.mts: ${result.stdout}`);
   assert.ok(build >= 0 && build < tests, `test-rust runs the cargo tests without building the TypeScript client first (typescript-current): ${result.stdout}`);
   assert.ok(hold > build && hold < tests, `test-rust does not hold the TypeScript client while its tests read it ($(READ_TYPESCRIPT)): ${result.stdout}`);
 });
@@ -3237,7 +3237,7 @@ caseTest('T570, T580: the offline test targets of Rust and Python select their t
     assert.doesNotMatch(run, /\$\{ORM_TEST_SERVERS_LEASES:\?|\bFLOWMARK=|ORM_TEST_\w*DSN=/, `${target} reads the test servers or flowmark, and it is offline`);
     // make exports the variables of the file TEST_ENV of a checkout whose servers run, and the run of the tests starts without them.
     const [line = ''] = tests;
-    assert.match(line, /^env -u FLOWMARK (?:-u [A-Z0-9_]+ )+/, `${target} starts its tests with the variables that make exports from TEST_ENV; start them through WITHOUT_SERVERS`);
+    assert.match(line, /^(?:cd \S+ && )?env -u FLOWMARK (?:-u [A-Z0-9_]+ )+/, `${target} starts its tests with the variables that make exports from TEST_ENV; start them through WITHOUT_SERVERS`);
     const environment = join(mkdtempSync(join(tmpdir(), 'orm-offline-env-')), 'env');
     try {
       writeFileSync(environment, "export ORM_TEST_MYSQL_DSN='mysql://u@127.0.0.1:1/d'\nexport ORM_TOOLS_POSTGRES_DSN='postgres://u@127.0.0.1:1/d'\n");
