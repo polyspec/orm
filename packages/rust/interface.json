@@ -4201,6 +4201,29 @@
       ]
     },
     {
+      "id": "rows",
+      "name": [
+        "rows"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::Rows",
+      "constructible": false,
+      "final": true,
+      "members": []
+    },
+    {
       "id": "step_runner",
       "name": [
         "step",

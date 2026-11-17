@@ -24,6 +24,10 @@ pub struct Query {
     values: IndexMap<String, Val>,
 }
 
+/// PLACEHOLDER, dropped at the merge: the rows of a `Query`, the core type of the unit `rows` of the contract, which
+/// the branch of `gets` declares with its members. It stands here so that the class `page` (CORE-200) names a unit.
+pub type Rows = Collection<Query>;
+
 fn new_query(core: Core) -> Box<dyn AnyModel> {
     Box::new(Query { core, values: IndexMap::new() })
 }
