@@ -298,7 +298,7 @@ from kit and holds as its own; this file states only the rules of orm.
 - Own: Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. Every dbspec implementation (Go, PHP, the PHP-extension, TypeScript, Python, and Rust) executes the same accepted and rejected schema cases.
   Enforced by: `make conformance-check`
 - Own: SQLite live import maps only `INTEGER PRIMARY KEY AUTOINCREMENT` to the signed `i64` automatic key; an ordinary `INTEGER` remains `i32`.
-  Enforced by: `make dbspec-introspect-check`
+  Enforced by: `make go-test-check`, which runs the Go entries of the recipe dbspec_introspect
 - Own: Every transformation is idempotent: emitting a parsed canonical source reproduces it byte for byte, and repeating an operation with the same input yields the same result and state.
   Enforced by: `make feature-verify-other`
 - Own: Names state what the thing does, and one concept has one name in every client. A name, prefix or suffix never selects behavior; behavior is declared explicitly.
