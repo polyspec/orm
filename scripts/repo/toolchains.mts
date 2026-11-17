@@ -4,7 +4,11 @@
 //     x.y. require.php (">=x.y") in legacy/packages/php/composer.json is the lowest release that the PHP client supports,
 //     and make php-min-check runs it.
 //   - Rust: channel x.y.z of rust-toolchain.toml. The Makefile reads that channel, and workflows
-//     install that file's toolchain with `rustup toolchain install` without arguments.
+//     install that file's toolchain, components and targets with kit's rust install, `make install-tools` with TOOLS naming
+//     rust or with no TOOLS, which passes them to `rustup toolchain install` explicitly. A bare `rustup toolchain install`
+//     installs the toolchain of the RUSTUP_TOOLCHAIN that the Makefile exports, and rustup then reads neither the
+//     components nor the targets of the file (CI run 44038491048: "downloading 3 components", "it's active because:
+//     overridden by environment variable RUSTUP_TOOLCHAIN", then no wasm32-unknown-unknown for make release-npm).
 
 import { parse as parseToml } from 'smol-toml';
 import semver from 'semver';
@@ -31,8 +35,16 @@ const MINIMUM_OUTPUT = '${{ needs.plan.outputs.php_min }}';
 // or of a recipe that a run step reaches (scripts/repo/recipes.mts).
 const runs = (workflow: string, makefile: string, test: (command: SimpleCommand) => boolean) =>
   workflowSteps(workflow).some(step => step.run !== '' && commands(step.run, 'workflow').some(test)) || workflowCommands(workflow, makefile).some(test);
-// installsToolchain returns whether a command is `rustup toolchain install` without arguments, that is, the installation of the toolchain in rust-toolchain.toml.
-const installsToolchain = (command: SimpleCommand) => command.name === 'rustup' && command.args.join(' ') === 'toolchain install';
+// installsToolchain returns whether a command is kit's rust install, the installation of the toolchain, the components and the
+// targets of rust-toolchain.toml: make (or $(MAKE) of a recipe) running install-tools with no TOOLS or with TOOLS naming rust.
+const installsToolchain = (command: SimpleCommand) => {
+  const make = command.name === 'make' || (command.name === 'VALUE' && /(?:^|\s)\$\(MAKE\)\s/.test(command.text));
+  if (!make || !command.args.includes('install-tools')) return false;
+  const tools = command.args.find(arg => arg.startsWith('TOOLS='));
+  return tools === undefined || tools.slice('TOOLS='.length).split(/\s+/).includes('rust');
+};
+// rustupInstalls returns whether a command is `rustup toolchain install`, which kit's rust install replaces.
+const rustupInstalls = (command: SimpleCommand) => command.name === 'rustup' && command.args[0] === 'toolchain' && command.args[1] === 'install';
 // makes returns whether a command runs a target with make.
 const makes = (command: SimpleCommand, target: string) => command.name === 'make' && command.args.includes(target);
 // release reads x.y or x.y.z as a semver version (x.y is x.y.0). It throws if it cannot read the version.
@@ -158,7 +170,9 @@ export function extensionMinorErrors(toolchain: string, workflows: Record<string
 //   - A workflow uses no action that picks a toolchain (dtolnay/rust-toolchain, actions-rust-lang/
 //     setup-rust-toolchain), no `rustup default`, no `rustup toolchain install` with arguments,
 //     no `cargo +<toolchain>`, and no RUSTUP_TOOLCHAIN. A workflow that uses cargo or the Rust cache
-//     installs rust-toolchain.toml's toolchain with `rustup toolchain install` without arguments.
+//     installs rust-toolchain.toml's toolchain with kit's rust install (make install-tools, TOOLS naming rust), and neither
+//     it nor make orm-install-rust-toolchain runs a bare `rustup toolchain install`, which under the exported
+//     RUSTUP_TOOLCHAIN leaves out the components and targets of the file.
 //   - running is the same as channel.
 export function rustToolchainErrors(toolchain: string, makefile: string, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
@@ -182,11 +196,15 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
         environment(workflow).has('RUSTUP_TOOLCHAIN'))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
     const usesRust = runs(workflow, makefile, command => cargoArgs(command) !== undefined) || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
-    // CI's steps run make targets, so `rustup toolchain install` without arguments is in the recipe of make orm-install-rust-toolchain.
+    // CI's steps run make targets, so kit's rust install is in the recipe of make orm-install-rust-toolchain.
+    const viaRecipe = runs(workflow, makefile, command => makes(command, 'orm-install-rust-toolchain'));
     const installsRust = runs(workflow, makefile, installsToolchain) ||
-      (runs(workflow, makefile, command => makes(command, 'orm-install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
+      (viaRecipe && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
     if (usesRust && !installsRust)
-      errors.push(`${path} does not install the toolchain of rust-toolchain.toml with rustup toolchain install`);
+      errors.push(`${path} does not install the toolchain of rust-toolchain.toml with make install-tools TOOLS=rust`);
+    if (runs(workflow, makefile, command => rustupInstalls(command) && command.args.length === 2) ||
+        (viaRecipe && installRecipe.some(line => commands(line, 'make').some(rustupInstalls))))
+      errors.push(`${path} installs the Rust toolchain with rustup toolchain install, which installs the exported RUSTUP_TOOLCHAIN without the components and targets of rust-toolchain.toml; run make install-tools TOOLS=rust`);
   }
   if (channel && running !== channel)
     errors.push(`rustc ${running} runs the checks; rust-toolchain.toml declares ${channel}`);

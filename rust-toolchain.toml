@@ -1,6 +1,6 @@
 # The one Rust toolchain of every cargo and rustc run in this repository:
-# the make targets read its channel, and the CI workflow installs it with
-# rustup toolchain install. make repo-check fails on another toolchain.
+# the make targets read its channel, and the CI workflow installs it, its components and its targets with
+# make install-tools TOOLS=rust (kit's rust install). make repo-check fails on another toolchain.
 [toolchain]
 channel = "1.99.0"
 # clippy and rustfmt are the lint and the form of the crates. llvm-tools holds llvm-strip, llvm-size and llvm-nm, which the

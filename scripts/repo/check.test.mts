@@ -827,7 +827,7 @@ const rust = [
   '  test:',
   '    steps:',
   '      - name: Rust toolchain',
-  '        run: rustup toolchain install',
+  '        run: make install-tools TOOLS=rust',
   '      - uses: Swatinem/rust-cache@v2',
   '      - run: (cd packages/rust && cargo test --locked)',
   '',
@@ -835,14 +835,21 @@ const rust = [
 
 caseTest('a workflow or Makefile that chooses a Rust toolchain itself fails', () => {
   assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust }, '1.98.1'), []);
-  const action = rust.replace('      - name: Rust toolchain\n        run: rustup toolchain install\n',
+  const action = rust.replace('      - name: Rust toolchain\n        run: make install-tools TOOLS=rust\n',
     '      - uses: dtolnay/rust-toolchain@stable\n        with:\n          components: clippy\n');
   assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': action }, '1.98.1'), [
     'ci.yml chooses a Rust toolchain with dtolnay/rust-toolchain; rust-toolchain.toml declares it',
-    'ci.yml does not install the toolchain of rust-toolchain.toml with rustup toolchain install',
+    'ci.yml does not install the toolchain of rust-toolchain.toml with make install-tools TOOLS=rust',
   ]);
+  // A bare rustup toolchain install installs the exported RUSTUP_TOOLCHAIN and reads neither the components nor the targets
+  // of the file (CI run 44038491048), so it is not the install of the file's toolchain.
+  assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('run: make install-tools TOOLS=rust', 'run: rustup toolchain install') }, '1.98.1'),
+    ['ci.yml does not install the toolchain of rust-toolchain.toml with make install-tools TOOLS=rust', 'ci.yml installs the Rust toolchain with rustup toolchain install, which installs the exported RUSTUP_TOOLCHAIN without the components and targets of rust-toolchain.toml; run make install-tools TOOLS=rust']);
+  for (const tools of ['make install-tools', "make install-tools 'TOOLS=go rust'"])
+    assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('make install-tools TOOLS=rust', tools) }, '1.98.1'), [], tools);
+  assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('make install-tools TOOLS=rust', 'make install-tools TOOLS=go') }, '1.98.1'), ['ci.yml does not install the toolchain of rust-toolchain.toml with make install-tools TOOLS=rust']);
   for (const run of ['rustup toolchain install 1.98.0', 'rustup default stable', 'cargo +nightly test']) {
-    assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('cargo test --locked', `true; ${run}`).replace('run: rustup toolchain install', `run: rustup toolchain install && ${run}`) }, '1.98.1'),
+    assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('cargo test --locked', `true; ${run}`).replace('run: make install-tools TOOLS=rust', `run: make install-tools TOOLS=rust && ${run}`) }, '1.98.1'),
       ['ci.yml chooses a Rust toolchain itself; rust-toolchain.toml declares it'], run);
   }
   assert.deepEqual(rustToolchainErrors(toolchain, 'PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1\n', {}, '1.98.1'), [
@@ -2727,12 +2734,15 @@ caseTest('the toolchain checks read the commands that a step runs', () => {
   assert.deepEqual(goVersionErrors({ 'ci.yml': go('cd a; go test ./...') }, ''), ['ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools']);
   assert.deepEqual(goVersionErrors({ 'ci.yml': go('cd a; go test ./...\n      - run: echo "make install-tools"') }, ''), ['ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools']);
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': go('echo "php is not used"') }, ''), []);
-  const viaMake = rust.replace('run: rustup toolchain install', 'run: make orm-install-rust-toolchain');
-  for (const recipe of ['\trustup toolchain install && rustup show\n', '\t@rustup toolchain install\n'])
+  const viaMake = rust.replace('run: make install-tools TOOLS=rust', 'run: make orm-install-rust-toolchain');
+  for (const recipe of ['\tPATH="$(HOME)/.cargo/bin:$(PATH)" $(MAKE) --no-print-directory install-tools TOOLS=rust && rustc --version\n', "\t@$(MAKE) install-tools 'TOOLS=go rust'\n"])
     assert.deepEqual(rustToolchainErrors(toolchain, `${makefile}orm-install-rust-toolchain:\n${recipe}`, { 'ci.yml': viaMake }, '1.98.1'), [], recipe);
-  for (const recipe of ['\t# rustup toolchain install\n\ttrue\n', '\techo rustup toolchain install\n'])
+  for (const recipe of ['\t# $(MAKE) install-tools TOOLS=rust\n\ttrue\n', '\techo $(MAKE) install-tools TOOLS=rust\n', '\t$(MAKE) install-tools TOOLS=go\n'])
     assert.deepEqual(rustToolchainErrors(toolchain, `${makefile}orm-install-rust-toolchain:\n${recipe}`, { 'ci.yml': viaMake }, '1.98.1'),
-      ['ci.yml does not install the toolchain of rust-toolchain.toml with rustup toolchain install'], recipe);
+      ['ci.yml does not install the toolchain of rust-toolchain.toml with make install-tools TOOLS=rust'], recipe);
+  // The recipe that kept the bare rustup toolchain install of CI run 44038491048 fails.
+  assert.deepEqual(rustToolchainErrors(toolchain, `${makefile}orm-install-rust-toolchain:\n\trustup toolchain install\n`, { 'ci.yml': viaMake }, '1.98.1'),
+    ['ci.yml does not install the toolchain of rust-toolchain.toml with make install-tools TOOLS=rust', 'ci.yml installs the Rust toolchain with rustup toolchain install, which installs the exported RUSTUP_TOOLCHAIN without the components and targets of rust-toolchain.toml; run make install-tools TOOLS=rust']);
   assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('cargo test --locked', 'echo "cargo +nightly"') }, '1.98.1'), []);
 });
 
