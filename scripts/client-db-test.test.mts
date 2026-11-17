@@ -112,7 +112,7 @@ caseTest('the Go lane runs every package of legacy/packages/go that go-test-chec
 
 caseTest('the Go lane leaves the markdown conformance test to the target that passes its server (T334-3-27)', () => {
   const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
-  assert.match(makefile, /^\tFLOWMARK=\$\(FLOWMARK\) \$\(GO_TEST\) \.\/packages\/go\/markdownmodel -run '\^TestMarkdownConformance\$\$' -count=1$/m);
+  assert.match(makefile, /^\tFLOWMARK=\$\(FLOWMARK\) \$\(GO_TEST\) \.\/legacy\/packages\/go\/markdownmodel -run '\^TestMarkdownConformance\$\$' -count=1$/m);
   const skip = new RegExp(GO_LANE_SKIP);
   assert.ok(skip.test('TestMarkdownConformance'), 'the markdown conformance test');
   assert.ok(!skip.test('TestMarkdownConformanceHelper'), 'a skip names the whole test');
