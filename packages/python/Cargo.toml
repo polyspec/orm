@@ -9,7 +9,7 @@ publish = false
 build = "build.rs"
 
 [lib]
-name = "_native"
+name = "polyspec_orm_python"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
 
