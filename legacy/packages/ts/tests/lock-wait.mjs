@@ -12,7 +12,7 @@ import { mysqlConnection, postgresClient } from './case-database.mjs';
  */
 export function postgresSession(dsn) {
   const variable = 'ORM_TEST_POSTGRES_SERVER_DSN';
-  if (!process.env[variable]) throw new Error(`${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+  if (!process.env[variable]) throw new Error(`${variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it`);
   const server = new URL(process.env[variable]);
   server.pathname = new URL(dsn).pathname;
   return postgresClient(server.toString());
