@@ -1,14 +1,433 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 48357edf19dadffcd754c41a99d97573d82d8d720fafb563d7f475534fc92522 -->
+<!-- source-sha256: 2d9c99bb58986a088f2737290f68f1b8f8c33ed8d2bff80411b723bee8d9fb19 -->
 # 사용법
 
-하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
+릴리스 v0.0.34는 Rust 코어와, 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩의 첫 릴리스다. 바인딩은 TypeScript와 Node(`packages/ts`), Python(`packages/python`), PHP extension(`packages/php-ext`), Go(`packages/go`)다. 그 릴리스의 사용자가 가진 것은 [생성된 바인딩](#generated-bindings)에 있다. 손으로 쓴 클라이언트는 `legacy/packages`에 보존하며 v0.0.34는 그것을 릴리스하지 않는다([CORE-1](../spec/core.ko.md)). 1절부터 12절까지는 그 클라이언트를 설명하며, [legacy/packages의 언어 구현](#language-implementations-under-legacy-packages)에 그 범위가 있다.
 대상 DB는 MySQL 8(기본), PostgreSQL 12+, SQLite 3.46+.
-
-쿼리는 생성된 모델에서 시작하고 `connect`로 열린 데이터베이스 연결을 받는다. 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다.
 
 문법의 전체 목록은 [dsl.md](../spec/dsl.md), 스키마 언어는 [dbspec.md](../spec/dbspec.md), 스키마 도구는 [schema.md](../spec/schema.md), IR/Plan 명세는 [protocol.md](../spec/protocol.md),
 방언 차이는 [dialects.md](../spec/dialects.md), 설정은 [config.md](../spec/config.md), 에러 코드는 [errors.yaml](../spec/errors.yaml)에 있다.
+
+---
+
+## 생성된 바인딩 {#generated-bindings}
+
+생성된 바인딩은 호출자의 프로세스 안에서 Rust 코어를 호출한다. 공개 이름은 contract의 이름을 각 언어의 표기로 쓴 것이다. TypeScript와 PHP는 `camelCase`, Python은 `snake_case`, Go는 `PascalCase`다. 이 절의 예제마다 그 호출이 들어 있는 생성된 test의 이름이 있다. 생성된 test 파일은 `packages/ts/generated/tests/generated.test.mjs`, `packages/python/generated/tests/test_generated.py`(class `GeneratedTest`), `packages/php-ext/generated/tests/GeneratedTest.php`, `packages/go/zz_generated_test.go`이며 `make bindings`가 쓴다. 예제는 그 test의 스키마 text와 변수 이름을 줄이고, 각 호출은 test에 있는 그대로다.
+
+### 바인딩에 아직 없는 것 {#what-the-bindings-do-not-have-yet}
+
+이 릴리스는 손으로 쓴 패키지를 대체하지 않는다. [contract에 견준 공개 표면의 표](../spec/feature-coverage.ko.md#legacy-surface-against-the-contract)(FCV-21)에 손으로 쓴 패키지의 공개 멤버와 그 상태가 모두 있다. v0.0.34의 바인딩에는 다음이 없다.
+
+- 생성된 typed 모델과 `orm-gen` 명령. 바인딩에는 class `Query`가 있고, `Query`는 `Schema.load`가 실행 중에 읽은 스키마에서 엔티티, 컬럼, chain, 정렬을 text로 지정한다. 어떤 바인딩 패키지에도 `orm-gen`이 없으며, crate `polyspec-orm-build`는 Rust 모델만 생성한다.
+- `get`과 `gets`로 행 읽기. contract는 `get`, `gets`, `getsBy`, `getQuery`, `toArray`도, `Collection`, `Page`, `LookaheadPage`도 선언하지 않는다. 바인딩의 읽기는 `getBy`, `getCount`, `getCountBy`, `value`, 관계 `related`와 `relatedRows`, 그리고 `StepRunner.run`이다. `StepRunner.run`은 `get` 또는 `gets` step의 행을 JSON text로 반환한다.
+- `utils()`. statement runner, lock과 local 값(`lock`, `setLocal`, `local`), 스키마 유틸리티 `register`, `install`, `addTablesAndColumns`, privilege, AES rotation이 없다. 연결의 스키마는 `connectSchema`가 등록한 하나이며, 한 연결에 여러 스키마를 등록하는 멤버는 없다.
+- [CORE-84](../spec/core.ko.md)가 구현되지 않았다고 적은 모델 멤버. `creates`, `save`, `join`과 `leftJoin`, 그룹 `and(fn)`, `or(fn)`, `not(fn)`, `andNot(fn)`, `orNot(fn)`, `on(fn)`, `and(model)`과 `or(model)`, 두 컬럼의 비교, `getsCount`, `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, 함수나 subquery로 추가한 컬럼, 함수에 대한 조건이다.
+- 코어의 어떤 규칙에도 없는 모델 멤버. `getPagePlanSteps`, `duplication`, optimistic `update(true)`, 재귀 `delete(true)`, `orderByRandom`, `parentNode`, `groupLimit`, `deleteLock`, `fetchKey`, `fetchValue`, `possible<Col>`, `forceIndex<Name>`, 증감 `plus<Col>`과 `minus<Col>`, `new<Name>`과 `get<Name>`, `toJSON`, 컬럼 함수로 하는 정렬, 집계 `groupBy<Col>`, `sum<Col>`, `avg<Col>`이다.
+- Statement event. 코어에는 `subscribe`가 있고 contract는 그것을 선언하지 않으므로 어떤 바인딩에도 없다.
+- Request hook. 코어에는 `withRequestHook`이 있고 contract는 그것을 선언하지 않으므로 어떤 바인딩에도 없다.
+- `beforeTransaction`. 코어에는 트랜잭션 전의 hook이 없다.
+- request의 `require_match`. 코어는 이 멤버를 `ir_invalid`로 거절하며, 어떤 행과도 일치하지 않은 update나 delete는 성공한다.
+- 취소 때 진행 중인 statement의 종료. `withCancel`은 handle을 파생하고, 취소가 이미 일어난 handle의 statement는 전송되기 전에 `canceled`로 실패한다. 취소가 일어날 때 진행 중이던 statement는 서버에서 종료되지 않는다. 그 statement는 끝까지 실행되고 자기 결과를 반환한다([CORE-47](../spec/core.ko.md), "Not implemented").
+- `StyledValue`. 스타일이 있는 컬럼의 값은 contract의 타입 없는 값인 `orm_value`로 코어에서 나오고, `decode`도 그런 값을 반환한다.
+
+`analyzeRestore`는 이 릴리스에서 `Db`의 멤버다([CORE-141](../spec/core.ko.md)). restore request를 JSON text로 받고 `key`와 `assignments`의 JSON text를 반환한다.
+
+```typescript
+const analysis = db.analyzeRestore('{"ir_version":2,"manifest_hash":"sha256:f2bb…040a","kind":"restore","entity":"item","n_params":2,"set":[{"column":"id","p":0},{"column":"meta","p":1}]}');
+// '{"assignments":["meta"],"key":["id"]}'
+// generated test: GN-13e: Db.analyzeRestore primary_key
+```
+```python
+analysis = db.analyze_restore(request)  # generated test: test_gn13e_db_analyze_restore_primary_key
+```
+```php
+$analysis = $db->analyzeRestore($request); // generated test: testGn13eDbAnalyzeRestorePrimaryKey
+```
+
+### 설치 {#installation}
+
+v0.0.34의 패키지는 GitHub Release의 asset이며 어떤 registry에도 없다. 각 바인딩은 polyspec의 json 라이브러리 0.0.34에 의존하고 그것도 어떤 registry에 없으므로, 사용자는 그 sibling을 release asset의 URL로 지정한다.
+
+- Node: 패키지 `@polyspec/orm`(`polyspec-orm-0.0.34.tgz`)은 `@polyspec/json` `0.0.34`에 버전으로 의존하고, native 라이브러리를 그 기계의 platform 패키지 `@polyspec/orm-darwin-arm64`, `@polyspec/orm-linux-arm64-gnu`, `@polyspec/orm-linux-x64-gnu` 중 하나에서 읽는다. 사용자는 자기 dependencies에 패키지 넷을 각각 release asset의 URL로 적는다. orm 패키지, 그 platform 패키지, `@polyspec/json`, json의 platform 패키지다. npm은 함께 설치된 패키지로 `@polyspec/json`의 버전 `0.0.34`를 충족한다.
+
+  ```json
+  {
+    "dependencies": {
+      "@polyspec/orm": "https://github.com/polyspec/orm/releases/download/v0.0.34/polyspec-orm-0.0.34.tgz",
+      "@polyspec/orm-darwin-arm64": "https://github.com/polyspec/orm/releases/download/v0.0.34/polyspec-orm-darwin-arm64-0.0.34.tgz",
+      "@polyspec/json": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-0.0.34.tgz",
+      "@polyspec/json-darwin-arm64": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-darwin-arm64-0.0.34.tgz"
+    }
+  }
+  ```
+
+  json의 platform 패키지는 `@polyspec/json-darwin-arm64`, `@polyspec/json-linux-arm64-gnu`, `@polyspec/json-linux-x64-gnu`다(`polyspec-json-linux-arm64-gnu-0.0.34.tgz`, `polyspec-json-linux-x64-gnu-0.0.34.tgz`).
+
+- Python: wheel `polyspec-orm`은 `polyspec-json==0.0.34`와 Python 3.14를 요구한다. 사용자는 자기 platform의 json wheel을 release asset에서 orm wheel과 함께 설치한다.
+
+  ```sh
+  uv pip install \
+    https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-macosx_11_0_arm64.whl \
+    https://github.com/polyspec/orm/releases/download/v0.0.34/polyspec_orm-0.0.34-cp314-abi3-macosx_11_0_arm64.whl
+  ```
+
+  `pip install`도 같은 두 URL을 받는다. Linux의 json wheel은 `polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_aarch64.whl`과 `polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_x86_64.whl`이다. `config/binding-python-siblings.txt`에는 platform마다 json wheel이 marker와 sha256을 가진 requirement 줄로 있다. 예를 들면 `polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-macosx_11_0_arm64.whl --hash=sha256:ba29ddb049a60c499f2b8f2777f257c91fdabef826f22e2e229d8c916ae4a31e`이다. 그 파일을 준 `uv pip install --verify-hashes -r`은 각 hash를 검사한다.
+
+- PHP: extension `polyspec_orm`은 type이 `php-ext`인 Composer 패키지 `polyspec/orm`이며, PIE가 릴리스의 `packages.json`에서 설치한다. PIE는 PHP minor(8.4 또는 8.5)와 platform에 맞는 binary를 내려받는다. extension은 `ext-polyspec_json`과 `polyspec/json` `0.0.34`를 요구하므로 사용자는 그 json 릴리스의 repository도 추가한다([packaging](packaging.ko.md)).
+
+  ```sh
+  pie repository:add composer https://github.com/polyspec/json/releases/download/v0.0.34/packages.json
+  pie repository:add composer https://github.com/polyspec/orm/releases/download/v0.0.34/packages.json
+  pie install polyspec/orm:0.0.34
+  ```
+
+- Go: module은 `github.com/polyspec/orm/packages/go`이며 `github.com/polyspec/json/packages/go` `v0.0.34`를 요구한다. module의 tag는 생성된 파일과 platform마다의 코어 static 라이브러리(`darwin_arm64`, `linux_amd64`, `linux_amd64_musl`, `linux_arm64`, `linux_arm64_musl`)가 들어 있는 commit이고, 빌드는 cgo로 자기 platform의 라이브러리를 link한다.
+
+  ```sh
+  go get github.com/polyspec/orm/packages/go@v0.0.34
+  ```
+
+### 연결과 쿼리 {#connecting-and-querying}
+
+`Schema.load(manifestText, externalText, manifestHash)`는 실행 중에 스키마를 읽는다. 인자는 document set의 manifest text, external document의 text(없으면 빈 text), manifest text의 hash다. hash는 `sha256:`과 그 text의 SHA-256 16진수다. manifest가 아닌 text는 `schema_invalid`로, hash가 다른 text는 `schema_hash_mismatch`로 실패한다.
+
+`Db.connect(dsn, poolSize, config)`는 스키마 없이 연결이 최대 `poolSize`개인 pool을 열고, `Db.connectSchema(dsn, schema, poolSize, config)`는 pool을 열고 그 스키마를 등록한다. DSN의 형식은 [연결](#_4-connections)에 있다. 설정은 Node에서는 object, Python에서는 keyword 인자, PHP에서는 pool 크기 뒤의 named parameter이며 각각 기본값이 있다.
+
+`Query.new(schema, entity)`는 엔티티를 text로 지정하고, `connect(db)`는 쿼리에 연결을 준다. `connect`는 아무것도 반환하지 않고 `where`, `orderBy`, `limit`, `set`도 그러므로 호출을 이어 쓸 수 없다. `where(chain, values)`는 [dsl.md](../spec/dsl.md)의 chain 이름(`Id`, `GtId`, `OrGtId` 등)과 key마다 값 하나를 받는다. `And`나 `Or`로 시작하는 이름은 첫 조건을 앞의 조건에 그 connector로 잇는다. `getCount()`는 count를 반환하며 Node에서는 `bigint`다. `getBy(chain, values)`는 행을 같은 엔티티의 `Query`로 반환하고 일치하는 행이 없으면 null을 반환한다. `getCountBy(chain, values)`는 chain의 조건을 `and`로 이어서 count한다. `value(column)`은 행의 컬럼 값을 반환한다.
+
+```typescript
+import * as orm from '@polyspec/orm';
+
+const schema = orm.Schema.load(manifestText, '', manifestHash);
+const db = await orm.Db.connectSchema('sqlite:///var/lib/shop.db', schema, 1, {});
+
+const items = orm.Query.new(schema, 'item');
+items.connect(db);
+items.where('Id', [100]);
+items.where('OrGtId', [0]);
+const count = await items.getCount();
+// generated test: GN-13e: Query.getCount a_condition_joined_by_or_reads_no_soft_deleted_row
+const others = await items.getCountBy('Id', [2]);
+// generated test: GN-13e: Query.getCountBy a_condition_joined_by_or_counts_no_soft_deleted_row
+
+const item = orm.Query.new(schema, 'item');
+item.connect(db);
+const row = await item.getBy('Id', [3]);
+// generated test: B-4: Query.getBy a_stored_cell_that_is_not_json
+const meta = row.value('meta');
+// generated test: B-4: Query.value a_json_cell_with_a_lone_surrogate
+```
+```python
+import polyspec.orm as orm
+
+schema = orm.Schema.load(manifest_text, "", manifest_hash)
+db = orm.Db.connect_schema("sqlite:///var/lib/shop.db", schema, 1)
+
+items = orm.Query.new(schema, "item")
+items.connect(db)
+items.where("Id", [100])
+items.where("OrGtId", [0])
+count = items.get_count()
+# generated test: test_gn13e_query_get_count_a_condition_joined_by_or_reads_no_soft_deleted_row
+others = items.get_count_by("Id", [2])
+# generated test: test_gn13e_query_get_count_by_a_condition_joined_by_or_counts_no_soft_deleted_row
+
+item = orm.Query.new(schema, "item")
+item.connect(db)
+row = item.get_by("Id", [3])
+# generated test: test_b4_query_get_by_a_stored_cell_that_is_not_json
+meta = row.value("meta")
+# generated test: test_b4_query_value_a_json_cell_with_a_lone_surrogate
+```
+```php
+$schema = \Polyspec\Orm\Schema::load($manifestText, "", $manifestHash);
+$db = \Polyspec\Orm\Db::connectSchema("sqlite:///var/lib/shop.db", $schema, 1);
+
+$items = \Polyspec\Orm\Query::new($schema, "item");
+$items->connect($db);
+$items->where("Id", [100]);
+$items->where("OrGtId", [0]);
+$count = $items->getCount();
+// generated test: testGn13eQueryGetCountAConditionJoinedByOrReadsNoSoftDeletedRow
+$others = $items->getCountBy("Id", [2]);
+// generated test: testGn13eQueryGetCountByAConditionJoinedByOrCountsNoSoftDeletedRow
+
+$item = \Polyspec\Orm\Query::new($schema, "item");
+$item->connect($db);
+$row = $item->getBy("Id", [3]);
+// generated test: testB4QueryGetByAStoredCellThatIsNotJson
+$meta = $row->value("meta");
+// generated test: testB4QueryValueAJsonCellWithALoneSurrogate
+```
+
+Go에는 같은 멤버가 error를 반환하는 함수와 메서드로 있다. `SchemaLoad`, `DbConnectSchema`, `QueryNew`, `Connect`, `Where`, `GetCount`다(생성된 test `TestGN13eQueryGetCountAConditionJoinedByOrReadsNoSoftDeletedRow`).
+
+```go
+schema, err := orm.SchemaLoad(manifestText, "", manifestHash)
+db, err := orm.DbConnectSchema("sqlite:///var/lib/shop.db", schema, 1, orm.Config{})
+items, err := orm.QueryNew(schema, "item")
+err = items.Connect(db)
+err = items.Where("Id", []any{int64(100)})
+count, err := items.GetCount()
+```
+
+`orderBy(spec)`은 정렬을 `SeqDescAndLabelAsc` 같은 이름 하나로 받으며, 각 key는 컬럼과 `Asc` 또는 `Desc`다. `limit(offset, count)`는 정렬의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다. `limit`의 두 인자는 부호 없는 정수이며, `count`가 0이면 다음 terminal에서 `config`로 실패한다.
+
+```typescript
+const events = orm.Query.new(schema, 'clock_event');
+events.orderBy('SeqDescAndLabelAsc'); // generated test: GN-13e: Query.orderBy an_order
+events.limit(1, 2);                   // generated test: GN-13e: Query.limit a_range
+```
+```python
+events = orm.Query.new(schema, "clock_event")
+events.order_by("SeqDescAndLabelAsc")  # generated test: test_gn13e_query_order_by_an_order
+events.limit(1, 2)                     # generated test: test_gn13e_query_limit_a_range
+```
+```php
+$events = \Polyspec\Orm\Query::new($schema, "clock_event");
+$events->orderBy("SeqDescAndLabelAsc"); // generated test: testGn13eQueryOrderByAnOrder
+$events->limit(1, 2);                   // generated test: testGn13eQueryLimitARange
+```
+
+이 두 예제의 인자는 `contracts/interface/core.json`에 있는 contract case, 곧 `query.order_by`의 `an_order`와 `query.limit`의 `a_range`의 인자다. 두 case의 생성된 test에는 아직 호출이 없다. 생성기가 아무것도 반환하지 않는 멤버의 비교를 쓰지 않기 때문이다.
+
+`set(column, value)`는 컬럼 이름을 써서 값을 대입한다. `create()`는 행을 insert하고 그 행을 `Query`로 반환한다. `update()`와 `delete()`는 인자가 없으며, 대입한 값이 정하는 key의 행 하나를 쿼리의 조건 아래에서 쓴다([CORE-138](../spec/core.ko.md)). `expectRevision(column, revision)`을 호출하면 행의 revision이 다를 때 쓰기가 `revision_changed`로 실패한다.
+
+```typescript
+const created = orm.Query.new(schema, 'item');
+created.connect(db);
+created.set('code', 'live');
+created.set('qty', 1);
+created.set('rev', 1);
+const stored = await created.create(); // generated test: B-4: Query.create a_duplicate_key
+
+const changed = orm.Query.new(schema, 'item');
+changed.connect(db);
+changed.set('id', 1);
+changed.set('qty', 2);
+changed.expectRevision('rev', 5);
+await changed.update();                // generated test: B-4: Query.update a_changed_revision
+
+const removed = orm.Query.new(schema, 'owner');
+removed.connect(db);
+removed.set('id', 1);
+await removed.delete();                // generated test: B-4: Query.delete a_referenced_parent
+```
+```python
+created = orm.Query.new(schema, "item")
+created.connect(db)
+created.set("code", "live")
+created.set("qty", 1)
+created.set("rev", 1)
+stored = created.create()  # generated test: test_b4_query_create_a_duplicate_key
+
+changed = orm.Query.new(schema, "item")
+changed.connect(db)
+changed.set("id", 1)
+changed.set("qty", 2)
+changed.expect_revision("rev", 5)
+changed.update()           # generated test: test_b4_query_update_a_changed_revision
+
+removed = orm.Query.new(schema, "owner")
+removed.connect(db)
+removed.set("id", 1)
+removed.delete()           # generated test: test_b4_query_delete_a_referenced_parent
+```
+```php
+$created = \Polyspec\Orm\Query::new($schema, "item");
+$created->connect($db);
+$created->set("code", "live");
+$created->set("qty", 1);
+$created->set("rev", 1);
+$stored = $created->create(); // generated test: testB4QueryCreateADuplicateKey
+
+$changed = \Polyspec\Orm\Query::new($schema, "item");
+$changed->connect($db);
+$changed->set("id", 1);
+$changed->set("qty", 2);
+$changed->expectRevision("rev", 5);
+$changed->update();           // generated test: testB4QueryUpdateAChangedRevision
+
+$removed = \Polyspec\Orm\Query::new($schema, "owner");
+$removed->connect($db);
+$removed->set("id", 1);
+$removed->delete();           // generated test: testB4QueryDeleteAReferencedParent
+```
+
+이 쓰기와 읽기 예제에 적힌 test는 실패 case다. 각 test는 예제의 호출을, 다른 행이 이미 가진 code처럼 그 호출이 실패하는 fixture에서 한다. 호출이 성공할 때도 형식은 같다.
+
+### 트랜잭션 {#transactions}
+
+`db.transaction(callback, options)`는 pool의 연결 하나에서 새 트랜잭션을 열어 callback을 실행하고, callback에 트랜잭션 handle인 `Tx`를 넘긴다([CORE-20](../spec/core.ko.md)). callback이 반환하면 commit하고 그 값이 `transaction`의 결과다. callback이 실패하면 rollback하고 그 실패를 그대로 반환한다. 트랜잭션으로 들어가는 길은 handle뿐이며, 실행 흐름의 활성 트랜잭션은 없다.
+
+- 쿼리는 `query.connect(tx)` 뒤에 그 트랜잭션에서 실행된다. 트랜잭션 전에 만든 쿼리와 전에 읽은 행도 같은 호출 뒤에 그 트랜잭션에서 실행된다. 연결이 없는 쿼리는 `config`로 실패한다.
+- callback이 `Db`로 전송한 statement는 트랜잭션 밖이다. `Db`는 pool이므로 그 statement는 다른 연결을 쓰고, 스스로 commit되며, 트랜잭션이 rollback된 뒤에도 남는다.
+- callback 안의 `db.transaction`은 pool의 다른 연결에서 독립된 트랜잭션을 연다. 트랜잭션 안쪽 단위는 `tx.savepoint(callback)`이다. 이 호출은 callback에 savepoint의 handle인 `Tx`를 넘기고 옵션을 받지 않는다([CORE-21](../spec/core.ko.md)). 그 callback이 실패하면 savepoint까지 rollback하고 실패를 그대로 반환한다.
+- 한 트랜잭션은 한 번에 statement 하나를 실행한다. 한 statement가 끝나지 않은 동안 같은 `Tx`로 온 두 번째 statement는 `busy`로 실패하고, savepoint callback이 실행되는 동안 바깥 handle로 온 statement도 그렇다. callback이 반환한 뒤에는 그 `Tx`와 거기에 연결한 모든 쿼리가 `transaction_ended`로 실패한다.
+
+옵션은 `isolation`(`read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`), `read_only`, `timeout_ms`, `retry`, `audit`이며 Node와 PHP에서는 `readOnly`와 `timeoutMs`다. null인 옵션은 코어의 값을 가진다. 서버의 isolation level, read-only가 아닌 트랜잭션, 시간 제한 없음, retry 3번, audit 값 없음이다. `retry`는 `deadlock`으로 실패한 트랜잭션을 다시 실행하는 최대 수이며, 바인딩을 거칠 때는 commit의 `deadlock`만 다시 실행한다([CORE-104](../spec/core.ko.md)). `audit`는 [감사 대상 쓰기](#audited-writes)의, 컬럼 이름에서 값으로 가는 map이다. Node에서는 `Map`, Python에서는 `dict`, PHP에서는 배열이다. 연결의 audit source는 설정의 필드 `auditSource`다(Python은 `audit_source`).
+
+이 릴리스의 바인딩에서 모든 옵션은 필수 인자다. Node는 인자 둘을 받고 둘째는 필드 다섯이 있는 object다. Python은 keyword 인자 다섯을 받는다. PHP는 parameter 여섯을 받는다. 옵션의 기본값은 `Tx`를 받지 않는 callback의 거절과 함께 계획되어 있다. 이 릴리스에서 Node와 PHP는 parameter를 선언하지 않은 callback을 호출하고 handle을 버리므로, 그 callback이 `Db`로 실행한 statement는 트랜잭션 밖이다. parameter를 선언한다.
+
+```typescript
+const options = { isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null };
+
+const result = await db.transaction((tx) => 'done', options);
+// generated test: GN-13e: Db.transaction a_callback_commits_its_result
+
+const events = orm.Query.new(schema, 'clock_event');
+await db.transaction((tx) => { events.connect(tx); return 'done'; }, options);
+await events.getCount(); // fails with transaction_ended
+// generated test: GN-13e: Db.transaction a_query_connected_to_a_tx_has_ended_after_the_callback
+
+const step = '{"id":1,"role":"main","sql":"INSERT INTO owner (name) VALUES (\'bo\')","tables":[],"bind_slots":[]}';
+await db.transaction(async (tx) => {
+  await tx.savepoint(async (inner) => { await inner.execute(step, []); return 'done'; });
+  return 'done';
+}, options);
+// generated test: GN-13e: Db.transaction a_statement_runs_in_a_savepoint
+
+await db.transaction(async (tx) => { await db.execute(step, []); throw raised; }, { isolation: null, readOnly: true, timeoutMs: null, retry: null, audit: null });
+// the row of step stays: db.execute is outside the transaction
+// generated test: GN-6ae: Db.transaction a_row_written_through_the_db_in_a_callback_that_raises_stays
+```
+```python
+def commits(tx):
+    return "done"
+
+result = db.transaction(commits, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+# generated test: test_gn13e_db_transaction_a_callback_commits_its_result
+
+events = orm.Query.new(schema, "clock_event")
+
+def connects(tx):
+    events.connect(tx)
+    return "done"
+
+db.transaction(connects, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+events.get_count()  # fails with transaction_ended
+# generated test: test_gn13e_db_transaction_a_query_connected_to_a_tx_has_ended_after_the_callback
+
+step = '{"id":1,"role":"main","sql":"INSERT INTO owner (name) VALUES (\'bo\')","tables":[],"bind_slots":[]}'
+
+def inner(tx):
+    tx.execute(step, [])
+    return "done"
+
+def outer(tx):
+    tx.savepoint(inner)
+    return "done"
+
+db.transaction(outer, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+# generated test: test_gn13e_db_transaction_a_statement_runs_in_a_savepoint
+
+def outside(tx):
+    db.execute(step, [])
+    raise raised
+
+db.transaction(outside, isolation=None, read_only=True, timeout_ms=None, retry=None, audit=None)
+# the row of step stays: db.execute is outside the transaction
+# generated test: test_gn6ae_db_transaction_a_row_written_through_the_db_in_a_callback_that_raises_stays
+```
+```php
+$result = $db->transaction(function (\Polyspec\Orm\Tx $tx): mixed { return "done"; }, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+// generated test: testGn13eDbTransactionACallbackCommitsItsResult
+
+$events = \Polyspec\Orm\Query::new($schema, "clock_event");
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($events): mixed { $events->connect($tx); return "done"; }, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+$events->getCount(); // fails with transaction_ended
+// generated test: testGn13eDbTransactionAQueryConnectedToATxHasEndedAfterTheCallback
+
+$step = "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}";
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($step): mixed {
+    $tx->savepoint(function (\Polyspec\Orm\Tx $inner) use ($step): mixed { $inner->execute($step, []); return "done"; });
+    return "done";
+}, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+// generated test: testGn13eDbTransactionAStatementRunsInASavepoint
+
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($db, $step, $raised): mixed { $db->execute($step, []); throw $raised; }, isolation: null, readOnly: true, timeoutMs: null, retry: null, audit: null);
+// the row of $step stays: $db->execute is outside the transaction
+// generated test: testGn6aeDbTransactionARowWrittenThroughTheDbInACallbackThatRaisesStays
+```
+
+Go에서 callback은 `func(*orm.Tx) (any, error)`이고 옵션은 struct `orm.TransactionOptions`이며, 그 zero value는 모든 옵션을 생략한다(생성된 test `TestGN13eDbTransactionASavepointInTheCallback`).
+
+```go
+result, err := db.Transaction(func(tx *orm.Tx) (any, error) {
+	return tx.Savepoint(func(inner *orm.Tx) (any, error) { return "done", nil })
+}, orm.TransactionOptions{})
+```
+
+`transactionActive()`(Python은 `transaction_active()`)는 handle이 열린 트랜잭션의 handle인지 반환한다([CORE-140](../spec/core.ko.md)). `Tx`에서는 그 handle을 받은 callback이 실행되는 동안 true이고 그 callback이 반환한 뒤에는 false다. `Db`에서는 항상 false이며, 그 `Db`의 트랜잭션 callback 안에서도 그렇다. 손으로 쓴 클라이언트의 연결에 트랜잭션 안인지 묻던 code는 `Tx`를 인자로 받거나, 자기가 가진 `Tx`에 묻는다.
+
+```typescript
+await db.transaction((tx) => {
+  tx.transactionActive(); // true
+  db.transactionActive(); // false
+  return 'done';
+}, options);
+// generated test: GN-13e: Db.transaction a_db_is_not_active_in_the_callback_of_its_transaction
+```
+```python
+def asks(tx):
+    tx.transaction_active()  # True
+    db.transaction_active()  # False
+    return "done"
+
+db.transaction(asks, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+# generated test: test_gn13e_db_transaction_a_db_is_not_active_in_the_callback_of_its_transaction
+```
+```php
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($db): mixed {
+    $tx->transactionActive(); // true
+    $db->transactionActive(); // false
+    return "done";
+}, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+// generated test: testGn13eDbTransactionADbIsNotActiveInTheCallbackOfItsTransaction
+```
+
+### 에러 {#errors}
+
+바인딩의 에러는 그 category의 class의 instance이며 코어의 kind를 `kind`로 가진다([CORE-10부터 CORE-12](../spec/core.ko.md)). 이 class들이 `code`를 가진 `OrmError`와 `OrmException`을 대신한다. class는 Node와 PHP에서 `OrmValueError`, `OrmTypeError`, `OrmIoError`, `OrmStoreError`, `OrmBusyError`, `OrmInternalError`이고, Python과 Go module의 패키지 `errors`에서 `ORMValueError`, `ORMTypeError`, `ORMIoError`, `ORMStoreError`, `ORMBusyError`, `ORMInternalError`다. `kind`는 Node와 Python에서 property, PHP에서 메서드 `kind()`, Go에서 `Kind()`다.
+
+kind는 [자주 나는 에러](#_11-common-errors)의 code를 소문자로 쓴 것이다. `NO_ROWS`는 `no_rows`다. 손으로 쓴 클라이언트가 `CONFIG`로 보고하는 실패 넷은 자기 kind `busy`, `transaction_ended`, `closed`, `pool_timeout`을 가진다. `rollback_failed`가 `ROLLBACK`을 대신하며 callback의 실패를 `callbackError`로, rollback의 에러를 `rollbackError`로 가진다. 에러의 message는 kind, colon, text 순서다.
+
+```typescript
+try {
+  await created.create();
+} catch (error) {
+  if (error instanceof orm.OrmStoreError && error.kind === 'duplicate_key') { /* the key exists */ }
+}
+// generated test: B-4: Query.create a_duplicate_key
+```
+```python
+try:
+    created.create()
+except orm.ORMStoreError as error:
+    if error.kind == "duplicate_key":
+        pass  # the key exists
+# generated test: test_b4_query_create_a_duplicate_key
+```
+```php
+try {
+    $created->create();
+} catch (\Polyspec\Orm\OrmStoreError $error) {
+    if ($error->kind() === "duplicate_key") { /* the key exists */ }
+}
+// generated test: testB4QueryCreateADuplicateKey
+```
+
+---
+
+## legacy/packages의 언어 구현 {#language-implementations-under-legacy-packages}
+
+1절부터 12절까지는 `legacy/packages`의 언어 구현을 설명한다. 손으로 쓴 클라이언트와 `legacy/packages/php-ext`의 PHP extension이다. 저장소는 그 구현을 자체 test와 differential test의 다른 쪽으로 보존하며([CORE-1](../spec/core.ko.md)), v0.0.34는 그것을 릴리스하지 않는다. v0.0.34의 패키지 `@polyspec/orm`, `polyspec/orm`, `polyspec-orm`은 위의 생성된 바인딩이며 `orm-gen`도, 생성된 모델도, `utils()`도 없다. 아래 절의 패키지 이름은 `legacy/packages`의 패키지다.
+
+아래 절의 Rust 줄은 `polyspec-orm-build`의 모델을 쓰는 코어 crate `polyspec-orm`을 설명한다. 그 트랜잭션은 위 [트랜잭션](#transactions)의 규칙을 따른다. `Db::transaction_async(callback, options)`는 callback에 `Tx`를 넘기고, 모델은 `connect(&tx)` 뒤에 그 트랜잭션에서 실행되며, `Db::transaction_active`는 항상 false다.
+
+하나의 dbspec document set에서 language client를 생성한다. `contracts/implementations.json`은 Go, PHP, PHP extension, TypeScript, Python, Rust를 여섯 구현으로 선언한다. PHP extension은 PHP 쪽 API surface를 공유하며 그 미완료 native 범위는 별도로 추적한다.
+
+쿼리는 생성된 모델에서 시작하고 `connect`로 열린 데이터베이스 연결을 받는다. 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다.
 
 ---
 
@@ -19,8 +438,8 @@
 | Go 1.27+ | 엔진·생성기·Go 클라이언트 |
 | MySQL 8.0.2+ / MariaDB 10.2+ | 1차 대상. PostgreSQL 12+, SQLite 3.46+도 같은 플랜으로 동작 |
 | PHP 8.4+ (`pdo_mysql`) | PHP에 필요하다. PostgreSQL에는 `pdo_pgsql`과 `ext-pgsql`, SQLite에는 `pdo_sqlite`를 추가한다. PostgreSQL 취소는 `ext-pgsql`을 사용한다. |
-| Rust 1.98+ | Rust에 필요하다 |
-| Node.js 22.16+ | TypeScript에 필요하다 |
+| Rust 1.99+ | Rust에 필요하다 |
+| Node.js 26.12+ | TypeScript에 필요하다 |
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
@@ -73,7 +492,7 @@ table authors {
 
 ## 3. 코드 생성
 
-각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 dbspec document set을 읽어 manifest text와 `manifestHash`를 담고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
+각 언어는 자기 빌드 도구로 모델을 생성한다. `orm-gen` 명령은 `legacy/packages`의 패키지에 있는 것이며, v0.0.34의 어떤 패키지에도 없다. 생성기는 dbspec document set을 읽어 manifest text와 `manifestHash`를 담고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
 
 모든 생성기는 document set을 [set 파일](../spec/dbspec.ko.md#document-sets)로만 받는다. 여기서는 나열하는 문서 옆의 `contracts/fixtures/bench/dbspec-set.json`이다:
 
@@ -99,7 +518,7 @@ fn main() {
 |---|---|---|
 | Go | `//go:generate` 줄의 `orm-gen gen --lang go` | `go build` 전에 `go generate` |
 | PHP | `vendor/bin/orm-gen gen` | 스키마 변경 후 Composer 스크립트 |
-| TypeScript | `@polyspec/orm`의 `orm-gen gen` | `tsc` 전에 `build` 스크립트 |
+| TypeScript | `legacy/packages/ts`의 `@polyspec/orm`의 `orm-gen gen` | `tsc` 전에 `build` 스크립트 |
 | Python | `orm-gen gen`(Python package) | 스키마나 scan한 소스가 바뀐 뒤 |
 | Rust | `polyspec-orm-build` crate | `cargo build` 때마다 `build.rs`에서 실행. `polyspec_orm::models!()`가 모델을 `model` 모듈로 포함한다 |
 
@@ -117,7 +536,7 @@ go run github.com/polyspec/orm/legacy/packages/go/cmd/orm-gen gen --set contract
 
 ---
 
-## 4. 연결
+## 4. 연결 {#_4-connections}
 
 연결은 DSN URI 하나를 인자로 받으며, 클라이언트는 환경이나 비밀 저장소를 스스로 읽지 않는다. URI scheme이 데이터베이스를 선택하며 호출자는 별도 드라이버 값을 전달하지 않는다.
 
@@ -290,7 +709,7 @@ $row->newIsMember(true);                                                        
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 선택한 행 잠금을 실행하며 `NoWait`는 행을 사용할 수 없으면 즉시 실패한다. SQLite는 잠금 접미사를 만들지 않고 네 모드 모두 ORM 트랜잭션 범위의 데이터베이스 잠금 행을 사용한다. SQLite 쓰기 트랜잭션은 시작할 때 데이터베이스 쓰기 잠금을 얻으므로 그 안의 잠금 요청은 기다리지 않고 성공하며, 잠금 대기는 트랜잭션 시작에서 일어난다([런타임 연결](../spec/config.md)).
 - `Db::withCancellation($source)`는 PHP 취소 핸들을 파생한다. PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 후자가 같은 연결을 통해 취소를 전송한다. `timeoutMs`도 PostgreSQL 문 실행 시간을 제한한다.
 - test는 자기 클라이언트의 test fault로 모든 데이터베이스에서 트랜잭션의 rollback을 실패시킨다. production build는 이 fault를 포함하거나 load하지 않는다([protocol §3.1](../spec/protocol.md#_3-1-test-faults)). Go는 `-tags ormtest`와 `orm.FailNextRollback(db)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_rollback(&db)`, TypeScript는 `node --conditions=orm-test`에서 `@polyspec/orm/testing`의 `failNextRollback(db)`, PHP는 `require 'vendor/polyspec/orm/testing/Faults.php'` 뒤의 `Polyspec\Orm\Testing\Faults::failNextRollback($db)`를 사용한다. callback이 실패한 다음 트랜잭션은 rollback되고 callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다.
-- test는 자기 클라이언트의 statement fault로 연결의 다음 statement가 주어진 code와 message로 모든 데이터베이스에서 실패하게 한다([protocol §3.2](../spec/protocol.ko.md#_3-2-test-statement-fault)). Go는 `-tags ormtest`와 `orm.FailNextStatement(db, code, message)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_statement(&db, code, message)`, TypeScript는 `node --conditions=orm-test`와 `@polyspec/orm/testing`의 `failNextStatement(db, code, message)`, PHP는 `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, Python은 `polyspec.orm.testing.fail_next_statement(db, code, message)`를 쓴다. statement는 전송되지 않고, 클라이언트는 그 code와 message의 `OrmException`으로 보고하며, fault는 그 statement가 소비한다.
+- test는 자기 클라이언트의 statement fault로 연결의 다음 statement가 주어진 code와 message로 모든 데이터베이스에서 실패하게 한다([protocol §3.2](../spec/protocol.ko.md#_3-2-test-statement-fault)). Go는 `-tags ormtest`와 `orm.FailNextStatement(db, code, message)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_statement(&db, kind, message)`, TypeScript는 `node --conditions=orm-test`와 `@polyspec/orm/testing`의 `failNextStatement(db, code, message)`, PHP는 `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, Python은 `polyspec.orm.testing.fail_next_statement(db, code, message)`를 쓴다. statement는 전송되지 않고, 클라이언트는 그 code와 message의 `OrmException`으로 보고하며, fault는 그 statement가 소비한다.
 
 ```go
 err := master.Transaction(func() error {
@@ -310,7 +729,7 @@ err := master.Transaction(func() error {
 $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 ```
 ```rust
-let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
+let row = master.transaction_async(|tx| async move { Author::new().connect(&tx).set_name("x")./*…*/.create().await }, Default::default()).await?;
 ```
 
 ### 감사 대상 쓰기 {#audited-writes}
@@ -318,7 +737,7 @@ let row = master.transaction(async || Author::new().set_name("x")./*…*/.create
 `audit` setting([audit](../spec/dbspec.ko.md#audit))이 있는 테이블은 작업 단위를 audit 기록 테이블, 곧 setting이 `references`로 정한 테이블에 기록하는 트랜잭션 안에서만 쓴다. 두 곳이 기록의 값을 준다:
 
 - 연결 설정은 프로세스마다 한 번 `auditSource`를 받는다([설정](../spec/config.ko.md)). 현재 요청의 audit 값, 곧 계정과 요청 id처럼 audit 기록 테이블의 컬럼 이름에서 값으로 가는 map을 돌려주는 함수다. ORM은 자기 audit 값을 쓰지 않는다.
-- 트랜잭션의 `audit` 옵션은 이 변경의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `Db::transaction`의 `TransactionOptions`의 `audit`, TypeScript `{ audit: {...} }`). 빈 map은 source의 값만 기록한다.
+- 트랜잭션의 `audit` 옵션은 이 변경의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `Db::transaction_async`의 `TransactionOptions`의 `audit`, TypeScript `{ audit: {...} }`). 빈 map은 source의 값만 기록한다.
 
 ```go
 master, err := model.Connect(dsn, orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error) {
@@ -335,15 +754,6 @@ $master = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(auditSource: fn ():
 $master->transaction(function (): void {
     (new Service)->setName('renamed')->create();
 }, audit: ['action' => 'service.rename', 'reason' => $reason]);
-```
-```rust
-let master = model::connect(&dsn, pool_size, polyspec_orm::Config {
-    audit_source: Some(Arc::new(|| Ok(vec![("account_seq".into(), Param::I64(current_account()?)), ("request_id".into(), Param::from(current_request_id()?))]))),
-    ..Default::default()
-}).await?;
-master.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
-    .audit([("action", "service.rename"), ("reason", reason.as_str())])
-    .await?;
 ```
 ```typescript
 const master = await connect(dsn, { auditSource: () => ({ account_seq: currentRequest().accountSeq, request_id: currentRequest().id }) });
@@ -460,8 +870,8 @@ $b->getJsonSetting()['a'];
 | Statement event | 연결의 `subscribe`. client가 보내는 모든 statement([statement event](#statement-events)) |
 | key를 가진 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | handle의 모든 request를 plan 전에 바꾸기 | 연결의 `withRequestHook`([request hook](#request-hook)) |
-| transaction이 활성인 동안 데이터베이스 밖의 작업 거절 | 연결의 `transactionActive()`(Go `TransactionActive`, Python과 Rust `transaction_active`). 호출한 flow에 그 연결의 transaction이 있으면 true이며 문장을 보내지 않는다([INT-192](../spec/interfaces.ko.md)) |
-| transaction이 시작하기 전에 code 실행, 예를 들어 다른 연결의 write | 연결의 `beforeTransaction(hook)`(Go `BeforeTransaction`, Python과 Rust `before_transaction`). hook는 `transaction`의 가장 바깥 transaction마다, connection을 잡거나 statement를 보내기 전에 실행되며, 등록은 hook를 지우는 함수를 돌려준다([INT-193](../spec/interfaces.md)) |
+| transaction이 활성인 동안 데이터베이스 밖의 작업 거절 | 연결의 `transactionActive()`(Go `TransactionActive`, Python `transaction_active`). 호출한 flow에 그 연결의 transaction이 있으면 true이며 문장을 보내지 않는다([INT-192](../spec/interfaces.ko.md)). Rust 코어와 생성된 바인딩은 handle에 대해 반환한다([트랜잭션](#transactions)) |
+| transaction이 시작하기 전에 code 실행, 예를 들어 다른 연결의 write | 연결의 `beforeTransaction(hook)`(Go `BeforeTransaction`, Python `before_transaction`. Rust 코어에는 없다). hook는 `transaction`의 가장 바깥 transaction마다, connection을 잡거나 statement를 보내기 전에 실행되며, 등록은 hook를 지우는 함수를 돌려준다([INT-193](../spec/interfaces.md)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](../spec/dsl.md)) |
 | 실행 없이 페이지의 문장 보기 | 연결한 모델의 `getPagePlanSteps(page, perPage)` ([dsl.md](../spec/dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |
@@ -520,7 +930,7 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 - 동사의 kind인 `insert`, `update`, `delete`, `select`로 statement event를 publish하며, identity를 다시 시작하는 MySQL `ALTER TABLE`은 `schema`다([statement event](#statement-events)). driver 오류는 model statement가 보고할 code를 가진다.
 - 행을 읽는 step(`assemble`이 있는 step)은 `IR_INVALID` `execute runs a statement without rows; the statement is a read`로, 매개변수 밖을 읽는 `param` slot은 `IR_INVALID` `bind slot <i> reads parameter <p>, but execute has <n> parameters`로 실패하며, 둘 다 statement를 보내지 않는다.
 - `execute`는 아무것도 돌려주지 않는다. 적재가 필요한 값은 model이나 query로 다시 읽는다.
-- PHP extension `polyspec_orm`은 dbspec 표면만 구현하고 query 연결을 갖지 않으므로 `execute`가 없다. 둘 다 PHP client가 실행한다.
+- `legacy/packages/php-ext`의 PHP extension은 dbspec 표면만 구현하고 query 연결을 갖지 않으므로 `execute`가 없다. 둘 다 PHP client가 실행한다. `packages/php-ext`의 생성된 PHP extension에는 `Db`와 `Tx`에 `execute`가 있다.
 
 ### Request hook {#request-hook}
 
@@ -546,7 +956,7 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 - hook이 없는 handle은 model이 만든 request를 복사하거나 부르는 일 없이 그대로 plan한다.
 - 공유 case `contracts/fixtures/request_hook/request_hook.dbs`는 모든 client에서 SQLite로 실행된다: hook은 INSERT assignment가 가리키는 값을 읽고 실제 쓰는 값은 바꾸지 않으며, hook이 더한 predicate가 읽기, count, page를 거르고, hook이 더한 assignment를 행 하나의 insert와 여러 행의 insert가 쓰며, 읽은 행의 update와 delete가 hook을 지나고, 매개변수 밖의 index는 statement 전에 `IR_INVALID`로 실패하며, hook이 없는 handle은 모든 행을 읽고, restore는 지정 값과 hook이 더한 조건에서 key를 얻으며, hook이 더한 조건은 그 밖의 행의 restore를 막고, 값과 조건이 어떤 key도 덮지 않는 restore는 statement 전에 `IR_INVALID`로 실패한다.
 
-## 11. 자주 나는 에러
+## 11. 자주 나는 에러 {#_11-common-errors}
 
 | 코드 | 원인과 조치 |
 |---|---|

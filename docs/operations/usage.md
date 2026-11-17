@@ -1,13 +1,432 @@
 <!-- doc-id: usage -->
 # Usage
 
-Generate language clients from one dbspec document set. `contracts/implementations.json` declares Go, PHP, PHP extension, TypeScript, Python and Rust as the six implementations; the PHP extension shares the PHP-facing API surface and its unfinished native scope is tracked separately.
+Release v0.0.34 is the first release of the Rust core with bindings generated from its interface contract, `packages/rust/interface.json`: TypeScript and Node (`packages/ts`), Python (`packages/python`), the PHP extension (`packages/php-ext`) and Go (`packages/go`). [Generated bindings](#generated-bindings) states what a user of that release has. The hand-written clients are kept under `legacy/packages` and v0.0.34 does not release them ([CORE-1](../spec/core.md)); the sections 1 to 12 describe them, as [Language implementations under legacy/packages](#language-implementations-under-legacy-packages) states.
 Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.46+.
-
-A query starts with a generated model and receives an opened database connection through `connect`. Inside a transaction callback, a model without `connect` uses the active transaction.
 
 The complete syntax is in [dsl.md](../spec/dsl.md), the schema language is in [dbspec.md](../spec/dbspec.md), schema tools are in [schema.md](../spec/schema.md), and the IR/Plan format is in [protocol.md](../spec/protocol.md).
 Dialect differences are in [dialects.md](../spec/dialects.md), configuration is in [config.md](../spec/config.md), and error codes are in [errors.yaml](../spec/errors.yaml).
+
+---
+
+## Generated bindings
+
+The generated bindings call the Rust core in the process of the caller. Their public names are those of the contract in the spelling of each language: `camelCase` in TypeScript and PHP, `snake_case` in Python, `PascalCase` in Go. Each example of this section names the generated test that holds its call: `packages/ts/generated/tests/generated.test.mjs`, `packages/python/generated/tests/test_generated.py` (class `GeneratedTest`), `packages/php-ext/generated/tests/GeneratedTest.php` and `packages/go/zz_generated_test.go`, which `make bindings` writes. The examples shorten the schema text and the names of the variables of those tests and keep each call as the test has it.
+
+### What the bindings do not have yet
+
+This release is not a replacement of the hand-written packages. [The table of the public surface against the contract](../spec/feature-coverage.md#legacy-surface-against-the-contract) (FCV-21) holds every public member of the hand-written packages with its status; the bindings of v0.0.34 do not have these:
+
+- Generated typed models and the `orm-gen` command. A binding has the class `Query`, which names an entity, a column, a chain and an order by text on a schema that `Schema.load` reads at run time. No binding package holds `orm-gen`, and the crate `polyspec-orm-build` generates Rust models alone.
+- Reads of rows by `get` and `gets`: the contract declares neither `get`, `gets`, `getsBy`, `getQuery` and `toArray` nor `Collection`, `Page` and `LookaheadPage`. The reads of a binding are `getBy`, `getCount`, `getCountBy`, `value`, the relations `related` and `relatedRows`, and `StepRunner.run`, which returns the rows of a `get` or a `gets` step as JSON text.
+- `utils()`: the statement runner, the lock and the local values (`lock`, `setLocal`, `local`), the schema utilities `register`, `install` and `addTablesAndColumns`, the privileges and the AES rotation. A connection has one schema, the one that `connectSchema` registers; several schemas on one connection have no member.
+- The members of a model that [CORE-84](../spec/core.md) names as not implemented: `creates`, `save`, `join` and `leftJoin`, the groups `and(fn)`, `or(fn)`, `not(fn)`, `andNot(fn)`, `orNot(fn)` and `on(fn)`, `and(model)` and `or(model)`, the comparison of two columns, `getsCount`, `getsPage`, `getsLookaheadPage`, `getSum`, `getAvg`, an added column of a function or of a subquery, and a condition on a function.
+- The members of a model that no rule of the core names: `getPagePlanSteps`, `duplication`, the optimistic `update(true)`, the recursive `delete(true)`, `orderByRandom`, `parentNode`, `groupLimit`, `deleteLock`, `fetchKey`, `fetchValue`, `possible<Col>`, `forceIndex<Name>`, the increments `plus<Col>` and `minus<Col>`, `new<Name>` with `get<Name>`, `toJSON`, an order by a column function, and the aggregates `groupBy<Col>`, `sum<Col>` and `avg<Col>`.
+- Statement events: the core has `subscribe`, and the contract does not declare it, so no binding has it.
+- The request hook: the core has `withRequestHook`, and the contract does not declare it, so no binding has it.
+- `beforeTransaction`: the core has no hook before a transaction.
+- `require_match` of a request: the core refuses the member with `ir_invalid`, and an update or a delete that matches no row succeeds.
+- The end of a statement in progress at a cancellation. `withCancel` derives a handle, and a statement of a handle whose cancellation has fired fails with `canceled` before it is sent. A statement that is in progress when the cancellation fires is not ended on its server: it runs to its end and returns its own result ([CORE-47](../spec/core.md), "Not implemented").
+- `StyledValue`: the value of a column with a style leaves the core as an `orm_value`, the untyped value of the contract, and `decode` returns such a value.
+
+`analyzeRestore` is a member of `Db` in this release ([CORE-141](../spec/core.md)): it takes the restore request as JSON text and returns the JSON text of `key` and `assignments`.
+
+```typescript
+const analysis = db.analyzeRestore('{"ir_version":2,"manifest_hash":"sha256:f2bb…040a","kind":"restore","entity":"item","n_params":2,"set":[{"column":"id","p":0},{"column":"meta","p":1}]}');
+// '{"assignments":["meta"],"key":["id"]}'
+// generated test: GN-13e: Db.analyzeRestore primary_key
+```
+```python
+analysis = db.analyze_restore(request)  # generated test: test_gn13e_db_analyze_restore_primary_key
+```
+```php
+$analysis = $db->analyzeRestore($request); // generated test: testGn13eDbAnalyzeRestorePrimaryKey
+```
+
+### Installation
+
+The packages of v0.0.34 are assets of the GitHub Release and are on no registry. Each binding depends on the json library of polyspec at 0.0.34, which no registry holds either, so a consumer names that sibling by the URL of its release asset.
+
+- Node: the package `@polyspec/orm` (`polyspec-orm-0.0.34.tgz`) depends on `@polyspec/json` `0.0.34` by version, and it loads the native library from the platform package of the machine, `@polyspec/orm-darwin-arm64`, `@polyspec/orm-linux-arm64-gnu` or `@polyspec/orm-linux-x64-gnu`. A consumer lists four packages in its own dependencies, each by the URL of its release asset: the orm package, its platform package, `@polyspec/json` and the platform package of json. npm satisfies the version `0.0.34` of `@polyspec/json` with the package installed beside it.
+
+  ```json
+  {
+    "dependencies": {
+      "@polyspec/orm": "https://github.com/polyspec/orm/releases/download/v0.0.34/polyspec-orm-0.0.34.tgz",
+      "@polyspec/orm-darwin-arm64": "https://github.com/polyspec/orm/releases/download/v0.0.34/polyspec-orm-darwin-arm64-0.0.34.tgz",
+      "@polyspec/json": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-0.0.34.tgz",
+      "@polyspec/json-darwin-arm64": "https://github.com/polyspec/json/releases/download/v0.0.34/polyspec-json-darwin-arm64-0.0.34.tgz"
+    }
+  }
+  ```
+
+  The platform packages of json are `@polyspec/json-darwin-arm64`, `@polyspec/json-linux-arm64-gnu` and `@polyspec/json-linux-x64-gnu` (`polyspec-json-linux-arm64-gnu-0.0.34.tgz`, `polyspec-json-linux-x64-gnu-0.0.34.tgz`).
+
+- Python: the wheel `polyspec-orm` requires `polyspec-json==0.0.34`, and Python 3.14. A consumer installs the json wheel of its platform from the release asset together with the orm wheel:
+
+  ```sh
+  uv pip install \
+    https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-macosx_11_0_arm64.whl \
+    https://github.com/polyspec/orm/releases/download/v0.0.34/polyspec_orm-0.0.34-cp314-abi3-macosx_11_0_arm64.whl
+  ```
+
+  `pip install` takes the same two URLs. The json wheels of Linux are `polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_aarch64.whl` and `polyspec_json-0.0.34-cp314-abi3-manylinux_2_34_x86_64.whl`. `config/binding-python-siblings.txt` holds the json wheel of each platform as a requirement line with its marker and its sha256, such as `polyspec-json @ https://github.com/polyspec/json/releases/download/v0.0.34/polyspec_json-0.0.34-cp314-abi3-macosx_11_0_arm64.whl --hash=sha256:ba29ddb049a60c499f2b8f2777f257c91fdabef826f22e2e229d8c916ae4a31e`; `uv pip install --verify-hashes -r` with that file checks each hash.
+
+- PHP: the extension `polyspec_orm` is the Composer package `polyspec/orm` of type `php-ext`, which PIE installs from the `packages.json` of the release; PIE downloads the binary of the PHP minor (8.4 or 8.5) and the platform. The extension requires `ext-polyspec_json` and `polyspec/json` `0.0.34`, so a consumer adds the repository of that json release too ([packaging](packaging.md#installing-from-release-assets)):
+
+  ```sh
+  pie repository:add composer https://github.com/polyspec/json/releases/download/v0.0.34/packages.json
+  pie repository:add composer https://github.com/polyspec/orm/releases/download/v0.0.34/packages.json
+  pie install polyspec/orm:0.0.34
+  ```
+
+- Go: the module is `github.com/polyspec/orm/packages/go`, and it requires `github.com/polyspec/json/packages/go` `v0.0.34`. The tag of the module names a commit that holds the generated files and the static library of the core for each platform (`darwin_arm64`, `linux_amd64`, `linux_amd64_musl`, `linux_arm64`, `linux_arm64_musl`), and a build links the library of its platform through cgo.
+
+  ```sh
+  go get github.com/polyspec/orm/packages/go@v0.0.34
+  ```
+
+### Connecting and querying
+
+`Schema.load(manifestText, externalText, manifestHash)` reads a schema at run time: the manifest text of the document set, the text of its external documents, which is empty when it has none, and the hash of the manifest text, `sha256:` and the SHA-256 of the text in hexadecimal. A text that is no manifest fails with `schema_invalid` and a text of another hash with `schema_hash_mismatch`.
+
+`Db.connect(dsn, poolSize, config)` opens a pool of at most `poolSize` connections without a schema, and `Db.connectSchema(dsn, schema, poolSize, config)` opens it and registers the schema on it. The DSN has the forms of [Connections](#_4-connections). Node takes the configuration as an object, Python as keyword arguments and PHP as named parameters after the pool size, each with a default.
+
+`Query.new(schema, entity)` names an entity by text, and `connect(db)` gives the query its connection; `connect` returns nothing, and so do `where`, `orderBy`, `limit` and `set`, so the calls do not chain. `where(chain, values)` takes a chain name of [dsl.md](../spec/dsl.md), such as `Id`, `GtId` or `OrGtId`, with one value per key; a name that starts with `And` or `Or` joins its first condition to the conditions before it. `getCount()` returns the count, a `bigint` in Node. `getBy(chain, values)` returns the row as a `Query` of the same entity, or null when no row matches, and `getCountBy(chain, values)` counts with the conditions of the chain joined by `and`. `value(column)` returns the value of a column of a row.
+
+```typescript
+import * as orm from '@polyspec/orm';
+
+const schema = orm.Schema.load(manifestText, '', manifestHash);
+const db = await orm.Db.connectSchema('sqlite:///var/lib/shop.db', schema, 1, {});
+
+const items = orm.Query.new(schema, 'item');
+items.connect(db);
+items.where('Id', [100]);
+items.where('OrGtId', [0]);
+const count = await items.getCount();
+// generated test: GN-13e: Query.getCount a_condition_joined_by_or_reads_no_soft_deleted_row
+const others = await items.getCountBy('Id', [2]);
+// generated test: GN-13e: Query.getCountBy a_condition_joined_by_or_counts_no_soft_deleted_row
+
+const item = orm.Query.new(schema, 'item');
+item.connect(db);
+const row = await item.getBy('Id', [3]);
+// generated test: B-4: Query.getBy a_stored_cell_that_is_not_json
+const meta = row.value('meta');
+// generated test: B-4: Query.value a_json_cell_with_a_lone_surrogate
+```
+```python
+import polyspec.orm as orm
+
+schema = orm.Schema.load(manifest_text, "", manifest_hash)
+db = orm.Db.connect_schema("sqlite:///var/lib/shop.db", schema, 1)
+
+items = orm.Query.new(schema, "item")
+items.connect(db)
+items.where("Id", [100])
+items.where("OrGtId", [0])
+count = items.get_count()
+# generated test: test_gn13e_query_get_count_a_condition_joined_by_or_reads_no_soft_deleted_row
+others = items.get_count_by("Id", [2])
+# generated test: test_gn13e_query_get_count_by_a_condition_joined_by_or_counts_no_soft_deleted_row
+
+item = orm.Query.new(schema, "item")
+item.connect(db)
+row = item.get_by("Id", [3])
+# generated test: test_b4_query_get_by_a_stored_cell_that_is_not_json
+meta = row.value("meta")
+# generated test: test_b4_query_value_a_json_cell_with_a_lone_surrogate
+```
+```php
+$schema = \Polyspec\Orm\Schema::load($manifestText, "", $manifestHash);
+$db = \Polyspec\Orm\Db::connectSchema("sqlite:///var/lib/shop.db", $schema, 1);
+
+$items = \Polyspec\Orm\Query::new($schema, "item");
+$items->connect($db);
+$items->where("Id", [100]);
+$items->where("OrGtId", [0]);
+$count = $items->getCount();
+// generated test: testGn13eQueryGetCountAConditionJoinedByOrReadsNoSoftDeletedRow
+$others = $items->getCountBy("Id", [2]);
+// generated test: testGn13eQueryGetCountByAConditionJoinedByOrCountsNoSoftDeletedRow
+
+$item = \Polyspec\Orm\Query::new($schema, "item");
+$item->connect($db);
+$row = $item->getBy("Id", [3]);
+// generated test: testB4QueryGetByAStoredCellThatIsNotJson
+$meta = $row->value("meta");
+// generated test: testB4QueryValueAJsonCellWithALoneSurrogate
+```
+
+Go has the same members as functions and methods that return an error: `SchemaLoad`, `DbConnectSchema`, `QueryNew`, `Connect`, `Where`, `GetCount` (generated test `TestGN13eQueryGetCountAConditionJoinedByOrReadsNoSoftDeletedRow`).
+
+```go
+schema, err := orm.SchemaLoad(manifestText, "", manifestHash)
+db, err := orm.DbConnectSchema("sqlite:///var/lib/shop.db", schema, 1, orm.Config{})
+items, err := orm.QueryNew(schema, "item")
+err = items.Connect(db)
+err = items.Where("Id", []any{int64(100)})
+count, err := items.GetCount()
+```
+
+`orderBy(spec)` takes the order as one name such as `SeqDescAndLabelAsc`, each key a column and `Asc` or `Desc`, and `limit(offset, count)` reads at most `count` rows after the first `offset` rows. Both arguments of `limit` are unsigned integers, and a `count` of 0 fails with `config` at the next terminal.
+
+```typescript
+const events = orm.Query.new(schema, 'clock_event');
+events.orderBy('SeqDescAndLabelAsc'); // generated test: GN-13e: Query.orderBy an_order
+events.limit(1, 2);                   // generated test: GN-13e: Query.limit a_range
+```
+```python
+events = orm.Query.new(schema, "clock_event")
+events.order_by("SeqDescAndLabelAsc")  # generated test: test_gn13e_query_order_by_an_order
+events.limit(1, 2)                     # generated test: test_gn13e_query_limit_a_range
+```
+```php
+$events = \Polyspec\Orm\Query::new($schema, "clock_event");
+$events->orderBy("SeqDescAndLabelAsc"); // generated test: testGn13eQueryOrderByAnOrder
+$events->limit(1, 2);                   // generated test: testGn13eQueryLimitARange
+```
+
+The arguments of these two examples are those of the contract cases `an_order` of `query.order_by` and `a_range` of `query.limit` in `contracts/interface/core.json`. The generated tests of the two cases hold no call yet, because the generator writes no comparison for a member that returns nothing.
+
+`set(column, value)` assigns a value by the column name. `create()` inserts the row and returns it as a `Query`. `update()` and `delete()` take no argument and write the one row of the key that the assigned values give, under the conditions of the query ([CORE-138](../spec/core.md)); `expectRevision(column, revision)` makes the write fail with `revision_changed` when the row holds another revision.
+
+```typescript
+const created = orm.Query.new(schema, 'item');
+created.connect(db);
+created.set('code', 'live');
+created.set('qty', 1);
+created.set('rev', 1);
+const stored = await created.create(); // generated test: B-4: Query.create a_duplicate_key
+
+const changed = orm.Query.new(schema, 'item');
+changed.connect(db);
+changed.set('id', 1);
+changed.set('qty', 2);
+changed.expectRevision('rev', 5);
+await changed.update();                // generated test: B-4: Query.update a_changed_revision
+
+const removed = orm.Query.new(schema, 'owner');
+removed.connect(db);
+removed.set('id', 1);
+await removed.delete();                // generated test: B-4: Query.delete a_referenced_parent
+```
+```python
+created = orm.Query.new(schema, "item")
+created.connect(db)
+created.set("code", "live")
+created.set("qty", 1)
+created.set("rev", 1)
+stored = created.create()  # generated test: test_b4_query_create_a_duplicate_key
+
+changed = orm.Query.new(schema, "item")
+changed.connect(db)
+changed.set("id", 1)
+changed.set("qty", 2)
+changed.expect_revision("rev", 5)
+changed.update()           # generated test: test_b4_query_update_a_changed_revision
+
+removed = orm.Query.new(schema, "owner")
+removed.connect(db)
+removed.set("id", 1)
+removed.delete()           # generated test: test_b4_query_delete_a_referenced_parent
+```
+```php
+$created = \Polyspec\Orm\Query::new($schema, "item");
+$created->connect($db);
+$created->set("code", "live");
+$created->set("qty", 1);
+$created->set("rev", 1);
+$stored = $created->create(); // generated test: testB4QueryCreateADuplicateKey
+
+$changed = \Polyspec\Orm\Query::new($schema, "item");
+$changed->connect($db);
+$changed->set("id", 1);
+$changed->set("qty", 2);
+$changed->expectRevision("rev", 5);
+$changed->update();           // generated test: testB4QueryUpdateAChangedRevision
+
+$removed = \Polyspec\Orm\Query::new($schema, "owner");
+$removed->connect($db);
+$removed->set("id", 1);
+$removed->delete();           // generated test: testB4QueryDeleteAReferencedParent
+```
+
+The tests that these write and read examples name are cases of a failure: each makes the call of the example on a fixture in which it fails, such as a code that another row holds. The call has the same form when it succeeds.
+
+### Transactions
+
+`db.transaction(callback, options)` runs the callback in a new transaction on a connection of the pool and passes it a transaction handle, a `Tx` ([CORE-20](../spec/core.md)). The callback that returns commits and its value is the result of `transaction`; the callback that fails rolls back and its failure is returned unchanged. The handle is the only way into the transaction, and there is no active transaction of an execution flow:
+
+- A query runs in the transaction after `query.connect(tx)`. A query that was built before the transaction, and a row that was read before it, run in the transaction after the same call. A query with no connection fails with `config`.
+- A statement that the callback sends through the `Db` is outside the transaction. The `Db` is the pool, so the statement takes another connection, commits by itself and stays after the transaction rolls back.
+- A `db.transaction` inside a callback opens an independent transaction on another connection of the pool. The inner unit of a transaction is `tx.savepoint(callback)`, which passes its callback a handle of the savepoint, a `Tx`, and takes no options ([CORE-21](../spec/core.md)); a failure of that callback rolls back to the savepoint and is returned unchanged.
+- One transaction runs one statement at a time: a second statement through the same `Tx` while one has not ended fails with `busy`, and so does a statement through the outer handle while a savepoint callback runs. After the callback returned, the `Tx` and every query connected to it fail with `transaction_ended`.
+
+The options are `isolation` (`read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`), `read_only`, `timeout_ms`, `retry` and `audit`, in Node and PHP `readOnly` and `timeoutMs`. A null option has the value of the core: the isolation level of the server, a transaction that is not read-only, no bound of time, 3 retries and no audit values. `retry` is how many times a transaction that failed with `deadlock` runs again; through a binding only a `deadlock` of the commit is retried ([CORE-104](../spec/core.md)). `audit` is the map from column name to value of [Audited writes](#audited-writes), a `Map` in Node, a `dict` in Python and an array in PHP, and the audit source of the connection is the field `auditSource` of the configuration (`audit_source` in Python).
+
+Every option is a required argument in the bindings of this release: Node takes two arguments, the second an object that holds the five fields; Python takes five keyword arguments; PHP takes six parameters. Defaults of the options are planned together with the refusal of a callback that takes no `Tx`. In this release Node and PHP call a callback that declares no parameter and drop the handle, so its statements through the `Db` are outside the transaction; declare the parameter.
+
+```typescript
+const options = { isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null };
+
+const result = await db.transaction((tx) => 'done', options);
+// generated test: GN-13e: Db.transaction a_callback_commits_its_result
+
+const events = orm.Query.new(schema, 'clock_event');
+await db.transaction((tx) => { events.connect(tx); return 'done'; }, options);
+await events.getCount(); // fails with transaction_ended
+// generated test: GN-13e: Db.transaction a_query_connected_to_a_tx_has_ended_after_the_callback
+
+const step = '{"id":1,"role":"main","sql":"INSERT INTO owner (name) VALUES (\'bo\')","tables":[],"bind_slots":[]}';
+await db.transaction(async (tx) => {
+  await tx.savepoint(async (inner) => { await inner.execute(step, []); return 'done'; });
+  return 'done';
+}, options);
+// generated test: GN-13e: Db.transaction a_statement_runs_in_a_savepoint
+
+await db.transaction(async (tx) => { await db.execute(step, []); throw raised; }, { isolation: null, readOnly: true, timeoutMs: null, retry: null, audit: null });
+// the row of step stays: db.execute is outside the transaction
+// generated test: GN-6ae: Db.transaction a_row_written_through_the_db_in_a_callback_that_raises_stays
+```
+```python
+def commits(tx):
+    return "done"
+
+result = db.transaction(commits, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+# generated test: test_gn13e_db_transaction_a_callback_commits_its_result
+
+events = orm.Query.new(schema, "clock_event")
+
+def connects(tx):
+    events.connect(tx)
+    return "done"
+
+db.transaction(connects, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+events.get_count()  # fails with transaction_ended
+# generated test: test_gn13e_db_transaction_a_query_connected_to_a_tx_has_ended_after_the_callback
+
+step = '{"id":1,"role":"main","sql":"INSERT INTO owner (name) VALUES (\'bo\')","tables":[],"bind_slots":[]}'
+
+def inner(tx):
+    tx.execute(step, [])
+    return "done"
+
+def outer(tx):
+    tx.savepoint(inner)
+    return "done"
+
+db.transaction(outer, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+# generated test: test_gn13e_db_transaction_a_statement_runs_in_a_savepoint
+
+def outside(tx):
+    db.execute(step, [])
+    raise raised
+
+db.transaction(outside, isolation=None, read_only=True, timeout_ms=None, retry=None, audit=None)
+# the row of step stays: db.execute is outside the transaction
+# generated test: test_gn6ae_db_transaction_a_row_written_through_the_db_in_a_callback_that_raises_stays
+```
+```php
+$result = $db->transaction(function (\Polyspec\Orm\Tx $tx): mixed { return "done"; }, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+// generated test: testGn13eDbTransactionACallbackCommitsItsResult
+
+$events = \Polyspec\Orm\Query::new($schema, "clock_event");
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($events): mixed { $events->connect($tx); return "done"; }, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+$events->getCount(); // fails with transaction_ended
+// generated test: testGn13eDbTransactionAQueryConnectedToATxHasEndedAfterTheCallback
+
+$step = "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (name) VALUES ('bo')\",\"tables\":[],\"bind_slots\":[]}";
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($step): mixed {
+    $tx->savepoint(function (\Polyspec\Orm\Tx $inner) use ($step): mixed { $inner->execute($step, []); return "done"; });
+    return "done";
+}, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+// generated test: testGn13eDbTransactionAStatementRunsInASavepoint
+
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($db, $step, $raised): mixed { $db->execute($step, []); throw $raised; }, isolation: null, readOnly: true, timeoutMs: null, retry: null, audit: null);
+// the row of $step stays: $db->execute is outside the transaction
+// generated test: testGn6aeDbTransactionARowWrittenThroughTheDbInACallbackThatRaisesStays
+```
+
+In Go the callback is a `func(*orm.Tx) (any, error)` and the options are the struct `orm.TransactionOptions`, whose zero value leaves every option out (generated test `TestGN13eDbTransactionASavepointInTheCallback`).
+
+```go
+result, err := db.Transaction(func(tx *orm.Tx) (any, error) {
+	return tx.Savepoint(func(inner *orm.Tx) (any, error) { return "done", nil })
+}, orm.TransactionOptions{})
+```
+
+`transactionActive()` (`transaction_active()` in Python) says whether a handle is the handle of an open transaction ([CORE-140](../spec/core.md)). On a `Tx` it is true while the callback that received the handle runs, and false after that callback returned. On a `Db` it is always false, also inside the callback of a transaction of that `Db`. Code that asked the connection of a hand-written client whether it runs in a transaction receives the `Tx` as an argument, or asks the `Tx` that it holds.
+
+```typescript
+await db.transaction((tx) => {
+  tx.transactionActive(); // true
+  db.transactionActive(); // false
+  return 'done';
+}, options);
+// generated test: GN-13e: Db.transaction a_db_is_not_active_in_the_callback_of_its_transaction
+```
+```python
+def asks(tx):
+    tx.transaction_active()  # True
+    db.transaction_active()  # False
+    return "done"
+
+db.transaction(asks, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+# generated test: test_gn13e_db_transaction_a_db_is_not_active_in_the_callback_of_its_transaction
+```
+```php
+$db->transaction(function (\Polyspec\Orm\Tx $tx) use ($db): mixed {
+    $tx->transactionActive(); // true
+    $db->transactionActive(); // false
+    return "done";
+}, isolation: null, readOnly: null, timeoutMs: null, retry: null, audit: null);
+// generated test: testGn13eDbTransactionADbIsNotActiveInTheCallbackOfItsTransaction
+```
+
+### Errors
+
+An error of a binding is an instance of the class of its category and has the kind of the core as `kind` ([CORE-10 to CORE-12](../spec/core.md)); these classes take the place of `OrmError` and `OrmException` with `code`. The classes are `OrmValueError`, `OrmTypeError`, `OrmIoError`, `OrmStoreError`, `OrmBusyError` and `OrmInternalError` in Node and PHP, and `ORMValueError`, `ORMTypeError`, `ORMIoError`, `ORMStoreError`, `ORMBusyError` and `ORMInternalError` in Python and in the package `errors` of the Go module. `kind` is a property in Node and Python, the method `kind()` in PHP and `Kind()` in Go.
+
+A kind is the lower-case form of a code of [Common errors](#_11-common-errors): `NO_ROWS` is `no_rows`. Four failures that the hand-written clients report as `CONFIG` have a kind of their own, `busy`, `transaction_ended`, `closed` and `pool_timeout`, and `rollback_failed` takes the place of `ROLLBACK`, with the failure of the callback as `callbackError` and the error of the rollback as `rollbackError`. The message of an error is the kind, a colon and the text.
+
+```typescript
+try {
+  await created.create();
+} catch (error) {
+  if (error instanceof orm.OrmStoreError && error.kind === 'duplicate_key') { /* the key exists */ }
+}
+// generated test: B-4: Query.create a_duplicate_key
+```
+```python
+try:
+    created.create()
+except orm.ORMStoreError as error:
+    if error.kind == "duplicate_key":
+        pass  # the key exists
+# generated test: test_b4_query_create_a_duplicate_key
+```
+```php
+try {
+    $created->create();
+} catch (\Polyspec\Orm\OrmStoreError $error) {
+    if ($error->kind() === "duplicate_key") { /* the key exists */ }
+}
+// generated test: testB4QueryCreateADuplicateKey
+```
+
+---
+
+## Language implementations under legacy/packages
+
+The sections 1 to 12 describe the language implementations of `legacy/packages`: the hand-written clients, and the PHP extension of `legacy/packages/php-ext`. The repository keeps them for their own tests and as the other side of the differential tests ([CORE-1](../spec/core.md)), and v0.0.34 does not release them: the packages `@polyspec/orm`, `polyspec/orm` and `polyspec-orm` of v0.0.34 are the generated bindings above, which hold no `orm-gen`, no generated model and no `utils()`. A package name in the sections below is the package of `legacy/packages`.
+
+The Rust lines of the sections below describe the core crate `polyspec-orm` with the models of `polyspec-orm-build`. Its transactions follow the rules of [Transactions](#transactions) above: `Db::transaction_async(callback, options)` passes the callback a `Tx`, a model runs in the transaction after `connect(&tx)`, and `Db::transaction_active` is always false.
+
+Generate language clients from one dbspec document set. `contracts/implementations.json` declares Go, PHP, PHP extension, TypeScript, Python and Rust as the six implementations; the PHP extension shares the PHP-facing API surface and its unfinished native scope is tracked separately.
+
+A query starts with a generated model and receives an opened database connection through `connect`. Inside a transaction callback, a model without `connect` uses the active transaction.
 
 ---
 
@@ -18,8 +437,8 @@ Dialect differences are in [dialects.md](../spec/dialects.md), configuration is 
 | Go 1.27+ | Engine, generator, and Go client |
 | MySQL 8.0.2+ / MariaDB 10.2+ | Primary target; PostgreSQL 12+ and SQLite 3.46+ use the same plan |
 | PHP 8.4+ (`pdo_mysql`) | Required for PHP; add `pdo_pgsql` and `ext-pgsql` for PostgreSQL, and `pdo_sqlite` for SQLite. PostgreSQL cancellation uses `ext-pgsql`. |
-| Rust 1.98+ | Required for Rust |
-| Node.js 22.16+ | Required for TypeScript |
+| Rust 1.99+ | Required for Rust |
+| Node.js 26.12+ | Required for TypeScript |
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
@@ -72,7 +491,7 @@ Each client renders the `CREATE` statements of a document set for one dialect, i
 
 ## 3. Code generation
 
-Each language generates its models with its own build tool. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
+Each language generates its models with its own build tool. The commands `orm-gen` are those of the packages of `legacy/packages`; no package of v0.0.34 holds one. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
 
 Every generator takes the document set as its [set file](../spec/dbspec.md#document-sets), here `contracts/fixtures/bench/dbspec-set.json` beside the documents it lists, and no other form:
 
@@ -98,7 +517,7 @@ fn main() {
 |---|---|---|
 | Go | `orm-gen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
 | PHP | `vendor/bin/orm-gen gen` | a Composer script after the schema changes |
-| TypeScript | `orm-gen gen` of `@polyspec/orm` | the `build` script before `tsc` |
+| TypeScript | `orm-gen gen` of the `@polyspec/orm` of `legacy/packages/ts` | the `build` script before `tsc` |
 | Python | `orm-gen gen` (Python package) | after the schema or a scanned source changes |
 | Rust | the `polyspec-orm-build` crate | `build.rs` on every `cargo build`; `polyspec_orm::models!()` includes the models as the module `model` |
 
@@ -289,7 +708,7 @@ $row->newIsMember(true);                                                        
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. MySQL and PostgreSQL execute the selected row lock; `NoWait` fails immediately when the row is unavailable. SQLite emits no lock suffix and uses an ORM transaction-scoped database lock row for all four modes. A SQLite write transaction takes the database write lock when it begins, so a lock request inside it succeeds without waiting, and the lock wait happens when the transaction begins ([runtime connection](../spec/config.md)).
 - `Db::withCancellation($source)` derives a PHP cancellation handle. PostgreSQL connections require both `pdo_pgsql` and `ext-pgsql`; the latter sends cancellation through the same connection. `timeoutMs` also limits PostgreSQL statements.
 - A test makes the rollback of a transaction fail on every database with the test fault of its client, which a production build does not contain or load ([protocol §3.1](../spec/protocol.md#_3-1-test-faults)): Go `orm.FailNextRollback(db)` with `-tags ormtest`, Rust `polyspec_orm::testing::fail_next_rollback(&db)` with the feature `test-faults`, TypeScript `failNextRollback(db)` of `@polyspec/orm/testing` under `node --conditions=orm-test`, and PHP `Polyspec\Orm\Testing\Faults::failNextRollback($db)` after `require 'vendor/polyspec/orm/testing/Faults.php'`. The next transaction whose callback fails is rolled back and returns `ROLLBACK` with the callback error and a `FAULT` error.
-- A test makes the next statement of a connection fail with a given code and message on every database with the statement fault of its client ([protocol §3.2](../spec/protocol.md#_3-2-test-statement-fault)): Go `orm.FailNextStatement(db, code, message)` with `-tags ormtest`, Rust `polyspec_orm::testing::fail_next_statement(&db, code, message)` with the feature `test-faults`, TypeScript `failNextStatement(db, code, message)` of `@polyspec/orm/testing` under `node --conditions=orm-test`, PHP `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, and Python `polyspec.orm.testing.fail_next_statement(db, code, message)`. The statement is not sent; the client reports it as `OrmException` with that code and message, and the fault is consumed by that statement.
+- A test makes the next statement of a connection fail with a given code and message on every database with the statement fault of its client ([protocol §3.2](../spec/protocol.md#_3-2-test-statement-fault)): Go `orm.FailNextStatement(db, code, message)` with `-tags ormtest`, Rust `polyspec_orm::testing::fail_next_statement(&db, kind, message)` with the feature `test-faults`, TypeScript `failNextStatement(db, code, message)` of `@polyspec/orm/testing` under `node --conditions=orm-test`, PHP `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, and Python `polyspec.orm.testing.fail_next_statement(db, code, message)`. The statement is not sent; the client reports it as `OrmException` with that code and message, and the fault is consumed by that statement.
 
 ```go
 err := master.Transaction(func() error {
@@ -309,7 +728,7 @@ err := master.Transaction(func() error {
 $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 ```
 ```rust
-let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
+let row = master.transaction_async(|tx| async move { Author::new().connect(&tx).set_name("x")./*…*/.create().await }, Default::default()).await?;
 ```
 
 ### Audited writes
@@ -317,7 +736,7 @@ let row = master.transaction(async || Author::new().set_name("x")./*…*/.create
 A table with an `audit` setting ([audit](../spec/dbspec.md#audit)) is written only inside a transaction that records its unit of work in the audit record table, the table that the setting names with `references`. Two places give the record its values:
 
 - The connection configuration takes `auditSource` once per process ([configuration](../spec/config.md)): a function that returns the audit values of the current request, a map from column name to value of the audit record table, such as the account and the request id. The ORM writes no audit value of its own.
-- The `audit` option of a transaction holds the values of this change, a map from column name to value (Go `orm.Audit(map[string]any)`, PHP `audit:` array, Rust `audit` of the `TransactionOptions` of `Db::transaction`, TypeScript `{ audit: {...} }`). An empty map records the source's values alone.
+- The `audit` option of a transaction holds the values of this change, a map from column name to value (Go `orm.Audit(map[string]any)`, PHP `audit:` array, Rust `audit` of the `TransactionOptions` of `Db::transaction_async`, TypeScript `{ audit: {...} }`). An empty map records the source's values alone.
 
 ```go
 master, err := model.Connect(dsn, orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error) {
@@ -334,15 +753,6 @@ $master = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(auditSource: fn ():
 $master->transaction(function (): void {
     (new Service)->setName('renamed')->create();
 }, audit: ['action' => 'service.rename', 'reason' => $reason]);
-```
-```rust
-let master = model::connect(&dsn, pool_size, polyspec_orm::Config {
-    audit_source: Some(Arc::new(|| Ok(vec![("account_seq".into(), Param::I64(current_account()?)), ("request_id".into(), Param::from(current_request_id()?))]))),
-    ..Default::default()
-}).await?;
-master.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
-    .audit([("action", "service.rename"), ("reason", reason.as_str())])
-    .await?;
 ```
 ```typescript
 const master = await connect(dsn, { auditSource: () => ({ account_seq: currentRequest().accountSeq, request_id: currentRequest().id }) });
@@ -460,8 +870,8 @@ The same statement produces the same result on all three databases, although sta
 | Statement events | `subscribe` on the connection; every statement the client sends ([statement events](#statement-events)) |
 | Execute a compiled statement, such as a load with its keys | `execute` on the connection ([execute a compiled statement](#execute-a-compiled-statement)) |
 | Change every request of a handle before planning | `withRequestHook` on the connection ([request hook](#request-hook)) |
-| Refuse an action outside the database while a transaction is active | `transactionActive()` on the connection (Go `TransactionActive`, Python and Rust `transaction_active`); true inside a transaction of the connection in the calling flow, sends no statement ([INT-192](../spec/interfaces.md)) |
-| Run code before a transaction begins, such as a write on another connection | `beforeTransaction(hook)` on the connection (Go `BeforeTransaction`, Python and Rust `before_transaction`); the hook runs before each outermost transaction of `transaction`, before it takes a connection or sends a statement, and returns a function that removes it ([INT-193](../spec/interfaces.md)) |
+| Refuse an action outside the database while a transaction is active | `transactionActive()` on the connection (Go `TransactionActive`, Python `transaction_active`); true inside a transaction of the connection in the calling flow, sends no statement ([INT-192](../spec/interfaces.md)). The Rust core and the generated bindings answer for the handle ([Transactions](#transactions)) |
+| Run code before a transaction begins, such as a write on another connection | `beforeTransaction(hook)` on the connection (Go `BeforeTransaction`, Python `before_transaction`; the Rust core has none); the hook runs before each outermost transaction of `transaction`, before it takes a connection or sends a statement, and returns a function that removes it ([INT-193](../spec/interfaces.md)) |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](../spec/dsl.md)) |
 | View the statements of a page without executing | `getPagePlanSteps(page, perPage)` on a connected model ([dsl.md](../spec/dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |
@@ -520,7 +930,7 @@ A program that compiles requests itself, such as a load that writes rows with th
 - It publishes its statement event with the kind of its verb, `insert`, `update`, `delete` or `select`, and `schema` for the MySQL `ALTER TABLE` of an identity restart ([statement events](#statement-events)); a driver error has the code a model statement would report.
 - A step that reads rows (it has an `assemble`) fails with `IR_INVALID` `execute runs a statement without rows; the statement is a read`, and a `param` slot past the parameters fails with `IR_INVALID` `bind slot <i> reads parameter <p>, but execute has <n> parameters`; neither sends a statement.
 - `execute` returns nothing. A load reads back what it needs with a model or a query.
-- The PHP extension `polyspec_orm` implements only the dbspec surface and holds no query connection, so it has no `execute`; the PHP client runs both.
+- The PHP extension of `legacy/packages/php-ext` implements only the dbspec surface and holds no query connection, so it has no `execute`; the PHP client runs both. The generated PHP extension of `packages/php-ext` has `execute` on `Db` and on `Tx`.
 
 ### Request hook
 
