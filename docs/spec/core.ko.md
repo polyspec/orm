@@ -395,6 +395,104 @@
   값은 `value(column)`이 돌려주는 `orm_value`다(CORE-62). 행이 읽지 않은 열은 key가 없다. 그래서 읽지 않은 열과 값이 null인
   열을 구별한다. relation 결과는 이 map의 key가 아니고 `related`와 `related_rows`가 돌려준다(CORE-88). 행을 읽지 않은
   `Query`는 빈 map을 돌려준다.
+- **CORE-150** `plus(column, value)`와 `minus(column, value)`는 다음 쓰기를 위해 열에 저장된 값에 `value`를 더하거나 뺀
+  값을 배정한다. 언어 구현의 member `plus<Col>(n)`과 `minus<Col>(n)`이다(DSL-102). 배정은 요청의 `plus_p`나
+  `minus_p`이고, 같은 열에 대한 `set`의 배정을 대신하며 `set`도 이것을 대신한다. `minus`는 음수 값을 저장하지 않는다.
+  `update`가 이것을 받고, `duplication`에 준 `Query`도 받는다(CORE-151). 엔티티의 열이 아닌 이름은 `config`이고
+  메시지는 `<column> is not a column of <entity>`다(CORE-91). 수가 아닌 열은 쓰기에서 `operator_not_allowed`이고
+  메시지는 `plus/minus on <entity>.<column> (<type>)`이며, 그런 배정을 가진 `create`는 `ir_invalid`이고 메시지는
+  `insert cannot assign <column> by plus or minus`다. insert에는 읽을 저장된 값이 없기 때문이다. 구현되지 않았다:
+  `Query`의 `plus`와 `minus`. 생성된 Rust 모델은 `plus_<col>`과 `minus_<col>`을 가진다.
+- **CORE-151** `duplication(query)`는 다음 `create`를 duplicate-key update가 있는 insert로 만든다. unique key 하나의 행을
+  만난 행은 넣지 않고, 같은 엔티티의 `Query`인 `query`의 배정을 만난 행에 쓴다(DSL-105). 그 배정은 요청의
+  `on_duplicate`이고 `create`가 그것을 비운다. 다른 엔티티의 `query`는 `config`이고, 배정이 없는 `query`는 `create`에서
+  `config`이며 메시지는 `duplication model has no set_<col> values`다. `query`가 primary key의 열이나 identity 열에
+  배정하면 `ir_invalid`이고 메시지는 `on_duplicate cannot assign <entity>.<column>`이며(DSL-113), 어떤 unique key로도
+  행을 만날 수 없거나 둘 이상으로 만날 수 있는 insert는 `ir_invalid`이고 메시지는
+  `on_duplicate needs exactly one conflict key`로 시작한다. `Query`의 조건은 DSL-162가 적은 대로 insert에 적용되고,
+  조건을 만족하지 않는 행은 `condition_not_met`이다. 구현되지 않았다: `Query`의 `duplication`.
+- **CORE-152** `update_optimistic()`은 엔티티의 update time 열이 행이 읽은 값을 아직 가지고 있는 동안에만 쓰는
+  CORE-91의 `update`다. 언어 구현의 member `update(true)`이다(DSL-107, DSL-155). 그 값은 요청의 `optimistic`이고
+  (PRT-7), 아무 행도 바꾸지 않은 문장은 `optimistic_lock`이며 메시지는 `row changed since it was read`다. 행을 읽지
+  않은 `Query`, update time 열을 읽지 않은 행, 그 열이 없는 엔티티, `update`가 이미 쓴 행은 `config`이고 메시지는
+  `update(true) requires a row loaded with its update time column`이다. 행을 먼저 다시 읽는다. `expect_revision`과
+  함께 쓰면 `config`이고 메시지는 `expectRevision does not combine with update(true)`다(DSL-114). update time은 코어가
+  쓰는 값이고 revision은 호출자가 가진 값이므로 둘은 서로 다른 member다. `Query`의 조건은 key에 이어지고(CORE-138),
+  한 문장으로는 조건과 update time을 구별할 수 없으므로 조건을 만족하지 않는 행도 `optimistic_lock`이다. 구현되지
+  않았다: `Query`의 `update_optimistic`. 그 `update`는 인자를 받지 않는다. 생성된 Rust 모델은
+  `update(optimistic)`을 가진다.
+- **CORE-153** `delete_recursive()`는 `delete`처럼 `Query`의 행을 지우고(CORE-91), 그보다 먼저 그 행이 가진 relation
+  결과(CORE-88)의 행을, 각 행이 가진 결과의 행과 함께 자식부터 지운다. 언어 구현의 member `delete(true)`이다
+  (DSL-111). `delete_lock`(CORE-157)을 가진 자식의 결과는 남는다. 모든 문장은 `Query`의 연결의 transaction 하나에서
+  실행되고, 연결이 `Tx`이면 savepoint에서 실행된다(CORE-21). 그래서 실패하면 아무것도 지우지 않으며, 그 행의
+  `revision_changed`도 그렇다(DSL-114). 조건을 가진 `Query`의 행이 지워질 결과를 가지고 있으면 어떤 문장보다도 먼저
+  `config`이고 메시지는 `a recursive delete of a row with cascading relations takes no conditions`다(CORE-138). 이것은
+  자기 key의 행 하나를 지우고, 조건이 고른 행들을 지우지 않는다(CORE-138). 구현되지 않았다: `Query`의
+  `delete_recursive`. 그 `delete`는 인자를 받지 않는다. 생성된 Rust 모델은 `delete(recursive)`를 가진다.
+- **CORE-154** `order_by_random()`은 행을 dialect의 함수로 무작위로 정렬하는 항목을 순서의 앞선 항목 뒤에 더한다
+  (DSL-99). 요청의 항목 `random`이다. 이것을 가진 추가 열의 subquery는 `ir_invalid`이고 메시지는
+  `a scalar column subquery may not order by random`이다. 구현되지 않았다: `Query`의 `order_by_random`.
+- **CORE-155** `order_by_function(column, function, descending)`은 열의 열 함수로 정렬하는 항목을 순서에 더한다. 언어
+  구현의 member `orderBy<Col>Asc(fn)`과 `orderBy<Col>Desc(fn)`이다(DSL-135). `function`은 DSL-144~DSL-147의 열 함수
+  이름 `day_of_week`, `year`, `month`, `date` 가운데 하나이고, 항목은 그것을 `fn`으로 가진다. 엔티티의 열이 아닌
+  이름은 `config`이고 메시지는 `<column> is not a column of <entity>`이며, 함수가 아닌 이름은 `function_unknown`이고,
+  값 함수(DSL-137~DSL-140)는 `config`이고 메시지는 `order_by accepts a column function only`이며, 함수가 받지 않는
+  타입의 열은 `operator_not_allowed`다(DSL-148). 각각 다음 terminal이 돌려준다. 구현되지 않았다: `Query`의
+  `order_by_function`. 계약의 어떤 타입도 DSL-131의 함수가 아니다(CORE-84).
+- **CORE-156** `force_index(name)`은 `Query`의 문장이 그 엔티티의 index나 unique key `name`을 쓰게 한다. 언어 구현의
+  member `forceIndex<Name>()`이다(DSL-78). 요청의 query의 `force_index`이고, 마지막에 부른 것이 남는다. 엔티티의
+  index도 unique key도 아닌 이름은 다음 terminal에서 `index_unknown`이고 메시지는 `<entity>.<name>`이다. 구현되지
+  않았다: `Query`의 `force_index`.
+- **CORE-157** member 셋은 `relation`이나 `relations`에 준 `Query`를 어떻게 붙일지 정하며(CORE-88, PRT-14), 어느
+  쪽에도 주지 않은 `Query`에는 효과가 없다. `parent_node()`는 `relation` 결과의 행을 그것을 가진 행에 합친다
+  (DSL-84). 요청의 `flatten`이고, 이것에 따라 행의 JSON 텍스트(CORE-161)는 자기 member 뒤에 자식의 member를 쓰며 행이
+  가진 이름은 자기 값을 지킨다(PRT-15). `relations`에 주면 `ir_invalid`이고 메시지는
+  `relation <name>: flatten needs a one relation`이다. `group_limit(count)`는 부모의 행마다 자식의 순서에서 처음
+  `count`개 행까지만 읽는다(DSL-86). 요청의 `limit_per_parent`다. `count`는 `uint`이고, 0이면 다음 terminal에서
+  `config`이며 메시지는 `group_limit requires a positive count`다. 행 lock과 함께 쓰면 `ir_invalid`다(CORE-86,
+  DSL-123). `delete_lock()`은 결과의 행을 `delete_recursive`에서 뺀다(CORE-153, DSL-87). 요청의
+  `no_cascade_delete`다. 구현되지 않았다: `Query`의 `parent_node`, `group_limit`, `delete_lock`.
+- **CORE-158** `possible(column, value)`는 `relation`이나 `relations`에 준 `Query`의 결과를 부모의 열 `column`이
+  `value`와 같은 행에만 붙인다. 언어 구현의 member `possible<Col>(value)`이다(DSL-85). `column`은 부모 엔티티의 열이고
+  `value`는 `orm_value`이며 열의 타입으로 비교한다. 요청의 `if_parent`이고(PRT-14), 마지막에 부른 것이 남는다. 어느
+  쪽에도 주지 않은 `Query`, 곧 terminal의 root나 `where_in`의 subquery 같은 것에서는 다음 terminal에서 `config`이고
+  메시지는 `possible applies only to a relation child`다. 부모 엔티티의 열이 아닌 이름은 부모의 다음 terminal에서
+  `config`이고 메시지는 `<column> is not a column of <entity>`다(CORE-130). 구현되지 않았다: `Query`의 `possible`.
+- **CORE-159** `fetch_key(function)`은 `gets`의 `Collection`을 primary key와 `key_name`(CORE-89) 대신 `function`이 각
+  행에 대해 돌려주는 값으로 key하고, `fetch_value(function)`은 각 행의 값 하나를 계산하며 `Collection`은 그 값을 행
+  옆에 그 key로 가진다(DSL-70). 함수는 행인 `Query`를 받고, 행과 그 relation 결과를 읽은 뒤 행의 순서대로 행마다 한
+  번 불린다. 실패한 함수는 그 실패를 바꾸지 않고 terminal을 끝낸다. key는 `Key`의 값이다(INT-11). 둘 다 요청을
+  바꾸지 않는다. `Db` step(CORE-92)에는 이것들의 형식이 없다. step은 data이기 때문이다. 구현되지 않았다: `Query`의
+  `fetch_key`와 `fetch_value`. `Collection`과 `Key`는 선언되지 않았다(CORE-70).
+- **CORE-160** `attach(name, value)`는 열이 아닌 이름으로 `orm_value`를 `Query`에 두고, `attached(name)`은 그것을
+  돌려준다. 언어 구현의 member `new<Name>(value)`와 `get<Name>()`이다(DSL-101, DSL-115, DSL-44). 어떤 문장도 그 값을
+  받지 않는다. `Query`가 읽는 행과 그 `create`가 돌려주는 행이 그 값을 가지고, 행의 JSON 텍스트(CORE-161)가 그것을
+  쓴다. `to_array`는 열만 가진다(CORE-120). `Query`가 붙이지 않은 이름의 `attached`는 `None`을 돌려준다. 행의 이름은
+  한 공간이다(DSL-128). 엔티티의 열, 추가 열, `Query`의 relation 결과인 `name`은 다음 terminal에서 `config`다
+  (DSL-116, DSL-160). 구현되지 않았다: `Query`의 `attach`와 `attached`. 생성된 Rust 모델은 스캔한 소스가 부르는
+  이름에 대해 `new_<name>`과 `get_<name>`을 가진다(DSL-156).
+- **CORE-161** `Query`의 행의 `to_json()`은 그 JSON 텍스트인 object 하나를 돌려준다(COD-26). 행이 읽은 열, 그다음 붙인
+  값(CORE-160), 그다음 이름별 relation 결과(행은 그 object, 행이 없으면 `null`, `relations`의 행들은 그 순서의 array),
+  그다음 `parent_node` 자식의 member(CORE-157)를 쓴다. 한 번 쓴 이름은 다시 쓰지 않는다. codec stage가 있는 열은
+  `{"kind":"sql-null"}`이나 `{"kind":"value","value":<value>}`로 tag를 붙여 쓴다. stage `json`의 값은 저장된 텍스트,
+  곧 member의 순서와 수의 텍스트를 지킨다. `datetime(p)`는 PRT-69의 텍스트다. codec stage가 없는 bytes 열은
+  `codec_encode`이고 메시지는 `<entity>.<column>: JSON output cannot write bytes`다. TypeScript 구현의 member
+  `toJSON`과 `toJSONText`, PHP의 `toJson`, Python의 `to_json_text`는 이 member 하나다. 언어가 그 텍스트로 하는 일,
+  예컨대 자기 `JSON.stringify`는 바인딩의 일이다. 구현되지 않았다: `Query`의 `to_json`.
+- **CORE-162** `get_page_plan_steps(page, per_page)`는 `gets_page(page, per_page)`가 실행하는 plan의 step을 돌려주고
+  문장을 보내지 않는다(DSL-159). plan의 순서대로 main step, count step, relation마다 step 하나이며, 각각 그 `role`
+  (`main`, `count`, `relation`), 그 문장의 table 이름을 정렬한 `tables`, 그 `sql`의 record다. `gets_page`의 인자와
+  거부를 그대로 받는다: 메시지 `gets_page requires a positive page and per_page`나
+  `gets_page cannot be combined with limit`의 `config`, 연결이 없는 `Query`의 `config`(CORE-81), planner의 거부,
+  markdown에서의 `capability_unsupported`. 연결의 request hook이 그 요청을 본다. 구현되지 않았다: `Query`의
+  `get_page_plan_steps`. `gets_page`가 구현되지 않았기 때문이다(CORE-84).
+- **CORE-163** 여러 열에 대한 조건, 곧 언어 구현의 member `tuple<ColA>With<ColB>(list)`(DSL-35)는 chain key
+  `Tuple<ColA>With<ColB>`, `not in`이면 `NeTuple<ColA>With<ColB>`와 값 하나를 받는 `where`다. 그 값은 값 묶음의
+  `list`이고 각 묶음은 열마다 값 하나를 가진 `list`다(CORE-82). list의 list가 아닌 값은 `codec_encode`이고 메시지는
+  `the value of a condition is no list of value groups`이며, 빈 list는 `empty_in`이고 메시지는
+  `tuple condition received an empty list`이고, 길이가 다른 묶음은 `config`이고 메시지는
+  `every tuple needs one value per column`이며, 열이 둘보다 적은 key나 codec stage가 있는 열 또는 list 연산자가 없는
+  열의 key는 `config`다. 각각 다음 terminal이 돌려준다. `Query`는 이것을 가진다.
 
 ## 상태 기계
 
