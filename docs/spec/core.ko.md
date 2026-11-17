@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: cab1712c7adc5e00a9267a22fda80b9b78c69d7fda83f1a12d2f508b2545facc -->
+<!-- source-sha256: 250ed1b65ee29778d7cbc3b2f2b41ba7aca317909b4359c0fd955c501dada3bf -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -642,7 +642,9 @@
   member `save()`다(DSL-109). 행을 안다는 것은 `Query`가 행을 읽었거나 `set`이 primary key의 모든 열을 배정했다는
   것이고, `update`가 요구하는 바로 그것이다(CORE-91). 그때 `save`는 그 `update`이고 `expect_revision`과 `Query`의
   조건(CORE-138)을 그대로 가지며, `update`가 남긴 그대로의 `Query`를 돌려준다. 먼저 행을 읽지 않는다: 어떤 행도
-  가지지 않은 key와 조건을 만족하지 않는 행은 아무것도 바꾸지 않고 오류가 아니며 아무것도 넣지 않는다. 그렇지 않으면
+  가지지 않은 key와 조건을 만족하지 않는 행은 아무것도 바꾸지 않고 오류가 아니며 아무것도 넣지 않는다. 그래서 key를
+  배정했고 그 key를 가진 행이 없으면 `save`는 아무것도 쓰지 않고 실패가 아니다. `expect_revision`이 있으면 그
+  `update`와 같이 `revision_changed`다(CORE-91). 그렇지 않으면
   `save`는 `create`이고 만든 행을 돌려준다. 그래서 identity key의 행은 key 없이 만들고 key와 함께 고친다(DSL-113).
   실패는 그 `update`나 `create`의 실패이고, 연결이 없는 `Query`는 어느 쪽보다도 먼저 `config`다(CORE-81). `Db`
   step(CORE-92)에는 이것의 terminal이 없다.

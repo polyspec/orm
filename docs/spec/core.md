@@ -762,10 +762,11 @@ implementation is eligible for removal on that evidence.
   `Query` read a row or `set` assigned every column of the primary key, which is what `update` asks for (CORE-91).
   Then `save` is that `update`, with its `expect_revision` and under the conditions of the `Query` (CORE-138), and
   returns the `Query` as the `update` left it. It reads no row first: a key that no row holds, and a row that does not
-  meet the conditions, change nothing, are no error and insert nothing. Otherwise `save` is `create` and returns the
-  created row; a row with an identity key is therefore created without its key and updated with it (DSL-113). A
-  failure is the failure of that `update` or `create`, and a `Query` with no connection is `config` before either
-  (CORE-81). The `Db` step (CORE-92) has no terminal for it.
+  meet the conditions, change nothing, are no error and insert nothing. When the key is set and no row has it, `save`
+  therefore writes nothing and is no failure; with `expect_revision` it is `revision_changed`, as that `update` is
+  (CORE-91). Otherwise `save` is `create` and returns the created row; a row with an identity key is therefore created
+  without its key and updated with it (DSL-113). A failure is the failure of that `update` or `create`, and a `Query`
+  with no connection is `config` before either (CORE-81). The `Db` step (CORE-92) has no terminal for it.
 - **CORE-204** `creates(rows, batch)` inserts the rows of the assignments of each `Query` of `rows`, in their order,
   and returns the number of rows that it inserted: the member `creates(models, batch)` of the language implementations
   (DSL-104). The rows are inserted in batches of `batch` rows, each batch one statement of several rows, all in one
