@@ -3150,8 +3150,8 @@ caseTest('T570: the tests of the build crate that read a server or a variable of
   assert.doesNotMatch(body(unit.name), /server_dsn|ORM_TOOLS_/, `${unit.name} of ${file} reads the DSN of a server; it runs in make test-rust, which has none`);
   assert.match(body(server.name), /server_dsn\("ORM_TOOLS_MYSQL_DSN"\)|ORM_TOOLS_MYSQL_DSN/, `${server.name} of ${file} runs no MySQL`);
   assert.match(body(server.name), /ORM_TOOLS_POSTGRES_DSN/, `${server.name} of ${file} runs no PostgreSQL`);
-  const named = /#\[ignore = "needs the database servers of make orm-test-servers; make ([a-z0-9-]+) runs it"\]/.exec(server.attributes);
-  assert.ok(named !== null, `the ignore of ${server.name} names no target: #[ignore = "needs the database servers of make orm-test-servers; make <target> runs it"]`);
+  const named = /#\[ignore = "needs the database servers; make orm-test-servers ([a-z0-9-]+) runs it in one command"\]/.exec(server.attributes);
+  assert.ok(named !== null, `the ignore of ${server.name} names no target: #[ignore = "needs the database servers; make orm-test-servers <target> runs it in one command"]`);
   const target = named[1] ?? '';
   assert.deepEqual(serverTargetErrors(target), []);
   const run = makeDryRun(target);

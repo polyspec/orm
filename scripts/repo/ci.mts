@@ -21,8 +21,10 @@ const runCommands = (step: WorkflowStep): SimpleCommand[] => step.run ? commands
 const jobCommands = (run: JobRun, makefile: string): SimpleCommand[] => [...runCommands(run.step), ...recipeCommands(makefile, [run.target])];
 
 // CI_JOB_LINE reads a line of the job runner in a recipe (scripts/check/ci-job.mts): its action, its id or options, and the
-// make arguments after `--`.
-const CI_JOB_LINE = /^@?\$\(CI_JOB\) (begin|setup|check|always|end) \$\(CI_NAME\)(?: (?!-- )(.*?))?(?: -- (.*))?$/;
+// make arguments after `--`. The line may first assign variables of its environment, as the setup step servers names the
+// owner of the servers (`ORM_SERVERS_OWNER=$$PPID`, T612); a variable of the servers that such an assignment provides is an
+// error of ciServerErrors, which reads the commands of the recipe.
+const CI_JOB_LINE = /^@?(?:[A-Za-z_][A-Za-z0-9_]*=\S* )*\$\(CI_JOB\) (begin|setup|check|always|end) \$\(CI_NAME\)(?: (?!-- )(.*?))?(?: -- (.*))?$/;
 /** A line of the job runner in a recipe. */
 export type JobLine = { action: string; options: string[]; make: string[] };
 /** jobLines are the lines of the job runner in the recipe of a target, in order. */
@@ -51,7 +53,7 @@ const links = (command: SimpleCommand): boolean => {
 // ciServerErrors returns one error at each place where the CI group jobs do not get the database check's servers and variables with the
 // same definition as test-servers.mts, or where a job creates a symbolic link. workflow is ci.yml and makefile the Makefile.
 //   - The recipe of the group job (ci-test) starts the servers with a setup step servers that runs make orm-test-servers, before
-//     its check, and no command of the job provides a variable of the servers itself.
+//     its check, and no command of the job, of its step or of its recipe, provides a variable of the servers itself.
 //   - No workflow defines such a variable and no command writes .runtime/servers/env itself.
 //   - A command that creates a symbolic link (ln -s, symlink) is an error.
 export function ciServerErrors(workflow: string, variables: readonly string[], makefile: string): string[] {
@@ -71,7 +73,7 @@ export function ciServerErrors(workflow: string, variables: readonly string[], m
     if (runCommands(run.step).some(command => command.writes.includes('.runtime/servers/env')))
       errors.push(`ci.yml job ${run.job.id} writes .runtime/servers/env; make orm-test-servers writes it`);
     for (const variable of variables)
-      if (runCommands(run.step).some(command => provides(command, variable))) errors.push(`ci.yml job ${run.job.id} provides ${variable}; make orm-test-servers defines it`);
+      if (job.some(command => provides(command, variable))) errors.push(`ci.yml job ${run.job.id} provides ${variable}; make orm-test-servers defines it`);
     // Symbolic links are not used (AGENTS.md): the server program is found from its own package path.
     if (job.some(links)) errors.push(`ci.yml job ${run.job.id} creates a symbolic link through make ${run.target}`);
   }
