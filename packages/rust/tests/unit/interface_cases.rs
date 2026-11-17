@@ -667,6 +667,14 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         ("db.driver", Some(Instance::Db(db))) => Returned::Value(Value::from(db.driver())),
         ("db.sql_driver", Some(Instance::Db(db))) => Returned::Value(Value::from(db.sql_driver())),
         ("db.with_cancel", Some(Instance::Db(db))) => Returned::Instance(Instance::Db(db.with_cancel(cancel(field(args, "cancel", member), member)))),
+        ("db.with_request_log", Some(Instance::Db(db))) => Returned::Instance(Instance::Db(db.with_request_log())),
+        ("db.observed_requests", Some(Instance::Db(db))) => {
+            let record = |observed: &crate::ObservedRequest| {
+                let params: Vec<Value> = observed.params.iter().map(|value| case_value(value, member)).collect();
+                serde_json::json!({"request": observed.request, "params": params})
+            };
+            Returned::Value(db.observed_requests().iter().map(record).collect())
+        }
         ("db.execute", Some(Instance::Db(db))) => {
             db.execute_text(&text(args, "step", member), orm_values(args, "params", member)?).await?;
             Returned::Value(Value::Null)
