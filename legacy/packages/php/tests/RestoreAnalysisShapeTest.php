@@ -16,7 +16,7 @@ class RestoreAnalysisShapeTest extends TestCase
 {
     public static function cases(): iterable
     {
-        $path = dirname(__DIR__, 3) . '/tests/ir/restore-analysis-shape.json';
+        $path = ormLegacyRoot() . '/tests/ir/restore-analysis-shape.json';
         $cases = json_decode((string) file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
         foreach ($cases as $case) {
             yield $case['id'] => [$case];
