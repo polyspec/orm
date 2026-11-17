@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: INT-188, PRT-91. Dynamic request shape before schema lookup.
+// Requirements: INT-191, PRT-91. Dynamic request shape before schema lookup.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

@@ -2786,7 +2786,7 @@ def _run_case_on(
         "closers": closers,
         "fields": {},
         "records": [],
-        # The transaction hook records of transaction_hook.install, separate from the request hook records (INT-190).
+        # The transaction hook records of transaction_hook.install, separate from the request hook records (INT-193).
         "transaction_hook_records": [],
         "hook_bases": {},
     }
@@ -4818,7 +4818,7 @@ def _op_transaction_active(step: dict, context: dict) -> dict:
         return {"value": {"bool": db.transaction_active()}}
     if flow != "other":
         raise ValueError(f"transaction.active has no flow {flow}")
-    # A thread of its own is another execution flow (INT-189); its result or its error is read after it ends.
+    # A thread of its own is another execution flow (INT-192); its result or its error is read after it ends.
     answer: dict = {}
 
     def other_flow() -> None:
@@ -4877,7 +4877,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
 
 
 def _op_transaction_hook_install(step: dict, context: dict) -> dict:
-    """transaction_hook.install (FCV-4, INT-190): one hook registered by the public before_transaction; each call
+    """transaction_hook.install (FCV-4, INT-193): one hook registered by the public before_transaction; each call
     records its name and read_only, runs its steps and then fails with the code of fail when it is set."""
     # The fields are read when the hook is installed, since the hook runs after the step ends.
     name = step["as"]
@@ -4897,13 +4897,13 @@ def _op_transaction_hook_install(step: dict, context: dict) -> dict:
 
 
 def _op_transaction_hook_remove(step: dict, context: dict) -> dict:
-    """transaction_hook.remove (FCV-4, INT-190): calls the remove function bound to ref."""
+    """transaction_hook.remove (FCV-4, INT-193): calls the remove function bound to ref."""
     _bound_value(step["ref"], context)()
     return {}
 
 
 def _op_transaction_hook_records(_step: dict, context: dict) -> dict:
-    """transaction_hook.records (FCV-4, INT-190): the transaction hook records in the order of the calls."""
+    """transaction_hook.records (FCV-4, INT-193): the transaction hook records in the order of the calls."""
     return {
         "value": {
             "array": [

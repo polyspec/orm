@@ -355,7 +355,7 @@ type handleKey struct{}
 // registered on the handle runs before a transaction begun on the connection, each with the context of the handle that
 // begins the transaction. It is native (FCV-2): a cancellation handle of CFG-9 is a primitive of a language that a recipe
 // step does not spell.
-// Requirements: INT-190, CFG-9.
+// Requirements: INT-193, CFG-9.
 func TestBeforeTransactionSharedByContextHandle(t *testing.T) {
 	testcase.Start(t)
 	db := connectSchemaDB(t, newDatabase(t, "sqlite"), fixtureSchema(t, "zone"))

@@ -3527,12 +3527,12 @@ final class Recipe
                 if ($flow !== 'other') {
                     throw new \LogicException("transaction.active has no flow {$flow}");
                 }
-                // A Fiber of its own is another execution flow (INT-189).
+                // A Fiber of its own is another execution flow (INT-192).
                 $fiber = new \Fiber(static fn(): bool => $db->transactionActive());
                 $fiber->start();
                 return ['value' => ['bool' => $fiber->getReturn()]];
             case 'transaction_hook.install':
-                // One before-transaction hook of INT-190 on the connection of the step (FCV-4): each call records its
+                // One before-transaction hook of INT-193 on the connection of the step (FCV-4): each call records its
                 // name and readOnly, runs its steps and then fails with the code of fail, when the step names one.
                 $as = $s['as'];
                 $steps = $s['steps'] ?? [];

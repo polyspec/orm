@@ -254,7 +254,7 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
                 await asyncio.to_thread(handle.execute, step, [])
             self.assertEqual(still_cancelled.exception.code, "CANCELED")
 
-    # Requirements: INT-190, CFG-9.
+    # Requirements: INT-193, CFG-9.
     async def test_before_transaction_hooks_are_shared_with_future_handles(self):
         """A hook registered on the connection is called for a transaction begun on a with_future handle of it, and a
         hook registered on such a handle is called for a transaction begun on the connection."""

@@ -4050,7 +4050,7 @@ static bool subscribe_impl(zval *self, zval *subscriber, zval *out)
     return true;
 }
 
-/* Db::beforeTransaction: the hook joins the before-transaction hooks of the connection under the next number (INT-190). The
+/* Db::beforeTransaction: the hook joins the before-transaction hooks of the connection under the next number (INT-193). The
  * returned closure removes that hook; it is made as the closure of subscribe is. */
 ZEND_NAMED_FUNCTION(db_remove_before_transaction)
 {
@@ -5141,7 +5141,7 @@ static zval *active_for(zval *db)
     return NULL;
 }
 
-/* Db::transactionActive (INT-189): whether a transaction of the connection that has not ended is active in the calling
+/* Db::transactionActive (INT-192): whether a transaction of the connection that has not ended is active in the calling
  * execution flow, from the frames of the request; a frame of another flow is not active for it, and no statement runs. */
 ZEND_METHOD(Polyspec_Orm_Db, transactionActive)
 {
@@ -5670,7 +5670,7 @@ static bool make_tx_frame(zval *self, zval *state, zval *out, bool read_only, co
 static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out)
 {
     zval *state = rd(self, "state");
-    /* A before-transaction hook may have closed the connection (INT-190). */
+    /* A before-transaction hook may have closed the connection (INT-193). */
     if (as_bool(rd(state, "closed"))) {
         db_throw_orm("CONFIG", "database is closed");
         return false;
@@ -6264,7 +6264,7 @@ static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callb
 /* Db::transaction: the callback runs in a transaction of the connection; a transaction of the same connection inside an active one
  * is a savepoint and accepts only the retry option. A DEADLOCK is retried up to retry times, with a growing back-off. */
 /* The checks of an attempt of an outermost transaction, then the before-transaction hooks registered now, in registration
- * order, each called with read_only (INT-190). It runs before the transaction takes the connection or sends a
+ * order, each called with read_only (INT-193). It runs before the transaction takes the connection or sends a
  * statement, the SQLite row lock table included; the error of a hook is left pending unchanged and no later hook runs. */
 static bool before_begin(zval *self, bool read_only, zend_long timeout)
 {
@@ -6362,7 +6362,7 @@ static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback call
         return kept;
     }
     for (zend_long attempt = 0;; attempt++) {
-        /* Outside the retry: the error of a hook ends the transaction unchanged, DEADLOCK included (INT-190). */
+        /* Outside the retry: the error of a hook ends the transaction unchanged, DEADLOCK included (INT-193). */
         if (!before_begin(self, read_only, timeout)) {
             if (has_record) {
                 zval_ptr_dtor(&record);

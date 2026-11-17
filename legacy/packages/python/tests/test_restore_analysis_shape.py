@@ -1,6 +1,6 @@
-"""Requirements: INT-188, PRT-91. Dynamic request shape before schema lookup."""
+"""Requirements: INT-191, PRT-91. Dynamic request shape before schema lookup."""
 
-# Requirements: INT-188, PRT-91.
+# Requirements: INT-191, PRT-91.
 import copy
 import json
 from pathlib import Path

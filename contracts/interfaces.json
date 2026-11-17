@@ -2254,7 +2254,7 @@
         "ENTITY_UNKNOWN",
         "COLUMN_UNKNOWN"
       ],
-      "state": "Classifies a registered restore into independent key and assignment column lists using the write planner classifier, without statements, hooks, transaction changes, parameter bounds or assignment permission validation (INT-188, PRT-91)",
+      "state": "Classifies a registered restore into independent key and assignment column lists using the write planner classifier, without statements, hooks, transaction changes, parameter bounds or assignment permission validation (INT-191, PRT-91)",
       "native": {
         "go": {
           "symbol": "legacy/packages/go/orm/db.go::DB.AnalyzeRestore",
@@ -2273,7 +2273,7 @@
           "signature": "def analyze_restore(self, request: IRRequest) -> RestoreAnalysis"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::analyze_restore",
+          "symbol": "packages/rust/src/db.rs::Db::analyze_restore",
           "signature": "pub fn analyze_restore(&self, request: &crate::ir::Request) -> Result<RestoreAnalysis>"
         },
         "php-extension": {
@@ -2290,7 +2290,7 @@
       "errors": [
         "CONFIG"
       ],
-      "state": "Reports whether a transaction of the connection that has not ended is active in the calling execution flow, from the existing transaction stack of the flow, without statements, request hooks, driver calls or a state of its own; a handle answers as its connection, and a closed connection is CONFIG (INT-189)",
+      "state": "Reports whether a transaction of the connection that has not ended is active in the calling execution flow, from the existing transaction stack of the flow, without statements, request hooks, driver calls or a state of its own; a handle answers as its connection, and a closed connection is CONFIG (INT-192)",
       "native": {
         "go": {
           "symbol": "legacy/packages/go/orm/db.go::DB.TransactionActive",
@@ -2309,7 +2309,7 @@
           "signature": "def transaction_active(self) -> bool"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::transaction_active",
+          "symbol": "packages/rust/src/db.rs::Db::transaction_active",
           "signature": "pub fn transaction_active(&self) -> Result<bool>"
         },
         "php-extension": {
@@ -2328,7 +2328,7 @@
       "errors": [
         "CONFIG"
       ],
-      "state": "Registers a hook that the client calls, in registration order and with readOnly, before each outermost transaction that transaction begins on the connection or a handle of it, every attempt, utils().run outside a transaction and a model terminal in a transaction of its own included, before the transaction takes a connection or sends a statement; a client whose calls return a promise or a future awaits the hook, an error of a hook ends the transaction before it begins and is returned unchanged, and the returned value removes the hook (INT-190)",
+      "state": "Registers a hook that the client calls, in registration order and with readOnly, before each outermost transaction that transaction begins on the connection or a handle of it, every attempt, utils().run outside a transaction and a model terminal in a transaction of its own included, before the transaction takes a connection or sends a statement; a client whose calls return a promise or a future awaits the hook, an error of a hook ends the transaction before it begins and is returned unchanged, and the returned value removes the hook (INT-193)",
       "native": {
         "go": {
           "symbol": "legacy/packages/go/orm/tx.go::DB.BeforeTransaction",
@@ -2347,7 +2347,7 @@
           "signature": "def before_transaction(self, hook: Callable[[bool], None]) -> Callable[[], None]"
         },
         "rust": {
-          "symbol": "packages/rust/orm/src/db.rs::Db::before_transaction",
+          "symbol": "packages/rust/src/db.rs::Db::before_transaction",
           "signature": "pub fn before_transaction(&self, hook: impl Fn(bool) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static) -> BeforeTransactionHook"
         },
         "php-extension": {

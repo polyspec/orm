@@ -133,7 +133,7 @@ type databaseStep struct {
 	// Request and Params are the request of db.execute (INT-76) and the values of its parameters.
 	Request      json.RawMessage `json:"request"`
 	MutateReturn bool            `json:"mutate_return"`
-	// Flow "other" makes the call of transaction.active in a goroutine of its own, and Closed closes the connection first (INT-189).
+	// Flow "other" makes the call of transaction.active in a goroutine of its own, and Closed closes the connection first (INT-192).
 	Flow    string            `json:"flow"`
 	Closed  bool              `json:"closed"`
 	Params  []json.RawMessage `json:"params"`
@@ -231,7 +231,7 @@ type databaseStep struct {
 }
 
 // stepFail is the fail key of a step: true on a transaction, whose callback then fails after its steps, or the error code
-// of the failure of a hook of transaction_hook.install (INT-190).
+// of the failure of a hook of transaction_hook.install (INT-193).
 type stepFail struct {
 	set  bool
 	code string
@@ -301,7 +301,7 @@ type databaseContext struct {
 	applyStep int
 	// records are the requests that a record action of the installed hook saw (hook.records).
 	records []hookRecord
-	// transactionHooks are the calls of the hooks that transaction_hook.install registered, in order (INT-190).
+	// transactionHooks are the calls of the hooks that transaction_hook.install registered, in order (INT-193).
 	transactionHooks []transactionHookRecord
 }
 

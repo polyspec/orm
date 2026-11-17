@@ -326,7 +326,7 @@ final class Db
 
     /**
      * Registers $hook to be called before every outermost transaction that transaction() begins on this connection or
-     * on a handle of it, at each attempt, with whether the transaction is read-only (INT-190). Every handle of the
+     * on a handle of it, at each attempt, with whether the transaction is read-only (INT-193). Every handle of the
      * connection shares the hooks. The client calls the hooks registered when the attempt starts, in registration
      * order, before the transaction sends any statement; an exception of a hook ends the transaction before it begins
      * and passes through unchanged, with no retry. The returned closure removes the hook.
@@ -853,7 +853,7 @@ final class Db
             return $this->savepoint($outer, $fn);
         }
         for ($attempt = 0;; $attempt++) {
-            // Outside the retry: an exception of a hook ends the transaction unchanged, DEADLOCK included (INT-190).
+            // Outside the retry: an exception of a hook ends the transaction unchanged, DEADLOCK included (INT-193).
             $this->beforeBegin($readOnly, $timeoutMs);
             try {
                 return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
@@ -1000,7 +1000,7 @@ final class Db
 
     /**
      * The checks of an attempt of an outermost transaction, then the before-transaction hooks registered now, in
-     * registration order (INT-190). It runs before the transaction takes the connection or sends a statement, the
+     * registration order (INT-193). It runs before the transaction takes the connection or sends a statement, the
      * SQLite row lock table included; an exception of a hook passes through unchanged and no later hook runs.
      */
     private function beforeBegin(bool $readOnly, int $timeoutMs): void
@@ -1019,7 +1019,7 @@ final class Db
 
     private function begin(string $isolation, bool $readOnly, int $timeoutMs): TxFrame
     {
-        // A hook may have closed the connection (INT-190).
+        // A hook may have closed the connection (INT-193).
         if ($this->state->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }

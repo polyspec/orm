@@ -290,7 +290,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 }
 
-// transactionHookRecord is one call of a hook that transaction_hook.install registered (INT-190, transaction_hook.records).
+// transactionHookRecord is one call of a hook that transaction_hook.install registered (INT-193, transaction_hook.records).
 type transactionHookRecord struct {
 	hook     string
 	readOnly bool
@@ -299,7 +299,7 @@ type transactionHookRecord struct {
 // transactionHookRemoval is the function that removes a hook of transaction_hook.install, bound to its as.
 type transactionHookRemoval struct{ remove func() }
 
-// installTransactionHook registers one hook of INT-190 on the connection of s with the public BeforeTransaction. Each call
+// installTransactionHook registers one hook of INT-193 on the connection of s with the public BeforeTransaction. Each call
 // records its name and readOnly, runs the steps of s in order, each with its own expect, and then fails with the error of
 // the code of fail, when s names one (FCV-4).
 func (c *databaseContext) installTransactionHook(s databaseStep) (outcome, error) {

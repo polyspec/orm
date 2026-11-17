@@ -382,7 +382,7 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 
 
 A hook can call `db.analyzeRestore(request)` before it accepts new values
-([INT-188](../spec/interfaces.md), [PRT-91](../spec/protocol.md)). The result
+([INT-191](../spec/interfaces.md), [PRT-91](../spec/protocol.md)). The result
 contains the selected `key` columns and the new `assignments` columns. PHP
 passes `$r->ir` from its request hook. The analysis uses the same classifier
 as the planner and changes no request; assignment legality is checked later
@@ -460,8 +460,8 @@ The same statement produces the same result on all three databases, although sta
 | Statement events | `subscribe` on the connection; every statement the client sends ([statement events](#statement-events)) |
 | Execute a compiled statement, such as a load with its keys | `execute` on the connection ([execute a compiled statement](#execute-a-compiled-statement)) |
 | Change every request of a handle before planning | `withRequestHook` on the connection ([request hook](#request-hook)) |
-| Refuse an action outside the database while a transaction is active | `transactionActive()` on the connection (Go `TransactionActive`, Python and Rust `transaction_active`); true inside a transaction of the connection in the calling flow, sends no statement ([INT-189](../spec/interfaces.md)) |
-| Run code before a transaction begins, such as a write on another connection | `beforeTransaction(hook)` on the connection (Go `BeforeTransaction`, Python and Rust `before_transaction`); the hook runs before each outermost transaction of `transaction`, before it takes a connection or sends a statement, and returns a function that removes it ([INT-190](../spec/interfaces.md)) |
+| Refuse an action outside the database while a transaction is active | `transactionActive()` on the connection (Go `TransactionActive`, Python and Rust `transaction_active`); true inside a transaction of the connection in the calling flow, sends no statement ([INT-192](../spec/interfaces.md)) |
+| Run code before a transaction begins, such as a write on another connection | `beforeTransaction(hook)` on the connection (Go `BeforeTransaction`, Python and Rust `before_transaction`); the hook runs before each outermost transaction of `transaction`, before it takes a connection or sends a statement, and returns a function that removes it ([INT-193](../spec/interfaces.md)) |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](../spec/dsl.md)) |
 | View the statements of a page without executing | `getPagePlanSteps(page, perPage)` on a connected model ([dsl.md](../spec/dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |

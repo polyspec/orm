@@ -8326,7 +8326,7 @@
         }
       },
       "transaction_hook.install": {
-        "description": "Registers one before-transaction hook of INT-190 on connection and binds as to its remove function; each call records {hook, read_only}, runs steps, then fails with fail (FCV-4).",
+        "description": "Registers one before-transaction hook of INT-193 on connection and binds as to its remove function; each call records {hook, read_only}, runs steps, then fails with fail (FCV-4).",
         "type": "object",
         "required": ["op", "connection", "as"],
         "additionalProperties": false,

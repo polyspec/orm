@@ -1697,7 +1697,7 @@ final class Db
     public function withRequestHook(\Closure $hook): Db {}
     public function analyzeRestore(array $request): array {}
     public function transactionActive(): bool {}
-    /** Registers a hook called before every outermost transaction of the connection, at each attempt; returns its remover (INT-190). */
+    /** Registers a hook called before every outermost transaction of the connection, at each attempt; returns its remover (INT-193). */
     public function beforeTransaction(\Closure $hook): \Closure {}
     public function withCancellation(Cancellation $cancellation): Db {}
     public function subscribe(\Closure $subscriber): \Closure {}

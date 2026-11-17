@@ -36,7 +36,7 @@
     "DIA-154",
     "DIA-184",
     "DIA-209",
-    "INT-189"
+    "INT-192"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [
@@ -5119,7 +5119,7 @@
     {
       "id": "transaction_active_outside_inside_and_after_commit",
       "requirements": [
-        "INT-189",
+        "INT-192",
         "INT-45"
       ],
       "steps": [
@@ -5219,7 +5219,7 @@
     {
       "id": "transaction_active_after_rollback",
       "requirements": [
-        "INT-189",
+        "INT-192",
         "INT-45"
       ],
       "steps": [
@@ -5293,7 +5293,7 @@
     {
       "id": "transaction_active_in_a_savepoint_and_after_its_rollback",
       "requirements": [
-        "INT-189",
+        "INT-192",
         "INT-46"
       ],
       "steps": [
@@ -5432,7 +5432,7 @@
     {
       "id": "transaction_active_in_another_execution_flow",
       "requirements": [
-        "INT-189",
+        "INT-192",
         "INT-45",
         "INT-47"
       ],
@@ -5535,7 +5535,7 @@
     {
       "id": "transaction_active_on_a_closed_connection_is_config",
       "requirements": [
-        "INT-189"
+        "INT-192"
       ],
       "steps": [
         {

@@ -107,7 +107,7 @@ final class QueryCancellationNativeTest extends TestCase
         }
     }
 
-    // Requirements: INT-190, CFG-9.
+    // Requirements: INT-193, CFG-9.
     public function testNativeBeforeTransactionHooksAreSharedWithACancellationHandle(): void
     {
         $root = new Db(Sqlite::connect('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));

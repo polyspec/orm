@@ -1,5 +1,5 @@
 <!-- doc-id: spec-flowmark-surface -->
-<!-- source-sha256: 60619b40f601f0290880bb9eb5a8a4430d503ed3881d435c3b2285f571d4cd94 -->
+<!-- source-sha256: eb7a750580376e4adef3fa3708b11d3af64d1a826ddd2b91ab0660ff6db616bf -->
 # flowmark가 쓰는 orm의 표면
 
 [English](flowmark-surface.md)
@@ -247,8 +247,10 @@ exported 이름 317개를 쓰는 Go 프로그램이다. 이 문서는 flowmark�
   부분을 돌려준다(`#/$defs/restore_parts`):
   `{"key": [<column>, ...], "where": <group>, "set": [<assign>, ...], "soft_delete": <column>}`다. entity는 요청의
   entity이고, model에 없는 entity는 `entity_unknown`이다. 이 member는 `RestoreKey`와 `RestoreParts`를 전달한다.
-  이 member는 구현되지 않았다. `Manifest::restore_key`가 `packages/rust/src/engine/validate.rs`의 `restore_key`의 부분을
-  쓰고, `restore_key`는 crate 안에서만 보인다.
+  계약이 이 member를 선언하고(`packages/rust/interface.json`) 그 사례는 `contracts/interface/core.json`의 group
+  `runtime_model.restore_key`이며, 생성 바인딩이 이 member를 가진다. member는 `Manifest::restore_key`
+  (`packages/rust/src/engine/json.rs`)이고, `packages/rust/src/engine/validate.rs`의 `restore_key`의 부분을 쓴다.
+  그 `restore_key`는 crate 안에서만 보인다.
 - **FMS-35** `runtime_model.operator_allowed(entity, column, operator)`는 그 열에 그 연산자의 조건이 허용되는지를
   검증이 정하는 대로 돌려준다(`packages/rust/src/engine/validate.rs`의 `op_allowed`이고, 이 함수는
   `dbspec::operator_allowed_for_field`를 부른다). model에 없는 entity는 `entity_unknown`이고, entity에 없는 열은

@@ -153,7 +153,7 @@ export function registerModel(manifestText: string, manifestHash: string, extern
 
 /**
  * A hook of Db.beforeTransaction: the client calls it with whether the transaction is read-only before each outermost
- * transaction begins, and awaits the promise it returns before it calls the next hook (INT-190).
+ * transaction begins, and awaits the promise it returns before it calls the next hook (INT-193).
  */
 export type TransactionHook = (readOnly: boolean) => void | Promise<void>;
 
@@ -528,7 +528,7 @@ export class Db {
   // State shared by all handles of one connection. rollbackFault is the test fault that the test entry
   // point's failNextRollback sets.
   // events holds the subscriber list and the transaction number; rowLockTable says whether the SQLite row lock table was created on this
-  // connection; transactionHooks holds the before-transaction hooks in registration order (INT-190).
+  // connection; transactionHooks holds the before-transaction hooks in registration order (INT-193).
   private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; fixedClock: number | null; lastAffected: number | null; events: Subscribers; rowLockTable: boolean; transactionHooks: readonly TransactionHook[] } = { closed: false, rollbackFault: false, statementFault: null, fixedClock: null, lastAffected: null, events: new Subscribers(), rowLockTable: false, transactionHooks: [] };
   public readonly signal: AbortSignal | undefined = undefined;
   /** The hook of the handle (withRequestHook); a connection has none. */
@@ -659,7 +659,7 @@ export class Db {
   /**
    * Registers hook to be called before every outermost transaction that transaction begins on the connection or a handle of it,
    * each attempt included, with whether it is read-only. The client awaits each hook in registration order before the transaction
-   * takes a connection or sends a statement; an error of a hook ends the transaction unchanged and without retry (INT-190). Every
+   * takes a connection or sends a statement; an error of a hook ends the transaction unchanged and without retry (INT-193). Every
    * handle of the connection shares the hooks. The returned function removes this registration.
    */
   public beforeTransaction(hook: (readOnly: boolean) => void | Promise<void>): () => void {
@@ -827,7 +827,7 @@ export class Db {
     }
     for (let attempt = 0; ; attempt++) {
       if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
-      // The hooks run before the attempt reserves a connection or sends a statement, outside the retry of its errors (INT-190).
+      // The hooks run before the attempt reserves a connection or sends a statement, outside the retry of its errors (INT-193).
       await this.callTransactionHooks(options.readOnly === true);
       try {
         const begin: BeginOptions = { timeoutMs };

@@ -103,7 +103,7 @@ final class QueryCancellationTest extends TestCase
         }
     }
 
-    // Requirements: INT-190, CFG-9.
+    // Requirements: INT-193, CFG-9.
     public function testBeforeTransactionHooksAreSharedWithACancellationHandle(): void
     {
         $pdo = Sqlite::connect('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);

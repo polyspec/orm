@@ -475,7 +475,7 @@ type transactionHook struct {
 	fn func(ctx context.Context, readOnly bool) error
 }
 
-// transactionHooks is the hook list that every handle of the connection shares (INT-190). The list is rebuilt whenever it
+// transactionHooks is the hook list that every handle of the connection shares (INT-193). The list is rebuilt whenever it
 // changes, so a transaction calls the hooks of the list it reads, the hooks registered at that moment, without a lock.
 type transactionHooks struct {
 	mu   sync.Mutex
@@ -483,7 +483,7 @@ type transactionHooks struct {
 }
 
 // BeforeTransaction registers hook on the connection, shared by every handle of it, and returns the function that removes
-// it (INT-190). Before every outermost transaction that begins on the connection or a handle of it, each attempt of a retry
+// it (INT-193). Before every outermost transaction that begins on the connection or a handle of it, each attempt of a retry
 // included, the hooks run in registration order with the context of the handle that begins the transaction and whether
 // the transaction is read-only, before the transaction reserves a connection of the pool or sends any statement. An error
 // of a hook ends the transaction before it begins: no later hook runs, the callback does not run nor run again, and the
@@ -518,7 +518,7 @@ func (d *DB) BeforeTransaction(hook func(ctx context.Context, readOnly bool) err
 }
 
 // callTransactionHooks calls the hooks registered now, in registration order, with the context of the handle d, and
-// returns the error of the first hook that fails, unchanged (INT-190).
+// returns the error of the first hook that fails, unchanged (INT-193).
 func (d *DB) callTransactionHooks(readOnly bool) error {
 	p := d.m.txHooks.list.Load()
 	if p == nil {
@@ -577,7 +577,7 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 	}
 	for attempt := 0; ; attempt++ {
 		// Each attempt checks its options, then calls the hooks before it takes a connection; the error of a hook is
-		// returned unchanged and never runs the callback again, even when it is a deadlock (INT-190).
+		// returned unchanged and never runs the callback again, even when it is a deadlock (INT-193).
 		level, err := d.openingLevel(o)
 		if err != nil {
 			return err

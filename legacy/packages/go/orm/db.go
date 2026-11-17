@@ -135,7 +135,7 @@ type dbMutable struct {
 	// subs holds the connection's statement event subscribers and the transaction number.
 	subs subscribers
 
-	// txHooks holds the hooks of BeforeTransaction that every handle of the connection shares (INT-190).
+	// txHooks holds the hooks of BeforeTransaction that every handle of the connection shares (INT-193).
 	txHooks transactionHooks
 
 	// rollbackFault is the test fault that FailNextRollback sets. Only builds with the build tag
@@ -499,7 +499,7 @@ func (d *DB) AnalyzeRestore(r *ir.Request) (RestoreAnalysis, error) {
 }
 
 // TransactionActive reports whether a transaction of this connection that has not ended is active in the calling goroutine
-// (INT-189). It reads the transaction stack of the goroutine and sends no statement.
+// (INT-192). It reads the transaction stack of the goroutine and sends no statement.
 func (d *DB) TransactionActive() (bool, error) {
 	if d.m.closed.Load() {
 		return false, configErr("database is closed")

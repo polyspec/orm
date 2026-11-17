@@ -1205,10 +1205,10 @@ const OPS = {
     if (s.closed === true) await db.close();
     if (s.flow === undefined) return { value: { bool: db.transactionActive() } };
     if (s.flow !== 'other') throw new Error(`transaction.active has no flow ${s.flow}`);
-    // An asynchronous context that did not start inside the transaction callback (INT-189).
+    // An asynchronous context that did not start inside the transaction callback (INT-192).
     return { value: { bool: OUTSIDE_FLOW(() => db.transactionActive()) } };
   },
-  // A hook of INT-190: each call records its name and readOnly, runs its steps, and then fails when the step names a code.
+  // A hook of INT-193: each call records its name and readOnly, runs its steps, and then fails when the step names a code.
   // The hook is asynchronous, and the client awaits it before it calls the next hook.
   'transaction_hook.install'(s, context) {
     // The fields are read when the hook is registered, so a step whose hook is never called still reads them.

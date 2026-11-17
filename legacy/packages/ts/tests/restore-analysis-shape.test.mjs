@@ -1,4 +1,4 @@
-// Requirements: INT-188, PRT-91. Raw object shape is a dynamic-language boundary.
+// Requirements: INT-191, PRT-91. Raw object shape is a dynamic-language boundary.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';

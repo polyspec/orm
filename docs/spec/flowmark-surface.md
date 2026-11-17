@@ -259,8 +259,10 @@ hold for every member that this document names.
   1.5) and returns its parts (`#/$defs/restore_parts`):
   `{"key": [<column>, ...], "where": <group>, "set": [<assign>, ...], "soft_delete": <column>}`. The entity is the
   entity of the request; an entity that the model does not have is `entity_unknown`. The member carries `RestoreKey`
-  and `RestoreParts`. The member is not implemented; `Manifest::restore_key` writes the parts of `restore_key` of
-  `packages/rust/src/engine/validate.rs`, which stays private to the crate.
+  and `RestoreParts`. The contract declares the member (`packages/rust/interface.json`) with the cases of the group
+  `runtime_model.restore_key` of `contracts/interface/core.json`, and the generated bindings carry it; it is
+  `Manifest::restore_key` (`packages/rust/src/engine/json.rs`), which writes the parts of `restore_key` of
+  `packages/rust/src/engine/validate.rs`, a function that stays private to the crate.
 - **FMS-35** `runtime_model.operator_allowed(entity, column, operator)` returns whether a condition of the operator on
   the column is allowed, as the validation decides (`op_allowed` of `packages/rust/src/engine/validate.rs`, which calls
   `dbspec::operator_allowed_for_field`). An entity that the model does not have is `entity_unknown`, and a column that

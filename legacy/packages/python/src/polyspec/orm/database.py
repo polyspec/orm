@@ -1799,7 +1799,7 @@ class _Shared:
         # The connections of the Db, and the connection a thread holds for a sequence of statements.
         self.pool = None
         self.held = threading.local()
-        # The hooks of before_transaction in registration order (INT-190). A registration or a removal replaces the
+        # The hooks of before_transaction in registration order (INT-193). A registration or a removal replaces the
         # tuple under the lock, so a transaction reads the hooks registered at that moment without the lock.
         self.transaction_hooks: tuple = ()
         self.transaction_hooks_lock = threading.Lock()
@@ -2292,7 +2292,7 @@ class Db:
 
     def before_transaction(self, hook: Callable[[bool], None]) -> Callable[[], None]:
         """Registers hook on the connection, shared by every handle of it, and returns the function that removes it
-        (INT-190). Before every outermost transaction that transaction begins on the connection or a handle of it,
+        (INT-193). Before every outermost transaction that transaction begins on the connection or a handle of it,
         each attempt of the retry included, the client calls the hooks registered at that moment in registration
         order with whether the transaction is read-only, before the transaction takes a connection or sends a
         statement. An error of a hook ends the transaction before it begins and is raised unchanged."""
@@ -2617,7 +2617,7 @@ class Db:
         while True:
             if self._shared.closed:
                 raise OrmError(codes.CONFIG, "database is closed")
-            # The hooks of INT-190 run at the start of each attempt, before the transaction takes a connection or
+            # The hooks of INT-193 run at the start of each attempt, before the transaction takes a connection or
             # sends a statement; an error of a hook is raised unchanged, outside the retry of INT-43.
             for (hook,) in self._shared.transaction_hooks:
                 hook(read_only)
