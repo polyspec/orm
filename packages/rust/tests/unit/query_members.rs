@@ -1019,16 +1019,16 @@ async fn creates_inserts_the_rows_in_batches_of_one_transaction() {
     let db = account_db(&scratch, &schema).await;
     let accounts = query(&schema, "account", &db);
     let rows = vec![new_account(&schema, "d@x"), new_account(&schema, "e@x"), new_account(&schema, "f@x")];
-    assert_eq!(accounts.creates(rows, 2).await.expect("creates"), 3);
+    assert_eq!(accounts.creates(&rows, 2).await.expect("creates"), 3);
     assert_eq!(accounts.get_count().await.expect("get_count"), 6);
-    assert_eq!(accounts.creates(Vec::new(), 1).await.expect("no rows"), 0);
+    assert_eq!(accounts.creates(&[], 1).await.expect("no rows"), 0);
     let duplicate = vec![new_account(&schema, "g@x"), new_account(&schema, "a@x")];
-    assert_eq!(failure(accounts.creates(duplicate, 1).await, "a duplicate key").kind().as_str(), "duplicate_key");
+    assert_eq!(failure(accounts.creates(&duplicate, 1).await, "a duplicate key").kind().as_str(), "duplicate_key");
     assert_eq!(accounts.get_count().await.expect("get_count"), 6, "a failure of a later batch inserts nothing");
     let message = |rows: Vec<Query>, batch: u32, what: &str| {
         let accounts = accounts.clone();
         let what = what.to_owned();
-        async move { failure(accounts.creates(rows, batch).await, &what).to_string() }
+        async move { failure(accounts.creates(&rows, batch).await, &what).to_string() }
     };
     assert_eq!(message(vec![new_account(&schema, "h@x")], 0, "a batch of 0").await, "config: creates batch must be a positive integer, got 0");
     let key = Query::new(&schema, "account_key").expect("query");

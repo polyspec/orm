@@ -793,7 +793,7 @@ async fn call_query(member: &str, receiver: Option<&mut Instance>, args: &Map<St
                     _ => panic!("{member}: a row is no query"),
                 }
             }
-            Returned::Value(returned_integer(query.creates(rows, uint(args, "batch", member)).await?))
+            Returned::Value(returned_integer(query.creates(&rows, uint(args, "batch", member)).await?))
         }
         ("query.save", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.save().await?))),
         ("query.restore", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore().await?))),

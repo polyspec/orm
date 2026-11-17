@@ -429,14 +429,16 @@ impl SchemaUtils {
 
     /// `install` as a machine that owns the utilities and the schema: the member `schema_utils.install` of the contract
     /// (CORE-181).
-    pub fn install_machine(self, schema: Schema) -> Operation<()> {
-        Operation::new(async move { self.install(&schema).await })
+    pub fn install_machine(&self, schema: Schema) -> Operation<()> {
+        let utils = self.clone();
+        Operation::new(async move { utils.install(&schema).await })
     }
 
     /// `add_tables_and_columns` as a machine that owns its arguments: the member `schema_utils.add_tables_and_columns`
     /// of the contract (CORE-181).
-    pub fn add_tables_and_columns_machine(self, schema: Schema) -> Operation<Vec<String>> {
-        Operation::new(async move { self.add_tables_and_columns(&schema).await })
+    pub fn add_tables_and_columns_machine(&self, schema: Schema) -> Operation<Vec<String>> {
+        let utils = self.clone();
+        Operation::new(async move { utils.add_tables_and_columns(&schema).await })
     }
 
     /// `exists` as a machine that owns its arguments: the member `schema_utils.exists` of the contract (CORE-181).
@@ -735,14 +737,16 @@ impl AesUtils {
 
     /// `status_query` as a machine that owns the utilities, the query and the key ring: the member `aes_utils.status` of
     /// the contract (CORE-181, CORE-185).
-    pub fn status_machine(self, model: Query, keyring: AesKeyring) -> Operation<AesRotationStatus> {
-        Operation::new(async move { self.status_query(&model, &keyring).await })
+    pub fn status_machine(&self, model: Query, keyring: AesKeyring) -> Operation<AesRotationStatus> {
+        let utils = self.clone();
+        Operation::new(async move { utils.status_query(&model, &keyring).await })
     }
 
     /// `rotate_query` as a machine that owns the utilities, the query and the key ring: the member `aes_utils.rotate` of
     /// the contract (CORE-181, CORE-185).
-    pub fn rotate_machine(self, model: Query, keyring: AesKeyring) -> Operation<u64> {
-        Operation::new(async move { self.rotate_query(&model, &keyring).await })
+    pub fn rotate_machine(&self, model: Query, keyring: AesKeyring) -> Operation<u64> {
+        let utils = self.clone();
+        Operation::new(async move { utils.rotate_query(&model, &keyring).await })
     }
 
     async fn status_entity(&self, entity: &EntityRef, keyring: &AesKeyring) -> Result<AesRotationStatus> {

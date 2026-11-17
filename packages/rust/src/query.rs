@@ -602,8 +602,8 @@ impl Query {
     /// Inserts the rows of the assignments of `rows`, queries of the same entity, in batches of `batch` rows in one
     /// transaction, under the conditions of this query, and returns the number of rows inserted (CORE-204). A `batch` of
     /// 0 and a row of another entity are `config`, and a batch over the bind limit of the database is `batch_too_large`.
-    pub async fn creates(&self, rows: Vec<Query>, batch: u32) -> Result<i64> {
-        for row in &rows {
+    pub async fn creates(&self, rows: &[Query], batch: u32) -> Result<i64> {
+        for row in rows {
             if row.entity() != self.entity() {
                 return Err(Error::config(format!("creates takes rows of {}, not of {}", self.entity(), row.entity())));
             }
@@ -612,7 +612,7 @@ impl Query {
             }
         }
         let batch = usize::try_from(batch).map_err(|error| Error::internal(format!("the batch {batch} is no size: {error}")))?;
-        let inserted = crate::model::creates(self, rows, batch).await?;
+        let inserted = crate::model::creates(self, rows.to_vec(), batch).await?;
         i64::try_from(inserted).map_err(|error| Error::internal(format!("the count {inserted} of inserted rows is no int64: {error}")))
     }
 
