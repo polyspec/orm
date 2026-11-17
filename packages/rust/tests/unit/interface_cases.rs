@@ -730,9 +730,9 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.group_limit(uint(args, "count", member));
             Returned::Value(Value::Null)
         }
-        ("query.gets_lookahead_page", Some(Instance::Query(query))) => Returned::Instance(Instance::LookaheadPage(Box::new(
-            query.gets_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?,
-        ))),
+        ("query.gets_lookahead_page", Some(Instance::Query(query))) => {
+            Returned::Instance(Instance::LookaheadPage(Box::new(query.gets_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?)))
+        }
         ("query.gets_count_lookahead_page", Some(Instance::Query(query))) => Returned::Instance(Instance::GroupPage(Box::new(
             query.gets_count_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?,
         ))),
@@ -765,9 +765,9 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
         },
         ("query.get", Some(Instance::Query(query))) => optional_row(query.get().await?),
         ("query.gets", Some(Instance::Query(query))) => Returned::Instance(Instance::Rows(Box::new(query.gets_rows().await?))),
-        ("query.gets_by", Some(Instance::Query(query))) => Returned::Instance(Instance::Rows(Box::new(
-            query.gets_rows_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?,
-        ))),
+        ("query.gets_by", Some(Instance::Query(query))) => {
+            Returned::Instance(Instance::Rows(Box::new(query.gets_rows_by(&text(args, "chain", member), &orm_values(args, "values", member)?).await?)))
+        }
         ("query.to_array", Some(Instance::Query(query))) => Returned::Value(case_map(&query.to_array()?, member)),
         ("rows.len", Some(Instance::Rows(rows))) => Returned::Value(Value::from(rows.len())),
         ("rows.first", Some(Instance::Rows(rows))) => optional_row(rows.first()),
@@ -1376,9 +1376,12 @@ async fn register_adds_a_set_to_the_sets_of_its_connection() {
     let clock = clock_schema();
     let other_text = "dbspec 1 other\n\ntable other_row {\n  id i64 identity\n  primary key (id)\n}\n";
     let other = Schema::load(other_text, "", "sha256:3977a85e434a335ae10c9be3d9018afa28cf6250b88ebe9bae63795a2f79b0ff").expect("the set other loads");
-    db.execute_text(&create_table("CREATE TABLE clock_event (seq INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT NOT NULL, created_ts TEXT NOT NULL)"), Vec::new())
-        .await
-        .expect("the table of clock");
+    db.execute_text(
+        &create_table("CREATE TABLE clock_event (seq INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT NOT NULL, created_ts TEXT NOT NULL)"),
+        Vec::new(),
+    )
+    .await
+    .expect("the table of clock");
     db.execute_text(&create_table("CREATE TABLE other_row (id INTEGER PRIMARY KEY AUTOINCREMENT)"), Vec::new()).await.expect("the table of other");
     let mut events = Query::new(&clock, "clock_event").expect("clock_event");
     events.connect(Connection::Db(db.clone()));
