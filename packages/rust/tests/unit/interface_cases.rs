@@ -34,6 +34,8 @@ enum Instance {
     Query(Box<Query>),
     Page(Box<crate::QueryPage>),
     Rows(Box<Rows>),
+    LookaheadPage(Box<crate::QueryLookaheadPage>),
+    GroupPage(Box<crate::GroupLookaheadRows>),
     Model(Box<Manifest>),
     Integer(IntegerValue),
     Float(FloatValue),
@@ -681,6 +683,20 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.group_limit(uint(args, "count", member));
             Returned::Value(Value::Null)
         }
+        ("query.gets_lookahead_page", Some(Instance::Query(query))) => Returned::Instance(Instance::LookaheadPage(Box::new(
+            query.gets_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?,
+        ))),
+        ("query.gets_count_lookahead_page", Some(Instance::Query(query))) => Returned::Instance(Instance::GroupPage(Box::new(
+            query.gets_count_lookahead_page(uint(args, "page", member), uint(args, "per_page", member)).await?,
+        ))),
+        ("lookahead_page.page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.page())),
+        ("lookahead_page.per_page", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.per_page())),
+        ("lookahead_page.has_next", Some(Instance::LookaheadPage(page))) => Returned::Value(Value::from(page.has_next())),
+        ("lookahead_page.rows", Some(Instance::LookaheadPage(page))) => Returned::Instance(Instance::Rows(Box::new(page.rows()))),
+        ("group_lookahead_page.page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.page())),
+        ("group_lookahead_page.per_page", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.per_page())),
+        ("group_lookahead_page.has_next", Some(Instance::GroupPage(page))) => Returned::Value(Value::from(page.has_next())),
+        ("group_lookahead_page.rows", Some(Instance::GroupPage(page))) => Returned::Value(page.rows().iter().map(|row| case_map(row, member)).collect()),
         ("query.group_by", Some(Instance::Query(query))) => {
             query.group_by(&text(args, "column", member));
             Returned::Value(Value::Null)

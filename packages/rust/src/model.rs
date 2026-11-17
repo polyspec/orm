@@ -951,8 +951,8 @@ pub async fn gets_count<M: AnyModel + Clone>(m: &M) -> Result<GroupRows> {
 
 /// Returns one page of the models of `gets` and whether a next page exists, read by one statement that reads one row past
 /// the page and counts nothing (INT-164).
-pub async fn gets_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<LookaheadPage<M>> {
-    let (ex, q, mut req) = lookahead_request(m.core(), "lookahead_paginate", page, per_page)?;
+pub async fn gets_lookahead_page<M: AnyModel + Clone>(m: &M, page: u32, per_page: u32) -> Result<LookaheadPage<M>> {
+    let (ex, q, mut req) = lookahead_request(m.core_dyn(), "lookahead_paginate", page, per_page)?;
     let res = select_page(&ex, &q.conn, &mut req, Some(per_page as usize)).await?;
     let loaded = assemble(&q, &req, &res).await?;
     Ok(LookaheadPage { items: Collection::from_boxes(loaded.items, loaded.fetched), page, per_page, has_next: res.has_next })
@@ -960,10 +960,10 @@ pub async fn gets_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> R
 
 /// Returns one page of the group rows of `gets_count` and whether a next page exists, read by one statement that reads one
 /// group past the page and counts nothing (INT-164).
-pub async fn gets_count_lookahead_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<GroupLookaheadPage> {
-    let (ex, q, mut req) = lookahead_request(m.core(), "group_lookahead_paginate", page, per_page)?;
+pub async fn gets_count_lookahead_page<M: AnyModel + Clone>(m: &M, page: u32, per_page: u32) -> Result<GroupLookaheadPage> {
+    let (ex, q, mut req) = lookahead_request(m.core_dyn(), "group_lookahead_paginate", page, per_page)?;
     let res = select_page(&ex, &q.conn, &mut req, Some(per_page as usize)).await?;
-    Ok(GroupLookaheadPage { items: group_rows(m.core(), &res)?, page, per_page, has_next: res.has_next })
+    Ok(GroupLookaheadPage { items: group_rows(m.core_dyn(), &res)?, page, per_page, has_next: res.has_next })
 }
 
 /// The arguments of a lookahead page checked and its request of `kind` built, whose root limit reads one row past the page.

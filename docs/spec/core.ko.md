@@ -310,7 +310,7 @@
   행이 읽지 않은 열은 `column_unselected`다.
 - **CORE-84** 구현되지 않았다: `Query`의 `join`, `leftJoin`, 묶음
   (`not`, `andNot`, `orNot`, `on`. `andGroup`과 `orGroup`은 `where_group`이다, CORE-202), `andModel`, `orModel`, `compare`,
-  `getsLookaheadPage`, `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
+  `getAvg`, 함수나 subquery의 추가 열(DSL-73, DSL-74). 열이나 값의 함수에 대한
   조건(DSL-54)도 구현되지 않았다. `where`가 그것을 `orm_value`로 받을 수 없기 때문이다.
 - **CORE-85** `limit(offset, count)`는 순서의 처음 `offset`개 행 뒤에서 최대 `count`개 행을 읽는다(DSL-99). 둘 다
   `uint`여서 음수 값은 형식이 없다. `count`가 0이면 다음 terminal에서 `config`이고 메시지는 `limit requires a
@@ -602,6 +602,23 @@
   메시지는 `sum on <entity>.<column> (<type>)`이고, 유한한 수가 아닌 scalar는 `codec_decode`이고 메시지는
   `aggregate scalar is not a finite number`이며, group된 `Query`는 `ir_invalid`다(CORE-201). `sum`은 다른 terminal에
   효과가 없다. `Db` step은 `column`을 가진 call `sum`을 받고(CORE-92) `get_sum`의 terminal은 없다.
+- **CORE-206** `gets_lookahead_page(page, per_page)`는 `Query`의 행 가운데 한 page와 그 뒤의 행 하나를 읽고, 아무것도
+  세지 않는다. 언어 구현의 member `getsLookaheadPage(page, perPage)`다(INT-164). 돌려주는 것은 `lookahead_page`다:
+  `rows`는 `gets`가 돌려주는 그대로의 그 page의 행이고(CORE-83), `page`와 `per_page`는 받은 그대로이며, `has_next`는
+  문장이 page 뒤의 행을 읽었는지다. 그 행은 돌려주지 않는다. 요청은 `lookahead_paginate`이고,
+  `(page - 1) * per_page`개 행 뒤에서 `per_page + 1`개 행을 읽는 문장 하나이며 count 문장이 없다(PRT-38).
+  `gets_count_lookahead_page(page, per_page)`는 `gets_count`의 group 행(CORE-201)의 같은 page이고, member
+  `getsCountLookaheadPage(page, perPage)`다. 요청은 `group_lookahead_paginate`이고, 돌려주는
+  `group_lookahead_page`의 `rows`는 `gets_count`의 map의 list다. 순서가 없는 `Query`는 primary key 오름차순으로,
+  group된 것은 grouping 열의 순서대로 오름차순으로 정렬되므로 이어지는 page가 행을 되풀이하거나 건너뛰지 않는다.
+  마지막 page 뒤의 page는 행이 없고 `has_next`가 false이며 오류가 아니다. 둘 다, `page`나 `per_page`가 0이면
+  `config`이고 메시지는 `gets_lookahead_page requires a positive page and per_page`이며, `limit`가 있는 `Query`는
+  `config`이고 메시지는 `gets_lookahead_page cannot be combined with limit`다. 각각 연결을 구하기 전이다(CORE-81).
+  `uint`의 범위를 넘는 offset이나 `per_page + 1`은 `config`이고 메시지는 `page offset exceeds u32 range`나
+  `page size exceeds u32 range`다. `group_by`가 없는 `Query`의 `gets_count_lookahead_page`는 `ir_invalid`이고 메시지는
+  `group_lookahead_paginate needs group_by`이며, group된 `Query`의 `gets_lookahead_page`는 `ir_invalid`다(CORE-201).
+  어느 것도 `Query`를 바꾸지 않는다. 계약에서 두 결과는 class이고 `page`, `per_page`, `has_next`는 property다.
+  `lookahead_page`의 `rows`는 unit `rows`를 돌려준다(CORE-170). `Db` step(CORE-92)에는 이것들의 terminal이 없다.
 
 ## 상태 기계
 

@@ -1046,3 +1046,42 @@ async fn group_limit_reads_the_first_rows_of_each_parent() {
     assert_eq!(root.get_count().await.expect("get_count"), 3, "a query that is no relation child takes no effect of it");
     db.close_async().await;
 }
+
+// Requirements: CORE-206. gets_lookahead_page reads a page and whether a row follows it, and
+// gets_count_lookahead_page the same page of the group rows; a page of 0 and a query with a limit are config, and the
+// grouped page needs group_by.
+#[tokio::test]
+async fn the_lookahead_pages_read_a_page_and_whether_another_follows() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-lookahead");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let accounts = query(&schema, "account", &db);
+    let seqs_of = |page: &crate::QueryLookaheadPage| page.rows().values().iter().map(|row| row.value("seq").expect("seq")).collect::<Vec<_>>();
+    let first = accounts.gets_lookahead_page(1, 2).await.expect("the first page");
+    assert_eq!(seqs_of(&first), [int(1), int(2)], "the row past the page is not returned");
+    assert_eq!((first.page(), first.per_page(), first.has_next()), (1, 2, true));
+    let last = accounts.gets_lookahead_page(2, 2).await.expect("the last page");
+    assert_eq!(seqs_of(&last), [int(3)]);
+    assert!(!last.has_next(), "no row follows the last page");
+    let past = accounts.gets_lookahead_page(5, 2).await.expect("a page after the last");
+    assert!(past.rows().is_empty() && !past.has_next());
+    let error = failure(accounts.gets_lookahead_page(0, 2).await, "a page of 0");
+    assert_eq!(error.to_string(), "config: gets_lookahead_page requires a positive page and per_page");
+    let mut limited = accounts.clone();
+    limited.limit(0, 1);
+    let error = failure(limited.gets_lookahead_page(1, 2).await, "a query with a limit");
+    assert_eq!(error.to_string(), "config: gets_lookahead_page cannot be combined with limit");
+    let mut keys = query(&schema, "account_key", &db);
+    let error = failure(keys.gets_count_lookahead_page(1, 1).await, "no group_by");
+    assert_eq!(error.to_string(), "ir_invalid: group_lookahead_paginate needs group_by");
+    keys.group_by("account_seq");
+    let of = |account: i64, count: i64| vec![("account_seq".to_owned(), int(account)), ("row_count".to_owned(), int(count))];
+    let first = keys.gets_count_lookahead_page(1, 1).await.expect("the first page of groups");
+    assert_eq!(first.rows().iter().map(group).collect::<Vec<_>>(), [of(1, 2)], "the groups in the order of the group column");
+    assert_eq!((first.page(), first.per_page(), first.has_next()), (1, 1, true));
+    let last = keys.gets_count_lookahead_page(2, 1).await.expect("the last page of groups");
+    assert_eq!(last.rows().iter().map(group).collect::<Vec<_>>(), [of(2, 1)]);
+    assert!(!last.has_next());
+    db.close_async().await;
+}

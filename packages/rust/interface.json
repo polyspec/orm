@@ -4700,6 +4700,111 @@
             "path": "polyspec_orm::Query::group_limit",
             "receiver": "&mut self"
           }
+        },
+        {
+          "id": "query.gets_lookahead_page",
+          "name": [
+            "gets",
+            "lookahead",
+            "page"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            },
+            {
+              "name": [
+                "per",
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "lookahead_page"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_lookahead_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "query.gets_count_lookahead_page",
+          "name": [
+            "gets",
+            "count",
+            "lookahead",
+            "page"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            },
+            {
+              "name": [
+                "per",
+                "page"
+              ],
+              "type": "uint",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "group_lookahead_page"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::gets_count_lookahead_page",
+            "receiver": "&self"
+          }
         }
       ]
     },
@@ -4807,6 +4912,197 @@
           "wait": "none",
           "core": {
             "path": "polyspec_orm::QueryPage::rows",
+            "receiver": "&self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "lookahead_page",
+      "name": [
+        "lookahead",
+        "page"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::QueryLookaheadPage",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "lookahead_page.page",
+          "name": [
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "lookahead_page.per_page",
+          "name": [
+            "per",
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::per_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "lookahead_page.has_next",
+          "name": [
+            "has",
+            "next"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "bool",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::has_next",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "lookahead_page.rows",
+          "name": [
+            "rows"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "rows"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::QueryLookaheadPage::rows",
+            "receiver": "&self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "group_lookahead_page",
+      "name": [
+        "group",
+        "lookahead",
+        "page"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::GroupLookaheadRows",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "group_lookahead_page.page",
+          "name": [
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "group_lookahead_page.per_page",
+          "name": [
+            "per",
+            "page"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "uint",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::per_page",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "group_lookahead_page.has_next",
+          "name": [
+            "has",
+            "next"
+          ],
+          "kind": "property",
+          "visibility": "public",
+          "returns": "bool",
+          "raises": [],
+          "wait": "none",
+          "writable": false,
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::has_next",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "group_lookahead_page.rows",
+          "name": [
+            "rows"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "list": {
+              "map": {
+                "unit": "orm_value"
+              }
+            }
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::GroupLookaheadRows::rows",
             "receiver": "&self"
           }
         }
@@ -6530,6 +6826,170 @@
       "member": "query.group_limit",
       "file": "contracts/interface/core.json",
       "group": "query.group_limit.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_lookahead_page"
+    },
+    {
+      "member": "query.gets_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_lookahead_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.gets_count_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count_lookahead_page"
+    },
+    {
+      "member": "query.gets_count_lookahead_page",
+      "file": "contracts/interface/core.json",
+      "group": "query.gets_count_lookahead_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.has_next",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.has_next.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.has_next",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.has_next.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.page",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.page",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.per_page",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.per_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.per_page",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.per_page.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "lookahead_page.rows",
+      "file": "contracts/interface/core.json",
+      "group": "lookahead_page.rows.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "group_lookahead_page.rows",
+      "file": "contracts/interface/core.json",
+      "group": "group_lookahead_page.rows.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "rows.keys",
+      "file": "contracts/interface/core.json",
+      "group": "rows.keys.lookahead_page",
       "only": {
         "targets": [
           "php",

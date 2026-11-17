@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use polyspec_orm_schema::chain::{parse_chain, parse_order, split_pair, ChainKey};
 
 use crate::args::Value;
-use crate::collection::{AnyCollection, Collection, Key, Page};
+use crate::collection::{AnyCollection, Collection, GroupRows, Key, LookaheadPage, Page};
 use crate::core::{Arg, Core};
 use crate::db::Statement;
 use crate::model::{AnyModel, Boxed, LoadedEntity, RelatedValue};
@@ -57,6 +57,72 @@ impl Page<Query> {
     #[must_use]
     pub fn rows(&self) -> Rows {
         Rows(self.items.clone())
+    }
+}
+
+/// One page of the rows of a `Query` read one row past its end, the core type of the class `lookahead_page` of the
+/// contract (CORE-206).
+pub type QueryLookaheadPage = LookaheadPage<Query>;
+
+impl LookaheadPage<Query> {
+    /// The number of the page, from 1, as `gets_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn page(&self) -> u32 {
+        self.page
+    }
+
+    /// The number of rows of a page, as `gets_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn per_page(&self) -> u32 {
+        self.per_page
+    }
+
+    /// Whether the query has a row past the page (CORE-206).
+    #[must_use]
+    pub fn has_next(&self) -> bool {
+        self.has_next
+    }
+
+    /// The rows of the page, as `gets` returns them (CORE-206).
+    #[must_use]
+    pub fn rows(&self) -> Rows {
+        Rows(self.items.clone())
+    }
+}
+
+/// One page of the group rows of a `Query` read one group past its end, the core type of the class
+/// `group_lookahead_page` of the contract (CORE-206).
+#[derive(Clone)]
+pub struct GroupLookaheadRows {
+    rows: Vec<OrderedMap<OrmValue>>,
+    page: u32,
+    per_page: u32,
+    has_next: bool,
+}
+
+impl GroupLookaheadRows {
+    /// The number of the page, from 1, as `gets_count_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn page(&self) -> u32 {
+        self.page
+    }
+
+    /// The number of groups of a page, as `gets_count_lookahead_page` received it (CORE-206).
+    #[must_use]
+    pub fn per_page(&self) -> u32 {
+        self.per_page
+    }
+
+    /// Whether the query has a group past the page (CORE-206).
+    #[must_use]
+    pub fn has_next(&self) -> bool {
+        self.has_next
+    }
+
+    /// The group rows of the page, as `gets_count` returns them (CORE-201, CORE-206).
+    #[must_use]
+    pub fn rows(&self) -> Vec<OrderedMap<OrmValue>> {
+        self.rows.clone()
     }
 }
 
@@ -563,7 +629,24 @@ impl Query {
     /// `group_by` by name and then `row_count`, the number of rows of the group (CORE-201). A query without `group_by`
     /// is `ir_invalid`; the query does not change.
     pub async fn gets_count(&self) -> Result<Vec<OrderedMap<OrmValue>>> {
-        let groups = crate::model::gets_count(self).await?;
+        self.group_maps(&crate::model::gets_count(self).await?)
+    }
+
+    /// Reads the page `page` of `per_page` rows and one row past it, and counts nothing (CORE-206); the query does not
+    /// change. A `page` or a `per_page` of 0 and a query with `limit` are `config`.
+    pub async fn gets_lookahead_page(&self, page: u32, per_page: u32) -> Result<QueryLookaheadPage> {
+        crate::model::gets_lookahead_page(self, page, per_page).await
+    }
+
+    /// Reads the page `page` of `per_page` group rows of `gets_count` and one group past it (CORE-206); the query does
+    /// not change. A query without `group_by` is `ir_invalid`.
+    pub async fn gets_count_lookahead_page(&self, page: u32, per_page: u32) -> Result<GroupLookaheadRows> {
+        let read = crate::model::gets_count_lookahead_page(self, page, per_page).await?;
+        Ok(GroupLookaheadRows { rows: self.group_maps(&read.items)?, page: read.page, per_page: read.per_page, has_next: read.has_next })
+    }
+
+    /// The group rows `groups` as maps: the columns of `group_by` by name and then `row_count` (CORE-201).
+    fn group_maps(&self, groups: &GroupRows) -> Result<Vec<OrderedMap<OrmValue>>> {
         let manifest = self.core.entity().schema().manifest()?;
         let entity = manifest.entity(self.core.entity().name())?;
         let mut out = Vec::with_capacity(groups.len());

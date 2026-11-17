@@ -375,7 +375,7 @@ implementation is eligible for removal on that evidence.
   that is no column of the entity is `column_unknown`, and a column that the row did not read is `column_unselected`.
 - **CORE-84** Not implemented: `join`, `leftJoin`, the
   groups (`not`, `andNot`, `orNot`, `on`; `andGroup` and `orGroup` are `where_group`, CORE-202), `andModel`, `orModel`, `compare`,
-  `getsLookaheadPage`, `getAvg`, and an added column of a function or of a subquery
+  `getAvg`, and an added column of a function or of a subquery
   (DSL-73, DSL-74). A condition on a function of a column or of a value (DSL-54), which `where` cannot take as
   `orm_value`, is not implemented either.
 - **CORE-85** `limit(offset, count)` reads at most `count` rows after the first `offset` rows of the order (DSL-99).
@@ -707,6 +707,25 @@ implementation is eligible for removal on that evidence.
   finite number is `codec_decode` with the message `aggregate scalar is not a finite number`, and a grouped `Query`
   is `ir_invalid` (CORE-201). `sum` has no effect on another terminal. The `Db` step takes the call `sum` with
   `column` (CORE-92) and has no terminal for `get_sum`.
+- **CORE-206** `gets_lookahead_page(page, per_page)` reads one page of the rows of a `Query` and one row past it, and
+  counts nothing: the member `getsLookaheadPage(page, perPage)` of the language implementations (INT-164). It returns
+  a `lookahead_page`: `rows`, the rows of the page as `gets` returns them (CORE-83), `page` and `per_page` as given,
+  and `has_next`, whether the statement read a row past the page; that row is not returned. The request is
+  `lookahead_paginate`, one statement that reads `per_page + 1` rows after `(page - 1) * per_page` rows and no count
+  statement (PRT-38). `gets_count_lookahead_page(page, per_page)` is the same page of the group rows of `gets_count`
+  (CORE-201), the member `getsCountLookaheadPage(page, perPage)`: the request is `group_lookahead_paginate`, and it
+  returns a `group_lookahead_page` whose `rows` is the list of maps of `gets_count`. A `Query` with no order is
+  ordered by its primary key ascending, and a grouped one by its grouping columns ascending in their order, so that
+  consecutive pages neither repeat nor skip a row. A page after the last one has no rows and `has_next` false, and is
+  no error. For both, a `page` or a `per_page` of 0 is `config` with the message
+  `gets_lookahead_page requires a positive page and per_page` and a `Query` with `limit` is `config` with the message
+  `gets_lookahead_page cannot be combined with limit`, each before the connection is asked for (CORE-81); an offset
+  or a `per_page + 1` over the range of `uint` is `config` with the message `page offset exceeds u32 range` or
+  `page size exceeds u32 range`. `gets_count_lookahead_page` of a `Query` without `group_by` is `ir_invalid` with the
+  message `group_lookahead_paginate needs group_by`, and `gets_lookahead_page` of a grouped one is `ir_invalid`
+  (CORE-201). Neither changes the `Query`. In the contract the two results are classes whose `page`, `per_page` and
+  `has_next` are properties; `rows` of `lookahead_page` returns the unit `rows` (CORE-170). The `Db` step (CORE-92)
+  has no terminal for them.
 
 ## State machines
 
