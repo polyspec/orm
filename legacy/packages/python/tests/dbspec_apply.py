@@ -53,7 +53,6 @@ def chain() -> list:
 
 
 class DbspecApplyTest(unittest.TestCase):
-
     # Requirement: PLN-107. The in-memory SQLite case verifies the configured bound and
     # failed-step result when the driver reports a statement-level lock failure.
     def test_sqlite_statement_lock_timeout_is_failed_at_its_step(self) -> None:

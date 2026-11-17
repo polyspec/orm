@@ -102,6 +102,7 @@ def codec_stage_meaning(stage: str) -> str:
     hash are those of the document as written."""
     return "ordered_json" if stage == JSON_STAGE else stage
 
+
 ACTIONS = frozenset({"restrict", "cascade", "set_null"})
 CONSTRAINT_WORDS = frozenset({"primary", "unique", "index", "foreign", "check"})
 EXPRESSION_WORDS = frozenset(

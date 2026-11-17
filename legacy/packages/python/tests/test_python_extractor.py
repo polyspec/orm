@@ -19,7 +19,6 @@ EXTRACTOR = (
 
 
 class PythonExtractorTest(unittest.TestCase):
-
     def extract_package(self, root: str, package: str) -> dict:
         result = subprocess.run(
             [sys.executable, str(EXTRACTOR), root, package],

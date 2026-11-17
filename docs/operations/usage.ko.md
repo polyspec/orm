@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 482b88f4d00a6c13e3738d88e0b7358620f16c9872d99da1af12b17404129481 -->
+<!-- source-sha256: c75b2757f95b726d4829e446d5cb119a5686aa578f72b4d6956bde65f46b33ee -->
 # 사용법
 
 릴리스 v0.0.34는 Rust 코어와, 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩의 첫 릴리스다. 바인딩은 TypeScript와 Node(`packages/ts`), Python(`packages/python`), PHP extension(`packages/php-ext`), Go(`packages/go`)다. 그 릴리스의 사용자가 가진 것은 [생성된 바인딩](#generated-bindings)에 있다. 손으로 쓴 클라이언트는 `legacy/packages`에 보존하며 v0.0.34는 그것을 릴리스하지 않는다([CORE-1](../spec/core.ko.md)). 1절부터 12절까지는 그 클라이언트를 설명하며, [legacy/packages의 언어 구현](#language-implementations-under-legacy-packages)에 그 범위가 있다.
@@ -37,7 +37,9 @@ const analysis = db.analyzeRestore('{"ir_version":2,"manifest_hash":"sha256:f2bb
 // generated test: GN-13e: Db.analyzeRestore primary_key
 ```
 ```python
-analysis = db.analyze_restore(request)  # generated test: test_gn13e_db_analyze_restore_primary_key
+analysis = db.analyze_restore(
+    request
+)  # generated test: test_gn13e_db_analyze_restore_primary_key
 ```
 ```php
 $analysis = $db->analyzeRestore($request); // generated test: testGn13eDbAnalyzeRestorePrimaryKey
@@ -194,8 +196,10 @@ events.limit(1, 2);                   // generated test: GN-13e: Query.limit a_r
 ```
 ```python
 events = orm.Query.new(schema, "clock_event")
-events.order_by("SeqDescAndLabelAsc")  # generated test: test_gn13e_query_order_by_an_order
-events.limit(1, 2)                     # generated test: test_gn13e_query_limit_a_range
+events.order_by(
+    "SeqDescAndLabelAsc"
+)  # generated test: test_gn13e_query_order_by_an_order
+events.limit(1, 2)  # generated test: test_gn13e_query_limit_a_range
 ```
 ```php
 $events = \Polyspec\Orm\Query::new($schema, "clock_event");
@@ -240,12 +244,12 @@ changed.connect(db)
 changed.set("id", 1)
 changed.set("qty", 2)
 changed.expect_revision("rev", 5)
-changed.update()           # generated test: test_b4_query_update_a_changed_revision
+changed.update()  # generated test: test_b4_query_update_a_changed_revision
 
 removed = orm.Query.new(schema, "owner")
 removed.connect(db)
 removed.set("id", 1)
-removed.delete()           # generated test: test_b4_query_delete_a_referenced_parent
+removed.delete()  # generated test: test_b4_query_delete_a_referenced_parent
 ```
 ```php
 $created = \Polyspec\Orm\Query::new($schema, "item");
@@ -309,37 +313,53 @@ await db.transaction(async (tx) => { await db.execute(step, []); throw raised; }
 def commits(tx):
     return "done"
 
-result = db.transaction(commits, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+
+result = db.transaction(
+    commits, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None
+)
 # generated test: test_gn13e_db_transaction_a_callback_commits_its_result
 
 events = orm.Query.new(schema, "clock_event")
+
 
 def connects(tx):
     events.connect(tx)
     return "done"
 
-db.transaction(connects, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+
+db.transaction(
+    connects, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None
+)
 events.get_count()  # fails with transaction_ended
 # generated test: test_gn13e_db_transaction_a_query_connected_to_a_tx_has_ended_after_the_callback
 
 step = '{"id":1,"role":"main","sql":"INSERT INTO owner (name) VALUES (\'bo\')","tables":[],"bind_slots":[]}'
 
+
 def inner(tx):
     tx.execute(step, [])
     return "done"
+
 
 def outer(tx):
     tx.savepoint(inner)
     return "done"
 
-db.transaction(outer, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+
+db.transaction(
+    outer, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None
+)
 # generated test: test_gn13e_db_transaction_a_statement_runs_in_a_savepoint
+
 
 def outside(tx):
     db.execute(step, [])
     raise raised
 
-db.transaction(outside, isolation=None, read_only=True, timeout_ms=None, retry=None, audit=None)
+
+db.transaction(
+    outside, isolation=None, read_only=True, timeout_ms=None, retry=None, audit=None
+)
 # the row of step stays: db.execute is outside the transaction
 # generated test: test_gn6ae_db_transaction_a_row_written_through_the_db_in_a_callback_that_raises_stays
 ```
@@ -388,7 +408,10 @@ def asks(tx):
     db.transaction_active()  # False
     return "done"
 
-db.transaction(asks, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None)
+
+db.transaction(
+    asks, isolation=None, read_only=None, timeout_ms=None, retry=None, audit=None
+)
 # generated test: test_gn13e_db_transaction_a_db_is_not_active_in_the_callback_of_its_transaction
 ```
 ```php

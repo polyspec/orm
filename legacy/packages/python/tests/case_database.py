@@ -98,9 +98,7 @@ def case_corpus(set_path: Path | None):
                     f"flowmark serve printed {line!r}, not its listening line; stderr:\n{stderr.read()}"
                 )
             token = json.loads(
-                (directory / ".flowmark" / "server.json").read_text(
-                    encoding="utf-8"
-                )
+                (directory / ".flowmark" / "server.json").read_text(encoding="utf-8")
             )["token"]
             yield (
                 f"markdown://127.0.0.1:{match.group(1)}/{CORPUS}?token={token}",

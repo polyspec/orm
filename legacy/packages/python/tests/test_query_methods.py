@@ -19,7 +19,6 @@ SCHEMA = (
 
 
 class QueryMethodsTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory(prefix="orm-query-methods-")

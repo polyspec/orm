@@ -18,7 +18,11 @@ def report(diagnostic):
 
 
 with psycopg.connect(dsn) as connection:
-    for setting in ("SET deadlock_timeout = '1ms'", "SET log_lock_waits = on", "SET client_min_messages = log"):
+    for setting in (
+        "SET deadlock_timeout = '1ms'",
+        "SET log_lock_waits = on",
+        "SET client_min_messages = log",
+    ):
         connection.execute(setting)
     connection.add_notice_handler(report)
     connection.execute("UPDATE clock_event SET label = 'child' WHERE seq = %s", [seq])

@@ -39,7 +39,6 @@ def run_gen(set_file, out, scan=None):
 
 
 class OrmGenTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix="orm-gen-")

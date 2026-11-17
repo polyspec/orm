@@ -1118,7 +1118,6 @@ class Case(VectorCase):
     """A case of the vector file of this module."""
 
 
-
 def load_tests(
     loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
 ) -> unittest.TestSuite:
