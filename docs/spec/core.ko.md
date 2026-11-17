@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 89a19c05b41ae5be37efa7d9bc727095cadce18e5f6351713a1fad3578cfcfff -->
+<!-- source-sha256: 5d9a4e4fc0a9d9f404148bc9af7d15596af30cdaa7be49337981b2d53633e7d9 -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -336,8 +336,8 @@
   연결이 없는 `Query`의 terminal은 `config`다. `Query`의 엔티티 descriptor는 그 `Query`와 그 사본, 그 행이 공유하고 그 가운데
   마지막과 함께 놓인다(CORE-80).
 - **CORE-126** 생성된 binding이 받는 `Query`는 `query.new`가 고른 검증된 schema와 존재하는 entity를 유지한다
-  (CORE-125, CORE-81). 그 사본, 불러온 행, 관련 행과 `create`, `restore`, `restore_or_create`가 반환한 행도 그
-  descriptor를 유지한다. contract의 어떤 member도 그 schema나 entity를 교체하거나 raw row를 받아들이지 않는다.
+  (CORE-125, CORE-81). 그 사본, 불러온 행, class `rows`의 행(CORE-170), 관련 행과 `create`, `save`(CORE-203), `restore`,
+  `restore_or_create`가 반환한 행도 그 descriptor를 유지한다. contract의 어떤 member도 그 schema나 entity를 교체하거나 raw row를 받아들이지 않는다.
   따라서 `query.value`는 `schema_invalid`, `schema_hash_mismatch`, `entity_unknown`을 선언하지 않는다. 그 검사는
   binding이 query를 받기 전에 끝났다. `column_unknown`, `column_unselected`, `codec_decode`, `internal`은 유지한다.
   없는 column과 읽지 않은 column은 database 없이 실패한다. 저장된 값을 변환할 때는 여전히 `codec_decode`가 날 수

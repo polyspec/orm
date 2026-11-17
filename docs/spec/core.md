@@ -414,8 +414,9 @@ implementation is eligible for removal on that evidence.
   is `config`. The descriptor of the entity of a `Query` is shared by that `Query`, its copies and its rows and is
   dropped with the last of them (CORE-80).
 - **CORE-126** A `Query` admitted by the generated bindings keeps the validated schema and existing entity that
-  `query.new` selected (CORE-125, CORE-81). Its clones, loaded rows, related rows and the rows returned by `create`,
-  `restore` and `restore_or_create` keep that descriptor; no contract member replaces its schema or entity or imports
+  `query.new` selected (CORE-125, CORE-81). Its clones, loaded rows, the rows of the class `rows` (CORE-170), related
+  rows and the rows returned by `create`, `save` (CORE-203), `restore` and `restore_or_create` keep that descriptor; no
+  contract member replaces its schema or entity or imports
   a raw row. `query.value` therefore does not declare `schema_invalid`, `schema_hash_mismatch` or `entity_unknown`:
   those checks completed before the binding received the query. It keeps `column_unknown`, `column_unselected`,
   `codec_decode` and `internal`. An unknown column and an unread column fail without a database; converting a stored

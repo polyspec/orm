@@ -204,7 +204,8 @@ caseTest('T493-4: query.value preserves the admitted descriptor error inventory 
     ? Object.entries(type).flatMap(([key, item]) => key === 'unit' && typeof item === 'string' ? [item] : returnedUnits(item)) : [];
   const routes = contract.units.flatMap(unit => (unit.members ?? []).filter(member => returnedUnits(member.returns).includes('query')).map(member => member.id)).sort();
   assert.deepEqual(routes, [
-    'query.create', 'query.get_by', 'query.new', 'query.related', 'query.related_rows', 'query.restore', 'query.restore_or_create',
+    'query.create', 'query.get', 'query.get_by', 'query.new', 'query.related', 'query.related_rows', 'query.restore', 'query.restore_or_create',
+    'query.save', 'rows.first', 'rows.get', 'rows.values',
   ], 'the admitted Query-returning routes preserve the descriptor');
   assert.deepEqual(groups['query.value']?.map(kase => ({ id: kase.id, raises: kase.raises })), [
     { id: 'a_query_that_read_no_row', raises: { kind: 'column_unselected', category: 'value', message: 'column_unselected: clock_event.label was not loaded or assigned' } },
