@@ -899,11 +899,9 @@ async fn call_pages(member: &str, receiver: Option<&mut Instance>, args: &Map<St
         ("rows.first", Some(Instance::Rows(rows))) => optional_row(rows.first()),
         ("rows.get", Some(Instance::Rows(rows))) => optional_row(rows.get(&orm_value(field(args, "key", member), member)?)),
         ("rows.keys", Some(Instance::Rows(rows))) => Returned::Value(rows.keys().iter().map(|key| case_value(key, member)).collect()),
-        // A list of rows that is not empty is observed through an instance value that picks one of them (binding GN-13f).
-        ("rows.values", Some(Instance::Rows(rows))) => match rows.values() {
-            items if items.is_empty() => Returned::Value(Value::Array(Vec::new())),
-            items => Returned::Instances(items.into_iter().map(|row| Instance::Query(Box::new(row))).collect()),
-        },
+        // A list of rows, an empty one too, is a list of instances: a class has no case value form (binding GN-13e), so a
+        // row is observed through an instance value that picks it (GN-13f) and the length by rows.len.
+        ("rows.values", Some(Instance::Rows(rows))) => Returned::Instances(rows.values().into_iter().map(|row| Instance::Query(Box::new(row))).collect()),
         ("rows.to_array", Some(Instance::Rows(rows))) => Returned::Value(rows.to_array()?.iter().map(|row| case_map(row, member)).collect()),
         (other, Some(_)) => panic!("the case runner calls no member {other} on that receiver"),
         (other, None) => panic!("the case runner calls no member {other} without a receiver"),

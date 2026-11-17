@@ -55514,6 +55514,7 @@
     {
       "id": "no_row",
       "rule": "CORE-170",
+      "note": "a list of query has no case value form (binding GN-13e), so the call runs alone; the case no_row of rows.len, on the same receiver, gives the length 0",
       "receiver": {
         "new": "query.gets",
         "receiver": {
@@ -55644,8 +55645,7 @@
             }
           ]
         }
-      },
-      "result": []
+      }
     }
   ],
   "rows.to_array": [
