@@ -613,20 +613,21 @@ export function unleasedCargoErrors(units: Unit[]): string[] {
 // a shell script) that starts cargo itself (T531). cargo starts only through scripts/cargo-link.mts, the cargo link of kit, so a
 // polyspec crate of a checkout that .links names is built from it; a cargo that starts otherwise builds the released tag in a
 // linked checkout. `node tests/cargo-test.mts <name> -- cargo test ...` names the command that cargo-test.mts starts through the link.
-// A maturin build, and a uv build of the maturin backend (MATURIN_PEP517_ARGS), are cargo too (T595): maturin starts only through link.mjs maturin.
-export function unlinkedCargoErrors(units: Unit[]): string[] {
+// A maturin build, and a PEP 517 build front end of a project whose pyproject.toml names the backend maturin, are cargo too
+// (T595): maturin starts only through link.mjs maturin. `read` reads a tracked file, the pyproject.toml of a built directory.
+export function unlinkedCargoErrors(units: Unit[], read: Read = () => undefined): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units)
     for (const command of commands)
       for (const segment of segments(command, dialect)) {
         // T595: maturin runs cargo itself, so it starts only through the maturin link of kit (K1266), which passes the link to
-        // that cargo; uv build with MATURIN_PEP517_ARGS, the arguments of the maturin backend, starts maturin through that
-        // backend, out of reach of the link (a uv build of a setuptools project starts no maturin).
+        // that cargo. A PEP 517 build front end starts the backend of the project it builds, so one that builds a directory whose
+        // pyproject.toml names the backend maturin starts maturin out of reach of the link, whatever its arguments.
         const link = 'MATURIN=<maturin> node $(KIT)/link.$(KIT_EXT) maturin <dir> <maturin arguments>';
         if (/(?:^|[\s;&|(/])maturin\s+(?:build|develop|publish|sdist)\b/.test(segment))
           errors.push(`${name} starts maturin itself; start it through the maturin link of kit, ${link}: ${segment}`);
-        if (/\bMATURIN_PEP517_ARGS=/.test(segment) && /(?:^|[\s;&|(/])uv\s+build\b/.test(segment))
-          errors.push(`${name} builds a wheel with uv build, whose PEP 517 backend starts maturin without the cargo link; build it through the maturin link of kit, ${link}: ${segment}`);
+        for (const dir of maturinProjects(segment, read))
+          errors.push(`${name} builds ${dir}, whose pyproject.toml names the build backend maturin, with a PEP 517 build front end, which starts maturin without the cargo link; build it through the maturin link of kit, ${link}: ${segment}`);
         const cargo = /(?:^|[\s;&|(])cargo\s+(?:\+\S+\s+)?[a-z-]/.exec(segment);
         if (!cargo) continue;
         const described = /\bcargo-test\.mts\b/.exec(segment);
@@ -638,6 +639,24 @@ export function unlinkedCargoErrors(units: Unit[]): string[] {
         errors.push(`${name} starts cargo itself; start it through the cargo link, node scripts/cargo-link.mts <dir> <cargo arguments> ($(CARGO_LINK) in the Makefile): ${segment}`);
       }
   return errors;
+}
+
+// maturinProjects returns the directories that a PEP 517 build front end of the segment (uv build, uv pip install, pip wheel,
+// python -m build) builds and whose pyproject.toml, read by `read`, names the build backend maturin (T595): each word after the
+// front end, the roots of a runner (--roots, --directory) and, for a front end without a directory, the current one.
+function maturinProjects(segment: string, read: Read): string[] {
+  const front = /(?:^|[\s;&|(/])(?:uv\s+build|uv\s+pip\s+install|pip3?\s+wheel|python3?(?:\.\d+)?\s+-m\s+build)\b/.exec(segment);
+  if (!front) return [];
+  const words = segment.slice(front.index + front[0].length).split(/\s+/).map(word => word.replace(/^['"]|['"]$/g, '')).filter(Boolean);
+  const roots = [...segment.matchAll(/--(?:roots|directory)[=\s]+(\S+)/g)].flatMap(match => match[1].replace(/^['"]|['"]$/g, '').split(','));
+  const candidates = [...words.filter(word => !word.startsWith('-')), ...roots, '.'];
+  const found = new Set<string>();
+  for (const candidate of candidates) {
+    const dir = posix.normalize(candidate).replace(/\/+$/, '') || '.';
+    const text = read(dir === '.' ? 'pyproject.toml' : `${dir}/pyproject.toml`);
+    if (text !== undefined && /^\s*build-backend\s*=\s*["']maturin["']/m.test(text)) found.add(dir);
+  }
+  return [...found];
 }
 
 // unlinkedCargoSourceErrors returns one error for each line of a TypeScript or JavaScript source (no test) that starts cargo
