@@ -916,3 +916,34 @@ export function ciPassedErrors(workflow: string): string[] {
     errors.push(`ci.yml job ci-passed has the steps ${JSON.stringify(steps)} instead of ${JSON.stringify(CI_PASSED_STEPS)}`);
   return errors;
 }
+
+// A shim tool is a tool that a recipe runs through its mise shim, a Makefile variable defined as
+// $(KIT_TOOLS)/mise/shims/<command> (T614). Its selector is the tool of mise.toml whose key ends in the command, or in the command
+// without its version digits (python for python3). Each setup target of config/ci.json, the shared ones and those of a runtime
+// (deps-<runtime> when a runtime names none, as kit runs it), runs make install-tools with that selector in TOOLS through itself or
+// a target it reaches, wherever a target it reaches runs the tool, so the target installs what it runs on any machine; and the CI
+// job that runs the target names the selector in tools.shared or tools.<runtime> of config/ci.json, the selectors that kit
+// ci-setup passes to install-tools before the setup targets.
+export function shimToolErrors(makefile: string, config: { setup?: { shared?: string[]; runtimes?: Record<string, string[]> }; tools?: Record<string, string[]> }, mise: string): string[] {
+  const errors: string[] = [];
+  const tools = /^\[tools\]\n([\s\S]*?)(?=^\[|(?![\s\S]))/m.exec(mise)?.[1] ?? '';
+  const keys = [...tools.matchAll(/^"?([^"=\s#[]+)"?\s*=/gm)].map(match => (match[1] ?? '').split(/[/:]/).at(-1) ?? '');
+  const shims = [...makefile.matchAll(/^([A-Z_][A-Z0-9_]*)\s*[:?]?=\s*\$\(KIT_TOOLS\)\/mise\/shims\/(\S+)\s*$/gm)].map(match => ({ variable: match[1] ?? '', command: match[2] ?? '' }));
+  const jobs: [string, string[]][] = [['shared', config.setup?.shared ?? []], ...Object.entries(config.setup?.runtimes ?? {}).map(([runtime, targets]): [string, string[]] => [runtime, targets.length ? targets : [`deps-${runtime}`]])];
+  for (const [job, roots] of jobs) {
+    for (const root of roots) {
+      const targets = reached(makefile, [root]);
+      const selected = recipeCommands(makefile, [root]).filter(command => command.name === 'make' && command.args.includes('install-tools'))
+        .flatMap(command => (command.args.find(arg => arg.startsWith('TOOLS='))?.slice('TOOLS='.length) ?? '').replace(/["']/g, '').split(/\s+/));
+      for (const { variable, command } of shims) {
+        const users = targets.filter(target => recipeLines(makefile, target).some(line => line.includes(`$(${variable})`)));
+        if (users.length === 0) continue;
+        const selector = keys.find(key => key === command) ?? keys.find(key => key === command.replace(/\d+$/, ''));
+        if (selector === undefined) { errors.push(`${users.join(', ')} of the setup ${root} runs ${command} through $(${variable}), which no tool of mise.toml provides`); continue; }
+        if (!selected.includes(selector)) errors.push(`${root} runs ${command} through $(${variable}) in ${users.join(', ')} and runs no make install-tools TOOLS="… ${selector} …"; select ${selector} in the install-tools of ${root}`);
+        if (!(config.tools?.[job] ?? []).includes(selector)) errors.push(`the ${job} job of config/ci.json runs ${root}, which runs ${command} through $(${variable}), and tools.${job} does not name ${selector}`);
+      }
+    }
+  }
+  return [...new Set(errors)];
+}

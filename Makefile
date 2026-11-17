@@ -577,7 +577,7 @@ test-binding-node test-binding-node-offline test-binding-node-service: node-pack
 BINDING_PYTHON_VENV = $(abspath var/binding-python/venv)
 BINDING_PYTHON_WHEELS = $(abspath var/binding-python/wheels)
 orm-install-binding-python: bindings lease-tool
-	$(MAKE) --no-print-directory install-tools TOOLS="python uv"
+	$(MAKE) --no-print-directory install-tools TOOLS="python uv maturin"
 	@test -x $(MATURIN) || { echo "$@: $(MATURIN) is missing; run make install-tools, which installs the maturin of mise.toml"; exit 1; }
 	$(MAKE) --no-print-directory python-venv DIR=$(BINDING_PYTHON_VENV)
 	rm -rf $(BINDING_PYTHON_WHEELS)
@@ -3933,6 +3933,7 @@ ORM_CODES_php = legacy/packages/php/src/Code.php
 ORM_CODES_python = legacy/packages/python/src/polyspec/orm/codes.py
 .PHONY: orm-codes orm-codes-typescript orm-codes-php orm-codes-python orm-codes-php-extension orm-install-go-codes
 orm-install-go-codes:
+	$(MAKE) --no-print-directory install-tools TOOLS=go
 	cd legacy/packages/go && $(ONLINE) $(GO) mod download
 orm-codes: orm-codes-typescript orm-codes-php orm-codes-python
 orm-codes-typescript orm-codes-php orm-codes-python: orm-codes-%: orm-install-go-codes
@@ -3966,6 +3967,7 @@ lint-go: go-models
 PHP_MODELS_FILE = legacy/packages/php/models.txt
 .PHONY: php-models php-model-check
 orm-install-php: orm-codes-php
+	$(MAKE) --no-print-directory install-tools TOOLS=composer
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress
 	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
@@ -4026,6 +4028,7 @@ build-ts: typescript-build
 # orm-install-go and for the asset jobs, which install no other Go module.
 .PHONY: orm-install-go-binding
 orm-install-go-binding:
+	$(MAKE) --no-print-directory install-tools TOOLS=go
 	cd packages/go && $(ONLINE) GOWORK=off $(GO) mod download
 orm-install-go: orm-install-go-binding
 	$(ONLINE) $(GO) mod download
@@ -4033,10 +4036,12 @@ orm-install-go: orm-install-go-binding
 # check-run builds tests/lease in every CI group. Its only external Go module is x/sys through legacy/packages/go/procevent; keep the
 # shared runner install limited to that pinned module, while Go-owning groups install the full workspace and generated models.
 orm-install-go-lease:
+	$(MAKE) --no-print-directory install-tools TOOLS=go
 	cd legacy/packages/go && $(ONLINE) $(GO) mod download golang.org/x/sys
 # orm-install-flowmark installs, in the FLOWMARK directory, the flowmark that markdown-conformance-check runs, at the module
 # version that tests/markdown/flowmark.version pins.
 orm-install-flowmark:
+	$(MAKE) --no-print-directory install-tools TOOLS=go
 	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/packages/go/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
 	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark/packages/go@$$(cat tests/markdown/flowmark.version)
 # orm-install-server-programs installs, on the CI Linux runner, the server programs that make orm-test-servers starts

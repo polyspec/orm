@@ -11,7 +11,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
 import { repositoryOf, runErrors } from './release-run.mts';
-import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -3256,7 +3256,7 @@ caseTest('ci-release rehearses the Go module before its tag and pushes the tag a
 caseTest('the modules of the Go binding are downloaded by orm-install-go and by the asset jobs before their binding check', () => {
   const makefile = text('Makefile');
   assert.doesNotMatch(text('go.work'), /^\s*\.\/packages\/go\s*$/m, 'go.work names packages/go, so go mod download of the workspace downloads its modules, and orm-install-go-binding is not needed');
-  assert.deepEqual(jobRecipeLines(makefile, 'orm-install-go-binding'), ['cd packages/go && $(ONLINE) GOWORK=off $(GO) mod download']);
+  assert.deepEqual(jobRecipeLines(makefile, 'orm-install-go-binding'), ['$(MAKE) --no-print-directory install-tools TOOLS=go', 'cd packages/go && $(ONLINE) GOWORK=off $(GO) mod download']);
   assert.match(makefile, /^orm-install-go: orm-install-go-binding$/m, 'orm-install-go does not download the modules of packages/go: name orm-install-go-binding as its prerequisite');
   for (const target of ['ci-assets-platform', 'ci-assets-npm']) {
     const lines = jobRecipeLines(makefile, target);
@@ -3384,4 +3384,22 @@ caseTest('T570, T580: the offline test targets of Rust and Python select their t
   }
   // The unit test of the selection runs in repo-check.
   assert.ok(jobRecipeLines(makefile, 'repo-check/unit').some(line => line.includes(' scripts/repo/offline-tests.test.mts ')), 'repo-check/unit does not run scripts/repo/offline-tests.test.mts');
+});
+
+// A setup target of config/ci.json that runs a tool through its mise shim selects that tool in its own install-tools, and the CI
+// job that runs it names the tool in its tools of config/ci.json (T614).
+caseTest('T614: every setup target installs the tools it runs through their mise shims, and its CI job declares them', () => {
+  const mise = '[tools]\ngo = "1"\n"github:PyO3/maturin" = "1"\npython = "3"\n[env]\nX = "y"\n';
+  const makefile = [
+    'GO := $(KIT_TOOLS)/mise/shims/go', 'MATURIN := $(KIT_TOOLS)/mise/shims/maturin', 'PYTHON3 := $(KIT_TOOLS)/mise/shims/python3', 'GOFMT := $(KIT_TOOLS)/mise/shims/gofmt',
+    'a: b', '\t$(MAKE) --no-print-directory install-tools TOOLS="python go"', 'b:', '\t$(MATURIN) build', '\t$(PYTHON3) x.py',
+    'c:', '\t$(MAKE) d', 'd:', '\t$(MAKE) install-tools TOOLS=go', '\t$(GO) mod download', 'e:', '\t$(GOFMT) -l .',
+  ].join('\n') + '\n';
+  assert.deepEqual(shimToolErrors(makefile, { setup: { shared: ['c'], runtimes: { python: ['a'], go: [] } }, tools: { shared: ['go'], python: ['python'] } }, mise), [
+    'a runs maturin through $(MATURIN) in b and runs no make install-tools TOOLS="… maturin …"; select maturin in the install-tools of a',
+    'the python job of config/ci.json runs a, which runs maturin through $(MATURIN), and tools.python does not name maturin',
+  ]);
+  assert.deepEqual(shimToolErrors(makefile, { setup: { runtimes: { go: ['e'] } }, tools: {} }, mise), ['e of the setup e runs gofmt through $(GOFMT), which no tool of mise.toml provides']);
+  const config = parseJsonValue(text('config/ci.json'), 'config/ci.json') as Parameters<typeof shimToolErrors>[1];
+  assert.deepEqual(shimToolErrors(text('Makefile'), config, text('mise.toml')), []);
 });

@@ -36,14 +36,24 @@
     }
   },
   "tools": {
-    "php": [
+    "shared": [
       "go"
+    ],
+    "go": [
+      "go"
+    ],
+    "php": [
+      "go",
+      "composer"
     ],
     "php-ext": [
-      "go"
+      "go",
+      "composer"
     ],
     "python": [
-      "go"
+      "go",
+      "uv",
+      "maturin"
     ],
     "ts": [
       "go"
