@@ -73,3 +73,29 @@ caseTest('mariadb-stop removes the MariaDB servers and keeps the other servers',
     assert.deepEqual([join(p.dir, 'mysql'), join(p.dir, 'postgres'), p.env, p.socketDir].filter(path => !existsSync(path)), [], 'mariadb-stop removed files of the other servers');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+// The owner process of each set of servers (test-servers.mts own <set> <owner pid> <generation>) takes the leases of its own set
+// and stops only that set, and only the servers of its generation. The fixture has the files of servers that have ended and
+// no other holder of a lease, so the owner process runs to its end at once.
+caseTest('the owner process of a set stops that set of its generation and nothing else', async () => {
+  assert.ok(process.env.LEASE, 'LEASE is unset; run make orm-test-servers-check, which builds it');
+  for (const set of ['servers', 'mariadb'] as const) {
+    for (const generation of ['g1', 'g2']) {
+      const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-owner-set-')));
+      try {
+        const p = paths(root, join(root, 'sockets'));
+        mkdirSync(p.socketDir, { recursive: true });
+        const mariadb = join(p.dir, 'mariadb');
+        for (const dir of [mariadb, join(p.dir, 'mysql')]) mkdirSync(dir, { recursive: true });
+        writeFileSync(p.env, '');
+        writeFileSync(p.mariadbEnv, '');
+        writeFileSync(set === 'servers' ? p.generation : p.mariadbGeneration, 'g1\n');
+        assert.notEqual(p.mariadbOwners, p.owners);
+        await main(['own', set, '1', generation], p);
+        const left = [mariadb, p.mariadbEnv, join(p.dir, 'mysql'), p.env].map(existsSync);
+        const want = generation === 'g2' ? [true, true, true, true] : set === 'mariadb' ? [false, false, true, true] : [false, false, false, false];
+        assert.deepEqual(left, want, `own ${set} of generation ${generation}`);
+      } finally { rmSync(root, { recursive: true, force: true }); }
+    }
+  }
+});
