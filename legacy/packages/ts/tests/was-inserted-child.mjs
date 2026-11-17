@@ -2,11 +2,11 @@
 // holds, so it blocks until the parent ends its transaction, then prints "done". It prints "waiting" when the server reports
 // that its update waits for the lock (reportLockWaits, T475).
 // Usage: node was-inserted-child.mjs <postgres dsn> <seq>
-import { postgresClient } from './case-database.mjs';
-import { reportLockWaits } from './lock-wait.mjs';
+import { postgresSession, reportLockWaits } from './lock-wait.mjs';
 
 const [, , dsn, seq] = process.argv;
-const client = postgresClient(dsn);
+// Its settings and its update run on one server session (postgresSession).
+const client = postgresSession(dsn);
 await client.connect();
 try {
   const nextWait = await reportLockWaits(client);
