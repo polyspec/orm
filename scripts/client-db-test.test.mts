@@ -135,7 +135,7 @@ caseTest('the Rust lane leaves the decimal round trips to decimal-physical-check
   for (const database of ['mysql', 'postgres', 'sqlite']) assert.ok(skipped.includes(`decimal_physical::decimal_${database}`), `the decimal round trip of ${database}`);
   assert.ok(!skipped.includes('decimal_physical::schema_set_edited_manifest_sqlite'), 'the schema set test of decimal_physical reads no decimal database');
   const source = readFileSync(resolve(root, 'packages/rust/programs/tests/all/decimal_physical.rs'), 'utf8');
-  const message = /let dsn = std::env::var\(env\)\s*\.or_panic\(\|error\| format!\("([^"]*)"/.exec(source)?.[1] ?? '';
+  const message = /let dsn = std::env::var\(env\)\s*\.or_panic\(\|error\|\s*\{?\s*format!\("([^"]*)"/.exec(source)?.[1] ?? '';
   assert.match(message, /\bmake decimal-physical-check\b/, `the message of a missing decimal DSN names no make decimal-physical-check: ${message}`);
   assert.doesNotMatch(message, /orm-test-servers/, `the message of a missing decimal DSN names make orm-test-servers, which writes no decimal DSN: ${message}`);
 });
