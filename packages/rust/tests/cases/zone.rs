@@ -18,7 +18,7 @@ use or_panic::OrPanic;
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
         Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers"),
+        _ => panic!("{var} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers"),
     }
 }
 

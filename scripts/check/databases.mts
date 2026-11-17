@@ -128,7 +128,7 @@ function replicaState(replica: string, env: NodeJS.ProcessEnv): string {
 export function purgeBinlogs(serversPath: string, servers: Record<string, string>, env: NodeJS.ProcessEnv): boolean {
   const replica = env['ORM_TEST_MYSQL_REPLICA_DSN'];
   if (!replica) {
-    console.error(`databases: ${serversPath} names no ORM_TEST_MYSQL_REPLICA_DSN; run make orm-test-servers to rewrite it`);
+    console.error(`databases: ${serversPath} names no ORM_TEST_MYSQL_REPLICA_DSN; run make orm-test-servers <target> in one command to rewrite it`);
     return false;
   }
   const primary = servers['ORM_RUN_MYSQL_DSN'] ?? '';
@@ -216,7 +216,7 @@ if (import.meta.main) {
   try {
     servers = environmentFile(readFileSync(serversPath, 'utf8'));
   } catch (error) {
-    console.error(`databases: ${action}: ${serversPath}: ${errorMessage(error)}; run make orm-test-servers to rewrite it`);
+    console.error(`databases: ${action}: ${serversPath}: ${errorMessage(error)}; run make orm-test-servers <target> in one command to rewrite it`);
     process.exit(2);
   }
   // The servers file is sourced: its variables are the environment of every command of this run.
@@ -228,7 +228,7 @@ if (import.meta.main) {
   for (const variable of needed) {
     const value = variable === 'ORM_TEST_MYSQL_REPLICA_DSN' ? env[variable] : servers[variable];
     if (!value) {
-      console.error(`databases: ${action}: ${serversPath} names no ${variable}; run make orm-test-servers to rewrite it`);
+      console.error(`databases: ${action}: ${serversPath} names no ${variable}; run make orm-test-servers <target> in one command to rewrite it`);
       process.exit(1);
     }
   }

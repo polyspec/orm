@@ -73,7 +73,7 @@ func New(t testing.TB, driver string) string {
 	env := "ORM_TEST_" + strings.ToUpper(driver) + "_DSN"
 	base := os.Getenv(env)
 	if base == "" {
-		t.Fatalf("%s is required; run make orm-test-servers, which starts the databases and writes it", env)
+		t.Fatalf("%s is required; run make orm-test-servers <target> in one command, which starts the databases and writes it", env)
 	}
 	name := Name()
 	admin := Open(t, driver, base)

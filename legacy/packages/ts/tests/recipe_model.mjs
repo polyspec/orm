@@ -54,21 +54,21 @@ export function connectDsn(dsn, database, caseDsn, socket = process.env[`ORM_TES
   if (dsn === undefined || dsn === 'case') return caseDsn;
   if (dsn.startsWith('case?')) return `${caseDsn}${caseDsn.includes('?') ? '&' : '?'}${dsn.slice('case?'.length)}`;
   if (dsn === 'case-pooler') {
-    if (!process.env.ORM_TEST_PGBOUNCER_DSN) throw new Error('dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it');
+    if (!process.env.ORM_TEST_PGBOUNCER_DSN) throw new Error('dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers <target> in one command, which starts the databases and writes it');
     const pooler = new URL(process.env.ORM_TEST_PGBOUNCER_DSN);
     pooler.pathname = new URL(caseDsn).pathname;
     return pooler.toString();
   }
   if (dsn === 'case-server') {
     const variable = `ORM_TEST_${database.toUpperCase()}_SERVER_DSN`;
-    if (!process.env[variable]) throw new Error(`dsn case-server: ${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+    if (!process.env[variable]) throw new Error(`dsn case-server: ${variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it`);
     const server = new URL(process.env[variable]);
     server.pathname = new URL(caseDsn).pathname;
     return server.toString();
   }
   if (dsn === 'case-replica') {
     const variable = `ORM_TEST_${database.toUpperCase()}_REPLICA_DSN`;
-    if (!process.env[variable]) throw new Error(`dsn case-replica: ${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
+    if (!process.env[variable]) throw new Error(`dsn case-replica: ${variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it`);
     const replica = new URL(process.env[variable]);
     replica.pathname = new URL(caseDsn).pathname;
     return replica.toString();
@@ -76,7 +76,7 @@ export function connectDsn(dsn, database, caseDsn, socket = process.env[`ORM_TES
   if (dsn !== 'case-socket') return dsn;
   // MariaDB is a server of the MySQL dialect (DIA-200), with a socket of its own.
   if (database !== 'mysql' && database !== 'mariadb') throw new Error(`dsn case-socket needs mysql, not ${database}`);
-  if (!socket) throw new Error(`dsn case-socket: ORM_TEST_${database.toUpperCase()}_SOCKET is unset; run make orm-test-servers`);
+  if (!socket) throw new Error(`dsn case-socket: ORM_TEST_${database.toUpperCase()}_SOCKET is unset; run make orm-test-servers <target> in one command`);
   const match = /^mysql:\/\/([^@/]+)@[^/]+\/([^?]+)/.exec(caseDsn);
   if (match === null) throw new Error(`dsn case-socket: the case DSN ${caseDsn} is not a mysql DSN`);
   return `mysql://${match[1]}@localhost/${match[2]}?socket=${socket}`;

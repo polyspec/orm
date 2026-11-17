@@ -46,7 +46,7 @@ caseTest('names a missing database DSN and the target that provides it', () => {
   assert.throws(() => registerDatabaseCases({
     feature: 'sample', cases: {}, args: [], environment: { ORM_TEST_MYSQL_DSN: 'mysql://user:pass@localhost' },
     withDatabase: async () => {}, getFailures: () => 0, setCurrent: () => {}, runCase: () => {}, register: () => {},
-  }), { message: 'ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers' });
+  }), { message: 'ORM_TEST_POSTGRES_DSN is required; run make orm-test-servers <target> in one command, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers' });
 });
 
 caseTest('fails a database case when one of its assertions fails', async () => {

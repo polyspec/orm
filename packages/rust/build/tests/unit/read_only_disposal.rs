@@ -20,7 +20,7 @@ async fn aborted_read_only_connections_are_not_returned_to_the_pool() {
 // MySQL and PostgreSQL are the tools databases of the test servers, which ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN name.
 // Run by make read-only-disposal-servers-rust-check with the servers of the run.
 #[tokio::test]
-#[ignore = "needs the database servers of make orm-test-servers; make read-only-disposal-servers-rust-check runs it"]
+#[ignore = "needs the database servers; make orm-test-servers read-only-disposal-servers-rust-check runs it in one command"]
 // Requirements: INT-137.
 async fn aborted_read_only_connections_of_a_server_are_not_returned_to_the_pool() {
     let _case = polyspec_orm_testcase::case!();

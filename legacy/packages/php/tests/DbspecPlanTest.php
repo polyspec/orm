@@ -110,7 +110,7 @@ class DbspecPlanTest extends TestCase
                 self::fail('the missing individual DSN was accepted');
             } catch (RuntimeException $error) {
                 self::assertSame(
-                    'ORM_TEST_POSTGRES_DSN is not set; run the test through make orm-test-servers or its make target',
+                    'ORM_TEST_POSTGRES_DSN is not set; run the test through make orm-test-servers <its make target> in one command',
                     $error->getMessage()
                 );
             }

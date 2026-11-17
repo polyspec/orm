@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 989274fa755feaf89e6e0ff1dedd93dc65e70194dc0b2256f16b269fa591f168 -->
+<!-- source-sha256: 482b88f4d00a6c13e3738d88e0b7358620f16c9872d99da1af12b17404129481 -->
 # 사용법
 
 릴리스 v0.0.34는 Rust 코어와, 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩의 첫 릴리스다. 바인딩은 TypeScript와 Node(`packages/ts`), Python(`packages/python`), PHP extension(`packages/php-ext`), Go(`packages/go`)다. 그 릴리스의 사용자가 가진 것은 [생성된 바인딩](#generated-bindings)에 있다. 손으로 쓴 클라이언트는 `legacy/packages`에 보존하며 v0.0.34는 그것을 릴리스하지 않는다([CORE-1](../spec/core.ko.md)). 1절부터 12절까지는 그 클라이언트를 설명하며, [legacy/packages의 언어 구현](#language-implementations-under-legacy-packages)에 그 범위가 있다.
@@ -1000,6 +1000,7 @@ Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(futu
 
 ```sh
 make orm-test-servers                                        # MySQL, PostgreSQL, their replicas, ProxySQL, PgBouncer, and the seeded bench databases
+# The servers stay up while this shell runs (its owner, ORM_SERVERS_OWNER); in a shell of one command, run make orm-test-servers <targets>
 . .runtime/servers/env                                   # the DSN variables of the tests
 go test ./legacy/packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client

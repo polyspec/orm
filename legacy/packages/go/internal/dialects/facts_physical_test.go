@@ -125,7 +125,7 @@ func TestDialectFactsMariadb(t *testing.T) {
 	testcase.Group(t)
 	dsn, privilegeDSN := os.Getenv("ORM_TEST_MARIADB_DSN"), os.Getenv("ORM_TEST_MARIADB_PRIVILEGE_DSN")
 	if dsn == "" || privilegeDSN == "" {
-		t.Fatal("ORM_TEST_MARIADB_DSN and ORM_TEST_MARIADB_PRIVILEGE_DSN are required; run make orm-test-mariadb, which starts the MariaDB servers and writes them")
+		t.Fatal("ORM_TEST_MARIADB_DSN and ORM_TEST_MARIADB_PRIVILEGE_DSN are required; run make orm-test-mariadb <target> in one command, which starts the MariaDB servers and writes them")
 	}
 	probes := All()
 	if err := Validate(probes); err != nil {

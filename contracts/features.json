@@ -9896,6 +9896,16 @@
       "command": "node --test scripts/test-servers-fixture.test.mts"
     },
     {
+      "id": "test-server-owner",
+      "paths": [
+        "scripts/test-servers-owner.mts"
+      ],
+      "tests": [
+        "scripts/test-servers-owner.test.mts"
+      ],
+      "command": "node --test scripts/test-servers-owner.test.mts"
+    },
+    {
       "id": "typescript-test-error-code",
       "paths": [
         "legacy/packages/ts/tests/error_code.mjs"

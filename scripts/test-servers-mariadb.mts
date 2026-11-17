@@ -1,6 +1,7 @@
 // test-servers-mariadb starts and stops the MariaDB servers of the database checks, a primary, its replica, the privilege probe
 // server and a ProxySQL in front of the primary, for
-// `test-servers.mts mariadb-start` (make orm-test-mariadb) and the stop of test-servers.mts. MariaDB is a server of the mysql
+// `test-servers.mts mariadb-start` (make orm-test-mariadb), `test-servers.mts mariadb-stop` (make orm-test-mariadb-stop) and the
+// stop of test-servers.mts. MariaDB is a server of the mysql
 // dialect (DIA-200): the clients reach it with mysql:// DSNs, and the recipes run their cases on it as the database mariadb
 // (FCV-3). Its servers are their own set, apart from the MySQL and PostgreSQL servers of `start`, since the CI runner installs
 // either the MySQL or the MariaDB packages, which conflict, and a CI group of MariaDB starts only these: they have their own
@@ -17,7 +18,7 @@ import { existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writ
 import { join } from 'node:path';
 import { MARIADB_VERSION } from './mariadb-build.mts';
 import {
-  checkedPort, holdExclusiveLease, issueTls, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
+  checkedPort, claimOwner, dropGeneration, holdExclusiveLease, leaveOwner, newGeneration, issueTls, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
   type Paths, pidRunning, run, shutdownError, socketDir, startLogged, stopServerProcess, TestServerError,
 } from './test-servers.mts';
 
@@ -117,7 +118,7 @@ export const MARIADB_VARIABLES = ['ORM_TEST_MARIADB_DSN', 'ORM_TEST_MARIADB_SERV
 export function mariadbEnvironmentPorts(text: string, file: string): MariadbPorts {
   const port = (name: string): number => {
     const match = new RegExp(`^export ${name}='[^@]*@127\\.0\\.0\\.1:(\\d+)/`, 'm').exec(text);
-    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop and make orm-test-mariadb, which rewrite it`);
+    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop, then make orm-test-mariadb <target> in one command, which rewrites it`);
     return checkedPort(match[1] ?? '');
   };
   return { mariadb: port('ORM_TEST_MARIADB_SERVER_DSN'), mariadbReplica: port('ORM_TEST_MARIADB_REPLICA_DSN'),
@@ -242,11 +243,28 @@ export function stopMariadb(p: Paths): void {
   stopMariadbProcesses(p);
 }
 
+// MARIADB_FILES are the entries of the MariaDB servers under the directory of the servers: the data and temporary folders of
+// each server and the folder of its ProxySQL. A start removes them before it starts afresh, and mariadb-stop after the stop.
+const mariadbFiles = (p: Paths): string[] =>
+  [...Object.values(MARIADB_SERVERS).flatMap(server => [server.name, `${server.name}-tmp`]), 'mariadb-proxysql'].map(name => join(p.dir, name));
+
+/** removeMariadb stops the MariaDB servers and removes their files and environment file (test-servers.mts mariadb-stop). */
+export function removeMariadb(p: Paths): void {
+  holdExclusiveLease(p.mariadbLeases);
+  stopMariadbProcesses(p);
+  for (const file of [...mariadbFiles(p), p.mariadbEnv, p.mariadbGeneration]) rmSync(file, { recursive: true, force: true });
+  console.log(`test-servers: stopped the MariaDB servers and removed their files under ${p.dir}`);
+}
+
 /** startMariadb starts the MariaDB servers, or keeps the running ones and rewrites their environment file. */
+// Its servers are owned by the rule of the other servers (scripts/test-servers-owner.mts): the owner lease is held first, and
+// a start leaves the owner process of the set mariadb.
 export async function startMariadb(p: Paths): Promise<void> {
+  const owner = claimOwner(p, 'mariadb');
   const running = mariadbRunning(p);
   if (running) {
     writeMariadbEnvironment(p, running);
+    leaveOwner(p, 'mariadb', owner);
     console.log(`test-servers: MariaDB running; environment ${p.mariadbEnv}`);
     return;
   }
@@ -262,13 +280,16 @@ export async function startMariadb(p: Paths): Promise<void> {
   mkdirSync(p.dir, { recursive: true });
   socketDir(p);
   stopMariadbProcesses(p);
-  for (const name of [...Object.values(MARIADB_SERVERS).flatMap(server => [server.name, `${server.name}-tmp`]), 'mariadb-proxysql']) rmSync(join(p.dir, name), { recursive: true, force: true });
+  for (const file of mariadbFiles(p)) rmSync(file, { recursive: true, force: true });
   rmSync(p.mariadbEnv, { force: true });
+  newGeneration(p, 'mariadb');
+  leaveOwner(p, 'mariadb', owner);
   try {
     await startServers(p, ports);
     writeMariadbEnvironment(p, ports);
   } catch (error) {
     console.error(`test-servers: MariaDB start failed; logs are in ${p.dir}`);
+    dropGeneration(p, 'mariadb');
     try { stopMariadbProcesses(p); }
     catch (cleanup) { throw shutdownError(`test-servers: MariaDB start failed: ${error instanceof Error ? error.message : String(error)}`, [cleanup]); }
     throw error;

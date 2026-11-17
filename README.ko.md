@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 9d953491a5d99bd3fc9501c8c9422110702b935f1ba89b8f9ae8e0801ec95e90 -->
+<!-- source-sha256: b18fa5c8b1439379377701b149969e3e6c1c709c3d93699be93dbbb6a2ad6aa6 -->
 # orm
 
 **Go, PHP, PHP-extension, Python, Rust, TypeScript**가 공유하는 스키마 기반 모델 query grammar다. 목표 문법은 [docs/spec/dsl.ko.md](docs/spec/dsl.ko.md), 작업 순서는 [docs/spec/plan.ko.md](docs/spec/plan.ko.md)에 명시되어 있다.
@@ -69,6 +69,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 ## 빠른 시작 (MySQL 8.4와 PostgreSQL 17)
 ```sh
 make orm-test-servers                                                   # servers, databases, bench schema + 100k rows
+# The servers stay up while this shell runs (its owner, ORM_SERVERS_OWNER); in a shell of one command, run make orm-test-servers <targets>
 . .runtime/servers/env                                              # the DSN variables of the tests
 (cd legacy/packages/go/model && go generate)                                # Go models
 vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'

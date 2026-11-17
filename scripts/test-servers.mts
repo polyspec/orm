@@ -4,7 +4,7 @@
 // MySQL privilege fixture. The servers listen on 127.0.0.1 over TCP; the other endpoints are
 // Unix sockets in the socket folder (socketPaths), which stop and the ProxySQL admin interface use.
 //
-//   test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | mysql-stop | mysql-start <mysql port> <mysql replica port>
+//   test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | mariadb-stop | mysql-stop | mysql-start <mysql port> <mysql replica port> | own servers|mariadb <owner pid> <generation>
 //
 // start chooses six free ports on 127.0.0.1 (scripts/free-ports.mts) for the servers of this checkout, so two checkouts
 // never contend for one fixed port; a server owns its port from the moment it listens. The environment file records
@@ -18,6 +18,10 @@
 // logs in .runtime/servers. stop stops the servers that
 // start started and removes .runtime/servers.
 //
+// Every start names the process that owns the servers it started or reused (ORM_SERVERS_OWNER) and leaves an owner process,
+// own servers|mariadb <owner pid> <generation>, which stops them once every owner has ended and no run holds a lease of them
+// (scripts/test-servers-owner.mts, T612): an ended or interrupted run leaves no server that nobody holds.
+//
 // Each replica applies every change of its primary. The PostgreSQL primary names the replica in
 // synchronous_standby_names with synchronous_commit=local, so a transaction that sets synchronous_commit=remote_apply and
 // writes WAL commits after the replica has applied it, and the other transactions do not wait. The replica streams
@@ -29,11 +33,12 @@
 import { type ChildProcess, spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process';
 import type { Writable } from 'node:stream';
 import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { createHash, X509Certificate } from 'node:crypto';
+import { createHash, randomUUID, X509Certificate } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
 import { errorCode, errorMessage } from '../tests/errors.mts';
-import { startMariadb, stopMariadb } from './test-servers-mariadb.mts';
+import { removeMariadb, startMariadb, stopMariadb } from './test-servers-mariadb.mts';
+import { own, ownerPid } from './test-servers-owner.mts';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
@@ -63,7 +68,13 @@ export function paths(root: string, socketDir = `/tmp/orm-servers-${createHash('
   return {
     root, dir, socketDir,
     env: join(dir, 'env'),
+    // generation names one first start of the servers; the owner processes of that start stop only those servers.
+    generation: join(dir, 'generation'),
+    mariadbGeneration: join(dir, 'mariadb.generation'),
     leases: join(root, '.runtime/servers.leases'),
+    // owners is the lease directory of the owners of the servers (scripts/test-servers-owner.mts): a start holds a shared
+    // lease there for the process that owns the servers, and the owner process waits for its exclusive lease.
+    owners: join(root, '.runtime/servers.owners'),
     mysqlPid: join(dir, 'mysql.pid'),
     mysqlReplicaPid: join(dir, 'mysql-replica.pid'),
     mysqlPrivilegePid: join(dir, 'mysql-privilege.pid'),
@@ -82,6 +93,7 @@ export function paths(root: string, socketDir = `/tmp/orm-servers-${createHash('
     mariadbProxysqlPid: join(dir, 'mariadb-proxysql.pid'),
     mariadbEnv: join(dir, 'mariadb.env'),
     mariadbLeases: join(root, '.runtime/mariadb.leases'),
+    mariadbOwners: join(root, '.runtime/mariadb.owners'),
     sockets: {
       mysql: join(socketDir, 'mysql.sock'),
       mysqlReplica: join(socketDir, 'mysql-replica.sock'),
@@ -245,7 +257,7 @@ function writeEnvironment(p: Paths, ports: Ports): void {
 export function environmentPorts(text: string, file: string): Ports {
   const port = (name: string): number => {
     const match = new RegExp(`^export ${name}='[^@]*@127\\.0\\.0\\.1:(\\d+)/`, 'm').exec(text);
-    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop and make orm-test-servers, which rewrite it`);
+    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop, then make orm-test-servers <target> in one command, which rewrites it`);
     return checkedPort(match[1] ?? '');
   };
   return { mysql: port('ORM_TEST_MYSQL_SERVER_DSN'), postgres: port('ORM_TEST_POSTGRES_SERVER_DSN'), mysqlReplica: port('ORM_TEST_MYSQL_REPLICA_DSN'),
@@ -278,9 +290,78 @@ function holdExclusive(p: Paths): void {
   holdExclusiveLease(p.leases);
 }
 
-export function holdExclusiveLease(leases: string): void {
-  const held = spawnSync(program('LEASE'), ['hold', leases, 'exclusive', '--pid', String(process.pid)], { stdio: ['ignore', 'inherit', 'inherit'] });
+export function holdExclusiveLease(leases: string, wait = false): void {
+  const held = spawnSync(program('LEASE'), ['hold', leases, 'exclusive', ...(wait ? ['--wait'] : []), '--pid', String(process.pid)], { stdio: ['ignore', 'inherit', 'inherit'] });
   if (held.status !== 0) throw new TestServerError('', held.status ?? 1);
+}
+
+// A set of servers is one rule's unit of ownership (scripts/test-servers-owner.mts): the servers of start, and the MariaDB
+// servers of mariadb-start, each with its own lease directory, owners, generation file and stop.
+export type ServerSet = 'servers' | 'mariadb';
+type SetOf = { leases: string; owners: string; generation: string; stop: () => void };
+function setOf(p: Paths, set: ServerSet): SetOf {
+  return set === 'servers'
+    ? { leases: p.leases, owners: p.owners, generation: p.generation, stop: () => stopAll(p) }
+    : { leases: p.mariadbLeases, owners: p.mariadbOwners, generation: p.mariadbGeneration, stop: () => removeMariadb(p) };
+}
+
+// claimOwner names the owner of a start of set (ORM_SERVERS_OWNER) and holds the shared lease of the owners of set for it
+// until it ends, before the start reads or starts any server. It waits while an owner process holds the exclusive lease,
+// that is while the servers of ended owners are being stopped.
+export function claimOwner(p: Paths, set: ServerSet): number {
+  const owner = namedOwner(process.env);
+  const held = spawnSync(program('LEASE'), ['hold', setOf(p, set).owners, 'shared', '--wait', '--pid', String(owner)], { stdio: ['ignore', 'inherit', 'inherit'] });
+  if (held.status !== 0) throw new TestServerError(`test-servers: the lease of the owner ${owner} of the ${set} was not held`, held.status ?? 1);
+  return owner;
+}
+
+// leaveOwner leaves the owner process of set beside the servers (test-servers.mts own): it runs in its own session, so a
+// signal to the terminal or the process group of the run does not reach it, and writes to owner-<set>-<pid>.log in the
+// directory of the servers. The generation is the one of the generation file of set, which a first start writes anew
+// (newGeneration) before its servers start, so a start that is itself interrupted leaves what it started to the same rule.
+export function leaveOwner(p: Paths, set: ServerSet, owner: number): void {
+  const { generation: file, leases } = setOf(p, set);
+  if (!existsSync(file)) writeFileSync(file, `${randomUUID()}\n`);
+  const generation = readFileSync(file, 'utf8').trim();
+  const log = openSync(join(p.dir, `owner-${set}-${owner}.log`), 'a');
+  try {
+    spawn(process.execPath, [join(ROOT, 'scripts/test-servers.mts'), 'own', set, String(owner), generation], { detached: true, stdio: ['ignore', log, log], cwd: ROOT, env: process.env }).unref();
+  } finally { closeSync(log); }
+  console.log(`test-servers: the ${set} stop once process ${owner} has ended and no lease of ${leases} is held`);
+}
+
+// newGeneration writes a new generation for set, for a first start; dropGeneration removes it after a failed start, which
+// stopped its servers itself, so the owner process has nothing to stop and leaves the logs.
+export const newGeneration = (p: Paths, set: ServerSet): void => writeFileSync(setOf(p, set).generation, `${randomUUID()}\n`);
+export const dropGeneration = (p: Paths, set: ServerSet): void => rmSync(setOf(p, set).generation, { force: true });
+
+// namedOwner is the owner that env names (ownerPid), failing as a failure of this script.
+function namedOwner(env: NodeJS.ProcessEnv): number {
+  try { return ownerPid(env); }
+  catch (error) { throw new TestServerError(errorMessage(error), 2, { cause: error }); }
+}
+
+// ownServers is the owner process of set (scripts/test-servers-owner.mts): it waits for the exclusive lease of the owners of
+// set and then for that of its servers, and stops the servers of set of its generation.
+function ownServers(p: Paths, set: ServerSet, owner: number, generation: string): void {
+  const of = setOf(p, set);
+  const result = own(generation, {
+    waitOwners: () => holdExclusiveLease(of.owners, true),
+    holdExclusive: () => holdExclusiveLease(of.leases, true),
+    generation: () => existsSync(of.generation) ? readFileSync(of.generation, 'utf8').trim() : undefined,
+    stop: of.stop,
+  });
+  console.log(result === 'stopped' ? `test-servers: every owner of the ${set}, ${owner} among them, ended and no run held a lease; the ${set} stopped`
+    : `test-servers: the ${set} of generation ${generation} are gone or were started again; nothing to stop`);
+}
+
+// stopAll stops the servers of <p> and removes their socket folder and directory; the caller holds the exclusive lease.
+function stopAll(p: Paths): void {
+  stopServers(p);
+  rmSync(p.socketDir, { recursive: true, force: true });
+  console.log(`test-servers: removed ${p.socketDir}`);
+  rmSync(p.dir, { recursive: true, force: true });
+  console.log(`test-servers: removed ${p.dir}`);
 }
 
 function readPid(file: string): number {
@@ -463,7 +544,7 @@ function mysqlPrivilegeReady(p: Paths): boolean {
 }
 
 function startMysqlPrivilege(p: Paths): void {
-  if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers, which starts the shared database servers`);
+  if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers <target> in one command, which starts the shared database servers`);
   if (mysqlPrivilegeReady(p)) {
     console.log('test-servers: MySQL privilege probe server is already ready');
     return;
@@ -863,6 +944,9 @@ const TOOLS = ['mysqld', 'initdb', 'postgres', 'pg_ctl', 'pg_basebackup', 'proxy
 const onPath = (tool: string): boolean => spawnSync('sh', ['-c', 'command -v "$1"', 'sh', tool], { stdio: 'ignore' }).status === 0;
 
 async function start(p: Paths): Promise<void> {
+  // The owner is named and its lease held first, so a start that names none changes nothing, and running servers are read
+  // only while they have an owner.
+  const owner = claimOwner(p, 'servers');
   if (existsSync(p.env) && allRunning(p)) {
     const ports = environmentPorts(readFileSync(p.env, 'utf8'), p.env);
     verifyServerTimeZones(ports);
@@ -872,6 +956,7 @@ async function start(p: Paths): Promise<void> {
       { env: { ...process.env, LEASES: p.leases } });
     mysqlAt(ports.mysql, ORM_ACCOUNTS_SQL);
     writeEnvironment(p, ports);
+    leaveOwner(p, 'servers', owner);
     console.log(`test-servers: running; environment ${p.env}`);
     // This reuse path never restarts mysqld or rewrites PostgreSQL's pg_hba.conf. To adopt startup policy changes, use
     // make orm-test-servers-stop and then make orm-test-servers; the stop target refuses while a shared lease is held.
@@ -893,6 +978,8 @@ async function start(p: Paths): Promise<void> {
   // An incomplete or partly stopped earlier start may still run servers on these datadirs; they stop first.
   stopEarlierStart(p);
   mkdirSync(p.dir, { recursive: true });
+  newGeneration(p, 'servers');
+  leaveOwner(p, 'servers', owner);
   socketDir(p);
   try {
     startMysql(p, ports);
@@ -907,6 +994,8 @@ async function start(p: Paths): Promise<void> {
     writeEnvironment(p, ports);
   } catch (error) {
     console.error(`test-servers: start failed; logs are in ${p.dir}`);
+    // The servers of a failed start are stopped here, so its owner process has nothing to stop and leaves the logs.
+    dropGeneration(p, 'servers');
     try { stopServers(p); }
     catch (cleanup) {
       const message = `test-servers: start failed: ${errorMessage(error)}; cleanup failed: ${errorMessage(cleanup)}`;
@@ -917,7 +1006,7 @@ async function start(p: Paths): Promise<void> {
   console.log(`test-servers: started; environment ${p.env}`);
 }
 
-const USAGE = 'usage: test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start; run it through the matching make target';
+const USAGE = 'usage: test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | mariadb-stop | own servers|mariadb <owner pid> <generation>; run it through the matching make target';
 
 export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void> {
   const [action, ...rest] = args;
@@ -929,7 +1018,7 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
     case 'tls': {
       // tls loads the TLS files into the running servers, on the ports of their environment file.
       arity(0);
-      if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers, which starts the servers`);
+      if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers <target> in one command, which starts the servers`);
       const ports = environmentPorts(readFileSync(p.env, 'utf8'), p.env);
       tls(p, ports);
       return writeEnvironment(p, ports);
@@ -941,6 +1030,11 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
       // mariadb-start starts the MariaDB servers, a set of their own (scripts/test-servers-mariadb.mts).
       arity(0);
       return startMariadb(p);
+    case 'mariadb-stop':
+      // mariadb-stop stops the MariaDB servers and removes their files; the other servers of the checkout keep running.
+      arity(0);
+      if (!existsSync(p.dir)) { console.log(`test-servers: no servers under ${p.dir}`); return; }
+      return removeMariadb(p);
     case 'mysql-stop':
       // mysql-stop and mysql-start <mysql port> <mysql replica port> are the steps of the MySQL migration
       // (scripts/test-servers-mysql.mts): they stop the MySQL servers, and initialize and start them with the declared
@@ -959,12 +1053,15 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
       arity(0);
       if (!existsSync(p.dir)) { console.log(`test-servers: no servers under ${p.dir}`); return; }
       holdExclusive(p);
-      stopServers(p);
-      rmSync(p.socketDir, { recursive: true, force: true });
-      console.log(`test-servers: removed ${p.socketDir}`);
-      rmSync(p.dir, { recursive: true, force: true });
-      console.log(`test-servers: removed ${p.dir}`);
+      stopAll(p);
       return;
+    case 'own': {
+      // own <set> <owner pid> <generation> is the owner process that a start of set leaves (leaveOwner).
+      arity(3);
+      const [set, pid, generation] = rest;
+      if (set !== 'servers' && set !== 'mariadb') throw new TestServerError(USAGE, 2);
+      return ownServers(p, set, namedOwner({ ORM_SERVERS_OWNER: pid }), generation ?? '');
+    }
     default:
       throw new TestServerError(USAGE, 2);
   }

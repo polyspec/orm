@@ -212,7 +212,7 @@ impl ApplyOps {
 fn required(name: &str) -> Result<String, String> {
     match std::env::var(name) {
         Ok(value) if !value.is_empty() => Ok(value),
-        _ => Err(format!("{name} is required; run make orm-test-servers, which starts the databases and writes it")),
+        _ => Err(format!("{name} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it")),
     }
 }
 

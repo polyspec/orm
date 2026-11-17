@@ -26,7 +26,7 @@ func dropDatabaseDiscardsItsSession(t *testing.T, c *testcase.Case, driver strin
 	env := "ORM_TEST_" + strings.ToUpper(driver) + "_DSN"
 	base := os.Getenv(env)
 	if base == "" {
-		t.Fatalf("%s is required; run make orm-test-servers or make orm-test-mariadb, which start the databases and write it", env)
+		t.Fatalf("%s is required; run make orm-test-servers <target> or make orm-test-mariadb <target> in one command, which start the databases and write it", env)
 	}
 	ctx := c.Context()
 	admin := Open(t, driver, base)

@@ -135,7 +135,7 @@ function main(argv: string[]): number {
     const server = ADDRESSES[variable];
     if (server === undefined) throw new StateError(`${stepName} of ${scope}: service ${variable} is none of ${Object.keys(ADDRESSES).join(', ')}`);
     const dsn = process.env[variable];
-    if (!dsn) throw new StateError(`${stepName} of ${scope}: ${variable} is not set; run make orm-test-servers, whose environment file sets it`);
+    if (!dsn) throw new StateError(`${stepName} of ${scope}: ${variable} is not set; run make orm-test-servers <target> in one command, whose environment file sets it`);
     if (stepName === 'setup') setup(server, dsn, scope, step);
     else if (stepName === 'check') check(server, dsn, scope, step);
     else throw new StateError(`${stepName} of ${scope}: the program has no step ${stepName}; it has setup and check (SVC-6)`);

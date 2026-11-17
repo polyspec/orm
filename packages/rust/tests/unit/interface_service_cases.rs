@@ -21,7 +21,7 @@ fn variable(name: &str, service: &str) -> Result<String, String> {
     match std::env::var(name) {
         Ok(value) if !value.is_empty() => Ok(value),
         _ => Err(format!(
-            "the service {service} needs the variable {name}; run make interface-service-cases-rust, which reads the servers of make orm-test-servers"
+            "the service {service} needs the variable {name}; run make orm-test-servers interface-service-cases-rust in one command, which reads the servers of make orm-test-servers"
         )),
     }
 }
@@ -110,7 +110,7 @@ async fn run_service_case(member: &str, case: &Value, services: &[Value], failur
 
 // Requirements: SVC-1, SVC-2, SVC-4, SVC-6, SVC-7. Run by make interface-service-cases-rust with the servers of the run.
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "needs the database servers of make orm-test-servers; make interface-service-cases-rust runs it"]
+#[ignore = "needs the database servers; make orm-test-servers interface-service-cases-rust runs it in one command"]
 async fn the_core_passes_the_service_cases_of_its_contract() {
     let _case = polyspec_orm_testcase::case!();
     let contract: Value = serde_json::from_str(CONTRACT).expect("packages/rust/interface.json is JSON");

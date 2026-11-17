@@ -848,10 +848,10 @@ commit-msg-check:
 # WITH_TEST_ENV sets, through TEST_TZ, the time zone of the process that runs the database client last: it exports TZ and,
 # for PHP, which does not read TZ, adds tests/timezone/date.ini (which sets date.timezone to ${TZ}) to the front of PHP_INI_SCAN_DIR
 # after the separator (PHP's default scan directory is still read).
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) FLOWMARK=$(FLOWMARK) &&
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers $@ in one command" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers $@ in one command to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) FLOWMARK=$(FLOWMARK) &&
 # WITH_MARIADB_ENV is WITH_TEST_ENV for the entries of the database mariadb: it reads MARIADB_ENV and holds the shared lease of the
 # MariaDB servers, ORM_TEST_MARIADB_LEASES of that file.
-WITH_MARIADB_ENV = test -f $(abspath $(MARIADB_ENV)) || { echo "$(abspath $(MARIADB_ENV)) is missing; run make orm-test-mariadb" >&2; exit 1; }; . $(abspath $(MARIADB_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_MARIADB_LEASES:?$(abspath $(MARIADB_ENV)) names no lease directory; run make orm-test-mariadb to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
+WITH_MARIADB_ENV = test -f $(abspath $(MARIADB_ENV)) || { echo "$(abspath $(MARIADB_ENV)) is missing; run make orm-test-mariadb $@ in one command" >&2; exit 1; }; . $(abspath $(MARIADB_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_MARIADB_LEASES:?$(abspath $(MARIADB_ENV)) names no lease directory; run make orm-test-mariadb $@ in one command to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
 # TEST_TZ is the process time zone of the checks that run database clients. It must be a non-UTC zone so that a defect where a client reads a database's
 # zone-less datetime as the process's local time shows up even on a UTC CI runner. Every client reads and writes with the
 # time zone of the connection (+00:00), so the results must not depend on this value (docs/spec/dialects.md).
@@ -1066,7 +1066,8 @@ ci-plan:
 	  echo "php_min=$$($(NODE) scripts/php/php-min.mts --version)"; } >> "$${GITHUB_OUTPUT:-/dev/stdout}"
 
 # ci-test runs the job of the CI group GROUP (the jobs test and preflight of ci.yml): the setup steps that the targets of the
-# group need, then make check-run GROUP=<group>, then the summary of the run, which is also the job summary.
+# group need, then make check-run GROUP=<group>, then the summary of the run, which is also the job summary. The make of the
+# job owns the servers that its setup step starts (ORM_SERVERS_OWNER, $$PPID of the recipe shell), so they stop when the job ends.
 ci-test: CI_NAME = $(CI_RUN)-$(GROUP)
 ci-test:
 	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
@@ -1084,7 +1085,7 @@ ci-test:
 	@$(CI_JOB) setup $(CI_NAME) composer --when php -- orm-install-php
 	@$(CI_JOB) setup $(CI_NAME) php-extension-tools --when php-extension-tools -- orm-install-php-extension-tools
 	@$(CI_JOB) setup $(CI_NAME) server-programs --when server-programs -- orm-install-server-programs
-	@$(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers
+	@ORM_SERVERS_OWNER=$$PPID $(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers
 	@$(CI_JOB) check $(CI_NAME) -- check-run GROUP=$(GROUP)
 	@$(CI_JOB) always $(CI_NAME) -- ci-summary
 	@$(CI_JOB) end $(CI_NAME)
@@ -1152,7 +1153,7 @@ ci-lock-hashes:
 BENCH_TARGETS = dbspec-stress-bench dbspec-apply-stress-bench dbspec-introspect-compare-bench dbspec-compare-bench timing-check
 .PHONY: bench
 bench:
-	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }
+	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers $@ in one command" >&2; exit 1; }
 	$(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
 # GO_PACKAGES is every package of the three modules of go.work (legacy/packages/go, tests, examples). The root is not a module,
@@ -2003,7 +2004,7 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
 # loaded: StatementFaultTest (statement-fault) and DsnTest::testParse, which holds the tuples and refusal texts of the C parser. It first checks that the extension registers Polyspec\Orm\Db: its class is
-# internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
+# internal, so the connection the suites open is C. The database suites need the servers of make orm-test-servers in the same command (make orm-test-servers <target>, WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) legacy/packages/php/tests/StatementFaultTest.php
@@ -2043,21 +2044,33 @@ BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROC
 orm-test-servers-check:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts scripts/test-servers-owner.test.mts
 
+# make orm-test-servers names the owner of the servers it starts or reuses (scripts/test-servers-owner.mts, T612): the
+# process given as ORM_SERVERS_OWNER, or else the process that ran this make (the parent of make, $$PPID of the recipe shell).
+# The servers stop once every owner has ended and no run holds a lease of them, so a run of make orm-test-servers check-run
+# leaves none, and the servers that a person starts by hand from a terminal stay up until that shell ends.
 orm-test-servers:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
+	ORM_SERVERS_OWNER=$${ORM_SERVERS_OWNER:-$$(ps -o ppid= -p $$PPID | tr -d ' ')} LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
 
 # make orm-install-mariadb builds the MariaDB of the test servers from its pinned source release into var/mariadb (scripts/mariadb-build.mts).
-.PHONY: orm-install-mariadb orm-test-mariadb
+.PHONY: orm-install-mariadb orm-test-mariadb orm-test-mariadb-stop
 orm-install-mariadb:
 	$(ONLINE) $(NODE) scripts/mariadb-build.mts
+# Its servers have an owner by the rule of make orm-test-servers (ORM_SERVERS_OWNER, scripts/test-servers-owner.mts).
 orm-test-mariadb:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-start
+	ORM_SERVERS_OWNER=$${ORM_SERVERS_OWNER:-$$(ps -o ppid= -p $$PPID | tr -d ' ')} PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-start
+
+# make orm-test-mariadb-stop stops the MariaDB servers of make orm-test-mariadb by their pid files and removes their files, under
+# the exclusive lease of their lease directory; make orm-test-servers-stop and worktree-remove stop them with the other servers.
+orm-test-mariadb-stop:
+	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s $(LEASE)
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-stop
 
 # The recipe targets of every database run one case at a time in every runtime (docs/spec/dialects.md DIA-212): the cases of
 # a recipe create and drop databases, and DDL of two cases at once on MariaDB can leave a trigger backup that fails a later

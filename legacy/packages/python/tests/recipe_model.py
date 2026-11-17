@@ -34,7 +34,7 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
         pooler = os.environ.get("ORM_TEST_PGBOUNCER_DSN")
         if not pooler:
             raise ValueError(
-                "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it"
+                "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
             )
         return urlunsplit(urlsplit(pooler)._replace(path=urlsplit(case_dsn).path))
     if dsn == "case-server":
@@ -42,7 +42,7 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
         server = os.environ.get(variable)
         if not server:
             raise ValueError(
-                f"dsn case-server: {variable} is required; run make orm-test-servers, which starts the databases and writes it"
+                f"dsn case-server: {variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
             )
         return urlunsplit(urlsplit(server)._replace(path=urlsplit(case_dsn).path))
     if dsn == "case-replica":
@@ -50,7 +50,7 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
         replica = os.environ.get(variable)
         if not replica:
             raise ValueError(
-                f"dsn case-replica: {variable} is required; run make orm-test-servers, which starts the databases and writes it"
+                f"dsn case-replica: {variable} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it"
             )
         return urlunsplit(urlsplit(replica)._replace(path=urlsplit(case_dsn).path))
     if dsn != "case-socket":
@@ -62,7 +62,7 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
     socket = socket if socket is not None else os.environ.get(variable)
     if not socket:
         raise ValueError(
-            f"dsn case-socket: {variable} is unset; run make orm-test-servers"
+            f"dsn case-socket: {variable} is unset; run make orm-test-servers <target> in one command"
         )
     match = re.match(r"^mysql://([^@/]+)@[^/]+/([^?]+)", case_dsn)
     if match is None:

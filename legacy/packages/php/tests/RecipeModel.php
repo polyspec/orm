@@ -169,7 +169,7 @@ trait RecipeModel
             $pooler = getenv('ORM_TEST_PGBOUNCER_DSN');
             if (!is_string($pooler) || $pooler === '') {
                 Assert::fail(
-                    'dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the '
+                    'dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers <target> in one command, which starts the '
                         . 'databases and writes it'
                 );
             }
@@ -188,7 +188,7 @@ trait RecipeModel
             $server = getenv($variable);
             if (!is_string($server) || $server === '') {
                 Assert::fail(
-                    "dsn case-server: $variable is required; run make orm-test-servers, which starts the databases "
+                    "dsn case-server: $variable is required; run make orm-test-servers <target> in one command, which starts the databases "
                         . "and writes it"
                 );
             }
@@ -207,7 +207,7 @@ trait RecipeModel
             $replica = getenv($variable);
             if (!is_string($replica) || $replica === '') {
                 Assert::fail(
-                    "dsn case-replica: $variable is required; run make orm-test-servers, which starts the databases "
+                    "dsn case-replica: $variable is required; run make orm-test-servers <target> in one command, which starts the databases "
                         . "and writes it"
                 );
             }
@@ -231,7 +231,7 @@ trait RecipeModel
         $variable = 'ORM_TEST_' . strtoupper($database) . '_SOCKET';
         $socket ??= (string) getenv($variable);
         if ($socket === '') {
-            Assert::fail("dsn case-socket: $variable is unset; run make orm-test-servers");
+            Assert::fail("dsn case-socket: $variable is unset; run make orm-test-servers <target> in one command");
         }
         if (preg_match('#^mysql://([^@/]+)@[^/]+/([^?]+)#', $caseDsn, $match) !== 1) {
             Assert::fail("dsn case-socket: the case DSN $caseDsn is not a mysql DSN");

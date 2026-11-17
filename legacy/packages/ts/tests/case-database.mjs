@@ -63,7 +63,7 @@ const adminEnv = { mysql: 'ORM_TEST_MYSQL_DSN', mariadb: 'ORM_TEST_MARIADB_DSN',
  */
 export async function admin(dialect, statement) {
   const dsn = process.env[adminEnv[dialect]];
-  if (!dsn) throw new Error(`${adminEnv[dialect]} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
+  if (!dsn) throw new Error(`${adminEnv[dialect]} is required; run make orm-test-servers <target> in one command, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
   let rows;
   if (dialect === 'mysql' || dialect === 'mariadb') {
     const conn = await mysqlConnection(dsn, null);

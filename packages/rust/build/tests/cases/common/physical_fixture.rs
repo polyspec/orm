@@ -24,7 +24,7 @@ pub fn dsn_for(dialect: &str, sqlite_path: &Path) -> String {
 fn fixture_dsn_names_the_missing_variable_and_its_remedy() {
     let _case = polyspec_orm_testcase::case!();
     assert_eq!(fixture_dsn("ORM_TOOLS_MYSQL_DSN", Some("mysql://u@h/d".to_owned())), Ok("mysql://u@h/d".to_owned()));
-    let remedy = "is required; run make orm-test-servers, which starts the databases and writes it";
+    let remedy = "is required; run make orm-test-servers <target> in one command, which starts the databases and writes it";
     for variable in ["ORM_TOOLS_MYSQL_DSN", "ORM_TOOLS_POSTGRES_DSN"] {
         for value in [None, Some(String::new())] {
             assert_eq!(fixture_dsn(variable, value), Err(format!("{variable} {remedy}")));
