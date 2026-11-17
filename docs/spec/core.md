@@ -476,7 +476,9 @@ implementation is eligible for removal on that evidence.
   the row read, in the order of the schema, and whose values are the `orm_value` that `value(column)` returns (CORE-62).
   A column that the row did not read has no key, so a column that was not read and a column whose value is null are
   told apart. A relation result is no key of the map; `related` and `related_rows` return it (CORE-88). A `Query` that
-  read no row returns the empty map.
+  read no row returns the empty map. The `toArray` of the language implementations also held the attached values
+  (`new<Name>`, CORE-160) and the columns of a `parent_node` child (CORE-157); `to_array` of the core holds neither,
+  and the JSON text of the row writes them (CORE-161).
 - **CORE-150** `plus(column, value)` and `minus(column, value)` assign to a column, for the next write, its stored
   value plus or minus `value`: the members `plus<Col>(n)` and `minus<Col>(n)` of the language implementations
   (DSL-102). The assignment is `plus_p` or `minus_p` of the request, takes the place of an assignment of `set` to the

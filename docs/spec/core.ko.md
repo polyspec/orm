@@ -400,7 +400,8 @@
 - **CORE-120** `Query`의 행의 `to_array()`는 map을 돌려준다. key는 행이 읽은 엔티티 열의 이름이고 순서는 schema의 순서이며,
   값은 `value(column)`이 돌려주는 `orm_value`다(CORE-62). 행이 읽지 않은 열은 key가 없다. 그래서 읽지 않은 열과 값이 null인
   열을 구별한다. relation 결과는 이 map의 key가 아니고 `related`와 `related_rows`가 돌려준다(CORE-88). 행을 읽지 않은
-  `Query`는 빈 map을 돌려준다.
+  `Query`는 빈 map을 돌려준다. 언어 구현의 `toArray`는 붙인 값(`new<Name>`, CORE-160)과 `parent_node` 자식의 열
+  (CORE-157)도 가졌다. 코어의 `to_array`는 둘 다 가지지 않고, 행의 JSON 텍스트가 그것들을 쓴다(CORE-161).
 - **CORE-150** `plus(column, value)`와 `minus(column, value)`는 다음 쓰기를 위해 열에 저장된 값에 `value`를 더하거나 뺀
   값을 배정한다. 언어 구현의 member `plus<Col>(n)`과 `minus<Col>(n)`이다(DSL-102). 배정은 요청의 `plus_p`나
   `minus_p`이고, 같은 열에 대한 `set`의 배정을 대신하며 `set`도 이것을 대신한다. `minus`는 음수 값을 저장하지 않는다.
