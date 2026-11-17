@@ -83,6 +83,55 @@ jobs:
     permissions:
       contents: read
 
+  # The rehearsal of the release upload (T628, binding B2.496-1): after the assets of every platform, it gathers the release
+  # assets of this commit as the job release of release.yml does and rehearses release-platform-assets for the version of
+  # this commit with no tag and no upload, so the CI run of a version commit is the dry run of its release. The job reads the
+  # repository only, and ci-passed needs it, so a commit whose rehearsal fails is not released.
+  release-rehearsal:
+    needs: [plan, assets]
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: cache of the npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-packages-${{ runner.os }}-${{ needs.plan.outputs.npm }}
+      - name: cache of the tools of mise.toml
+        uses: actions/cache@v4
+        with:
+          path: var/tools
+          key: tools-${{ runner.os }}-${{ needs.plan.outputs.tools }}
+      # The Go module of the release is built by release-recipes and release-assets.
+      - name: cache of the Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-modules-${{ runner.os }}-${{ needs.plan.outputs.go }}
+      # shivammathur/setup-php 2.40.0: the PHP of .php-version for the Composer archives, as the job release of release.yml.
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version-file: .php-version
+          tools: composer:2.10.3
+          coverage: none
+      - uses: ./.github/actions/kit-bootstrap
+      # actions/download-artifact v8.0.2: the assets of each platform that the job assets built, into var/release/platform.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: assets-*
+          path: var/release/platform
+          merge-multiple: true
+      - run: make ci-release-rehearsal
+      # actions/upload-artifact v4: the log of the rehearsal, the evidence that it names every label and uploads nothing.
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-rehearsal
+          path: var/release/rehearsal
+          if-no-files-found: error
+
   test:
     needs: [plan, preflight]
     # .github/runner declares the runner of every job; make repo-check requires it.
@@ -299,7 +348,7 @@ jobs:
   # repo-check requires that it is the last job and that needs lists every other job.
   ci-passed:
     if: ${{ always() }}
-    needs: [plan, preflight, kit, assets, test, docs, editor]
+    needs: [plan, preflight, kit, assets, release-rehearsal, test, docs, editor]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5

@@ -785,6 +785,24 @@ ci-release:
 	@$(CI_JOB) setup $(CI_NAME) upload -- release-platform-assets
 	@$(CI_JOB) setup $(CI_NAME) undraft -- release-undraft TAG=$(TAG)
 	@$(CI_JOB) end $(CI_NAME)
+# ci-release-rehearsal is the run of the job release-rehearsal of ci.yml (T628): with no tag, it gathers var/release/assets as
+# ci-release does and runs release-platform-assets of binding for the version of VERSION with REHEARSAL=1, which uploads
+# nothing and writes its log into WORK. When binding gives ci-release-rehearsal from packages/release.mk (binding 0.0.23),
+# orm drops this recipe and runs that one.
+.PHONY: ci-release-rehearsal
+RELEASE_REHEARSAL_VERSION = $(strip $(file <VERSION))
+ci-release-rehearsal: CI_NAME = $(CI_RUN)-release-rehearsal
+ci-release-rehearsal: export PATH := $(KIT_TOOLS)/mise/shims:$(KIT_TOOLS)/bin:$(PATH)
+ci-release-rehearsal:
+	@$(CI_JOB) begin $(CI_NAME)
+	@$(CI_JOB) setup $(CI_NAME) zip -- ci-release-zip
+	@$(CI_JOB) setup $(CI_NAME) prepare -- release-prepare
+	@$(CI_JOB) setup $(CI_NAME) tools -- release-tools
+	@$(CI_JOB) setup $(CI_NAME) assets -- release-assets
+	@$(CI_JOB) setup $(CI_NAME) platform-assets -- ci-release-platform-assets
+	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
+	@$(CI_JOB) setup $(CI_NAME) rehearsal -- release-platform-assets TAG=v$(RELEASE_REHEARSAL_VERSION) REHEARSAL=1 WORK=var/release/rehearsal
+	@$(CI_JOB) end $(CI_NAME)
 ci-release-zip:
 	@command -v zip >/dev/null || { echo 'Info-ZIP is required for Composer release archives; install the zip package on the Ubuntu runner' >&2; exit 1; }
 ci-release-platform-assets:
