@@ -1725,6 +1725,24 @@
           }
         },
         {
+          "id": "db.utils",
+          "name": [
+            "utils"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "utils"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Db::utils",
+            "receiver": "&self"
+          }
+        },
+        {
           "id": "db.transaction",
           "name": [
             "transaction"
@@ -2016,6 +2034,24 @@
           }
         },
         {
+          "id": "tx.utils",
+          "name": [
+            "utils"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "utils"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Tx::utils",
+            "receiver": "&self"
+          }
+        },
+        {
           "id": "tx.savepoint",
           "name": [
             "savepoint"
@@ -2068,6 +2104,883 @@
             "path": "polyspec_orm::Tx::savepoint",
             "receiver": "&self",
             "machine": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "utils",
+      "name": [
+        "utils"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::Utils",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "utils.stats",
+          "name": [
+            "stats"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "db_stats"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Utils::stats",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "utils.lock",
+          "name": [
+            "lock"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "key"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Utils::lock_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "utils.set_local",
+          "name": [
+            "set",
+            "local"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "key"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "value"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Utils::set_local_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "utils.backend_waiting_for_lock",
+          "name": [
+            "backend",
+            "waiting",
+            "for",
+            "lock"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "bool",
+          "raises": [
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Utils::backend_waiting_for_lock_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "utils.schema",
+          "name": [
+            "schema"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "schema_utils"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Utils::schema",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "utils.privileges",
+          "name": [
+            "privileges"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "privilege_utils"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Utils::privileges",
+            "receiver": "&self"
+          }
+        },
+        {
+          "id": "utils.aes",
+          "name": [
+            "aes"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "unit": "aes_utils"
+          },
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Utils::aes",
+            "receiver": "&self"
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_utils",
+      "name": [
+        "schema",
+        "utils"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::SchemaUtils",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "schema_utils.register",
+          "name": [
+            "register"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "schema"
+              ],
+              "type": {
+                "unit": "schema"
+              },
+              "required": true,
+              "core": "&"
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::SchemaUtils::register",
+            "receiver": "&self",
+            "result": true
+          }
+        },
+        {
+          "id": "schema_utils.install",
+          "name": [
+            "install"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "schema"
+              ],
+              "type": {
+                "unit": "schema"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::RollbackFailed",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::SchemaUtils::install_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "schema_utils.add_tables_and_columns",
+          "name": [
+            "add",
+            "tables",
+            "and",
+            "columns"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "schema"
+              ],
+              "type": {
+                "unit": "schema"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": {
+            "list": "text"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::SchemaDiffers",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::RollbackFailed",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::SchemaUtils::add_tables_and_columns_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "schema_utils.exists",
+          "name": [
+            "exists"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "bool",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::SchemaUtils::exists_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "schema_utils.installed",
+          "name": [
+            "installed"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "table"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "bool",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::SchemaUtils::installed_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "schema_utils.empty",
+          "name": [
+            "empty"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "bool",
+          "raises": [
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::SchemaUtils::empty_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "table_privileges",
+      "name": [
+        "table",
+        "privileges"
+      ],
+      "module": "",
+      "kind": "record",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::TablePrivileges",
+      "fields": [
+        {
+          "name": [
+            "insert"
+          ],
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": [
+            "select"
+          ],
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": [
+            "update"
+          ],
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": [
+            "delete"
+          ],
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": [
+            "truncate"
+          ],
+          "type": "bool",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "privilege_utils",
+      "name": [
+        "privilege",
+        "utils"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::PrivilegeUtils",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "privilege_utils.grant_table",
+          "name": [
+            "grant",
+            "table"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "table"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "role"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CapabilityUnsupported",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::RollbackFailed",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::PrivilegeUtils::grant_table_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "privilege_utils.revoke_table",
+          "name": [
+            "revoke",
+            "table"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "table"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "privilege"
+              ],
+              "type": "text",
+              "required": true
+            },
+            {
+              "name": [
+                "role"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CapabilityUnsupported",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::RollbackFailed",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::PrivilegeUtils::revoke_table_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "privilege_utils.inspect_table",
+          "name": [
+            "inspect",
+            "table"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "table"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": {
+            "unit": "table_privileges"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CapabilityUnsupported",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::PrivilegeUtils::inspect_table_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "aes_rotation_status",
+      "name": [
+        "aes",
+        "rotation",
+        "status"
+      ],
+      "module": "",
+      "kind": "record",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::AesRotationStatus",
+      "fields": [
+        {
+          "name": [
+            "current"
+          ],
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": [
+            "total"
+          ],
+          "type": "int64",
+          "required": true
+        },
+        {
+          "name": [
+            "pending"
+          ],
+          "type": "int64",
+          "required": true
+        },
+        {
+          "name": [
+            "versions"
+          ],
+          "type": {
+            "keyed_map": "int64",
+            "key": [
+              "int"
+            ]
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "aes_utils",
+      "name": [
+        "aes",
+        "utils"
+      ],
+      "module": "",
+      "kind": "class",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-134"
+      },
+      "core_type": "polyspec_orm::AesUtils",
+      "constructible": false,
+      "final": true,
+      "members": [
+        {
+          "id": "aes_utils.status",
+          "name": [
+            "status"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "model"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true,
+              "core": "value"
+            },
+            {
+              "name": [
+                "keyring"
+              ],
+              "type": {
+                "unit": "aes_keyring"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": {
+            "unit": "aes_rotation_status"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::AesUtils::status_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
+          }
+        },
+        {
+          "id": "aes_utils.rotate",
+          "name": [
+            "rotate"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "model"
+              ],
+              "type": {
+                "unit": "query"
+              },
+              "required": true,
+              "core": "value"
+            },
+            {
+              "name": [
+                "keyring"
+              ],
+              "type": {
+                "unit": "aes_keyring"
+              },
+              "required": true,
+              "core": "value"
+            }
+          ],
+          "returns": "uint",
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::RollbackFailed",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ReadOnly",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::AesUtils::rotate_machine",
+            "receiver": "&self",
+            "machine": true,
+            "result": true
           }
         }
       ]
@@ -5593,6 +6506,286 @@
       "member": "db.with_cancel",
       "file": "contracts/interface/core.json",
       "group": "db.with_cancel",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.utils",
+      "file": "contracts/interface/core.json",
+      "group": "db.utils",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "db.transaction",
+      "file": "contracts/interface/core.json",
+      "group": "db.transaction.utils",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "utils.stats",
+      "file": "contracts/interface/core.json",
+      "group": "utils.stats",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "utils.lock",
+      "file": "contracts/interface/core.json",
+      "group": "utils.lock",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "utils.set_local",
+      "file": "contracts/interface/core.json",
+      "group": "utils.set_local",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "utils.backend_waiting_for_lock",
+      "file": "contracts/interface/core.json",
+      "group": "utils.backend_waiting_for_lock",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "utils.schema",
+      "file": "contracts/interface/core.json",
+      "group": "utils.schema",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "utils.privileges",
+      "file": "contracts/interface/core.json",
+      "group": "utils.privileges",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "utils.aes",
+      "file": "contracts/interface/core.json",
+      "group": "utils.aes",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "schema_utils.register",
+      "file": "contracts/interface/core.json",
+      "group": "schema_utils.register",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "schema_utils.install",
+      "file": "contracts/interface/core.json",
+      "group": "schema_utils.install",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "schema_utils.add_tables_and_columns",
+      "file": "contracts/interface/core.json",
+      "group": "schema_utils.add_tables_and_columns",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "schema_utils.exists",
+      "file": "contracts/interface/core.json",
+      "group": "schema_utils.exists",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "schema_utils.installed",
+      "file": "contracts/interface/core.json",
+      "group": "schema_utils.installed",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "schema_utils.empty",
+      "file": "contracts/interface/core.json",
+      "group": "schema_utils.empty",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "privilege_utils.grant_table",
+      "file": "contracts/interface/core.json",
+      "group": "privilege_utils.grant_table",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "privilege_utils.revoke_table",
+      "file": "contracts/interface/core.json",
+      "group": "privilege_utils.revoke_table",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "privilege_utils.inspect_table",
+      "file": "contracts/interface/core.json",
+      "group": "privilege_utils.inspect_table",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "aes_utils.status",
+      "file": "contracts/interface/core.json",
+      "group": "aes_utils.status",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "aes_utils.rotate",
+      "file": "contracts/interface/core.json",
+      "group": "aes_utils.rotate",
       "only": {
         "targets": [
           "php",
