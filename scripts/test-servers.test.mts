@@ -6,12 +6,13 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
+import { setTimeout as pause } from 'node:timers/promises';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest } from '../tests/testcase.mts';
 import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
 import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
 import { environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, logReader, startLogged, stopEarlierStart, stopPid, TestServerError, TLS_SERVERS, type Paths } from './test-servers.mts';
-import { withPidFixture } from './test-servers-fixture.mts';
+import { withFixtureServer, withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
 // A case that starts a child stops it with STOP_PROCESS. Without it the file fails before any case starts a child, so
@@ -613,30 +614,37 @@ caseTest('the MySQL privilege probe has a separate writable binlog server with t
   assert.deepEqual(MYSQLD_PRIVILEGE_BINLOG, ['--log-bin=binlog', '--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=OFF']);
 });
 
-caseTest('the test MySQL server removes an expired binary log by itself', async () => {
+caseTest('the test MySQL server removes an expired binary log by itself', async ({ signal }) => {
   const flags = MYSQLD_BINLOG;
   const expireFlag = flags.find(f => f.startsWith('--binlog-expire-logs-seconds='));
   const sizeFlag = flags.find(f => f.startsWith('--max-binlog-size='));
   // Fixture values: an expiry of 2 seconds and the smallest size mysqld accepts, 4096 bytes; no option outside the declaration.
   const EXPIRE_SECONDS = 2;
   const fixtureFlags = [`--binlog-expire-logs-seconds=${EXPIRE_SECONDS}`, ...(sizeFlag ? ['--max-binlog-size=4096'] : [])];
-  const root = mkdtempSync(join(tmpdir(), 'orm-binlog-'));
-  // A Unix socket path cannot exceed 104 bytes, so the socket goes in a short directory.
-  const socketDir = mkdtempSync('/tmp/orm-binlog-');
   const port = await freePort();
   const mysql = (sql: string) => execFileSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', '-e', sql], { encoding: 'utf8' });
-  const data = join(root, 'data');
-  try {
+  // mysqladmin shutdown over TCP returns before the server exits, and a server whose data directory is removed while it
+  // shuts down never exits: InnoDB retries its redo log file in the missing directory and writes an error for every try
+  // into its log, which fills the file system of the log. So withFixtureServer stops the server through STOP_PROCESS,
+  // which returns on the exit event of the process, when the case passes, fails or is asked to stop (SIGINT, SIGTERM), and
+  // removes the directories only after that; a server that does not stop fails the case and keeps its directories (T612).
+  const stop = (pid: number): void => {
+    const stopped = spawnSync(STOP_PROCESS, ['TERM', String(pid)], { encoding: 'utf8' });
+    assert.equal(stopped.status, 0, `the fixture mysqld ${pid} did not stop (STOP_PROCESS ${STOP_PROCESS}): ${stopped.error?.message ?? stopped.stderr}; its directories are kept`);
+    assert.ok(exited(pid), `mysqld ${pid} (state ${processState(pid)}) still runs after STOP_PROCESS returned; its directories are kept`);
+  };
+  await withFixtureServer({ prefix: 'orm-binlog-', pidFile: 'mysqld.pid', signal, stop }, async ({ root, sockets }) => {
+    const data = join(root, 'data');
     execFileSync('mysqld', ['--no-defaults', '--initialize-insecure', `--datadir=${data}`, `--log-error=${join(root, 'init.log')}`]);
     // --daemonize returns after the server accepts connections or fails.
     execFileSync('mysqld', ['--no-defaults', '--daemonize', `--datadir=${data}`, `--pid-file=${join(root, 'mysqld.pid')}`, `--log-error=${join(root, 'mysqld.log')}`,
-      '--bind-address=127.0.0.1', `--port=${port}`, `--socket=${join(socketDir, 's')}`, '--mysqlx=OFF', '--server-id=1', ...MYSQLD_STORAGE, ...fixtureFlags]);
+      '--bind-address=127.0.0.1', `--port=${port}`, `--socket=${join(sockets, 's')}`, '--mysqlx=OFF', '--server-id=1', ...MYSQLD_STORAGE, ...fixtureFlags]);
     mysql('CREATE DATABASE b; CREATE TABLE b.t (v VARCHAR(1024))');
     const burst = () => { for (let i = 0; i < 10; i++) mysql("INSERT INTO b.t VALUES (REPEAT('x', 1000))"); };
     burst();
     const first = (mysql('SHOW BINARY LOGS').trim().split('\n')[0] ?? '').split('\t');
-    // The expiry counts from the file's last write; wait one second longer than it.
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, (EXPIRE_SECONDS + 1) * 1000);
+    // The expiry counts from the file's last write; wait one second longer than it. A stop request ends the wait.
+    await pause((EXPIRE_SECONDS + 1) * 1000, undefined, { signal });
     burst();
     const logs = mysql('SHOW BINARY LOGS').trim().split('\n').map(l => l.split('\t')[0]);
     const size = mysql('SELECT @@max_binlog_size').trim();
@@ -647,22 +655,7 @@ caseTest('the test MySQL server removes an expired binary log by itself', async 
     // Both mysqld of the shared servers receive the same retention options.
     for (const replica of [false, true])
       assert.ok(MYSQLD_BINLOG.every(flag => mysqldArguments(paths('/checkout'), replica, 1).includes(flag)), `the mysqld ${replica ? 'replica' : 'primary'} does not take MYSQLD_BINLOG`);
-  } finally {
-    // mysqladmin shutdown over TCP returns before the server exits, and a server whose data directory is removed
-    // while it shuts down never exits: InnoDB retries its redo log file in the missing directory and writes an
-    // error for every try into its log, which fills the file system of the log. So the case stops the server
-    // through STOP_PROCESS, which returns on the exit event of the process, and removes the directories only
-    // after that; a server that does not stop fails the case and keeps its directories.
-    const pidFile = join(root, 'mysqld.pid');
-    if (existsSync(pidFile)) {
-      const pid = readFileSync(pidFile, 'utf8').trim();
-      const stopped = spawnSync(process.env.STOP_PROCESS ?? '', ['TERM', pid], { encoding: 'utf8' });
-      assert.equal(stopped.status, 0, `the fixture mysqld ${pid} did not stop (STOP_PROCESS ${process.env.STOP_PROCESS ?? 'unset'}): ${stopped.error?.message ?? stopped.stderr}; ${root} is kept`);
-      assert.ok(exited(Number(pid)), `mysqld ${pid} (state ${processState(Number(pid))}) still runs after STOP_PROCESS returned; ${root} is kept`);
-    }
-    rmSync(root, { recursive: true, force: true });
-    rmSync(socketDir, { recursive: true, force: true });
-  }
+  });
 });
 
 // The replica WAL case (T218) makes a fixture PostgreSQL primary and replica on a temporary directory and free ports with

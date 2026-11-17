@@ -1066,7 +1066,8 @@ ci-plan:
 	  echo "php_min=$$($(NODE) scripts/php/php-min.mts --version)"; } >> "$${GITHUB_OUTPUT:-/dev/stdout}"
 
 # ci-test runs the job of the CI group GROUP (the jobs test and preflight of ci.yml): the setup steps that the targets of the
-# group need, then make check-run GROUP=<group>, then the summary of the run, which is also the job summary.
+# group need, then make check-run GROUP=<group>, then the summary of the run, which is also the job summary. The make of the
+# job owns the servers that its setup step starts (ORM_SERVERS_OWNER, $$PPID of the recipe shell), so they stop when the job ends.
 ci-test: CI_NAME = $(CI_RUN)-$(GROUP)
 ci-test:
 	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
@@ -1084,7 +1085,7 @@ ci-test:
 	@$(CI_JOB) setup $(CI_NAME) composer --when php -- orm-install-php
 	@$(CI_JOB) setup $(CI_NAME) php-extension-tools --when php-extension-tools -- orm-install-php-extension-tools
 	@$(CI_JOB) setup $(CI_NAME) server-programs --when server-programs -- orm-install-server-programs
-	@$(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers
+	@ORM_SERVERS_OWNER=$$PPID $(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers
 	@$(CI_JOB) check $(CI_NAME) -- check-run GROUP=$(GROUP)
 	@$(CI_JOB) always $(CI_NAME) -- ci-summary
 	@$(CI_JOB) end $(CI_NAME)
@@ -2043,12 +2044,16 @@ BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROC
 orm-test-servers-check:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts scripts/test-servers-owner.test.mts
 
+# make orm-test-servers names the owner of the servers it starts or reuses (scripts/test-servers-owner.mts, T612): the
+# process given as ORM_SERVERS_OWNER, or else the process that ran this make (the parent of make, $$PPID of the recipe shell).
+# The servers stop once every owner has ended and no run holds a lease of them, so a run of make orm-test-servers check-run
+# leaves none, and the servers that a person starts by hand from a terminal stay up until that shell ends.
 orm-test-servers:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
+	ORM_SERVERS_OWNER=$${ORM_SERVERS_OWNER:-$$(ps -o ppid= -p $$PPID | tr -d ' ')} LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
 
 # make orm-install-mariadb builds the MariaDB of the test servers from its pinned source release into var/mariadb (scripts/mariadb-build.mts).
 .PHONY: orm-install-mariadb orm-test-mariadb

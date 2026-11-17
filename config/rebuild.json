@@ -418,6 +418,10 @@
       "kind": "policy",
       "reason": "the rule of this repository that consumers of the generated Rust model compile, and fail to compile where the model forbids a call; it runs cargo on temporary consumer crates"
     },
+    "scripts/test-servers-owner.mts": {
+      "kind": "policy",
+      "reason": "decides when the owner process of the test servers of this repository stops them: once every owner of the servers has ended and no run holds a lease of them"
+    },
     "scripts/test-servers-fixture.mts": {
       "kind": "policy",
       "reason": "the isolated server root and the restored process.kill that the tests of the test server script of this repository share"
