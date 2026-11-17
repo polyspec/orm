@@ -17,8 +17,9 @@ mod decimal_model {
 async fn decimal_physical(env: &str) {
     use decimal_model::DecimalCase;
 
-    let dsn = std::env::var(env)
-        .or_panic(|error| format!("{env} is required ({error}); run the test through make decimal-physical-check, which starts the decimal databases and writes it"));
+    let dsn = std::env::var(env).or_panic(|error| {
+        format!("{env} is required ({error}); run the test through make decimal-physical-check, which starts the decimal databases and writes it")
+    });
     assert!(!dsn.is_empty(), "{env} is empty");
     let db = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let result: polyspec_orm::Result<()> = db
