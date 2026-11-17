@@ -14,7 +14,7 @@ golangci-lint = "2.14.0"
 "pypi:vulture" = "2.16"
 # maturin builds the release wheel of the Python binding: binding 0.0.21 (B2.491) runs this pin in release-wheel and stops
 # before the build when its version differs from the maturin==1.16.0 that the scaffold requires.
-"pypi:maturin" = "1.16.0"
+"github:PyO3/maturin" = "1.16.0"
 "github:asamarts/alint" = "0.18.2"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 "github:rustsec/rustsec" = { version = "0.22.2", version_prefix = "cargo-audit/v" }
