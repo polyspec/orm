@@ -1451,11 +1451,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyspec-binding-core"
+version = "0.0.21"
+source = "git+https://github.com/polyspec/binding.git?tag=v0.0.21#253ce88906757a7a74b46245538d1af943b03736"
+dependencies = [
+ "indexmap",
+ "libc",
+ "tokio-util",
+]
+
+[[package]]
 name = "polyspec-json"
 version = "0.0.34"
 source = "git+https://github.com/polyspec/json.git?tag=v0.0.34#f13de8d689c62958650fc4f6c441e3b69652dfe6"
 dependencies = [
- "polyspec-binding-core",
+ "polyspec-binding-core 0.0.17",
  "ryu-js",
  "serde",
  "serde_json",
@@ -1473,7 +1483,7 @@ dependencies = [
  "hmac 0.12.1",
  "indexmap",
  "libsqlite3-sys",
- "polyspec-binding-core",
+ "polyspec-binding-core 0.0.21",
  "polyspec-json",
  "polyspec-orm-schema",
  "rand",
