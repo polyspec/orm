@@ -38,7 +38,7 @@ fn iterations(minimum: usize) -> usize {
 #[tokio::main]
 async fn main() {
     let iters = iterations(1);
-    let config = polyspec_orm::Config { aes_key: Some("bench-salt".into()), blind_index_key: Some("bench-blind-index".into()), ..Default::default() };
+    let config = polyspec_orm_tests::bench_models::bench_config();
     let dsn = match bench_dsn() {
         Ok(dsn) => dsn,
         Err(e) => {

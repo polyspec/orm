@@ -175,39 +175,35 @@ pub(crate) fn build(c: &Core, kind: &str) -> Req {
 /// Joins the conditions of the model to the key of its update or delete with `and` (CORE-138): the statement writes the
 /// row of the key only while the row meets them. They join as one group, so a condition joined by `or` stays inside it.
 pub(crate) fn write_condition(r: &mut Req, c: &Core) -> Result<()> {
-    if !c.where_.pending.is_empty() {
-        return Err(config(format!("connector {} without a following condition", c.where_.pending)));
-    }
-    if c.where_.items.is_empty() {
-        return Ok(());
-    }
-    let mut f = Frame::new(c, None);
-    let g = group(r, &c.where_.items, c, &mut f);
-    if let Some(e) = r.error() {
-        return Err(e);
-    }
-    if let Some(mut g) = g {
+    if let Some(mut g) = condition_group(r, c)? {
         g.conn = "and".to_owned();
         r.ir.query.where_.get_or_insert_with(ir::Group::default).items.push(ir::Item::Group { group: g });
     }
     Ok(())
 }
 
-/// Makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162): a condition on a column compares
-/// the value that the insert writes to that column.
-pub(crate) fn insert_condition(r: &mut Req, c: &Core) -> Result<()> {
+/// The conditions of the model as one group, or None when it has none; an error for a connector that no condition follows.
+fn condition_group(r: &mut Req, c: &Core) -> Result<Option<ir::Group>> {
     if !c.where_.pending.is_empty() {
         return Err(config(format!("connector {} without a following condition", c.where_.pending)));
     }
     if c.where_.items.is_empty() {
-        return Ok(());
+        return Ok(None);
     }
     let mut f = Frame::new(c, None);
     let g = group(r, &c.where_.items, c, &mut f);
     if let Some(e) = r.error() {
         return Err(e);
     }
-    r.ir.query.where_ = g;
+    Ok(g)
+}
+
+/// Makes the conditions of the model the where of its insert (docs/spec/dsl.md DSL-162): a condition on a column compares
+/// the value that the insert writes to that column.
+pub(crate) fn insert_condition(r: &mut Req, c: &Core) -> Result<()> {
+    if let Some(g) = condition_group(r, c)? {
+        r.ir.query.where_ = Some(g);
+    }
     Ok(())
 }
 

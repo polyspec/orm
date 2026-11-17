@@ -7,6 +7,7 @@ use model::{Author, Service, ServiceMember, User};
 use serde::Serialize;
 
 use polyspec_orm_test_support::bench_dsn::dsn;
+use polyspec_orm_tests::bench_models::bench_config;
 
 /// Declares the members of the output document in the same order as the Go and PHP programs.
 #[derive(Serialize)]
@@ -28,12 +29,7 @@ fn shortest_number(v: f64) -> serde_json::Result<serde_json::Number> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = polyspec_orm::Config {
-        aes_key: Some("bench-salt".into()),
-        blind_index_key: Some("bench-blind-index".into()),
-        ..Default::default()
-    };
-    let db = model::connect(&dsn(), 4, config).await?;
+    let db = model::connect(&dsn(), 4, bench_config()).await?;
 
     // A join child with its own ON conditions whose WHERE conditions are placed
     // in a group, and two levels of relations with options.

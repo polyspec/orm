@@ -4120,8 +4120,7 @@ mod database {
 
     /// The bench model reads the bind_cell row by its key, with the keys of the bench set: its body is SQL NULL or the text.
     async fn read_bind_cell(dsn: &str, seq: i64) -> Result<Value, String> {
-        let config = polyspec_orm::Config { aes_key: Some("bench-salt".into()), blind_index_key: Some("bench-blind-index".into()), ..Default::default() };
-        let db = model::connect(dsn, 1, config).await.map_err(|e| e.to_string())?;
+        let db = model::connect(dsn, 1, crate::bench_models::bench_config()).await.map_err(|e| e.to_string())?;
         let body = match model::BindCell::new().connect(&db).seq(seq).get().await {
             Ok(Some(row)) => row.get_body().map(|body| body.map(str::to_owned)).map_err(|e| e.to_string()),
             Ok(None) => Err(format!("the bind_cell row {seq} is not selected")),
