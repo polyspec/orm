@@ -17,8 +17,8 @@ use serde_json::{Map, Value};
 use crate::or_panic::OrPanic as _;
 use crate::test_support::Scratch;
 use crate::{
-    AesKeyring, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest, MapValue, OrmValue, Query, Schema, StepRunner,
-    TransactionOptions, Tx,
+    AesKeyring, AesUtils, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest, MapValue, OrmValue, PrivilegeUtils, Query,
+    Schema, SchemaUtils, StepRunner, TransactionOptions, Tx, Utils,
 };
 
 const CONTRACT: &str = include_str!("../../interface.json");
@@ -28,6 +28,10 @@ const CASES: &str = include_str!("../../../../contracts/interface/core.json");
 enum Instance {
     Db(Db),
     Tx(Tx),
+    Utils(Utils),
+    SchemaUtils(SchemaUtils),
+    PrivilegeUtils(PrivilegeUtils),
+    AesUtils(AesUtils),
     Runner(Box<StepRunner>),
     Keyring(AesKeyring),
     Schema(Schema),
@@ -477,6 +481,33 @@ fn cancel(value: &Value, member: &str) -> binding_core::Cancel {
     cancel
 }
 
+/// The schema, the query and the key ring of a case of `utils` (CORE-180 to CORE-186), each an instance value.
+async fn schema_argument(args: &Map<String, Value>, member: &str) -> Schema {
+    match Box::pin(instance(field(args, "schema", member), member)).await {
+        Instance::Schema(schema) => schema,
+        _ => panic!("{member}: schema is no instance of schema"),
+    }
+}
+
+async fn model_and_keyring(args: &Map<String, Value>, member: &str) -> (Query, AesKeyring) {
+    let Instance::Query(model) = Box::pin(instance(field(args, "model", member), member)).await else { panic!("{member}: model is no query") };
+    let Instance::Keyring(keyring) = Box::pin(instance(field(args, "keyring", member), member)).await else { panic!("{member}: keyring is no aes_keyring") };
+    (*model, keyring)
+}
+
+/// The record `aes_rotation_status`: `versions` is a list of `[{"int": version}, rows]` (CORE-185).
+fn rotation_status(status: &crate::AesRotationStatus, member: &str) -> Value {
+    let versions: Vec<Value> = status
+        .versions
+        .iter()
+        .map(|(version, rows)| match version {
+            binding_core::Key::Int(version) => serde_json::json!([{"int": version}, rows]),
+            other => panic!("{member}: the status holds the key {other:?}, which is no integer"),
+        })
+        .collect();
+    serde_json::json!({"current": status.current, "total": status.total, "pending": status.pending, "versions": versions})
+}
+
 /// A database that the case opened: the case closes it when it ends.
 fn opened(db: Db) -> Returned {
     OPENED.with_borrow_mut(|opened| opened.push(db.clone()));
@@ -685,6 +716,71 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             let fixture = field(args, "callback", member).clone();
             let what = format!("{member}: callback");
             Returned::Value(tx.savepoint_async(|tx| run_function(fixture, Instance::Tx(tx), what)).await?)
+        }
+        ("db.utils", Some(Instance::Db(db))) => Returned::Instance(Instance::Utils(db.utils())),
+        ("tx.utils", Some(Instance::Tx(tx))) => Returned::Instance(Instance::Utils(tx.utils())),
+        ("utils.stats", Some(Instance::Utils(utils))) => {
+            let stats = utils.stats();
+            Returned::Value(serde_json::json!({
+                "max_open_connections": stats.max_open_connections,
+                "open_connections": stats.open_connections,
+                "in_use": stats.in_use,
+                "idle": stats.idle,
+            }))
+        }
+        ("utils.lock", Some(Instance::Utils(utils))) => {
+            utils.lock(&text(args, "key", member)).await?;
+            Returned::Value(Value::Null)
+        }
+        ("utils.set_local", Some(Instance::Utils(utils))) => {
+            utils.set_local(&text(args, "key", member), &text(args, "value", member)).await?;
+            Returned::Value(Value::Null)
+        }
+        ("utils.backend_waiting_for_lock", Some(Instance::Utils(utils))) => Returned::Value(Value::from(utils.backend_waiting_for_lock().await?)),
+        ("utils.schema", Some(Instance::Utils(utils))) => Returned::Instance(Instance::SchemaUtils(utils.schema())),
+        ("utils.privileges", Some(Instance::Utils(utils))) => Returned::Instance(Instance::PrivilegeUtils(utils.privileges())),
+        ("utils.aes", Some(Instance::Utils(utils))) => Returned::Instance(Instance::AesUtils(utils.aes())),
+        ("schema_utils.register", Some(Instance::SchemaUtils(schema))) => {
+            schema.register(&schema_argument(args, member).await)?;
+            Returned::Value(Value::Null)
+        }
+        ("schema_utils.install", Some(Instance::SchemaUtils(schema))) => {
+            schema.install(&schema_argument(args, member).await).await?;
+            Returned::Value(Value::Null)
+        }
+        ("schema_utils.add_tables_and_columns", Some(Instance::SchemaUtils(schema))) => {
+            Returned::Value(Value::from(schema.add_tables_and_columns(&schema_argument(args, member).await).await?))
+        }
+        ("schema_utils.exists", Some(Instance::SchemaUtils(schema))) => Returned::Value(Value::from(schema.exists(&text(args, "name", member)).await?)),
+        ("schema_utils.installed", Some(Instance::SchemaUtils(schema))) => {
+            Returned::Value(Value::from(schema.installed(&text(args, "name", member), &text(args, "table", member)).await?))
+        }
+        ("schema_utils.empty", Some(Instance::SchemaUtils(schema))) => Returned::Value(Value::from(schema.empty().await?)),
+        ("privilege_utils.grant_table", Some(Instance::PrivilegeUtils(privileges))) => {
+            privileges.grant_table(&text(args, "table", member), &text(args, "role", member)).await?;
+            Returned::Value(Value::Null)
+        }
+        ("privilege_utils.revoke_table", Some(Instance::PrivilegeUtils(privileges))) => {
+            privileges.revoke_table(&text(args, "table", member), &text(args, "privilege", member), &text(args, "role", member)).await?;
+            Returned::Value(Value::Null)
+        }
+        ("privilege_utils.inspect_table", Some(Instance::PrivilegeUtils(privileges))) => {
+            let held = privileges.inspect_table(&text(args, "table", member)).await?;
+            Returned::Value(serde_json::json!({
+                "insert": held.insert,
+                "select": held.select,
+                "update": held.update,
+                "delete": held.delete,
+                "truncate": held.truncate,
+            }))
+        }
+        ("aes_utils.status", Some(Instance::AesUtils(aes))) => {
+            let (model, keyring) = model_and_keyring(args, member).await;
+            Returned::Value(rotation_status(&aes.status_query(&model, &keyring).await?, member))
+        }
+        ("aes_utils.rotate", Some(Instance::AesUtils(aes))) => {
+            let (model, keyring) = model_and_keyring(args, member).await;
+            Returned::Value(Value::from(aes.rotate_query(&model, &keyring).await?))
         }
         ("query.connect", Some(Instance::Query(query))) => {
             query.connect(connection(field(args, "connection", member), member).await);
@@ -1083,4 +1179,109 @@ fn a_member_of_the_json_surface_has_a_case_of_each_kind_that_it_raises() {
     }
     assert!(read > 0, "the units of the JSON surface state no kind");
     assert!(missing.is_empty(), "{} kinds have no case:\n{}", missing.len(), missing.join("\n"));
+}
+
+/// The set `clock` of the cases of `utils`, and the SQLite database of a test in its own directory.
+fn clock_schema() -> Schema {
+    let text = "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n";
+    Schema::load(text, "", "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb").expect("the set clock loads")
+}
+
+async fn sqlite_database(scratch: &Scratch) -> Db {
+    let dsn = format!("sqlite://{}", scratch.path().join("shop.db").display());
+    Db::connect(&dsn, 1, Config::default()).await.expect("connect")
+}
+
+fn create_table(sql: &str) -> String {
+    serde_json::json!({"id": 1, "role": "main", "sql": sql, "tables": [], "bind_slots": []}).to_string()
+}
+
+// Requirements: CORE-182. A connection plans only the sets that it registered: `register` adds a set to a connection
+// that has none, a second set stays beside the first, and the same set again changes nothing. The case form reaches no
+// query of the connection of a `schema_utils` receiver, so this stays a native test.
+#[tokio::test]
+async fn register_adds_a_set_to_the_sets_of_its_connection() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-utils-register");
+    let db = sqlite_database(&scratch).await;
+    let clock = clock_schema();
+    let other_text = "dbspec 1 other\n\ntable other_row {\n  id i64 identity\n  primary key (id)\n}\n";
+    let other = Schema::load(other_text, "", "sha256:3977a85e434a335ae10c9be3d9018afa28cf6250b88ebe9bae63795a2f79b0ff").expect("the set other loads");
+    db.execute_text(&create_table("CREATE TABLE clock_event (seq INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT NOT NULL, created_ts TEXT NOT NULL)"), Vec::new())
+        .await
+        .expect("the table of clock");
+    db.execute_text(&create_table("CREATE TABLE other_row (id INTEGER PRIMARY KEY AUTOINCREMENT)"), Vec::new()).await.expect("the table of other");
+    let mut events = Query::new(&clock, "clock_event").expect("clock_event");
+    events.connect(Connection::Db(db.clone()));
+    let mut rows = Query::new(&other, "other_row").expect("other_row");
+    rows.connect(Connection::Db(db.clone()));
+    assert_eq!(events.get_count().await.expect_err("a set that is not registered").kind(), crate::Kind::SchemaHashMismatch);
+    db.utils().schema().register(&clock).expect("register clock");
+    assert_eq!(events.get_count().await.expect("a registered set"), 0);
+    assert_eq!(rows.get_count().await.expect_err("the second set is not registered yet").kind(), crate::Kind::SchemaHashMismatch);
+    db.utils().schema().register(&other).expect("register other");
+    db.utils().schema().register(&clock).expect("register clock again");
+    assert_eq!(rows.get_count().await.expect("the second set"), 0);
+    assert_eq!(events.get_count().await.expect("the first set beside the second"), 0);
+    db.close_async().await;
+}
+
+// Requirements: CORE-183. The utilities of a transaction handle: a local value is read back in its transaction and a
+// missing one is `no_rows`, a lock is taken on SQLite, an inserted key is reported, and the utilities of a handle whose
+// callback returned are `transaction_ended`. The case form calls no member on the result of a step, so the utilities
+// of a `tx` have no case of the contract and these stay native tests.
+#[tokio::test]
+async fn the_utilities_of_a_tx_run_in_its_transaction() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-utils-tx");
+    let db = sqlite_database(&scratch).await;
+    let clock = clock_schema();
+    db.utils().schema().install(&clock).await.expect("install");
+    let schema = &clock;
+    let kept = db
+        .transaction_async(
+            |tx: Tx| async move {
+                let utils = tx.utils();
+                utils.set_local("orm.actor", "ann").await?;
+                assert_eq!(utils.local("orm.actor")?, "ann");
+                assert_eq!(utils.local("orm.none").expect_err("a value that is not set").kind(), crate::Kind::NoRows);
+                assert_eq!(utils.set_local("a b", "x").await.expect_err("a key that is no identifier").kind(), crate::Kind::Config);
+                utils.lock("orm.case").await?;
+                let mut event = Query::new(schema, "clock_event")?;
+                event.connect(Connection::Tx(tx.clone()));
+                event.set("label", &OrmValue::Text("first".to_owned()));
+                let created = event.create().await?;
+                let sequence = match created.value("seq")? {
+                    OrmValue::Int(n) | OrmValue::Int64(n) => n,
+                    other => panic!("the key of the created row is {other:?}"),
+                };
+                assert!(utils.was_inserted("clock_event", sequence)?);
+                assert!(!utils.was_inserted("clock_event", sequence + 1)?);
+                assert_eq!(utils.was_inserted("", 1).expect_err("an empty entity").kind(), crate::Kind::Config);
+                Ok(utils)
+            },
+            TransactionOptions::default(),
+        )
+        .await
+        .expect("the transaction");
+    assert_eq!(kept.local("orm.actor").expect_err("after the callback").kind(), crate::Kind::TransactionEnded);
+    assert_eq!(kept.lock("orm.case").await.expect_err("after the callback").kind(), crate::Kind::TransactionEnded);
+    db.close_async().await;
+}
+
+// Requirements: CORE-181. The machine of a utility gives one `Io` step and ends with its unchanged result, and making it
+// sends no statement.
+#[tokio::test]
+async fn the_machine_of_a_utility_gives_one_io_step() {
+    use binding_core::machine::{Machine as _, Step};
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-utils-machine");
+    let db = sqlite_database(&scratch).await;
+    let mut machine = db.utils().schema().empty_machine();
+    let Step::Io(io) = machine.resume(None) else { panic!("the first step of the machine is no Io") };
+    let Step::Done(result) = machine.resume(Some(io.await)) else { panic!("the second step of the machine is no Done") };
+    assert!(result.expect("empty"));
+    let Step::Done(result) = machine.resume(None) else { panic!("a machine that ended gives Done") };
+    assert_eq!(result.expect_err("out of order").kind(), crate::Kind::Internal);
+    db.close_async().await;
 }

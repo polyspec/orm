@@ -402,7 +402,7 @@ impl Connection {
 
     /// The utilities of the connection: those of the `Db`, or those of the transaction of the `Tx`.
     #[must_use]
-    pub fn utils(&self) -> Utils<'_> {
+    pub fn utils(&self) -> Utils {
         match self {
             Connection::Db(db) => db.utils(),
             Connection::Tx(tx) => tx.utils(),
@@ -497,7 +497,7 @@ impl Tx {
     /// The utilities of the transaction: locks, local values, the statement runner and the inserted keys (INT-50 to
     /// INT-52, INT-150).
     #[must_use]
-    pub fn utils(&self) -> Utils<'_> {
+    pub fn utils(&self) -> Utils {
         Utils::of_transaction(self)
     }
 
