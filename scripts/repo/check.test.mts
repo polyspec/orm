@@ -3210,6 +3210,18 @@ caseTest('the Makefile defines CARGO, the cargo link, before it includes package
   }
 });
 
+// The locks of the two Rust workspaces, Cargo.lock of the root and benchmarks/rust/Cargo.lock, are written by cargo update
+// through the cargo link, online, and no recipe edits them by hand: cargo-lock-update updates both, the crates that
+// CRATES names (each -p <crate>) or every crate without it, so a pin of a git tag in a Cargo.toml reaches both locks (T595).
+caseTest('cargo-lock-update updates both Rust locks through the cargo link', () => {
+  const makefile = text('Makefile');
+  assert.match(makefile, /^\.PHONY: cargo-lock-update$/m, 'the Makefile declares no phony cargo-lock-update');
+  assert.deepEqual(jobRecipeLines(makefile, 'cargo-lock-update'), [
+    '$(ONLINE) $(CARGO_LINK) update $(addprefix -p ,$(CRATES))',
+    'cd benchmarks/rust && $(ONLINE) $(CARGO_LINK) update $(addprefix -p ,$(CRATES))',
+  ]);
+});
+
 // packages/go is a module outside go.work, so go mod download of the workspace leaves its modules out, and binding check
 // reads them offline (go mod download -json all under GOPROXY=off). orm-install-go-binding downloads them: orm-install-go
 // runs it, and each asset job runs it after it installs Go and before its binding check.

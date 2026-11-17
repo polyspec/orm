@@ -217,6 +217,13 @@ kit-install-declared: ## Install the symbol extractors that config/toolchain.jso
 	$(COMPOSER_TOOL_ENV) $(ONLINE) $(NODE) $(KIT)/install-symbols.$(KIT_EXT) --declared
 kit-install-symbols: ## Install the symbol extractors that EXTRACTORS="go php" names; their tools must be installed first; ONLINE
 	$(COMPOSER_TOOL_ENV) $(ONLINE) $(NODE) $(KIT)/install-symbols.$(KIT_EXT) $(EXTRACTORS)
+# cargo-lock-update writes the locks of the two Rust workspaces, Cargo.lock and benchmarks/rust/Cargo.lock, with cargo update
+# through the cargo link: the crates that CRATES names (CRATES="polyspec-binding-core polyspec-json"), or every crate without
+# it. A pin of a git tag in a Cargo.toml reaches the locks only through it, since no recipe writes a lock by hand (T595).
+.PHONY: cargo-lock-update
+cargo-lock-update: ## Update Cargo.lock and benchmarks/rust/Cargo.lock for the crates of CRATES, or every crate; ONLINE
+	$(ONLINE) $(CARGO_LINK) update $(addprefix -p ,$(CRATES))
+	cd benchmarks/rust && $(ONLINE) $(CARGO_LINK) update $(addprefix -p ,$(CRATES))
 # toolchain-lock writes mise.lock with the mise that the bootstrap installed. mise locks a pypi: tool with uv, which takes the
 # first uv of PATH, so mise first locks and installs uv and python, then locks every tool with that Python as UV_PYTHON.
 TOOLCHAIN_LOCK_PLATFORMS := linux-x64,linux-arm64,macos-arm64,macos-x64,windows-x64,windows-arm64
