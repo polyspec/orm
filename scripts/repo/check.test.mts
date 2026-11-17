@@ -1235,6 +1235,11 @@ caseTest('the CI groups leave out the gates of kit, which the gates workflow run
   assert.ok(gates.includes('layout-check') && gates.includes('lint-ts'), 'the Makefile declares the gates of kit');
 });
 
+caseTest('python-format formats with the ruff of mise.toml the root that lint-python checks with ruff format --check .', () => {
+  const recipe = /^python-format:.*\n\t(.*)$/m.exec(text('Makefile'))?.[1];
+  assert.equal(recipe, '$(RUFF) format .');
+});
+
 caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', () => {
   const make = (groups: string[]) => ['CHECK_TARGETS = a-check b-check c-check', ...groups, groupRecipes].join('\n');
   const good = make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check c-check', 'CI_TARGETS_two = b-check']);
