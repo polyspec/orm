@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writ
 import { join } from 'node:path';
 import { MARIADB_VERSION } from './mariadb-build.mts';
 import {
-  checkedPort, holdExclusiveLease, issueTls, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
+  checkedPort, claimOwner, dropGeneration, holdExclusiveLease, leaveOwner, newGeneration, issueTls, MYSQL_LOWER_CASE, proxysqlConfigOf, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, ORM_ACCOUNTS_SQL,
   type Paths, pidRunning, run, shutdownError, socketDir, startLogged, stopServerProcess, TestServerError,
 } from './test-servers.mts';
 
@@ -252,15 +252,19 @@ const mariadbFiles = (p: Paths): string[] =>
 export function removeMariadb(p: Paths): void {
   holdExclusiveLease(p.mariadbLeases);
   stopMariadbProcesses(p);
-  for (const file of [...mariadbFiles(p), p.mariadbEnv]) rmSync(file, { recursive: true, force: true });
+  for (const file of [...mariadbFiles(p), p.mariadbEnv, p.mariadbGeneration]) rmSync(file, { recursive: true, force: true });
   console.log(`test-servers: stopped the MariaDB servers and removed their files under ${p.dir}`);
 }
 
 /** startMariadb starts the MariaDB servers, or keeps the running ones and rewrites their environment file. */
+// Its servers are owned by the rule of the other servers (scripts/test-servers-owner.mts): the owner lease is held first, and
+// a start leaves the owner process of the set mariadb.
 export async function startMariadb(p: Paths): Promise<void> {
+  const owner = claimOwner(p, 'mariadb');
   const running = mariadbRunning(p);
   if (running) {
     writeMariadbEnvironment(p, running);
+    leaveOwner(p, 'mariadb', owner);
     console.log(`test-servers: MariaDB running; environment ${p.mariadbEnv}`);
     return;
   }
@@ -278,11 +282,14 @@ export async function startMariadb(p: Paths): Promise<void> {
   stopMariadbProcesses(p);
   for (const file of mariadbFiles(p)) rmSync(file, { recursive: true, force: true });
   rmSync(p.mariadbEnv, { force: true });
+  newGeneration(p, 'mariadb');
+  leaveOwner(p, 'mariadb', owner);
   try {
     await startServers(p, ports);
     writeMariadbEnvironment(p, ports);
   } catch (error) {
     console.error(`test-servers: MariaDB start failed; logs are in ${p.dir}`);
+    dropGeneration(p, 'mariadb');
     try { stopMariadbProcesses(p); }
     catch (cleanup) { throw shutdownError(`test-servers: MariaDB start failed: ${error instanceof Error ? error.message : String(error)}`, [cleanup]); }
     throw error;

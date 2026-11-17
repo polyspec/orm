@@ -14,6 +14,10 @@
 //
 // Each first start writes a new generation into .runtime/servers/generation, and an owner process stops only the servers of
 // the generation it watched: servers that were stopped and started again belong to the owners of that later start.
+//
+// The MariaDB servers of make orm-test-mariadb are a set of their own under the same rule: their owners hold
+// .runtime/mariadb.owners, their runs .runtime/mariadb.leases, their generation is .runtime/servers/mariadb.generation, and
+// their owner process stops them as make orm-test-mariadb-stop does.
 
 /** The steps of an owner process, in the order own runs them. */
 export type OwnerSteps = {

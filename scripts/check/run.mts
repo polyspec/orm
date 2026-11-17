@@ -310,7 +310,8 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   } else if (wanted.has('mysql-privilege-server')) {
     failedSetup['mysql-privilege-server'] = `the setup step servers failed: ${(results.at(-1)?.failures ?? []).join(' / ')}`;
   }
-  // mariadb-server starts the MariaDB servers, a set of their own (make orm-test-mariadb), and holds their shared lease until this
+  // mariadb-server starts the MariaDB servers, a set of their own (make orm-test-mariadb), names this process their owner
+  // (ORM_SERVERS_OWNER, scripts/test-servers-owner.mts), so they stop once it ended, and holds their shared lease until this
   // process ends; their targets read the environment file through WITH_MARIADB_ENV. It needs no MySQL or PostgreSQL server.
   if (wanted.has('mariadb-server')) {
     const unmetMariadb = (SETUP_NEEDS['mariadb-server'] ?? []).find(need => failedSetup[need]);
@@ -318,7 +319,7 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
     else {
       const mariadbEnv = resolve(root, '.runtime/servers/mariadb.env');
       const ready = await record('mariadb-server', 'setup', async ({ step, spawned }) => {
-        await run('make', ['--no-print-directory', 'orm-test-mariadb'], step, spawned, { guard: false });
+        await run('make', ['--no-print-directory', `ORM_SERVERS_OWNER=${process.pid}`, 'orm-test-mariadb'], step, spawned, { guard: false });
         const env = serverEnvironment(mariadbEnv);
         const lease = process.env.LEASE;
         const leases = env['ORM_TEST_MARIADB_LEASES'];

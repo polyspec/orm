@@ -2059,10 +2059,11 @@ orm-test-servers:
 .PHONY: orm-install-mariadb orm-test-mariadb orm-test-mariadb-stop
 orm-install-mariadb:
 	$(ONLINE) $(NODE) scripts/mariadb-build.mts
+# Its servers have an owner by the rule of make orm-test-servers (ORM_SERVERS_OWNER, scripts/test-servers-owner.mts).
 orm-test-mariadb:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
-	PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-start
+	ORM_SERVERS_OWNER=$${ORM_SERVERS_OWNER:-$$(ps -o ppid= -p $$PPID | tr -d ' ')} PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-start
 
 # make orm-test-mariadb-stop stops the MariaDB servers of make orm-test-mariadb by their pid files and removes their files, under
 # the exclusive lease of their lease directory; make orm-test-servers-stop and worktree-remove stop them with the other servers.
