@@ -1,6 +1,7 @@
 // test-servers-mariadb starts and stops the MariaDB servers of the database checks, a primary, its replica, the privilege probe
 // server and a ProxySQL in front of the primary, for
-// `test-servers.mts mariadb-start` (make orm-test-mariadb) and the stop of test-servers.mts. MariaDB is a server of the mysql
+// `test-servers.mts mariadb-start` (make orm-test-mariadb), `test-servers.mts mariadb-stop` (make orm-test-mariadb-stop) and the
+// stop of test-servers.mts. MariaDB is a server of the mysql
 // dialect (DIA-200): the clients reach it with mysql:// DSNs, and the recipes run their cases on it as the database mariadb
 // (FCV-3). Its servers are their own set, apart from the MySQL and PostgreSQL servers of `start`, since the CI runner installs
 // either the MySQL or the MariaDB packages, which conflict, and a CI group of MariaDB starts only these: they have their own
@@ -242,6 +243,19 @@ export function stopMariadb(p: Paths): void {
   stopMariadbProcesses(p);
 }
 
+// MARIADB_FILES are the entries of the MariaDB servers under the directory of the servers: the data and temporary folders of
+// each server and the folder of its ProxySQL. A start removes them before it starts afresh, and mariadb-stop after the stop.
+const mariadbFiles = (p: Paths): string[] =>
+  [...Object.values(MARIADB_SERVERS).flatMap(server => [server.name, `${server.name}-tmp`]), 'mariadb-proxysql'].map(name => join(p.dir, name));
+
+/** removeMariadb stops the MariaDB servers and removes their files and environment file (test-servers.mts mariadb-stop). */
+export function removeMariadb(p: Paths): void {
+  holdExclusiveLease(p.mariadbLeases);
+  stopMariadbProcesses(p);
+  for (const file of [...mariadbFiles(p), p.mariadbEnv]) rmSync(file, { recursive: true, force: true });
+  console.log(`test-servers: stopped the MariaDB servers and removed their files under ${p.dir}`);
+}
+
 /** startMariadb starts the MariaDB servers, or keeps the running ones and rewrites their environment file. */
 export async function startMariadb(p: Paths): Promise<void> {
   const running = mariadbRunning(p);
@@ -262,7 +276,7 @@ export async function startMariadb(p: Paths): Promise<void> {
   mkdirSync(p.dir, { recursive: true });
   socketDir(p);
   stopMariadbProcesses(p);
-  for (const name of [...Object.values(MARIADB_SERVERS).flatMap(server => [server.name, `${server.name}-tmp`]), 'mariadb-proxysql']) rmSync(join(p.dir, name), { recursive: true, force: true });
+  for (const file of mariadbFiles(p)) rmSync(file, { recursive: true, force: true });
   rmSync(p.mariadbEnv, { force: true });
   try {
     await startServers(p, ports);

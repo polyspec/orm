@@ -2056,13 +2056,20 @@ orm-test-servers:
 	ORM_SERVERS_OWNER=$${ORM_SERVERS_OWNER:-$$(ps -o ppid= -p $$PPID | tr -d ' ')} LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
 
 # make orm-install-mariadb builds the MariaDB of the test servers from its pinned source release into var/mariadb (scripts/mariadb-build.mts).
-.PHONY: orm-install-mariadb orm-test-mariadb
+.PHONY: orm-install-mariadb orm-test-mariadb orm-test-mariadb-stop
 orm-install-mariadb:
 	$(ONLINE) $(NODE) scripts/mariadb-build.mts
 orm-test-mariadb:
 	$(BUILD_STOP_PROCESS)
 	$(MAKE) -s $(LEASE)
 	PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-start
+
+# make orm-test-mariadb-stop stops the MariaDB servers of make orm-test-mariadb by their pid files and removes their files, under
+# the exclusive lease of their lease directory; make orm-test-servers-stop and worktree-remove stop them with the other servers.
+orm-test-mariadb-stop:
+	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s $(LEASE)
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-stop
 
 # The recipe targets of every database run one case at a time in every runtime (docs/spec/dialects.md DIA-212): the cases of
 # a recipe create and drop databases, and DDL of two cases at once on MariaDB can leave a trigger backup that fails a later

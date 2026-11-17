@@ -4,7 +4,7 @@
 // MySQL privilege fixture. The servers listen on 127.0.0.1 over TCP; the other endpoints are
 // Unix sockets in the socket folder (socketPaths), which stop and the ProxySQL admin interface use.
 //
-//   test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | mysql-stop | mysql-start <mysql port> <mysql replica port> | own <owner pid> <generation>
+//   test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | mariadb-stop | mysql-stop | mysql-start <mysql port> <mysql replica port> | own <owner pid> <generation>
 //
 // start chooses six free ports on 127.0.0.1 (scripts/free-ports.mts) for the servers of this checkout, so two checkouts
 // never contend for one fixed port; a server owns its port from the moment it listens. The environment file records
@@ -37,7 +37,7 @@ import { createHash, randomUUID, X509Certificate } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
 import { errorCode, errorMessage } from '../tests/errors.mts';
-import { startMariadb, stopMariadb } from './test-servers-mariadb.mts';
+import { removeMariadb, startMariadb, stopMariadb } from './test-servers-mariadb.mts';
 import { own, ownerPid } from './test-servers-owner.mts';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -985,7 +985,7 @@ async function start(p: Paths): Promise<void> {
   console.log(`test-servers: started; environment ${p.env}`);
 }
 
-const USAGE = 'usage: test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | own <owner pid> <generation>; run it through the matching make target';
+const USAGE = 'usage: test-servers.mts start | tls | stop | mysql-privilege-start | mariadb-start | mariadb-stop | own <owner pid> <generation>; run it through the matching make target';
 
 export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void> {
   const [action, ...rest] = args;
@@ -1009,6 +1009,11 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
       // mariadb-start starts the MariaDB servers, a set of their own (scripts/test-servers-mariadb.mts).
       arity(0);
       return startMariadb(p);
+    case 'mariadb-stop':
+      // mariadb-stop stops the MariaDB servers and removes their files; the other servers of the checkout keep running.
+      arity(0);
+      if (!existsSync(p.dir)) { console.log(`test-servers: no servers under ${p.dir}`); return; }
+      return removeMariadb(p);
     case 'mysql-stop':
       // mysql-stop and mysql-start <mysql port> <mysql replica port> are the steps of the MySQL migration
       // (scripts/test-servers-mysql.mts): they stop the MySQL servers, and initialize and start them with the declared
