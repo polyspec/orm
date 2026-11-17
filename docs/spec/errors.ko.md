@@ -1,5 +1,5 @@
 <!-- doc-id: errors -->
-<!-- source-sha256: ec5bca886526d67293ed3e34436f5045b6126d960182698a3fc7ee128068d024 -->
+<!-- source-sha256: b5e9c8b29c7ba6b0bc2fdae5916db66d86b32662e20c24496c690c7fc21d2764 -->
 # 코어의 오류 kind
 
 - **ERR-1** Rust 코어 `polyspec-orm`의 오류는 닫힌 enum `polyspec_orm::Kind`의 kind 하나를 가지며, 아래 표의 행이 그 변형이다(CORE-10). enum에는 와일드카드 변형이 없으므로 kind를 category로 옮기는 바인딩은 행이 빠지거나 늘면 컴파일되지 않는다.
@@ -27,7 +27,7 @@
 | `empty_in` | value | engine | 값 없는 in()/notIn() |
 | `entity_not_joined` | value | engine | 이 문장에 없는 join을 가리키는 위치나 열 |
 | `limit_in_relation` | value | engine | relation 자식의 limit()(limitPerParent를 쓴다) |
-| `no_rows` | value | executor | 한 행을 요구하는 질의가 행을 찾지 못함 |
+| `no_rows` | value | executor | 한 행을 요구하는 질의가 행을 찾지 못함, 또는 `require_match` 아래의 쓰기가 어떤 행과도 일치하지 않음(CORE-142) |
 | `row_not_deleted` | value | executor | restoreOrCreate가 지워지지 않은 행에서 키를 찾음; 쓴 것 없음 |
 | `batch_too_large` | value | executor | create 묶음의 bind 수가 dialect 한도를 넘음; 쓴 것 없음 |
 | `revision_changed` | value | executor | 기대 revision을 받은 update·delete가 다른 revision의 행이나 행 없음을 찾음; 쓴 것 없음 |

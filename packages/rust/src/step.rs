@@ -117,6 +117,7 @@ pub enum Call {
     Relations { query: QueryTree },
     Set { column: String, value: StepValue },
     ExpectRevision { column: String, revision: i64 },
+    RequireMatch,
 }
 
 /// The terminal of a query step (CORE-92).
@@ -400,6 +401,7 @@ fn build(schema: &Schema, tree: QueryTree) -> Result<Query> {
             Call::Relations { query: child } => query.relations(build(schema, child)?),
             Call::Set { column, value } => query.set(&column, &value.0),
             Call::ExpectRevision { column, revision } => query.expect_revision(&column, revision),
+            Call::RequireMatch => query.require_match(),
         }
     }
     Ok(query)

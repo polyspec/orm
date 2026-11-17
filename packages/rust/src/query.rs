@@ -302,6 +302,12 @@ impl Query {
         self.core.expect_revision(column, revision);
     }
 
+    /// Makes the `update`, `delete` and `restore` of the query from then on fail with `no_rows` when the statement of
+    /// the write matched no row; `restore_or_create` does not take it (CORE-142, PRT-90).
+    pub fn require_match(&mut self) {
+        self.core.require_match();
+    }
+
     /// Inserts the row of the assignments and returns the created row with its identity (CORE-91). The assignments are
     /// cleared.
     pub async fn create(&mut self) -> Result<Query> {

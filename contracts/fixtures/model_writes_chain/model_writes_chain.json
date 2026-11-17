@@ -18,7 +18,8 @@
   "PRT-86",
   "PRT-87",
   "PRT-88",
-  "DSL-162"
+  "DSL-162",
+  "PRT-90"
  ],
  "fixture": "contracts/fixtures/model_chain/dbspec-set.json",
  "seed": {
@@ -4680,6 +4681,292 @@
        "value": {
         "int": "1"
        }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "require_match_preserves_optimistic_error",
+   "requirements": [
+    "DSL-107",
+    "INT-35",
+    "PRT-90"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "hook.install",
+     "connection": "db",
+     "hooks": [
+      {
+       "action": "require_match",
+       "kinds": [
+        "update"
+       ]
+      }
+     ]
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "stale",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "transaction",
+     "connection": "db",
+     "fail": true,
+     "steps": [
+      {
+       "op": "model.get_by",
+       "connection": "db",
+       "model": "Author",
+       "key": {
+        "seq": {
+         "int": "1"
+        }
+       },
+       "columns": "all",
+       "pick": [
+        "name"
+       ],
+       "as": "fresh",
+       "expect": {
+        "mysql": {
+         "json": {
+          "name": "author-1"
+         }
+        },
+        "postgres": {
+         "json": {
+          "name": "author-1"
+         }
+        },
+        "sqlite": {
+         "json": {
+          "name": "author-1"
+         }
+        }
+       }
+      },
+      {
+       "op": "model.update",
+       "connection": "db",
+       "row": "fresh",
+       "set": {
+        "name": {
+         "text": "fresh"
+        }
+       },
+       "optimistic": true
+      },
+      {
+       "op": "model.update",
+       "connection": "db",
+       "row": "stale",
+       "set": {
+        "name": {
+         "text": "stale"
+        }
+       },
+       "optimistic": true,
+       "expect": {
+        "mysql": {
+         "error": "optimistic_lock"
+        },
+        "postgres": {
+         "error": "optimistic_lock"
+        },
+        "sqlite": {
+         "error": "optimistic_lock"
+        }
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "error": "callback"
+      },
+      "postgres": {
+       "error": "callback"
+      },
+      "sqlite": {
+       "error": "callback"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "name"
+     ],
+     "pick": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "require_match_precedes_revision_error",
+   "requirements": [
+    "PRT-90"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "hook.install",
+     "connection": "db",
+     "hooks": [
+      {
+       "action": "require_match",
+       "kinds": [
+        "update"
+       ]
+      }
+     ]
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "model": "Author",
+     "values": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "set": {
+      "name": {
+       "text": "refused"
+      }
+     },
+     "revision": {
+      "column": "read_count",
+      "value": {
+       "int": "11"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "no_rows",
+       "message": "no_rows: the update of author matched no row"
+      },
+      "postgres": {
+       "error": "no_rows",
+       "message": "no_rows: the update of author matched no row"
+      },
+      "sqlite": {
+       "error": "no_rows",
+       "message": "no_rows: the update of author matched no row"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "name",
+      "read_count"
+     ],
+     "where": {},
+     "order": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "text": "author-1"
+         },
+         {
+          "int": "10"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "text": "author-1"
+         },
+         {
+          "int": "10"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "text": "author-1"
+         },
+         {
+          "int": "10"
+         }
+        ]
+       ]
       }
      }
     }

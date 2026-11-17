@@ -259,11 +259,14 @@ fn a_text_that_is_no_request_of_the_form_is_ir_invalid() {
     let read = Request::from_json(r#"{"ir_version": 2, "manifest_hash": "h", "kind": "all", "entity": "author", "n_params": 0}"#).expect("a request");
     assert_eq!((read.ir_version, read.kind.as_str(), read.query.entity.as_str()), (2, "all", "author"));
     assert!(Request::from_json("{}").is_ok(), "an absent member has its default");
+    assert!(Request::from_json(r#"{"require_match": true}"#).expect("a request that requires a match").require_match, "CORE-142");
+    assert!(!Request::from_json(r#"{"require_match": false}"#).expect("a request that requires no match").require_match, "CORE-142");
     for (text, message) in [
         ("[]", "request is no object"),
         (r#"{"shape": 1}"#, "request.shape is no member of the form"),
         (r#"{"where": null}"#, "request.where is no object"),
         (r#"{"entity": null}"#, "request.entity is null; an absent member is its default"),
+        (r#"{"require_match": null}"#, "request.require_match is null; an absent member is its default"),
         (r#"{"group_by": ["a", null]}"#, "request.group_by[1] is null; an absent member is its default"),
         (r#"{"where": {"items": [{"pred": {"column": "a", "colour": 1}}]}}"#, "request.where.items[0].pred.colour is no member of the form"),
         (
@@ -278,7 +281,7 @@ fn a_text_that_is_no_request_of_the_form_is_ir_invalid() {
         let error = failure(Request::from_json(text), text);
         assert_eq!((error.kind(), error.text()), (Kind::IrInvalid, message), "{text}");
     }
-    for text in [r#"{} {}"#, r#"{"n_params": 1.5}"#, r#"{"kind": 1}"#, "", "{"] {
+    for text in [r#"{} {}"#, r#"{"n_params": 1.5}"#, r#"{"kind": 1}"#, r#"{"require_match": 1}"#, "", "{"] {
         assert_eq!(failure(Request::from_json(text), text).kind(), Kind::IrInvalid, "{text}");
     }
     assert_eq!(crate::IR_VERSION, 2);

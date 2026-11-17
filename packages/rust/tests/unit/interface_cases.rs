@@ -618,6 +618,10 @@ async fn call(member: &str, receiver: Option<&mut Instance>, args: &Map<String, 
             query.expect_revision(&text(args, "column", member), revision);
             Returned::Value(Value::Null)
         }
+        ("query.require_match", Some(Instance::Query(query))) => {
+            query.require_match();
+            Returned::Value(Value::Null)
+        }
         ("query.create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.create().await?))),
         ("query.restore", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore().await?))),
         ("query.restore_or_create", Some(Instance::Query(query))) => Returned::Instance(Instance::Query(Box::new(query.restore_or_create().await?))),

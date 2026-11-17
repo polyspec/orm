@@ -593,7 +593,7 @@ A user of the generated bindings has this today:
 - No binding has `utils()`: the statement runner, the lock and the local values, the schema utilities `register`, `install` and `addTablesAndColumns`, the privileges and the AES rotation are in the core and not in the contract (CORE-70). A binding registers one schema, at `db.connect_schema`.
 - The members that CORE-84 names as not implemented are members of a generated Rust model alone: `Query` has none of them, so no binding has them.
 - Seventeen more members of a generated Rust model are missing from `Query`, and no rule of the core names them. They have a table of their own below.
-- The core has no hook before a transaction and no `require_match`, and the contract does not declare the request hook, the statement event subscription, `notify` and `listen`.
+- The core has no hook before a transaction, and the contract does not declare the request hook, the statement event subscription, `notify` and `listen`.
 - The callback of `db.transaction` receives a `Tx`, and a model runs in the transaction after `connect` with that handle (CORE-20); `db.transaction_active` is always `false` (CORE-140).
 
 ### Connection
@@ -608,7 +608,7 @@ A user of the generated bindings has this today:
 | a `transaction` inside a transaction is a savepoint | INT-46 | replaced by a rule of the core: CORE-21, `tx.savepoint`; a `Db::transaction` inside a callback is an independent transaction (CORE-20) | `packages/rust/interface.json:2068` |
 | `Db.transactionActive()` | INT-192 | present, changed: `db.transaction_active` is always `false`, and `tx.transaction_active` answers for its handle (CORE-140) | `packages/rust/interface.json:1711`, `packages/rust/interface.json:2123`, `packages/rust/src/db.rs:1062` |
 | `Db.beforeTransaction(hook)` | INT-193 | not implemented; the core has no such member; the declaration inventory names a Rust symbol that does not exist (T598) | `contracts/interfaces.json:2323` |
-| `Db.analyzeRestore(request)`, `RestoreAnalysis` | INT-191, PRT-91 | present, changed: `db.analyze_restore` takes the request as JSON text and returns the JSON text of `key` and `assignments` (CORE-141); `runtime_model.restore_key` classifies and refuses | `contracts/interfaces.json:2244`, `packages/rust/interface.json:1745`, `packages/rust/interface.json:4738` |
+| `Db.analyzeRestore(request)`, `RestoreAnalysis` | INT-191, PRT-91 | present, changed: `db.analyze_restore` takes the request as JSON text and returns the JSON text of `key` and `assignments` (CORE-141); `runtime_model.restore_key` classifies and refuses | `contracts/interfaces.json:2244`, `packages/rust/interface.json:1745`, `packages/rust/interface.json:4757` |
 | `Db.withRequestHook(hook)`, `RequestHook` | INT-78 | in the core, not in the contract; CORE-70: the request of the protocol is no type of the contract (T600) | `packages/rust/src/db.rs:1043`, `packages/rust/src/db.rs:56` |
 | `Db.root()` (TypeScript, Python, Go) | INT-78a | not implemented | `legacy/packages/ts/src/database.ts:684` |
 | `Db.subscribe(subscriber)`, `StatementEvent`, `StatementKind`, `StatementSubscriber` | INT-77, INT-91 | in the core, not in the contract; CORE-70: the event borrows its statement; CORE-28 returns the exception of a subscriber unchanged | `packages/rust/src/events.rs:133`, `packages/rust/src/events.rs:40` |
@@ -641,7 +641,7 @@ A user of the generated bindings has this today:
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| `relation`, `relations`, `expectRevision`, `create`, `restore`, `restoreOrCreate`, `addAllColumns`, `removeAllColumns` | INT-87, INT-34, INT-38, INT-39, DSL-76, DSL-77, DSL-108 | present | `packages/rust/interface.json:3835`, `packages/rust/interface.json:3862`, `packages/rust/interface.json:4047`, `packages/rust/interface.json:4079`, `packages/rust/interface.json:4186`, `packages/rust/interface.json:4225`, `packages/rust/interface.json:3700`, `packages/rust/interface.json:3718` |
+| `relation`, `relations`, `expectRevision`, `create`, `restore`, `restoreOrCreate`, `addAllColumns`, `removeAllColumns` | INT-87, INT-34, INT-38, INT-39, DSL-76, DSL-77, DSL-108 | present | `packages/rust/interface.json:3835`, `packages/rust/interface.json:3862`, `packages/rust/interface.json:4047`, `packages/rust/interface.json:4096`, `packages/rust/interface.json:4205`, `packages/rust/interface.json:4244`, `packages/rust/interface.json:3700`, `packages/rust/interface.json:3718` |
 | a model class per entity; `connect(db)` returns the model | INT-16, INT-17 | present, changed: `Query.new(schema, entity)` names the entity by text, and `connect` returns nothing (CORE-81) | `packages/rust/interface.json:3264`, `packages/rust/interface.json:3317` |
 | the condition chains `<Chain>()`, `and<Chain>()`, `or<Chain>()`, the connectors `and()` and `or()`, the operators and `tuple<A>With<B>` | DSL-12 to DSL-35 | present, changed: `where(chain, values)` takes the chain name as text (CORE-82) | `packages/rust/interface.json:3343` |
 | a model as the value of a condition, `IN (SELECT …)` | DSL-53 | present, changed: `where_in(chain, query)` (CORE-90) | `packages/rust/interface.json:3979` |
@@ -652,13 +652,13 @@ A user of the generated bindings has this today:
 | `set<Col>(value)`, `get<Col>()` | DSL-100, DSL-71 | present, changed: `set(column, value)` and `value(column)`, whose value is an untyped `orm_value` (CORE-83, CORE-91) | `packages/rust/interface.json:4014`, `packages/rust/interface.json:3459` |
 | `addColumn<Col>()`, `removeColumn<Col>()`, `keyName<Col>()`, `match<L>With<R>()`, `alias<Name>()` | DSL-72, DSL-75, DSL-70, DSL-82, DSL-83 | present, changed: `add_column`, `remove_column`, `key_name`, `match_pair`, `alias` take the name as text (CORE-87 to CORE-89) | `packages/rust/interface.json:3736`, `packages/rust/interface.json:3761`, `packages/rust/interface.json:3954`, `packages/rust/interface.json:3786`, `packages/rust/interface.json:3811` |
 | the relation getters `get<Table>Model()`, `get<Table>Models()` | DSL-89 | present, changed: `related(name)`, `related_rows(name)` (CORE-88) | `packages/rust/interface.json:3889`, `packages/rust/interface.json:3920` |
-| `update(optimistic)` | INT-36, DSL-106, DSL-107 | present, changed: `update()` takes no argument and writes the one row of its key under the conditions of the query (CORE-138) | `packages/rust/interface.json:4116`, `packages/rust/build/src/fixed.rs.txt:135` |
-| `delete(recursive)` | INT-37, DSL-110, DSL-111 | present, changed: `delete()` takes no argument and deletes the one row of its key under the conditions of the query (CORE-138); no member of the contract deletes recursively | `packages/rust/interface.json:4151`, `packages/rust/build/src/fixed.rs.txt:145` |
-| `get()` | INT-29 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:350`, `contracts/interfaces.json:1014` |
-| `gets()`, `Collection<T>` and its members `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80 to INT-86 | in the core, not in the contract; CORE-70: `Collection` takes the type of a generated model | `packages/rust/src/query.rs:356`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
-| `getsBy<Chain>()` | INT-27 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:378` |
-| `getQuery()` | DSL-65 | in the core, not in the contract; CORE-70: `Statement` holds Rust values | `packages/rust/src/query.rs:367` |
-| `toArray()` of a row | `Model.toArray` of the inventory | in the core, not in the contract; CORE-120 states it; the contract does not declare it | `packages/rust/src/query.rs:403`, `contracts/interfaces.json:1728` |
+| `update(optimistic)` | INT-36, DSL-106, DSL-107 | present, changed: `update()` takes no argument and writes the one row of its key under the conditions of the query (CORE-138) | `packages/rust/interface.json:4133`, `packages/rust/build/src/fixed.rs.txt:135` |
+| `delete(recursive)` | INT-37, DSL-110, DSL-111 | present, changed: `delete()` takes no argument and deletes the one row of its key under the conditions of the query (CORE-138); no member of the contract deletes recursively | `packages/rust/interface.json:4169`, `packages/rust/build/src/fixed.rs.txt:145` |
+| `get()` | INT-29 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:356`, `contracts/interfaces.json:1014` |
+| `gets()`, `Collection<T>` and its members `get`, `has`, `first`, `length`, `keys`, `values`, `entries`, `fetched`, `fetchedValues`, `connect`, `delete`, `toArray`, `toJSON` | INT-30, INT-62, INT-80 to INT-86 | in the core, not in the contract; CORE-70: `Collection` takes the type of a generated model | `packages/rust/src/query.rs:362`, `packages/rust/src/collection.rs:203`, `contracts/interfaces.json:1762` |
+| `getsBy<Chain>()` | INT-27 | in the core, not in the contract; CORE-70 | `packages/rust/src/query.rs:384` |
+| `getQuery()` | DSL-65 | in the core, not in the contract; CORE-70: `Statement` holds Rust values | `packages/rust/src/query.rs:373` |
+| `toArray()` of a row | `Model.toArray` of the inventory | in the core, not in the contract; CORE-120 states it; the contract does not declare it | `packages/rust/src/query.rs:409`, `contracts/interfaces.json:1728` |
 | `Key` | INT-11, INT-63 | in the core, not in the contract; CORE-70 | `packages/rust/src/lib.rs:86` |
 | `StyledValue` with `sqlNull`, `value`, `payload` | INT-7 | in the core, not in the contract; a column with a style stage leaves the core as `orm_value` (CORE-62) | `packages/rust/src/lib.rs:116` |
 
@@ -668,17 +668,17 @@ A user of the generated bindings has this today:
 | --- | --- | --- | --- |
 | `creates(rows, batch)` | INT-35, DSL-104 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:130` |
 | `save()` | DSL-109 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:140` |
-| `join<L>With<R>(child)`, `leftJoin<L>With<R>(child)` | DSL-91, DSL-92 | in the core, not in the contract | `packages/rust/src/core.rs:465` |
-| `and(fn)`, `or(fn)` | DSL-15, DSL-20 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:15`, `packages/rust/build/src/fixed.rs.txt:22`, `packages/rust/src/core.rs:374` |
-| `and(model)`, `or(model)` | DSL-17, DSL-95 | in the core, not in the contract | `packages/rust/src/core.rs:365` |
+| `join<L>With<R>(child)`, `leftJoin<L>With<R>(child)` | DSL-91, DSL-92 | in the core, not in the contract | `packages/rust/src/core.rs:468` |
+| `and(fn)`, `or(fn)` | DSL-15, DSL-20 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:15`, `packages/rust/build/src/fixed.rs.txt:22`, `packages/rust/src/core.rs:377` |
+| `and(model)`, `or(model)` | DSL-17, DSL-95 | in the core, not in the contract | `packages/rust/src/core.rs:368` |
 | `not(fn)`, `andNot(fn)`, `orNot(fn)` | DSL-16, DSL-22 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:29`, `packages/rust/build/src/fixed.rs.txt:36`, `packages/rust/build/src/fixed.rs.txt:43` |
 | `on(fn)` | DSL-93 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:50` |
-| the column comparison `<ColA><Op><ColB>(model)` | DSL-34 | in the core, not in the contract | `packages/rust/src/core.rs:421` |
+| the column comparison `<ColA><Op><ColB>(model)` | DSL-34 | in the core, not in the contract | `packages/rust/src/core.rs:424` |
 | `getsCount()`, `GroupRows`, `GroupRow` | INT-31, INT-68 to INT-71 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:84`, `packages/rust/src/collection.rs:407` |
 | `getsPage(page, perPage)`, `Page` | INT-32, INT-64 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:104` |
 | `getsLookaheadPage`, `getsCountLookaheadPage`, `LookaheadPage`, `GroupLookaheadPage` | INT-164 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:109`, `packages/rust/build/src/fixed.rs.txt:89` |
 | `getSum()`, `getAvg()` | DSL-62, DSL-63 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:94`, `packages/rust/build/src/fixed.rs.txt:99` |
-| `addColumn<Col>Alias<Name>(fn)`, `addColumn<Name>(fn)` | DSL-73, DSL-74 | in the core, not in the contract | `packages/rust/src/core.rs:557`, `packages/rust/src/core.rs:565` |
+| `addColumn<Col>Alias<Name>(fn)`, `addColumn<Name>(fn)` | DSL-73, DSL-74 | in the core, not in the contract | `packages/rust/src/core.rs:566`, `packages/rust/src/core.rs:574` |
 | a condition on a function, and the functions `orm.now()` to `orm.monthsLater()`, `orm.year()`, `orm.month()`, `orm.date()`, `orm.dayOfWeek()` with `ValueFunction` and `ColumnFunction` (PHP `Orm::now()`, `Func`) | DSL-54, DSL section 10 | in the core, not in the contract; the contract has `orm.value_function_unit` alone | `packages/rust/src/args.rs:34`, `packages/rust/interface.json:551` |
 
 ### Members of a generated Rust model that `Query` lacks and no rule of the core names
@@ -686,22 +686,22 @@ A user of the generated bindings has this today:
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
 | `getPagePlanSteps(page, perPage)` | no rule id; `Model.getPagePlanSteps` of the inventory | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:114`, `contracts/interfaces.json:1322` |
-| `duplication(model)` | DSL-105 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:161`, `packages/rust/src/core.rs:676` |
+| `duplication(model)` | DSL-105 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:161`, `packages/rust/src/core.rs:685` |
 | `update(true)`, the optimistic update | DSL-107 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:135` |
-| `delete(true)`, the recursive delete | DSL-111 | in the core, not in the contract; CORE-138 states its behaviour and names no member | `packages/rust/build/src/fixed.rs.txt:145`, `packages/rust/src/model.rs:1772` |
+| `delete(true)`, the recursive delete | DSL-111 | in the core, not in the contract; CORE-138 states its behaviour and names no member | `packages/rust/build/src/fixed.rs.txt:145`, `packages/rust/src/model.rs:1779` |
 | `orderByRandom()` | DSL-99 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:173` |
 | `parentNode()` | DSL-84 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:191` |
 | `groupLimit(count)` | DSL-86 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:197` |
 | `deleteLock()` | DSL-87 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:203` |
 | `fetchKey(fn)` | DSL-70 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:216` |
 | `fetchValue(fn)` | DSL-70 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:222` |
-| `possible<Col>(value)` | DSL-85 | in the core, not in the contract | `packages/rust/src/core.rs:509` |
-| `forceIndex<Name>()` | DSL-78 | in the core, not in the contract | `packages/rust/src/core.rs:583` |
-| `plus<Col>(n)`, `minus<Col>(n)` | DSL-102 | in the core, not in the contract | `packages/rust/src/core.rs:654`, `packages/rust/src/core.rs:658` |
-| `new<Name>(value)`, `get<Name>()` | DSL-101, DSL-115 | in the core, not in the contract | `packages/rust/src/core.rs:663`, `packages/rust/src/core.rs:668` |
+| `possible<Col>(value)` | DSL-85 | in the core, not in the contract | `packages/rust/src/core.rs:512` |
+| `forceIndex<Name>()` | DSL-78 | in the core, not in the contract | `packages/rust/src/core.rs:592` |
+| `plus<Col>(n)`, `minus<Col>(n)` | DSL-102 | in the core, not in the contract | `packages/rust/src/core.rs:663`, `packages/rust/src/core.rs:667` |
+| `new<Name>(value)`, `get<Name>()` | DSL-101, DSL-115 | in the core, not in the contract | `packages/rust/src/core.rs:672`, `packages/rust/src/core.rs:677` |
 | `toJSON()`, `toJSONText()` (PHP `toJson`, Python `to_json_text`) | no rule | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:257` |
-| `orderBy<Col>Asc(fn)`, the order by a column function | DSL-99, DSL section 10 | in the core, not in the contract | `packages/rust/src/core.rs:587` |
-| `groupBy<Col>()`, `sum<Col>()`, `avg<Col>()` | DSL-61 to DSL-63 | in the core, not in the contract; CORE-84 names their terminals `getsCount`, `getSum` and `getAvg`, and not these members | `packages/rust/src/core.rs:601`, `packages/rust/src/core.rs:619` |
+| `orderBy<Col>Asc(fn)`, the order by a column function | DSL-99, DSL section 10 | in the core, not in the contract | `packages/rust/src/core.rs:596` |
+| `groupBy<Col>()`, `sum<Col>()`, `avg<Col>()` | DSL-61 to DSL-63 | in the core, not in the contract; CORE-84 names their terminals `getsCount`, `getSum` and `getAvg`, and not these members | `packages/rust/src/core.rs:610`, `packages/rust/src/core.rs:628` |
 
 ### Schema and dbspec tools
 
@@ -712,24 +712,24 @@ A user of the generated bindings has this today:
 | `privileges().grantTable`, `revokeTable`, `inspectTable`, `TablePrivileges` | INT-59 | in the core, not in the contract | `packages/rust/src/utils.rs:490`, `packages/rust/src/utils.rs:505`, `packages/rust/src/utils.rs:526` |
 | `aes().status`, `aes().rotate`, `AesRotationStatus` | INT-60, INT-75, INT-131 | in the core, not in the contract; both take a generated model | `packages/rust/src/utils.rs:627`, `packages/rust/src/utils.rs:650` |
 | `utils().stats()` | INT-61 | in the core, not in the contract; `db.stats` returns the same counts | `packages/rust/src/utils.rs:100` |
-| `readDbspecBytes`, `readDbspecSet`, `emitDbspec`, `dbspecManifest`, `renderDbspecStatements`, `parseDbspecSet` | FMS-20 to FMS-25 | present, changed: the documents and the results are JSON text (FMS-2); `dbspec.read_set` is not of the target `wasm` (FMS-7) | `packages/rust/interface.json:4415`, `packages/rust/interface.json:4382`, `packages/rust/interface.json:4502`, `packages/rust/interface.json:4479`, `packages/rust/interface.json:4525`, `packages/rust/interface.json:4444` |
-| `parseDbspec` | `Dbspec.parse` of the inventory | replaced by a rule of the core: FMS-22, one call of `dbspec.parse_set` | `contracts/interfaces.json:3216`, `packages/rust/interface.json:4444` |
-| `renderDbspec` | `Dbspec.render` of the inventory | replaced by a rule of the core: FMS-25, the `sql` of each statement of `dbspec.render_statements` | `contracts/interfaces.json:3396`, `packages/rust/interface.json:4525` |
+| `readDbspecBytes`, `readDbspecSet`, `emitDbspec`, `dbspecManifest`, `renderDbspecStatements`, `parseDbspecSet` | FMS-20 to FMS-25 | present, changed: the documents and the results are JSON text (FMS-2); `dbspec.read_set` is not of the target `wasm` (FMS-7) | `packages/rust/interface.json:4434`, `packages/rust/interface.json:4401`, `packages/rust/interface.json:4521`, `packages/rust/interface.json:4498`, `packages/rust/interface.json:4544`, `packages/rust/interface.json:4463` |
+| `parseDbspec` | `Dbspec.parse` of the inventory | replaced by a rule of the core: FMS-22, one call of `dbspec.parse_set` | `contracts/interfaces.json:3216`, `packages/rust/interface.json:4463` |
+| `renderDbspec` | `Dbspec.render` of the inventory | replaced by a rule of the core: FMS-25, the `sql` of each statement of `dbspec.render_statements` | `contracts/interfaces.json:3396`, `packages/rust/interface.json:4544` |
 | `readDbspecFile`, `analyzeDbspec`, `formatDbspec` | `Dbspec.readFile`, `Dbspec.analyze`, `Dbspec.format` of the inventory | in the core, not in the contract | `packages/rust/schema/src/dbspec/file.rs:37`, `packages/rust/schema/src/dbspec/mod.rs:288`, `packages/rust/schema/src/dbspec/mod.rs:298` |
 | `introspectDbspec`, `externalDifferences`, `compareSchemas`, `installedDifferences`, `addTablesAndColumnsSteps` | `Dbspec.introspect` to `Dbspec.addTablesAndColumnsSteps` of the inventory | in the core, not in the contract | `packages/rust/src/dbspec/introspect.rs:49`, `packages/rust/schema/src/dbspec/mod.rs:522`, `packages/rust/schema/src/dbspec/compare.rs:48`, `packages/rust/schema/src/dbspec/add_tables_and_columns.rs:59`, `packages/rust/schema/src/dbspec/add_tables_and_columns.rs:79` |
 | `parsePlan`, `emitPlan`, `chainPlans`, `diffPlan`, `planSteps` | `Dbspec.parsePlan` to `Dbspec.planSteps` of the inventory | in the core, not in the contract | `packages/rust/schema/src/dbspec/plan.rs:124`, `packages/rust/schema/src/dbspec/plan.rs:240`, `packages/rust/schema/src/dbspec/plan.rs:270`, `packages/rust/schema/src/dbspec/plan_diff.rs:55`, `packages/rust/schema/src/dbspec/plan_steps.rs:76` |
 | `applyPlans`, `recoverPlans`, `rollbackPlans`, `finalizePlans`, `DbspecApplyError` | `Dbspec.apply` to `Dbspec.finalize` of the inventory | in the core, not in the contract | `packages/rust/src/dbspec/apply.rs:344`, `contracts/interfaces.json:3792` |
 | `exportMermaid`, `importMermaid` | `Dbspec.exportMermaid`, `Dbspec.importMermaid` of the inventory | in the core, not in the contract | `packages/rust/schema/src/dbspec/mermaid.rs:23`, `packages/rust/schema/src/dbspec/mermaid.rs:236` |
-| `Engine` with `compile` and `manifestHash`, `loadSet`, `RuntimeModel`, `Entity`, `Field` (Python `model_of_documents`, `parse_document_set`) | no rule | present, changed: `dbspec.runtime_model` and the class `runtime_model`, whose members take and return JSON text (FMS-27, FMS-30) | `packages/rust/interface.json:4591`, `packages/rust/interface.json:4631`, `packages/rust/interface.json:4768` |
+| `Engine` with `compile` and `manifestHash`, `loadSet`, `RuntimeModel`, `Entity`, `Field` (Python `model_of_documents`, `parse_document_set`) | no rule | present, changed: `dbspec.runtime_model` and the class `runtime_model`, whose members take and return JSON text (FMS-27, FMS-30) | `packages/rust/interface.json:4610`, `packages/rust/interface.json:4650`, `packages/rust/interface.json:4787` |
 | `connectCatalog`, `CatalogConnection` with `close`, `currentNamespace`, `describeTable`, `tablePage`, `readOnlyQuery`, `readOnlyGridQuery`, `rowSnapshotFromPage`, `insertRow`, `updateRow`, `deleteRow`, and `CatalogRowSnapshot`, `CatalogFloat` | INT-97 to INT-125, INT-165 to INT-186 | in the core, not in the contract; they are of the crate `polyspec-orm-build`, not of the crate `polyspec-orm` | `packages/rust/build/src/catalog/mod.rs:81`, `packages/rust/build/src/catalog/mod.rs:216`, `packages/rust/build/src/catalog/row_insert.rs:25` |
 
 ### Codec, errors, utilities and the command
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| `hostEncode`, `hostDecode` | COD-1 | present | `packages/rust/interface.json:4917`, `packages/rust/interface.json:4964` |
-| `decode(styles, raw)` | COD-1 | present, changed: the result is an `orm_value`, not a `StyledValue` | `packages/rust/interface.json:4879` |
-| `blindIndex(value, key)` | COD-4 | present, changed: the result is a text and never null | `packages/rust/interface.json:5011` |
+| `hostEncode`, `hostDecode` | COD-1 | present | `packages/rust/interface.json:4936`, `packages/rust/interface.json:4983` |
+| `decode(styles, raw)` | COD-1 | present, changed: the result is an `orm_value`, not a `StyledValue` | `packages/rust/interface.json:4898` |
+| `blindIndex(value, key)` | COD-4 | present, changed: the result is a text and never null | `packages/rust/interface.json:5030` |
 | `encode(styles, state)` | COD-1 | in the core, not in the contract | `packages/rust/src/codec.rs:247` |
 | `CodecError` | no rule | replaced by a rule of the core: CORE-11 and CORE-139, the class of the category `value` | `docs/spec/core.md:79` |
 | `AesKeyring(keys, current)`, `versions()` | INT-130, INT-74 | present | `packages/rust/interface.json:2164`, `packages/rust/interface.json:2216` |
@@ -749,16 +749,16 @@ A user of the generated bindings has this today:
 
 | Legacy name | Rule | Status | Evidence |
 | --- | --- | --- | --- |
-| `require_match` of a request | PRT-90 | not implemented; the form check refuses the member with `ir_invalid` (T599) | `packages/rust/src/ir.rs:415`, `legacy/packages/go/engine/ir/ir.go:33` |
-| `ir_version`, `manifest_hash`, `kind`, `load`, `set`, `on_duplicate`, `rows`, `optimistic`, `agg`, `n_params` of a request | `IRRequest` of the inventory | present | `packages/rust/src/ir.rs:345`, `contracts/interfaces.json:4393` |
-| the value of `ir_version` | PRT-92 | present, changed: the core takes 2 and answers `version_mismatch` to 1, the version of the language implementations (PRT-92) | `packages/rust/src/ir.rs:268`, `packages/rust/src/engine/validate.rs:174`, `legacy/packages/go/engine/ir/ir.go:19` |
-| `entity`, `columns`, `on`, `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, `key_by`, `flatten`, `limit_per_parent`, `if_parent`, `no_cascade_delete` of a query | `IRQuery` of the inventory | present | `packages/rust/src/ir.rs:325`, `contracts/interfaces.json:4426` |
-| the members of `IRColumns`, `IRFunc`, `IRColFunc`, `IRSub`, `IRJoin`, `IRRelation`, `IRKeyPair`, `IRGroup`, `IRJoinedRef`, `IRPred`, `IRColRef`, `IROrder`, `IRIfParent`, `IRAssign`, `IROptimist` | the records of the inventory | present | `packages/rust/src/ir.rs:358`, `contracts/interfaces.json:4471` |
-| a member that is `null` | FMS-31 | present, changed: the form check refuses it; an absent member is its default | `packages/rust/src/ir.rs:448` |
-| an item of a group, `IRItem` | FMS-31 | present, changed: it holds exactly one of `pred`, `group` and `joined` | `packages/rust/src/ir.rs:436` |
-| a limit, `IRLimit` | FMS-31 | present, changed: it is the pair `offset` and `count` or the pair `offset_p` and `count_p`, with both members | `packages/rust/src/ir.rs:438` |
+| `require_match` of a request | PRT-90 | present, changed: a boolean member of the request form; `query.require_match` sets it on `update`, `delete` and `restore` and not on the restore of `restore_or_create` (CORE-142) | `packages/rust/src/ir.rs:21`, `packages/rust/interface.json:4079`, `legacy/packages/go/engine/ir/ir.go:33` |
+| `ir_version`, `manifest_hash`, `kind`, `load`, `set`, `on_duplicate`, `rows`, `optimistic`, `agg`, `n_params` of a request | `IRRequest` of the inventory | present | `packages/rust/src/ir.rs:349`, `contracts/interfaces.json:4393` |
+| the value of `ir_version` | PRT-92 | present, changed: the core takes 2 and answers `version_mismatch` to 1, the version of the language implementations (PRT-92) | `packages/rust/src/ir.rs:272`, `packages/rust/src/engine/validate.rs:174`, `legacy/packages/go/engine/ir/ir.go:19` |
+| `entity`, `columns`, `on`, `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, `key_by`, `flatten`, `limit_per_parent`, `if_parent`, `no_cascade_delete` of a query | `IRQuery` of the inventory | present | `packages/rust/src/ir.rs:329`, `contracts/interfaces.json:4426` |
+| the members of `IRColumns`, `IRFunc`, `IRColFunc`, `IRSub`, `IRJoin`, `IRRelation`, `IRKeyPair`, `IRGroup`, `IRJoinedRef`, `IRPred`, `IRColRef`, `IROrder`, `IRIfParent`, `IRAssign`, `IROptimist` | the records of the inventory | present | `packages/rust/src/ir.rs:363`, `contracts/interfaces.json:4471` |
+| a member that is `null` | FMS-31 | present, changed: the form check refuses it; an absent member is its default | `packages/rust/src/ir.rs:453` |
+| an item of a group, `IRItem` | FMS-31 | present, changed: it holds exactly one of `pred`, `group` and `joined` | `packages/rust/src/ir.rs:441` |
+| a limit, `IRLimit` | FMS-31 | present, changed: it is the pair `offset` and `count` or the pair `offset_p` and `count_p`, with both members | `packages/rust/src/ir.rs:443` |
 | the fourteen kinds of a request | no rule | present | `packages/rust/src/engine/validate.rs:195` |
-| a request as the argument of a member that runs it | INT-78 | not implemented; `runtime_model.validate`, `compile`, `param_uses` and `restore_key` take the text of a request and run nothing | `packages/rust/interface.json:4658` |
+| a request as the argument of a member that runs it | INT-78 | not implemented; `runtime_model.validate`, `compile`, `param_uses` and `restore_key` take the text of a request and run nothing | `packages/rust/interface.json:4677` |
 
 ### Connect options
 

@@ -445,10 +445,11 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
             "optimistic",
             "agg",
             "load",
+            "require_match",
         ],
     );
     let mut query_input = input.clone();
-    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "rows", "optimistic", "agg", "load"] {
+    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "rows", "optimistic", "agg", "load", "require_match"] {
         query_input.as_object_mut().expect("input object").remove(key);
     }
     let request = ir::Request {
@@ -462,6 +463,12 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         rows: rows(object.get("rows")),
         agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
         load: object.get("load").map(|load| load.as_bool().unwrap_or_else(|| panic!("{REJECTED}input.load: expected a bool"))).unwrap_or_default(),
+        // A null member is absent, as a client that decodes JSON reads it (PRT-90); the text of the core refuses it (FMS-31).
+        require_match: object
+            .get("require_match")
+            .filter(|value| !value.is_null())
+            .map(|value| value.as_bool().unwrap_or_else(|| panic!("{REJECTED}input.require_match: expected a bool")))
+            .unwrap_or_default(),
         optimistic: object.get("optimistic").map(|o| {
             let o = members(o, "input.optimistic", &["column", "p"]);
             ir::Optimist {
@@ -471,6 +478,10 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         }),
     };
     let mut with_hash = normalized(input);
+    // The typed request writes no require_match that is false, and a null one is absent.
+    if with_hash.get("require_match").is_some_and(|value| value.is_null() || value == false) {
+        with_hash.as_object_mut().expect("request object").remove("require_match");
+    }
     with_hash["manifest_hash"] = json!(manifest_hash);
     assert_eq!(serde_json::to_value(&request).expect("serialized request"), with_hash, "the request read from the fixture differs from its input");
     request

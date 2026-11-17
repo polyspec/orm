@@ -1474,6 +1474,21 @@ func (this *Query) ExpectRevision(column string, revision int64) error {
 	return nil
 }
 
+// RequireMatch calls polyspec_orm::Query::require_match (contract member query.require_match).
+func (this *Query) RequireMatch() error {
+	enc := binding.NewWriter()
+	enc.Uint(this.handle())
+	dec, err := binding.Query_RequireMatch(enc.Done())
+	runtime.KeepAlive(this)
+	if err != nil {
+		return err
+	}
+	if err := dec.Finish(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Create calls polyspec_orm::Query::create (contract member query.create).
 func (this *Query) Create() (*Query, error) {
 	var zero0 *Query

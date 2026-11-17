@@ -659,6 +659,109 @@ async fn restore_or_create_restores_or_inserts_the_row() {
     db.close_async().await;
 }
 
+// Requirements: CORE-142, PRT-90. Under require_match an update or a delete whose statement matched no row is no_rows
+// with the message of its kind, before the check of expect_revision and under conditions that the row does not meet; a
+// write that matches its row succeeds, the same values included, and a read and a create of the query take no member.
+#[tokio::test]
+async fn require_match_refuses_a_write_that_matched_no_row() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-require-match");
+    let schema = account_schema();
+    let db = account_db(&scratch, &schema).await;
+    let keyed = |entity: &str, seq: i64| {
+        let mut row = query(&schema, entity, &db);
+        row.set("seq", &int(seq));
+        row.require_match();
+        row
+    };
+    let name = |row: Option<Query>| row.expect("a row").value("name").expect("name");
+    let mut missing = keyed("account", 9);
+    missing.set("name", &OrmValue::Text("Nobody".into()));
+    let error = failure(missing.update().await, "an update of a key that no row holds");
+    assert_eq!(error.to_string(), "no_rows: the update of account matched no row");
+    let mut same = keyed("account", 1);
+    same.set("name", &OrmValue::Text("Ann".into()));
+    same.update().await.expect("an update of the same value matches its row");
+    let mut changed = keyed("account", 2);
+    changed.set("name", &OrmValue::Text("Bea".into()));
+    changed.update().await.expect("an update that changes its row");
+    assert_eq!(name(account(&schema, &db, 2).await), OrmValue::Text("Bea".into()));
+    let mut narrowed = keyed("account", 1);
+    narrowed.set("name", &OrmValue::Text("Zed".into()));
+    narrowed.where_chain("Email", &[OrmValue::Text("z@x".into())]);
+    let error = failure(narrowed.update().await, "conditions that the row does not meet");
+    assert_eq!(error.to_string(), "no_rows: the update of account matched no row");
+    assert_eq!(name(account(&schema, &db, 1).await), OrmValue::Text("Ann".into()), "nothing is written");
+    let mut stale = keyed("account", 3);
+    stale.set("name", &OrmValue::Text("Cy".into()));
+    stale.expect_revision("revision", 5);
+    let error = failure(stale.update().await, "a revision that the row does not hold");
+    assert_eq!(error.to_string(), "no_rows: the update of account matched no row", "the match refusal precedes the check of the revision");
+    let mut fresh = keyed("account", 3);
+    fresh.set("name", &OrmValue::Text("Cy".into()));
+    fresh.expect_revision("revision", 0);
+    fresh.update().await.expect("the revision that the row holds");
+    let row = account(&schema, &db, 3).await.expect("account 3");
+    assert_eq!((row.value("name").expect("name"), row.value("revision").expect("revision")), (OrmValue::Text("Cy".into()), int(1)));
+    let mut unassigned = keyed("account", 9);
+    unassigned.update().await.expect("an update with no assignment sends no request");
+    let error = failure(keyed("account_key", 9).delete().await, "a delete of a key that no row holds");
+    assert_eq!(error.to_string(), "no_rows: the delete of account_key matched no row");
+    let mut gone = keyed("account_key", 3);
+    gone.expect_revision("account_seq", 7);
+    let error = failure(gone.delete().await, "a delete under a revision that the row does not hold");
+    assert_eq!(error.to_string(), "no_rows: the delete of account_key matched no row");
+    keyed("account_key", 3).delete().await.expect("a delete that matches its row");
+    assert_eq!(query(&schema, "account_key", &db).get_count().await.expect("count"), 2);
+    assert_eq!(keyed("account", 9).get_count().await.expect("a read takes no require_match"), 3);
+    let mut new = query(&schema, "account", &db);
+    new.require_match();
+    new.set("email", &OrmValue::Text("d@x".into()));
+    new.set("revision", &int(0));
+    new.create().await.expect("a create takes no require_match");
+    db.close_async().await;
+}
+
+// Requirements: CORE-142, CORE-94. Under require_match a restore of a row that is not deleted and of a key that no row
+// holds is no_rows with the message of the restore, and nothing is written; restore_or_create does not take the option,
+// so a row that is not deleted is row_not_deleted and a key that no row holds is created. A restore and a soft delete
+// that match their row succeed, and a row that is already soft-deleted matches no delete.
+#[tokio::test]
+async fn require_match_refuses_a_restore_that_matched_no_row() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-query-require-match-restore");
+    let schema = Schema::load(MEMBER, "", MEMBER_HASH).expect("the member schema loads");
+    let db = member_db(&scratch, &schema).await;
+    let required = |email: &str| {
+        let mut member = by_email(&schema, &db, email);
+        member.set("name", &OrmValue::Text("Amy".into()));
+        member.require_match();
+        member
+    };
+    let refused = "no_rows: the restore of member matched no row";
+    let error = failure(required("a@x").restore().await, "a row of the key that is not deleted");
+    assert_eq!(error.to_string(), refused);
+    let mut read = query(&schema, "member", &db);
+    read.where_chain("Email", &[OrmValue::Text("a@x".into())]);
+    assert_eq!(read.get().await.expect("get").expect("member 1").value("name").expect("name"), OrmValue::Text("Ann".into()), "nothing is written");
+    let error = failure(required("z@x").restore().await, "no row of the key");
+    assert_eq!(error.to_string(), refused);
+    let error = failure(required("a@x").restore_or_create().await, "restore_or_create of a row that is not deleted");
+    assert_eq!(error.kind(), crate::Kind::RowNotDeleted, "restore_or_create does not take the option: {error}");
+    let created = required("c@x").restore_or_create().await.expect("restore_or_create of a key that no row holds creates the row");
+    assert_eq!((created.value("seq").expect("seq"), created.value("name").expect("name")), (int(3), OrmValue::Text("Amy".into())));
+    assert_eq!(member_count(&schema, &db).await, 2);
+    let restored = required("b@x").restore().await.expect("a restore that matches its row");
+    assert_eq!((restored.value("seq").expect("seq"), restored.value("name").expect("name")), (int(2), OrmValue::Text("Amy".into())));
+    let mut gone = query(&schema, "member", &db);
+    gone.set("seq", &int(2));
+    gone.require_match();
+    gone.delete().await.expect("a soft delete counts the row that its update matches");
+    let error = failure(gone.delete().await, "a row that is already soft-deleted");
+    assert_eq!(error.to_string(), "no_rows: the delete of member matched no row");
+    db.close_async().await;
+}
+
 // Requirements: CORE-120. to_array holds the columns that the row read in the order of the schema: a column that was
 // not read has no key, a null column has its key, and a query that read no row holds nothing.
 #[tokio::test]

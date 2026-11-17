@@ -202,6 +202,10 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
             return Err(err(crate::Kind::Config, format!("{} is owned by another document set", ent.table)));
         }
     }
+    // Only a write of rows that exist can match none (docs/spec/protocol.md PRT-90).
+    if r.require_match && !matches!(r.kind.as_str(), "update" | "delete" | "restore") {
+        return Err(err(crate::Kind::IrInvalid, "require_match is only valid on update, delete or restore"));
+    }
     if r.load && (r.kind != "insert" || !r.on_duplicate.is_empty()) {
         return Err(err(crate::Kind::IrInvalid, "load is only valid on insert without on_duplicate"));
     }

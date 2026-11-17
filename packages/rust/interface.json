@@ -4076,6 +4076,23 @@
           }
         },
         {
+          "id": "query.require_match",
+          "name": [
+            "require",
+            "match"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::require_match",
+            "receiver": "&mut self"
+          }
+        },
+        {
           "id": "query.create",
           "name": [
             "create"
@@ -4139,7 +4156,8 @@
             "polyspec_orm::Kind::Canceled",
             "polyspec_orm::Kind::PoolTimeout",
             "polyspec_orm::Kind::Closed",
-            "polyspec_orm::Kind::RevisionChanged"
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::NoRows"
           ],
           "wait": "async_driver",
           "core": {
@@ -4174,7 +4192,8 @@
             "polyspec_orm::Kind::Canceled",
             "polyspec_orm::Kind::PoolTimeout",
             "polyspec_orm::Kind::Closed",
-            "polyspec_orm::Kind::RevisionChanged"
+            "polyspec_orm::Kind::RevisionChanged",
+            "polyspec_orm::Kind::NoRows"
           ],
           "wait": "async_driver",
           "core": {
@@ -5348,6 +5367,11 @@
       "member": "query.expect_revision",
       "file": "contracts/interface/core.json",
       "group": "query.expect_revision"
+    },
+    {
+      "member": "query.require_match",
+      "file": "contracts/interface/core.json",
+      "group": "query.require_match"
     },
     {
       "member": "query.create",

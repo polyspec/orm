@@ -7930,6 +7930,7 @@ mod tables {
                 continue;
             }
             match (action.action.as_str(), &action.value) {
+                ("require_match", _) => request.require_match = true,
                 ("scope", Some(value)) if action.nested => scope_tree(&mut request.query, &action.column, value, params),
                 ("scope", Some(value)) => {
                     let p = params.add(value.clone());
