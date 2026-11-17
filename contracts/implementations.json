@@ -1311,6 +1311,10 @@
           "reason": "test: orm_value, the value of a column as the contract passes it (docs/spec/core.md CORE-60, CORE-62 to CORE-64), a surface of the core which no language implementation has, so no recipe states it (CORE-1, FCV-2)"
         },
         {
+          "glob": "packages/rust/tests/unit/interface_service_cases.rs",
+          "reason": "test: the cases of contracts/interface/service.json, which interface_cases.rs skips (SVC-7), run against the test servers by the functions that the contract names (docs/spec/core.md CORE-70 to CORE-72); a contract that no language implementation has, so no recipe states it (CORE-1, FCV-2)"
+        },
+        {
           "glob": "packages/rust/tests/unit/interface_cases.rs",
           "reason": "test: the cases of the interface contract of the core (docs/spec/core.md CORE-70 to CORE-72), which the core runs by the functions that the contract names; a contract that no language implementation has, so no recipe states it (CORE-1, FCV-2)"
         },

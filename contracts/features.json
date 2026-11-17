@@ -1689,7 +1689,11 @@
         "legacy/packages/php-ext/tests/RawTextMariadbRecipeTestExtensionTest.php",
         "legacy/packages/php/tests/ModelWritesChainMariadbRecipeTest.php",
         "legacy/packages/php/tests/ModelWritesMariadbRecipeTest.php",
-        "legacy/packages/php/tests/RawTextMariadbRecipeTest.php"
+        "legacy/packages/php/tests/RawTextMariadbRecipeTest.php",
+        "legacy/packages/php/tests/RestoreAnalysisShapeTest.php",
+        "legacy/packages/php-ext/tests/RestoreAnalysisShapeExtensionTest.php",
+        "legacy/packages/ts/tests/restore-analysis-shape.test.mjs",
+        "legacy/packages/python/tests/test_restore_analysis_shape.py"
       ],
       "docs": [
         "docs/spec/dsl.md",
