@@ -474,8 +474,84 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다),
   `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
-  `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의
-  타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다.
+  `Param`과 `Key`다). `Utils`와 그 부분은 자기 연결의 handle을 소유하고 CORE-180~CORE-186이 적은 대로 선언하며,
+  `Utils::run`, `Utils::local`, `Utils::was_inserted`는 뺀다(CORE-180). `Collection`, `Page`, `LookaheadPage`는 생성된
+  모델의 타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)는 선언하지 않는다.
+- **CORE-180** 계약은 연결의 유틸리티를 legacy 클라이언트의 호출 모양 그대로 선언한다(INT-73, INT-134): member `db.utils`와
+  `tx.utils`는 class `utils`(`Utils`)를 돌려주고, 그 member `schema`, `privileges`, `aes`는 class
+  `schema_utils`(`SchemaUtils`), `privilege_utils`(`PrivilegeUtils`), `aes_utils`(`AesUtils`, INT-131)를 돌려준다. 그래서
+  호출자는 자기 언어의 이름 형식으로 `db.utils().schema().register(schema)`를 쓴다. 넷은 모두 소유한 값이다(binding
+  GN-6au): `Utils`는 `Connection`, 곧 `Db::utils`의 `Db`나 `Tx::utils`의 `Tx`의 clone을 가지고, 각 부분은 자기 `Utils`의
+  clone을 가진다. handle의 clone은 그 handle이므로(CORE-101), `Tx`의 유틸리티는 그 트랜잭션에서 실행되고 트랜잭션과 함께
+  끝나며(CORE-22, CORE-23), `Db`의 유틸리티는 그 request hook과 취소를 가진다. 언어 코드는 `utils`를 만들 수 없다.
+  `Utils`의 member 셋은 선언하지 않는다. `Utils::run(f)`(INT-150)는 새 트랜잭션(재시도 없음)이나 활성 트랜잭션의 handle로
+  함수를 부른다: 바인딩에서는 옵션 `retry` 0의 `db.transaction`이나 활성 트랜잭션의 callback이 그것이고, 문장은
+  `tx.execute`(CORE-133)로 실행한다. `Utils::local`과 `Utils::was_inserted`(INT-51, INT-52)는 `Tx`의 유틸리티에서만
+  답하고 거기서 wait 없이 `no_rows`, `busy`, `transaction_ended`를 낸다. binding의 case 형식은 함수의 step이 돌려준 값에
+  member를 부르지 못하므로 이 둘에 닿는 case가 없고, 계약 검사는 그 kind를 거부한다(CK-22: "no case of utils.local
+  raises the kind no_rows", 두 member의 `busy`와 `transaction_ended`도 같다). case 형식이 닿을 때까지 둘은 코어의
+  member로 남는다. 같은 이유로 `utils.lock`과 `utils.set_local`의 case는 `Db`의 유틸리티에서의 거부만 보이고, 트랜잭션
+  안의 동작은 코어의 테스트가 보인다.
+- **CORE-181** 네 class의 member 가운데 문장을 보내는 것은 `wait: async_driver`이고, 그 receiver의 class는 `db`가
+  돌려주므로 언어 코드를 가진다(binding GN-6h). 그래서 그 코어 경로는 machine이다(binding GN-6ab, CK-68):
+  `Utils::lock_machine(self, key: String)`, `set_local_machine`, `backend_waiting_for_lock_machine`,
+  `SchemaUtils::install_machine(self, schema: Schema)`, `add_tables_and_columns_machine`, `exists_machine`,
+  `installed_machine`, `empty_machine`, `PrivilegeUtils::grant_table_machine`, `revoke_table_machine`,
+  `inspect_table_machine`, `AesUtils::status_machine(self, model: Query, keyring: AesKeyring)`, `rotate_machine`. 각각은
+  `Operation<T>`를 돌려준다. 이것은 유틸리티와 인자를 소유하고, 같은 이름의 native `async fn`을 실행하는 `Io` step 하나를
+  주고, 그 결과를 바꾸지 않고 끝난다. `db.execute`의 `Execute`와 같다(CORE-127). `Call`과 `Await`는 주지 않고, 만들거나
+  버려도 문장을 보내지 않는다. 계약은 receiver `&self`를 유지하므로 바인딩은 machine에 clone을 주고 호출자는 자기
+  instance를 유지한다. 이 함수들의 future는 `Send`다: 한 트랜잭션에서 여러 문장을 실행하는 함수는 executor를 값으로
+  받는다. 아무것도 보내지 않는 member, 곧 `db.utils`, `tx.utils`, `utils.schema`, `utils.privileges`, `utils.aes`,
+  `utils.stats`, `schema_utils.register`는 `wait: none`이다. 네 class의 어떤 member도 언어 코드를 부르지 않는다.
+- **CORE-182** class `schema_utils`는 INT-54~INT-58을 담는다. 인자 `schema`는 class `schema`다(INT-133, CORE-80).
+  - `register(schema)`는 아무것도 돌려주지 않고 문장을 보내지 않는다(INT-54). 연결은 등록한 set을 manifest hash로
+    가지고, request는 그 연결의 set에 대해서만 plan된다. 아니면 `schema_hash_mismatch: manifest <hash> is not registered
+    on this connection: connect through its generated models or install it`다. `db.connect_schema`(INT-132)는 연결할 때
+    set 하나를 등록한다. `register`는 `db.connect`나 `db.connect_schema`의 연결에 set을 더하므로, 한 연결이 여러 set의
+    request를 plan한다. 다시 등록한 set은 아무것도 바꾸지 않는다. 등록은 테이블을 비교하지 않는다: 한 테이블을 다른
+    열로 이름하는 두 set은 둘 다 등록되고, 각 request는 그 query의 set으로 plan되며, 데이터베이스와 맞지 않는 set의
+    문장은 데이터베이스에서 실패한다. 계약의 schema는 `schema.load`가 만들고, 이것은 자기 hash로 hash되지 않는 텍스트를
+    등록 전에 거부하므로, 바인딩에서 `register`는 어떤 kind도 내지 않는다. INT-54의 `config`는 생성된 Rust 코드의
+    schema에 남는다.
+  - `install(schema)`는 아무것도 돌려주지 않는다(INT-55): 데이터베이스에 set의 테이블이 하나도 없으면 모두 만들고, 모두
+    있으면 아무것도 바꾸지 않고, 그다음 데이터베이스를 set과 비교하고, set을 등록한다. 실패는 `config`다: `install found
+    only some tables of the document set: <tables>`, `the database differs from the document set: <differences>`, `the
+    tables that the set uses from external documents differ from the database: <differences>`, 그리고 MySQL의 트랜잭션
+    안에서는 `MySQL commits schema statements implicitly; install outside a transaction`.
+  - `add_tables_and_columns(schema)`는 더한 것의 list를 돌려준다. 만든 테이블은 `table`, 더한 열은 `table.column`이다
+    (INT-56). 아무것도 등록하지 않는다. 더하지 못하는 차이는 어떤 문장보다 먼저 `schema_differs: the existing tables of
+    the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes:
+    <differences>`이고, MySQL과 SQLite의 트랜잭션 안에서는 `config`다: `<driver> adds tables and columns outside a
+    transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`.
+  - `exists(name)`과 `installed(name, table)`은 boolean을 돌려준다(INT-57): schema가 없는 SQLite에서는 테이블이나 view의
+    이름이 `<name>__<any>`이면 schema `name`이 있고, 그 테이블 `table`은 테이블이나 view `<name>__<table>`이다. 비었거나,
+    64바이트보다 길거나, `.`으로 시작하거나, ASCII 글자, 숫자, `_`, `.` 밖의 바이트를 가진 이름은 `config`다: `exists`는
+    `identifier <name> is invalid`, `installed`는 `schema and table names are required`.
+  - `empty()`는 데이터베이스에 사용자 내용이 없는지를 돌려준다. 각 데이터베이스의 뜻은 INT-58이 적는다.
+- **CORE-183** member `utils.lock(key)`와 `utils.set_local(key, value)`는 아무것도 돌려주지 않고(INT-50, INT-51),
+  `utils.backend_waiting_for_lock()`은 boolean을 돌려준다(INT-53). PostgreSQL이 아닌 모든 연결에서는, markdown 연결도,
+  문장 없이 `false`다. `lock`과 `set_local`은 `Tx`의 유틸리티가 필요하다: `Db`의 유틸리티에서는 `config`다: `<name>
+  requires a transaction: call it on the utils of the Tx of a transaction`. `<name>`은 `lock`이나 `set_local`이다(계약이
+  빼는 두 member는 `local`과 `wasInserted`, CORE-180). CORE-182의 식별자가 아닌 key는 `config`다: `lock key "<key>" is
+  invalid`나 `local key "<key>" is invalid`. SQLite에서 `lock`은 트랜잭션의 row lock을 잡고(INT-49) `set_local`은 값을
+  트랜잭션에 둔다. MySQL이 기다림 안에 주지 않은 lock은 `deadlock`이다: `lock <key> was not acquired`.
+- **CORE-184** class `privilege_utils`는 INT-59를 담는다: `grant_table(table, role)`과 `revoke_table(table, privilege,
+  role)`은 아무것도 돌려주지 않고, `inspect_table(table)`은 boolean `insert`, `select`, `update`, `delete`, `truncate`의
+  record `table_privileges`(`TablePrivileges`)를 돌려준다. 인자는 모든 데이터베이스에서 먼저 검사하고, 각 실패는
+  `config`다: `a qualified table name is required`, `role <role> is invalid`, `unsupported table privilege
+  "<privilege>"`. 그다음 PostgreSQL이 아닌 연결은 `capability_unsupported: table privileges are supported only by
+  postgres`를 낸다.
+- **CORE-185** class `aes_utils`는 INT-60, INT-75, INT-131을 담는다. member는 entity를 `model`, 곧 `query`(CORE-81)로
+  받는다. legacy 클라이언트의 생성된 모델 자리이고, query의 entity만 읽는다: query는 연결이 필요 없고 그 set은 등록되어
+  있지 않아도 된다. 코어 함수는 `AesUtils::status_query(&self, query: &Query, keyring: &AesKeyring)`와 `rotate_query`이고,
+  생성된 Rust 모델을 받는 generic `status`와 `rotate`가 그 옆에 있다. `status(model, keyring)`은 record
+  `aes_rotation_status`(`AesRotationStatus`)를 돌려준다: `current`, `total`, `pending`, 그리고 저장된 각 version(정수
+  key)에서 그 행 수로 가는 keyed map `versions`이며 version의 오름차순이다. 코어의 field는 `KeyedMap<i64>`이고,
+  `Config.aes_keys`가 `KeyedMap`인 것과 같다(CORE-131). `rotate(model, keyring)`은 쓴 행의 수를 돌려준다. AES 열과
+  version 열이 없는 entity는 `config`다: `entity <entity> has no AES columns with a key version`.
+- **CORE-186** member `utils.stats`는 `db.stats`가 돌려주는 record `db_stats`를 같은 pool에 대해 돌려준다(INT-61,
+  INT-79): `Utils::stats`는 자기 연결의 `Db::stats`를 부른다.
 - **CORE-133** member `tx.execute`는 `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`이다. 이것은
   `Db::execute_text_machine`이 `Db::execute_text`를 실행하듯 `Tx::execute_text`를 실행한다(CORE-127). step과 parameter는
   `db.execute`가 읽는 대로 읽고, 문장은 handle의 트랜잭션에서 실행된다. 이유: `db.transaction`의 callback은 handle로만
