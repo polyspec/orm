@@ -1528,6 +1528,10 @@ final class Validator
     public function __construct(RuntimeModel $m) {}
     public static function opAllowed(array $c, string $op): bool {}
     public function validate(array $r): void {}
+    /** @internal Checks record shape before analysis reads the schema registry key. */
+    public static function restoreAnalysisShape(array $request): void {}
+    /** The classification shared by public analysis and the write planner (PRT91). */
+    public static function analyzeRestore(RuntimeModel $model, array $r): array {}
     public static function restoreKey(array $ent, array $r): array {}
     public function paramUses(array $r): array {}
     public static function functionType(string $name, ?array $col): string {}

@@ -1857,6 +1857,29 @@ ZEND_METHOD(Polyspec_Orm_Validator, restoreKey)
     validator_restore_key(ent, r, return_value);
 }
 
+/* Validator::restoreAnalysisShape checks the record shape of a restore request before analysis reads the key of the schema
+ * registry, with the method of the PHP library. */
+ZEND_METHOD(Polyspec_Orm_Validator, restoreAnalysisShape)
+{
+    zval *request;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(request)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!validator_restore_analysis_shape(request)) RETURN_THROWS();
+}
+
+/* Validator::analyzeRestore is the classification that public analysis and the write planner share (PRT91), with the method
+ * of the PHP library; Db::analyzeRestore calls the same function of validator.c. */
+ZEND_METHOD(Polyspec_Orm_Validator, analyzeRestore)
+{
+    zval *model, *r;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_OBJECT_OF_CLASS(model, polyspec_runtime_model_ce)
+        Z_PARAM_ARRAY(r)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!validator_restore_analysis(model, r, return_value)) RETURN_THROWS();
+}
+
 ZEND_METHOD(Polyspec_Orm_Validator, paramUses)
 {
     HashTable *r;
