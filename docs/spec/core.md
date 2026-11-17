@@ -233,7 +233,12 @@ implementation is eligible for removal on that evidence.
   column, connector and operator that the column allows, and calls only members of the contract. Its names are the
   conversion of the bindgen crate `polyspec-bindgen-core` (N-2), so they are those of the bindings. The source is not
   scanned: this replaces DSL-39 to DSL-44, and the kinds of a scan are gone. A chain of several columns is the general
-  member `getsBy(chain, args)` or a chain of single-column members.
+  member `getsBy(chain, args)` or a chain of single-column members. Not implemented: the core has no function
+  `generate` and the contract no member of it, so no binding has a generated model. The one generator is the crate
+  `polyspec-orm-build` of `packages/rust/build`, which writes Rust models alone, over `Core` and not over `Query`, and
+  still scans the source (DSL-41): its `generate(set, scan, manifest_file)` writes the chain, relation key, join,
+  `new_<name>` and getter methods that the scanned source calls, and fails with a message that starts with
+  `generator_scan_parse` or `generator_scan_unattached`.
 - **CORE-51** The first line of every generated file names the version of orm that generated it.
 
 ## Values
@@ -675,7 +680,11 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
   (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle, and `Collection`,
   `Page` and `LookaheadPage` take the type of a generated model, so they and the members that return them (`get`,
-  `gets`, `gets_by`) are not declared either.
+  `gets`, `gets_by`) are not declared either. Of these, `Statement` and `Collection` are returned by members that
+  `Query` has (`get_query`, `gets`, `gets_by`; CORE-83), so their declaration alone is missing. `Page`, `LookaheadPage`,
+  `GroupRow` and `GroupRows` are returned by no member of `Query` (CORE-84) but by the generated Rust models alone, and
+  a binding has no generated model (CORE-50): it has nothing in their place, and reads the rows of a query only as
+  `related_rows` (CORE-88) or through the terminal `gets` of a `StepRunner` (CORE-92).
 - **CORE-133** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which
   runs `Tx::execute_text` as `Db::execute_text_machine` runs `Db::execute_text` (CORE-127): the step and the
   parameters are read as `db.execute` reads them, and the statement runs in the transaction of the handle. Why: a

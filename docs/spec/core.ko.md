@@ -186,6 +186,11 @@
   열·연결어·그 열이 허용하는 연산자마다 조건 member 하나를 가지며, 계약의 member만 부른다. 이름은 bindgen crate
   `polyspec-bindgen-core`의 변환(N-2)이므로 바인딩의 이름과 같다. 소스를 스캔하지 않는다: DSL-39~DSL-44를 대체하며
   스캔의 kind는 없어진다. 여러 열 chain은 일반 member `getsBy(chain, args)`나 열 하나짜리 member의 chain으로 쓴다.
+  구현되지 않았다: 코어에는 함수 `generate`가 없고 계약에는 그 member가 없어서, 어떤 바인딩도 생성된 모델을 가지지
+  않는다. 생성기는 `packages/rust/build`의 crate `polyspec-orm-build` 하나뿐이다. 이것은 Rust 모델만 `Query`가 아니라
+  `Core` 위에 쓰고, 여전히 소스를 스캔한다(DSL-41). 그 `generate(set, scan, manifest_file)`은 스캔한 소스가 부르는
+  chain, relation key, join, `new_<name>`, getter method를 쓰고, `generator_scan_parse`나
+  `generator_scan_unattached`로 시작하는 메시지로 실패한다.
 - **CORE-51** 생성한 모든 파일의 첫 줄은 그것을 생성한 orm 판을 적는다.
 
 ## 값
@@ -573,7 +578,11 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다),
   `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
   `Param`과 `Key`다). `Utils`와 그 부분은 자기 handle을 빌리고 `Collection`, `Page`, `LookaheadPage`는 생성된 모델의
-  타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다.
+  타입을 받으므로, 이것들과 이것들을 돌려주는 member(`get`, `gets`, `gets_by`)도 선언하지 않는다. 이 가운데
+  `Statement`와 `Collection`은 `Query`가 가진 member(`get_query`, `gets`, `gets_by`; CORE-83)가 돌려주므로 선언만
+  없다. `Page`, `LookaheadPage`, `GroupRow`, `GroupRows`는 `Query`의 어떤 member도 돌려주지 않고(CORE-84) 생성된 Rust
+  모델만 돌려주며, 바인딩에는 생성된 모델이 없다(CORE-50). 바인딩에는 이것들을 대신하는 것이 없고, 바인딩은 query의
+  여러 행을 `related_rows`(CORE-88)나 `StepRunner`의 terminal `gets`(CORE-92)로만 읽는다.
 - **CORE-133** member `tx.execute`는 `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`이다. 이것은
   `Db::execute_text_machine`이 `Db::execute_text`를 실행하듯 `Tx::execute_text`를 실행한다(CORE-127). step과 parameter는
   `db.execute`가 읽는 대로 읽고, 문장은 handle의 트랜잭션에서 실행된다. 이유: `db.transaction`의 callback은 handle로만
