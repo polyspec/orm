@@ -150,13 +150,15 @@ export function rustPoolerThreadArguments(backends: number, poolSize: number): s
 /**
  * Returns the exact Rust symbols that another target owns, for the generic client test run to skip, as GO_LANE_SKIP does for Go: the
  * markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server, and the measurements of
- * PERF-1, which feature-performance-check runs on the bench DSNs (T334-3-11). The recipe entries of mariadb are the test program
+ * PERF-1, which feature-performance-check runs on the bench DSNs (T334-3-11), and the decimal round trips, which decimal-physical-check
+ * runs on the DSNs of the decimal databases that run-databases writes for it (T570). The recipe entries of mariadb are the test program
  * mariadb, which a plain cargo test does not run (test = false), so the workspace run needs no skip of them.
  */
 export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
   const markdown = readJsonFile<{ cases: { id: string }[] }>(resolve(repository, 'tests/markdown/cases.json'), MARKDOWN_CASES_SCHEMA);
   const measurements = ['mysql', 'postgres', 'sqlite'].map(database => `coverage_performance_gate::coverage_hot_path_gate_${database}`);
-  return [...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort(), ...measurements].flatMap(symbol => ['--skip', symbol]);
+  const decimals = ['mysql', 'postgres', 'sqlite'].map(database => `decimal_physical::decimal_${database}`);
+  return [...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort(), ...measurements, ...decimals].flatMap(symbol => ['--skip', symbol]);
 }
 
 // The binding crates of the targets of packages/rust/interface.json, which the whole workspace leaves out: their sources are
