@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 07346ce6a6e6aeca05ea4767553c15171eb7c773088a7ec011bc7bcb6c88210b -->
+<!-- source-sha256: b1e2eb9ebf408de920fe67e4863bc4860a73e7da064f9e9880f062d0c9073802 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -47,7 +47,7 @@
   모두를 고정한다(GN-4, CK-20). scaffold가 쓰는 바인딩 crate는 core를 `../rust`에서 받고, 생성기는 root
   workspace가 모든 바인딩 crate를 가지는지 검사하기 때문이다. 바인딩 crate는 `make bindings`가 생성 folder를 쓴
   뒤에만 build되므로, workspace 전체에 대한 cargo 명령은 바인딩 crate를 뺀다(Makefile의 `ORM_RUST_EXCLUDE_BINDINGS`).
-  그 crate는 `make lint-bindings`와 `make test-bindings`가 build한다. 바인딩 Go module `packages/go`는
+  그 crate는 `make lint-bindings`가 build한다. 바인딩 Go module `packages/go`는
   `github.com/polyspec/orm/packages/go`이고 root의 `go.work`가 묶지 않으므로 그 명령은 `GOWORK=off`로 실행한다. root의 npm workspace는 이름으로
   적은 dbspec editor package 넷이다. `packages/ts`는 package `@polyspec/orm`이고, `legacy/packages/ts`도 그 이름을
   가지기 때문이다.

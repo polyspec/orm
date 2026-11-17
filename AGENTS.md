@@ -54,8 +54,8 @@ from kit and holds as its own; this file states only the rules of orm.
   them all, the commit of `polyspec-binding-core` included (GN-4, CK-20), because a scaffolded binding crate takes the
   core at `../rust` and the generator checks that the root workspace holds every binding crate. A binding crate builds
   only after `make bindings` writes its generated folder, so a cargo command over the whole workspace leaves the
-  binding crates out (`ORM_RUST_EXCLUDE_BINDINGS` of the Makefile), and `make lint-bindings` and `make test-bindings`
-  build them. The binding Go module `packages/go` is `github.com/polyspec/orm/packages/go`, which the root `go.work`
+  binding crates out (`ORM_RUST_EXCLUDE_BINDINGS` of the Makefile), and `make lint-bindings`
+  builds them. The binding Go module `packages/go` is `github.com/polyspec/orm/packages/go`, which the root `go.work`
   does not join, so its commands run with `GOWORK=off`. The npm workspaces of the root are the four dbspec editor packages by name, because
   `packages/ts` is the package `@polyspec/orm`, a name that `legacy/packages/ts` also holds.
   Enforced by: `make bindings-check`, which compares the binding packages with what binding scaffold writes (CK-19)

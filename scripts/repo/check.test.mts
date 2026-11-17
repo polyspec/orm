@@ -3273,24 +3273,29 @@ caseTest('the modules of the Go binding are downloaded by orm-install-go and by 
   }
 });
 
-// test-bindings builds the five binding crates, and the PHP extension crate among them builds against the PHP of the
-// checkout (BINDING_ENV). A runtime job has only the tools of what it runs, so the job that runs test-bindings is one for
-// which ci-pipeline.yml sets PHP up, and it installs the Rust toolchain.
-caseTest('the runtime job that runs test-bindings has PHP and Rust', () => {
+// The binding crates hold no Rust test: binding generate writes the tests of a binding in the language of its target
+// (generated/tests), which the test-binding targets run, and binding scaffold writes `test = false` for the PHP extension
+// crate (T624). So no target runs cargo test on them, which would select no test, and lint-bindings is the build of the five
+// binding crates with their test features in CI. The PHP extension crate among them builds against the PHP of the checkout
+// (BINDING_ENV); a runtime job has only the tools of what it runs, so the job that runs lint-bindings is one for which
+// ci-pipeline.yml sets PHP up, and it installs the Rust toolchain.
+caseTest('the runtime job that runs lint-bindings has PHP and Rust, and no target runs cargo test on the binding crates', () => {
   const config = parseJsonValue(text('config/ci.json'), 'config/ci.json');
   const section = (name: string, part: string): Record<string, unknown> => (isRecord(config) && isRecord(config[name]) && isRecord(config[name][part]) ? config[name][part] : {});
   const names = (value: unknown): string[] => (Array.isArray(value) ? value.map(String) : []);
-  const jobs = Object.entries(section('targets', 'runtimes')).filter(([, targets]) => names(targets).includes('test-bindings')).map(([runtime]) => runtime);
-  assert.equal(jobs.length, 1, `one runtime job of config/ci.json runs test-bindings; found ${jobs.join(', ') || 'none'}`);
+  const jobs = Object.entries(section('targets', 'runtimes')).filter(([, targets]) => names(targets).includes('lint-bindings')).map(([runtime]) => runtime);
+  assert.equal(jobs.length, 1, `one runtime job of config/ci.json runs lint-bindings; found ${jobs.join(', ') || 'none'}`);
   // The step of the runtime jobs is the setup-php step whose condition reads the runtime of the matrix.
   const conditions = [...text('.github/workflows/ci-pipeline.yml').matchAll(/uses: shivammathur\/setup-php@[0-9a-f]+\n\s+if: \$\{\{ ([^}]*) \}\}/g)].map(match => match[1] ?? '');
   const withPhp = conditions.flatMap(condition => [...condition.matchAll(/matrix\.runtime == '([a-z-]+)'/g)].map(match => match[1] ?? ''));
   assert.ok(withPhp.length > 0, 'ci-pipeline.yml sets PHP up for the runtimes that its setup-php step names');
   const setup = section('setup', 'runtimes');
   for (const job of jobs) {
-    assert.ok(withPhp.includes(job), `the runtime job ${job} runs test-bindings, which builds the PHP extension crate, and ci-pipeline.yml sets PHP up for ${withPhp.join(', ')} alone`);
-    assert.ok(names(setup[job]).includes('orm-install-rust'), `the runtime job ${job} runs test-bindings and installs no Rust (orm-install-rust in setup.runtimes of config/ci.json)`);
+    assert.ok(withPhp.includes(job), `the runtime job ${job} runs lint-bindings, which builds the PHP extension crate, and ci-pipeline.yml sets PHP up for ${withPhp.join(', ')} alone`);
+    assert.ok(names(setup[job]).includes('orm-install-rust'), `the runtime job ${job} runs lint-bindings and installs no Rust (orm-install-rust in setup.runtimes of config/ci.json)`);
   }
+  const testedBindings = text('Makefile').split('\n').filter(line => /cargo test\b/.test(line) && line.includes('$(BINDING_CRATES)'));
+  assert.deepEqual(testedBindings, [], 'a recipe runs cargo test on the binding crates, which hold no Rust test');
 });
 
 // The bindgen of ext-php-rs takes the libclang of the highest LLVM of the machine and the clang of PATH, which differ on a
@@ -3311,7 +3316,7 @@ caseTest('a build of the PHP extension crate of the binding takes the libclang a
   const version = isRecord(toolchain) && isRecord(toolchain['llvm']) ? toolchain['llvm']['version'] : undefined;
   const pinned = typeof version === 'string' ? version : '';
   assert.match(pinned, /^[0-9]+$/, 'config/toolchain.json pins the major release of LLVM (llvm.version)');
-  for (const target of ['test-binding-php-offline', 'test-binding-php-service', 'test-bindings', 'lint-bindings']) {
+  for (const target of ['test-binding-php-offline', 'test-binding-php-service', 'lint-bindings']) {
     const run = makeDryRun(target);
     assert.match(run, new RegExp(` LIBCLANG_PATH=\\S*llvm[@-]${pinned}/lib CLANG_PATH=\\S*llvm[@-]${pinned}/bin/clang `), `make ${target} builds the PHP extension crate without the libclang and the clang of LLVM ${pinned}`);
   }
