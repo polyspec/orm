@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: 34f2a96e873cfdaf525578d4dae00c924370a5a8e2801740e5e72f5a062e932f -->
+<!-- source-sha256: cab1712c7adc5e00a9267a22fda80b9b78c69d7fda83f1a12d2f508b2545facc -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -623,6 +623,8 @@
   메시지는 `<column> is not a column of <entity>`다(CORE-87). 0 이상의 정확한 정수가 아닌 count는 `codec_decode`다
   (INT-68). `Db` step은 `column`을 가진 call `group_by`를 받고(CORE-92) `gets_count`의 terminal은 없다. 계약은 group
   행을 `orm_value`의 map의 list로 돌려준다. Rust 값 `Val`을 가진 `GroupRow`와 `GroupRows`는 선언하지 않는다(CORE-70).
+  map마다 `Query`가 고른 grouping 열을 부른 순서대로 그 열의 이름 아래에 가지고, count를 `row_count`라는 이름 아래에
+  가진다. 바인딩을 위해 생성하는 타입 있는 모델(CORE-50)은 이 list를 감싼다.
 - **CORE-202** `where_group(connector, query)`는 같은 엔티티의 `Query`인 `query`의 조건을 괄호로 묶은 group 하나로
   더한다. 언어 구현의 member `and(fn)`과 `or(fn)`이다(DSL-15, DSL-21). `connector`는 `where_none`이 받는 낱말 `""`,
   `And`, `Or`다(CORE-137): `And`와 `Or`는 group을 앞선 조건에 잇고, 첫 조건인 group은 connector를 받지 않으며(DSL-18),

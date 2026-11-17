@@ -20420,6 +20420,166 @@
         "kind": "closed",
         "message": "closed: database is closed"
       }
+    },
+    {
+      "id": "each_map_holds_its_group_columns_in_the_order_of_the_calls_and_then_row_count",
+      "rule": "CORE-201",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+            }
+          },
+          "entity": "item"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "shop.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 shop\n\ntable item {\n  id i64 identity\n  code varchar(16)\n  owner_id i64 null\n  qty i32\n  rev i64\n  tag varchar(16) null\n  meta text null\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_item_code (code)\n  unique uq_item_tag (tag)\n  index ix_item_owner (owner_id)\n  foreign key fk_item_owner (owner_id) references owner (id) on delete restrict on update restrict\n  check ck_item_qty (qty >= 0)\n  settings {\n    soft_delete deleted_at\n    codec meta json\n  }\n}\n\ntable owner {\n  id i64 identity\n  name varchar(32)\n  primary key (id)\n}\n\ntable ghost {\n  id i64 identity\n  primary key (id)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:f2bbde57296e315af407ad03bb8533db49b783dcb947097e47ed202b323a040a"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE owner (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL CONSTRAINT uq_item_code UNIQUE, owner_id INTEGER NULL REFERENCES owner (id), qty INTEGER NOT NULL CONSTRAINT ck_item_qty CHECK (qty >= 0), rev INTEGER NOT NULL, tag TEXT NULL CONSTRAINT uq_item_tag UNIQUE, meta TEXT NULL, deleted_at TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO owner (id, name) VALUES (1, 'ann')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (1, 'live', 1, 1, 1, 'one', NULL, NULL), (2, 'gone', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000'), (3, 'bad', NULL, 1, 1, NULL, 'not json', NULL), (4, 'locked', NULL, 1, 1, NULL, NULL, NULL), (5, 'gonelocked', NULL, 1, 1, NULL, NULL, '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_locked BEFORE UPDATE ON item WHEN OLD.code IN ('locked', 'gonelocked') BEGIN SELECT RAISE(ABORT, 'the row is locked'); END\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE item_log (code TEXT NOT NULL CONSTRAINT uq_item_log_code UNIQUE, qty INTEGER NOT NULL CONSTRAINT ck_item_log_qty CHECK (qty >= 0))\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item_log (code, qty) VALUES ('dup', 0)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO item (id, code, owner_id, qty, rev, tag, meta, deleted_at) VALUES (6, 'dup', NULL, 1, 1, NULL, NULL, NULL), (7, 'neg', NULL, 1, 1, NULL, NULL, NULL), (8, 'surrogate', NULL, 1, 1, NULL, '\\\"\\\\ud800\\\"', '2026-01-01 00:00:00.000000')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_logged AFTER UPDATE OF deleted_at ON item WHEN NEW.deleted_at IS NOT NULL AND OLD.code IN ('dup', 'neg') BEGIN INSERT INTO item_log (code, qty) VALUES (OLD.code, CASE OLD.code WHEN 'neg' THEN -1 ELSE 0 END); END\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TRIGGER item_refused BEFORE INSERT ON item WHEN NEW.code = 'refused' BEGIN SELECT RAISE(ABORT, 'the code is refused'); END\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.group_by",
+            "args": {
+              "column": "tag"
+            }
+          },
+          {
+            "call": "query.group_by",
+            "args": {
+              "column": "code"
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Code",
+              "values": [
+                {
+                  "kind": "text",
+                  "value": "live"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "result": [
+        {
+          "tag": {
+            "kind": "text",
+            "value": "one"
+          },
+          "code": {
+            "kind": "text",
+            "value": "live"
+          },
+          "row_count": {
+            "kind": "int64",
+            "value": 1
+          }
+        }
+      ]
     }
   ],
   "query.where_group": [

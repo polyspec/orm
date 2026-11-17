@@ -738,7 +738,9 @@ implementation is eligible for removal on that evidence.
   entity is `config` at the next terminal with the message `<column> is not a column of <entity>` (CORE-87). A count
   that is no exact integer from 0 is `codec_decode` (INT-68). The `Db` step takes the call `group_by` with `column`
   (CORE-92) and has no terminal for `gets_count`. The contract returns the group rows as a list of maps of
-  `orm_value`; `GroupRow` and `GroupRows`, which hold the Rust value `Val`, stay undeclared (CORE-70).
+  `orm_value`; `GroupRow` and `GroupRows`, which hold the Rust value `Val`, stay undeclared (CORE-70). Each map holds
+  the grouping columns that the `Query` selected, each under the name of its column and in the order of the calls, and
+  the count under the name `row_count`; the typed models that are generated for a binding (CORE-50) wrap this list.
 - **CORE-202** `where_group(connector, query)` adds the conditions of `query`, a `Query` of the same entity, as one
   group in parentheses: the members `and(fn)` and `or(fn)` of the language implementations (DSL-15, DSL-21).
   `connector` is `""`, `And` or `Or`, the words that `where_none` takes (CORE-137): `And` and `Or` join the group to
