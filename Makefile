@@ -730,14 +730,13 @@ ci-release-platform-assets:
 	cp -R var/release/platform/. var/release/assets/
 
 # The recipes of the jobs of assets.yml (T497), which the jobs assets of ci.yml and release.yml call: platform builds the binding
-# assets of the platform of its runner, npm the npm package. RELEASE=true, the input release of the workflow, runs the release
-# check of binding first. Every build is a check of the job, so one run names every asset that does not build. The uses:
+# assets of the platform of its runner, npm the npm package. Each runs the release check of binding first, in CI as in a
+# release, since a committed tree holds release forms only (binding CK-70, GN-19i, B2.457). Every build is a check of the
+# job, so one run names every asset that does not build. The uses:
 # steps of the job platform set up each PHP minor of phpExtension.minors of config/toolchain.json before the run step, and
 # ci-assets-php-ext builds the extension for the PHP of one minor (MINOR) with its php-config.
 # Both recipes install Go after Rust and before the binding check, since binding check runs go mod download when
-# packages/go/go.mod requires a release. The run without RELEASE=true, the CI run (CI_NOT_RELEASE), runs bindings-check
-# at the same place, so a tool that the check misses fails the CI run before a tag exists (T584).
-CI_NOT_RELEASE = $(if $(filter true,$(RELEASE)),,true)
+# packages/go/go.mod requires a release, so a tool that the check misses fails the CI run before a tag exists (T584).
 .PHONY: ci-assets-platform ci-assets-npm ci-assets-php-ext
 # The job provisions the LLVM of config/toolchain.json before this recipe (binding GN-19i): the ubuntu-26.04 images hold it at
 # /usr/lib/llvm-<major>, the default LLVM_ROOT of packages/release.mk, and on macOS install-llvm-action installs it and sets
@@ -753,8 +752,7 @@ ci-assets-platform:
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
 	@$(CI_JOB) setup $(CI_NAME) uv-python -- install-tools 'TOOLS=uv python'
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
-	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
-	@$(if $(CI_NOT_RELEASE),$(CI_JOB) setup $(CI_NAME) binding-check -- bindings-check,:)
+	@$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check
 	@$(CI_JOB) check $(CI_NAME) -- release-go-static
 	@$(CI_JOB) check $(CI_NAME) -- release-wheel
 	@$(CI_JOB) check $(CI_NAME) -- ci-assets-php-ext MINOR=8.4
@@ -768,8 +766,7 @@ ci-assets-npm:
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
 	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
 	@$(CI_JOB) setup $(CI_NAME) wasm-bindgen -- install-wasm-bindgen
-	@$(if $(filter true,$(RELEASE)),$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check,:)
-	@$(if $(CI_NOT_RELEASE),$(CI_JOB) setup $(CI_NAME) binding-check -- bindings-check,:)
+	@$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check
 	@$(CI_JOB) check $(CI_NAME) -- release-npm
 	@$(CI_JOB) end $(CI_NAME)
 # The PHP of a minor that setup-php installed is php<minor> with php-config<minor> on Linux, and the keg php@<minor> of

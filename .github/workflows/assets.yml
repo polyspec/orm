@@ -1,12 +1,12 @@
 # The assets of each platform of the bindings (binding GN-19a, GN-19i). The workflow ci calls it for the commit of its run, and
-# the workflow release calls it for the tree of the tag that it releases, with release true, which runs the release check of
-# binding before a job builds (make release-binding-check, GN-19g). Every recipe that builds an asset is in packages/release.mk,
+# the workflow release calls it for the tree of the tag that it releases; every job runs the release check of binding before it
+# builds (make release-binding-check, GN-19g, B2.457). Every recipe that builds an asset is in packages/release.mk,
 # which binding release-recipes writes and Git ignores.
 #
 # The job platform runs on the runner of its platform, ubuntu-26.04, ubuntu-26.04-arm or macos-15, the one exception to the
 # runner of .github/runner (runnerErrors of scripts/repo/ci.mts): the asset of a platform is linked and loaded only on that
 # platform, because no tool of the release compiles for another platform. Each job runs one step, make ci-assets-<job>
-# RELEASE=<release> (T497): the job platform builds the static library of the Go module, the abi3 wheel, the PHP extension for
+# (T497): the job platform builds the static library of the Go module, the abi3 wheel, the PHP extension for
 # each PHP minor of phpExtension.minors of config/toolchain.json, which its setup-php steps install before the run step, and
 # the npm platform package of its platform; the job npm builds the npm package itself with the wasm-bindgen of mise.toml.
 # Each build runs also after a failed one, so one run names every asset that does not build. Each uploads var/release/assets
@@ -21,11 +21,6 @@ on:
         required: false
         type: string
         default: ''
-      release:
-        description: Whether each job runs the release check of binding before it builds
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -73,7 +68,7 @@ jobs:
         with:
           version: '21.1.8'
           directory: ${{ runner.temp }}/llvm
-      - run: make ci-assets-platform RELEASE=${{ inputs.release }}
+      - run: make ci-assets-platform
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -89,7 +84,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.ref }}
       - uses: ./.github/actions/kit-bootstrap
-      - run: make ci-assets-npm RELEASE=${{ inputs.release }}
+      - run: make ci-assets-npm
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

@@ -172,7 +172,7 @@
   호출한다: 순서, 조건, step output이 YAML에 있는 job(여러 run step, step `if:`, `${{ toJSON(steps) }}`, 앞
   step의 output)은 GitHub의 runner 없이 로컬에서 되풀이할 수 없기 때문이다. job은 `run:` step을 정확히 하나
   가지며, 그것은 make 변수 인수만 가진 `make ci-<job>`이고 그 값은 literal, matrix 값(`NAME=${{ matrix.key }}`),
-  호출된 workflow의 input(`RELEASE=${{ inputs.release }}`)뿐이다. 호출된 workflow의 job은
+  호출된 workflow의 input(`REF=${{ inputs.ref }}`)뿐이다. 호출된 workflow의 job은
   `make ci-<caller>-<job>`(`ci-kit-shared`, `ci-assets-platform`)을 실행한다. 다른 모든 step은 runner를 준비하는
   `uses:` step(checkout, setup action, cache, `.github/actions/kit-bootstrap`)이거나 run step 뒤에서 결과를 옮기는
   `uses:` step(upload-artifact, upload-pages-artifact)이고, `if:`는 `uses:` step에만 있다. recipe는

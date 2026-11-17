@@ -200,7 +200,7 @@ from kit and holds as its own; this file states only the rules of orm.
   steps, step `if:`, `${{ toJSON(steps) }}`, outputs of earlier steps) cannot be repeated locally
   without the runner of GitHub. A job has exactly one `run:` step, `make ci-<job>` with make-variable
   arguments only, whose values are literals, matrix values (`NAME=${{ matrix.key }}`) or inputs of a
-  called workflow (`RELEASE=${{ inputs.release }}`); a job of a called workflow runs
+  called workflow (`REF=${{ inputs.ref }}`); a job of a called workflow runs
   `make ci-<caller>-<job>` (`ci-kit-shared`, `ci-assets-platform`). Every other step is a `uses:`
   step that provisions the runner (checkout, setup actions, caches, `.github/actions/kit-bootstrap`)
   or, after the run step, carries a result (upload-artifact, upload-pages-artifact), and only a

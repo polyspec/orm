@@ -3137,24 +3137,23 @@ caseTest('T570: the tests of the build crate that read a server or a variable of
   }
 });
 
-// binding check runs go mod download when packages/go/go.mod requires a release, so the asset jobs install Go before it.
-// The release run (RELEASE=true) runs release-binding-check and the CI run bindings-check, both after the setups rust and
-// go, so a tool that the check misses fails the CI run before a tag exists (T584).
-caseTest('T584: the asset jobs install Go before the binding check of the CI run and of the release run', () => {
+// binding check runs go mod download when packages/go/go.mod requires a release, so the asset jobs install Go before it (T584).
+// A committed tree holds release forms only, so every run of a job, CI and release alike, runs release-binding-check, with
+// no condition on the input release of the workflow, which is gone (binding CK-70, GN-19i, B2.457, T595).
+caseTest('T584: the asset jobs install Go before the release check of binding, which every run runs', () => {
   const makefile = text('Makefile');
   for (const target of ['ci-assets-platform', 'ci-assets-npm']) {
     const lines = jobRecipeLines(makefile, target);
     const at = (pattern: RegExp) => lines.findIndex(line => pattern.test(line));
     const rust = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) rust -- orm-install-rust$/);
     const go = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) go -- install-tools TOOLS=go$/);
-    const release = at(/^@\$\(if \$\(filter true,\$\(RELEASE\)\),\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- release-binding-check,:\)$/);
-    const ci = at(/^@\$\(if \$\(CI_NOT_RELEASE\),\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- bindings-check,:\)$/);
+    const check = at(/^@\$\(CI_JOB\) setup \$\(CI_NAME\) binding-check -- release-binding-check$/);
     assert.ok(rust >= 0, `${target} has no setup rust`);
     assert.ok(go > rust, `${target} installs no Go after the setup rust: add the setup go -- install-tools TOOLS=go`);
-    assert.ok(release > go, `${target} runs release-binding-check of RELEASE=true before the setup go, or not at all`);
-    assert.ok(ci > go, `${target} runs no bindings-check after the setup go in the CI run, the run without RELEASE=true`);
-    const first = at(/-- (?:release-binding-check|bindings-check)\b/);
-    assert.ok(first > go, `${target} runs a binding check before the setup go`);
+    assert.ok(check > go, `${target} runs no release-binding-check after the setup go`);
+    assert.equal(lines.filter(line => /\bRELEASE\b|bindings-check/.test(line)).length, 0, `${target} runs a check by the condition RELEASE or bindings-check`);
   }
-  assert.match(makefile, /^CI_NOT_RELEASE = \$\(if \$\(filter true,\$\(RELEASE\)\),,true\)$/m, 'CI_NOT_RELEASE is true unless RELEASE=true');
+  assert.doesNotMatch(makefile, /CI_NOT_RELEASE|\$\(RELEASE\)/, 'the Makefile reads no RELEASE');
+  for (const workflow of ['.github/workflows/assets.yml', '.github/workflows/release.yml'])
+    assert.doesNotMatch(text(workflow), /inputs\.release|^\s+release: (?:true|false)$|^\s+release:\n\s+description:/m, `${workflow} names the input release`);
 });

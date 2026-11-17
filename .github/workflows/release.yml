@@ -77,7 +77,6 @@ jobs:
     uses: ./.github/workflows/assets.yml
     with:
       ref: ${{ needs.tag.outputs.tag }}
-      release: true
 
   release:
     needs: [tag, assets]
