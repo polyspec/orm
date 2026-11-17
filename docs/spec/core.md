@@ -272,7 +272,12 @@ implementation is eligible for removal on that evidence.
   column, connector and operator that the column allows, and calls only members of the contract. Its names are the
   conversion of the bindgen crate `polyspec-bindgen-core` (N-2), so they are those of the bindings. The source is not
   scanned: this replaces DSL-39 to DSL-44, and the kinds of a scan are gone. A chain of several columns is the general
-  member `getsBy(chain, args)` or a chain of single-column members.
+  member `getsBy(chain, args)` or a chain of single-column members. Not implemented: the core has no function
+  `generate` and the contract no member of it, so no binding has a generated model. The one generator is the crate
+  `polyspec-orm-build` of `packages/rust/build`, which writes Rust models alone, over `Core` and not over `Query`, and
+  still scans the source (DSL-41): its `generate(set, scan, manifest_file)` writes the chain, relation key, join,
+  `new_<name>` and getter methods that the scanned source calls, and fails with a message that starts with
+  `generator_scan_parse` or `generator_scan_unattached`.
 - **CORE-51** The first line of every generated file names the version of orm that generated it.
 
 ## Values
@@ -511,6 +516,118 @@ implementation is eligible for removal on that evidence.
   A column that the row did not read has no key, so a column that was not read and a column whose value is null are
   told apart. A relation result is no key of the map; `related` and `related_rows` return it (CORE-88). A `Query` that
   read no row returns the empty map.
+- **CORE-150** `plus(column, value)` and `minus(column, value)` assign to a column, for the next write, its stored
+  value plus or minus `value`: the members `plus<Col>(n)` and `minus<Col>(n)` of the language implementations
+  (DSL-102). The assignment is `plus_p` or `minus_p` of the request, takes the place of an assignment of `set` to the
+  same column, as `set` takes its place, and `minus` never stores a negative value. `update` takes it, and so does the
+  `Query` given to `duplication` (CORE-151). A name that is no column of the entity is `config` with the message
+  `<column> is not a column of <entity>` (CORE-91). A column that is no number is `operator_not_allowed` at the write
+  with the message `plus/minus on <entity>.<column> (<type>)`, and `create` with such an assignment is `ir_invalid`
+  with the message `insert cannot assign <column> by plus or minus`, since an insert has no stored value to read.
+  Not implemented: `plus` and `minus` of a `Query`; the generated Rust models have `plus_<col>` and `minus_<col>`.
+- **CORE-151** `duplication(query)` makes the next `create` an insert with a duplicate-key update: a row that meets a
+  row of one unique key is not inserted, and the assignments of `query`, a `Query` of the same entity, are written to
+  the row that it met (DSL-105). They are `on_duplicate` of the request, and `create` clears them. A `query` of
+  another entity is `config`, and one with no assignment is `config` at `create` with the message
+  `duplication model has no set_<col> values`. An assignment of `query` to a column of the primary key or to the
+  identity column is `ir_invalid` with the message `on_duplicate cannot assign <entity>.<column>` (DSL-113), and an
+  insert that can meet a row on no unique key or on more than one is `ir_invalid` with a message that starts with
+  `on_duplicate needs exactly one conflict key`. The conditions of the `Query` hold for the insert as DSL-162 states,
+  and a row that does not meet them is `condition_not_met`. Not implemented: `duplication` of a `Query`.
+- **CORE-152** `update_optimistic()` is the `update` of CORE-91 that writes only while the update time column of the
+  entity still holds the value that the row read: the member `update(true)` of the language implementations (DSL-107,
+  DSL-155). The value is `optimistic` of the request (PRT-7), and a statement that changed no row is `optimistic_lock`
+  with the message `row changed since it was read`. A `Query` that read no row, a row that did not read the update
+  time column, an entity without one and a row that an `update` already wrote are `config` with the message
+  `update(true) requires a row loaded with its update time column`: the row is read again first. With
+  `expect_revision` it is `config` with the message `expectRevision does not combine with update(true)` (DSL-114):
+  the update time is a value that the core writes and the revision a value that the caller holds, so they are two
+  members. The conditions of the `Query` join the key (CORE-138), and one statement cannot tell them from the update
+  time, so a row that does not meet them is `optimistic_lock` too. Not implemented: `update_optimistic` of a `Query`,
+  whose `update` takes no argument; the generated Rust models have `update(optimistic)`.
+- **CORE-153** `delete_recursive()` deletes the row of a `Query` as `delete` does (CORE-91) and, before it, the rows
+  of the relation results that the row holds (CORE-88), each with the rows of its own results, children first: the
+  member `delete(true)` of the language implementations (DSL-111). The results of a child with `delete_lock`
+  (CORE-157) stay. Every statement runs in one transaction of the connection of the `Query`, a savepoint when the
+  connection is a `Tx` (CORE-21), so a failure deletes nothing, a `revision_changed` of the row included (DSL-114). A
+  `Query` with conditions whose row holds a result that is deleted is `config` before any statement, with the message
+  `a recursive delete of a row with cascading relations takes no conditions` (CORE-138). It deletes one row of its key
+  and never the rows that conditions select (CORE-138). Not implemented: `delete_recursive` of a `Query`, whose
+  `delete` takes no argument; the generated Rust models have `delete(recursive)`.
+- **CORE-154** `order_by_random()` adds to the order an item that orders the rows randomly, by the function of the
+  dialect, after the items before it (DSL-99); it is the item `random` of the request. A subquery of an added column
+  with it is `ir_invalid` with the message `a scalar column subquery may not order by random`. Not implemented:
+  `order_by_random` of a `Query`.
+- **CORE-155** `order_by_function(column, function, descending)` adds to the order an item that orders by a column
+  function of a column: the members `orderBy<Col>Asc(fn)` and `orderBy<Col>Desc(fn)` of the language implementations
+  (DSL-135). `function` is the name of a column function of DSL-144 to DSL-147, `day_of_week`, `year`, `month` or
+  `date`, and the item holds it as `fn`. A name that is no column of the entity is `config` with the message
+  `<column> is not a column of <entity>`, a name that is no function is `function_unknown`, a value function
+  (DSL-137 to DSL-140) is `config` with the message `order_by accepts a column function only`, and a column whose
+  type the function does not take is `operator_not_allowed` (DSL-148). Each is returned by the next terminal. Not
+  implemented: `order_by_function` of a `Query`, and no type of the contract is a function of DSL-131 (CORE-84).
+- **CORE-156** `force_index(name)` makes the statement of the `Query` use the index or the unique key `name` of its
+  entity: the member `forceIndex<Name>()` of the language implementations (DSL-78). It is `force_index` of the query of
+  the request, and the last one called holds. A name that is no index and no unique key of the entity is
+  `index_unknown` at the next terminal with the message `<entity>.<name>`. Not implemented: `force_index` of a `Query`.
+- **CORE-157** Three members set how a `Query` given to `relation` or `relations` is attached (CORE-88, PRT-14), and
+  have no effect on a `Query` that is given to neither. `parent_node()` merges the row of a `relation` result into the
+  row that holds it (DSL-84): `flatten` of the request, by which the JSON text of the row (CORE-161) writes the
+  members of the child after its own, a name that the row holds keeping its value (PRT-15); given to `relations` it
+  is `ir_invalid` with the message `relation <name>: flatten needs a one relation`. `group_limit(count)` reads at most
+  `count` rows per row of the parent, the first of the order of the child (DSL-86): `limit_per_parent` of the request.
+  `count` is `uint`, and 0 is `config` at the next terminal with the message `group_limit requires a positive count`;
+  with a row lock it is `ir_invalid` (CORE-86, DSL-123). `delete_lock()` keeps the rows of the result out of
+  `delete_recursive` (CORE-153, DSL-87): `no_cascade_delete` of the request. Not implemented: `parent_node`,
+  `group_limit` and `delete_lock` of a `Query`.
+- **CORE-158** `possible(column, value)` attaches the result of a `Query` given to `relation` or `relations` only to
+  the rows of the parent whose column `column` equals `value`: the member `possible<Col>(value)` of the language
+  implementations (DSL-85). `column` is a column of the entity of the parent and `value` an `orm_value`, compared as
+  the type of the column; it is `if_parent` of the request (PRT-14), and the last one called holds. On a `Query` that
+  is given to neither, the root of a terminal and the subquery of `where_in` among them, it is `config` at the next
+  terminal with the message `possible applies only to a relation child`. A name that is no column of the entity of the
+  parent is `config` at the next terminal of the parent with the message `<column> is not a column of <entity>`
+  (CORE-130). Not implemented: `possible` of a `Query`.
+- **CORE-159** `fetch_key(function)` keys the `Collection` of `gets` by what `function` returns for each row, in place
+  of the primary key and of `key_name` (CORE-89), and `fetch_value(function)` computes a value for each row, which the
+  `Collection` holds beside the row under its key (DSL-70). The function takes the row, a `Query`, and is called once
+  per row, in the order of the rows, after the rows and their relation results are read; a function that fails ends
+  the terminal with its failure unchanged. A key is a value of `Key` (INT-11). Neither changes the request. The `Db`
+  step (CORE-92) has no form for them, since a step is data. Not implemented: `fetch_key` and `fetch_value` of a
+  `Query`; `Collection` and `Key` are not declared (CORE-70).
+- **CORE-160** `attach(name, value)` holds an `orm_value` on a `Query` under a name that is no column, and
+  `attached(name)` returns it: the members `new<Name>(value)` and `get<Name>()` of the language implementations
+  (DSL-101, DSL-115, DSL-44). No statement takes the value. The rows that the `Query` reads and the row that its
+  `create` returns hold it, and the JSON text of a row (CORE-161) writes it; `to_array` holds columns alone
+  (CORE-120). `attached` of a name that the `Query` did not attach returns `None`. The names of a row are one space
+  (DSL-128): a `name` that is a column of the entity, an added column or a relation result of the `Query` is `config`
+  at the next terminal (DSL-116, DSL-160). Not implemented: `attach` and `attached` of a `Query`; the generated Rust
+  models have `new_<name>` and `get_<name>` for the names that a scanned source calls (DSL-156).
+- **CORE-161** `to_json()` of a row of a `Query` returns its JSON text, one object (COD-26): the columns that the row
+  read, then the attached values (CORE-160), then each relation result under its name, a row as its object, no row as
+  `null` and the rows of `relations` as an array in their order, then the members of a `parent_node` child
+  (CORE-157); a name written once is not written again. A column with a codec stage is written tagged,
+  `{"kind":"sql-null"}` or `{"kind":"value","value":<value>}`; a value of the stage `json` keeps its stored text, the
+  order of its members and the text of its numbers; a `datetime(p)` is its text of PRT-69. A bytes column without a
+  codec stage is `codec_encode` with the message `<entity>.<column>: JSON output cannot write bytes`. The members
+  `toJSON` and `toJSONText` of the TypeScript implementation, `toJson` of PHP and `to_json_text` of Python are this
+  one member; what a language does with the text, such as its own `JSON.stringify`, is of the binding. Not
+  implemented: `to_json` of a `Query`.
+- **CORE-162** `get_page_plan_steps(page, per_page)` returns the steps of the plan that `gets_page(page, per_page)`
+  runs, and sends no statement (DSL-159): in the order of the plan, the main step, the count step and one step per
+  relation, each a record of its `role` (`main`, `count` or `relation`), its `tables`, the sorted names of the tables
+  of its statement, and its `sql`. It takes the arguments and the refusals of `gets_page`: `config` with the message
+  `gets_page requires a positive page and per_page`, with `gets_page cannot be combined with limit`, and for a `Query`
+  with no connection (CORE-81); the refusals of the planner; and `capability_unsupported` on markdown. The request
+  hook of the connection sees the request. Not implemented: `get_page_plan_steps` of a `Query`, as `gets_page` is not
+  (CORE-84).
+- **CORE-163** The condition on several columns, the member `tuple<ColA>With<ColB>(list)` of the language
+  implementations (DSL-35), is `where` with the chain key `Tuple<ColA>With<ColB>`, or `NeTuple<ColA>With<ColB>` for
+  `not in`, and one value, a `list` of value groups, each a `list` of one value per column (CORE-82). A value that is
+  no list of lists is `codec_encode` with the message `the value of a condition is no list of value groups`, an empty
+  list is `empty_in` with the message `tuple condition received an empty list`, a group of another length is `config`
+  with the message `every tuple needs one value per column`, and a key of fewer than two columns, or of a column with
+  a codec stage or without the list operator, is `config`. Each is returned by the next terminal. `Query` has it.
 
 ## State machines
 
@@ -602,7 +719,11 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
   (their values are the Rust values `Param` and `Key`). `Utils` and its parts borrow their handle, and `Collection`,
   `Page` and `LookaheadPage` take the type of a generated model, so they and the members that return them (`get`,
-  `gets`, `gets_by`) are not declared either.
+  `gets`, `gets_by`) are not declared either. Of these, `Statement` and `Collection` are returned by members that
+  `Query` has (`get_query`, `gets`, `gets_by`; CORE-83), so their declaration alone is missing. `Page`, `LookaheadPage`,
+  `GroupRow` and `GroupRows` are returned by no member of `Query` (CORE-84) but by the generated Rust models alone, and
+  a binding has no generated model (CORE-50): it has nothing in their place, and reads the rows of a query only as
+  `related_rows` (CORE-88) or through the terminal `gets` of a `StepRunner` (CORE-92).
 - **CORE-133** The member `tx.execute` is `Tx::execute_text_machine(self, step: String, params: Vec<OrmValue>)`, which
   runs `Tx::execute_text` as `Db::execute_text_machine` runs `Db::execute_text` (CORE-127): the step and the
   parameters are read as `db.execute` reads them, and the statement runs in the transaction of the handle. Why: a
