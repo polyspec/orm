@@ -556,7 +556,13 @@ caseTest('each CI run rehearses the upload of the release after the assets, and 
     assert.match(recipe, new RegExp(`-- ${target}\\n`), `ci-release-rehearsal gathers var/release/assets with ${target}, as ci-release does`);
   assert.match(recipe, /-- release-platform-assets TAG=v\$\(RELEASE_REHEARSAL_VERSION\) REHEARSAL=1 WORK=var\/release\/rehearsal\n/,
     'ci-release-rehearsal runs release-platform-assets with REHEARSAL=1 and WORK');
-  for (const forbidden of ['release-tag', 'release-publish', 'release-undraft', 'release-go-module'])
+  // The Go module of the tag is rehearsed as ci-release rehearses it, after the same setup in the same order (T633).
+  const steps = [...recipe.matchAll(/ -- (\S+)/g)].map(match => match[1]);
+  const order = ['ci-release-platform-assets', 'orm-install-rust', 'install-tools', 'release-recipes', 'rehearse-go-module'];
+  assert.deepEqual(steps.filter(step => order.includes(step ?? '')), order, `ci-release-rehearsal runs ${order.join(', ')} in this order, as ci-release does`);
+  assert.match(recipe, /-- install-tools TOOLS=go\n/, 'ci-release-rehearsal installs the go of mise.toml');
+  assert.match(recipe, /-- rehearse-go-module TAG=v\$\(RELEASE_REHEARSAL_VERSION\)\n/, 'ci-release-rehearsal rehearses the Go module of the tag of VERSION');
+  for (const forbidden of ['release-tag', 'release-publish', 'release-undraft', 'release-go-module', 'release-go-module-push'])
     assert.doesNotMatch(recipe, new RegExp(`-- ${forbidden}\\b`), `ci-release-rehearsal runs no ${forbidden}`);
   assert.doesNotMatch(text('.github/workflows/release.yml'), /REHEARSAL/, 'release.yml gains no run without a tag (K911)');
 });
