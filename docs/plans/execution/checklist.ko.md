@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: b5284beef92bfbdf73042c0f608442451348913ca6cd38279e572aecb400b646 -->
+<!-- source-sha256: 39b6505846b8ab7112043cbb61fd4ad4a7152a326f9f6970bc0c2f922769de99 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -2180,3 +2180,4 @@
 | T666 | DECIMAL_ENV도 run이 소유한 파일이다: databases-create가 run 디렉터리에 env 옆의 decimal-env를 쓰고(scripts/check/databases.mts:218), Makefile:73-78은 RUN_CONTEXT_DIR가 있으면 그 파일을, 없으면 빈 값을 준다. 원인: TEST_ENV와 같은 공유 상태 원인이다(T650). | Makefile, scripts/test-servers.test.mts | make orm-test-servers-check가 통과한다 | [ ] |
 | T667 | RELEASE_REHEARSAL_VERSION(Makefile:806)은 make 3.81에 없는 $(file)을 쓰지만, Makefile:166은 3.81을 지원한다고 적는다. 3.81에서 rehearsal은 'VERSION is required'에서 멈추고, make -n ci-release-rehearsal은 version 없이 TAG=v와 VERSION=을 쓴다. 0.0.34 뒤의 행이다. | Makefile | GNU Make 3.81에서 make -n ci-release-rehearsal이 VERSION의 version을 쓴다 | [ ] |
 | T668 | PHP Collection.php:76, TS model.ts:236, Go collection.go:248에는 계약의 rows 클래스에 없는 공개 has가 있다(docs/spec/core.md:733-735: len, first, get, keys, values, to_array). Python client는 같은 이유로 has를 지웠다. 지울지 정하는 일은 0.0.34 밖의 일이다. | legacy/packages/php/src/Collection.php, legacy/packages/ts/src/model.ts, legacy/packages/go/orm/collection.go | 각 client의 rows가 core.md:733-735의 메서드만 가지거나, 계약이 has를 정한다 | [ ] |
+| T669 | config/ci.json의 setup.runtimes.rust(orm-install-go-lease, orm-install-go-binding)가 orm-install-rust를 실행하는 deps-rust(Makefile:4005)를 대신하므로, rust job은 crate를 받지 않고(orm-install-rust-crates, Makefile:4015) offline cargo가 실패한다: run 44309325651, kit/runtime (rust), `can't checkout from 'https://github.com/polyspec/binding.git': you are in the offline mode (--offline)`. Red: repo-check/unit은 cargo를 실행하는 모든 CI job이 setup에서 crate를 받기를 요구한다. | config/ci.json, scripts/repo/ci.mts, scripts/repo/check.test.mts | make repo-check/unit이 통과한다. CI job kit/runtime (rust)이 lint-rust를 통과한다 | [ ] |
