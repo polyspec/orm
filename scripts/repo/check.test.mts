@@ -3472,3 +3472,18 @@ caseTest('T631: every CI job that runs go downloads the Go modules of the folder
   assert.ok(isRecord(json), 'config/ci.json is an object');
   assert.deepEqual(goModuleErrors(text('Makefile'), json as Parameters<typeof goModuleErrors>[1], text('go.work')), []);
 });
+
+// T648: package-check takes the verbosity of its cargo from the make variable PACKAGE_CHECK_CARGO_FLAGS (default --quiet), so a run
+// can show the Compiling lines of the crates it builds.
+caseTest('package-check runs its cargo with the flags of PACKAGE_CHECK_CARGO_FLAGS', () => {
+  const cargo = (variables: string[]) => {
+    // The probe target is read from stdin after the Makefile, so it runs with the variables that the Makefile exports.
+    const probe = 'package-check-flags-probe:\n\t@$(NODE) -e "import(\'./scripts/package-check.mts\').then(m => console.log(m.COMMANDS.find(c => c.includes(\' check --manifest-path \'))))"\n';
+    const result = spawnSync('make', ['-s', '--no-print-directory', '-f', 'Makefile', '-f', '-', ...variables, 'package-check-flags-probe'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment(), input: probe });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    return result.stdout.trim();
+  };
+  assert.match(cargo([]), / --quiet$/);
+  assert.match(cargo(['PACKAGE_CHECK_CARGO_FLAGS=--verbose']), / --verbose$/);
+  assert.match(cargo(['PACKAGE_CHECK_CARGO_FLAGS=']), /\/Cargo\.toml$/);
+});
