@@ -23,25 +23,40 @@ export function releasedSpecFor(repo: string, path: string): { tag: string; text
   return { tag, text };
 }
 
+export type ReviewEntry = { id: string; tag: string; released: string; current: string };
+
+// The statements of a spec, by identifier.
+function statements(text: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const line of text.split('\n')) {
+    const match = /^- \*\*([A-Z]+-\d+[a-z]?)\*\* (.*)$/.exec(line);
+    if (match) out.set(match[1], match[2]);
+  }
+  return out;
+}
+
+// An identifier of the released spec that the current spec no longer holds fails (AGENTS.md:87). Its message names the tag.
 export function releasedSpecErrors(released: string, current: string, tag = 'the released spec'): string[] {
-  const bodies = (text: string): Map<string, string> => {
-    const out = new Map<string, string>();
-    for (const line of text.split('\n')) {
-      const match = /^- \*\*([A-Z]+-\d+[a-z]?)\*\* (.*)$/.exec(line);
-      if (match) out.set(match[1], match[2]);
-    }
-    return out;
-  };
-  const before = bodies(released);
-  const after = bodies(current);
+  const before = statements(released);
+  const after = statements(current);
   const errors: string[] = [];
-  for (const [id, body] of before) {
-    const now = after.get(id);
-    if (now === undefined) {
-      errors.push(`${id} is absent from the current spec; ${tag} holds it (AGENTS.md:87)`);
-    } else if (now !== body && !now.startsWith('Retired')) {
-      errors.push(`${id} changed its body in the current spec without a retired marker; ${tag} holds it (AGENTS.md:87)`);
-    }
+  for (const id of before.keys()) {
+    if (!after.has(id)) errors.push(`${id} is absent from the current spec; ${tag} holds it (AGENTS.md:87)`);
   }
   return errors;
+}
+
+// An identifier whose body changed in the current spec is not a failure: a reviewer judges its meaning (HR-84). A retired
+// marker is not a change to review.
+export function releasedSpecReview(released: string, current: string, tag: string): ReviewEntry[] {
+  const before = statements(released);
+  const after = statements(current);
+  const entries: ReviewEntry[] = [];
+  for (const [id, body] of before) {
+    const now = after.get(id);
+    if (now !== undefined && now !== body && !now.startsWith('Retired')) {
+      entries.push({ id, tag, released: body, current: now });
+    }
+  }
+  return entries;
 }

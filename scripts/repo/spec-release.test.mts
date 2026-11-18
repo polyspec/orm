@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../tests/testcase.mts';
-import { releasedSpecErrors } from './spec-release.mts';
+import { releasedSpecErrors, releasedSpecReview } from './spec-release.mts';
 
 const fixture = (name: string) => readFileSync(fileURLToPath(new URL(`fixtures/spec-release/${name}`, import.meta.url)), 'utf8');
 
@@ -36,4 +36,12 @@ caseTest('a repository without a version tag is an error, not a pass', async () 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+caseTest('a changed body is listed for review with its tag and both bodies', () => {
+  const entries = releasedSpecReview(fixture('released.md'), fixture('changed.md'), 'v0.0.33');
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].id, 'CFG-35');
+  assert.equal(entries[0].tag, 'v0.0.33');
+  assert.notEqual(entries[0].released, entries[0].current);
 });
