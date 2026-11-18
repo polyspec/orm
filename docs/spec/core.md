@@ -686,7 +686,13 @@ implementation is eligible for removal on that evidence.
   terminal with the message `possible applies only to a relation child`. A name that is no column of the entity of the
   parent is `config` at the next terminal of the parent with the message `<column> is not a column of <entity>`
   (CORE-130), the kind and the message of every builder of a `Query` for a column that its entity does not have
-  (CORE-87, CORE-89, CORE-91); `value` alone, which reads a row, is `column_unknown` (CORE-83). Not implemented: `possible` of a `Query`.
+  (CORE-87, CORE-89, CORE-91). The members of the core differ in the kind of an unknown column. `config`, with the
+  message `<column> is not a column of <entity>` at the next terminal, is the kind of `group_by`, `sum`, `add_column`,
+  `remove_column`, `key_name`, `set`, `plus`, `minus` and the chain names of `where`, `get_by` and `get_count`.
+  `column_unknown`, with the message `<entity>.<column>`, is the kind of `query.value`, which reads a row (CORE-83),
+  `db.analyze_restore`, `runtime_model.validate`, `param_uses`, `restore_key`, `compile`, `operator_allowed`, and the
+  planner for a column that a request hook added. The existing members keep their kind, because the error handling of
+  callers relies on it; a new member follows the existing member of its sort. Not implemented: `possible` of a `Query`.
 - **CORE-159** `fetch_key(function)` keys the `Collection` of `gets` by what `function` returns for each row, in place
   of the primary key and of `key_name` (CORE-89), and `fetch_value(function)` computes a value for each row, which the
   `Collection` holds beside the row under its key (DSL-70). The function takes the row, a `Query`, and is called once
@@ -1168,7 +1174,7 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   the condition of `condition_not_met`, so `update`, `delete` and `restore` do not raise it; `restore` returns a row
   that is not deleted unchanged, so only `restore_or_create` raises `row_not_deleted`; `restore_or_create` reads the
   restored row in its own transaction and does not raise `no_rows`; `db.execute` runs on the `Db` and raises neither
-  `busy` nor `transaction_ended`, which only a `Tx` raises. No member of `Query` raises `column_unknown`: the builder
+  `busy` nor `transaction_ended`, which only a `Tx` raises. No builder of `Query` raises `column_unknown`: it
   refuses an unknown column with `config` (CORE-82) before a terminal reads the entity. `db.connect` and
   `db.connect_schema` do not raise `capability_unsupported`: the core asserts at its build that the SQLite it links is
   3.46 or newer (DSL-150), so no connection meets an older one. `db.connect_schema` does not raise `schema_invalid`: a schema of the contract is made by

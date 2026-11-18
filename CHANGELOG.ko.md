@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- docs/spec/core.md가 core의 member마다 모르는 열의 kind를 기록한다(CORE-158, T609): `Query`의 builder와 chain
+  이름은 `config`, `query.value`와 engine member와 planner는 `column_unknown`이다. 기존 member는 자기 kind를
+  유지하고 새 member는 같은 종류의 기존 member를 따른다.
+
 ## 0.0.34
 
 - 이 릴리스는 손으로 쓴 패키지를 대체하지 않는다(CORE-1, FCV-21). v0.0.34는 Rust 코어와, binding 0.0.21이 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩을 릴리스한다. 바인딩은 `packages/ts`의 `@polyspec/orm`, `packages/python`의 `polyspec-orm`, `packages/php-ext`의 `polyspec/orm`, `packages/go`의 Go module이다. 손으로 쓴 클라이언트는 `legacy/packages`에 남으며 v0.0.34는 그것을 릴리스하지 않는다. contract에 견준 공개 표면의 표(docs/spec/feature-coverage.ko.md, FCV-21)에 손으로 쓴 패키지의 공개 멤버와 그 상태가 모두 있고, 릴리스 사용자가 가진 것은 docs/operations/usage.ko.md에 있다.

@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- docs/spec/core.md lists the kind of an unknown column per member of the core (CORE-158, T609): `config` for
+  the builders of a `Query` and its chain names, `column_unknown` for `query.value`, the engine members and the
+  planner; existing members keep their kind and a new member follows the existing member of its sort.
+
 ## 0.0.34
 
 - This release is not a replacement of the hand-written packages (CORE-1, FCV-21). v0.0.34 releases the Rust core and the bindings that binding 0.0.21 generates from its interface contract, `packages/rust/interface.json`: `@polyspec/orm` of `packages/ts`, `polyspec-orm` of `packages/python`, `polyspec/orm` of `packages/php-ext` and the Go module of `packages/go`. The hand-written clients stay under `legacy/packages`, and v0.0.34 does not release them. The table of the public surface against the contract (docs/spec/feature-coverage.md, FCV-21) holds every public member of the hand-written packages with its status, and docs/operations/usage.md states what a user of the release has.

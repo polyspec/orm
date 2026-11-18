@@ -559,8 +559,13 @@
   쪽에도 주지 않은 `Query`, 곧 terminal의 root나 `where_in`의 subquery 같은 것에서는 다음 terminal에서 `config`이고
   메시지는 `possible applies only to a relation child`다. 부모 엔티티의 열이 아닌 이름은 부모의 다음 terminal에서
   `config`이고 메시지는 `<column> is not a column of <entity>`다(CORE-130). `Query`의 모든 builder가 엔티티에 없는
-  열에 주는 kind와 메시지다(CORE-87, CORE-89, CORE-91). 행을 읽는 `value`만 `column_unknown`이다(CORE-83). 구현되지
-  않았다: `Query`의 `possible`.
+  열에 주는 kind와 메시지다(CORE-87, CORE-89, CORE-91). core의 member는 모르는 열의 kind가 다르다. 다음 terminal에서
+  메시지 `<column> is not a column of <entity>`와 함께 `config`인 것은 `group_by`, `sum`, `add_column`,
+  `remove_column`, `key_name`, `set`, `plus`, `minus`와 `where`, `get_by`, `get_count`의 chain 이름이다. 메시지
+  `<entity>.<column>`과 함께 `column_unknown`인 것은 행을 읽는 `query.value`(CORE-83), `db.analyze_restore`,
+  `runtime_model.validate`, `param_uses`, `restore_key`, `compile`, `operator_allowed`, 그리고 request hook이 더한 열에
+  대한 planner다. 호출자의 오류 처리가 기대므로 기존 member는 자기 kind를 유지하고, 새 member는 같은 종류의 기존
+  member를 따른다. 구현되지 않았다: `Query`의 `possible`.
 - **CORE-159** `fetch_key(function)`은 `gets`의 `Collection`을 primary key와 `key_name`(CORE-89) 대신 `function`이 각
   행에 대해 돌려주는 값으로 key하고, `fetch_value(function)`은 각 행의 값 하나를 계산하며 `Collection`은 그 값을 행
   옆에 그 key로 가진다(DSL-70). 함수는 행인 `Query`를 받고, 행과 그 relation 결과를 읽은 뒤 행의 순서대로 행마다 한
@@ -978,7 +983,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `get_count_by`, `get_by`는 `SELECT` 하나를 보내고 `read_only`를 포함한 쓰기의 kind를 내지 않는다. `condition_not_met`의 조건은 insert만
   검사하므로 `update`, `delete`, `restore`는 그것을 내지 않는다. `restore`는 지워지지 않은 행을 그대로 돌려주므로
   `row_not_deleted`는 `restore_or_create`만 raise한다. `restore_or_create`는 복원한 행을 자기 transaction에서 읽으므로
-  `no_rows`를 내지 않는다. `db.execute`는 `Db`에서 실행되어 `Tx`만 내는 `busy`와 `transaction_ended`를 내지 않는다. `Query`의 어떤 member도 `column_unknown`을 내지 않는다.
+  `no_rows`를 내지 않는다. `db.execute`는 `Db`에서 실행되어 `Tx`만 내는 `busy`와 `transaction_ended`를 내지 않는다. `Query`의 어떤 builder도 `column_unknown`을 내지 않는다.
   builder가 terminal이 entity를 읽기 전에 모르는 열을 `config`로 거부하기 때문이다(CORE-82). `db.connect`와
   `db.connect_schema`는 `capability_unsupported`를 내지 않는다. core는 link한 SQLite가 3.46 이상임을 build 때
   확인하므로(DSL-150) 어떤 연결도 더 오래된 SQLite를 만나지 않는다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,
