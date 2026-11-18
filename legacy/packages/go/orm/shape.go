@@ -123,6 +123,7 @@ func (s *shape) request(r *ir.Request) {
 	s.str(r.ManifestHash)
 	s.str(r.Kind)
 	s.bool(r.Load)
+	s.bool(r.RequireMatch)
 	s.query(&r.Query)
 	s.assigns(r.Set)
 	s.assigns(r.OnDuplicate)
