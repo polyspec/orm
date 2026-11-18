@@ -140,6 +140,10 @@ MISE_ENVIRONMENT := MISE_DATA_DIR MISE_CACHE_DIR MISE_STATE_DIR MISE_CONFIG_DIR 
 # kit 0.0.98's run-tests dropped NODE_TEST_CONTEXT, so a node --test that a recipe starts from inside a node test runs as
 # its own run, not as a child of that test (kit K1094); no recipe passes it on.
 unexport NODE_TEST_CONTEXT
+# rustup is the one tool that the machine provides (kit install-rust, AGENTS.md), and it keeps rustup and the proxies cargo and
+# rustc in ~/.cargo/bin, where kit install-tools TOOLS=rust runs it. Every recipe finds them there through this PATH, never
+# through the PATH of the runner image, and no recipe puts the folder on PATH itself (T630).
+export PATH := $(HOME)/.cargo/bin:$(PATH)
 # POSTGRES_BIN is the folder of the PostgreSQL 17 programs (initdb, pg_ctl, postgres, pg_basebackup) where the packages of the
 # machine keep them off PATH (T550): /usr/lib/postgresql/17/bin of the Debian packages that make orm-install-server-programs
 # installs on Linux, empty elsewhere, where the package manager puts them on PATH. The install reads it and checks the programs
@@ -1887,7 +1891,7 @@ group-count-boolean-php-extension-unit-check: php-vendor-check php-model-check
 # Runs the GroupRow count decoder unit with the checkout's target lease.
 .PHONY: group-row-count-rust-unit-check
 group-row-count-rust-unit-check:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-row-count-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib collection::group_tests::driver_cell_forms -- --test-threads=1 --exact
+	$(CARGO_TEST) group-row-count-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib collection::group_tests::driver_cell_forms -- --test-threads=1 --exact
 
 # Runs grouped-boolean, exact i64, and row-count contract cases through each native result path.
 group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-read php-models
@@ -2586,7 +2590,7 @@ native-error-cause-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/OrmExceptionLockWaitTest.php legacy/packages/php/tests/MarkdownTest.php legacy/packages/php/tests/NativeCellReadTest.php
 .PHONY: native-error-cause-check/rust
 native-error-cause-check/rust:
-	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) native-error-cause-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib --features test-faults native -- --nocapture
+	cd packages/rust && $(CARGO_TEST) native-error-cause-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib --features test-faults native -- --nocapture
 .PHONY: native-error-cause-check/php-extension
 native-error-cause-check/php-extension: php-models
 	@set -eu; \
@@ -2736,7 +2740,7 @@ unselected-column-physical-check: php-vendor-check
 # `orm_case_` database or `orm-case-` SQLite file of their own (T25).
 case-database-check: typescript-current php-vendor-check
 	$(READ_TYPESCRIPT)
-	$(WITH_TEST_ENV) PATH="$(HOME)/.cargo/bin:$(PATH)" node scripts/case-database-check.mts
+	$(WITH_TEST_ENV) node scripts/case-database-check.mts
 
 # conformance-check runs the native conformance bodies that remain, each compared with data outside the vector files
 # (tests/conformance/check/recipe_vectors.mts), and the result helpers of the runners. The vectors are the cases of the recipe
@@ -2901,7 +2905,7 @@ markdown-conformance-check/php-extension: php-vendor-check php-models orm-instal
 markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m legacy.packages.python.tests.markdown_conformance
 markdown-conformance-check/rust: lease-tool
-	cd packages/rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --features $(ORM_RUST_TEST_FEATURES) --test all -- markdown_conformance:: --nocapture
+	cd packages/rust && FLOWMARK=$(FLOWMARK) $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --features $(ORM_RUST_TEST_FEATURES) --test all -- markdown_conformance:: --nocapture
 markdown-conformance-check/typescript: typescript-current
 	$(READ_TYPESCRIPT)
 	FLOWMARK=$(FLOWMARK) $(NODE) --conditions=orm-test legacy/packages/ts/tests/markdown_conformance.mjs
@@ -2921,7 +2925,7 @@ decimal-physical-check: php-vendor-check lease-tool python-venv-check orm-instal
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=feature-helper-check, whose helper decimal-physical runs $@' >&2; exit 1; }
 	mkdir -p $(DECIMAL_RUST_RUN)
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) $(NODE) $(abspath tests/cargo-test.mts) --copy $(DECIMAL_RUST_RUN) -- cargo test --no-run --message-format=json-render-diagnostics --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test all
+	$(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) $(NODE) $(abspath tests/cargo-test.mts) --copy $(DECIMAL_RUST_RUN) -- cargo test --no-run --message-format=json-render-diagnostics --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test all
 	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ ./legacy/packages/go/decimalmodel
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	. $(DECIMAL_ENV) && ORM_DECIMAL_RUST_RUN=$(DECIMAL_RUST_RUN) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(NODE) scripts/decimal-physical-check.mts
@@ -2956,7 +2960,7 @@ interface-typescript-check:
 
 interface-check/self-test: php-vendor-check lease-tool typescript-current interface-typescript-check python-venv-check
 	$(READ_TYPESCRIPT)
-	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
+	ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/interfaces/check/main.mts --self-test
 
 # go-model-check fails when the Go models that orm-install-go wrote differ from what the entries of GO_MODELS_FILE generate (orm-gen gen --check).
 go-model-check:
@@ -3904,30 +3908,30 @@ collection-recipe-check/php-extension: php-vendor-check build-php-ext
 # formatted by cargo fmt.
 rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
 rust-fmt-check/clients:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd packages/rust -- $(CARGO_LINK) fmt --all --check
+	$(RUN_LONG) rust-fmt --cwd packages/rust -- $(CARGO_LINK) fmt --all --check
 rust-fmt-check/bench:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd benchmarks/rust -- $(CARGO_LINK) fmt --all --check
+	$(RUN_LONG) rust-fmt/bench --cwd benchmarks/rust -- $(CARGO_LINK) fmt --all --check
 rust-fmt-check/interfaces:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd packages/rust/testing/interfaces -- $(CARGO_LINK) fmt --all --check
+	$(RUN_LONG) rust-fmt/interfaces --cwd packages/rust/testing/interfaces -- $(CARGO_LINK) fmt --all --check
 
 # rust-lock-check fails when a tracked Cargo.lock does not hold what its manifest asks (T371): cargo reads each workspace of
 # RUST_CRATE_MANIFESTS with --locked, which refuses a lock that it would have to change, and --offline, so it reads the crates that
 # orm-install-rust-crates downloaded and fetches nothing.
 rust-lock-check:
-	sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) metadata --locked --offline --format-version 1 --manifest-path "$$m" > /dev/null; echo "ok - $$m"; done'
+	sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) metadata --locked --offline --format-version 1 --manifest-path "$$m" > /dev/null; echo "ok - $$m"; done'
 
 rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- node scripts/check-rust-150.mts
 
 rust-check: rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults
 rust-check/check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) check --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS)
+	$(RUN_LONG) rust-check/check --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) check --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS)
 rust-check/clippy: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --all-targets -- -D warnings
+	$(RUN_LONG) rust-check/clippy --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) --all-targets -- -D warnings
 rust-check/clippy-live-db: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked -p polyspec-orm-build --all-targets --features live-db -- -D warnings
+	$(RUN_LONG) rust-check/clippy-live-db --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked -p polyspec-orm-build --all-targets --features live-db -- -D warnings
 rust-check/clippy-test-faults: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked -p polyspec-orm --all-targets --features test-faults -- -D warnings
+	$(RUN_LONG) rust-check/clippy-test-faults --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) clippy --locked -p polyspec-orm --all-targets --features test-faults -- -D warnings
 
 # install downloads what the checks read: the Composer packages, the Rust toolchain and the crates of every Cargo.lock, the
 # Go modules, the lowest Node of ts-min-check, and the error code files of orm-codes. CI bootstraps
@@ -4022,12 +4026,12 @@ deps-rust: orm-install-rust
 # A bare rustup toolchain install installs the RUSTUP_TOOLCHAIN that this Makefile exports and reads neither the components nor
 # the targets of the file, so the asset jobs had no wasm32-unknown-unknown (CI run 44038491048).
 orm-install-rust-toolchain:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(MAKE) --no-print-directory install-tools TOOLS=rust
-	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
+	$(MAKE) --no-print-directory install-tools TOOLS=rust
+	rustc --version
 # RUST_CRATE_MANIFESTS lists the workspace manifests of the tracked Cargo.lock files; cargo fetch --locked downloads each workspace's crates.
 RUST_CRATE_MANIFESTS = benchmarks/rust/Cargo.toml Cargo.toml packages/rust/testing/interfaces/Cargo.toml
 orm-install-rust-crates:
-	$(ONLINE) sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) fetch --locked --manifest-path "$$m"; done'
+	$(ONLINE) sh -c 'set -e; for m in $(RUST_CRATE_MANIFESTS); do $(CARGO_LINK) +$(PHYSICAL_RUST_TOOLCHAIN) fetch --locked --manifest-path "$$m"; done'
 # GO_MODELS_FILE declares the entries of the Go models that orm-gen generates (P34: generated output is never tracked): one orm-gen
 # argument line per package, read by go-models and go-model-check (legacy/packages/go/models.txt). go-models writes them, and it is the last
 # step of orm-install-go, after the modules are downloaded, so every Go check finds them. go-model-check runs orm-gen gen --check
@@ -4119,13 +4123,13 @@ downloads-check:
 # rust-driver-check runs the native and driver_compare of benchmarks/rust without a DSN to confirm refusal,
 # and runs each workload once at a time on the seeded bench database to confirm that every workload finishes.
 rust-driver-check:
-	$(WITH_TEST_ENV) cd benchmarks/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-driver-check -- cargo test --locked --offline -- --test-threads=1
+	$(WITH_TEST_ENV) cd benchmarks/rust && $(CARGO_TEST) rust-driver-check -- cargo test --locked --offline -- --test-threads=1
 
 # example-check runs the examples package's DSN refusal and output tests once. The output test runs the Go, PHP and Rust programs
 # of examples/complex and the Go, PHP, Rust, TypeScript and Python programs of examples/thin-slice on the seeded bench database.
 # The PHP examples load the Composer autoloader; Python runs on the orm-install-python venv.
 example-check: php-vendor-check python-venv-check
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- $(CARGO_LINK) build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
+	$(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- $(CARGO_LINK) build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) ./examples -run '^(TestExampleOutputsAreIdentical|TestExamplesRequireBenchDSN)$$' -count=1
 	rm -rf $(RUN_DIR)
 
@@ -4138,9 +4142,9 @@ timing-check: typescript-current
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -o @OUT@ ./legacy/packages/go/engine/dbspec
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_LINK) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) test --locked --offline -p polyspec-orm-schema --no-run
-	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
+	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- $(CARGO_LINK) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
+	$(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) $(CARGO_LINK) test --locked --offline -p polyspec-orm-schema --no-run
+	DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
 # typescript-build compiles legacy/packages/ts, which imports codes.ts, the output of orm-codes-typescript (config/generated.json). A target
@@ -4202,7 +4206,7 @@ WORKSPACE ?= packages/rust
 .PHONY: clippy-crate
 clippy-crate: lease-tool ## Clippy of the package CRATE with the lint-rust flags, in the Cargo workspace WORKSPACE; offline once the crates are downloaded
 	test -n "$(CRATE)" || { echo "clippy-crate: CRATE is required; run make clippy-crate CRATE=<crate>, which selects the package to lint" >&2; exit 2; }
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) clippy-crate --cwd $(WORKSPACE) -- $(CARGO_LEASED) $(CARGO_LINK) clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason
+	$(RUN_LONG) clippy-crate --cwd $(WORKSPACE) -- $(CARGO_LEASED) $(CARGO_LINK) clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason
 
 # group-rows-phpstan-check runs PHPStan at level 9 over the fixture of KSTD-5-53: a row of GroupRows is typed as GroupRow for its
 # caller, so calling its method on each row passes; a mixed row fails it.
@@ -4265,19 +4269,19 @@ php-extension-build-logs-check:
 # rust-duplicate-catalog-check runs only the catalog transaction and assignment-budget refactor units.
 .PHONY: rust-duplicate-catalog-check
 rust-duplicate-catalog-check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-duplicate-catalog -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib rust_duplicate_ -- --test-threads=1
+	$(CARGO_TEST) rust-duplicate-catalog -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib rust_duplicate_ -- --test-threads=1
 
 # catalog-value-rust-check runs the units of packages/rust/build/tests/unit/catalog_value.rs: a cell that the catalog cannot
 # return fails with CATALOG_VALUE, and the tool errors keep their catalog codes.
 .PHONY: catalog-value-rust-check
 catalog-value-rust-check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) catalog-value-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib catalog::value_tests:: -- --test-threads=1
+	$(CARGO_TEST) catalog-value-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib catalog::value_tests:: -- --test-threads=1
 
 # catalog-tool-errors-rust-check runs the unit of packages/rust/build/tests/unit/catalog_tool_errors.rs: the tool_db statement and
 # column errors keep their codes first, as INT-124 and INT-125 state, instead of the text of the driver prefix.
 .PHONY: catalog-tool-errors-rust-check
 catalog-tool-errors-rust-check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) catalog-tool-errors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib catalog::tool_error_tests:: -- --test-threads=1
+	$(CARGO_TEST) catalog-tool-errors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm-build --lib catalog::tool_error_tests:: -- --test-threads=1
 
 # read-only-disposal-servers-rust-check runs the test of packages/rust/build/tests/unit/read_only_disposal.rs that needs MySQL
 # and PostgreSQL: a connection that an aborted task held in a read-only transaction is not returned to the pool (INT-137).
@@ -4313,7 +4317,7 @@ request-hook-relation-scope-check: php-vendor-check php-models python-venv-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist --filter relation_scope legacy/packages/php/tests/RequestHookSqliteRecipeTest.php
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(PHP_EXTENSION_TESTS) --filter relation_scope legacy/packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) request-hook-relation-scope-check -- $(RECIPE_RUST_TEST) --manifest-path packages/rust/Cargo.toml --test all -- --exact request_hook_sqlite::relation_scope
+	$(CARGO_TEST) request-hook-relation-scope-check -- $(RECIPE_RUST_TEST) --manifest-path packages/rust/Cargo.toml --test all -- --exact request_hook_sqlite::relation_scope
 
 # dbspec-php-extension-check/declarations runs the extension's own checks (legacy/packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
