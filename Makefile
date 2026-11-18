@@ -344,8 +344,8 @@ build-php-ext: ## Build legacy/packages/php-ext into var/php-ext/polyspec_orm.so
 	$(ONLINE) $(NODE) $(KIT)/php-extension.$(KIT_EXT) build --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
 lint-php-ext: ## Check the names, the stub and the stub hash of the arginfo header of the extension; offline
 	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
-test-php-ext: build-php-ext ## Compare the declarations of the built extension with the PHP library, then run its unit tests with CASES=<pattern>; offline
-	$(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php -- --roots legacy/packages/php legacy/packages/php-ext
+test-php-ext: build-php-ext ## Compare the declarations of the built extension with the PHP library, then run its unit tests with CASES=<pattern>; on the test servers (WITH_TEST_ENV); offline
+	$(WITH_TEST_ENV) $(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php -- --roots legacy/packages/php legacy/packages/php-ext
 
 # The tasks of P29: each runs its target for every runtime of packages/ (go, php, php-ext, python, rust, ts) (kit K1106).
 .PHONY: build test lint build-go build-php build-python build-rust build-ts test-go test-php test-python test-rust test-ts
@@ -373,14 +373,14 @@ build-ts: ## Build the TypeScript package with tsc; offline
 # ormtest the recipe steps fault.next_rollback, fault.next_statement and db.last_affected fail. The interface_symbols case of
 # the Go recipe runs interfaces/error-catalogs, which reads the error file of every implementation, so orm-codes writes them (T449).
 GO_TEST_TAGS = $(shell sed -n "s/^export const GO_TEST_TAGS = \[\(.*\)\];$$/\1/p" tests/go-test.mts | tr -d "' ")
-test-go: orm-codes ## Run the unit tests of the Go modules with CASES=<pattern>, then those of the Go binding packages/go; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples legacy/packages/go tests -- -count=1 -timeout=0 -tags=$(GO_TEST_TAGS)
+test-go: orm-codes ## Run the unit tests of the Go modules with CASES=<pattern>, then those of the Go binding packages/go, on the test servers (WITH_TEST_ENV); offline
+	$(WITH_TEST_ENV) $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner go --roots examples legacy/packages/go tests -- -count=1 -timeout=0 -tags=$(GO_TEST_TAGS)
 	$(MAKE) --no-print-directory test-go-bindings
 # The PHP tests read the models of php-models, and QueryCancellationTest loads the SQLite cancellation helper of
 # php-cancel-helper-build, as php-query-cancellation-check gives it: without it the test fails with `SQLite cancellation helper
 # for <platform> is not installed in the polyspec/orm package` (T453).
-test-php: php-vendor-check php-models php-cancel-helper-build ## Run the unit tests of the PHP package with CASES=<pattern>; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots legacy/packages/php
+test-php: php-vendor-check php-models php-cancel-helper-build ## Run the unit tests of the PHP package with CASES=<pattern> on the test servers (WITH_TEST_ENV); offline
+	$(WITH_TEST_ENV) $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner php --roots legacy/packages/php
 # The bind recipes of the Python tests import the slot models that ORM_PYTHON_BIND_MODELS names, as python-unit-check gives
 # them: without them each of their cases fails with `ORM_PYTHON_BIND_MODELS names no model directory` (T451).
 test-python: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
@@ -392,8 +392,8 @@ test-python: export ORM_PYTHON_BIND_MODELS = $(BIND_PY_MODELS)
 # test_<recipe>_mysql and _postgres and the tests whose method ends in _mysql or _postgres to make
 # suite-python-check, which runs every test file with the servers, prints their numbers and fails on a
 # selection of no test. A test that reads a server and whose name does not say so fails here with its own message.
-# A checkout whose test servers run has their file TEST_ENV, and make exports every variable of it to every recipe (T299),
-# so the tests of an offline run would read the servers of the machine and pass on them. WITHOUT_SERVERS starts the run of
+# A caller whose environment holds the variables of TEST_ENV, such as a CI step that the run env reaches, would let the tests
+# of an offline run read the servers and pass on them. WITHOUT_SERVERS starts the run of
 # the tests without the variables of TEST_ENV and of DECIMAL_ENV: the run reads what a runtime job
 # without servers reads, whatever the checkout holds.
 OFFLINE_TESTS = $(NODE) $(abspath scripts/repo/offline-tests.mts)
@@ -421,8 +421,8 @@ test-rust: typescript-current lease-tool ## Run the unit tests of the Rust works
 	$(RUN_LONG) rust-build/test-rust -- $(CARGO_LEASED) $(PUBLISH) $(RUN_DIR)/listing $(CARGO_LINK) test --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) -- --list
 	$(PUBLISH) $(RUN_DIR)/offline-tests $(OFFLINE_TESTS) rust $(RUN_DIR)/listing
 	cd packages/rust && $(WITHOUT_SERVERS) ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(CARGO_TEST) test-rust -- cargo test --locked --workspace $(ORM_RUST_EXCLUDE_BINDINGS) $(CASES) -- --test-threads=1 $$(cat $(RUN_DIR)/offline-tests); status=$$?; rm -rf $(RUN_DIR); exit $$status
-test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern>; offline
-	$(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots legacy/packages/ts -- --test-concurrency=1
+test-ts: ## Run the unit tests of the TypeScript package with CASES=<pattern> on the test servers (WITH_TEST_ENV); offline
+	$(WITH_TEST_ENV) $(NODE) $(KIT)/runtime-targets.$(KIT_EXT) test --runner node --roots legacy/packages/ts -- --test-concurrency=1
 
 # ---- Bindings: generated from packages/rust/interface.json by binding (binding design C-0) -----------------------------
 # The core crate polyspec-orm is packages/rust, and the binding crates that binding scaffold writes sit beside it:
@@ -2875,13 +2875,10 @@ php-extension-context-prepare:
 php-extension-context-cleanup:
 	$(NODE) scripts/check/job-context.mts cleanup php-ext
 # The servers and bench DSNs of a run are in its TEST_ENV file (run-databases writes it; its lines are export NAME='value',
-# scripts/check/databases.mts environmentFile). Export every variable of it into make itself, as the CI contexts export the run env
-# (scripts/check/job-context.mts), so the tests that kit starts from make, such as the native suite of test-php-ext,
-# inherit the run (T299). The guard below names a missing DSN.
-ifneq ($(wildcard $(abspath $(TEST_ENV))),)
-TEST_ENV_NAMES := $(shell sed -n "s/^export \([A-Z_][A-Z0-9_]*\)=.*/\1/p" $(abspath $(TEST_ENV)))
-$(foreach v,$(TEST_ENV_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
-endif
+# scripts/check/databases.mts environmentFile). A target that reads them sources the file in its recipe through WITH_TEST_ENV;
+# make exports none of them (T651 withdraws the make-wide export of T299). TEST_ENV_NAMES only names them, for
+# WITHOUT_SERVERS to unset; it is recursive (=), so make reads the file only when a recipe of WITHOUT_SERVERS expands it.
+TEST_ENV_NAMES = $(if $(wildcard $(abspath $(TEST_ENV))),$(shell sed -n "s/^export \([A-Z_][A-Z0-9_]*\)=.*/\1/p" $(abspath $(TEST_ENV))))
 # The decimal DSNs of a run are in its DECIMAL_ENV file (run-databases writes them), read by the python decimal unit.
 DECIMAL_DSN_NAMES := DECIMAL_MYSQL_DSN DECIMAL_POSTGRES_DSN DECIMAL_SQLITE_DSN
 ifneq ($(DECIMAL_ENV),)
