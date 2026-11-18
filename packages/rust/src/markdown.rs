@@ -585,7 +585,7 @@ async fn reap(pool: Weak<MarkdownPool>, lifetime: Duration, idled: Arc<Notify>) 
         match next {
             Some(at) => {
                 tokio::select! {
-                    () = tokio::time::sleep_until(tokio::time::Instant::from_std(at)) => {}
+                    () = crate::clock::sleep_until(at) => {}
                     () = idled.notified() => {}
                 }
             }
