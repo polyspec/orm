@@ -567,13 +567,15 @@ caseTest('a dead shared lease is taken over by any request, a dead exclusive one
 // is the end of the asker's own ancestor. lease refuses it at once and names the holder (T645: kit/runtime (php-ext) of run
 // 44309325651 waited 30 minutes for the shared lease of its own make). The case judges by the event of the line "lease:
 // waiting for", ends the waiter and its group, and leaves no process.
-caseTest('lease refuses an exclusive wait inside the shared lease of its own ancestor (T645)', async () => {
-  const { LEASE: lease } = process.env;
-  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
-  const root = mkdtempSync(join(tmpdir(), 'orm-lease-ancestor-'));
-  type Outcome = { status: number | null; waited: boolean; stdout: string; stderr: string; group: number };
-  const run = (name: string, script: string) => new Promise<Outcome>((resolve, reject) => {
-    const child = spawn('sh', ['-c', script], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env: isolatedEnvironment({ LEASE: lease, L: join(root, name) }) });
+// LeaseRun is how a process that takes leases ended: its status, whether lease printed that it waits (on which the process
+// group is killed at once), its output, and its process group.
+type LeaseRun = { status: number | null; waited: boolean; stdout: string; stderr: string; group: number };
+
+// runUntilLeaseWait runs a command in a process group of its own and ends on its close event; on the event of the line
+// "lease: waiting for" it kills the group, so a wait for a lease never outlives the case.
+function runUntilLeaseWait(command: string, args: string[], options: { cwd?: string; env: NodeJS.ProcessEnv }): Promise<LeaseRun> {
+  return new Promise<LeaseRun>((resolve, reject) => {
+    const child = spawn(command, args, { ...options, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '', stderr = '', waited = false;
     child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
     child.stderr.on('data', (chunk: Buffer) => {
@@ -583,9 +585,18 @@ caseTest('lease refuses an exclusive wait inside the shared lease of its own anc
     child.on('error', reject);
     child.on('close', status => { resolve({ status, waited, stdout, stderr, group: child.pid ?? 0 }); });
   });
-  const groupGone = (group: number): boolean => {
-    try { process.kill(-group, 0); return false; } catch (error) { return error instanceof Error && 'code' in error && error.code === 'ESRCH'; }
-  };
+}
+
+// groupGone is whether no process of the group remains.
+function groupGone(group: number): boolean {
+  try { process.kill(-group, 0); return false; } catch (error) { return error instanceof Error && 'code' in error && error.code === 'ESRCH'; }
+}
+
+caseTest('lease refuses an exclusive wait inside the shared lease of its own ancestor (T645)', async () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-ancestor-'));
+  const run = (name: string, script: string) => runUntilLeaseWait('sh', ['-c', script], { env: isolatedEnvironment({ LEASE: lease, L: join(root, name) }) });
   try {
     const self = await run('self', 'echo $$; "$LEASE" hold "$L" shared --pid $$ && "$LEASE" hold "$L" exclusive --wait --pid $$');
     const ancestor = await run('ancestor', 'echo $$; "$LEASE" hold "$L" shared --pid $$ && sh -c \'"$LEASE" hold "$L" exclusive --wait --pid $$\'');
@@ -638,21 +649,10 @@ caseTest('databases-create and the TypeScript build run in one make without wait
     ].join('\n');
     writeFileSync(join(root, 'Makefile'), text);
     const make = process.env.MAKE ?? 'make';
-    const outcome = await new Promise<{ status: number | null; waited: boolean; stderr: string; group: number }>((resolve, reject) => {
-      const child = spawn(make, ['--no-print-directory', '-f', join(root, 'Makefile'), 'g'], { cwd: root, detached: true, stdio: ['ignore', 'ignore', 'pipe'], env: isolatedEnvironment() });
-      let stderr = '', waited = false;
-      child.stderr.on('data', (chunk: Buffer) => {
-        stderr += chunk.toString();
-        if (!waited && stderr.includes('lease: waiting for')) { waited = true; process.kill(-(child.pid ?? 0), 'SIGKILL'); }
-      });
-      child.on('error', reject);
-      child.on('close', status => { resolve({ status, waited, stderr, group: child.pid ?? 0 }); });
-    });
+    const outcome = await runUntilLeaseWait(make, ['--no-print-directory', '-f', join(root, 'Makefile'), 'g'], { cwd: root, env: isolatedEnvironment() });
     assert.equal(outcome.waited, false, `the build waited for the lease of its own make: ${outcome.stderr}`);
     assert.equal(outcome.status, 0, outcome.stderr);
-    let gone = false;
-    try { process.kill(-outcome.group, 0); } catch (error) { gone = error instanceof Error && 'code' in error && error.code === 'ESRCH'; }
-    assert.ok(gone, `a process of group ${outcome.group} remains`);
+    assert.ok(groupGone(outcome.group), `a process of group ${outcome.group} remains`);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
