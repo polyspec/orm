@@ -50,7 +50,7 @@ caseTest('transaction flow: overlapping statements on the transaction connection
 });
 
 // Requirements: INT-193, CFG-9.
-caseTest('transaction flow: a cancellation handle shares the before-transaction hooks of its connection', DATABASE, async () => {
+caseTest('transaction flow: a cancellation handle shares the before-transaction hooks of its connection', async () => {
   const db = await database('before-transaction');
   try {
     const signalled = db.withSignal(new AbortController().signal);
