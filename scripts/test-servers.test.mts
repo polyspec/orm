@@ -880,6 +880,19 @@ caseTest('a run of this file without STOP_PROCESS fails before a case starts a c
   assert.equal(left, '', `the run without STOP_PROCESS left the child ${left}`);
 });
 
+// A STOP_PROCESS that names no program fails the run of this file before a case starts a child, naming ENOENT, the path and
+// the make target that builds it (T649): a case that stopped its child with it failed with an assert message type error
+// instead, which hid the missing program.
+caseTest('a run of this file with a STOP_PROCESS that does not exist names ENOENT, its path and make stop-process (T649)', () => {
+  const missing = join(realpathSync(tmpdir()), 'orm-no-stop-process', 'stop-process');
+  const run = spawnSync(process.execPath, ['--test', '--test-name-pattern=ready line is written at once', import.meta.filename], { encoding: 'utf8', env: { ...isolatedEnvironment(), STOP_PROCESS: missing } });
+  const output = `${run.stdout}${run.stderr}`;
+  assert.notEqual(run.status, 0, 'the run with a missing STOP_PROCESS passed');
+  assert.match(output, /ENOENT/, 'the run does not name ENOENT');
+  assert.ok(output.includes(missing), `the run does not name ${missing}`);
+  assert.match(output, /run make stop-process/, 'the run does not name make stop-process');
+});
+
 caseTest('startLogged resolves when the ready line is written at once, before the start reads its pipe', async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   try {
