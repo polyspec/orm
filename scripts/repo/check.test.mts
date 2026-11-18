@@ -11,7 +11,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
 import { repositoryOf, runErrors } from './release-run.mts';
-import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors, goModuleErrors } from './ci.mts';
+import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors, goModuleErrors, crateFetchErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -3494,6 +3494,21 @@ caseTest('T631: every CI job that runs go downloads the Go modules of the folder
   const json = parseJsonValue(text('config/ci.json'), 'config/ci.json');
   assert.ok(isRecord(json), 'config/ci.json is an object');
   assert.deepEqual(goModuleErrors(text('Makefile'), json as Parameters<typeof goModuleErrors>[1], text('go.work')), []);
+});
+
+// CI builds offline with the crates that the setup of a job fetched, so a job that runs cargo fetches them in its setup
+// (T669): run 44309325651 failed the rust job with `can't checkout from ...: you are in the offline mode (--offline)`.
+caseTest('T669: every CI job that runs cargo fetches the crates in its setup', () => {
+  const makefile = [
+    'CARGO_LINK = $(NODE) $(abspath scripts/cargo-link.mts) .', 'a: b', 'b:', '\t$(CARGO_LINK) clippy --locked', 'c:', '\t$(CARGO_LINK) fetch --locked',
+    'd:', '\t$(MAKE) install-tools TOOLS=rust', 'e:', '\tgo build ./x',
+  ].join('\n') + '\n';
+  assert.deepEqual(crateFetchErrors(makefile, { setup: { runtimes: { rust: ['d'], go: ['c'], php: ['d'] } }, targets: { runtimes: { rust: ['a'], go: ['a'], php: ['e'] } } }), [
+    'the rust job of config/ci.json runs cargo in b, and no setup of the job runs cargo fetch',
+  ]);
+  const json = parseJsonValue(text('config/ci.json'), 'config/ci.json');
+  assert.ok(isRecord(json), 'config/ci.json is an object');
+  assert.deepEqual(crateFetchErrors(text('Makefile'), json as Parameters<typeof crateFetchErrors>[1]), []);
 });
 
 // T648: package-check takes the verbosity of its cargo from the make variable PACKAGE_CHECK_CARGO_FLAGS (default --quiet), so a run

@@ -1039,3 +1039,25 @@ export function goModuleErrors(makefile: string, config: { setup?: { shared?: st
   }
   return errors;
 }
+
+// A crate fetch is a recipe line of a setup target of a CI job that runs cargo fetch. CI builds with the crates of the setup
+// only, offline, so a job whose setup or targets run cargo fetches the crates in its setup first (T669): run 44309325651
+// failed the rust job, whose setup ran no fetch, with `can't checkout from ...: you are in the offline mode`. A cargo command
+// is a word of an expanded recipe line that is cargo or its wrapper of this repository (scripts/cargo-link.mts,
+// tests/cargo-test.mts); `make install-tools TOOLS=rust` runs no cargo command.
+export function crateFetchErrors(makefile: string, config: { setup?: { shared?: string[]; runtimes?: Record<string, string[]> }; targets?: { shared?: string[]; runtimes?: Record<string, string[]> } }): string[] {
+  const variables = makeVariables(makefile);
+  const isCargo = (word: string): boolean => word === 'cargo' || word.endsWith('/cargo') || word.endsWith('/cargo-link.mts') || word.endsWith('/cargo-test.mts');
+  const words = (line: string): string[] => expand(line, variables).split(/[\s;&|()`"']+/);
+  const errors: string[] = [];
+  for (const [job, setup, targets] of ciJobs(config)) {
+    const fetches = reached(makefile, setup).some(target => recipeLines(makefile, target).some(line => {
+      const list = words(line);
+      return list.some(isCargo) && list.includes('fetch');
+    }));
+    if (fetches) continue;
+    const users = reached(makefile, [...setup, ...targets]).filter(target => recipeLines(makefile, target).some(line => words(line).some(isCargo)));
+    if (users.length > 0) errors.push(`the ${job} job of config/ci.json runs cargo in ${users.join(', ')}, and no setup of the job runs cargo fetch`);
+  }
+  return errors;
+}
