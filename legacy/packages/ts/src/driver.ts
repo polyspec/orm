@@ -45,7 +45,7 @@ export interface DriverResult {
  * Receives a streamed result: columns once, before the first row, then each row. A row returns false to stop the result; the
  * statement then ends and the connection is no longer usable for the rows that remain, so the caller discards it. On MySQL, stop
  * runs when a row stops the result: when it answers true, it has killed the statement, and the scan reads the end of the
- * statement, so the connection stays usable (CFG-35).
+ * statement, so the connection stays usable (CFG-49).
  */
 export interface RowSink {
   columns(columns: DriverColumn[]): void;
@@ -111,7 +111,7 @@ export interface DriverSession extends DriverConnection {
   inTransaction?(): boolean;
   /**
    * The MySQL connection id of the connection: the thread id of its handshake, which is the id of the server session, or, through
-   * ProxySQL, the id of the ProxySQL session, which its KILL QUERY names (CFG-35). Other drivers have none.
+   * ProxySQL, the id of the ProxySQL session, which its KILL QUERY names (CFG-49). Other drivers have none.
    */
   readonly threadId?: number;
   /**

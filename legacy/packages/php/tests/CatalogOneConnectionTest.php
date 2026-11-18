@@ -14,8 +14,8 @@ use Polyspec\Orm\OrmException;
 
 // A MySQL catalog of PHP holds one connection, PDO, across every operation: the processlist of its database shows it
 // alone (INT-157). A budget stop ends its query through the kill connection, which the catalog opens at that stop and
-// keeps, so the processlist then shows the two, and a read after the stop opens no other (CFG-35).
-// Requirements: INT-157, CFG-35.
+// keeps, so the processlist then shows the two, and a read after the stop opens no other (CFG-49).
+// Requirements: INT-157, CFG-49.
 #[Medium]
 class CatalogOneConnectionTest extends TestCase
 {

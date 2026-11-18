@@ -32,7 +32,7 @@ func TestCatalogPagePreparedColumnsDifferFromTheDescriptor(t *testing.T) {
 
 // catalogAnswerDriver is a driver whose connection answers the catalog queries with fixed rows, as the fake drivers of the
 // other runtimes do: a statement succeeds, and a query answers the rows of the first prefix that it starts with. Its connection
-// is a pointer, as a connection of a real driver is, and answers the connection id that a MySQL session reads (CFG-35).
+// is a pointer, as a connection of a real driver is, and answers the connection id that a MySQL session reads (CFG-49).
 type catalogAnswerDriver struct{ answers []catalogAnswer }
 
 // catalogAnswer is the result of the queries that start with prefix: its column names, native types and rows.

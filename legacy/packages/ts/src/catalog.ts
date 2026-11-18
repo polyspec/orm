@@ -1302,13 +1302,13 @@ function postgresSettingsRead(sql: string): string {
   return `WITH catalog_read AS MATERIALIZED (\n${sql.slice(0, end)}\n) SELECT catalog_read.*, ${POSTGRES_OUTPUT_SETTINGS} FROM catalog_read`;
 }
 
-/** A bound session: one pooled connection inside one transaction. It returns to the pool when it ends with an acknowledged COMMIT or ROLLBACK (CFG-35) and is discarded otherwise, so a session setting never returns to the pool. */
+/** A bound session: one pooled connection inside one transaction. It returns to the pool when it ends with an acknowledged COMMIT or ROLLBACK (CFG-49) and is discarded otherwise, so a session setting never returns to the pool. */
 class Session {
   /** Set when a read stopped a statement before its end: the connection then holds rows that were not read, and only a discard is safe. */
   public stopped = false;
-  /** Set when a MySQL stop killed its statement and the scan read the end of it: the connection is usable (CFG-35). */
+  /** Set when a MySQL stop killed its statement and the scan read the end of it: the connection is usable (CFG-49). */
   private killed = false;
-  /** Kills the statement of a MySQL connection id through the kill connection of the catalog; set on MySQL only (CFG-35). */
+  /** Kills the statement of a MySQL connection id through the kill connection of the catalog; set on MySQL only (CFG-49). */
   public kill: ((threadId: number) => Promise<boolean>) | undefined;
 
   /** The PostgreSQL output settings when the transaction began (INT-186); undefined on MySQL and SQLite. */
@@ -1726,10 +1726,10 @@ const BEGIN_SQL: Record<DriverName, { read: string; write: string }> = {
 /** A native catalog connection to a MySQL, PostgreSQL or SQLite database selected by its DSN. */
 export class CatalogConnection {
   private closed = false;
-  /** Until when a refused connect is a socket of this catalog still on the server (CFG-35). */
+  /** Until when a refused connect is a socket of this catalog still on the server (CFG-48). */
   private reopenUntil = 0;
   /**
-   * The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at its first stop
+   * The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it at its first stop
    * and keeps it until close, so that no stop closes a connection that a later stop must open again.
    */
   private killer: DriverSession | undefined;
@@ -1747,7 +1747,7 @@ export class CatalogConnection {
   }
 
   /**
-   * Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens (CFG-35). It
+   * Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens (CFG-49). It
    * answers false when the server refuses that connection or the kill, and a kill connection that failed is closed.
    */
   private async killQuery(threadId: number): Promise<boolean> {
@@ -1755,7 +1755,7 @@ export class CatalogConnection {
       this.killer ??= await this.reserveConnection();
       await this.killer.control(`KILL QUERY ${threadId}`, [], noop);
       return true;
-    // catch-any -- every failure of the kill connection or of its KILL QUERY leaves the stop to close its socket (CFG-35)
+    // catch-any -- every failure of the kill connection or of its KILL QUERY leaves the stop to close its socket (CFG-49)
     } catch {
       if (this.killer !== undefined) {
         this.killer.release(true);
@@ -1780,7 +1780,7 @@ export class CatalogConnection {
 
   /**
    * Reserves a connection. A socket that this catalog closed holds its place in max_user_connections until the server ends
-   * that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35
+   * that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-48
    * from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
    */
   private async reserveConnection(): ReturnType<typeof this.pool.reserve> {
@@ -1876,7 +1876,7 @@ export class CatalogConnection {
    * Ends a session and returns the error to throw, joined with a failed rollback. A session that a read stopped early is discarded
    * without a rollback on MySQL and PostgreSQL, where the discard ends the server's transaction; SQLite's shared connection is rolled back.
    * A session whose ROLLBACK the server acknowledged holds no lock and no state of its own, so the next session takes its connection
-   * and a catalog runs its sessions on one connection (CFG-35).
+   * and a catalog runs its sessions on one connection (CFG-49).
    */
   private async endSession(session: Session, error: unknown): Promise<OrmError | undefined> {
     let failure: OrmError | undefined = error === undefined ? undefined : driverError(this.dialect, error);

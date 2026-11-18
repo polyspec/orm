@@ -1131,8 +1131,8 @@ caseTest('the MySQL accounts of the user orm name both hosts and are idempotent'
   }
 });
 
-// A client that stops reading must not take the pooler down, and a client that disconnects must not leave its statement running (CFG-34, CFG-35, T343-13).
-caseTest('the ProxySQL of the test servers declares the settings that CFG-34 and CFG-35 state', () => {
+// A client that stops reading must not take the pooler down, and a client that disconnects must not leave its statement running (CFG-34, CFG-49, T343-13).
+caseTest('the ProxySQL of the test servers declares the settings that CFG-34 and CFG-49 state', () => {
   const config = proxysqlConfig(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
   const variables = config.slice(config.indexOf('mysql_variables='), config.indexOf('pgsql_variables='));
   assert.match(variables, /^ {2}threshold_resultset_size=65536$/m, 'mysql-threshold_resultset_size is not 64 KiB');

@@ -873,7 +873,7 @@ export const ORM_ACCOUNTS_SQL = ['127.0.0.1', 'localhost']
   .map(host => `CREATE USER IF NOT EXISTS 'orm'@'${host}' IDENTIFIED BY 'orm'; GRANT ALL ON *.* TO 'orm'@'${host}';`)
   .join(' ');
 
-// proxysqlConfig declares the two settings a client relies on when it stops reading a result (CFG-34, CFG-35).
+// proxysqlConfig declares the two settings a client relies on when it stops reading a result (CFG-34, CFG-49).
 export function proxysqlConfig(p: Paths, ports: Ports): string {
   return proxysqlConfigOf({ data: p.proxysqlData, admin: p.sockets.proxysqlAdmin, adminPgsql: p.sockets.proxysqlAdminPgsql, pgsql: p.sockets.proxysqlPgsql,
     listen: '127.0.0.1', port: ports.proxysql, backendHost: '127.0.0.1', backend: ports.mysql, serverVersion: '8.4.0' });

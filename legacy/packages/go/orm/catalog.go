@@ -61,9 +61,9 @@ type CatalogConnection struct {
 	db      *DB
 	dialect string
 	closed  atomic.Bool
-	// reopenUntil is when, in Unix nanoseconds, a refused connect stops being a socket of this catalog still on the server (CFG-35).
+	// reopenUntil is when, in Unix nanoseconds, a refused connect stops being a socket of this catalog still on the server (CFG-48).
 	reopenUntil atomic.Int64
-	// killMu guards kill, the MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog
+	// killMu guards kill, the MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog
 	// opens it at its first stop and keeps it until Close, so that no stop closes a connection that a later stop must reopen.
 	killMu sync.Mutex
 	kill   *sql.Conn
@@ -166,7 +166,7 @@ func (c *CatalogConnection) Close() error {
 }
 
 // connectionID is the MySQL connection id of conn: the thread id of its server session, or, through ProxySQL, the id of its
-// ProxySQL session, which ProxySQL answers for the statement itself and which its KILL QUERY names (CFG-35). It is read once for
+// ProxySQL session, which ProxySQL answers for the statement itself and which its KILL QUERY names (CFG-49). It is read once for
 // each connection of the pool.
 func (c *CatalogConnection) connectionID(ctx context.Context, conn *sql.Conn) (key any, id int64, err error) {
 	if err := conn.Raw(func(driverConn any) error {
@@ -188,7 +188,7 @@ func (c *CatalogConnection) connectionID(ctx context.Context, conn *sql.Conn) (k
 }
 
 // killQuery ends the running statement of the MySQL connection id through the kill connection of the catalog, which it opens at
-// the first stop and keeps (CFG-35). The killed statement ends with an error on its own connection, which stays open. A kill
+// the first stop and keeps (CFG-49). The killed statement ends with an error on its own connection, which stays open. A kill
 // connection that fails is closed, and the next stop opens another.
 func (c *CatalogConnection) killQuery(ctx context.Context, id int64) error {
 	c.killMu.Lock()
@@ -226,7 +226,7 @@ func (c *CatalogConnection) ensureOpen() error {
 type catalogSession struct {
 	catalog *CatalogConnection
 	// stopped is set when a budget stopped a read by closing its socket: the cancel of the read on PostgreSQL, and on MySQL when
-	// no kill ended the statement (CFG-35).
+	// no kill ended the statement (CFG-49).
 	stopped bool
 	// readOnly is set for a read-only session.
 	readOnly bool
@@ -351,7 +351,7 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 
 // acquire takes a connection of the pool. A socket that this catalog closed holds its place in max_user_connections until the
 // server ends that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of
-// CFG-35 from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+// CFG-48 from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
 func (c *CatalogConnection) acquire(ctx context.Context) (*sql.Conn, error) {
 	conn, err := c.db.sql.Conn(ctx)
 	for catalogConnectionsFull(err) && time.Now().UnixNano() < c.reopenUntil.Load() {
@@ -432,7 +432,7 @@ func (s *catalogSession) end(err error) error {
 		return s.discard(err)
 	}
 	// The transaction has ended, so the connection holds no lock and no state of the session: the pool keeps it for the next
-	// session, and a catalog runs its sessions on one connection (CFG-35). query_only is a setting of the SQLite connection.
+	// session, and a catalog runs its sessions on one connection (CFG-49). query_only is a setting of the SQLite connection.
 	if s.readOnly && s.dialect == "sqlite" {
 		if _, offErr := s.conn.ExecContext(s.ctx, "PRAGMA query_only=OFF"); offErr != nil {
 			return s.discard(errors.Join(err, mapDriverErrContext(offErr, s.ctx, s.server)))
@@ -596,7 +596,7 @@ func (s *catalogSession) querySized(query string, args []any, maxRows int, maxBy
 			// The budget error is the one reported: a close that the stop interrupted may fail, as the stop ended the read,
 			// so its error stays only as a cause of the budget error. A MySQL stop kills the statement through the kill
 			// connection of the catalog, and the connection of the read stays open; when that kill fails, as when the server
-			// refuses the kill connection, the cancel closes the socket, as it does on PostgreSQL (CFG-35).
+			// refuses the kill connection, the cancel closes the socket, as it does on PostgreSQL (CFG-49).
 			var killErr error
 			if s.dialect == "mysql" {
 				killErr = s.catalog.killQuery(s.ctx, s.id)

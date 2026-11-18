@@ -50,7 +50,7 @@ fn driver_error(error: sqlx::Error) -> CatalogError {
     CatalogError::caused(error.to_string(), error)
 }
 
-/// Starts the time of CFG-35 when a write session ends, on any of its returns.
+/// Starts the time of CFG-48 when a write session ends, on any of its returns.
 pub(super) struct ClosesOnDrop<'a>(pub(super) &'a CatalogConnection);
 impl Drop for ClosesOnDrop<'_> {
     fn drop(&mut self) {
@@ -58,7 +58,7 @@ impl Drop for ClosesOnDrop<'_> {
     }
 }
 
-/// How long after a close of its own a catalog tries a refused connect again (CFG-35).
+/// How long after a close of its own a catalog tries a refused connect again (CFG-48).
 const REOPEN_AFTER_CLOSE: std::time::Duration = std::time::Duration::from_secs(2);
 
 pub struct CatalogConnection {
@@ -69,12 +69,12 @@ pub struct CatalogConnection {
     dialect: String,
     /// The server, which the connection reads once when it connects (DIA-201).
     server: polyspec_orm_schema::dbspec::Server,
-    /// Until when a refused connect is a socket of this catalog still on the server (CFG-35).
+    /// Until when a refused connect is a socket of this catalog still on the server (CFG-48).
     reopen_until: std::sync::Mutex<std::time::Instant>,
-    /// The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at its first
+    /// The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it at its first
     /// stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
     killer: Option<Conn>,
-    /// The MySQL connection id of the connection of the running read, which its stop kills (CFG-35).
+    /// The MySQL connection id of the connection of the running read, which its stop kills (CFG-49).
     read_id: Option<u64>,
 }
 impl CatalogConnection {
@@ -119,7 +119,7 @@ impl CatalogConnection {
         let mut reopen_until = std::time::Instant::now();
         if dialect == "mysql" {
             // The connection goes back to the pool before the first operation, which takes it: a drop would return it from a task of
-            // its own, and an operation that came first would open a second connection, which the catalog would then keep (CFG-35).
+            // its own, and an operation that came first would open a second connection, which the catalog would then keep (CFG-49).
             if let Some(connection) = connection.take() {
                 connection.return_to_pool().await;
             }
@@ -235,7 +235,7 @@ impl CatalogConnection {
         self.read_only_grid_query(sql, params, limits).await
     }
     /// Ends a read. A read that ends with an acknowledged ROLLBACK gives its connection back to the pool, so that a catalog runs its
-    /// reads on one connection (CFG-35); a read whose rollback failed closes it. A MySQL read that a budget stopped kills its
+    /// reads on one connection (CFG-49); a read whose rollback failed closes it. A MySQL read that a budget stopped kills its
     /// statement through the kill connection and rolls back; a PostgreSQL read that a budget stopped, and a MySQL one whose kill
     /// failed, close their socket without a rollback, whichever operation read it.
     async fn end_read<T>(&mut self, mut connection: Conn, result: Result<T, CatalogError>) -> Result<T, CatalogError> {
@@ -292,7 +292,7 @@ impl CatalogConnection {
         }
     }
     /// Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens and the
-    /// catalog keeps (CFG-35). A kill connection that failed is closed.
+    /// catalog keeps (CFG-49). A kill connection that failed is closed.
     async fn kill_query(&mut self, id: u64) -> Result<(), CatalogError> {
         if self.killer.is_none() {
             self.killer = Some(self.open_connection().await?);
@@ -316,7 +316,7 @@ impl CatalogConnection {
         }
     }
     /// Opens a connection. A socket that this catalog closed holds its place in max_user_connections until the server ends
-    /// that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35
+    /// that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-48
     /// from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
     pub(super) async fn open_connection(&self) -> Result<Conn, CatalogError> {
         let mut acquired = Conn::acquire(&self.pool).await;
@@ -328,7 +328,7 @@ impl CatalogConnection {
         acquired.map_err(connect_error)
     }
     /// The read-only connection of a read, which closes when it drops unless the read ends with an acknowledged ROLLBACK, and the MySQL
-    /// connection id of that connection, which a stop of the read kills (CFG-35).
+    /// connection id of that connection, which a stop of the read kills (CFG-49).
     async fn read_only_connection(&mut self, sql: &str) -> Result<Conn, CatalogError> {
         read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
         let mut connection = self.open_connection().await?;
@@ -380,7 +380,7 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
 /// Whether a budget stopped the read. The rest of the result is unread, and a ROLLBACK would first read all of it, so a MySQL read
 /// kills its statement by the id of its connection first, which CONNECTION_ID answers as the id of the ProxySQL session through
 /// ProxySQL, the id that its KILL QUERY names; a PostgreSQL read returns without a rollback and closes its socket at once, and the
-/// server ends the statement and the transaction with it (CFG-35). SQLite stops the read with its handle, so it rolls back as usual.
+/// server ends the statement and the transaction with it (CFG-49). SQLite stops the read with its handle, so it rolls back as usual.
 fn stopped_by_budget<T>(result: &Result<T, CatalogError>) -> bool {
     matches!(result, Err(error) if error.message().starts_with(&code(polyspec_orm::Kind::CatalogLimit)))
 }

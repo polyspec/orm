@@ -1449,7 +1449,7 @@ def _setting_text(value) -> str:
 
 class _Session:
     """One driver connection inside one transaction. The connection ends with the session, unless a commit (INT-106e) or a
-    rollback (CFG-35) that the server acknowledged keeps it."""
+    rollback (CFG-49) that the server acknowledged keeps it."""
 
     def __init__(self, dialect: str, wrapper):
         self.dialect = dialect
@@ -1460,7 +1460,7 @@ class _Session:
         if dialect == "sqlite":
             self.raw.text_factory = _sqlite_text
         self.abandoned = False
-        # Kills the statement of a MySQL connection id through the kill connection of the catalog (CFG-35); None elsewhere.
+        # Kills the statement of a MySQL connection id through the kill connection of the catalog (CFG-49); None elsewhere.
         self.kill: Callable[[int], None] | None = None
         # The PostgreSQL output settings when the transaction began (INT-186); None on the other dialects.
         self.settings: tuple | None = None
@@ -1933,9 +1933,9 @@ class CatalogConnection:
         self._closed = False
         self._idle = None
         self._idle_lock = threading.Lock()
-        # Until when a refused connect is a socket of this catalog still on the server (CFG-35).
+        # Until when a refused connect is a socket of this catalog still on the server (CFG-48).
         self._reopen_until = 0.0
-        # The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at its
+        # The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it at its
         # first stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
         self._killer = None
         self._killer_lock = threading.Lock()
@@ -1957,7 +1957,7 @@ class CatalogConnection:
 
     def _kill_query(self, thread_id: int) -> None:
         """Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens
-        (CFG-35). The id is the thread id of the handshake: the id of the server session, or, through ProxySQL, the id of the
+        (CFG-49). The id is the thread id of the handshake: the id of the server session, or, through ProxySQL, the id of the
         ProxySQL session, which its KILL QUERY names. A refused kill connection or kill raises, and a kill connection that
         failed is closed."""
         with self._killer_lock:
@@ -1993,7 +1993,7 @@ class CatalogConnection:
     def _connect_mysql(self) -> _MysqlConnection:
         """Opens a MySQL connection. A socket that this catalog closed holds its place in max_user_connections until the
         server ends that thread. The server announces that to no one, so this is a timer: the reopen is tried again within
-        the 2 s of CFG-35 from the close (within 40 ms measured). A connect that follows no close of this catalog fails at
+        the 2 s of CFG-48 from the close (within 40 ms measured). A connect that follows no close of this catalog fails at
         once."""
         while True:
             try:
@@ -2068,7 +2068,7 @@ class CatalogConnection:
         return "BEGIN" if read_only else "BEGIN IMMEDIATE"
 
     def _end(self, session: _Session, error: BaseException | None) -> None:
-        """Rolls the session back and keeps its connection for the next session (CFG-35). A failed rollback is reported
+        """Rolls the session back and keeps its connection for the next session (CFG-49). A failed rollback is reported
         with the error that ended the session. SQLite rolls a transaction back by itself after some errors, such as
         RAISE(ROLLBACK) or an I/O error; then no ROLLBACK is sent, so the error is the one that ended the session
         (INT-155). A session that a stop abandoned has no connection left to roll back."""
@@ -2086,7 +2086,7 @@ class CatalogConnection:
                 codes.ROW_ROLLBACK_FAILED, f"rollback: {rollback_error}", error
             ) from rollback_error
         # The acknowledged ROLLBACK ended the transaction and its locks, so the next session takes this connection, and a
-        # catalog runs its sessions on one connection (CFG-35); SQLite closes its file as before.
+        # catalog runs its sessions on one connection (CFG-49); SQLite closes its file as before.
         self._keep(session)
         if error is not None:
             raise error

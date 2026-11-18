@@ -408,7 +408,7 @@ macro_rules! markdown_result {
         let text: String = $sql.0;
         let wire = binds::markdown($params)?;
         let mut rows = Vec::new();
-        // The budget reads the rows as they arrive: a row past it stops the statement on the server (CFG-35).
+        // The budget reads the rows as they arrive: a row past it stops the statement on the server (CFG-49).
         let head = $conn
             .statement_rows(&text, &wire, |row| {
                 $budget.check_row_count(rows.len())?;
@@ -675,7 +675,7 @@ impl Conn {
 
     /// The MySQL connection id of the connection, read with the text protocol: through ProxySQL, a `SELECT CONNECTION_ID()` that
     /// the client sends as text is the one that ProxySQL answers itself, with the id of its own session, which its KILL QUERY names;
-    /// a prepared one reaches the server and answers the thread id of the server, which names another ProxySQL session (CFG-35).
+    /// a prepared one reaches the server and answers the thread id of the server, which names another ProxySQL session (CFG-49).
     /// Other connections have none.
     pub(crate) async fn mysql_connection_id(&mut self) -> Result<Option<u64>, sqlx::Error> {
         use sqlx::Row;

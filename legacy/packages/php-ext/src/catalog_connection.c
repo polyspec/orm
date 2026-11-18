@@ -198,7 +198,7 @@ static bool cat_mysql_connection_id(zval *pdo, zend_long *id)
     return true;
 }
 
-/* How long after a close of this catalog a connect that max_user_connections refuses is tried again, in seconds (CFG-35). */
+/* How long after a close of this catalog a connect that max_user_connections refuses is tried again, in seconds (CFG-48). */
 #define CAT_REOPEN_SECONDS 2.0
 
 /* The time, in hrtime seconds, from which a refused connect is no longer a connection of this catalog on the server. */
@@ -219,7 +219,7 @@ static bool cat_connections_full(void)
 }
 
 /* Opens a connection. A connection that this catalog closed holds its place in max_user_connections until the server ends that
- * thread. The server announces that to no one, so this is a timer: the connect is tried again within the 2 s of CFG-35 from the
+ * thread. The server announces that to no one, so this is a timer: the connect is tried again within the 2 s of CFG-48 from the
  * close (within 40 ms measured). A connect that follows no close of this catalog fails at once. */
 static bool cat_open_connection(zval *owner, zval *out)
 {
@@ -241,7 +241,7 @@ static bool cat_open_connection(zval *owner, zval *out)
 }
 
 /* Kills the running query of a connection id through the kill connection of the catalog, which the first stop opens and the
- * catalog keeps until close, so that no stop closes a connection that a later stop must open again (CFG-35): the killed query
+ * catalog keeps until close, so that no stop closes a connection that a later stop must open again (CFG-49): the killed query
  * ends with an error on its own connection, which keeps the connection that the stop rolls back. A kill connection that failed
  * is closed. */
 static bool cat_kill_thread(zval *owner, zend_long id)
@@ -304,7 +304,7 @@ static bool cat_kill_query(zval *db, zend_long id)
 /* Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
 #define CAT_STREAM_END_MARGIN_SECONDS 6
 
-/* Waits for the server to end a stream whose kill failed (INT-157, CFG-35). PDO reads the rest of a streaming result whenever a
+/* Waits for the server to end a stream whose kill failed (INT-157, CFG-49). PDO reads the rest of a streaming result whenever a
  * statement or its connection closes, so the read stops reading instead. The server then fails its write and ends the
  * connection after net_write_timeout. This is a timer because no orthodox mechanism exists: the busy connection cannot be asked
  * and no second one can be opened. If the server has not ended the stream by then, the close reads the rest, which is slower

@@ -23,7 +23,7 @@ final class Catalog
     private const DEFAULT_BYTES = 67108864;
     /** Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
     private const STREAM_END_MARGIN_SECONDS = 6;
-    /** How long after a close of this catalog a connect that max_user_connections refuses is tried again (CFG-35). */
+    /** How long after a close of this catalog a connect that max_user_connections refuses is tried again (CFG-48). */
     private const REOPEN_SECONDS = 2.0;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
@@ -142,11 +142,11 @@ final class Catalog
     /** Whether a stop left a stream unread, so that the server has ended this connection (INT-157). */
     private bool $streamLeft = false;
 
-    /** Until when, in hrtime seconds, a refused connect is a connection of this catalog still on the server (CFG-35). */
+    /** Until when, in hrtime seconds, a refused connect is a connection of this catalog still on the server (CFG-48). */
     private float $reopenUntil = 0.0;
 
     /**
-     * The MySQL connection that a budget stop kills the statement of a read through (CFG-35). The catalog opens it at
+     * The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it at
      * its first stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
      */
     private ?Db $killer = null;
@@ -214,7 +214,7 @@ final class Catalog
 
     /**
      * Stops the statement that a budget ended on the server: KILL QUERY on the kill connection, which the first stop
-     * opens and the catalog keeps, so that the budgeted connection stays usable and no connection closes (CFG-35). The
+     * opens and the catalog keeps, so that the budgeted connection stays usable and no connection closes (CFG-49). The
      * catalog is not poisoned, unlike a Cancellation signal. A kill connection that failed is closed.
      */
     private function killQuery(int $connectionId): void
@@ -237,7 +237,7 @@ final class Catalog
     /**
      * Opens a connection. A connection that this catalog closed holds its place in max_user_connections until the
      * server ends that thread. The server announces that to no one, so this is a timer: the connect is tried again
-     * within the 2 s of CFG-35 from the close (within 40 ms measured). A connect that follows no close of this catalog
+     * within the 2 s of CFG-48 from the close (within 40 ms measured). A connect that follows no close of this catalog
      * fails at once.
      */
     private function openConnection(): Db
@@ -1036,7 +1036,7 @@ final class Catalog
      * @return T
      */
     /**
-     * Waits for the server to end a stream whose kill failed (INT-157, CFG-35). PDO reads the rest of a streaming
+     * Waits for the server to end a stream whose kill failed (INT-157, CFG-49). PDO reads the rest of a streaming
      * result whenever a statement or its connection closes, so the read stops reading instead. The server then fails
      * its write and ends the connection after net_write_timeout. This is a timer because no orthodox mechanism exists:
      * the busy connection cannot be asked and no second one can be opened. If the server has not ended the stream by
