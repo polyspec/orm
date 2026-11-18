@@ -9,6 +9,12 @@ import { caseTest } from '../testcase.mts';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (path: string) => readFileSync(join(root, path), 'utf8');
 const missing = (paths: string[]) => paths.filter(path => !existsSync(path));
+// captured is group n of a match, which the pattern always captures; a match without it fails the case.
+const captured = (match: RegExpMatchArray, n: number): string => {
+  const text = match[n];
+  assert.ok(text !== undefined, `the match ${match[0]} captures no group ${n}`);
+  return text;
+};
 
 caseTest('legacy paths: models-scan scans folders that exist', () => {
   const file = 'legacy/packages/ts/tests/models-scan.mjs';
@@ -37,8 +43,8 @@ caseTest('legacy paths: the Python vectors reader reads schemas that exist', () 
 });
 
 caseTest('legacy paths: every feature command that enters a folder runs a node script that exists', () => {
-  const commands = [...read('contracts/features.json').matchAll(/^\s*"command": (".*"),?$/gm)].map(match => JSON.parse(match[1]) as string);
-  const paths = commands.flatMap(command => [...command.matchAll(/cd ([\w./-]+) && .*?node ((?:\.\.\/)+[\w./-]+\.mts)/g)].map(match => resolve(root, match[1], match[2])));
+  const commands = [...read('contracts/features.json').matchAll(/^\s*"command": (".*"),?$/gm)].map(match => JSON.parse(captured(match, 1)) as string);
+  const paths = commands.flatMap(command => [...command.matchAll(/cd ([\w./-]+) && .*?node ((?:\.\.\/)+[\w./-]+\.mts)/g)].map(match => resolve(root, captured(match, 1), captured(match, 2))));
   assert.ok(paths.length > 0, 'contracts/features.json has no command that enters a folder');
   assert.deepEqual(missing(paths), []);
 });
