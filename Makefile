@@ -1287,8 +1287,9 @@ client-pooler-rust-check: lease-tool orm-codes
 
 # runner-check checks the check runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with a temporary git checkout and stub steps.
 # It does not run the actual targets or databases.
+# The job-context cases dry-run the targets of the php-ext job with the make of this run (MAKE, T645).
 runner-check:
-	$(NODE) --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/ci-job.test.mts scripts/check/downloads.test.mts scripts/check/job-context.test.mts scripts/json/schema.test.mts
+	MAKE=$(MAKE) $(NODE) --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/ci-job.test.mts scripts/check/downloads.test.mts scripts/check/job-context.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check runs twice each the shared dbspec vectors, the Rust rule cases, the plan and Mermaid cases, and the apply cleanup errors injected through a wrapped SQLite
 # connection.

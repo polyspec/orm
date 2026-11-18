@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { type Dialect, segments } from './shell.mts';
 import { CARGO_CALL } from '../cargo-link.mts';
+import { paths } from '../test-servers.mts';
 
 /**
  * A unit of commands that run in order: a Makefile recipe, a script or a verification command. dialect is the language
@@ -471,12 +472,21 @@ export function sharedTargetErrors(makefile: string): string[] {
   return errors;
 }
 
+// SERVER_ENV_FILES are the env files that the servers write, as scripts/test-servers.mts names them (paths: env and
+// mariadbEnv), relative to the checkout.
+const SERVER_ENV_FILES = [paths('').env, paths('').mariadbEnv];
+const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const SERVER_ENV_FILE = new RegExp(`(?:${SERVER_ENV_FILES.map(escaped).join('|')})(?![\\w./-])`, 'g');
+
 // runtimePathErrors returns one error for each line in the Makefile that writes a fixed file of .runtime shared by several runs (or the file beside TEST_ENV)
-// as one file. A run's own file goes in RUN_DIR. What is shared is only the server
-// environment (TEST_ENV, which a run may override with its own file, KSTD-5-94, and MARIADB_ENV, that of the MariaDB servers), the built
-// tools (.runtime/bin), the root of the run directories (.runtime/run), and the lease directories (*.leases).
+// as one file. A run's own file goes in RUN_DIR. What is shared is only the env files that the servers write (SERVER_ENV_FILES:
+// .runtime/servers/env, which TEST_ENV names outside a kit job and a run may override with its own file, KSTD-5-94, and
+// .runtime/servers/mariadb.env, which MARIADB_ENV names), the built tools (.runtime/bin), the root of the run
+// directories (.runtime/run), and the lease directories (*.leases). A line is judged by the rule, not by its text: once
+// the env files of the servers and the files of the run directory of a kit job (RUN_CONTEXT_DIR, T645) are taken out,
+// it names no other file of .runtime.
 export function runtimePathErrors(makefile: string): string[] {
-  const allowed = [/^TEST_ENV \??= \.runtime\/servers\/env$/, /^MARIADB_ENV \??= \.runtime\/servers\/mariadb\.env$/, /\.runtime\/bin\//, /\.runtime\/run\)/, /\.leases\)?$/];
+  const allowed = [/\.runtime\/bin\//, /\.runtime\/run\)/, /\.leases\)?$/];
   const errors: string[] = [];
   for (const [index, line] of makefile.split('\n').entries()) {
     if (/^\s*#/.test(line)) continue;
@@ -484,6 +494,8 @@ export function runtimePathErrors(makefile: string): string[] {
     if (/test -d "\$\(WORKTREE\)\/\.runtime\/servers"; then \$\(MAKE\) -C "\$\(WORKTREE\)" orm-test-servers-stop/.test(line)) continue;
     if (!/\.runtime\/|\$\(dir \$\(abspath \$\(TEST_ENV\)\)\)/.test(line)) continue;
     if (allowed.some(pattern => pattern.test(line.trim()))) continue;
+    const rest = line.replace(SERVER_ENV_FILE, '').replace(/\$\(RUN_CONTEXT_DIR\)\/[^\s,)]*/g, '');
+    if (!/\.runtime\/|\$\(dir \$\(abspath \$\(TEST_ENV\)\)\)/.test(rest)) continue;
     errors.push(`Makefile:${index + 1} names a fixed file that runs would share; put the file of one run into $(RUN_DIR): ${line.trim()}`);
   }
   return errors;
