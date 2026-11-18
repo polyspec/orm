@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 39b6505846b8ab7112043cbb61fd4ad4a7152a326f9f6970bc0c2f922769de99 -->
+<!-- source-sha256: 6dad50f7a3753e4a48ea9af2f3b6c316bdcecd0a933217aa2d44ac75c611edba -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -2181,3 +2181,4 @@
 | T667 | RELEASE_REHEARSAL_VERSION(Makefile:806)은 make 3.81에 없는 $(file)을 쓰지만, Makefile:166은 3.81을 지원한다고 적는다. 3.81에서 rehearsal은 'VERSION is required'에서 멈추고, make -n ci-release-rehearsal은 version 없이 TAG=v와 VERSION=을 쓴다. 0.0.34 뒤의 행이다. | Makefile | GNU Make 3.81에서 make -n ci-release-rehearsal이 VERSION의 version을 쓴다 | [ ] |
 | T668 | PHP Collection.php:76, TS model.ts:236, Go collection.go:248에는 계약의 rows 클래스에 없는 공개 has가 있다(docs/spec/core.md:733-735: len, first, get, keys, values, to_array). Python client는 같은 이유로 has를 지웠다. 지울지 정하는 일은 0.0.34 밖의 일이다. | legacy/packages/php/src/Collection.php, legacy/packages/ts/src/model.ts, legacy/packages/go/orm/collection.go | 각 client의 rows가 core.md:733-735의 메서드만 가지거나, 계약이 has를 정한다 | [ ] |
 | T669 | config/ci.json의 setup.runtimes.rust(orm-install-go-lease, orm-install-go-binding)가 orm-install-rust를 실행하는 deps-rust(Makefile:4005)를 대신하므로, rust job은 crate를 받지 않고(orm-install-rust-crates, Makefile:4015) offline cargo가 실패한다: run 44309325651, kit/runtime (rust), `can't checkout from 'https://github.com/polyspec/binding.git': you are in the offline mode (--offline)`. Red: repo-check/unit은 cargo를 실행하는 모든 CI job이 setup에서 crate를 받기를 요구한다. | config/ci.json, scripts/repo/ci.mts, scripts/repo/check.test.mts | make repo-check/unit이 통과한다. CI job kit/runtime (rust)이 lint-rust를 통과한다 | [ ] |
+| T671 | legacy catalog 연결은 서버가 닫힌 socket을 아직 연결 수에 포함할 동안(1226, max_user_connections; CFG-35) 다시 열기를 timer로 되풀이한다: Go catalog.go:357-359, PHP Catalog.php:250-258, PHP extension catalog_connection.c:232-237, TypeScript catalog.ts:1786-1795는 reopenUntil까지 시도 사이에 10 ms를 잠든다. 이는 신호 없이 기다리지 말라는 규칙이 막는 poll이다. legacy를 지울 때 함께 지우고, 남는 것은 신호를 기다리게 한다. 0.0.34 뒤의 행이다. | legacy/packages/go/orm/catalog.go, legacy/packages/php/src/Catalog.php, legacy/packages/php-ext/src/catalog_connection.c, legacy/packages/ts/src/catalog.ts | 남은 client의 catalog 다시 열기가 시도 사이에 잠들지 않는다 | [ ] |
