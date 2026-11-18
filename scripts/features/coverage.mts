@@ -323,7 +323,7 @@ export function recipeCaseIds(text: string, database: string): string[] {
 // requestedRecipe is the file whose cases an owner must run. An owner under legacy/ runs the frozen copy of the recipe
 // (CORE-1), so its requested cases come from that copy; any other owner reads the recipe at its declared path.
 export function requestedRecipe(root: string, ownerPath: string, recipe: string): string {
-  return resolve(root, recipe);
+  return ownerPath.startsWith('legacy/') ? resolve(root, 'legacy', recipe) : resolve(root, recipe);
 }
 
 // entryTest plans a test entry (FCV-12). Every runtime runs the entry with its own test runner and the entry appends a
@@ -340,7 +340,7 @@ async function entryTest(item: Item, command: NativeCommand, root: string): Prom
   if (!command || typeof command !== 'object' || Array.isArray(command) ||
       Object.keys(command).some(key => !ENTRY_KEYS.includes(key)) || !item.tests.includes(command.test) ||
       command.runner !== RUNNER_OF_LANGUAGE[item.language] || extname(command.test ?? '') !== EXTENSION_OF_RUNNER[command.runner] ||
-      (recipe !== undefined && (!(recipe.startsWith('contracts/fixtures/') || recipe.startsWith('tests/')) || !recipe.endsWith('.json'))) ||
+      (recipe !== undefined && (!(recipe.startsWith('contracts/fixtures/') || recipe.startsWith('legacy/contracts/fixtures/') || recipe.startsWith('tests/')) || !recipe.endsWith('.json'))) ||
       (recipe === undefined && (item.database !== 'none' || command.database !== undefined)) ||
       (named ? !/^[A-Za-z_][A-Za-z0-9_]*$/.test(command.symbol ?? '') : command.symbol !== undefined) ||
       !Array.isArray(command.cases) || new Set(command.cases).size !== command.cases.length ||

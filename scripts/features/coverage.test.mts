@@ -922,7 +922,10 @@ caseTest('a run is the exit status of its entry and the lines it wrote', async (
   try {
     await mkdir(join(root, 'legacy/packages/ts/tests'), { recursive: true });
     await mkdir(join(root, 'contracts/fixtures/sample'), { recursive: true });
+    await mkdir(join(root, 'legacy/contracts/fixtures/sample'), { recursive: true });
     await writeFile(join(root, recipe), '{"cases":[{"id":"first"}]}\n');
+    // The owner is under legacy/, so it reads the frozen copy of the recipe (CORE-1).
+    await writeFile(join(root, 'legacy', recipe), '{"cases":[{"id":"first"}]}\n');
     for (const database of databases)
       await writeFile(join(root, fileOf(database)), reportingEntry([`CASE first [${database}] PASS`]));
     assert.deepEqual(await runSelected(manifest(), root, ['owner/typescript']), []);
