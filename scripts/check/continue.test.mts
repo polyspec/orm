@@ -147,7 +147,7 @@ caseTest('the package checks run every package after a failed one and name the f
   try {
     writeFileSync(join(f.base, 'bin', 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
     // HOME keeps a script that puts $HOME/.cargo/bin ahead of the fake bin from selecting the real cargo.
-    const result = f.run(['scripts/package-check.mts'], { HOME: f.base, CARGO_TARGET_DIR: join(f.base, 'target'), LEASE: join(f.base, 'bin', 'lease'), CARGO_LEASES: join(f.base, 'leases') });
+    const result = f.run(['scripts/package-check.mts'], { HOME: f.base, CARGO_TARGET_DIR: join(f.base, 'target'), LEASE: join(f.base, 'bin', 'lease'), CARGO_LEASES: join(f.base, 'leases'), PACKAGE_CHECK_CARGO_FLAGS: '--quiet' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const ran = f.ran().map(line => line.split(' ')[0]);
     for (const program of ['composer', 'cargo', 'go']) assert.ok(ran.includes(program), `${program} did not run: ${ran.join(' ')}`);

@@ -2465,6 +2465,9 @@ feature-stress-pg-sqlite-check: feature-check/build
 feature-docs:
 	$(NODE) scripts/features/build.mts
 
+# PACKAGE_CHECK_CARGO_FLAGS are the flags of the cargo check of package-check (T648); PACKAGE_CHECK_CARGO_FLAGS= shows its Compiling lines.
+PACKAGE_CHECK_CARGO_FLAGS ?= --quiet
+export PACKAGE_CHECK_CARGO_FLAGS
 package-check: lease-tool
 	$(RUN_LONG) package -- node scripts/package-check.mts
 

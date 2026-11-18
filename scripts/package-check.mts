@@ -24,7 +24,11 @@ const COMPOSER: Command = { program: 'composer', args: ['validate', `--working-d
 // crate instead of with cargo package; it builds into the shared Rust target directory and so under its lease. The crate
 // takes the lock of the client, as a consumer pins it: the checks run offline (CARGO_NET_OFFLINE), and without a lock cargo
 // resolves a git dependency by its tag, which the fetched git database need not hold.
-const CARGO: Command = { program: variable('LEASE'), args: ['run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--', ...cargoLink(), 'check', '--manifest-path', join(rust, 'Cargo.toml'), '--quiet'], cwd: root };
+// The flags of cargo, --quiet by default, are the words of PACKAGE_CHECK_CARGO_FLAGS that the Makefile exports (T648), so a run
+// can show the Compiling lines of the crates it builds.
+const flags = process.env['PACKAGE_CHECK_CARGO_FLAGS'];
+if (flags === undefined) throw new Error('PACKAGE_CHECK_CARGO_FLAGS is not set; run make package-check');
+const CARGO: Command = { program: variable('LEASE'), args: ['run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--', ...cargoLink(), 'check', '--manifest-path', join(rust, 'Cargo.toml'), ...flags.split(/\s+/).filter(word => word !== '')], cwd: root };
 const GO: Command[] = [
   { program: 'go', args: ['mod', 'init', 'example.com/orm-external-check'], cwd: go },
   { program: 'go', args: ['mod', 'edit', '-replace', `github.com/polyspec/orm/legacy/packages/go=${join(root, 'legacy/packages/go')}`], cwd: go },
