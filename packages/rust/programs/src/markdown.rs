@@ -213,7 +213,18 @@ pub fn same(a: &Value, b: &Value) -> bool {
         (Value::Number(x), Value::Number(y)) => x.as_f64() == y.as_f64(),
         (Value::Array(x), Value::Array(y)) => x.len() == y.len() && x.iter().zip(y).all(|(x, y)| same(x, y)),
         (Value::Object(x), Value::Object(y)) => x.len() == y.len() && x.iter().all(|(k, v)| y.get(k).is_some_and(|w| same(v, w))),
+        (Value::String(x), Value::String(y)) => kind(x) == kind(y),
         _ => a == b,
+    }
+}
+
+/// A string written as a code of the catalog, in capitals and underscores, is that code in lower case, the kind that the core
+/// gives (ERR-4); tests/markdown/cases.json, the corpus of every runtime, writes some kinds as codes.
+fn kind(text: &str) -> std::borrow::Cow<'_, str> {
+    if !text.is_empty() && text.bytes().all(|b| b.is_ascii_uppercase() || b == b'_') {
+        text.to_ascii_lowercase().into()
+    } else {
+        text.into()
     }
 }
 
