@@ -1,0 +1,1 @@
+- **CFG-35** Retired, replaced by CFG-49, which holds the single connection and the kill connection, and by CFG-48, which holds the connect that the limit refuses.
