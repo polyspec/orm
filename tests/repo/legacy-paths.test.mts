@@ -15,6 +15,11 @@ const captured = (match: RegExpMatchArray, n: number): string => {
   assert.ok(text !== undefined, `the match ${match[0]} captures no group ${n}`);
   return text;
 };
+// text is a parsed JSON value that is a string; any other value fails the case.
+const text = (value: unknown): string => {
+  assert.ok(typeof value === 'string', `the JSON value ${String(value)} is no string`);
+  return value;
+};
 
 caseTest('legacy paths: models-scan scans folders that exist', () => {
   const file = 'legacy/packages/ts/tests/models-scan.mjs';
@@ -43,7 +48,7 @@ caseTest('legacy paths: the Python vectors reader reads schemas that exist', () 
 });
 
 caseTest('legacy paths: every feature command that enters a folder runs a node script that exists', () => {
-  const commands = [...read('contracts/features.json').matchAll(/^\s*"command": (".*"),?$/gm)].map(match => JSON.parse(captured(match, 1)) as string);
+  const commands = [...read('contracts/features.json').matchAll(/^\s*"command": (".*"),?$/gm)].map(match => text(JSON.parse(captured(match, 1))));
   const paths = commands.flatMap(command => [...command.matchAll(/cd ([\w./-]+) && .*?node ((?:\.\.\/)+[\w./-]+\.mts)/g)].map(match => resolve(root, captured(match, 1), captured(match, 2))));
   assert.ok(paths.length > 0, 'contracts/features.json has no command that enters a folder');
   assert.deepEqual(missing(paths), []);
