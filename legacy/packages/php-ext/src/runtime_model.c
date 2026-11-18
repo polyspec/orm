@@ -217,6 +217,9 @@ static void table_entity(const table *t, zval *out, bool external) {
             if (str_eqc(s->kind, "codec") && s->args.n > 1) {
                 strs *a = dbs_alloc(sizeof *a);
                 *a = strs_copy(&(strs){.v = s->args.v + 1, .n = s->args.n - 1});
+                /* A column holds the stage that each name means (DBS-185). */
+                for (size_t q = 0; q < a->n; q++)
+                    a->v[q] = codec_stage_meaning(a->v[q]);
                 smap_set(&codecs, s->args.v[0], a);
             }
             if (str_eqc(s->kind, "blind_index") && s->args.n > 1)
