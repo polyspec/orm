@@ -17,3 +17,20 @@ caseTest('a released identifier whose body changed without a retired marker fail
 caseTest('a released identifier that is retired in the current spec passes', () => {
   assert.deepEqual(releasedSpecErrors(fixture('released.md'), fixture('retired.md')), []);
 });
+
+caseTest('a released identifier absent from the current spec fails and names its tag', () => {
+  const errors = releasedSpecErrors(fixture('released.md'), fixture('absent.md'));
+  assert.equal(errors.length, 1, `want one error, got ${JSON.stringify(errors)}`);
+  assert.match(errors[0], /CFG-35/);
+  assert.match(errors[0], /v0\.0\.33/);
+});
+
+caseTest('a repository without a version tag is an error, not a pass', async () => {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { execFileSync } = await import('node:child_process');
+  const dir = mkdtempSync(`${tmpdir()}/spec-release-`);
+  execFileSync('git', ['init', '-q', dir]);
+  const mod = await import('./spec-release.mts');
+  assert.throws(() => mod.releasedSpecFor(dir), /no version tag/);
+});

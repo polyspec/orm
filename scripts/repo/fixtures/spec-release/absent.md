@@ -1,0 +1,1 @@
+- **CFG-1** Unrelated statement that the released spec does not hold this line.
