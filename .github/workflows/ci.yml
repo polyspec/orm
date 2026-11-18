@@ -94,6 +94,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - name: cache of the npm packages
         uses: actions/cache@v4
         with:
