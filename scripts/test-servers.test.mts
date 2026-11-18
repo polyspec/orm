@@ -605,6 +605,59 @@ caseTest('lease refuses an exclusive wait inside the shared lease of its own anc
   }
 });
 
+// databases-create and feature-check/build run in one make in feature-verify-other (Makefile:2465), as the CI job runs them.
+// The case takes from the real Makefile the definitions of READ_TYPESCRIPT and HOLD_TYPESCRIPT and the recipes of the two
+// targets, writes them into a Makefile of its own temporary directory, and runs it with MAKE, else the make of PATH. Not under test,
+// and replaced: LEASE (the built lease), TYPESCRIPT_LEASES and DIRECTORY (directories of the case), NODE and RUN_LONG
+// (`true`, so the create and the build run nothing), SERVERS and NAME (unread by `true`), and the prerequisites of the two
+// targets. A text it cannot find fails the case and names it. Before T645's fix the shared lease of databases-create lived
+// as long as the make and the exclusive one of the build waited for it (kit/runtime (php-ext), run 44309325651); the make
+// must end, with status 0.
+caseTest('databases-create and the TypeScript build run in one make without waiting for each other (T645)', async () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
+  const makefile = readFileSync(new URL('../Makefile', import.meta.url), 'utf8');
+  const definition = (name: string): string => {
+    const line = new RegExp(`^${name} = .*$`, 'm').exec(makefile)?.[0];
+    assert.ok(line, `the Makefile defines no ${name}`);
+    return line;
+  };
+  const recipe = (target: string): string => {
+    const lines = new RegExp(`^${target.replaceAll('/', '\\/')}:[^\\n]*\\n((?:\\t[^\\n]*\\n)+)`, 'm').exec(makefile)?.[1];
+    assert.ok(lines, `the Makefile has no recipe of ${target}`);
+    return lines;
+  };
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-make-'));
+  try {
+    const text = [
+      `LEASE = ${lease}`, `TYPESCRIPT_LEASES = ${join(root, 'typescript.leases')}`, 'NODE = true', 'RUN_LONG = true',
+      `DIRECTORY = ${join(root, 'run')}`, 'SERVERS = servers', 'NAME = name',
+      definition('HOLD_TYPESCRIPT'), definition('READ_TYPESCRIPT'),
+      'g: databases-create feature-check/build', 'databases-create:', recipe('databases-create').trimEnd(),
+      'feature-check/build:', recipe('feature-check/build').trimEnd(), '',
+    ].join('\n');
+    writeFileSync(join(root, 'Makefile'), text);
+    const make = process.env.MAKE ?? 'make';
+    const outcome = await new Promise<{ status: number | null; waited: boolean; stderr: string; group: number }>((resolve, reject) => {
+      const child = spawn(make, ['--no-print-directory', '-f', join(root, 'Makefile'), 'g'], { cwd: root, detached: true, stdio: ['ignore', 'ignore', 'pipe'], env: isolatedEnvironment() });
+      let stderr = '', waited = false;
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+        if (!waited && stderr.includes('lease: waiting for')) { waited = true; process.kill(-(child.pid ?? 0), 'SIGKILL'); }
+      });
+      child.on('error', reject);
+      child.on('close', status => { resolve({ status, waited, stderr, group: child.pid ?? 0 }); });
+    });
+    assert.equal(outcome.waited, false, `the build waited for the lease of its own make: ${outcome.stderr}`);
+    assert.equal(outcome.status, 0, outcome.stderr);
+    let gone = false;
+    try { process.kill(-outcome.group, 0); } catch (error) { gone = error instanceof Error && 'code' in error && error.code === 'ESRCH'; }
+    assert.ok(gone, `a process of group ${outcome.group} remains`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 caseTest('hold records its releaser in the lease file before it returns', async () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
