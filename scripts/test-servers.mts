@@ -606,9 +606,10 @@ function mysqlTimezones(p: Paths, port: number): void {
 }
 
 // logReader starts the reader of the output of one server, in a new session so that it lives as long as its server (T501-1).
-// The reader is one awk process: it appends each line of `input` to log and flushes it, gives each line to the starting
-// process on its standard output until a line contains `line`, and then only appends, so a server that writes after its
-// start gets no SIGPIPE. Readiness is a line read from that pipe, and a server that ends first is the end of the pipe;
+// The reader is one process of the pinned node (T647: no awk, whose Ubuntu mawk passes no line of a pipe until it ends,
+// G5.12): it appends each line of `input` to log as it arrives, gives each line to the starting process on its standard
+// output until a line contains `line`, and then only appends, so a server that writes after its start gets no SIGPIPE.
+// The bytes are read and written as latin1, so the log holds the output of the server byte for byte. Readiness is a line read from that pipe, and a server that ends first is the end of the pipe;
 // neither is a change event of the log, which on macOS stopped under load, so a start waited forever. `ready` is true
 // when the ready line was read and false when the output ended first. The reader ends when every writer of `input` has
 // ended, so it does not outlive its server (HR-87). `attached` closes the copy of `input` of this process once the server
@@ -622,10 +623,23 @@ export interface LogReader {
   release(): void;
 }
 
-const LOG_READER = '{ print >> ENVIRON["LOG"]; fflush(ENVIRON["LOG"]) } !ready { print; fflush() } !ready && index($0, ENVIRON["READY_LINE"]) { ready = 1 }';
+const LOG_READER = [
+  "const { openSync, writeSync } = require('node:fs');",
+  "const log = openSync(process.env.LOG, 'a');",
+  "let ready = false, pending = '';",
+  "const give = text => {",
+  "  writeSync(log, text + '\\n', null, 'latin1');",
+  "  if (ready) return;",
+  "  process.stdout.write(text + '\\n', 'latin1');",
+  "  if (text.includes(process.env.READY_LINE)) ready = true;",
+  "};",
+  "process.stdin.setEncoding('latin1');",
+  "process.stdin.on('data', chunk => { const parts = (pending + chunk).split('\\n'); pending = parts.pop(); for (const text of parts) give(text); });",
+  "process.stdin.on('end', () => { if (pending !== '') give(pending); });",
+].join('\n');
 
 export function logReader(log: string, line: string): LogReader {
-  const child = spawn('awk', [LOG_READER], { detached: true, stdio: ['pipe', 'pipe', 'ignore'] as const, env: { PATH: process.env.PATH ?? '/usr/bin:/bin', LOG: log, READY_LINE: line } });
+  const child = spawn(process.execPath, ['-e', LOG_READER], { detached: true, stdio: ['pipe', 'pipe', 'ignore'] as const, env: { PATH: process.env.PATH ?? '/usr/bin:/bin', LOG: log, READY_LINE: line } });
   const output = child.stdout;
   let pending = '', seen = false, each: ((text: string) => void) | undefined, settle: (value: boolean) => void = () => {};
   const buffered: string[] = [];
