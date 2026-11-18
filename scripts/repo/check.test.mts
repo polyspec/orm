@@ -293,10 +293,14 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   }
 });
 
-caseTest('the Go PostgreSQL pool checks an idle connection each time before it reuses it', () => {
-  // The pgx stdlib driver pings only a connection that has been idle for more than one second unless the connector says
-  // otherwise, so a statement within that second reached a connection that the server had ended (INT-92, T476).
-  assert.match(text('legacy/packages/go/orm/pg/pg.go'), /stdlib\.OptionShouldPing\(/, 'the connector of orm/pg asks for the ping before each reuse');
+caseTest('the Go PostgreSQL pool checks a reused connection with a Sync and no query', () => {
+  // The pool checks before each reuse that the server still holds the connection, at any idle time (INT-92, T476). The
+  // check is a protocol Sync read to its ReadyForQuery in OptionResetSession, and the "-- ping" query of pgx is off: the
+  // server runs that query as a transaction of its own, which counts against the transactions of a statement (INT-149, T642).
+  const source = text('legacy/packages/go/orm/pg/pg.go');
+  assert.match(source, /stdlib\.OptionResetSession\(/, 'the connector of orm/pg checks a reused connection in OptionResetSession');
+  assert.match(source, /StartPipeline\(ctx\)[\s\S]*\.Sync\(\)[\s\S]*\.Close\(\)/, 'the check sends a Sync through a pipeline and reads to its ReadyForQuery');
+  assert.match(source, /stdlib\.OptionShouldPing\(func\(context\.Context, stdlib\.ShouldPingParams\) bool \{ return false \}\)/, 'the ping of the driver is off');
 });
 
 caseTest('every PHPUnit test class declares its size', () => {
