@@ -459,6 +459,19 @@
         "tests/repo/pinned-node-recipes.test.mts"
       ]
     },
+    "legacy-paths-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "tests/repo/legacy-paths.test.mts",
+        "legacy/packages/ts/tests/models-scan.mjs",
+        "legacy/packages/ts/tests/dbspec-stress.mjs",
+        "legacy/packages/python/tests/dbspec_vectors_reader.py",
+        "contracts/features.json"
+      ]
+    },
     "docs-verify-idempotent": {
       "scope": "owner",
       "needs": [
