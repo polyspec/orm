@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, programCaseModules, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, programCaseModules, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, recipeCaseIds, requestedRecipe, resultCases, languages, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readImplementations } from '../json/formats.mts';
 import { cargoLink } from '../cargo-link.mts';
@@ -58,6 +58,23 @@ function sampleManifest(owner: string): SampleManifest {
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbol: 'TestFirst' }] } } },
       dependents: [] } }] };
 }
+
+caseTest('a legacy owner requires the cases of its frozen recipe, not the cases of the contracts copy', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-requested-')));
+  try {
+    const recipe = JSON.parse(await readFile(new URL('../../contracts/fixtures/catalog_connection/catalog_connection.json', import.meta.url), 'utf8'));
+    const plain = recipe.cases.filter((item: { only?: unknown }) => item.only === undefined);
+    await mkdir(join(root, 'contracts/fixtures/x'), { recursive: true });
+    await mkdir(join(root, 'legacy/contracts/fixtures/x'), { recursive: true });
+    await writeFile(join(root, 'contracts/fixtures/x/x.json'), JSON.stringify({ ...recipe, cases: plain.slice(0, 2) }));
+    await writeFile(join(root, 'legacy/contracts/fixtures/x/x.json'), JSON.stringify({ ...recipe, cases: plain.slice(0, 1) }));
+    const path = requestedRecipe(root, 'legacy/packages/go/orm', 'contracts/fixtures/x/x.json');
+    const required = recipeCaseIds(await readFile(path, 'utf8'), 'none');
+    assert.deepEqual(required, [plain[0].id]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 caseTest('coverage diagnostics preserve child output when a process remains', async () => {
   const source = [
