@@ -10,8 +10,8 @@ import { setTimeout as pause } from 'node:timers/promises';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest } from '../tests/testcase.mts';
 import { buildOptionsText, CMAKE_OPTIONS } from './mariadb-build.mts';
-import { mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, MARIADB_VARIABLES } from './test-servers-mariadb.mts';
-import { environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, logReader, startLogged, stopEarlierStart, stopPid, TestServerError, TLS_SERVERS, type Paths } from './test-servers.mts';
+import { mariadbDatadir, mariadbdArguments, mariadbEnvironment, mariadbEnvironmentPorts, mariadbTmpdir, MARIADB_VARIABLES, type MariadbRole } from './test-servers-mariadb.mts';
+import { abandonStart, environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlDatadir, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, logReader, startLogged, stopEarlierStart, stopPid, TestServerError, TLS_SERVERS, type Paths } from './test-servers.mts';
 import { withFixtureServer, withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -169,7 +169,7 @@ read state < ${ready}`], { env: isolatedEnvironment() });
 
 // stopFixture runs main(['stop']) on a fresh root with <PATH> and <STOP_PROCESS> in the environment and returns what it
 // printed and the error it threw; the fake servers that still run afterwards are stopped by the real STOP_PROCESS.
-async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stopProcess?: (bin: string) => string } = {}): Promise<{ lines: string[]; error: unknown; pids: number[] }> {
+async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stopProcess?: (bin: string) => string } = {}): Promise<{ lines: string[]; error: unknown; pids: number[]; kept: { dir: boolean; socketDir: boolean } }> {
   const { LEASE: lease, STOP_PROCESS: stopProcess, PATH: path } = process.env;
   assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make orm-test-servers-check, which builds them');
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-stop-db-')));
@@ -179,6 +179,7 @@ async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stop
   const log = console.log;
   let error: unknown;
   const pids: number[] = [];
+  let kept = { dir: true, socketDir: true };
   try {
     mkdirSync(p.dir, { recursive: true });
     mkdirSync(p.socketDir, { recursive: true });
@@ -195,6 +196,7 @@ async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stop
     if (env.stopProcess) process.env.STOP_PROCESS = env.stopProcess(bin);
     console.log = (...args: unknown[]) => { lines.push(args.join(' ')); };
     try { await servers.main(['stop'], p); } catch (thrown) { error = thrown; }
+    kept = { dir: existsSync(p.dir), socketDir: existsSync(p.socketDir) };
   } finally {
     console.log = log;
     process.env.PATH = path;
@@ -202,7 +204,7 @@ async function stopFixture(prepare: (p: Paths, bin: string) => void, env: { stop
     for (const pid of pids) if (!exited(pid)) spawnSync(stopProcess, ['TERM', String(pid)], { env: isolatedEnvironment() });
     rmSync(root, { recursive: true, force: true });
   }
-  return { lines, error, pids };
+  return { lines, error, pids, kept };
 }
 
 caseTest('stop stops each running database server by its process, whatever mysqladmin the PATH holds', async () => {
@@ -236,6 +238,71 @@ caseTest('stop fails with the output of a failed stop of a running database serv
   assert.ok(error instanceof TestServerError, `stop did not fail: ${errorText(error)}`);
   assert.match(error.message, /MySQL shutdown failed: test-servers: .*stop-process TERM exited with 7/);
   assert.match(error.message, /MariaDB shutdown failed: test-servers: .*stop-process TERM exited with 7/);
+});
+
+// The cases below hold the properties of the servers that the removed cases of the job context guarded (T645): the
+// context no longer starts or stops the servers, so their stop and their data are guarded here, with no server.
+caseTest('a stop of the servers removes their directory and socket folder, which hold the data of every server (T645)', async () => {
+  const { error, kept } = await stopFixture(p => { for (const [file] of DATABASE_SERVERS(p)) fakeServer(file); });
+  assert.equal(error, undefined, `stop failed: ${errorText(error)}`);
+  assert.deepEqual(kept, { dir: false, socketDir: false }, 'the stop left the directory or the socket folder of the servers');
+});
+
+caseTest('a failed stop of the servers keeps their directory for diagnosis (T645)', async () => {
+  const { error, kept } = await stopFixture(p => { fakeServer(p.mysqlPid); }, {
+    stopProcess: bin => {
+      const refusing = join(bin, 'stop-process');
+      writeFileSync(refusing, '#!/bin/sh\necho "stop-process: refused $2" >&2\nexit 7\n');
+      chmodSync(refusing, 0o755);
+      return refusing;
+    },
+  });
+  assert.ok(error instanceof TestServerError, `stop did not fail: ${errorText(error)}`);
+  assert.equal(kept.dir, true, 'the failed stop removed the directory of the servers');
+});
+
+// datadirOf is the value of the --datadir argument of <args>.
+const datadirOf = (args: string[]): string | undefined => args.find(arg => arg.startsWith('--datadir='))?.slice('--datadir='.length);
+
+caseTest('the data, temporary and file folders of every server are inside the directory of the servers (T645)', () => {
+  const p = paths('/checkout', '/sockets');
+  assert.equal(p.dir, '/checkout/.runtime/servers');
+  const inside = (value: string | undefined, what: string) => assert.ok(value?.startsWith(`${p.dir}/`), `${what} ${value} is outside ${p.dir}`);
+  for (const name of ['mysql', 'mysql-replica'] as const) inside(mysqlDatadir(p, name), `the datadir of ${name}`);
+  inside(datadirOf(mysqldArguments(p, false, 1)), 'the mysqld datadir of the primary');
+  inside(datadirOf(mysqldArguments(p, true, 1)), 'the mysqld datadir of the replica');
+  inside(datadirOf(mysqlPrivilegeArguments(p, 1)), 'the mysqld datadir of the privilege probe');
+  for (const [value, what] of [[p.mysqlPrivilegeData, 'mysqlPrivilegeData'], [p.postgresData, 'postgresData'], [p.postgresReplicaData, 'postgresReplicaData'], [p.proxysqlData, 'proxysqlData']] as const)
+    inside(value, what);
+  for (const role of ['primary', 'replica', 'privilege'] as const satisfies readonly MariadbRole[]) {
+    const args = mariadbdArguments(p, role, 1);
+    inside(mariadbDatadir(p, role), `the mariadb datadir of ${role}`);
+    inside(mariadbTmpdir(p, role), `the mariadb tmpdir of ${role}`);
+    inside(datadirOf(args), `the mariadbd datadir of ${role}`);
+    inside(args.find(arg => arg.startsWith('--tmpdir='))?.slice('--tmpdir='.length), `the mariadbd tmpdir of ${role}`);
+    inside(args.find(arg => arg.startsWith('--secure-file-priv='))?.slice('--secure-file-priv='.length), `the mariadbd secure-file-priv of ${role}`);
+  }
+});
+
+caseTest('a failed start drops its generation and stops the servers it started, and names both errors when that stop fails (T645)', () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-failed-start-')));
+  const p = paths(root, join(root, 'sockets'));
+  const error = console.error;
+  console.error = () => {};
+  try {
+    mkdirSync(p.dir, { recursive: true });
+    writeFileSync(p.generation, 'g1\n');
+    const failure = new Error('mysqld failed');
+    const stopped: Paths[] = [];
+    assert.throws(() => abandonStart(p, failure, q => { stopped.push(q); }), thrown => thrown === failure);
+    assert.deepEqual(stopped, [p], 'the failed start did not stop the servers it started');
+    assert.equal(existsSync(p.generation), false, 'the failed start kept its generation');
+    assert.throws(() => abandonStart(p, failure, () => { throw new Error('stop refused'); }),
+      thrown => thrown instanceof TestServerError && /start failed: mysqld failed; cleanup failed: stop refused/.test(thrown.message));
+  } finally {
+    console.error = error;
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 const errorText = (error: unknown): string => error instanceof Error ? error.message : String(error);

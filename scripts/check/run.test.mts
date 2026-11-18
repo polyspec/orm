@@ -158,6 +158,7 @@ const run = async (program, args, step, spawned = () => {}) => {
   const name = args[1] === 'databases-create' ? 'databases create'
     : args[0] === 'scripts/check/databases.mts' ? \`databases \${args[1]}\` : args.at(-1);
   appendFileSync(log, name + '\\n');
+  if (name === 'databases create') writeFileSync(root + '/databases-create.args', JSON.stringify(args));
   if (process.env.STUB_TRACE) console.log('started ' + name);
   if (kill && name === kill) process.kill(process.pid, 'SIGKILL');
   if (failing && name === 'databases create') {
@@ -295,6 +296,14 @@ caseTest('a run records its setup steps and its targets', () => {
     const result = c.run();
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.deepEqual(c.ran(), ['databases create', 'a', 'b', 'c', 'databases drop']);
+    // The runner passes databases-create the servers file, its run directory and its name, all three (T645): with no
+    // DIRECTORY the target makes no database, and an empty name is refused.
+    const created: unknown = JSON.parse(readFileSync(join(c.root, 'databases-create.args'), 'utf8'));
+    assert.ok(isStringArray(created), 'the runner called databases-create with no argument list');
+    assert.deepEqual(created.slice(0, 2), ['-s', 'databases-create']);
+    assert.equal(created.find(arg => arg.startsWith('SERVERS=')), `SERVERS=${c.servers}`);
+    assert.match(created.find(arg => arg.startsWith('DIRECTORY=')) ?? '', new RegExp(`^DIRECTORY=${c.root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/\\.runtime/check/[a-z0-9_]+/databases$`));
+    assert.match(created.find(arg => arg.startsWith('NAME=')) ?? '', /^NAME=[a-z0-9_]+$/);
     const record = c.record();
     assert.deepEqual([record.result, record.failed], ['failed', ['b']]);
     assert.deepEqual(record.setup.map(step => [step.name, step.status]), [['downloads', 'passed'], ['servers', 'passed'], ['databases/create', 'passed'], ['databases/drop', 'passed']]);
