@@ -745,6 +745,41 @@ export function independentTestErrors(makefile: string): string[] {
   return errors;
 }
 
+// unselectedPhpunitErrors returns one error for each make recipe line that runs phpunit with its configuration alone: a
+// --configuration (or -c) and the --php-extension of the runner, with no test file, directory, --filter, --group or
+// --testsuite. Such a line runs the whole suite of the configuration where the target meant one test (T646: the lines whose
+// markdown test file was deleted ran the full PHP suite, 18 minutes each, in client_db_php).
+// values replaces each make function call that expand keeps, such as $(abspath x), with one word, so a quoted value stays one.
+const values = (line: string): string => {
+  let text = line;
+  for (let last = ''; last !== text;) { last = text; text = text.replace(/\$\([^()]*\)/g, 'VALUE'); }
+  return text;
+};
+
+export function unselectedPhpunitErrors(makefile: string): string[] {
+  const variables = makeVariables(makefile);
+  const errors: string[] = [];
+  for (const { target, commands } of makeTargets(makefile))
+    for (const command of commands)
+      for (const part of values(expand(command, variables)).split(/;|&&|\|\||\|/)) {
+        const words = part.trim().split(/\s+/);
+        const at = words.findIndex(word => word === 'phpunit' || word.endsWith('/phpunit'));
+        if (at === -1) continue;
+        const rest: string[] = [];
+        let configured = false;
+        for (let i = at + 1; i < words.length; i++) {
+          const word = words[i] ?? '';
+          if (word === '--' || word === '') continue;
+          if (word === '--configuration' || word === '-c' || word.startsWith('--configuration=')) configured = true;
+          if (word === '--configuration' || word === '-c' || word === '--php-extension') { i++; continue; }
+          if (/^(?:--configuration|--php-extension)=/.test(word)) continue;
+          rest.push(word);
+        }
+        if (configured && rest.length === 0) errors.push(`Makefile ${target} runs phpunit with its configuration alone, so it runs the whole suite; name the test file or a filter: ${command.trim().slice(0, 160)}`);
+      }
+  return errors;
+}
+
 // testRun is whether a command fragment runs a test or lint check: of what runnerIdentity treats as a test runner, the commands that only compile without running
 // (go test -c, cargo test --no-run), input generation that writes output to a file (`> file`), and dependency tools (node_modules'
 // tsc or other build) are not test runs.

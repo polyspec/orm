@@ -11,7 +11,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
 import { repositoryOf, runErrors } from './release-run.mts';
-import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors, goModuleErrors, crateFetchErrors } from './ci.mts';
+import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors, goModuleErrors, crateFetchErrors, unselectedPhpunitErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -2428,6 +2428,20 @@ caseTest('T497: a job whose recipe installs the PHP tools sets up the PHP of .ph
   assert.deepEqual(errors('', ' TOOLS=go'), []);
   assert.deepEqual(errors('', ' TOOLS="go php"'), late);
   assert.deepEqual(errors('', ' TOOLS=npm'), []);
+});
+
+// A phpunit line names its test: with its configuration alone it runs the whole suite (T646, run 44309325651: client_db_php
+// ran the full PHP suite in request-hook-check/php, parameter-chunking-check/php and aes-rotation-check/php, 18 minutes each).
+caseTest('T646: a recipe that runs phpunit with its configuration alone is refused', () => {
+  const makefile = [
+    'RUN_TESTS = node run-tests.mjs',
+    'bare:', '\tenv ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist',
+    'ext:', '\t$(RUN_TESTS) phpunit --php-extension "x.so" -- --configuration legacy/packages/php-ext/phpunit.xml.dist || status=1',
+    'file:', '\t$(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ATest.php',
+    'filtered:', "\tvendor/bin/phpunit -c phpunit.xml.dist --filter 'testA'",
+  ].join('\n') + '\n';
+  assert.deepEqual(unselectedPhpunitErrors(makefile).map(error => error.split(' runs ')[0]), ['Makefile bare', 'Makefile ext']);
+  assert.deepEqual(unselectedPhpunitErrors(text('Makefile')), []);
 });
 
 // The independent test case (G5.53) treats as an error a recipe with two or more separate test or lint runs, or a verification command that chains tests with `&&`.

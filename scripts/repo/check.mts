@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { groupSetupErrors } from '../check/ci-setup.mts';
-import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciRecipeErrors, checkTargets, ciSetupErrors, lockedCacheErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
+import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciRecipeErrors, checkTargets, ciSetupErrors, lockedCacheErrors, independentTestErrors, unselectedPhpunitErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
 import { workflowSteps } from './workflow.mts';
 import { imageToolErrors } from './recipes.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
@@ -190,6 +190,8 @@ failures.push(...ciLeaseErrors(workflows, tracked, readTracked));
 // The recipe of the CI group jobs runs the setup steps of scripts/check/ci-setup.mts under their conditions.
 failures.push(...ciSetupErrors(workflows, makefile));
 failures.push(...independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')));
+// A phpunit line names the test it runs, so a target never runs the whole suite of its configuration (T646).
+failures.push(...unselectedPhpunitErrors(readFileSync(join(root, 'Makefile'), 'utf8')));
 failures.push(...chainedCommandErrors(features));
 // AGENTS.md and AGENTS.ko.md state the rule that the full suite runs in CI after push.
 failures.push(...fullSuiteRuleErrors(Object.fromEntries(['AGENTS.md', 'AGENTS.ko.md'].map(path => [path, readFileSync(join(root, path), 'utf8')]))));
