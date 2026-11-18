@@ -556,8 +556,8 @@ caseTest('each CI run rehearses the upload of the release after the assets, and 
   assert.match(job('ci-passed'), /\n    needs: \[[^\]]*\brelease-rehearsal\b[^\]]*\]/, 'ci-passed needs release-rehearsal');
   const recipe = text('Makefile').match(/^ci-release-rehearsal:\n((?:\t.*\n)+)/m)?.[1] ?? '';
   assert.notEqual(recipe, '', 'the Makefile has a recipe ci-release-rehearsal');
-  for (const target of ['release-assets', 'ci-release-platform-assets'])
-    assert.match(recipe, new RegExp(`-- ${target}( TAG=\\S+)?\\n`), `ci-release-rehearsal gathers var/release/assets with ${target}, as ci-release does`);
+  for (const target of ['release-candidate-assets', 'ci-release-platform-assets'])
+    assert.match(recipe, new RegExp(`-- ${target}( (?:TAG|VERSION)=\\S+)?\\n`), `ci-release-rehearsal gathers var/release/assets with ${target}`);
   assert.match(recipe, /-- release-platform-assets TAG=v\$\(RELEASE_REHEARSAL_VERSION\) REHEARSAL=1 WORK=var\/release\/rehearsal\n/,
     'ci-release-rehearsal runs release-platform-assets with REHEARSAL=1 and WORK');
   // The Go module of the tag is rehearsed as ci-release rehearses it, after the same setup in the same order (T633).
@@ -567,12 +567,28 @@ caseTest('each CI run rehearses the upload of the release after the assets, and 
   assert.match(recipe, /-- install-tools TOOLS=go\n/, 'ci-release-rehearsal installs the go of mise.toml');
   // ci-release gives its TAG to every step from its command line; the rehearsal has none, so each release step names the tag of
   // VERSION: run 44236602323 failed with `release-assets: TAG is required; run make release-assets TAG=v<version>` (T628).
-  for (const line of recipe.split('\n').filter(line => / -- (release|rehearse)-/.test(line)))
+  // release-candidate-assets takes VERSION, not a tag (kit K1286).
+  for (const line of recipe.split('\n').filter(line => / -- (release|rehearse)-/.test(line) && !/ -- release-candidate-assets /.test(line)))
     assert.match(line, / TAG=v\$\(RELEASE_REHEARSAL_VERSION\)(\s|$)/, `the step of ci-release-rehearsal ${line.trim()} passes TAG=v$(RELEASE_REHEARSAL_VERSION)`);
   assert.match(recipe, /-- rehearse-go-module TAG=v\$\(RELEASE_REHEARSAL_VERSION\)\n/, 'ci-release-rehearsal rehearses the Go module of the tag of VERSION');
   for (const forbidden of ['release-tag', 'release-publish', 'release-undraft', 'release-go-module', 'release-go-module-push'])
     assert.doesNotMatch(recipe, new RegExp(`-- ${forbidden}\\b`), `ci-release-rehearsal runs no ${forbidden}`);
   assert.doesNotMatch(text('.github/workflows/release.yml'), /REHEARSAL/, 'release.yml gains no run without a tag (K911)');
+});
+
+caseTest('the release rehearsal builds the assets of HEAD for VERSION and reads no tag (T628)', () => {
+  // Run 44293991279 failed with `[release] assets v0.0.34 failed: git rev-parse --verify refs/tags/v0.0.34^{commit} exited
+  // with 128`: kit's release assets reads the tag ref, which no CI event holds. kit's candidate-assets packs the committed
+  // HEAD for VERSION with no tag (K1286); release-prepare and release-tools read no tag, so they take no case.
+  const result = spawnSync('make', ['-n', '--no-print-directory', 'ci-release-rehearsal'], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  const steps = result.stdout.split('\n').filter(line => / setup \S+ \S+ -- /.test(line)).map(line => line.split(' -- ')[1] ?? '');
+  assert.ok(!steps.some(step => /^release-assets\b/.test(step)), `ci-release-rehearsal runs no release-assets, which reads refs/tags/<TAG>: ${steps.join('; ')}`);
+  const assets = steps.find(step => /^release-candidate-assets\b/.test(step));
+  assert.ok(assets !== undefined, `ci-release-rehearsal runs release-candidate-assets: ${steps.join('; ')}`);
+  const version = /^release-candidate-assets VERSION=(\S*)$/.exec(assets)?.[1];
+  assert.ok(version !== undefined, `release-candidate-assets names VERSION: ${assets}`);
+  assert.ok(steps.includes(`rehearse-go-module TAG=v${version}`), `the Go module is rehearsed for the version of the assets, v${version}: ${steps.join('; ')}`);
 });
 
 caseTest('the CI workflow provides every variable of make orm-test-servers', () => {
