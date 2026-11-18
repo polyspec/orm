@@ -855,16 +855,20 @@ ci-assets-npm:
 	@$(CI_JOB) setup $(CI_NAME) binding-check -- release-binding-check
 	@$(CI_JOB) check $(CI_NAME) -- release-npm
 	@$(CI_JOB) end $(CI_NAME)
-# The PHP of a minor that setup-php installed is php<minor> with php-config<minor> on Linux, and the keg php@<minor> of
-# Homebrew on macOS. The recipe builds the release archive of the extension for each minor of the release matrix, so it
-# picks the PHP of MINOR, not the PHP of the checkout, and checks before the build that this PHP reports MINOR (HR-81, T533).
+# SETUP_PHP and SETUP_PHP_CONFIG are the PHP of MINOR and its php-config where the setup-php steps of the job platform installed
+# them (T629): php<minor> and php-config<minor> in /usr/bin of the packages of ondrej/php on Linux, and on macOS the keg
+# php@<minor> that setup-php installs with its own Homebrew under /opt/homebrew/opt (the darwin-arm64 runner). The recipe reads
+# them by path, not through PATH or brew, which are tools of the runner image; a missing one fails naming MINOR. The recipe builds
+# the release archive of the extension for each minor of the release matrix, so it picks the PHP of MINOR, not the PHP of the
+# checkout, and checks before the build that this PHP reports MINOR (HR-81, T533).
+SETUP_PHP = $(if $(filter Darwin,$(shell uname -s)),/opt/homebrew/opt/php@$(MINOR)/bin/php,/usr/bin/php$(MINOR))
+SETUP_PHP_CONFIG = $(if $(filter Darwin,$(shell uname -s)),/opt/homebrew/opt/php@$(MINOR)/bin/php-config,/usr/bin/php-config$(MINOR))
 ci-assets-php-ext:
 	@test -n "$(MINOR)" || { echo 'ci-assets-php-ext: MINOR is required; run make ci-assets-php-ext MINOR=<x.y>' >&2; exit 2; }
-	@if command -v php$(MINOR) >/dev/null; then php=php$(MINOR); config=php-config$(MINOR); \
-	else prefix="$$(brew --prefix php@$(MINOR))" || exit 1; php="$$prefix/bin/php"; config="$$prefix/bin/php-config"; fi; \
-	found="$$("$$php" -r 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;')" || exit 1; \
-	test "$$found" = "$(MINOR)" || { echo "ci-assets-php-ext: $$php is PHP $$found, not $(MINOR); install PHP $(MINOR) as php$(MINOR) or php@$(MINOR)" >&2; exit 1; }; \
-	$(MAKE) --no-print-directory release-php-ext PHP="$$php" PHP_CONFIG="$$config" $(if $(LLVM_PATH),LLVM_ROOT=$(LLVM_PATH))
+	@test -x "$(SETUP_PHP)" && test -x "$(SETUP_PHP_CONFIG)" || { echo 'ci-assets-php-ext: PHP $(MINOR) is missing at $(SETUP_PHP) with $(SETUP_PHP_CONFIG); set up PHP $(MINOR) with setup-php before the run step' >&2; exit 1; }
+	@found="$$("$(SETUP_PHP)" -r 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;')" || exit 1; \
+	test "$$found" = "$(MINOR)" || { echo "ci-assets-php-ext: $(SETUP_PHP) is PHP $$found, not $(MINOR)" >&2; exit 1; }
+	$(MAKE) --no-print-directory release-php-ext PHP="$(SETUP_PHP)" PHP_CONFIG="$(SETUP_PHP_CONFIG)" $(if $(LLVM_PATH),LLVM_ROOT=$(LLVM_PATH))
 
 release-assets: ## Build the archive of every package of TAG and packages.json into var/release/assets; ONLINE
 	@test -n "$$TAG" || { echo "release-assets: TAG is required; run make release-assets TAG=v<version>" >&2; exit 1; }

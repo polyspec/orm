@@ -47,8 +47,9 @@ jobs:
       # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
       # Each PHP minor of phpExtension.minors of config/toolchain.json with its php-config, which the build of the extension
-      # reads; make ci-assets-php-ext MINOR=<minor> builds with the PHP of that minor (extensionMinorErrors of
-      # scripts/repo/toolchains.mts). The build runs no Composer, so setup-php installs no tool.
+      # reads; make ci-assets-php-ext MINOR=<minor> builds with the PHP of that minor at the path where setup-php installed it
+      # (SETUP_PHP of the Makefile: /usr/bin/php<minor> on Linux, the keg /opt/homebrew/opt/php@<minor> on macOS), never through
+      # brew (T629; extensionMinorErrors of scripts/repo/toolchains.mts). The build runs no Composer, so setup-php installs no tool.
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
