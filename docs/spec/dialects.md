@@ -141,7 +141,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 
 - **DIA-211** The count of refused connects — MySQL 8.4 / MariaDB 11.8: the case
   `plain_connect_on_a_held_place_is_refused_once` of the catalog recipe holds that a client does not try again a connect
-  that `max_user_connections` refuses (CFG-35), and the servers count that refusal in no common form. MySQL records it as
+  that `max_user_connections` refuses (CFG-48), and the servers count that refusal in no common form. MySQL records it as
   an error 1226 of its user in `performance_schema.events_errors_summary_by_user_by_error` and counts it in
   `performance_schema.users`. MariaDB has no error summary; `performance_schema.users` counts only the connections that it
   admits, `USER_STATISTICS` leaves its `DENIED_CONNECTIONS` at 0, and `Aborted_connects` is global. Its server_audit plugin

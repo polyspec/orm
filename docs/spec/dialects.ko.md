@@ -130,7 +130,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 
 - **DIA-211** 거부된 연결의 수 — MySQL 8.4 / MariaDB 11.8: catalog recipe의 case
   `plain_connect_on_a_held_place_is_refused_once`는 client가 `max_user_connections`가 거부한 연결을 다시 시도하지 않는다는
-  것(CFG-35)을 지키는데, 두 server는 그 거부를 공통된 형태로 세지 않는다. MySQL은 그것을 그 user의 오류 1226으로
+  것(CFG-48)을 지키는데, 두 server는 그 거부를 공통된 형태로 세지 않는다. MySQL은 그것을 그 user의 오류 1226으로
   `performance_schema.events_errors_summary_by_user_by_error`에 기록하고 `performance_schema.users`에서 센다. MariaDB에는 오류
   요약이 없고, `performance_schema.users`는 받아들인 연결만 세며, `USER_STATISTICS`는 `DENIED_CONNECTIONS`를 0으로 두고,
   `Aborted_connects`는 global이다. MariaDB의 server_audit plugin은 거부된 연결을 `FAILED_CONNECT` 줄로 쓰지만 거부를 보낸
