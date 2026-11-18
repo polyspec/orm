@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 8737b18512252f9f996774b019bc80511bd6647e18691826575356141c2f909b -->
+<!-- source-sha256: b5284beef92bfbdf73042c0f608442451348913ca6cd38279e572aecb400b646 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -2179,3 +2179,4 @@
 | T665 | legacy/packages/ts/tests/transaction-flow.mjs:53은 파일이 정의하지 않은 DATABASE를 넘긴다(T473). 고침: 형제 case 파일처럼 DATABASE를 정의한다. | legacy/packages/ts/tests/transaction-flow.mjs | make ts-check와 make ts-min-check가 통과한다 | [ ] |
 | T666 | DECIMAL_ENV도 run이 소유한 파일이다: databases-create가 run 디렉터리에 env 옆의 decimal-env를 쓰고(scripts/check/databases.mts:218), Makefile:73-78은 RUN_CONTEXT_DIR가 있으면 그 파일을, 없으면 빈 값을 준다. 원인: TEST_ENV와 같은 공유 상태 원인이다(T650). | Makefile, scripts/test-servers.test.mts | make orm-test-servers-check가 통과한다 | [ ] |
 | T667 | RELEASE_REHEARSAL_VERSION(Makefile:806)은 make 3.81에 없는 $(file)을 쓰지만, Makefile:166은 3.81을 지원한다고 적는다. 3.81에서 rehearsal은 'VERSION is required'에서 멈추고, make -n ci-release-rehearsal은 version 없이 TAG=v와 VERSION=을 쓴다. 0.0.34 뒤의 행이다. | Makefile | GNU Make 3.81에서 make -n ci-release-rehearsal이 VERSION의 version을 쓴다 | [ ] |
+| T668 | PHP Collection.php:76, TS model.ts:236, Go collection.go:248에는 계약의 rows 클래스에 없는 공개 has가 있다(docs/spec/core.md:733-735: len, first, get, keys, values, to_array). Python client는 같은 이유로 has를 지웠다. 지울지 정하는 일은 0.0.34 밖의 일이다. | legacy/packages/php/src/Collection.php, legacy/packages/ts/src/model.ts, legacy/packages/go/orm/collection.go | 각 client의 rows가 core.md:733-735의 메서드만 가지거나, 계약이 has를 정한다 | [ ] |
