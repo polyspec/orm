@@ -2936,7 +2936,7 @@ mod database {
     use polyspec_orm::db::{parse_dsn, ConnectOptions, Pool};
     use polyspec_orm::dbspec::Server;
     use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOptions, Tx};
-    use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
+    use polyspec_orm_build::catalog::{CatalogConnection, CatalogError, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{has_temporal_form, GridCell, GridQueryResult, ParamType, Val, P};
     use polyspec_orm_case_database::CaseDatabase;
     use serde_json::{json, Map, Value};
@@ -4479,17 +4479,18 @@ mod database {
                         None => None,
                     };
                     let through = relay.as_ref().map_or(dsn.clone(), |relay| relay.dsn.clone());
+                    // The refusal may come from the connect or from the first read of the connection (the namespace read), so both
+                    // are checked: the first error of either is the refusal the step expects.
+                    let code = crate::recipe_reads::read(step, "refused_code")["refused_code"].as_str().unwrap_or_default().to_owned();
+                    let refusal = |error: &CatalogError| error.message().to_lowercase().contains(text) && error.message().starts_with(code.as_str());
                     let refused = match CatalogConnection::connect(&through).await {
-                        Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
-                        Err(error)
-                            if error.message().to_lowercase().contains(text)
-                                && error
-                                    .message()
-                                    .starts_with(crate::recipe_reads::read(step, "refused_code")["refused_code"].as_str().unwrap_or_default()) =>
-                        {
-                            Ok(Output::fields(json!({})))
-                        }
+                        Err(error) if refusal(&error) => Ok(Output::fields(json!({}))),
                         Err(error) => Err(fault(format!("the server refused the connection for another reason: {error}"))),
+                        Ok(mut fresh) => match fresh.current_namespace().await {
+                            Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
+                            Err(error) if refusal(&error) => Ok(Output::fields(json!({}))),
+                            Err(error) => Err(fault(format!("the server refused the first read of the connection for another reason: {error}"))),
+                        },
                     };
                     let Some(relay) = relay else { return refused };
                     let accepted = relay.close().map_err(fault)?;
