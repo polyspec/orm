@@ -553,7 +553,7 @@ caseTest('each CI run rehearses the upload of the release after the assets, and 
   const recipe = text('Makefile').match(/^ci-release-rehearsal:\n((?:\t.*\n)+)/m)?.[1] ?? '';
   assert.notEqual(recipe, '', 'the Makefile has a recipe ci-release-rehearsal');
   for (const target of ['release-assets', 'ci-release-platform-assets'])
-    assert.match(recipe, new RegExp(`-- ${target}\\n`), `ci-release-rehearsal gathers var/release/assets with ${target}, as ci-release does`);
+    assert.match(recipe, new RegExp(`-- ${target}( TAG=\\S+)?\\n`), `ci-release-rehearsal gathers var/release/assets with ${target}, as ci-release does`);
   assert.match(recipe, /-- release-platform-assets TAG=v\$\(RELEASE_REHEARSAL_VERSION\) REHEARSAL=1 WORK=var\/release\/rehearsal\n/,
     'ci-release-rehearsal runs release-platform-assets with REHEARSAL=1 and WORK');
   // The Go module of the tag is rehearsed as ci-release rehearses it, after the same setup in the same order (T633).
@@ -561,6 +561,10 @@ caseTest('each CI run rehearses the upload of the release after the assets, and 
   const order = ['ci-release-platform-assets', 'orm-install-rust', 'install-tools', 'release-recipes', 'rehearse-go-module'];
   assert.deepEqual(steps.filter(step => order.includes(step ?? '')), order, `ci-release-rehearsal runs ${order.join(', ')} in this order, as ci-release does`);
   assert.match(recipe, /-- install-tools TOOLS=go\n/, 'ci-release-rehearsal installs the go of mise.toml');
+  // ci-release gives its TAG to every step from its command line; the rehearsal has none, so each release step names the tag of
+  // VERSION: run 44236602323 failed with `release-assets: TAG is required; run make release-assets TAG=v<version>` (T628).
+  for (const line of recipe.split('\n').filter(line => / -- (release|rehearse)-/.test(line)))
+    assert.match(line, / TAG=v\$\(RELEASE_REHEARSAL_VERSION\)(\s|$)/, `the step of ci-release-rehearsal ${line.trim()} passes TAG=v$(RELEASE_REHEARSAL_VERSION)`);
   assert.match(recipe, /-- rehearse-go-module TAG=v\$\(RELEASE_REHEARSAL_VERSION\)\n/, 'ci-release-rehearsal rehearses the Go module of the tag of VERSION');
   for (const forbidden of ['release-tag', 'release-publish', 'release-undraft', 'release-go-module', 'release-go-module-push'])
     assert.doesNotMatch(recipe, new RegExp(`-- ${forbidden}\\b`), `ci-release-rehearsal runs no ${forbidden}`);
