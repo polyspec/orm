@@ -11,7 +11,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
 import { repositoryOf, runErrors } from './release-run.mts';
-import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors } from './ci.mts';
+import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors, goModuleErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -3490,4 +3490,23 @@ caseTest('T631: every CI job installs the tools of mise.toml that the recipes of
   const json = parseJsonValue(text('config/ci.json'), 'config/ci.json');
   assert.ok(isRecord(json), 'config/ci.json is an object');
   assert.deepEqual(jobToolErrors(text('Makefile'), json as Parameters<typeof jobToolErrors>[1], text('mise.toml')), []);
+});
+
+// CI runs the targets with GOPROXY=off, so a job that runs go in a folder downloads the Go modules of that folder in its setup
+// (T631): run 44236602323 failed the rust job with `filippo.io/edwards25519@v1.2.0: module lookup disabled by GOPROXY=off`.
+caseTest('T631: every CI job that runs go downloads the Go modules of the folder in its setup', () => {
+  const makefile = [
+    'GO := $(KIT_TOOLS)/mise/shims/go', 'BUILD = $(PUBLISH) out go build ./tests/lease',
+    'a: b', 'b:', '\t$(BUILD)', 'c:', '\tcd mod && $(GO) mod download x', 'd:', '\tnode binding check x.json --go "$(GO)"',
+    'e:', '\t$(MAKE) install-tools TOOLS=go',
+  ].join('\n') + '\n';
+  const work = 'go 1\n\nuse (\n\t./mod\n)\n';
+  assert.deepEqual(goModuleErrors(makefile, { setup: { runtimes: { rust: ['e'], go: ['c'] } }, targets: { runtimes: { rust: ['a', 'd'], go: ['a', 'd'] } } }, work), [
+    'the rust job of config/ci.json runs go in packages/go in d, and no setup of the job runs go mod download there',
+    'the rust job of config/ci.json runs go in . in b, and no setup of the job runs go mod download there',
+    'the go job of config/ci.json runs go in packages/go in d, and no setup of the job runs go mod download there',
+  ]);
+  const json = parseJsonValue(text('config/ci.json'), 'config/ci.json');
+  assert.ok(isRecord(json), 'config/ci.json is an object');
+  assert.deepEqual(goModuleErrors(text('Makefile'), json as Parameters<typeof goModuleErrors>[1], text('go.work')), []);
 });

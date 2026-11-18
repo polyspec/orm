@@ -993,3 +993,50 @@ export function jobToolErrors(makefile: string, config: { setup?: { shared?: str
   }
   return errors;
 }
+
+// A Go module setup is a recipe line of a setup target of a CI job that runs `go mod download` in a folder: the folder of
+// its leading `cd <folder> &&`, else the root. CI runs the targets with GOPROXY=off, so a job whose setup or targets run a go
+// command in a folder downloads the modules of that folder in its setup first (T631): a go command of the root builds in the
+// workspace of go.work, whose download any setup of the root or of a module that go.work uses gives, and binding check with
+// --go runs `go mod download` in packages/go (binding L-2). A go command is a word of an expanded recipe line that is the go
+// of mise.toml through its shim or its command; `make install-tools TOOLS=go` runs no go command.
+export function goModuleErrors(makefile: string, config: { setup?: { shared?: string[]; runtimes?: Record<string, string[]> }; targets?: { shared?: string[]; runtimes?: Record<string, string[]> } }, work: string): string[] {
+  const errors: string[] = [];
+  const variables = makeVariables(makefile);
+  const members = [...work.matchAll(/^\s*(?:use\s+)?\.\/(\S+)\s*$/gm)].map(match => match[1] ?? '').filter(folder => folder !== '');
+  const folder = (line: string): string => /^\s*cd\s+(\S+)\s*&&/.exec(line)?.[1]?.replace(/^\$\(CURDIR\)\/?/, '').replace(/\/$/, '') || '.';
+  const isGo = (word: string): boolean => word === 'go' || /\/mise\/shims\/go$/.test(word);
+  const runs = (line: string): string[] => {
+    if (/\bbinding\s+check\b/.test(line)) return /--go\b/.test(line) ? ['packages/go'] : [];
+    return line.split(/[\s;&|()`"']+/).some(isGo) ? [folder(line)] : [];
+  };
+  const runtimes = Object.keys({ ...config.setup?.runtimes, ...config.targets?.runtimes });
+  const jobs: [string, string[], string[]][] = [
+    ['shared', config.setup?.shared ?? [], config.targets?.shared ?? []],
+    ...runtimes.map((runtime): [string, string[], string[]] => {
+      const setup = config.setup?.runtimes?.[runtime] ?? [];
+      return [runtime, setup.length ? setup : [`deps-${runtime}`], config.targets?.runtimes?.[runtime] ?? []];
+    }),
+  ];
+  for (const [job, setup, targets] of jobs) {
+    const downloads = new Set<string>();
+    for (const target of reached(makefile, setup))
+      for (const line of recipeLines(makefile, target)) {
+        const expanded = expand(line, variables);
+        if (/\smod\s+download\b/.test(expanded) && expanded.split(/[\s;&|()`"']+/).some(isGo)) downloads.add(folder(expanded));
+      }
+    const covered = (where: string): boolean => downloads.has(where) || (where === '.' && members.some(member => downloads.has(member)));
+    const users = new Map<string, string[]>();
+    for (const target of reached(makefile, [...setup, ...targets]))
+      for (const line of recipeLines(makefile, target))
+        for (const where of runs(expand(line, variables))) {
+          if (covered(where)) continue;
+          const list = users.get(where) ?? [];
+          if (!list.includes(target)) list.push(target);
+          users.set(where, list);
+        }
+    for (const [where, list] of users)
+      errors.push(`the ${job} job of config/ci.json runs go in ${where} in ${list.join(', ')}, and no setup of the job runs go mod download there`);
+  }
+  return errors;
+}
