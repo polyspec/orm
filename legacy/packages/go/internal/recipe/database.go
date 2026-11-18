@@ -301,13 +301,19 @@ type databaseContext struct {
 	transactionHooks []transactionHookRecord
 }
 
-// fixturePath returns the path of the fixture set that the recipe at path names.
+// fixturePath returns the path of the fixture set that the recipe at path names. The fixture is case data, so it is
+// relative to the legacy directory, which holds every recipe that this runner runs and the fixture sets that the
+// generated legacy models come from; $schema reaches the root of the repository, whose fixture sets of the same names
+// the legacy models do not come from (T640).
 func fixturePath(path string, f databaseFile) (string, error) {
-	relative, ok := strings.CutSuffix(f.Schema, schemaPath)
-	if !ok {
+	if !strings.HasSuffix(f.Schema, schemaPath) {
 		return "", fmt.Errorf("$schema %s does not name %s", f.Schema, schemaPath)
 	}
-	return filepath.Join(filepath.Dir(path), relative, f.Fixture), nil
+	legacy := testcase.LegacyRoot()
+	if relative, err := filepath.Rel(legacy, path); err != nil || !filepath.IsLocal(relative) {
+		return "", fmt.Errorf("the recipe is not under the legacy directory %s", legacy)
+	}
+	return filepath.Join(legacy, filepath.FromSlash(f.Fixture)), nil
 }
 
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-22).
@@ -324,13 +330,11 @@ func runDatabase(t *testing.T, path, database string) {
 	var schema *orm.Schema
 	var external []*orm.Schema
 	if f.Fixture != "none" {
-		relative, ok := strings.CutSuffix(f.Schema, schemaPath)
-		if !ok {
-			t.Fatalf("recipe %s: $schema %s does not name %s", path, f.Schema, schemaPath)
+		setPath, err := fixturePath(path, f)
+		if err != nil {
+			t.Fatalf("recipe %s: %v", path, err)
 		}
-		root := filepath.Join(filepath.Dir(path), relative)
-		var err error
-		schema, external, err = fixtureSchema(filepath.Join(root, f.Fixture))
+		schema, external, err = fixtureSchema(setPath)
 		if err != nil {
 			t.Fatalf("recipe %s: %v", path, err)
 		}
