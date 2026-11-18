@@ -177,9 +177,11 @@ codes:
     origin: driver
 # The kinds of the core whose name is not the lower-case code (CORE-14): every other kind is the lower-case form of its code.
 # A recipe expects a kind; a language implementation that reports codes reports the code of this list for these kinds.
+# replaces: the kind takes the place of the code, which is then no kind; code: the kind has no code of its own, and the
+# language implementations report it with that code, which stays a kind of its own.
 kinds:
   - kind: rollback_failed
-    code: ROLLBACK
+    replaces: ROLLBACK
   - kind: busy
     code: CONFIG
   - kind: transaction_ended

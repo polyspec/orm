@@ -77,7 +77,8 @@ implementation is eligible for removal on that evidence.
   `rollback_failed` replaces `ROLLBACK` (CORE-25). The codes `SUBSCRIBER` (CORE-28), `GENERATOR_SCAN_PARSE` and
   `GENERATOR_SCAN_UNATTACHED` (CORE-50) are no kinds of the core. Every other kind is the lower-case form of its
   code. The list `kinds` of `docs/spec/errors.yaml` holds each of these five kinds with the code that the language
-  implementations report for it.
+  implementations report for it: `replaces` for `rollback_failed`, whose code is then no kind, and `code` for the four
+  kinds that `CONFIG` reports, which stays the kind `config`.
 - **CORE-139** A stored cell that a stage refuses when a read decodes it fails the member that reads the row with the
   kind `codec_decode`, the class of the category `value` (CORE-11) and the message
   `codec_decode: <entity>.<column>: <text>`, in every binding; the conversion of a value that a read already holds

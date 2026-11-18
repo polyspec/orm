@@ -68,7 +68,8 @@
   `transaction_ended`(CORE-23), `closed`(CORE-31), `pool_timeout`(CORE-30). `rollback_failed`는 `ROLLBACK`을
   대체한다(CORE-25). 코드 `SUBSCRIBER`(CORE-28), `GENERATOR_SCAN_PARSE`, `GENERATOR_SCAN_UNATTACHED`(CORE-50)는 코어의
   kind가 아니다. 다른 kind는 모두 그 코드의 소문자 형태다. `docs/spec/errors.yaml`의 목록 `kinds`는 이 다섯 kind를
-  각각 언어 구현이 그 kind로 내는 코드와 함께 담는다.
+  각각 언어 구현이 그 kind로 내는 코드와 함께 담는다. `rollback_failed`는 `replaces`로 적고 그 코드는 kind가 아니게
+  된다. `CONFIG`가 내는 네 kind는 `code`로 적고 `CONFIG`는 kind `config`로 남는다.
 - **CORE-139** 읽기가 디코드할 때 stage가 거부한 저장 cell은 그 행을 읽는 member를 모든 바인딩에서 kind `codec_decode`,
   category `value`의 클래스(CORE-11), 메시지 `codec_decode: <entity>.<column>: <text>`로 실패시킨다. 읽기가 이미 가진
   값의 변환은 CORE-64와 CORE-126의 메시지를 그대로 둔다. 다른 라이브러리의 오류
