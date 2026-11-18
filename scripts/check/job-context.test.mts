@@ -5,12 +5,22 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFile
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { caseTest } from '../../tests/testcase.mts';
+import { databasesToCreate } from './databases.mts';
 import { cleanupContext, prepareContext } from './job-context.mts';
 
 const repo = resolve(import.meta.dirname, '../..');
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// phpExtTargets is the list targets.runtimes.php-ext of config/ci.json, checked to be strings; a config without it fails the case.
+function phpExtTargets(config: unknown): string[] {
+  const targets = isRecord(config) ? config['targets'] : undefined;
+  const runtimes = isRecord(targets) ? targets['runtimes'] : undefined;
+  const list = isRecord(runtimes) ? runtimes['php-ext'] : undefined;
+  if (Array.isArray(list) && list.every((target): target is string => typeof target === 'string')) return list;
+  return assert.fail('config/ci.json has no list targets.runtimes.php-ext of target names');
 }
 
 function fixture() {
@@ -132,8 +142,8 @@ function dryRun(target: string, env: NodeJS.ProcessEnv = process.env, args: stri
 // ORM_TEST_SERVERS_LEASES); the targets are those of the php-ext job, kit's gate first (config/ci.json).
 caseTest('each php-ext target that reads the servers starts them and creates the run databases as its make prerequisites (T645)', () => {
   const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
-  const config = JSON.parse(readFileSync(join(repo, 'config/ci.json'), 'utf8')) as { targets: { runtimes: Record<string, string[]> } };
-  const targets = ['kit-gates-runtime-php-ext', ...(config.targets.runtimes['php-ext'] ?? [])];
+  const config: unknown = JSON.parse(readFileSync(join(repo, 'config/ci.json'), 'utf8'));
+  const targets = ['kit-gates-runtime-php-ext', ...phpExtTargets(config)];
   const readers = targets.filter(target => dryRun(target).includes('ORM_TEST_SERVERS_LEASES'));
   assert.ok(readers.length > 0, 'no php-ext target reads the servers');
   // The prerequisites of a target are those of all its rule lines; a line that only sets a variable of the target
@@ -172,10 +182,7 @@ caseTest('databases-create with no run context and no DIRECTORY says so and make
 // databases-create runs once per target that reads the servers, so each create keeps the databases of its run that the
 // server already holds and creates only the missing ones, judged by the names the server lists (T645).
 caseTest('databases-create keeps the databases of its run that exist and creates only the missing ones (T645)', async () => {
-  const databases: Record<string, unknown> = await import('./databases.mts');
-  const plan = databases['databasesToCreate'];
-  assert.equal(typeof plan, 'function', 'scripts/check/databases.mts exports no databasesToCreate');
-  const toCreate = plan as (existing: string[], wanted: string[]) => string[];
+  const toCreate = databasesToCreate;
   const wanted = ['orm_kit_php_ext_4321_2_bench', 'orm_kit_php_ext_4321_2_decimal'];
   assert.deepEqual(toCreate(['mysql', 'other_bench'], wanted), wanted);
   assert.deepEqual(toCreate(['mysql', 'orm_kit_php_ext_4321_2_bench'], wanted), ['orm_kit_php_ext_4321_2_decimal']);
