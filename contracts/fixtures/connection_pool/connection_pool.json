@@ -2,7 +2,7 @@
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "CFG-4",
-    "CFG-5",
+    "CFG-50",
     "CFG-5a",
     "FCV-2",
     "FCV-22",
@@ -204,7 +204,7 @@
     {
       "id": "the_idle_size_closes_what_it_does_not_keep",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
       "steps": [
         {
@@ -274,7 +274,7 @@
     {
       "id": "an_unset_idle_size_keeps_the_pool_size",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
       "steps": [
         {
@@ -343,7 +343,7 @@
     {
       "id": "an_idle_size_above_the_pool_size_is_refused",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
       "steps": [
         {
@@ -374,7 +374,7 @@
       "id": "a_connection_within_its_lifetime_is_reused",
       "databases_differ": "Each database keeps a session value in its own form, a user variable on MySQL, a setting on PostgreSQL and a pragma on SQLite and a flowmark session (PRT-72), so the statement that marks a connection and the statement that reads the mark are stated per database; the result is the same.",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
             "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
       "steps": [
@@ -511,7 +511,7 @@
       "id": "a_connection_whose_lifetime_passes_in_use_is_not_used_again",
       "databases_differ": "Each database keeps a session value in its own form, a user variable on MySQL, a setting on PostgreSQL and a pragma on SQLite and a flowmark session (PRT-72), so the statement that marks a connection and the statement that reads the mark are stated per database; the result is the same.",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
             "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
       "steps": [
@@ -645,7 +645,7 @@
       "id": "an_idle_connection_past_its_lifetime_is_closed",
       "databases_differ": "Each database keeps a session value in its own form, a user variable on MySQL, a setting on PostgreSQL and a pragma on SQLite and a flowmark session (PRT-72), so the statement that marks a connection and the statement that reads the mark are stated per database; the result is the same.",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
             "not_through_pooler": "A pooler reuses its server sessions, so a mark of the session does not tell the connections of the client apart.",
       "steps": [
@@ -869,7 +869,7 @@
     {
       "id": "an_idle_size_above_the_default_pool_size_is_refused",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
       "steps": [
         {

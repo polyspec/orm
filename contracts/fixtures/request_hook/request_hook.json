@@ -1,7 +1,7 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "INT-78",
+    "INT-194",
     "PRT-2",
     "PRT-4",
     "PRT-5",
@@ -22,9 +22,9 @@
   "cases": [
     {
       "id": "without_hook",
-      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-227) and row values (DIA-11).",
       "requirements": [
-        "INT-78"
+        "INT-194"
       ],
       "seed": {
         "rows": {
@@ -599,9 +599,9 @@
     },
     {
       "id": "read_filter",
-      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-227) and row values (DIA-11).",
       "requirements": [
-        "INT-78",
+        "INT-194",
         "PRT-2"
       ],
       "seed": {
@@ -936,7 +936,7 @@
     {
       "id": "read_fail",
       "requirements": [
-        "INT-78"
+        "INT-194"
       ],
       "seed": {
         "rows": {
@@ -1093,7 +1093,7 @@
     {
       "id": "same_handle_child_hook_once",
       "requirements": [
-        "INT-78",
+        "INT-194",
         "PRT-2"
       ],
       "seed": {
@@ -1311,7 +1311,7 @@
     {
       "id": "relation_scope",
       "requirements": [
-        "INT-78"
+        "INT-194"
       ],
       "seed": {
         "rows": {
@@ -2547,7 +2547,7 @@
     {
       "id": "upsert_scope",
       "requirements": [
-        "INT-78",
+        "INT-194",
         "PRT-4",
         "PRT-6"
       ],
@@ -3875,7 +3875,7 @@
     {
       "id": "reads_params",
       "requirements": [
-        "INT-78"
+        "INT-194"
       ],
       "steps": [
         {
@@ -4054,7 +4054,7 @@
     {
       "id": "hook_reads_with_lock_on_another_connection",
       "requirements": [
-        "INT-78",
+        "INT-194",
         "INT-49"
       ],
       "steps": [
@@ -4246,7 +4246,7 @@
       "id": "hook_lock_refused_in_a_transaction",
       "databases_differ": "SQLite and a flowmark corpus admit one write transaction at a time and begin it with BEGIN IMMEDIATE (DIA-221), so the transaction of the hook on another connection waits behind the transaction that holds the write lock and ends with CANCELED when the busy timeout expires (errors.yaml CANCELED), where MySQL and PostgreSQL read the row beside a transaction of the handle and refuse a row lock that another transaction holds with LOCK_NOT_AVAILABLE (DIA-209).",
       "requirements": [
-        "INT-78",
+        "INT-194",
         "INT-49",
         "DIA-209",
         "DIA-221"

@@ -1,7 +1,7 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "CFG-8",
+    "CFG-52",
     "DBS-117",
     "DBS-67",
     "DBS-85",
@@ -26,7 +26,7 @@
       "id": "audit_history",
       "databases_differ": "The column or table change is a reserved word of MySQL, so the statement quotes it in each dialect's form, a backquote on MySQL and a double quote on PostgreSQL and SQLite (DIA-1); its other identifiers are written without quotes.",
       "requirements": [
-        "CFG-8",
+        "CFG-52",
         "DBS-87",
         "DBS-88",
         "DBS-89",
@@ -1363,7 +1363,7 @@
       "id": "audit_transaction_entry_points",
       "databases_differ": "The column or table change is a reserved word of MySQL, so the statement quotes it in each dialect's form, a backquote on MySQL and a double quote on PostgreSQL and SQLite (DIA-1); its other identifiers are written without quotes.",
       "requirements": [
-        "CFG-8",
+        "CFG-52",
         "DBS-87",
         "DBS-88",
         "DBS-93",
@@ -3258,7 +3258,7 @@
     },
     {
       "id": "soft_delete_statements",
-      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11); the clock of an update time or a soft deletion, CURRENT_TIMESTAMP on MySQL and a bound statement time elsewhere (DIA-18, DIA-22).",
+      "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-227) and row values (DIA-11); the clock of an update time or a soft deletion, CURRENT_TIMESTAMP on MySQL and a bound statement time elsewhere (DIA-18, DIA-22).",
       "requirements": [
         "DBS-67"
       ],
@@ -3744,7 +3744,7 @@
     {
       "id": "audit_values_need_an_audit_source",
       "requirements": [
-        "CFG-8",
+        "CFG-52",
         "INT-44"
       ],
       "steps": [

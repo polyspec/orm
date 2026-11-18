@@ -69,7 +69,7 @@ fn only_the_named_parameters_reach_sqlx() {
 /// An idle direct server connection is discarded; the next statement uses a new one. Poolers may multiplex a client
 /// connection without retaining an idle server session, so this lifetime case uses the direct server DSN.
 #[tokio::main(flavor = "current_thread")]
-// Requirements: INT-92.
+// Requirements: INT-195.
 async fn pool_discards_ended_idle_connection_servers() {
     let _case = polyspec_orm_testcase::case!();
     for driver in ["mysql", "postgres"] {
@@ -219,7 +219,7 @@ async fn statement_waits(driver: &str, dsn: &str, waits: Option<&mut LockWaits>)
 }
 
 // Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
-// Requirements: CFG-6, CFG-36.
+// Requirements: CFG-51, CFG-36.
 fn statement_timeout_negative_is_unrepresentable() {
     let _case = polyspec_orm_testcase::case!();
     let timeout: u32 = polyspec_orm::DEFAULT_STATEMENT_TIMEOUT_MS;

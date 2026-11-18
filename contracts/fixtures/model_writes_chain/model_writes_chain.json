@@ -1288,7 +1288,7 @@
   },
   {
    "id": "creates_keeps_the_rows_in_order_across_batches",
-   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-227) and row values (DIA-11).",
    "requirements": [
     "DSL-104",
     "INT-35",
@@ -2051,7 +2051,7 @@
   },
   {
    "id": "creates_rolls_back_every_batch_when_a_later_one_fails",
-   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-3) and row values (DIA-11).",
+   "databases_differ": "The statements that the step reads are the SQL of each dialect: its identifiers (DIA-1), placeholders (DIA-2), LIMIT (DIA-227) and row values (DIA-11).",
    "requirements": [
     "DSL-104",
     "INT-35",

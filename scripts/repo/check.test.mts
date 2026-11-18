@@ -281,10 +281,10 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
   for (const path of ['legacy/packages/ts/tests/recipe.mjs', 'legacy/packages/go/internal/recipe/database.go', 'legacy/packages/python/tests/recipe.py', 'legacy/packages/php/tests/Recipe.php', 'legacy/packages/php/tests/RollbackTest.php', 'packages/rust/programs/src/recipe.rs']) {
     assert.doesNotMatch(text(path), /pg_terminate_backend\([^)]*,/, `${path} ends a session without a bound on its end`);
   }
-  // An idle pool connection of INT-92 holds a named lock on MySQL and MariaDB, and GET_LOCK of that lock answers when the killed
+  // An idle pool connection of INT-195 holds a named lock on MySQL and MariaDB, and GET_LOCK of that lock answers when the killed
   // thread has ended, so no case reads PROCESSLIST until the session is gone.
   for (const path of ['legacy/packages/ts/tests/idle-connection-end.mjs', 'legacy/packages/go/orm/timezone_test.go', 'legacy/packages/python/tests/connection_pool.py', 'packages/rust/tests/cases/zone.rs']) {
-    // zone.rs holds other cases; the INT-92 case and its release helper end before the next case.
+    // zone.rs holds other cases; the INT-195 case and its release helper end before the next case.
     const whole = text(path);
     const source = path.endsWith('zone.rs') ? whole.slice(whole.indexOf('async fn pool_discards_ended_idle_connection_servers'), whole.indexOf('fn statement_timeout_negative_is_unrepresentable')) : whole;
     assert.match(source, /IS_USED_LOCK/, `${path} reads once that the idle connection holds the named lock`);
@@ -294,7 +294,7 @@ caseTest('the PostgreSQL and SQLite lock-wait and abort tests wait for an event,
 });
 
 caseTest('the Go PostgreSQL pool checks a reused connection with a Sync and no query', () => {
-  // The pool checks before each reuse that the server still holds the connection, at any idle time (INT-92, T476). The
+  // The pool checks before each reuse that the server still holds the connection, at any idle time (INT-195, T476). The
   // check is a protocol Sync read to its ReadyForQuery in OptionResetSession, and the "-- ping" query of pgx is off: the
   // server runs that query as a transaction of its own, which counts against the transactions of a statement (INT-149, T642).
   const source = text('legacy/packages/go/orm/pg/pg.go');

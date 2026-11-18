@@ -10,7 +10,7 @@
     "CFG-26",
     "DIA-57",
     "DSL-141",
-    "CFG-6",
+    "CFG-51",
     "CFG-27",
     "CFG-28",
     "CFG-29",
@@ -1596,9 +1596,9 @@
     },
     {
       "id": "statement_timeout_cancels_and_keeps_the_connection",
-      "databases_differ": "MySQL and PostgreSQL bound a statement with a session setting, while SQLite has no session timeout and its bound is the busy timeout, which its own case states (CFG-6).",
+      "databases_differ": "MySQL and PostgreSQL bound a statement with a session setting, while SQLite has no session timeout and its bound is the busy timeout, which its own case states (CFG-51).",
       "requirements": [
-        "CFG-6"
+        "CFG-51"
       ],
       "only": [
         "mysql",
@@ -2811,9 +2811,9 @@
     },
     {
       "id": "sqlite_statement_timeout_keeps_the_busy_timeout",
-      "databases_differ": "SQLite has no session timeout, so its statement bound is the busy timeout (CFG-6).",
+      "databases_differ": "SQLite has no session timeout, so its statement bound is the busy timeout (CFG-51).",
       "requirements": [
-        "CFG-6"
+        "CFG-51"
       ],
       "only": [
         "sqlite"

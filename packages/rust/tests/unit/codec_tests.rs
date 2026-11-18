@@ -78,7 +78,7 @@ fn yaml_parse_keeps_the_position_of_the_reader() {
 }
 
 /// `?` on an error of the json library gives the rule of COD-70 of its fact, with the library error as its source
-/// (COD-81): one input of each kind that a caller can meet.
+/// (COD-84): one input of each kind that a caller can meet.
 #[test]
 fn json_errors_state_the_rule_of_their_fact() {
     let _case = polyspec_orm_testcase::case!();

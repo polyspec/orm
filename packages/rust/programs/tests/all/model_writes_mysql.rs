@@ -1,4 +1,4 @@
-//! Requirements: FCV-8, FCV-9, FCV-10, FCV-13, FCV-14.
+//! Requirements: FCV-8, FCV-9, FCV-25, FCV-13, FCV-14.
 //! The model_writes recipe, contracts/fixtures/model_writes/model_writes.json, on mysql (docs/spec/feature-coverage.md FCV-22, FCV-4).
 //! Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-109, DSL-110, PLN-26.
 

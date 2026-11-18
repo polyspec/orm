@@ -49,7 +49,7 @@ impl Workload {
         }
     }
 
-    /// The binds of the query, one order on every database: the page count binds before the offset (DIA-3).
+    /// The binds of the query, one order on every database: the page count binds before the offset (DIA-227).
     fn expected_binds(self) -> Vec<Param> {
         match self {
             Self::Pk => vec![Param::I64(42), Param::I64(1), Param::I64(0)],

@@ -34,7 +34,7 @@
     "INT-119",
     "INT-121",
     "DIA-154",
-    "INT-165",
+    "INT-197",
     "INT-166",
     "INT-167",
     "INT-168",
@@ -10638,7 +10638,7 @@
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
-        "INT-157",
+        "INT-196",
         "INT-158",
         "CFG-49"
       ],
@@ -10707,7 +10707,7 @@
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
-        "INT-157",
+        "INT-196",
         "CFG-49"
       ],
       "only": [
@@ -10806,7 +10806,7 @@
       "not_through_pooler": "its own user with two connections is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
-        "INT-157",
+        "INT-196",
         "INT-158",
         "CFG-49"
       ],
@@ -15356,7 +15356,7 @@
       "id": "catalog_value_year",
       "databases_differ": "Only MySQL has a YEAR type (DIA-204).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-166"
       ],
       "steps": [
@@ -15557,7 +15557,7 @@
       "requirements": [
         "INT-102",
         "INT-153",
-        "INT-165"
+        "INT-197"
       ],
       "steps": [
         {
@@ -15664,7 +15664,7 @@
       "id": "catalog_value_calendar_date",
       "databases_differ": "Only MySQL stores a day past the end of its month, under ALLOW_INVALID_DATES (DIA-52).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-174"
       ],
       "steps": [
@@ -15768,7 +15768,7 @@
       "id": "catalog_value_time_of_day",
       "databases_differ": "Only a MySQL TIME reaches past a day (DIA-53).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-175"
       ],
       "steps": [
@@ -15804,7 +15804,7 @@
       "id": "catalog_value_boolean",
       "databases_differ": "PostgreSQL boolean holds no 2, while a MySQL TINYINT(1) and a SQLite BOOLEAN do (DIA-40).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-182"
       ],
       "steps": [
@@ -15882,7 +15882,7 @@
       "id": "catalog_value_date_range",
       "databases_differ": "Only PostgreSQL has dates before year 1, after year 9999 and infinite, and only SQLite stores the year 0 as text (DIA-52).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-173"
       ],
       "steps": [
@@ -15986,7 +15986,7 @@
       "id": "catalog_value_native_type",
       "databases_differ": "Only PostgreSQL has interval, money, point, regclass and array types (DIA-112).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-170",
         "INT-185"
       ],
@@ -16171,7 +16171,7 @@
       "id": "catalog_value_multirange",
       "databases_differ": "Only PostgreSQL has multirange types (DIA-112).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-170",
         "INT-185"
       ],
@@ -16312,7 +16312,7 @@
       "requirements": [
         "INT-106b",
         "INT-106c",
-        "INT-157"
+        "INT-196"
       ],
       "only": [
         "mysql",
@@ -16528,7 +16528,7 @@
       "id": "catalog_value_text_types",
       "databases_differ": "Each server has its own types outside dbspec, uuid, json, enum and arrays on PostgreSQL and ENUM, SET, JSON, BIT and geometry on MySQL (DIA-48, DIA-49, DIA-50).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-185"
       ],
       "steps": [
@@ -16791,7 +16791,7 @@
       "id": "catalog_value_numeric_described",
       "databases_differ": "Only PostgreSQL stores a numeric NaN (DIA-41).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-169"
       ],
       "steps": [
@@ -16836,7 +16836,7 @@
       "databases_differ": "PostgreSQL stores NaN and the infinities in both float types, MySQL none, and SQLite the infinities in one REAL (DIA-42).",
       "requirements": [
         "INT-102",
-        "INT-165",
+        "INT-197",
         "INT-183"
       ],
       "steps": [
@@ -17248,7 +17248,7 @@
       "id": "catalog_value_sqlite_declared_types",
       "databases_differ": "Only SQLite keeps the storage class of a value whatever its column declares (DIA-51).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-184"
       ],
       "steps": [
@@ -17316,7 +17316,7 @@
       "databases_differ": "Only SQLite has a column with no declared type (DIA-51).",
       "requirements": [
         "INT-152",
-        "INT-165",
+        "INT-197",
         "INT-183",
         "INT-184"
       ],
@@ -17425,7 +17425,7 @@
       "id": "catalog_value_sqlite_fraction",
       "databases_differ": "SQLite has no temporal type, so only a SQLite DATETIME column with no CHECK holds a fraction past its precision (DIA-24, DIA-54).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-179"
       ],
       "steps": [
@@ -19528,7 +19528,7 @@
       "databases_differ": "Each declares its temporal columns in its own types, SQLite by its renderer CHECK (DIA-24), MySQL alone has a TIME past a day and a TIMESTAMP that follows a time zone, PostgreSQL alone has 24:00:00, infinite values and timestamptz (DIA-53, DIA-55, DIA-57), and only SQLite stores a temporal text that no type checks.",
       "requirements": [
         "INT-103",
-        "INT-165",
+        "INT-197",
         "INT-167",
         "INT-168",
         "INT-173",
@@ -20797,7 +20797,7 @@
       "id": "catalog_temporal_values_under_a_query_datestyle",
       "databases_differ": "Only PostgreSQL has a DateStyle setting that changes how a temporal value is written (CFG-28).",
       "requirements": [
-        "INT-165",
+        "INT-197",
         "INT-186",
         "CFG-28"
       ],

@@ -1,4 +1,4 @@
-//! Requirements: FCV-4, FCV-9, FCV-10, DSL-32, DSL-33, DIA-6, PRT-75.
+//! Requirements: FCV-4, FCV-9, FCV-25, DSL-32, DSL-33, DIA-6, PRT-75.
 //! The fulltext_search recipe, contracts/fixtures/fulltext_search/fulltext_search.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200) (docs/spec/feature-coverage.md FCV-22, FCV-4).
 
 use polyspec_orm_tests::recipe;

@@ -3,7 +3,7 @@
   "requirements": [
     "CFG-1",
     "CFG-2",
-    "CFG-5",
+    "CFG-50",
     "CFG-11",
     "CFG-12",
     "CFG-17",
@@ -11,7 +11,7 @@
     "CFG-26",
     "PRT-64",
     "PRT-63",
-    "CFG-6",
+    "CFG-51",
     "CFG-20",
     "INT-187"
   ],
@@ -496,7 +496,7 @@
     {
       "id": "pool_idle_above_the_pool_size",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
       "steps": [
         {
@@ -517,7 +517,7 @@
     {
       "id": "pool_idle_above_the_default_pool_size",
       "requirements": [
-        "CFG-5"
+        "CFG-50"
       ],
       "steps": [
         {

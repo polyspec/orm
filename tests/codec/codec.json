@@ -7,7 +7,7 @@
     "COD-5",
     "COD-6",
     "COD-8",
-    "COD-9",
+    "COD-82",
     "COD-10",
     "COD-11",
     "COD-12",
@@ -45,7 +45,7 @@
       "id": "json_null",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -108,7 +108,7 @@
       "id": "json_bool_true",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -171,7 +171,7 @@
       "id": "json_int",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -234,7 +234,7 @@
       "id": "json_negative_int",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -297,7 +297,7 @@
       "id": "json_float",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -360,7 +360,7 @@
       "id": "json_float_small",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -423,7 +423,7 @@
       "id": "json_integral_float",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -486,7 +486,7 @@
       "id": "json_string",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -549,7 +549,7 @@
       "id": "json_unicode_slash",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -612,7 +612,7 @@
       "id": "json_empty_string",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -675,7 +675,7 @@
       "id": "json_empty_list",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -738,7 +738,7 @@
       "id": "json_list",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -849,7 +849,7 @@
       "id": "json_nested_map",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -1056,7 +1056,7 @@
       "id": "json_int_keys_sparse",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -1158,7 +1158,7 @@
       "id": "json_numeric_string_keys",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -1278,7 +1278,7 @@
       "id": "json_upload_nested",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-33",
@@ -12142,7 +12142,7 @@
       "id": "decode_json_empty_text",
       "requirements": [
         "COD-3",
-        "COD-9",
+        "COD-82",
         "COD-16",
         "COD-30",
         "COD-31",

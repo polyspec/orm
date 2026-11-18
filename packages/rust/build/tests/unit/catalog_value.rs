@@ -2,7 +2,7 @@
 //! (INT-171) and a failure of the driver or of a library to decode a value (INT-172), injected at the conversion of a row;
 //! the text form of the PostgreSQL types of a text cell (INT-185), written from their binary values; and the prepare failure of
 //! sqlx on a type kind that it does not know, which starts the describe of a multirange column (INT-185).
-// Requirements: INT-165, INT-171, INT-172, INT-185.
+// Requirements: INT-197, INT-171, INT-172, INT-185.
 use super::catalog_query_error;
 use crate::tool_db::pg_describe::is_unknown_type_kind;
 use crate::tool_db::pg_text::{form, numeric, own_kind, render, Form};

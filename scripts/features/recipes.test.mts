@@ -130,7 +130,7 @@ caseTest('the recipe schema refuses each break of the format', () => {
 });
 
 // expectFaults are the steps of a recipe with a fixture whose expect names another set than the databases that run the step:
-// those of the only of the step, else of its case, else all three (FCV-4, FCV-10). A markdown connection is a SQLite
+// those of the only of the step, else of its case, else all three (FCV-4, FCV-25). A markdown connection is a SQLite
 // connection, so it reads the sqlite entry, and an entry of its own is named only where its result differs (DIA-154); MariaDB
 // is a server of the MySQL dialect, so it reads the mysql entry and names its own only where its answer differs (DIA-200).
 const DATABASES = ['mysql', 'postgres', 'sqlite'];
