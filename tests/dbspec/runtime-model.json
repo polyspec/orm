@@ -6,7 +6,13 @@
     "DBS-111",
     "DBS-112",
     "DBS-100",
-    "DBS-103"
+    "DBS-103",
+    "DBS-64",
+    "DBS-70",
+    "DBS-185",
+    "DBS-88",
+    "DBS-89",
+    "DBS-91"
   ],
   "cases": [
     {
@@ -272,6 +278,92 @@
                       "default": true
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an-aes-column-and-its-key-version",
+      "requirements": [
+        "DBS-64",
+        "DBS-70",
+        "DBS-185"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.runtime_model",
+          "documents": [
+            "runtime-model-aes.dbs"
+          ],
+          "expect": {
+            "none": {
+              "entities": [
+                "secrets"
+              ],
+              "models": {
+                "secrets": {
+                  "table": "secrets",
+                  "primary_key": [
+                    "id"
+                  ],
+                  "aes_version": "key_version",
+                  "fields": {
+                    "secret": {
+                      "type": "varchar",
+                      "codec": [
+                        "aes",
+                        "hex"
+                      ]
+                    },
+                    "key_version": {
+                      "type": "i32",
+                      "nullable": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an-audited-table-its-history-and-its-record",
+      "requirements": [
+        "DBS-85",
+        "DBS-88",
+        "DBS-89",
+        "DBS-91"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.runtime_model",
+          "documents": [
+            "runtime-model-audit.dbs"
+          ],
+          "expect": {
+            "none": {
+              "entities": [
+                "audit_record",
+                "notes",
+                "notes_history"
+              ],
+              "models": {
+                "notes": {
+                  "audit_column": "audit_id",
+                  "audit_record": "audit_record",
+                  "fields": {
+                    "audit_id": {
+                      "foreign_key": true
+                    }
+                  }
+                },
+                "notes_history": {
+                  "identity": "history_id",
+                  "audit_column": ""
                 }
               }
             }

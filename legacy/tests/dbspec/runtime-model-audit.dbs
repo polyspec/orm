@@ -1,0 +1,36 @@
+dbspec 1 audit
+
+table audit_record {
+  id i64 identity
+  request_id varchar(64)
+  primary key (id)
+  settings {
+    store document table
+  }
+}
+
+table notes {
+  id i64 identity
+  label varchar(16)
+  audit_id i64
+  primary key (id)
+  index ix_notes_audit (audit_id)
+  foreign key fk_notes_audit (audit_id) references audit_record (id) on delete restrict on update restrict
+  settings {
+    store document table
+    audit into notes_history column audit_id references audit_record action change previous previous_audit_id
+  }
+}
+
+table notes_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_id i64 null
+  id i64
+  label varchar(16)
+  audit_id i64
+  primary key (history_id)
+  settings {
+    store document table
+  }
+}

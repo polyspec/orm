@@ -2910,6 +2910,10 @@
         "legacy/tests/dbspec/runtime-model-accounts.dbs",
         "tests/dbspec/runtime-model-members.dbs",
         "legacy/tests/dbspec/runtime-model-members.dbs",
+        "tests/dbspec/runtime-model-aes.dbs",
+        "legacy/tests/dbspec/runtime-model-aes.dbs",
+        "tests/dbspec/runtime-model-audit.dbs",
+        "legacy/tests/dbspec/runtime-model-audit.dbs",
         "legacy/tests/dbspec/runtime-model-codec-names.dbs"
       ]
     },
