@@ -24,3 +24,19 @@ func TestInterfaceCheckRunsFromTheRepositoryRoot(t *testing.T) {
 		t.Fatalf("the interface check script is not at the directory it runs in: %v", err)
 	}
 }
+
+// TestLegacyRecipeFixtureIsTheLegacyCopy checks that a legacy recipe installs the fixture set of legacy/contracts, the
+// copy that the generated legacy models come from, and not the set of the same name under the repository root, which
+// its $schema reaches (T640).
+func TestLegacyRecipeFixtureIsTheLegacyCopy(t *testing.T) {
+	testcase.Start(t)
+	path := testcase.LegacyPath("contracts/fixtures/composite_keys/composite_keys.json")
+	f := readRecipe[databaseFile](t, path)
+	got, err := fixturePath(path, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := testcase.LegacyPath(f.Fixture); got != want {
+		t.Fatalf("the fixture of %s is %s, want %s", path, got, want)
+	}
+}

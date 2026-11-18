@@ -301,6 +301,15 @@ type databaseContext struct {
 	transactionHooks []transactionHookRecord
 }
 
+// fixturePath returns the path of the fixture set that the recipe at path names.
+func fixturePath(path string, f databaseFile) (string, error) {
+	relative, ok := strings.CutSuffix(f.Schema, schemaPath)
+	if !ok {
+		return "", fmt.Errorf("$schema %s does not name %s", f.Schema, schemaPath)
+	}
+	return filepath.Join(filepath.Dir(path), relative, f.Fixture), nil
+}
+
 // runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-22).
 func runDatabase(t *testing.T, path, database string) {
 	t.Helper()
