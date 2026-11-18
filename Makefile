@@ -74,8 +74,9 @@ MARIADB_BIN := $(CURDIR)/var/mariadb/$(MARIADB_VERSION)/bin:$(CURDIR)/var/mariad
 # read it. No decimal database is shared: make orm-check, make owner-check, and make run-databases
 # create their own databases and files for each run (scripts/check/databases.mts) and pass them with this variable and TEST_ENV. The bench
 # database DSNs (BENCH_*, ORM_BENCH_MYSQL_DSN) are also in the TEST_ENV of that run only. In a kit runtime job it is the
-# decimal-env of the run directory (RUN_CONTEXT_DIR, T650).
-DECIMAL_ENV = $(if $(RUN_CONTEXT_DIR),$(RUN_CONTEXT_DIR)/decimal-env)
+# decimal-env of the run directory (RUN_CONTEXT_DIR, T650). Outside a kit runtime job it sits beside TEST_ENV, the file that
+# databases-create writes it beside (T666).
+DECIMAL_ENV = $(dir $(TEST_ENV))decimal-env
 export DECIMAL_ENV
 
 # All cargo commands (cargo +$(PHYSICAL_RUST_TOOLCHAIN), the cargo on PATH, and the cargo that the feature coverage and conformance
