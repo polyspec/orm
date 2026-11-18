@@ -989,8 +989,8 @@ no member gives a `tx` that a case can name.
   binding GN-6z, GN-6aa), `Box<dyn Fn(bool) -> Result<(), Failure<Error>> + Send + Sync>`, and returns the class
   `before_transaction_hook`, whose member is `remove`. `Db::before_transaction_async(hook)` takes a function that
   returns a future, which the core awaits before it calls the next hook. Not implemented: the hook of a generated
-  binding is not awaited. The generator of binding 0.0.17 writes a function that the core keeps without
-  `async_allowed`, so the function type of the member states `async_allowed: false` and no member of the contract
+  binding is not awaited. The generator of binding 0.0.17 writes the before-transaction hook as a function that the core keeps without
+  `async_allowed`, so the function type of the member of that hook states `async_allowed: false` and no member of the contract
   reaches `Db::before_transaction_async`: a hook of PHP, Python or Go runs its statements inside its call, and a hook
   of Node or WASM, whose statements return a promise, cannot wait for a statement. `Db::transaction_async` calls a hook
   of the contract on the thread that polls it, which is the thread of the language code only in a machine. Read from
@@ -1031,8 +1031,9 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   (CORE-62) and the members of `Query` that take or return it are declared: `where`, `value`, `get_by` and
   `get_count_by`. The members of `Query` of CORE-85 to CORE-91 and the class `StepRunner` of CORE-92 and CORE-93 are
   declared; the cases of `StepRunner` run on a SQLite database (CORE-129). The units and members of
-  [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. `Db::with_request_hook` is declared in the form of `Db::transaction`: its hook is an inline
-  function parameter with `async_allowed: true`, and the request that the hook receives is the record unit `RequestParams` (CORE-70).
+  [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. `Db::with_request_hook` is declared with its hook as an inline function parameter with `async_allowed: false`, a function
+  that returns no value: the binding calls the host function and does not await it, and the future of the core stays inside the core.
+  The request that the hook receives is the record unit `RequestParams` (CORE-70).
   Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
   event that borrows its statement), `Key`, `GroupRow`, `GroupRows` and `Statement`

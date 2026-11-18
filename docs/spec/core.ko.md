@@ -824,7 +824,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   타입은 `Box<dyn Fn(bool) -> Result<(), Failure<Error>> + Send + Sync>`이고, member는 `remove`를 가진 class
   `before_transaction_hook`을 돌려준다. `Db::before_transaction_async(hook)`은 future를 돌려주는 함수를 받고, 코어는 다음
   hook을 호출하기 전에 그 future를 기다린다. 구현되지 않음: 생성된 binding의 hook은 기다려지지 않는다. binding 0.0.17의
-  생성기는 코어가 보관하는 함수를 `async_allowed` 없이 쓰므로, member의 함수 타입은 `async_allowed: false`를 적고 계약의
+  생성기는 before-transaction hook을 코어가 보관하는 함수로 `async_allowed` 없이 쓰므로, 그 hook member의 함수 타입은 `async_allowed: false`를 적고 계약의
   어떤 member도 `Db::before_transaction_async`에 닿지 않는다: PHP, Python, Go의 hook은 호출 안에서 문장을 실행하고, 문장이
   promise를 돌려주는 Node와 WASM의 hook은 문장을 기다릴 수 없다. `Db::transaction_async`는 계약의 hook을 자신을 poll하는
   스레드에서 호출하는데, 그 스레드가 언어 코드의 스레드인 것은 상태 기계에서뿐이다. 다음은 생성기의 규칙(binding GN-6z)에서
@@ -859,7 +859,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
 - **CORE-70** 코어의 인터페이스 계약은 `packages/rust/interface.json`이다. 계약은 코어가 가지고 있고 시그니처의 모든
   타입이 계약의 타입인 unit과 member만 선언한다. 값 alias `orm_value`(CORE-62)와 그것을 받거나 돌려주는 `Query`의
   member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. CORE-85~CORE-91의 `Query` member와 CORE-92, CORE-93의
-  class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. `Db::with_request_hook`은 `Db::transaction`의 형식으로 선언한다: hook은 async_allowed가 `true`인 inline 함수 인자이고, hook이 받는 request는 record unit `RequestParams`다(CORE-70). 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
+  class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. `Db::with_request_hook`은 hook을 값을 돌려주지 않는 함수로서 `async_allowed: false`인 inline 함수 인자로 선언한다: binding은 host 함수를 호출하고 기다리지 않으며, 코어의 future는 코어 안에 남는다. hook이 받는 request는 record unit `RequestParams`다(CORE-70). 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다),
   `Db::subscribe`(자기 문장을 빌리는 event), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
   `Param`과 `Key`다). `Utils`와 그 부분은 자기 연결의 handle을 소유하고 CORE-180~CORE-186이 적은 대로 선언하며,
