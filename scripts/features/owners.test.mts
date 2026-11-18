@@ -284,7 +284,7 @@ caseTest('the schema of contracts/check-inputs.json refuses a target or path out
 // provides (scripts/check/ci-setup.mts), in the order of NEEDS: the CI setup steps in the order the job runs them (T497).
 caseTest('every target declares the setup steps it needs', async () => {
   assert.deepEqual(checkInputErrors({ b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['b', 'c'], []), [
-    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, mysql-privilege-server, mariadb-server, node-modules, php, php-min, go, go-lease, interfaces-typescript, rust, composer, php-extension-tools, server-programs, python, binding-python, wasm-bindgen, flowmark',
+    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, mysql-privilege-server, mariadb-server, node-modules, php, php-min, go, go-lease, interfaces-typescript, rust, composer, php-extension-tools, server-programs, python, binding-python, wasm-bindgen',
   ]);
 });
 
