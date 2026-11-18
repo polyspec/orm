@@ -883,6 +883,21 @@ caseTest('logReader reports the ready line by its pipe and ends with its server'
   }
 });
 
+// logReader runs no awk (T647): the awk of Ubuntu, mawk, reads a pipe in large blocks and passes no line until the server
+// exits (G5.12), and no job of orm installs or pins another awk, so the reader is a node process that orm pins.
+caseTest('logReader reads the output of its server with node, not with an awk that no job installs', async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-logreader-')));
+  const reader = logReader(join(dir, 'server.log'), 'never');
+  try {
+    assert.equal(reader.child.spawnfile, process.execPath, `logReader runs ${reader.child.spawnfile}`);
+  } finally {
+    const ended = new Promise(resolveEnd => reader.child.once('exit', resolveEnd));
+    reader.child.stdin?.destroy();
+    await ended;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 caseTest('logReader reports a server that ended before its ready line', async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-logreader-')));
   try {
