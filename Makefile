@@ -437,7 +437,7 @@ bindings:
 bindings-scaffold:
 	$(NODE) $(BINDING) scaffold --root $(CURDIR) --cargo "$(CARGO_LINK)"
 bindings-check:
-	$(NODE) $(BINDING) check $(CURDIR)/packages/rust/interface.json --cargo "$(CARGO_LINK)"
+	$(NODE) $(BINDING) check $(CURDIR)/packages/rust/interface.json --cargo "$(CARGO_LINK)" --go "$(GO)"
 # The lint and the tests of the binding crates, after make bindings writes their generated folders. The PHP extension
 # crate builds against the headers of the PHP of .php-version, whose php-config ext-php-rs reads. The bindgen of ext-php-rs
 # loads the libclang of the highest LLVM that clang-sys finds and asks the clang of PATH for its headers, and the two differ

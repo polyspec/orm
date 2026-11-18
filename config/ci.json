@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "runtimes": ["go", "php", "php-ext", "python", "rust", "ts"],
-  "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context. The go, php-ext, python and ts jobs run the offline selection of the generated tests of their binding (T582-1), which builds the binding crate, so each installs the Rust toolchain and its crates, and the ts job the wasm-bindgen CLI of node-package. lint-bindings, the build of the five binding crates with their test features (they hold no Rust test, T624), builds the PHP extension crate against the PHP of the checkout, so the php-ext job runs it: that job holds PHP, the tools of the extension, Go and Rust, and the rust job holds no PHP. Each make target that AGENTS.md names as the enforcement of a rule runs in a job of this pipeline, which kit rules-check reads (T617): the group jobs of ci.yml take their matrix from make ci-plan at run time, so they reach none of them. The shared job runs release-coverage; the go job go-model-check; the rust job rust-check and bindings-check; and the php-ext job, which owns the servers and the run databases of its context, the checks that need them and every client (orm-test-servers-check, feature-unit-check, conformance-check, feature-verify-other, go-test-check), so it also installs the Go modules, Python and the TypeScript interfaces.",
+  "comment": "Kit gates install each runtime from its pinned lock; the php-ext job prepares its database servers and run-owned fixtures in an isolated job context. The go, php-ext, python and ts jobs run the offline selection of the generated tests of their binding (T582-1), which builds the binding crate, so each installs the Rust toolchain and its crates, and the ts job the wasm-bindgen CLI of node-package. lint-bindings, the build of the five binding crates with their test features (they hold no Rust test, T624), builds the PHP extension crate against the PHP of the checkout, so the php-ext job runs it: that job holds PHP, the tools of the extension, Go and Rust, and the rust job holds no PHP. Each make target that AGENTS.md names as the enforcement of a rule runs in a job of this pipeline, which kit rules-check reads (T617): the group jobs of ci.yml take their matrix from make ci-plan at run time, so they reach none of them. The shared job runs release-coverage; the go job go-model-check; the rust job rust-check and bindings-check, which run Go (the lease program, the go mod download of binding check), so it installs Go (T631); and the php-ext job, which owns the servers and the run databases of its context, the checks that need them and every client (orm-test-servers-check, feature-unit-check, conformance-check, feature-verify-other, go-test-check), so it also installs the Go modules, Python and the TypeScript interfaces.",
   "setup": {
     "shared": [
       "orm-install-go-lease"
@@ -59,8 +59,12 @@
       "uv",
       "maturin"
     ],
-    "ts": [
+    "rust": [
       "go"
+    ],
+    "ts": [
+      "go",
+      "wasm-bindgen"
     ]
   },
   "contexts": {
