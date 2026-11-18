@@ -13,6 +13,8 @@ mod bind_check;
 mod canonical;
 mod cell;
 #[cfg(feature = "runtime")]
+mod clock;
+#[cfg(feature = "runtime")]
 pub mod codec;
 #[cfg(feature = "runtime")]
 pub mod collection;

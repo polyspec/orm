@@ -241,7 +241,7 @@ impl<F> Transaction<F> {
         self.stage = Stage::Waiting;
         let wait = retry_wait(self.attempt, rand::random::<u64>() % 20);
         Step::Io(Box::pin(async move {
-            tokio::time::sleep(wait).await;
+            crate::clock::wait(wait).await;
             TransactionIo(TransactionOutput::Waited)
         }))
     }

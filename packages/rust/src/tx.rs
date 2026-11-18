@@ -783,7 +783,7 @@ impl Db {
                 return Err(failure);
             }
             attempt += 1;
-            tokio::time::sleep(retry_wait(attempt, rand::random::<u64>() % 20)).await;
+            crate::clock::wait(retry_wait(attempt, rand::random::<u64>() % 20)).await;
         }
     }
 
