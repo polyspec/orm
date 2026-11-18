@@ -562,6 +562,49 @@ caseTest('a dead shared lease is taken over by any request, a dead exclusive one
   }
 });
 
+// A lease asked for inside a holding of its own process or an ancestor (Makefile:985-986): an exclusive inside an exclusive
+// and a shared inside a shared are granted, but an exclusive inside a shared can only be granted once that shared ends, which
+// is the end of the asker's own ancestor. lease refuses it at once and names the holder (T645: kit/runtime (php-ext) of run
+// 44309325651 waited 30 minutes for the shared lease of its own make). The case judges by the event of the line "lease:
+// waiting for", ends the waiter and its group, and leaves no process.
+caseTest('lease refuses an exclusive wait inside the shared lease of its own ancestor (T645)', async () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-ancestor-'));
+  type Outcome = { status: number | null; waited: boolean; stdout: string; stderr: string; group: number };
+  const run = (name: string, script: string) => new Promise<Outcome>((resolve, reject) => {
+    const child = spawn('sh', ['-c', script], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env: isolatedEnvironment({ LEASE: lease, L: join(root, name) }) });
+    let stdout = '', stderr = '', waited = false;
+    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
+      if (!waited && stderr.includes('lease: waiting for')) { waited = true; process.kill(-(child.pid ?? 0), 'SIGKILL'); }
+    });
+    child.on('error', reject);
+    child.on('close', status => { resolve({ status, waited, stdout, stderr, group: child.pid ?? 0 }); });
+  });
+  const groupGone = (group: number): boolean => {
+    try { process.kill(-group, 0); return false; } catch (error) { return error instanceof Error && 'code' in error && error.code === 'ESRCH'; }
+  };
+  try {
+    const self = await run('self', 'echo $$; "$LEASE" hold "$L" shared --pid $$ && "$LEASE" hold "$L" exclusive --wait --pid $$');
+    const ancestor = await run('ancestor', 'echo $$; "$LEASE" hold "$L" shared --pid $$ && sh -c \'"$LEASE" hold "$L" exclusive --wait --pid $$\'');
+    const shared = await run('shared', '"$LEASE" hold "$L" shared --pid $$ && sh -c \'"$LEASE" hold "$L" shared --wait --pid $$\'');
+    const exclusive = await run('exclusive', '"$LEASE" hold "$L" exclusive --pid $$ && sh -c \'"$LEASE" hold "$L" exclusive --wait --pid $$\'');
+    for (const [name, outcome] of [['self', self], ['ancestor', ancestor]] as const) {
+      assert.equal(outcome.waited, false, `${name}: lease waited for the shared lease of its own ancestor: ${outcome.stderr}`);
+      assert.notEqual(outcome.status, 0, `${name}: ${outcome.stderr}`);
+      const holder = outcome.stdout.trim();
+      assert.match(outcome.stderr, new RegExp(`exclusive lease of \\S+ is asked inside the shared lease of pid ${holder} \\(.+\\), its own ancestor`), `${name}: ${outcome.stderr}`);
+    }
+    assert.equal(shared.status, 0, `a shared lease inside the shared lease of an ancestor: ${shared.stderr}`);
+    assert.equal(exclusive.status, 0, `an exclusive lease inside the exclusive lease of an ancestor: ${exclusive.stderr}`);
+    for (const outcome of [self, ancestor, shared, exclusive]) assert.ok(groupGone(outcome.group), `a process of group ${outcome.group} remains`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 caseTest('hold records its releaser in the lease file before it returns', async () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
