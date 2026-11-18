@@ -802,13 +802,13 @@ ci-release-rehearsal: export PATH := $(KIT_TOOLS)/mise/shims:$(KIT_TOOLS)/bin:$(
 ci-release-rehearsal:
 	@$(CI_JOB) begin $(CI_NAME)
 	@$(CI_JOB) setup $(CI_NAME) zip -- ci-release-zip
-	@$(CI_JOB) setup $(CI_NAME) prepare -- release-prepare
-	@$(CI_JOB) setup $(CI_NAME) tools -- release-tools
-	@$(CI_JOB) setup $(CI_NAME) assets -- release-assets
+	@$(CI_JOB) setup $(CI_NAME) prepare -- release-prepare TAG=v$(RELEASE_REHEARSAL_VERSION)
+	@$(CI_JOB) setup $(CI_NAME) tools -- release-tools TAG=v$(RELEASE_REHEARSAL_VERSION)
+	@$(CI_JOB) setup $(CI_NAME) assets -- release-assets TAG=v$(RELEASE_REHEARSAL_VERSION)
 	@$(CI_JOB) setup $(CI_NAME) platform-assets -- ci-release-platform-assets
 	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
-	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes
+	@$(CI_JOB) setup $(CI_NAME) recipes -- release-recipes TAG=v$(RELEASE_REHEARSAL_VERSION)
 	@$(CI_JOB) setup $(CI_NAME) go-module-rehearsal -- rehearse-go-module TAG=v$(RELEASE_REHEARSAL_VERSION)
 	@$(CI_JOB) setup $(CI_NAME) rehearsal -- release-platform-assets TAG=v$(RELEASE_REHEARSAL_VERSION) REHEARSAL=1 WORK=var/release/rehearsal
 	@$(CI_JOB) end $(CI_NAME)
