@@ -5905,6 +5905,92 @@
           }
         },
         {
+          "id": "query.avg",
+          "name": [
+            "avg"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "column"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::avg",
+            "receiver": "&mut self"
+          }
+        },
+        {
+          "id": "query.get_avg",
+          "name": [
+            "get",
+            "avg"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [],
+          "returns": {
+            "optional": "float"
+          },
+          "raises": [
+            "polyspec_orm::Kind::Config",
+            "polyspec_orm::Kind::EmptyIn",
+            "polyspec_orm::Kind::CodecDecode",
+            "polyspec_orm::Kind::CodecEncode",
+            "polyspec_orm::Kind::Busy",
+            "polyspec_orm::Kind::TransactionEnded",
+            "polyspec_orm::Kind::Internal",
+            "polyspec_orm::Kind::LockNotAvailable",
+            "polyspec_orm::Kind::Deadlock",
+            "polyspec_orm::Kind::ConnectionLost",
+            "polyspec_orm::Kind::Driver",
+            "polyspec_orm::Kind::Canceled",
+            "polyspec_orm::Kind::PoolTimeout",
+            "polyspec_orm::Kind::Closed",
+            "polyspec_orm::Kind::OperatorNotAllowed",
+            "polyspec_orm::Kind::IrInvalid"
+          ],
+          "wait": "async_driver",
+          "core": {
+            "path": "polyspec_orm::Query::get_avg",
+            "receiver": "&self"
+          },
+          "optional_reason": "CORE-207"
+        },
+        {
+          "id": "query.force_index",
+          "name": [
+            "force",
+            "index"
+          ],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": [
+                "name"
+              ],
+              "type": "text",
+              "required": true
+            }
+          ],
+          "returns": "none",
+          "raises": [],
+          "wait": "none",
+          "core": {
+            "path": "polyspec_orm::Query::force_index",
+            "receiver": "&mut self"
+          }
+        },
+        {
           "id": "query.group_limit",
           "name": [
             "group",
@@ -8106,6 +8192,44 @@
       "member": "query.get_sum",
       "file": "contracts/interface/core.json",
       "group": "query.get_sum.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.avg",
+      "file": "contracts/interface/core.json",
+      "group": "query.avg"
+    },
+    {
+      "member": "query.get_avg",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_avg"
+    },
+    {
+      "member": "query.get_avg",
+      "file": "contracts/interface/core.json",
+      "group": "query.get_avg.sqlite",
+      "only": {
+        "targets": [
+          "php",
+          "python",
+          "node",
+          "go"
+        ],
+        "reason": "CORE-71"
+      }
+    },
+    {
+      "member": "query.force_index",
+      "file": "contracts/interface/core.json",
+      "group": "query.force_index.sqlite",
       "only": {
         "targets": [
           "php",
