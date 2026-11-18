@@ -265,7 +265,7 @@ async function compiledCopy() {
     const stale = (await readFile(join(work, 'models/models.ts'), 'utf8')).replace(/^export const MANIFEST_HASH = '[^']*';$/m, "export const MANIFEST_HASH = 'sha256:stale';");
     for (const dir of ['dist/models', 'dist/nomap', 'src']) await mkdir(join(work, dir), { recursive: true });
     await writeFile(join(work, 'dist/models/models.js'), `${stale}\n//# sourceMappingURL=models.js.map\n`);
-    await writeFile(join(work, 'dist/models/models.js.map'), JSON.stringify({ version: 3, file: 'models.js', sources: ['../../../../packages/models/models.ts'], mappings: '' }));
+    await writeFile(join(work, 'dist/models/models.js.map'), JSON.stringify({ version: 3, file: 'models.js', sources: ['../../models/models.ts'], mappings: '' }));
     await writeFile(join(work, 'dist/nomap/models.js'), stale);
     await writeFile(join(work, 'src/example.ts'), "import { Author } from '../dist/models/models.js';\nimport { User } from '../dist/nomap/models.js';\ndeclare const db: unknown;\nnew Author().connect(db).gtReadCount(1);\nnew User().connect(db).neName('x');\n");
     const result = await runGeneratorCommand(bin, ['gen', '--set', set, '--out', 'models', '--scan', 'src'], work);
