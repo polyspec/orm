@@ -233,14 +233,17 @@ caseTest('stop reports a database server whose pid file names an exited process 
     assert.ok(lines.includes(`test-servers: ${name} is not running: process ${dead} of ${file} has exited`), `stop did not report ${name} as not running: ${lines.join(' | ')}`);
 });
 
+// refusingStopProcess writes into bin a stop-process that refuses every stop with exit status 7, and returns its path.
+const refusingStopProcess = (bin: string): string => {
+  const refusing = join(bin, 'stop-process');
+  writeFileSync(refusing, '#!/bin/sh\necho "stop-process: refused $2" >&2\nexit 7\n');
+  chmodSync(refusing, 0o755);
+  return refusing;
+};
+
 caseTest('stop fails with the output of a failed stop of a running database server', async () => {
   const { error } = await stopFixture(p => { fakeServer(p.mysqlPid); fakeServer(p.mariadbPid); }, {
-    stopProcess: bin => {
-      const refusing = join(bin, 'stop-process');
-      writeFileSync(refusing, '#!/bin/sh\necho "stop-process: refused $2" >&2\nexit 7\n');
-      chmodSync(refusing, 0o755);
-      return refusing;
-    },
+    stopProcess: refusingStopProcess,
   });
   assert.ok(error instanceof TestServerError, `stop did not fail: ${errorText(error)}`);
   assert.match(error.message, /MySQL shutdown failed: test-servers: .*stop-process TERM exited with 7/);
@@ -257,12 +260,7 @@ caseTest('a stop of the servers removes their directory and socket folder, which
 
 caseTest('a failed stop of the servers keeps their directory for diagnosis (T645)', async () => {
   const { error, kept } = await stopFixture(p => { fakeServer(p.mysqlPid); }, {
-    stopProcess: bin => {
-      const refusing = join(bin, 'stop-process');
-      writeFileSync(refusing, '#!/bin/sh\necho "stop-process: refused $2" >&2\nexit 7\n');
-      chmodSync(refusing, 0o755);
-      return refusing;
-    },
+    stopProcess: refusingStopProcess,
   });
   assert.ok(error instanceof TestServerError, `stop did not fail: ${errorText(error)}`);
   assert.equal(kept.dir, true, 'the failed stop removed the directory of the servers');
