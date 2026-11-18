@@ -553,6 +553,9 @@ caseTest('each CI run rehearses the upload of the release after the assets, and 
   assert.match(rehearsal, /path: var\/release\/platform/, 'job release-rehearsal downloads them into var/release/platform');
   assert.match(rehearsal, /run: make ci-release-rehearsal\n/, 'job release-rehearsal runs make ci-release-rehearsal');
   assert.match(rehearsal, /\n    permissions:\n      contents: read\n/, 'job release-rehearsal reads the repository only, so it can upload nothing');
+  // rehearse-go-module ends with git prune, which walks HEAD to its parent, so the checkout carries the history.
+  assert.match(rehearsal, /- uses: actions\/checkout@v\d+\n        with:\n          fetch-depth: 0\n/,
+    'job release-rehearsal checks out the whole history, which rehearse-go-module prunes');
   assert.match(job('ci-passed'), /\n    needs: \[[^\]]*\brelease-rehearsal\b[^\]]*\]/, 'ci-passed needs release-rehearsal');
   const recipe = text('Makefile').match(/^ci-release-rehearsal:\n((?:\t.*\n)+)/m)?.[1] ?? '';
   assert.notEqual(recipe, '', 'the Makefile has a recipe ci-release-rehearsal');
