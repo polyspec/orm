@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: c58a7152b0d36edfe3f4624306e160e5d2552165f8e536f61cacd6c9add2fd11 -->
+<!-- source-sha256: 10ee648b988047adfd64bf0e0075334582e9d7a0aa5a1c6d6f69442bf4730a5d -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -2167,7 +2167,7 @@
 | T651 | Makefile은 TEST_ENV 파일의 모든 변수를 모든 target에 export한다(Makefile:2874-2879, T299의 방법). 그래서 target은 DB를 드러내지 않고 DB에 닿고, dry run에도 보이지 않는다. test-php-ext(Makefile:341-342, legacy/packages/php/tests/case_database.php:143-144), test-php, test-go, test-ts가 그렇다. 고침: target은 WITH_TEST_ENV로만 DSN을 받는다. 네 recipe가 그것을 쓰므로 T299가 덮던 범위는 유지된다. 증명되지 않은 것: kit의 runner가 고르는 파일과 그 아래 helper 경로. Red: make 전체 export가 있고, 네 recipe에 WITH_TEST_ENV가 없다. | Makefile | branch CI에서 make ci-kit-runtime RUNTIME=php-ext가 통과한다 | [ ] |
 | T652 | orm에서 "offline"은 두 뜻으로 쓰인다. help 줄의 `; offline`은 network 없음이다(AGENTS.md:153-156). 그런데 scripts/repo/offline-tests.mts는 test server와 flowmark 없이 실행하는 target을 offline target으로 부른다. 그것이 test-php-ext가 server를 요구한다는 사실을 가렸다(T651). 고침: 그 target들에 다른 이름을 붙이고, offline은 한 뜻만 갖는다. 0.0.34 뒤의 행이다. | scripts/repo/offline-tests.mts | make repo-check가 통과한다 | [ ] |
 | T653 | `feature-coverage-of/<id>`는 기능의 coverage owner 명령만 실행한다. model_generation은 runtime_model_entities 시험 파일을 tests에 적고 commands에는 적지 않는다(contracts/features.json features[5], Makefile:2432). 그래서 각 runtime에서 그 파일의 case가 0개 실행되어도 target은 0으로 끝난다. 0.0.34 뒤의 행이다. | Makefile, scripts/features/coverage.mts | make feature-coverage-of/model_generation이 여섯 runtime의 runtime_model_entities 파일을 실행한다 | [ ] |
-| T654 | P25(PRINCIPLES.md:123-126)와 AGENTS.md:12-13은 [o]를 다르게 정의한다. 0.0.34 뒤의 행이다. | PRINCIPLES.md, AGENTS.md | make docs-rules-check가 통과한다 | [ ] |
+| T654 | P25(PRINCIPLES.md:123-126)와 AGENTS.md:12-13은 행이 끝난 때를 다르게 정의한다. 0.0.34 뒤의 행이다. | PRINCIPLES.md, AGENTS.md | make docs-rules-check가 통과한다 | [ ] |
 | T655 | legacy php-ext build는 PHP-Parser를 고정하지 않고 내려받는다(kit php-extension.mjs:342-350, gen_stub은 PHP 8.4에 정확히 5.0.0, 8.5에 5.6.1을 요구한다). 고침: kit#68에서 고치고 kit 고정을 올린다. CHANGELOG 0.0.34는 알려진 한계를 적는다: legacy php-ext CI job은 그 download에 의존한다. 0.0.34 뒤의 행이다. | package.json, CHANGELOG.md | make test-php-ext가 download 없이 통과한다 | [ ] |
 | T657 | bay의 runner-setup.sh는 node를 /orm-run bind mount에 푼다. GNU tar가 ../ symlink인 bin/npm과 bin/npx를 위해 만드는 placeholder는 Apple container에서 `Cannot open: Permission denied`로 실패한다(laneC-bay1.log:925-926, scripts/test-servers-container.mts:972-977). CI는 runner를 쓰지 않는다(.github와 config/ci.json에 쓰임이 없다). 0.0.34 뒤의 행이다. | scripts/test-servers-container.mts | Apple container에서 make orm-test-container-run FORM=runner가 통과한다 | [ ] |
 | T658 | scripts/repo/testcases.mts의 runtimePathErrors(:479)는 TEST_ENV와 MARIADB_ENV를 run directory의 규칙 대신 Makefile의 전체 텍스트로 허용한다(T650 Red를 다시 만들 때 f69a4a150에서 찾았다). 텍스트 허용 목록 부분은 이제 T645 Red(44e339c5d, SERVER_ENV_FILES 규칙)가 한다. 0.0.34 뒤의 행이다. | scripts/repo/testcases.mts | make repo-check가 통과한다 | [~] |
