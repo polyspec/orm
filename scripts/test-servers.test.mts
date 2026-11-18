@@ -889,8 +889,9 @@ caseTest('startLogged resolves when the ready line is written at once, before th
   }
 });
 
-// LOGGING_SERVER is the server of the logReader case: it logs its ready line, and once its stdin ends 2000 more lines.
-const LOGGING_SERVER = "console.log('before'); console.log('ready-now'); process.stdin.resume(); process.stdin.on('end', () => { for (let i = 0; i < 2000; i++) console.log('after ' + i); process.exit(0); });";
+// LOGGING_SERVER is the server of the logReader case: it logs its ready line, and once its stdin ends 2000 more lines; it
+// writes its last line with a callback and exits in it, once every earlier write of its stdout has completed (T643).
+const LOGGING_SERVER = "console.log('before'); console.log('ready-now'); process.stdin.resume(); process.stdin.on('end', () => { for (let i = 0; i < 1999; i++) console.log('after ' + i); process.stdout.write('after 1999\\n', () => process.exit(0)); });";
 
 // The server of the logReader case exits only once every write of its stdout has completed (T643). On Linux its stdout is a
 // non-blocking socket: a write that the socket does not take at once is queued, and a process.exit before its callback
