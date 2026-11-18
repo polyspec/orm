@@ -21,6 +21,8 @@ jobs:
       shared_php: ${{ steps.plan.outputs.shared_php }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
       # The bootstrap of kit (K992): the Node.js of mise.toml, the locked kit package, the npm of var/tools and the packages.
       - uses: ./.github/actions/kit-bootstrap
       - id: plan

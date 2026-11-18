@@ -61,6 +61,8 @@ jobs:
       php_min: ${{ steps.plan.outputs.php_min }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       # The bootstrap of kit (K992): .github/actions/kit-bootstrap installs the Node.js of mise.toml, the locked kit package
       # and the packages, with which scripts/php/php-min.mts reads composer.json.
       - uses: ./.github/actions/kit-bootstrap

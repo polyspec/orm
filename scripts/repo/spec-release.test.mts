@@ -19,18 +19,22 @@ caseTest('a released identifier that is retired in the current spec passes', () 
 });
 
 caseTest('a released identifier absent from the current spec fails and names its tag', () => {
-  const errors = releasedSpecErrors(fixture('released.md'), fixture('absent.md'));
+  const errors = releasedSpecErrors(fixture('released.md'), fixture('absent.md'), 'v0.0.33');
   assert.equal(errors.length, 1, `want one error, got ${JSON.stringify(errors)}`);
   assert.match(errors[0], /CFG-35/);
   assert.match(errors[0], /v0\.0\.33/);
 });
 
 caseTest('a repository without a version tag is an error, not a pass', async () => {
-  const { mkdtempSync } = await import('node:fs');
+  const { mkdtempSync, rmSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { execFileSync } = await import('node:child_process');
   const dir = mkdtempSync(`${tmpdir()}/spec-release-`);
-  execFileSync('git', ['init', '-q', dir]);
-  const mod = await import('./spec-release.mts');
-  assert.throws(() => mod.releasedSpecFor(dir), /no version tag/);
+  try {
+    execFileSync('git', ['init', '-q', dir]);
+    const mod = await import('./spec-release.mts');
+    assert.throws(() => mod.releasedSpecFor(dir, 'docs/spec/config.md'), /no version tag/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
