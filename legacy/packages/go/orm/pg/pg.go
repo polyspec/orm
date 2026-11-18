@@ -61,11 +61,27 @@ func (configuredDriver) OpenConnector(name string) (driver.Connector, error) {
 			DeadlineDelay: 5 * time.Second,
 		}
 	}
-	// The ping before each reuse of an idle connection: without the option the driver pings only a connection that has been
-	// idle for more than one second, so a statement within that second reached a connection that the server had ended. The
-	// ended connection answers the ping with an error, the driver reports driver.ErrBadConn, and database/sql discards it
-	// and runs the statement on a new connection (INT-92).
-	return stdlib.GetConnector(*config, stdlib.OptionShouldPing(func(context.Context, stdlib.ShouldPingParams) bool { return true })), nil
+	// Before each reuse of a connection the pool checks that the server still holds it, at any idle time: a statement that
+	// reached a connection that the server had ended would fail (INT-92). The check is a protocol Sync and its
+	// ReadyForQuery, as sqlx does, and not the "-- ping" query of pgx, which the server runs as a transaction of its own
+	// and so counts against the transactions of each statement (INT-149). The driver's own ping, which it sends after one
+	// second of idle time, is turned off, since the check runs every time.
+	return stdlib.GetConnector(*config,
+		stdlib.OptionShouldPing(func(context.Context, stdlib.ShouldPingParams) bool { return false }),
+		stdlib.OptionResetSession(syncCheck)), nil
+}
+
+// syncCheck sends a Sync and reads to its ReadyForQuery through a pipeline of pgconn, which holds the lock of the
+// connection from StartPipeline to Close and reads every message to the ReadyForQuery that the Sync asks for. An ended
+// connection answers with its FATAL error or the end of the stream, and the connection is then reported as bad, so
+// database/sql discards it and opens a new one.
+func syncCheck(ctx context.Context, conn *pgx.Conn) error {
+	pipeline := conn.PgConn().StartPipeline(ctx)
+	syncErr := pipeline.Sync()
+	if err := errors.Join(syncErr, pipeline.Close()); err != nil {
+		return driver.ErrBadConn
+	}
+	return nil
 }
 
 // mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
