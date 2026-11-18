@@ -675,7 +675,7 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 | `getsCount()`, `GroupRows`, `GroupRow` | INT-31, INT-68~INT-71 | 코어에 있고 계약에 없음 | `packages/rust/build/src/fixed.rs.txt:84`, `packages/rust/src/collection.rs:407` |
 | `getsPage(page, perPage)`, `Page` | INT-32, INT-64 | 코어에 있고 계약에 없음 | `packages/rust/build/src/fixed.rs.txt:104` |
 | `getsLookaheadPage`, `getsCountLookaheadPage`, `LookaheadPage`, `GroupLookaheadPage` | INT-164 | 코어에 있고 계약에 없음 | `packages/rust/build/src/fixed.rs.txt:109`, `packages/rust/build/src/fixed.rs.txt:89` |
-| `getSum()`, `getAvg()` | DSL-62, DSL-63 | 코어에 있고 계약에 없음 | `packages/rust/build/src/fixed.rs.txt:94`, `packages/rust/build/src/fixed.rs.txt:99` |
+| `getSum()`, `getAvg()` | DSL-62, DSL-63 | 있음, 바뀜: `get_sum()`과 `get_avg()`는 `sum(column)`이나 `avg(column)`이 정한 열을 읽는다(CORE-205, CORE-207) | `packages/rust/build/src/fixed.rs.txt:94`, `packages/rust/build/src/fixed.rs.txt:99` |
 | `addColumn<Col>Alias<Name>(fn)`, `addColumn<Name>(fn)` | DSL-73, DSL-74 | 코어에 있고 계약에 없음 | `packages/rust/src/core.rs:566`, `packages/rust/src/core.rs:574` |
 | 함수에 대한 조건, 그리고 함수 `orm.now()`~`orm.monthsLater()`, `orm.year()`, `orm.month()`, `orm.date()`, `orm.dayOfWeek()`와 `ValueFunction`, `ColumnFunction` (PHP `Orm::now()`, `Func`) | DSL-54, DSL 10절 | 코어에 있고 계약에 없음. 계약에는 `orm.value_function_unit`만 있다 | `packages/rust/src/args.rs:34`, `packages/rust/interface.json:551` |
 
@@ -694,7 +694,7 @@ legacy 이름의 출처는 선언 목록 `contracts/interfaces.json`, [interface
 | `fetchKey(fn)` | DSL-70 | 코어에 있고 계약에 없음 | `packages/rust/build/src/fixed.rs.txt:216` |
 | `fetchValue(fn)` | DSL-70 | 코어에 있고 계약에 없음 | `packages/rust/build/src/fixed.rs.txt:222` |
 | `possible<Col>(value)` | DSL-85 | 코어에 있고 계약에 없음 | `packages/rust/src/core.rs:512` |
-| `forceIndex<Name>()` | DSL-78 | 코어에 있고 계약에 없음 | `packages/rust/src/core.rs:592` |
+| `forceIndex<Name>()` | DSL-78 | 있음, 바뀜: `force_index(name)`은 이름을 text로 받는다(CORE-156) | `packages/rust/src/core.rs:592` |
 | `plus<Col>(n)`, `minus<Col>(n)` | DSL-102 | 코어에 있고 계약에 없음 | `packages/rust/src/core.rs:663`, `packages/rust/src/core.rs:667` |
 | `new<Name>(value)`, `get<Name>()` | DSL-101, DSL-115 | 코어에 있고 계약에 없음 | `packages/rust/src/core.rs:672`, `packages/rust/src/core.rs:677` |
 | `toJSON()`, `toJSONText()` (PHP `toJson`, Python `to_json_text`) | 규칙 없음 | 코어에 있고 계약에 없음 | `packages/rust/build/src/fixed.rs.txt:257` |

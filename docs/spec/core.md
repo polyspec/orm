@@ -666,7 +666,8 @@ implementation is eligible for removal on that evidence.
   the request, and the last one called holds. A name that is no index and no unique key of the entity is `config` at
   the next terminal with the message `<name> is not an index of <entity>`: the kind by which every builder of a
   `Query` refuses a name that its entity does not have (CORE-82, CORE-87, CORE-89, CORE-91), where the planner alone
-  gives `index_unknown` with the message `<entity>.<name>`. Not implemented: `force_index` of a `Query`.
+  gives `index_unknown` with the message `<entity>.<name>`. The hint is the clause of DIA-7: MySQL `FORCE INDEX`,
+  SQLite `INDEXED BY`, and nothing on PostgreSQL.
 - **CORE-157** Three members set how a `Query` given to `relation` or `relations` is attached (CORE-88, PRT-14), and
   have no effect on a `Query` that is given to neither. `parent_node()` merges the row of a `relation` result into the
   row that holds it (DSL-84): `flatten` of the request, by which the JSON text of the row (CORE-161) writes the
@@ -870,6 +871,17 @@ implementation is eligible for removal on that evidence.
   (CORE-201). Neither changes the `Query`. In the contract the two results are classes whose `page`, `per_page` and
   `has_next` are properties; `rows` of `lookahead_page` returns the unit `rows` (CORE-170). The `Db` step (CORE-92)
   has no terminal for them.
+- **CORE-207** `avg(column)` names the column whose average `get_avg()` returns: the members `avg<Col>()` and
+  `getAvg()` of the language implementations (DSL-63). The request is `avg` and the column its `agg` (PRT-2); the last
+  `avg` called holds, and the conditions of the `Query` select the rows. The result is a `float` or null: the average,
+  which stays exact until it is converted once to the nearest binary64 value (DSL-66, DSL-161), and null when no value
+  is left, whether no row matches or every value is null. `get_avg` of a `Query` without `avg` is `config` with the
+  message `get_avg requires avg_<col>()`, before the connection is asked for. A name that is no column of the entity
+  is `config` at the next terminal with the message `<column> is not a column of <entity>` (CORE-87), a column that
+  is no number is `operator_not_allowed` with the message `avg on <entity>.<column> (<type>)`, a scalar that is no
+  finite number is `codec_decode` with the message `aggregate scalar is not a finite number`, and a grouped `Query`
+  is `ir_invalid` (CORE-201). `avg` has no effect on another terminal, and `sum` and `avg` replace each other, as
+  one `agg` of the request holds one function. The `Db` step has no call `avg` and no terminal for `get_avg`.
 
 ## State machines
 

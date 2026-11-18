@@ -542,7 +542,8 @@
   member `forceIndex<Name>()`이다(DSL-78). 요청의 query의 `force_index`이고, 마지막에 부른 것이 남는다. 엔티티의
   index도 unique key도 아닌 이름은 다음 terminal에서 `config`이고 메시지는 `<name> is not an index of <entity>`다.
   `Query`의 모든 builder가 엔티티에 없는 이름을 거부하는 kind다(CORE-82, CORE-87, CORE-89, CORE-91). planner만이
-  메시지 `<entity>.<name>`의 `index_unknown`을 준다. 구현되지 않았다: `Query`의 `force_index`.
+  메시지 `<entity>.<name>`의 `index_unknown`을 준다. 힌트는 DIA-7의 절이다: MySQL은 `FORCE INDEX`, SQLite는
+  `INDEXED BY`이고 PostgreSQL에는 없다.
 - **CORE-157** member 셋은 `relation`이나 `relations`에 준 `Query`를 어떻게 붙일지 정하며(CORE-88, PRT-14), 어느
   쪽에도 주지 않은 `Query`에는 효과가 없다. `parent_node()`는 `relation` 결과의 행을 그것을 가진 행에 합친다
   (DSL-84). 요청의 `flatten`이고, 이것에 따라 행의 JSON 텍스트(CORE-161)는 자기 member 뒤에 자식의 member를 쓰며 행이
@@ -722,6 +723,16 @@
   `group_lookahead_paginate needs group_by`이며, group된 `Query`의 `gets_lookahead_page`는 `ir_invalid`다(CORE-201).
   어느 것도 `Query`를 바꾸지 않는다. 계약에서 두 결과는 class이고 `page`, `per_page`, `has_next`는 property다.
   `lookahead_page`의 `rows`는 unit `rows`를 돌려준다(CORE-170). `Db` step(CORE-92)에는 이것들의 terminal이 없다.
+- **CORE-207** `avg(column)`은 `get_avg()`가 그 평균을 돌려줄 열을 정한다. 언어 구현의 member `avg<Col>()`과
+  `getAvg()`다(DSL-63). 요청은 `avg`이고 그 열은 요청의 `agg`다(PRT-2). 마지막에 부른 `avg`가 남고, `Query`의
+  조건이 행을 고른다. 결과는 `float`나 null이다: 평균은 가장 가까운 binary64 값으로 한 번 바뀔 때까지 정확하고
+  (DSL-66, DSL-161), 맞는 행이 없든 모든 값이 null이든 값이 남지 않으면 null이다. `avg`가 없는 `Query`의
+  `get_avg`는 연결을 구하기 전에 `config`이고 메시지는 `get_avg requires avg_<col>()`다. 엔티티의 열이 아닌 이름은
+  다음 terminal에서 `config`이고 메시지는 `<column> is not a column of <entity>`이며(CORE-87), 수가 아닌 열은
+  `operator_not_allowed`이고 메시지는 `avg on <entity>.<column> (<type>)`이고, 유한한 수가 아닌 scalar는
+  `codec_decode`이고 메시지는 `aggregate scalar is not a finite number`이며, group된 `Query`는 `ir_invalid`다
+  (CORE-201). `avg`는 다른 terminal에 효과가 없고, 요청의 `agg` 하나가 함수 하나를 가지므로 `sum`과 `avg`는 서로를
+  대체한다. `Db` step에는 call `avg`도 `get_avg`의 terminal도 없다.
 
 ## 상태 기계
 
