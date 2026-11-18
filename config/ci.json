@@ -29,7 +29,10 @@
         "orm-install-rust",
         "orm-install-binding-python"
       ],
-      "rust": [],
+      "rust": [
+        "orm-install-go-lease",
+        "orm-install-go-binding"
+      ],
       "ts": [
         "orm-install-interfaces-typescript",
         "orm-install-typescript-runtime",
