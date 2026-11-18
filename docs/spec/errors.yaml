@@ -175,3 +175,16 @@ codes:
     origin: driver
   - code: DRIVER                  # any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
     origin: driver
+# The kinds of the core whose name is not the lower-case code (CORE-14): every other kind is the lower-case form of its code.
+# A recipe expects a kind; a language implementation that reports codes reports the code of this list for these kinds.
+kinds:
+  - kind: rollback_failed
+    code: ROLLBACK
+  - kind: busy
+    code: CONFIG
+  - kind: transaction_ended
+    code: CONFIG
+  - kind: closed
+    code: CONFIG
+  - kind: pool_timeout
+    code: CONFIG

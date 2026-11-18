@@ -75,7 +75,9 @@ implementation is eligible for removal on that evidence.
 - **CORE-14** Four kinds have no code of the catalog, because the language implementations report their failure as
   `CONFIG`: `busy` (CORE-22), `transaction_ended` (CORE-23), `closed` (CORE-31) and `pool_timeout` (CORE-30).
   `rollback_failed` replaces `ROLLBACK` (CORE-25). The codes `SUBSCRIBER` (CORE-28), `GENERATOR_SCAN_PARSE` and
-  `GENERATOR_SCAN_UNATTACHED` (CORE-50) are no kinds of the core.
+  `GENERATOR_SCAN_UNATTACHED` (CORE-50) are no kinds of the core. Every other kind is the lower-case form of its
+  code. The list `kinds` of `docs/spec/errors.yaml` holds each of these five kinds with the code that the language
+  implementations report for it.
 - **CORE-139** A stored cell that a stage refuses when a read decodes it fails the member that reads the row with the
   kind `codec_decode`, the class of the category `value` (CORE-11) and the message
   `codec_decode: <entity>.<column>: <text>`, in every binding; the conversion of a value that a read already holds
