@@ -49,7 +49,7 @@ jobs:
       # Each PHP minor of phpExtension.minors of config/toolchain.json with its php-config, which the build of the extension
       # reads; make ci-assets-php-ext MINOR=<minor> builds with the PHP of that minor at the path where setup-php installed it
       # (SETUP_PHP of the Makefile: /usr/bin/php<minor> on Linux, the keg /opt/homebrew/opt/php@<minor> on macOS), never through
-      # brew (T629; extensionMinorErrors of scripts/repo/toolchains.mts). The build runs no Composer, so setup-php installs no tool.
+      # brew. The branch CI of Linux and macOS proves these install paths of setup-php, not a local run (T629; extensionMinorErrors of scripts/repo/toolchains.mts). The build runs no Composer, so setup-php installs no tool.
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'

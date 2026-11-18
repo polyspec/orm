@@ -140,9 +140,10 @@ MISE_ENVIRONMENT := MISE_DATA_DIR MISE_CACHE_DIR MISE_STATE_DIR MISE_CONFIG_DIR 
 # kit 0.0.98's run-tests dropped NODE_TEST_CONTEXT, so a node --test that a recipe starts from inside a node test runs as
 # its own run, not as a child of that test (kit K1094); no recipe passes it on.
 unexport NODE_TEST_CONTEXT
-# rustup is the one tool that the machine provides (kit install-rust, AGENTS.md), and it keeps rustup and the proxies cargo and
-# rustc in ~/.cargo/bin, where kit install-tools TOOLS=rust runs it. Every recipe finds them there through this PATH, never
-# through the PATH of the runner image, and no recipe puts the folder on PATH itself (T630).
+# rustup is the one tool that the machine provides (kit install-rust, AGENTS.md). The Makefile puts $(HOME)/.cargo/bin first on
+# PATH, so a rustup installed there, with its proxies cargo and rustc, is found first; where a runner has none there, the PATH of
+# the machine holds rustup. No recipe puts the folder on PATH itself (T630). The branch CI of Linux and macOS proves the form,
+# not a local run.
 export PATH := $(HOME)/.cargo/bin:$(PATH)
 # POSTGRES_BIN is the folder of the PostgreSQL 17 programs (initdb, pg_ctl, postgres, pg_basebackup) where the packages of the
 # machine keep them off PATH (T550): /usr/lib/postgresql/17/bin of the Debian packages that make orm-install-server-programs
@@ -858,7 +859,8 @@ ci-assets-npm:
 # SETUP_PHP and SETUP_PHP_CONFIG are the PHP of MINOR and its php-config where the setup-php steps of the job platform installed
 # them (T629): php<minor> and php-config<minor> in /usr/bin of the packages of ondrej/php on Linux, and on macOS the keg
 # php@<minor> that setup-php installs with its own Homebrew under /opt/homebrew/opt (the darwin-arm64 runner). The recipe reads
-# them by path, not through PATH or brew, which are tools of the runner image; a missing one fails naming MINOR. The recipe builds
+# them by path, not through PATH or brew, which are tools of the runner image; a missing one fails naming MINOR and the path.
+# The two paths are taken as the install paths of setup-php; the branch CI of Linux and macOS proves them, not a local run. The recipe builds
 # the release archive of the extension for each minor of the release matrix, so it picks the PHP of MINOR, not the PHP of the
 # checkout, and checks before the build that this PHP reports MINOR (HR-81, T533).
 SETUP_PHP = $(if $(filter Darwin,$(shell uname -s)),/opt/homebrew/opt/php@$(MINOR)/bin/php,/usr/bin/php$(MINOR))
