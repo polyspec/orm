@@ -269,7 +269,8 @@ uv-install: ## Install the Python package of DIR with uv sync --locked and the f
 KIT_GATES_STATIC := layout-check docs-check rules-check owner-validate rebuild-check language-check duplication-check suppression-check
 # kit-gates runs the gates one at a time in the order below, its prerequisites, which land reads as the gates of orm: lint-ts
 # comes first, since its make then holds the exclusive lease of the TypeScript build output for its life, which the shared lease of
-# a later reader reuses; a shared lease taken first would block that exclusive one.
+# a later reader reuses; a shared lease taken first for the make makes that exclusive one fail at once (tests/lease), naming the
+# holder and the asker.
 .NOTPARALLEL: kit-gates
 kit-gates: lint-ts $(KIT_GATES_STATIC) lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext ## Run every gate; CI runs its partitions
 ifneq ($(filter kit-gates-static,$(MAKECMDGOALS)),)
@@ -1090,12 +1091,14 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # creates the missing ones (databasesToCreate), under an exclusive lease of the run directory, so two targets of one run
 # never create its databases at once. The lease is the run's own, not that of the servers: a run holds the shared lease
 # of the servers while it calls databases-create (scripts/check/run.mts), and an exclusive wait on it would never end.
+# It reads the TypeScript client under the shared lease of the build for the create alone (lease run): a shared lease for
+# the make would make the exclusive lease of a later build of the same make, feature-check/build, wait for that make (T645).
 databases-create: SERVERS ?= $(abspath .runtime/servers/env)
 databases-create: DIRECTORY ?= $(RUN_CONTEXT_DIR)
 databases-create: NAME ?= $(if $(RUN_CONTEXT_DIR),orm_kit_$(subst -,_,$(RUNTIME))_$(GITHUB_RUN_ID)_$(GITHUB_RUN_ATTEMPT))
 databases-create: orm-test-servers $(if $(or $(DIRECTORY),$(RUN_CONTEXT_DIR)),typescript-current lease-tool)
 	@if test -z '$(DIRECTORY)'; then echo 'databases-create: no run context (RUNTIME, GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT) and no DIRECTORY; no run database is made'; \
-	else $(READ_TYPESCRIPT) && $(LEASE) run '$(DIRECTORY)/create.leases' exclusive --wait -- $(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'; fi
+	else $(LEASE) run $(TYPESCRIPT_LEASES) shared --wait -- $(LEASE) run '$(DIRECTORY)/create.leases' exclusive --wait -- $(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'; fi
 
 run-databases:
 	( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
