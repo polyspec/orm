@@ -1133,7 +1133,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   const own = jobTargets(makefile);
   assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
   assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
-  assert.deepEqual(targets.preflight, ['repo-check', 'runner-check', 'docs-rules-check', 'comment-language-check'], 'the group preflight runs the four structure checks (T428)');
+  assert.deepEqual(targets.preflight, ['repo-check', 'spec-release-check', 'runner-check', 'docs-rules-check', 'comment-language-check'], 'the group preflight runs the structure checks and the release-spec check (T428, T682)');
   assert.ok((targets.static ?? []).includes('catalog-described-temporal-go-check'), 'the appended owner check runs in the static CI group');
   for (const [group, expected] of Object.entries({
     client_db_go: ['client-db-go-check', 'dialect-facts-check'],
