@@ -51,7 +51,12 @@ WORKTREE_STOP = orm-test-servers-stop
 # and the ProxySQL and PgBouncer poolers of the database checks on free ports that it chooses
 # and writes TEST_ENV; the database checks read TEST_ENV and fail when it is
 # missing.
-TEST_ENV ?= .runtime/servers/env
+# RUN_CONTEXT_DIR is the run directory of the job context of a kit runtime job (scripts/check/job-context.mts contextPath):
+# kit passes RUNTIME to the make of each target of make -k ci-targets, and GitHub sets GITHUB_RUN_ID and GITHUB_RUN_ATTEMPT.
+# With all three set, the checks read the env file of that run, which databases-create writes; without them they read the
+# servers file. A TEST_ENV on the command line wins (T650).
+RUN_CONTEXT_DIR = $(if $(and $(RUNTIME),$(GITHUB_RUN_ID),$(GITHUB_RUN_ATTEMPT)),$(abspath .runtime/run)/kit-$(RUNTIME)-$(GITHUB_RUN_ID)-$(GITHUB_RUN_ATTEMPT))
+TEST_ENV ?= $(if $(RUN_CONTEXT_DIR),$(RUN_CONTEXT_DIR)/env,.runtime/servers/env)
 # ORM_TEST_ENV is the absolute path of the TEST_ENV that this make reads, and like DECIMAL_ENV it is
 # passed to the process that the recipe starts. A make variable changes a Makefile value only on the command line, so the commands that start a sub-make (the helper check of contracts/
 # features.json) pass it as TEST_ENV="$$ORM_TEST_ENV". make owner-check
@@ -68,8 +73,9 @@ MARIADB_BIN := $(CURDIR)/var/mariadb/$(MARIADB_VERSION)/bin:$(CURDIR)/var/mariad
 # DECIMAL_ENV is the file that holds the DSN of the decimal database. The decimal check and the decimal command of feature-check
 # read it. No decimal database is shared: make orm-check, make owner-check, and make run-databases
 # create their own databases and files for each run (scripts/check/databases.mts) and pass them with this variable and TEST_ENV. The bench
-# database DSNs (BENCH_*, ORM_BENCH_MYSQL_DSN) are also in the TEST_ENV of that run only.
-DECIMAL_ENV =
+# database DSNs (BENCH_*, ORM_BENCH_MYSQL_DSN) are also in the TEST_ENV of that run only. In a kit runtime job it is the
+# decimal-env of the run directory (RUN_CONTEXT_DIR, T650).
+DECIMAL_ENV = $(if $(RUN_CONTEXT_DIR),$(RUN_CONTEXT_DIR)/decimal-env)
 export DECIMAL_ENV
 
 # All cargo commands (cargo +$(PHYSICAL_RUST_TOOLCHAIN), the cargo on PATH, and the cargo that the feature coverage and conformance
