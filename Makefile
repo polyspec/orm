@@ -797,10 +797,11 @@ ci-release:
 	@$(CI_JOB) setup $(CI_NAME) undraft -- release-undraft TAG=$(TAG)
 	@$(CI_JOB) end $(CI_NAME)
 # ci-release-rehearsal is the run of the job release-rehearsal of ci.yml (T628): with no tag, it gathers var/release/assets as
-# ci-release does, rehearses the Go module of the tag of VERSION with rehearse-go-module of binding (GN-19f, B2.479), which
-# pushes nothing, after the setup that ci-release runs before it in the same order (T633), and runs release-platform-assets of
-# binding for that version with REHEARSAL=1, which uploads nothing and writes its log into WORK. When binding gives
-# ci-release-rehearsal from packages/release.mk (binding 0.0.23), orm drops this recipe and runs that one.
+# ci-release does, but with release-candidate-assets, which packs the committed HEAD for VERSION and reads no tag (kit K1286),
+# where release-assets reads refs/tags/<TAG>; it rehearses the Go module of the tag of VERSION with rehearse-go-module of
+# binding (GN-19f, B2.479), which pushes nothing, after the setup that ci-release runs before it in the same order (T633), and
+# runs release-platform-assets of binding for that version with REHEARSAL=1, which uploads nothing and writes its log into WORK.
+# When binding gives ci-release-rehearsal from packages/release.mk (binding 0.0.23), orm drops this recipe and runs that one.
 .PHONY: ci-release-rehearsal
 RELEASE_REHEARSAL_VERSION = $(strip $(file <VERSION))
 ci-release-rehearsal: CI_NAME = $(CI_RUN)-release-rehearsal
@@ -810,7 +811,7 @@ ci-release-rehearsal:
 	@$(CI_JOB) setup $(CI_NAME) zip -- ci-release-zip
 	@$(CI_JOB) setup $(CI_NAME) prepare -- release-prepare TAG=v$(RELEASE_REHEARSAL_VERSION)
 	@$(CI_JOB) setup $(CI_NAME) tools -- release-tools TAG=v$(RELEASE_REHEARSAL_VERSION)
-	@$(CI_JOB) setup $(CI_NAME) assets -- release-assets TAG=v$(RELEASE_REHEARSAL_VERSION)
+	@$(CI_JOB) setup $(CI_NAME) assets -- release-candidate-assets VERSION=$(RELEASE_REHEARSAL_VERSION)
 	@$(CI_JOB) setup $(CI_NAME) platform-assets -- ci-release-platform-assets
 	@$(CI_JOB) setup $(CI_NAME) rust -- orm-install-rust
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
