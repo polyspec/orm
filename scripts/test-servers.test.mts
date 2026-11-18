@@ -595,7 +595,8 @@ caseTest('the server environment names no bench or decimal database that runs sh
   assert.deepEqual(Object.keys(variables).filter(name => /^(?:ORM_)?(?:BENCH|DECIMAL)_/.test(name)), [], 'the server environment names a shared bench or decimal database');
   assert.equal(variables['ORM_RUN_MYSQL_DSN'], 'mysql://root@127.0.0.1:1/orm_run?timezone=%2B00:00');
   const makefile = readFileSync(new URL('../Makefile', import.meta.url), 'utf8');
-  assert.match(makefile, /^DECIMAL_ENV =$/m, 'the Makefile names a shared decimal environment');
+  assert.match(makefile, /^DECIMAL_ENV = \$\(if \$\(RUN_CONTEXT_DIR\),\$\(RUN_CONTEXT_DIR\)\/decimal-env\)$/m,
+    'DECIMAL_ENV names a file outside the run directory (T666)');
   assert.doesNotMatch(makefile, /^decimal-db-setup:/m, 'the Makefile sets up a shared decimal database');
 });
 
