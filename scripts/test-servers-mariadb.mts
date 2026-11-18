@@ -68,10 +68,13 @@ export const MARIADBD_STORAGE = ['--innodb-log-file-size=16777216', '--innodb-ma
 // with the names of MYSQL_TLS_SERVER_NAMES. skip-name-resolve keeps a TCP client at 127.0.0.1 the user of host 127.0.0.1 that the DSNs
 // name, as on MySQL; without it MariaDB resolves 127.0.0.1 to localhost and matches the user of host localhost. The privilege
 // probe server has no TLS files, as the MySQL one has none.
+// mariadbDatadir is the data folder of the mariadbd of <role>, inside the directory of the servers.
+export const mariadbDatadir = (p: Paths, role: MariadbRole): string => join(p.dir, MARIADB_SERVERS[role].name);
+
 export function mariadbdArguments(p: Paths, role: MariadbRole, port: number): string[] {
   const { name, id } = MARIADB_SERVERS[role];
   const tls = join(p.dir, 'mariadb-tls');
-  return ['--no-defaults', `--datadir=${join(p.dir, name)}`, `--tmpdir=${mariadbTmpdir(p, role)}`, `--secure-file-priv=${join(p.dir, 'mariadb-files')}`,
+  return ['--no-defaults', `--datadir=${mariadbDatadir(p, role)}`, `--tmpdir=${mariadbTmpdir(p, role)}`, `--secure-file-priv=${join(p.dir, 'mariadb-files')}`,
     `--lower-case-table-names=${MYSQL_LOWER_CASE}`, '--bind-address=127.0.0.1', '--skip-name-resolve', `--port=${port}`,
     `--socket=${mariadbSocket(p, role)}`, `--pid-file=${join(p.dir, `${name}.server.pid`)}`,
     ...(role === 'privilege' ? MARIADBD_PRIVILEGE_BINLOG : MARIADBD_BINLOG), ...MARIADBD_STORAGE, ...MARIADBD_PERFORMANCE_SCHEMA, ...MARIADBD_MYSQL_DEFAULTS, `--server-id=${id}`,
@@ -184,7 +187,7 @@ async function startServers(p: Paths, ports: MariadbPorts): Promise<void> {
     // gives root the password-less native login of an insecure MySQL root, where MariaDB would let root in only by the unix_socket
     // plugin as the operating-system user root; --skip-test-db leaves out the database test and the grants of the anonymous user on
     // test and test_%, which MySQL does not make.
-    run('mariadb-install-db', ['--no-defaults', `--datadir=${join(p.dir, name)}`, `--tmpdir=${mariadbTmpdir(p, role)}`, '--auth-root-authentication-method=normal', '--skip-test-db',
+    run('mariadb-install-db', ['--no-defaults', `--datadir=${mariadbDatadir(p, role)}`, `--tmpdir=${mariadbTmpdir(p, role)}`, '--auth-root-authentication-method=normal', '--skip-test-db',
       `--lower-case-table-names=${MYSQL_LOWER_CASE}`], { stdio: ['ignore', openSync(join(p.dir, `${name}-init.log`), 'w'), 'inherit'], env });
     await startLogged(p.dir, name, 'ready for connections', 'mariadbd', mariadbdArguments(p, role, port), env);
     run('mariadb', ['--no-defaults', `--socket=${mariadbSocket(p, role)}`, '-u', 'root', '-e', ROOT_TCP_SQL]);

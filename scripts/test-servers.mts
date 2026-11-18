@@ -187,10 +187,13 @@ export const POSTGRES_HBA = [
   'host all all 127.0.0.1/32 scram-sha-256',
 ];
 
+// mysqlDatadir is the data folder of the MySQL server <name>, inside the directory of the servers.
+export const mysqlDatadir = (p: Paths, name: 'mysql' | 'mysql-replica'): string => join(p.dir, name);
+
 // mysqldArguments are the arguments of the mysqld daemon of the primary (server id 1) or the replica (server id 2).
 export function mysqldArguments(p: Paths, replica: boolean, port: number): string[] {
   const name = replica ? 'mysql-replica' : 'mysql';
-  return ['--no-defaults', '--daemonize', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`, `--datadir=${join(p.dir, name)}`,
+  return ['--no-defaults', '--daemonize', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`, `--datadir=${mysqlDatadir(p, name)}`,
     `--pid-file=${replica ? p.mysqlReplicaPid : p.mysqlPid}`, `--log-error=${join(p.dir, `${name}.log`)}`, '--bind-address=127.0.0.1',
     `--port=${port}`, `--socket=${replica ? p.sockets.mysqlReplica : p.sockets.mysql}`, '--mysqlx=OFF', ...MYSQLD_BINLOG, ...MYSQLD_STORAGE,
     `--server-id=${replica ? 2 : 1}`, ...(replica ? ['--skip-replica-start'] : [])];
@@ -334,6 +337,20 @@ export function leaveOwner(p: Paths, set: ServerSet, owner: number): void {
 // stopped its servers itself, so the owner process has nothing to stop and leaves the logs.
 export const newGeneration = (p: Paths, set: ServerSet): void => writeFileSync(setOf(p, set).generation, `${randomUUID()}\n`);
 export const dropGeneration = (p: Paths, set: ServerSet): void => rmSync(setOf(p, set).generation, { force: true });
+
+// abandonStart ends a start that failed with <error>: it drops the generation of the servers and stops, through <stop>, the
+// servers that the start left pid files of, so its owner process has nothing to stop and leaves the logs; it throws <error>,
+// or both errors when the stop fails as well.
+export function abandonStart(p: Paths, error: unknown, stop: (p: Paths) => void = stopServers): never {
+  console.error(`test-servers: start failed; logs are in ${p.dir}`);
+  dropGeneration(p, 'servers');
+  try { stop(p); }
+  catch (cleanup) {
+    const message = `test-servers: start failed: ${errorMessage(error)}; cleanup failed: ${errorMessage(cleanup)}`;
+    throw new TestServerError(message, 1, { cause: new AggregateError([error, cleanup], message) });
+  }
+  throw error;
+}
 
 // namedOwner is the owner that env names (ownerPid), failing as a failure of this script.
 function namedOwner(env: NodeJS.ProcessEnv): number {
@@ -494,8 +511,8 @@ export function socketDir(p: Paths): void {
 
 function startMysql(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
   const env = mysqlEnvironment();
-  const initialize = (name: string) => run('mysqld', ['--no-defaults', '--initialize-insecure', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`,
-    `--datadir=${join(p.dir, name)}`, `--log-error=${join(p.dir, `${name}-init.log`)}`], { env });
+  const initialize = (name: 'mysql' | 'mysql-replica') => run('mysqld', ['--no-defaults', '--initialize-insecure', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`,
+    `--datadir=${mysqlDatadir(p, name)}`, `--log-error=${join(p.dir, `${name}-init.log`)}`], { env });
   initialize('mysql');
   // --daemonize returns after the server accepts connections or fails.
   run('mysqld', mysqldArguments(p, false, ports.mysql), { env });
@@ -994,15 +1011,7 @@ async function start(p: Paths): Promise<void> {
     await startPgbouncer(p, ports);
     writeEnvironment(p, ports);
   } catch (error) {
-    console.error(`test-servers: start failed; logs are in ${p.dir}`);
-    // The servers of a failed start are stopped here, so its owner process has nothing to stop and leaves the logs.
-    dropGeneration(p, 'servers');
-    try { stopServers(p); }
-    catch (cleanup) {
-      const message = `test-servers: start failed: ${errorMessage(error)}; cleanup failed: ${errorMessage(cleanup)}`;
-      throw new TestServerError(message, 1, { cause: new AggregateError([error, cleanup], message) });
-    }
-    throw error;
+    abandonStart(p, error);
   }
   console.log(`test-servers: started; environment ${p.env}`);
 }

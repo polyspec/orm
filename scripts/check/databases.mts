@@ -165,6 +165,14 @@ function sqliteAmount(db: import('node:sqlite').DatabaseSync): string {
   } finally { db.close(); }
 }
 
+// decimalEnvironment is the text of <directory>/decimal-env for the decimal database <decimal> on the bench servers of
+// <mysqlBench> and <postgresBench>: the DSNs of that database and of the SQLite file decimal-case.sqlite of <directory>.
+export function decimalEnvironment(mysqlBench: string, postgresBench: string, decimal: string, directory: string): string {
+  const sqlite = join(directory, 'decimal-case.sqlite');
+  return [`export DECIMAL_MYSQL_DSN='${withDatabase(mysqlBench, decimal)}'`, `export DECIMAL_POSTGRES_DSN='${withDatabase(postgresBench, decimal)}'`,
+    `export DECIMAL_SQLITE_DSN='sqlite://${sqlite}?_pragma=busy_timeout(5000)&timezone=%2B00:00'`, ''].join('\n');
+}
+
 // createDecimal creates the MySQL and PostgreSQL database <decimal> and the SQLite file decimal-case.sqlite of <directory>,
 // installs the manifest of the decimal model generated from contracts/fixtures/decimal_schema.dbs on each (no hand-written
 // DDL: the dbspec renderer writes the statements), checks the type of decimal_case.amount, and writes DECIMAL_MYSQL_DSN,
@@ -193,8 +201,7 @@ async function createDecimal(mysqlBench: string, postgresBench: string, decimal:
     if (type !== expected) { console.error(`databases: ${dialect} decimal amount type is '${type}', expected ${expected}`); return false; }
     console.log(`${dialect} decimal_case amount ${type}`);
   }
-  writeFileSync(join(directory, 'decimal-env'), [`export DECIMAL_MYSQL_DSN='${mysql}'`, `export DECIMAL_POSTGRES_DSN='${postgres}'`,
-    `export DECIMAL_SQLITE_DSN='sqlite://${sqlite}?_pragma=busy_timeout(5000)&timezone=%2B00:00'`, ''].join('\n'), { mode: 0o600 });
+  writeFileSync(join(directory, 'decimal-env'), decimalEnvironment(mysqlBench, postgresBench, decimal, directory), { mode: 0o600 });
   return true;
 }
 
