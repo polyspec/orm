@@ -2100,9 +2100,17 @@ no-flowmark-check:
 # (tests/stop-process). Its build is a long-running task, so it runs with no deadline under RUN_LONG.
 STOP_PROCESS = $(abspath .runtime/bin/stop-process)
 BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROCESS) go build -o @OUT@ ./tests/stop-process
+# The program is a file target of its sources, as the lease program is: make stop-process builds it while it is missing or
+# older than a source, and every recipe that stops a server reaches it the same way (T649).
+STOP_PROCESS_SOURCES = $(wildcard tests/stop-process/*.go)
+$(STOP_PROCESS): $(STOP_PROCESS_SOURCES)
+	$(BUILD_STOP_PROCESS)
+
+.PHONY: stop-process
+stop-process: $(STOP_PROCESS)
 
 orm-test-servers-check:
-	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s stop-process
 	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts scripts/test-servers-owner.test.mts
 
@@ -2111,7 +2119,7 @@ orm-test-servers-check:
 # The servers stop once every owner has ended and no run holds a lease of them, so a run of make orm-test-servers check-run
 # leaves none, and the servers that a person starts by hand from a terminal stay up until that shell ends.
 orm-test-servers:
-	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s stop-process
 	$(MAKE) -s $(LEASE)
 	ORM_SERVERS_OWNER=$${ORM_SERVERS_OWNER:-$$(ps -o ppid= -p $$PPID | tr -d ' ')} LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
 
@@ -2121,14 +2129,14 @@ orm-install-mariadb:
 	$(ONLINE) $(NODE) scripts/mariadb-build.mts
 # Its servers have an owner by the rule of make orm-test-servers (ORM_SERVERS_OWNER, scripts/test-servers-owner.mts).
 orm-test-mariadb:
-	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s stop-process
 	$(MAKE) -s $(LEASE)
 	ORM_SERVERS_OWNER=$${ORM_SERVERS_OWNER:-$$(ps -o ppid= -p $$PPID | tr -d ' ')} PATH="$(MARIADB_BIN):$$PATH" LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-start
 
 # make orm-test-mariadb-stop stops the MariaDB servers of make orm-test-mariadb by their pid files and removes their files, under
 # the exclusive lease of their lease directory; make orm-test-servers-stop and worktree-remove stop them with the other servers.
 orm-test-mariadb-stop:
-	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s stop-process
 	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mariadb-stop
 
@@ -2176,7 +2184,7 @@ mariadb-recipes-check/php-extension: lease-tool php-vendor-check build-php-ext
 # The dialect-facts probe needs its own writable MySQL server with binary logging and trust-function-creators disabled.
 .PHONY: orm-test-mysql-privilege-start
 orm-test-mysql-privilege-start:
-	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s stop-process
 	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts mysql-privilege-start
 
@@ -2271,7 +2279,7 @@ orm-test-servers-tls:
 	$(NODE) scripts/test-servers.mts tls
 
 orm-test-servers-stop:
-	$(BUILD_STOP_PROCESS)
+	$(MAKE) -s stop-process
 	$(MAKE) -s $(LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
 

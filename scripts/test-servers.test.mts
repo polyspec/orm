@@ -15,9 +15,15 @@ import { abandonStart, environment, issueTls, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BI
 import { withFixtureServer, withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
-// A case that starts a child stops it with STOP_PROCESS. Without it the file fails before any case starts a child, so
-// no child outlives the run of the file (HR-87, T529): a cleanup that cannot stop its child would leave it running.
-const STOP_PROCESS: string = process.env.STOP_PROCESS || (() => { throw new Error('STOP_PROCESS is unset; run make orm-test-servers-check, which builds it'); })();
+// A case that starts a child stops it with STOP_PROCESS. Without it, or when it names no program, the file fails before any
+// case starts a child, so no child outlives the run of the file (HR-87, T529, T649): a cleanup that cannot stop its child
+// would leave it running.
+function stopProcessProgram(value: string | undefined): string {
+  if (!value) throw new Error('STOP_PROCESS is unset; run make orm-test-servers-check, which builds it');
+  if (!existsSync(value)) throw new Error(`STOP_PROCESS ${value}: ENOENT, no such program; run make stop-process, which builds it`);
+  return value;
+}
+const STOP_PROCESS: string = stopProcessProgram(process.env.STOP_PROCESS);
 
 // The storage settings of the servers (KSTD-5-88-5), read from the module so that a missing one fails its assertion.
 const { MYSQLD_STORAGE, POSTGRES_WAL, postgresArguments } = servers;
@@ -30,6 +36,7 @@ const exited = (pid: number): boolean => { const state = processState(pid); retu
 
 function killAndWait(pid: number): void {
   const result = spawnSync(STOP_PROCESS, ['KILL', String(pid)], { encoding: 'utf8', env: isolatedEnvironment() });
+  if (result.error) throw new Error(`${STOP_PROCESS} KILL ${pid} could not run: ${result.error.message}`, { cause: result.error });
   assert.equal(result.status, 0, result.stderr);
 }
 
