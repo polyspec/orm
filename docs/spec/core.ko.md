@@ -82,7 +82,7 @@
   false이며, `timeout_ms`가 없으면 한도가 없고(INT-42), `retry`가 없으면 `3`이며(INT-43), `audit`이 없으면 audit
   값을 주지 않는다. 계약이 이 기본값을 선언한다. handle이 트랜잭션에 들어가는 유일한 길이다: 모델은 `connect(&tx)` 뒤에
   그 안에서 실행되고, 트랜잭션의 문장 실행기는 `Tx::run`이다. 매개변수를 선언하지 않은 callback은 트랜잭션이 열리기 전에
-  바인딩의 kind `invalid_callback`(category `type`)으로 거절되고 호출되지 않는다: 그런 callback은 handle을 받지 못하므로 그
+  바인딩의 kind `invalid_callback`(category `type`)과 message `invalid_callback: a callback that declares no parameter takes no transaction handle, so it is not called`로 거절되고 호출되지 않는다: 그런 callback은 handle을 받지 못하므로 그
   문장이 `Db`를 거쳐 트랜잭션 밖에서 실행되기 때문이다. 선언된 매개변수의 검사는 바인딩의 생성된 호출이 하고(binding
   B2.467), 그 증거는 각 바인딩의 생성된 시험이다: Node의 `GN-6bu: Db.transaction refuses a callback that takes no
   argument`, Python의 `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument`, PHP의

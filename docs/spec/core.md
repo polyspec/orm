@@ -91,7 +91,7 @@ implementation is eligible for removal on that evidence.
   `read_only` is false, an absent `timeout_ms` sets no bound (INT-42), an absent `retry` is `3` (INT-43) and an absent
   `audit` gives no audit values; the contract declares these defaults. The handle is the only way into the transaction: a
   model runs in it after `connect(&tx)`, and the statement runner of the transaction is `Tx::run`. A callback that declares
-  no parameter is refused before the transaction opens, with the kind `invalid_callback` of the binding (category `type`),
+  no parameter is refused before the transaction opens, with the kind `invalid_callback` of the binding (category `type`), with the message `invalid_callback: a callback that declares no parameter takes no transaction handle, so it is not called`,
   and is not called: such a callback has no handle, so its statements would run through the `Db`, outside the
   transaction. The check of the declared parameters is the generated call of the binding (binding B2.467), and its proof
   is the generated test of each binding: `GN-6bu: Db.transaction refuses a callback that takes no argument` of Node,
