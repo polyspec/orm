@@ -43074,6 +43074,55 @@
       "result": "sqlite"
     }
   ],
+  "db.with_request_hook": [
+    {
+      "id": "a_hook_adds_a_parameter",
+      "rule": "CORE-70",
+      "receiver": {
+        "new": "db.connect_schema",
+        "args": {
+          "dsn": {
+            "text": [
+              "sqlite://",
+              {
+                "case_path": "shop.db"
+              }
+            ]
+          },
+          "pool_size": 1,
+          "cfg": {}
+        },
+        "then": []
+      },
+      "hook": {
+        "function": {
+          "calls": [
+            {
+              "on": "1",
+              "call": "request_params.add",
+              "args": {
+                "value": {
+                  "int": "7"
+                }
+              },
+              "result": {
+                "kind": "int",
+                "value": "0"
+              }
+            }
+          ],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
+        }
+      },
+      "result": {
+        "kind": "text",
+        "value": "done"
+      }
+    }
+  ],
   "db.with_cancel": [
     {
       "id": "a_handle_with_a_cancellation",

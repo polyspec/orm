@@ -9401,6 +9401,11 @@
         ],
         "reason": "SVC-2"
       }
+    },
+    {
+      "member": "db.with_request_hook",
+      "file": "contracts/interface/core.json",
+      "group": "db.with_request_hook"
     }
   ]
 }
