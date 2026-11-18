@@ -75,6 +75,19 @@ func (i inside) Error() string {
 	return "an ancestor process holds the exclusive lease: " + i.holder.String()
 }
 
+// ownShared means an exclusive lease is asked inside a shared holding of the asker or of an ancestor (Makefile:985-986 lets an
+// exclusive inside an exclusive and a shared inside a shared through). That shared holding ends only with the asker's own
+// ancestor, so a wait for it never ends: lease refuses at once and names the holder and the asker.
+type ownShared struct {
+	dir    string
+	holder holder
+	asker  string
+}
+
+func (o ownShared) Error() string {
+	return fmt.Sprintf("the exclusive lease of %s is asked inside the shared lease of pid %d (%s), its own ancestor; it would wait for itself forever (asked by %s)", o.dir, o.holder.PID, o.holder.Command, o.asker)
+}
+
 // within is the inner directory of exclusive holding h. The child processes of the process that holds it divide holdings here.
 func within(dir string, h holder) string {
 	return filepath.Join(dir, fmt.Sprintf("within-%d-%s", h.PID, strings.ReplaceAll(h.Started, ":", "")))
@@ -292,6 +305,13 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 	blocking, err := exclusiveBlocking(all, pid)
 	if err != nil {
 		return "", err
+	}
+	if kind == "exclusive" {
+		for _, h := range all {
+			if h.Kind == "shared" && ancestorOrSelf(h.PID, pid) {
+				return "", ownShared{dir: dir, holder: h, asker: command}
+			}
+		}
 	}
 	if kind == "exclusive" && len(blocking) == 0 {
 		blocking = all
