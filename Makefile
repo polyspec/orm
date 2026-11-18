@@ -3698,7 +3698,6 @@ parameter-chunking-check/python: lease-tool python-venv-check
 # cannot observe in request_hook_cases.php (feature coverage, not this check).
 .PHONY: request-hook-check/php
 request-hook-check/php: lease-tool php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RequestHookMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RequestHookPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/RequestHookSqliteRecipeTest.php
@@ -3710,7 +3709,6 @@ parameter-chunking-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ParameterChunkingMysqlTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ParameterChunkingPostgresTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ParameterChunkingSqliteTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist
 
 # parameter-chunking-check/php-extension runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the
 # three databases in the PHP extension (docs/spec/feature-coverage.md FCV-22 and FCV-4), one entry per database.
@@ -3719,7 +3717,6 @@ parameter-chunking-check/php-extension: lease-tool php-vendor-check build-php-ex
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParameterChunkingMysqlRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParameterChunkingPostgresRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ParameterChunkingSqliteRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist
 
 # aes-rotation-check/php runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in PHP
 # (docs/spec/feature-coverage.md FCV-22 and FCV-4), one entry per database.
@@ -3728,7 +3725,6 @@ aes-rotation-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AesRotationMysqlTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AesRotationPostgresTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/AesRotationSqliteTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist
 
 # aes-rotation-check/php-extension runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in
 # the PHP extension (docs/spec/feature-coverage.md FCV-22 and FCV-4), one entry per database.
@@ -3737,14 +3733,12 @@ aes-rotation-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist
 
 # request-hook-check/php-extension runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in
 # the PHP extension (docs/spec/feature-coverage.md FCV-22 and FCV-4), one entry per database, with the native cases that a
 # declarative step cannot observe in RequestHookTestExtensionTest.php (not this check).
 .PHONY: request-hook-check/php-extension
 request-hook-check/php-extension: lease-tool php-vendor-check build-php-ext
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php
@@ -3786,7 +3780,6 @@ conformance-verification-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationSqliteRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ConformanceVerificationDynamicRecipeTest.php
 
 # conformance-verification-check/php-extension runs the recipe contracts/fixtures/conformance_verification/conformance_verification.json on the three
@@ -3796,7 +3789,6 @@ conformance-verification-check/php-extension: lease-tool php-vendor-check build-
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ConformanceVerificationDynamicRecipeTestExtensionTest.php
 
 # complex-query-check/go runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
@@ -3833,7 +3825,6 @@ complex-query-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComplexQueryMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComplexQueryPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist legacy/packages/php/tests/ComplexQuerySqliteRecipeTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration legacy/packages/php/phpunit.xml.dist
 
 # complex-query-check/php-extension runs the recipe contracts/fixtures/complex_query/complex_query.json on the three
 # databases (docs/spec/feature-coverage.md FCV-22 and FCV-4).
@@ -3842,7 +3833,6 @@ complex-query-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist legacy/packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration legacy/packages/php-ext/phpunit.xml.dist
 
 # complex-query-check runs the recipe of the complex product search in all six runtimes (docs/spec/complex-query.md CPX-1 and CPX-2).
 .PHONY: complex-query-check
