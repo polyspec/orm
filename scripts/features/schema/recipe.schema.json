@@ -1047,6 +1047,7 @@
             "sql.hold_connection",
             "sql.hold_statement",
             "sql.release_connection",
+            "sql.user_errors",
             "catalog.revision",
             "catalog.revision_compare",
             "catalog.row_cells",
@@ -7663,6 +7664,42 @@
             "const": "sql.release_connection"
           }
         }
+      },
+      "sql.user_errors": {
+    "type": "object",
+    "required": [
+      "op",
+      "user",
+      "error",
+      "mark"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "op": {
+        "const": "sql.user_errors"
+      },
+      "user": {
+        "description": "The user whose errors are counted: the prefix of the user of catalog.reconnect (user_from_database), named as sql.hold_connection names it.",
+        "type": "string",
+        "minLength": 1
+      },
+      "error": {
+        "description": "The server error number whose count sql.user_errors reads, as performance_schema records it (DIA-211): 1226 is the refusal of max_user_connections.",
+        "type": "integer"
+      },
+      "mark": {
+        "description": "start records the count of the user and the error; end reads it again and compares the increase with expect. A start must be followed by an end, and an end needs its start (feature-coverage.md).",
+        "enum": [
+          "start",
+          "end"
+        ]
+      },
+      "expect": {
+        "description": "Only on end: the increase of the count since the start of the same user and error.",
+        "type": "integer",
+        "minimum": 0
+      }
+    }
       },
       "catalog.revision_compare": {
         "description": "Compares the revision of a snapshot with the revision of another: the outcome is the json {\"length\": the characters of the revision, \"differs\": whether the two differ}.",

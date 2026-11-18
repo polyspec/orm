@@ -3199,6 +3199,8 @@ mod database {
         held: Option<sqlx::MySqlConnection>,
         /// The connection that sql.hold_statement holds.
         held_statement: Option<sqlx::PgConnection>,
+        /// The count of errors that sql.user_errors marked at its start, by user and error.
+        user_error_starts: HashMap<(String, i64), i64>,
         namespace: String,
         database: &'a str,
         dsn: String,
@@ -3240,6 +3242,7 @@ mod database {
             Self {
                 held: None,
                 held_statement: None,
+                user_error_starts: HashMap::new(),
                 namespace,
                 database,
                 dsn,
@@ -4792,6 +4795,55 @@ mod database {
                 }
                 if let Some(held) = context.held_statement.take() {
                     held.close().await.map_err(|e| fault(e.to_string()))?;
+                }
+                Output::fields(json!({}))
+            }
+            // sql.user_errors (feature-coverage.md, DIA-211): the errors of a user that performance_schema records for it.
+            "sql.user_errors" => {
+                let prefix = crate::recipe_reads::read(step, "user")["user"].as_str().unwrap_or_default();
+                let dsn = user_from_database_dsn(&context.dsn, prefix);
+                // user_from_database_dsn writes the DSN as mysql://<user>@<host>; the user is the text before the '@'.
+                let user = dsn.trim_start_matches("mysql://").split('@').next().unwrap_or_default().to_owned();
+                let error = crate::recipe_reads::read(step, "error")["error"].as_i64().ok_or_else(|| fault("sql.user_errors: error is not a number".to_owned()))?;
+                let mark = crate::recipe_reads::read(step, "mark")["mark"].as_str().unwrap_or_default().to_owned();
+                let ConnectOptions::MySql(options) = parse_dsn(&context.dsn).map_err(|e| fault(e.to_string()))?.options else {
+                    return Err(fault(format!("{} is not a mysql DSN", context.dsn)));
+                };
+                use sqlx::ConnectOptions as _;
+                use sqlx::Connection as _;
+                let mut conn = options.connect().await.map_err(|e| fault(e.to_string()))?;
+                // The count is SUM of an unsigned column, a BIGINT UNSIGNED, so it decodes as u64. The flag is an expression, so it
+                // is cast to the same type.
+                let (enabled, count): (u64, u64) = sqlx::query_as(
+                    "SELECT CAST(@@performance_schema AS UNSIGNED), CAST(COALESCE((SELECT SUM(SUM_ERROR_RAISED) FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = ? AND ERROR_NUMBER = ?), 0) AS UNSIGNED)",
+                )
+                .bind(user.as_str())
+                .bind(error)
+                .fetch_one(&mut conn)
+                .await
+                .map_err(|e| fault(e.to_string()))?;
+                conn.close().await.map_err(|e| fault(e.to_string()))?;
+                if enabled == 0 {
+                    return Err(fault("sql.user_errors: performance_schema is off on this server, so the count of its errors is unknown".to_owned()));
+                }
+                match mark.as_str() {
+                    "start" => {
+                        if context.user_error_starts.contains_key(&(user.clone(), error)) {
+                            return Err(fault(format!("sql.user_errors: two starts for user {user} and error {error}")));
+                        }
+                        context.user_error_starts.insert((user, error), count as i64);
+                    }
+                    "end" => {
+                        let Some(start) = context.user_error_starts.remove(&(user.clone(), error)) else {
+                            return Err(fault(format!("sql.user_errors: an end with no start for user {user} and error {error}")));
+                        };
+                        let increase = count as i64 - start;
+                        let expect = crate::recipe_reads::read(step, "expect")["expect"].as_i64().ok_or_else(|| fault("sql.user_errors: the end states no expect".to_owned()))?;
+                        if increase != expect {
+                            return Err(fault(format!("sql.user_errors: the server recorded {increase} errors {error} for user {user}, want {expect}")));
+                        }
+                    }
+                    other => return Err(fault(format!("sql.user_errors: mark {other} is neither start nor end"))),
                 }
                 Output::fields(json!({}))
             }
