@@ -947,3 +947,46 @@ export function shimToolErrors(makefile: string, config: { setup?: { shared?: st
   }
   return [...new Set(errors)];
 }
+
+// A job tool is a tool of mise.toml that a recipe of a CI job runs: a word of a recipe line, with its make variables expanded,
+// that is the command of the tool or its mise shim ($(KIT_TOOLS)/mise/shims/<command>), reached from the setup targets of the
+// job (deps-<runtime> when a runtime names none, as kit runs it) or from its targets of config/ci.json (T631). The job installs
+// each such tool: tools.shared or tools.<runtime> names it, the selectors that kit ci-setup passes to install-tools, or a setup
+// target of the job runs make install-tools with it in TOOLS. node and npm are no job tool: the bootstrap of kit installs them
+// in every job before make runs (K992).
+export function jobToolErrors(makefile: string, config: { setup?: { shared?: string[]; runtimes?: Record<string, string[]> }; targets?: { shared?: string[]; runtimes?: Record<string, string[]> }; tools?: Record<string, string[]> }, mise: string): string[] {
+  const errors: string[] = [];
+  const tools = /^\[tools\]\n([\s\S]*?)(?=^\[|(?![\s\S]))/m.exec(mise)?.[1] ?? '';
+  const keys = [...tools.matchAll(/^"?([^"=\s#[]+)"?\s*=/gm)].map(match => (match[1] ?? '').split(/[/:]/).at(-1) ?? '').filter(key => key !== 'node' && key !== 'npm');
+  const variables = makeVariables(makefile);
+  const selector = (word: string): string | undefined => {
+    const command = /\/mise\/shims\/([^/]+)$/.exec(word)?.[1] ?? word;
+    return keys.find(key => key === command) ?? (word === command ? undefined : keys.find(key => key === command.replace(/\d+$/, '')));
+  };
+  const runtimes = Object.keys({ ...config.setup?.runtimes, ...config.targets?.runtimes });
+  const jobs: [string, string[], string[]][] = [
+    ['shared', config.setup?.shared ?? [], config.targets?.shared ?? []],
+    ...runtimes.map((runtime): [string, string[], string[]] => {
+      const setup = config.setup?.runtimes?.[runtime] ?? [];
+      return [runtime, setup.length ? setup : [`deps-${runtime}`], config.targets?.runtimes?.[runtime] ?? []];
+    }),
+  ];
+  for (const [job, setup, targets] of jobs) {
+    const installed = new Set([...(config.tools?.[job] ?? []), ...recipeCommands(makefile, setup)
+      .filter(command => command.name === 'make' && command.args.includes('install-tools'))
+      .flatMap(command => (command.args.find(arg => arg.startsWith('TOOLS='))?.slice('TOOLS='.length) ?? '').replace(/["']/g, '').split(/\s+/))]);
+    const users = new Map<string, string[]>();
+    for (const target of reached(makefile, [...setup, ...targets]))
+      for (const line of recipeLines(makefile, target))
+        for (const word of expand(line, variables).split(/[\s;&|()`"']+/)) {
+          const tool = selector(word);
+          if (tool === undefined || installed.has(tool)) continue;
+          const list = users.get(tool) ?? [];
+          if (!list.includes(target)) list.push(target);
+          users.set(tool, list);
+        }
+    for (const [tool, list] of users)
+      errors.push(`the ${job} job of config/ci.json runs ${tool} in ${list.join(', ')}, and neither tools.${job} nor a make install-tools of its setup names ${tool}`);
+  }
+  return errors;
+}

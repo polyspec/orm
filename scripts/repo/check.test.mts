@@ -11,7 +11,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
 import { repositoryOf, runErrors } from './release-run.mts';
-import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors } from './ci.mts';
+import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -3466,4 +3466,22 @@ caseTest('T614: every setup target installs the tools it runs through their mise
     tools: lists(json['tools'] ?? {}, 'tools'),
   };
   assert.deepEqual(shimToolErrors(text('Makefile'), config, text('mise.toml')), []);
+});
+
+// Each CI job installs the tools that its setup and its targets run: tools.<runtime> names them, or a setup target of the job
+// installs them with make install-tools (T631).
+caseTest('T631: every CI job installs the tools of mise.toml that the recipes of its setup and its targets run', () => {
+  const mise = '[tools]\nnode = "1"\ngo = "1"\nuv = "1"\n"github:PyO3/maturin" = "1"\n';
+  const makefile = [
+    'GO := $(KIT_TOOLS)/mise/shims/go', 'BUILD = $(PUBLISH) out go build ./x',
+    'a: b', 'b:', '\t$(BUILD)', 'c:', '\t$(MAKE) install-tools TOOLS="uv"', '\tuv sync', 'd:', '\t$(GO) vet ./...', '\tnode x.mjs',
+    'e:', '\tmaturin build',
+  ].join('\n') + '\n';
+  assert.deepEqual(jobToolErrors(makefile, { setup: { runtimes: { rust: [], python: ['c'] } }, targets: { runtimes: { rust: ['a'], python: ['d', 'e'] } }, tools: { python: ['go'] } }, mise), [
+    'the rust job of config/ci.json runs go in b, and neither tools.rust nor a make install-tools of its setup names go',
+    'the python job of config/ci.json runs maturin in e, and neither tools.python nor a make install-tools of its setup names maturin',
+  ]);
+  const json = parseJsonValue(text('config/ci.json'), 'config/ci.json');
+  assert.ok(isRecord(json), 'config/ci.json is an object');
+  assert.deepEqual(jobToolErrors(text('Makefile'), json as Parameters<typeof jobToolErrors>[1], text('mise.toml')), []);
 });
