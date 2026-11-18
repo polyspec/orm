@@ -30,7 +30,8 @@
       ],
       "rust": [
         "orm-install-go-lease",
-        "orm-install-go-binding"
+        "orm-install-go-binding",
+        "orm-install-rust-crates"
       ],
       "ts": [
         "orm-install-interfaces-typescript",
