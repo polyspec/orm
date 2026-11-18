@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 70b68636625ae096a4aeb6a43906e50848f867fe96ee8214e86cc7f35a34d0c4 -->
+<!-- source-sha256: 8f031d441cd56f2284fb3656e5a54e3924df5700e14992145b95c085b255d43f -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -701,45 +701,46 @@ MySQL의 fact probe마다 같은 topic과 fact를 가진 MariaDB probe `mariadb.
 
 ## Markdown corpus
 
-markdown 연결은 flowmark server가 corpus에서 문에 답하는 SQLite 연결이므로([protocol](protocol.ko.md#_5-markdown-connections)) SQLite dialect의 모든 규칙이 이 연결에 적용된다. 아래 행은 corpus가 SQLite에 더하는 것을 적고, 표면이 SQLite와 같으면 그렇다고 적는다. recipe는 SQLite의 모든 case를 markdown 연결에서도 실행한다. server가 문에 답하는 방식은 flowmark의 [operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)가 정한다.
+markdown 연결은 flowmark server가 corpus에서 문에 답하는 SQLite 연결이다([protocol](protocol.ko.md#_5-markdown-connections)). 아래 행은 그 연결에서 클라이언트가 지키는 규칙을 적는다. server가 문에 답하는 방식은 flowmark의 [operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)가 정하며 orm의 규칙이 아니다.
 
 - **DIA-154** DSN scheme `markdown://`은 flowmark server에 연결하는 SQLite dialect를 고른다([protocol](protocol.ko.md#_5-markdown-connections)). 클라이언트는 각 요청을 SQLite에서처럼 계획하고 그 문을 server에 전한다.
-- **DIA-155** `one`, `all`, `count`, `group_count`, `sum`, `avg` — 결과: SQLite와 같다.
-- **DIA-156** 정렬 — 결과: SQLite와 같다. 오름차순에서 NULL은 모든 값 앞, 내림차순에서는 모든 값 뒤다.
-- **DIA-157** `group_by` — 결과: SQLite와 같다. orm의 규칙을 따른다.
-- **DIA-158** `paginate`, `lookahead_paginate`, `group_lookahead_paginate` — 결과: SQLite와 같다. 문 하나는 일관된 corpus 하나를 읽는다.
-- **DIA-159** `insert`(단일 행과 여러 행) — 결과: SQLite와 같다. 규칙: corpus는 다른 database가 application에 맡기는 column을 할당하지 않으므로, 필수 column을 생략한 insert는 `IR_INVALID`다(DBS-79).
-- **DIA-160** `update` — 결과: SQLite와 같다. 규칙: transaction이 읽은 뒤 engine 밖에서 바뀐 파일을 찾은 `COMMIT`은 `WRITE_CONFLICT`이며, 클라이언트는 이를 다시 시도하지 않는다(PRT-71).
-- **DIA-161** `delete`, `restore` — 결과: SQLite와 같다. 규칙: foreign key는 SQLite의 것이고, corpus의 규칙도 모든 쓰기를 판정한다([constraints](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/50-constraints.md)).
-- **DIA-162** `optimistic` — 결과: SQLite와 같다.
-- **DIA-163** `on_duplicate` — 결과: SQLite와 같다. orm의 conflict key 하나를 쓴다.
-- **DIA-164** primary key 비교 — 결과: SQLite와 같이 byte 단위로 비교한다. 규칙: key는 파일 이름이자 anchor이므로([document model](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/20-document-model.md)), 표의 다른 key와 A–Z의 대소문자만 다른 key는 `on_duplicate` insert를 포함한 모든 쓰기에서 `DUPLICATE_KEY`다.
-- **DIA-165** `lock` `update`, `share` — 결과: SQLite와 같다.
-- **DIA-166** `lock` `update_nowait`, `share_nowait` — 결과: SQLite와 같다.
-- **DIA-167** 관계(`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) — 결과: SQLite와 같다. 클라이언트가 조립한다.
-- **DIA-168** subquery(`tuple_in`, `tuple_not_in`, scalar `Sub` 집계) — 결과: SQLite와 같다.
-- **DIA-169** scalar column subquery — 결과: SQLite와 같다. orm의 규칙을 따른다.
-- **DIA-170** column 비교 — 결과: SQLite와 같다. orm의 규칙을 따른다.
-- **DIA-171** `contains` — 결과: SQLite와 같다.
-- **DIA-172** `contains_binary` — 결과: SQLite와 같다.
-- **DIA-173** `now`, `default now`, `updated`, `soft_delete` — 결과: SQLite와 같다. 요청의 clock을 쓴다.
-- **DIA-174** `soft_delete` — 결과: SQLite와 같다. orm의 규칙을 따른다.
-- **DIA-175** codec column — 결과: SQLite와 같이 클라이언트가 적용한다. 규칙: engine이 시작하는 쓰기(CLI, MCP, sidecar, history)는 orm의 Go codec package로 codec을 적용하고, 검증도 같은 package로 디코딩한다.
-- **DIA-176** index — 결과: SQLite와 같다. corpus의 데이터베이스가 선언된 index를 가진다.
-- **DIA-177** `select explicit`, `entity`, `navigation` — 결과: SQLite와 같이 클라이언트에서 처리한다.
-- **DIA-178** `aes`, `aes_version`, `blind_index` — 결과: SQLite와 같다. 클라이언트가 암호화하고 복호화한다. 규칙: corpus는 이 설정을 받으며, engine은 자기가 시작하는 쓰기와 검증을 위해 주입된 key를 읽는다([schema](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/30-schema.md)).
-- **DIA-179** `audit`, `immutable` 설정 — 결과: SQLite와 같다. orm이 audit 기록과 history를 쓴다. 규칙: corpus는 engine을 통한 `immutable` 표의 변경도 거부한다.
-- **DIA-180** 트랜잭션 — 결과: SQLite의 문이다. 규칙: `readOnly`는 SQLite의 `query_only`다.
-- **DIA-181** savepoint — 결과: SQLite와 같다.
-- **DIA-182** `orderByRandom` — 결과: SQLite와 같다.
-- **DIA-183** audit 값을 가진 트랜잭션 — 결과: SQLite와 같다.
-- **DIA-184** `isolation`, `timeoutMs` 옵션 — 결과: SQLite와 같다.
-- **DIA-185** `getQuery()`, `getPagePlanSteps()`, statement event, `subscribe()`, `utils().run(fn)` — 결과: SQLite와 같다. 문은 SQLite의 문이다.
-- **DIA-186** `force_index` — 결과: SQLite와 같다.
-- **DIA-187** `fulltext` — 결과: SQLite와 같다.
-- **DIA-188** lock, local-setting, privilege, AES-rotation utility — 결과: SQLite와 같다.
-- **DIA-189** schema install, dbplan chain — 결과: SQLite와 같다. 규칙: corpus에서 schema 문은 자기 트랜잭션이며, `dbspec/statements.json`에 덧붙는다([operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)).
-- **DIA-190** 사용할 수 없는 table(`format.block`, `format.section`, `format.encoding`이나 그 행 사이의 `parent.cycle`이 있는 file, 바이트 단위로 같은 key를 가진 두 행, 또는 자리의 `corpus.walk` 항목) — 결과: 그 행이 필요한 모든 요청은 읽기든 쓰기든 file과 진단을 밝히며 `CONSTRAINT`로 실패하며, 다른 file들의 행만으로 답하지 않는다([canonical format](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/10-canonical-format.md))
+- **DIA-155** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `one`, `all`, `count`, `group_count`, `sum`, `avg`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-156** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 정렬에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-157** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `group_by`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-158** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `paginate`, `lookahead_paginate`, `group_lookahead_paginate`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-159** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `insert`(단일 행과 여러 행)에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-160** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `update`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-161** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `delete`, `restore`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-162** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `optimistic`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-163** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `on_duplicate`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-164** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 primary key 비교에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-165** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `lock` `update`, `share`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-166** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `lock` `update_nowait`, `share_nowait`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-167** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 관계(`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`)에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-168** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 subquery(`tuple_in`, `tuple_not_in`, scalar `Sub` 집계)에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-169** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 scalar column subquery에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-170** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 column 비교에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-171** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `contains`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-172** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `contains_binary`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-173** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `now`, `default now`, `updated`, `soft_delete`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-174** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `soft_delete`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-175** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 codec column에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-176** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 index에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-177** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `select explicit`, `entity`, `navigation`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-178** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `aes`, `aes_version`, `blind_index`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-179** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `audit`, `immutable` 설정에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-180** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 트랜잭션에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-181** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 savepoint에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-182** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `orderByRandom`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-183** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 audit 값을 가진 트랜잭션에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-184** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `isolation`, `timeoutMs` 옵션에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-185** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `getQuery()`, `getPagePlanSteps()`, statement event, `subscribe()`, `utils().run(fn)`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-186** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `force_index`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-187** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 `fulltext`에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-188** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 lock, local-setting, privilege, AES-rotation utility에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-189** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 schema install, dbplan chain에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-190** 폐기되었고 orm에는 대체가 없으며 DIA-226이 그 자리를 정한다: flowmark server가 사용할 수 없는 table(`format.block`, `format.section`, `format.encoding`이나 그 행 사이의 `parent.cycle`이 있는 file, 바이트 단위로 같은 key를 가진 두 행, 또는 자리의 `corpus.walk` 항목)에서 SQLite와 같은 답을 준다는 것은 server의 규칙이며 flowmark의 요구 사항이다.
+- **DIA-226** markdown 연결에서 orm의 규칙은 클라이언트의 규칙인 DIA-154, DIA-196, DIA-199, DIA-221과 PRT-63부터 PRT-67까지다. orm의 테스트는 flowmark server가 아니라 `markdown.session`의 scripted listener(FCV-22의 op 목록)에서 이를 검사한다. flowmark server가 문을 SQLite와 같게 실행한다는 것은 flowmark의 요구 사항이며, flowmark의 CI가 orm v0.0.33의 markdown case를 복사한 자기 사본과 orm release의 recipe fixture로 이를 검사한다.
 - **DIA-199** Go와 Rust와 TypeScript와 Python: markdown 연결(DIA-154)의 pool 설정 `poolSize`, `poolIdleSize`,
   `poolLifetimeMs`(CFG-4, CFG-5) — 결과: SQLite에서와 같다. 설정했든 기본값이든 pool 크기를 넘는 idle 크기는 `CONFIG`로
   거부된다. PHP와 PHP extension은 pool을 유지하지 않는다(CFG-4).

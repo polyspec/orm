@@ -723,60 +723,51 @@ probe; a rule that names MySQL alone has no proof on MariaDB yet.
 ## Markdown corpus
 
 A markdown connection is a SQLite connection whose statements a flowmark server answers on a corpus
-([protocol](protocol.md#_5-markdown-connections)), so every rule of the SQLite dialect holds on it. The rows below state what
-a corpus adds to SQLite, and where a surface behaves as on SQLite they say so; the recipes run every case of SQLite on a
-markdown connection too. flowmark's [operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md) state how the server answers a statement.
+([protocol](protocol.md#_5-markdown-connections)). The rows below state the rules that the client keeps on it. How the
+server answers a statement is stated by flowmark's [operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md) and is no rule of orm.
 
 - **DIA-154** The DSN scheme `markdown://` selects the SQLite dialect on a connection to a flowmark server
   ([protocol](protocol.md#_5-markdown-connections)): the client plans each request as on SQLite and sends its statements.
-- **DIA-155** `one`, `all`, `count`, `group_count`, `sum`, `avg` — Result: as on SQLite.
-- **DIA-156** ordering — Result: as on SQLite: NULL before every value ascending and after every value descending.
-- **DIA-157** `group_by` — Result: as on SQLite, by orm's rule.
-- **DIA-158** `paginate`, `lookahead_paginate`, `group_lookahead_paginate` — Result: as on SQLite; a statement reads one consistent corpus.
-- **DIA-159** `insert` (single and multi-row) — Result: as on SQLite; Rule: the corpus assigns no column that the
-  other databases leave to the application, so an insert that leaves out a required column is `IR_INVALID` (DBS-79).
-- **DIA-160** `update` — Result: as on SQLite; Rule: a `COMMIT` that finds a file changed outside the engine since the
-  transaction read it is `WRITE_CONFLICT`, which the client never retries (PRT-71).
-- **DIA-161** `delete`, `restore` — Result: as on SQLite; Rule: the foreign keys are SQLite's, and the corpus's rules judge
-  every write as well ([constraints](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/50-constraints.md)).
-- **DIA-162** `optimistic` — Result: as on SQLite.
-- **DIA-163** `on_duplicate` — Result: as on SQLite, with orm's one conflict key.
-- **DIA-164** primary key comparison — Result: byte for byte, as on SQLite; Rule: a key equal to another of its table only
-  without regard to the case of A–Z is `DUPLICATE_KEY` on every write, an `on_duplicate` insert too, because a key is a file
-  name and an anchor ([document model](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/20-document-model.md)).
-- **DIA-165** `lock` `update`, `share` — Result: as on SQLite.
-- **DIA-166** `lock` `update_nowait`, `share_nowait` — Result: as on SQLite.
-- **DIA-167** relations (`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) — Result: as on SQLite,
-  assembled by the client.
-- **DIA-168** subqueries (`tuple_in`, `tuple_not_in`, scalar `Sub` aggregates) — Result: as on SQLite.
-- **DIA-169** a scalar column subquery — Result: as on SQLite, by orm's rule.
-- **DIA-170** column comparisons — Result: as on SQLite, by orm's rule.
-- **DIA-171** `contains` — Result: as on SQLite.
-- **DIA-172** `contains_binary` — Result: as on SQLite.
-- **DIA-173** `now`, `default now`, `updated`, `soft_delete` — Result: as on SQLite, the request's clock.
-- **DIA-174** `soft_delete` — Result: as on SQLite, by orm's rule.
-- **DIA-175** codec columns — Result: applied by the client, as on SQLite; Rule: a write the engine originates (CLI, MCP,
-  sidecar, history) applies the codec through orm's Go codec package, and validation decodes with the same package.
-- **DIA-176** indexes — Result: as on SQLite: the corpus's database holds the declared indexes.
-- **DIA-177** `select explicit`, `entity`, `navigation` — Result: client-side, as on SQLite.
-- **DIA-178** `aes`, `aes_version`, `blind_index` — Result: as on SQLite: the client encrypts and decrypts; Rule: a corpus
-  takes these settings, and the engine reads its keys by injection for the writes it originates and for its validation
-  ([schema](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/30-schema.md)).
-- **DIA-179** `audit`, `immutable` settings — Result: as on SQLite: orm writes the audit record and the history; Rule: the
-  corpus refuses a change to an `immutable` table through the engine too.
-- **DIA-180** transactions — Result: SQLite's statements; Rule: `readOnly` is SQLite's `query_only`.
-- **DIA-181** savepoints — Result: as on SQLite.
-- **DIA-182** `orderByRandom` — Result: as on SQLite.
-- **DIA-183** a transaction with audit values — Result: as on SQLite.
-- **DIA-184** `isolation` and `timeoutMs` options — Result: as on SQLite.
-- **DIA-185** `getQuery()`, `getPagePlanSteps()`, statement events, `subscribe()`, `utils().run(fn)` — Result: as on SQLite:
-  the statements are SQLite's.
-- **DIA-186** `force_index` — Result: as on SQLite.
-- **DIA-187** `fulltext` — Result: as on SQLite.
-- **DIA-188** lock, local-setting, privilege and AES-rotation utilities — Result: as on SQLite.
-- **DIA-189** schema install, dbplan chains — Result: as on SQLite; Rule: a schema statement is its own transaction on a
-  corpus, appended to `dbspec/statements.json` ([operations](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/40-ops.md)).
-- **DIA-190** an unavailable table (a file with `format.block`, `format.section`, `format.encoding` or a `parent.cycle` among its rows, two rows with byte-for-byte equal keys, or a `corpus.walk` entry at its place) — Result: every request that needs its rows, read or write, fails `CONSTRAINT`, naming the file and the diagnostic; Rule: no answer comes from the other files' rows alone ([canonical format](https://github.com/polyspec/flowmark/blob/16a55a50fc8d/docs/spec/10-canonical-format.md))
+- **DIA-155** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `one`, `all`, `count`, `group_count`, `sum`, `avg` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-156** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers ordering as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-157** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `group_by` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-158** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `paginate`, `lookahead_paginate`, `group_lookahead_paginate` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-159** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `insert` (single and multi-row) as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-160** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `update` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-161** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `delete`, `restore` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-162** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `optimistic` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-163** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `on_duplicate` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-164** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers primary key comparison as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-165** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `lock` `update`, `share` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-166** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `lock` `update_nowait`, `share_nowait` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-167** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers relations (`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-168** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers subqueries (`tuple_in`, `tuple_not_in`, scalar `Sub` aggregates) as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-169** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers a scalar column subquery as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-170** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers column comparisons as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-171** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `contains` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-172** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `contains_binary` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-173** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `now`, `default now`, `updated`, `soft_delete` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-174** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `soft_delete` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-175** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers codec columns as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-176** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers indexes as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-177** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `select explicit`, `entity`, `navigation` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-178** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `aes`, `aes_version`, `blind_index` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-179** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `audit`, `immutable` settings as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-180** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers transactions as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-181** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers savepoints as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-182** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `orderByRandom` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-183** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers a transaction with audit values as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-184** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `isolation` and `timeoutMs` options as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-185** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `getQuery()`, `getPagePlanSteps()`, statement events, `subscribe()`, `utils().run(fn)` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-186** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `force_index` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-187** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers `fulltext` as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-188** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers lock, local-setting, privilege and AES-rotation utilities as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-189** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers schema install, dbplan chains as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-190** Retired, with no replacement in orm (see DIA-226): that a flowmark server answers an unavailable table (a file with `format.block`, `format.section`, `format.encoding` or a `parent.cycle` among its rows, two rows with byte-for-byte equal keys, or a `corpus.walk` entry at its place) as SQLite does is a rule of the server, a requirement of flowmark.
+- **DIA-226** The rules of orm on a markdown connection are the client rules DIA-154, DIA-196, DIA-199 and DIA-221 and
+  PRT-63 to PRT-67; orm's tests check them on the scripted listener of `markdown.session` (the ops of FCV-22), never on a
+  flowmark server. That a flowmark server runs a statement as SQLite does is a requirement of flowmark, which flowmark's
+  CI checks with its own copy of the markdown cases of orm v0.0.33 and with the recipe fixtures of an orm release.
 - **DIA-199** Go and Rust and TypeScript and Python: the pool options of a markdown connection (DIA-154), `poolSize`,
   `poolIdleSize` and `poolLifetimeMs` (CFG-4, CFG-5) — Result: as on SQLite: an idle size above the pool size, set or
   default, is refused with `CONFIG`. PHP and the PHP extension keep no pool (CFG-4).
