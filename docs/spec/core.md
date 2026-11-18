@@ -1031,9 +1031,11 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   (CORE-62) and the members of `Query` that take or return it are declared: `where`, `value`, `get_by` and
   `get_count_by`. The members of `Query` of CORE-85 to CORE-91 and the class `StepRunner` of CORE-92 and CORE-93 are
   declared; the cases of `StepRunner` run on a SQLite database (CORE-129). The units and members of
-  [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
+  [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. `Db::with_request_hook` is declared in the form of `Db::transaction`: its hook is an inline
+  function parameter with `async_allowed: true`, and the request that the hook receives is the record unit `RequestParams` (CORE-70).
+  Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
-  event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
+  event that borrows its statement), `Key`, `GroupRow`, `GroupRows` and `Statement`
   (their values are the Rust values `Param` and `Key`). `Utils` and its parts own a handle of their connection and
   are declared as CORE-180 to CORE-186 state, without `Utils::run`, `Utils::local` and `Utils::was_inserted`
   (CORE-180). The terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row are declared, and `gets`
