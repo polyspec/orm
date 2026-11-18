@@ -2433,15 +2433,16 @@ caseTest('T497: a job whose recipe installs the PHP tools sets up the PHP of .ph
 // A phpunit line names its test: with its configuration alone it runs the whole suite (T646, run 44309325651: client_db_php
 // ran the full PHP suite in request-hook-check/php, parameter-chunking-check/php and aes-rotation-check/php, 18 minutes each).
 // A wait waits on an event: a shell loop with a body that does nothing spins (T645, scripts/check/step.test.mts).
-caseTest('T645: a shell loop that does nothing while it waits is refused', () => {
+caseTest('T645: a shell loop that does nothing while it waits is refused: do :; done, do true; done and do ; done', () => {
   const nothing = ['do', ':;', 'done'].join(' ');
   const files = {
     'a.mts': `const W = 'until ps -o args= -p $! | grep -q "^sleep "; ${nothing}';`,
     'b.sh': `while test ! -f ready; ${nothing.replace(':', 'true')}`,
     'c.sh': 'until test -f ready; do read -r line <fifo; done',
     'd.sh': 'for f in a b; do :; done',
+    'e.sh': `until test -f ready; ${nothing.replace(' :;', ' ;')}`,
   };
-  assert.deepEqual(busyLoopErrors(files).map(error => error.split(' ')[0]), ['a.mts:1', 'b.sh:1']);
+  assert.deepEqual(busyLoopErrors(files).map(error => error.split(' ')[0]), ['a.mts:1', 'b.sh:1', 'e.sh:1']);
 });
 
 caseTest('T646: a recipe that runs phpunit with its configuration alone is refused', () => {
