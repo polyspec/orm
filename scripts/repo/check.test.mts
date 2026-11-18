@@ -11,7 +11,7 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { changedFiles, diffOf, judge, LIMIT } from './diff-size.mts';
 import { repositoryOf, runErrors } from './release-run.mts';
-import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors, goModuleErrors, crateFetchErrors, unselectedPhpunitErrors } from './ci.mts';
+import { documentPathErrors, DOCUMENT_PATHS, workflowStarts, CI_PASSED_STEPS, ciPassedErrors, ciRecipeErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, checkTargets, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors, shimToolErrors, jobToolErrors, goModuleErrors, crateFetchErrors, unselectedPhpunitErrors, busyLoopErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -2432,6 +2432,18 @@ caseTest('T497: a job whose recipe installs the PHP tools sets up the PHP of .ph
 
 // A phpunit line names its test: with its configuration alone it runs the whole suite (T646, run 44309325651: client_db_php
 // ran the full PHP suite in request-hook-check/php, parameter-chunking-check/php and aes-rotation-check/php, 18 minutes each).
+// A wait waits on an event: a shell loop with a body that does nothing spins (T645, scripts/check/step.test.mts).
+caseTest('T645: a shell loop that does nothing while it waits is refused', () => {
+  const nothing = ['do', ':;', 'done'].join(' ');
+  const files = {
+    'a.mts': `const W = 'until ps -o args= -p $! | grep -q "^sleep "; ${nothing}';`,
+    'b.sh': `while test ! -f ready; ${nothing.replace(':', 'true')}`,
+    'c.sh': 'until test -f ready; do read -r line <fifo; done',
+    'd.sh': 'for f in a b; do :; done',
+  };
+  assert.deepEqual(busyLoopErrors(files).map(error => error.split(' ')[0]), ['a.mts:1', 'b.sh:1']);
+});
+
 caseTest('T646: a recipe that runs phpunit with its configuration alone is refused', () => {
   const makefile = [
     'RUN_TESTS = node run-tests.mjs',

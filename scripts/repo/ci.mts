@@ -1096,3 +1096,18 @@ export function crateFetchErrors(makefile: string, config: { setup?: { shared?: 
   }
   return errors;
 }
+
+// A shell loop whose body is the no-op `:` or `true` spins on its condition: it waits on no event, so it holds a core while
+// it waits and has no end of its own if the condition never holds. A wait waits on the event of what it waits for (a
+// process's 'spawn' or 'exit', a ready line, a file event). busyLoopErrors reads tracked text ({path: text}) and reports each
+// line with such a loop.
+export function busyLoopErrors(files: Record<string, string>): string[] {
+  const errors: string[] = [];
+  for (const [path, text] of Object.entries(files))
+    text.split('\n').forEach((line, index) => {
+      if (/\b(?:until|while)\b[^\n]*;\s*do\s+(?::|true)\s*;\s*done\b/.test(line))
+        errors.push(`${path}:${index + 1} spins in a shell loop that does nothing (do :; done); wait on the event of what it waits for`);
+    });
+  return errors;
+}
+
