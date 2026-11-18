@@ -34,7 +34,6 @@ impl CatalogConnection {
         let keys = super::insert_values::validate(declared, values, &self.dialect)?;
         publish(MutationPhase::Validated);
         cancelled(&cancellation)?;
-        let _closes = super::ClosesOnDrop(self);
         let mut connection = self.open_connection().await?;
         connection.discard_on_drop();
         cancelled(&cancellation)?;

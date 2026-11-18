@@ -16,7 +16,6 @@ impl CatalogConnection {
         permit: CommitPermit,
     ) -> Result<u64, CatalogError> {
         let keys = prepare_mutation(original, &self.dialect, &cancellation, &publish)?;
-        let _closes = super::ClosesOnDrop(self);
         let mut connection = begin_mutation(self, &cancellation).await?;
         let result: Result<_, CatalogError> = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, self.server, &keys, &cancellation, &publish).await?;

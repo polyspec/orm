@@ -32,21 +32,12 @@ mod disposal_tests;
 mod test_fixtures;
 
 #[cfg(test)]
-#[path = "../../tests/unit/catalog_retry.rs"]
-mod retry_tests;
-
-#[cfg(test)]
 #[path = "../../tests/unit/catalog_value.rs"]
 mod value_tests;
 
 #[cfg(test)]
 #[path = "../../tests/unit/catalog_tool_errors.rs"]
 mod tool_error_tests;
-
-/// Whether a refused connect is tried again: a 1226 inside the reopen window (CFG-48) is retried on a timer.
-fn refused_connect_is_retried(message: &str, now: std::time::Instant, reopen_until: std::time::Instant) -> bool {
-    message.contains("1226") && now < reopen_until
-}
 
 /// A connection that the server refuses, with the code of the driver error (CFG-1).
 fn connect_error(error: sqlx::Error) -> CatalogError {
@@ -59,17 +50,6 @@ fn driver_error(error: sqlx::Error) -> CatalogError {
     CatalogError::caused(error.to_string(), error)
 }
 
-/// Starts the time of CFG-48 when a write session ends, on any of its returns.
-pub(super) struct ClosesOnDrop<'a>(pub(super) &'a CatalogConnection);
-impl Drop for ClosesOnDrop<'_> {
-    fn drop(&mut self) {
-        self.0.closed_connection();
-    }
-}
-
-/// How long after a close of its own a catalog tries a refused connect again (CFG-48).
-const REOPEN_AFTER_CLOSE: std::time::Duration = std::time::Duration::from_secs(2);
-
 pub struct CatalogConnection {
     /// The connection of `query`. MySQL opens it at the first `query`, so that a user whom the server allows one connection
     /// can read; the other databases hold it from the connect.
@@ -78,8 +58,6 @@ pub struct CatalogConnection {
     dialect: String,
     /// The server, which the connection reads once when it connects (DIA-201).
     server: polyspec_orm_schema::dbspec::Server,
-    /// Until when a refused connect is a socket of this catalog still on the server (CFG-48).
-    reopen_until: std::sync::Mutex<std::time::Instant>,
     /// The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it at its first
     /// stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
     killer: Option<Conn>,
@@ -125,16 +103,14 @@ impl CatalogConnection {
             Some(connection) => metadata::server(connection, &dialect).await?,
             None => return Err("CATALOG_CONNECTION: the connection of the connect is missing".into()),
         };
-        let mut reopen_until = std::time::Instant::now();
         if dialect == "mysql" {
             // The connection goes back to the pool before the first operation, which takes it: a drop would return it from a task of
             // its own, and an operation that came first would open a second connection, which the catalog would then keep (CFG-49).
             if let Some(connection) = connection.take() {
                 connection.return_to_pool().await;
             }
-            reopen_until += REOPEN_AFTER_CLOSE;
         }
-        Ok(Self { connection, pool, dialect, server, reopen_until: std::sync::Mutex::new(reopen_until), killer: None, read_id: None })
+        Ok(Self { connection, pool, dialect, server, killer: None, read_id: None })
     }
     pub fn dialect(&self) -> &str {
         &self.dialect
@@ -256,7 +232,6 @@ impl CatalogConnection {
             };
             if !killed {
                 connection.close_now();
-                self.closed_connection();
                 return result;
             }
             // The next command on the connection first reads the end of the killed statement, which is the error of the kill,
@@ -266,7 +241,6 @@ impl CatalogConnection {
                 Err(error) if interrupted(&error) => {}
                 Err(_) => {
                     connection.close_now();
-                    self.closed_connection();
                     return result;
                 }
                 Ok(()) => {
@@ -288,7 +262,6 @@ impl CatalogConnection {
             }
             Err(cleanup) => {
                 drop(connection);
-                self.closed_connection();
                 let cleanup = cleanup.to_string();
                 match result {
                     Ok(_) => Err(format!("QUERY_READ_ONLY_CLEANUP: {cleanup}").into()),
@@ -313,29 +286,14 @@ impl CatalogConnection {
             if let Some(killer) = self.killer.take() {
                 killer.close_now();
             }
-            self.closed_connection();
             return Err(CatalogError::caused(error.to_string(), error));
         }
         Ok(())
     }
-    /// Starts the time in which a refused connect of MySQL is the closed connection still on the server.
-    pub(super) fn closed_connection(&self) {
-        if self.dialect == "mysql" {
-            *self.reopen_until.lock().unwrap() = std::time::Instant::now() + REOPEN_AFTER_CLOSE;
-        }
-    }
-    /// Opens a connection. A socket that this catalog closed holds its place in max_user_connections until the server ends
-    /// that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-48
-    /// from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+    /// Opens a connection. A refused connect fails at once with its error: the server does not say when the place of a closed
+    /// connection frees, so no reopen waits for it (CFG-48).
     pub(super) async fn open_connection(&self) -> Result<Conn, CatalogError> {
-        let mut acquired = Conn::acquire(&self.pool).await;
-        while acquired.as_ref().err().is_some_and(|error| {
-            refused_connect_is_retried(&error.to_string(), std::time::Instant::now(), *self.reopen_until.lock().unwrap())
-        }) {
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            acquired = Conn::acquire(&self.pool).await;
-        }
-        acquired.map_err(connect_error)
+        Conn::acquire(&self.pool).await.map_err(connect_error)
     }
     /// The read-only connection of a read, which closes when it drops unless the read ends with an acknowledged ROLLBACK, and the MySQL
     /// connection id of that connection, which a stop of the read kills (CFG-49).

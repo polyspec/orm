@@ -21669,51 +21669,8 @@
           "sql": "CALL one_connection_user('create')"
         },
         {
-          "op": "catalog.reconnect",
+          "op": "sql.hold_connection",
           "user_from_database": "o1_"
-        },
-        {
-          "op": "catalog.describe_table",
-          "table": "composite_account",
-          "as": "account",
-          "expect": {
-            "mysql": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "primary_key": [
-                "tenant_id",
-                "account_id"
-              ],
-              "reliable_row_identity": true
-            },
-            "postgres": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "primary_key": [
-                "tenant_id",
-                "account_id"
-              ],
-              "reliable_row_identity": true
-            },
-            "sqlite": {
-              "columns": [
-                "tenant_id",
-                "account_id",
-                "name"
-              ],
-              "primary_key": [
-                "tenant_id",
-                "account_id"
-              ],
-              "reliable_row_identity": true
-            }
-          }
         },
         {
           "op": "sql.user_errors",
@@ -21722,78 +21679,10 @@
           "mark": "start"
         },
         {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "990005"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "1"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "catalog"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "990005"
-                  },
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "catalog"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        {
-          "op": "catalog.insert_row",
-          "metadata": {
-            "ref": "account"
-          },
-          "values": [
-            [
-              "tenant_id",
-              {
-                "int": "990005"
-              }
-            ],
-            [
-              "account_id",
-              {
-                "int": "2"
-              }
-            ],
-            [
-              "name",
-              {
-                "text": "catalog"
-              }
-            ]
-          ],
-          "expect": {
-            "mysql": {
-              "error": "driver"
-            }
-          }
+          "op": "catalog.reconnect",
+          "user_from_database": "o1_",
+          "refused_message": "max_user_connections",
+          "refused_code": "1226"
         },
         {
           "op": "sql.user_errors",
@@ -21801,6 +21690,9 @@
           "error": 1226,
           "mark": "end",
           "expect": 1
+        },
+        {
+          "op": "sql.release_connection"
         },
         {
           "op": "sql.exec",
