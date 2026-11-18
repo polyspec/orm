@@ -154,7 +154,7 @@ pub enum Kind {
     GridTemporalPrecision,
     /// A NOWAIT lock could not be acquired immediately (driver, category store).
     LockNotAvailable,
-    /// MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; retries require TransactionOptions (driver, category store).
+    /// MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; a transaction retries it with no wait to its retry count, and its last error carries the errors of the earlier attempts in order as its causes (driver, category store).
     Deadlock,
     /// MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555 (driver, category store).
     DuplicateKey,

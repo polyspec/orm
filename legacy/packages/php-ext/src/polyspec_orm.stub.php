@@ -1393,7 +1393,7 @@ final class Code
     public const string GRID_TEMPORAL_PRECISION = 'GRID_TEMPORAL_PRECISION';
     /** driver: a NOWAIT lock could not be acquired immediately */
     public const string LOCK_NOT_AVAILABLE = 'LOCK_NOT_AVAILABLE';
-    /** driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; retries require TransactionOptions */
+    /** driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; a transaction retries it with no wait to its retry count, and its last error carries the errors of the earlier attempts in order as its causes */
     public const string DEADLOCK = 'DEADLOCK';
     /** driver: MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555 */
     public const string DUPLICATE_KEY = 'DUPLICATE_KEY';

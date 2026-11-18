@@ -111,9 +111,12 @@
   member를 선언하는 generated interface를 생성하지 않기 때문이다(GN-6ap). legacy client는 실행 흐름을 두고 답하며(INT-192) 바뀌지 않는다.
 - **CORE-24** 트랜잭션은 실패의 kind가 `deadlock`이면 롤백 뒤 callback 전체를 다시 실행한다: 문장의 deadlock,
   `transaction_conflict`(INT-48)의 오류, callback이 던진 kind `deadlock`의 오류가 해당한다. 바인딩은 callback이 던진 orm
-  category 클래스 오류의 kind를 코어에 넘기고(계약의 `recognize`), 그 밖의 실패는 롤백 뒤 그대로 돌려준다. 시도 `n`(1부터)
-  전의 기다림은 `50 << (n - 1)` 밀리초에 0~19 밀리초의 jitter를 더한 것이다. 시험은 코어에 시계와 jitter의 근원을 주므로
-  결과가 그 둘에 기대지 않는다.
+  category 클래스 오류의 kind를 코어에 넘기고(계약의 `recognize`), 그 밖의 실패는 롤백 뒤 그대로 돌려준다. 재시도는 그
+  횟수로만 끝난다(INT-43): 다음 시도는 롤백 바로 뒤에 시작하고, 시도 사이에 기다림이 없다. 마지막 시도가 `deadlock`으로
+  실패하면 오류는 kind `deadlock`인 그 시도의 오류이고, 그 앞 시도들의 오류를 순서대로 cause의 list로 가지므로 list의
+  길이가 실행된 재시도의 수다. row lock은 잠그는 행에 순서를 주지 않는다: `for_update`와 `for_share`는 호출자의
+  `ORDER BY` 순서로, `Query`에 그것이 없으면 데이터베이스가 행을 읽는 순서로 잠그므로
+  (packages/rust/src/engine/planner.rs:631-645), deadlock을 피하는 잠금 순서는 호출자가 정한다.
 - **CORE-25** callback이 실패하고 롤백도 실패하면 결과는 kind `rollback_failed`의 오류이고, 메시지는 롤백의 실패를 적으며,
   property 둘을 가진다: `callbackError`는 callback의 실패 그대로(orm 오류이거나 언어 예외이며 코어가 열어 보지 않는다),
   `rollbackError`는 롤백의 오류다. callback만 실패하면 그 실패를 감싸지 않고 그대로 돌려준다. INT-46과 INT-72의

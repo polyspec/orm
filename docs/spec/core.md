@@ -129,9 +129,13 @@ implementation is eligible for removal on that evidence.
 - **CORE-24** A transaction retries the whole callback, after its rollback, when the failure has the kind `deadlock`:
   a deadlock of a statement, the error of `transaction_conflict` (INT-48), or an error of the kind `deadlock` that the
   callback raised. A binding hands the core the kind of an error of a category class of orm that the callback raised
-  (`recognize` of the contract); any other failure is returned unchanged after the rollback. The wait before attempt `n`
-  (from 1) is `50 << (n - 1)` milliseconds plus a jitter from 0 to 19 milliseconds. The tests give the core the clock and
-  the source of the jitter, so their results depend on neither.
+  (`recognize` of the contract); any other failure is returned unchanged after the rollback. The retry ends only by its
+  count (INT-43): the next attempt begins right after the rollback, with no wait between attempts. When the last attempt
+  fails with `deadlock`, the error has the kind `deadlock` and is the error of that attempt, and it carries the errors of
+  the attempts before it, in their order, as its list of causes, so the length of the list is the number of retries
+  that ran. A row lock does not order the rows it locks: `for_update` and `for_share` lock in the order of the `ORDER BY`
+  of the caller, or in the order that the database reads the rows when the `Query` has none
+  (packages/rust/src/engine/planner.rs:631-645), so the caller sets the lock order that avoids a deadlock.
 - **CORE-25** When the callback fails and the rollback fails too, the result is an error of kind `rollback_failed` whose
   message names the failure of the rollback, with two properties: `callbackError`, the failure of the callback as it was
   (an error of orm or the exception of the language, which the core does not open), and `rollbackError`, the error of the

@@ -79,7 +79,7 @@ const (
 	CodeGridTemporalValue         = "GRID_TEMPORAL_VALUE"          // executor
 	CodeGridTemporalPrecision     = "GRID_TEMPORAL_PRECISION"      // executor
 	CodeLockNotAvailable          = "LOCK_NOT_AVAILABLE"           // driver: a NOWAIT lock could not be acquired immediately
-	CodeDeadlock                  = "DEADLOCK"                     // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; retries require TransactionOptions
+	CodeDeadlock                  = "DEADLOCK"                     // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; a transaction retries it with no wait to its retry count, and its last error carries the errors of the earlier attempts in order as its causes
 	CodeDuplicateKey              = "DUPLICATE_KEY"                // driver: MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
 	CodeForeignKey                = "FOREIGN_KEY"                  // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
 	CodeConstraint                = "CONSTRAINT"                   // driver: MySQL 3819 / MariaDB 4025 / PostgreSQL 23514 / SQLite 275; a mysql error number is read by the table of its server (DIA-201)
