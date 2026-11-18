@@ -113,6 +113,15 @@ ZEND_METHOD(Polyspec_Orm_OrmException, __construct)
     zend_string_release(full_message);
 }
 
+ZEND_METHOD(Polyspec_Orm_OrmException, keepCauses)
+{
+    zval *causes;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(causes)
+    ZEND_PARSE_PARAMETERS_END();
+    write_property(ZEND_THIS, "causes", causes);
+}
+
 ZEND_METHOD(Polyspec_Orm_OrmException, rollback)
 {
     zend_object *cause, *rollback_error;

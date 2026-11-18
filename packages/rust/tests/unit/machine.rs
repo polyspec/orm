@@ -317,9 +317,9 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
     close(&runtime, &db);
 }
 
-// Requirements: CORE-24. A transaction whose retry runs out waits at no attempt: the machine has no wait step, and the
-// one wait of the retry path, crate::clock::wait, is not called ("the next attempt begins right after the rollback, with
-// no wait between attempts").
+// Requirements: CORE-24. A transaction whose retry runs out waits at no attempt: the machine has no wait step, and no
+// wait of crate::clock, which holds every wait of the core, is called ("the next attempt begins right after the
+// rollback, with no wait between attempts").
 #[test]
 fn an_exhausted_transaction_machine_waits_at_no_attempt() {
     let _case = polyspec_orm_testcase::case!();

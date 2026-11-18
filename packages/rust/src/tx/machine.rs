@@ -12,7 +12,7 @@ use binding_core::machine::{Machine, Step};
 use binding_core::{Failure, Passthrough, Raised};
 
 use super::{
-    audit_record, await_hook, begin, call_hook, commit, lock, panicked, retry_wait, rollback, rollback_fault, rollback_savepoint, AuditInsert, AuditKey,
+    audit_record, await_hook, begin, call_hook, commit, lock, panicked, rollback, rollback_fault, rollback_savepoint, AuditInsert, AuditKey,
     Isolation, TransactionOptions, Tx, TxShared, DEFAULT_RETRY,
 };
 use crate::db::TransactionHook;
@@ -43,8 +43,6 @@ enum Stage {
     Keeping,
     /// The end after a failure is awaited: the rollback.
     Reverting,
-    /// The wait before the next attempt is awaited (CORE-104).
-    Waiting,
     /// The machine gave its result.
     Ended,
 }
@@ -85,7 +83,6 @@ enum TransactionOutput {
     Hooked(Result<()>),
     Opened(Result<Arc<TxShared>>),
     Ended(Result<()>),
-    Waited,
 }
 
 /// The state machine of `Db::transaction` (CORE-103, CORE-104), which owns its callback and its options.
@@ -119,6 +116,8 @@ pub struct Transaction<F> {
     failure: Option<Failure<Error>>,
     /// Whether the callback of this attempt panicked: such an attempt is not run again (CORE-26).
     panicked: bool,
+    /// The errors of the attempts that ended with `deadlock` and ran again, in their order (CORE-24).
+    earlier: Vec<Error>,
 }
 
 impl<F> Transaction<F> {
@@ -147,6 +146,7 @@ impl<F> Transaction<F> {
             value: None,
             failure: None,
             panicked: false,
+            earlier: Vec::new(),
         }
     }
 
@@ -230,20 +230,21 @@ impl<F> Transaction<F> {
         }))
     }
 
-    /// Runs the attempt again after the wait of CORE-24 when `failure` has the kind `deadlock`, and ends with it
-    /// otherwise. A raised exception has no kind for the core, so it is not run again (CORE-104).
+    /// Runs the attempt again right after its rollback, with no wait, when `failure` has the kind `deadlock`, and ends
+    /// with it otherwise; the error of a retry that runs out carries the errors of the attempts before it as its causes
+    /// (CORE-24). A raised exception has no kind for the core, so it is not run again (CORE-104).
     fn again_or_end(&mut self, failure: Failure<Error>) -> Step<TransactionIo, Outcome> {
-        let deadlock = matches!(&failure, Failure::Kind(error) if error.is_deadlock());
-        if !deadlock || self.panicked || self.attempt >= self.retry {
-            return self.end(Err(failure));
+        let error = match failure {
+            Failure::Kind(error) if error.is_deadlock() && !self.panicked => error,
+            failure => return self.end(Err(failure)),
+        };
+        if self.attempt >= self.retry {
+            let causes = std::mem::take(&mut self.earlier);
+            return self.end(Err(Failure::Kind(error.with_causes(causes))));
         }
+        self.earlier.push(error);
         self.attempt += 1;
-        self.stage = Stage::Waiting;
-        let wait = retry_wait(self.attempt, rand::random::<u64>() % 20);
-        Step::Io(Box::pin(async move {
-            crate::clock::wait(wait).await;
-            TransactionIo(TransactionOutput::Waited)
-        }))
+        self.start_attempt()
     }
 }
 
@@ -329,7 +330,6 @@ where
                 (Err(rollback), Some(failure)) => self.end(Err(Failure::Kind(Error::rollback_failed(failure, rollback)))),
                 (_, None) => self.end(Err(out_of_order("a transaction", Stage::Reverting))),
             },
-            (Stage::Waiting, Some(TransactionOutput::Waited)) => self.start_attempt(),
             (stage, _) => self.end(Err(out_of_order("a transaction", stage))),
         }
     }

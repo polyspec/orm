@@ -6361,54 +6361,55 @@ static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback call
         zval_ptr_dtor(&outer_copy);
         return kept;
     }
+    zval earlier;
+    array_init(&earlier);
     for (zend_long attempt = 0;; attempt++) {
         /* Outside the retry: the error of a hook ends the transaction unchanged, DEADLOCK included (INT-193). */
         if (!before_begin(self, read_only, timeout)) {
             if (has_record) {
                 zval_ptr_dtor(&record);
             }
+            zval_ptr_dtor(&earlier);
             return false;
         }
         if (run_transaction(self, fn, callback, context, isolation, read_only, timeout, has_record ? &record : NULL, out)) {
             if (has_record) {
                 zval_ptr_dtor(&record);
             }
+            zval_ptr_dtor(&earlier);
             return true;
         }
         if (exit_pending()) {
             if (has_record) {
                 zval_ptr_dtor(&record);
             }
+            zval_ptr_dtor(&earlier);
             return false;
         }
         zval ex;
         take_exception(&ex);
         zval *code = rd(&ex, "code_");
         bool deadlock = code != NULL && is_str(code, "DEADLOCK");
-        if (!deadlock || attempt >= retry) {
+        if (!deadlock) {
             if (has_record) {
                 zval_ptr_dtor(&record);
             }
+            zval_ptr_dtor(&earlier);
             put_exception(&ex);
             return false;
         }
-        zval_ptr_dtor(&ex);
-        zval r;
-        zval lo, hi;
-        ZVAL_LONG(&lo, 0);
-        ZVAL_LONG(&hi, 20000);
-        zval jitter_args[2];
-        ZVAL_COPY(&jitter_args[0], &lo);
-        ZVAL_COPY(&jitter_args[1], &hi);
-        zend_long jitter = 0;
-        if (scall("random_int", &r, 2, jitter_args) && Z_TYPE(r) == IS_LONG) {
-            jitter = Z_LVAL(r);
+        /* The next attempt begins right after the rollback, with no wait; the error of a retry that runs out carries the
+         * errors of the attempts before it as its causes (CORE-24). */
+        if (attempt >= retry) {
+            if (has_record) {
+                zval_ptr_dtor(&record);
+            }
+            zend_update_property(Z_OBJCE(ex), Z_OBJ(ex), "causes", sizeof("causes") - 1, &earlier);
+            zval_ptr_dtor(&earlier);
+            put_exception(&ex);
+            return false;
         }
-        zval_ptr_dtor(&r);
-        zval_ptr_dtor(&jitter_args[0]);
-        zval_ptr_dtor(&jitter_args[1]);
-        zend_long micros = (50000L << attempt) + jitter;
-        usleep((useconds_t)micros);
+        add_next_index_zval(&earlier, &ex);
     }
 }
 

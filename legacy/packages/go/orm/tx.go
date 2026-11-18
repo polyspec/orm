@@ -8,14 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"math/rand/v2"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
@@ -575,6 +573,7 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 		}
 		return outer.savepoint(fn)
 	}
+	var earlier []error
 	for attempt := 0; ; attempt++ {
 		// Each attempt checks its options, then calls the hooks before it takes a connection; the error of a hook is
 		// returned unchanged and never runs the callback again, even when it is a deadlock (INT-193).
@@ -586,12 +585,40 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 			return err
 		}
 		err = d.runTransaction(fn, o, level)
-		if err == nil || !IsDeadlock(err) || attempt >= o.retry {
+		if err == nil || !IsDeadlock(err) {
 			return err
 		}
-		delay := time.Duration(50<<attempt)*time.Millisecond + time.Duration(rand.IntN(20))*time.Millisecond
-		time.Sleep(delay)
+		// The next attempt begins right after the rollback, with no wait; the error of a retry that runs out carries
+		// the errors of the attempts before it as its causes (CORE-24).
+		if attempt >= o.retry {
+			if len(earlier) == 0 {
+				return err
+			}
+			return &retryError{err: err, causes: earlier}
+		}
+		earlier = append(earlier, err)
 	}
+}
+
+// retryError is the error of the last attempt of a retry that ran out, with the errors of the attempts before it, in
+// their order, as its causes (CORE-24). It reads as the error of that attempt and unwraps to it.
+type retryError struct {
+	err    error
+	causes []error
+}
+
+func (e *retryError) Error() string   { return e.err.Error() }
+func (e *retryError) Unwrap() error   { return e.err }
+func (e *retryError) Causes() []error { return e.causes }
+
+// Causes returns the errors of the attempts before the last one of a transaction whose retry ran out, in their order,
+// and nil for any other error (CORE-24).
+func Causes(err error) []error {
+	var retry *retryError
+	if errors.As(err, &retry) {
+		return retry.causes
+	}
+	return nil
 }
 
 func (d *DB) runTransaction(fn func() error, o txOptions, level string) (err error) {

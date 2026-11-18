@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- transaction은 모든 runtime에서 deadlock을 시도 사이의 기다림 없이 재시도한다(CORE-24, T670): 다음 시도는
+  rollback 바로 뒤에 시작한다. 횟수를 다 쓴 재시도의 오류는 마지막 시도의 오류이며, 그 앞 시도들의 오류를 cause로
+  가진다: Rust `Error::causes()`, Go `orm.Causes(err)`, 그리고 PHP, PHP extension, TypeScript, Python 오류의
+  `causes`이다.
 - `Query`에 `avg(column)`과 `get_avg()`가 있다(CORE-207, T610): 열의 평균이며 값이 남지 않으면 null이다.
   `force_index(name)`은 DIA-7의 index 힌트이며, 엔티티의 index도 unique key도 아닌 이름은 다음 terminal에서
   `config`다(CORE-156). 계약이 셋과 그 case를 선언한다.

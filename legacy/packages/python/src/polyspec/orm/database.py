@@ -2614,6 +2614,7 @@ class Db:
             return self._savepoint(outer, callback)
         read_only = bool(options.get("readOnly"))
         attempt = 0
+        earlier: list[OrmError] = []
         while True:
             if self._shared.closed:
                 raise OrmError(codes.CONFIG, "database is closed")
@@ -2632,9 +2633,14 @@ class Db:
                     record,
                 )
             except OrmError as error:
-                if error.code != codes.DEADLOCK or attempt >= retry:
+                if error.code != codes.DEADLOCK:
                     raise
-                time.sleep((50 << attempt) / 1000)
+                # The next attempt begins right after the rollback, with no wait; the error of a retry that runs out
+                # carries the errors of the attempts before it as its causes (CORE-24).
+                if attempt >= retry:
+                    error.causes = earlier
+                    raise
+                earlier.append(error)
                 attempt += 1
 
     def _run(self, callback, options: dict, record: dict | None = None):

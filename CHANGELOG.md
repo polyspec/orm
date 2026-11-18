@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- A transaction retries a deadlock with no wait between its attempts (CORE-24, T670), in every runtime: the
+  next attempt begins right after the rollback. The error of a retry that runs out is the error of its last attempt
+  and carries the errors of the attempts before it as its causes: Rust `Error::causes()`, Go `orm.Causes(err)`, and
+  `causes` on the error of PHP, the PHP extension, TypeScript and Python.
 - A `Query` has `avg(column)` and `get_avg()`, the average of a column or null when no value is left (CORE-207,
   T610), and `force_index(name)`, the index hint of DIA-7, whose name that is no index or unique key of the entity is
   `config` at the next terminal (CORE-156); the contract declares the three and their cases.

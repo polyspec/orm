@@ -42,19 +42,26 @@ pub struct Error {
     message: String,
     source: Source,
     detail: Detail,
+    /// The errors of the attempts before this one of a transaction whose retry ran out, in their order (CORE-24), boxed
+    /// so that an error stays small.
+    causes: Option<Box<Causes>>,
 }
+
+/// The causes of an error, behind one pointer in [`Error`].
+#[derive(Debug)]
+struct Causes(Vec<Error>);
 
 impl Error {
     /// An error of `kind` with the text of its message (CORE-12).
     #[must_use]
     pub fn new(kind: Kind, message: impl Into<String>) -> Error {
-        Error { kind, message: message.into(), source: Source::None, detail: Detail::None }
+        Error { kind, message: message.into(), source: Source::None, detail: Detail::None, causes: None }
     }
 
     /// An error of `kind` with the failure that caused it.
     #[must_use]
     pub fn with_source(kind: Kind, message: impl Into<String>, source: Box<dyn std::error::Error + Send + Sync + 'static>) -> Error {
-        Error { kind, message: message.into(), source: Source::Other(source), detail: Detail::None }
+        Error { kind, message: message.into(), source: Source::Other(source), detail: Detail::None, causes: None }
     }
 
     /// An error of `kind` with an optional cause.
@@ -69,7 +76,7 @@ impl Error {
     /// An error of the driver with the kind of its code and the driver error as its cause (CORE-13).
     #[cfg(feature = "runtime")]
     pub(crate) fn driver(kind: Kind, message: impl Into<String>, source: sqlx::Error) -> Error {
-        Error { kind, message: message.into(), source: Source::Driver(source), detail: Detail::None }
+        Error { kind, message: message.into(), source: Source::Driver(source), detail: Detail::None, causes: None }
     }
 
     /// A `config` error.
@@ -105,6 +112,7 @@ impl Error {
             message: format!("the rollback failed after the callback failed: {rollback}"),
             source: Source::None,
             detail: Detail::RollbackFailed { callback: Box::new(callback), rollback: Box::new(rollback) },
+            causes: None,
         }
     }
 
@@ -118,7 +126,7 @@ impl Error {
     /// of the operation.
     #[must_use]
     pub fn cleanup(primary: Error, cleanup: Vec<Error>) -> Error {
-        Error { kind: primary.kind, message: primary.message.clone(), source: Source::None, detail: Detail::Cleanup { primary: Box::new(primary), cleanup } }
+        Error { kind: primary.kind, message: primary.message.clone(), source: Source::None, detail: Detail::Cleanup { primary: Box::new(primary), cleanup }, causes: None }
     }
 
     /// The kind of the error (CORE-10).
@@ -161,7 +169,14 @@ impl Error {
     /// error of its last attempt; empty otherwise (CORE-24).
     #[must_use]
     pub fn causes(&self) -> &[Error] {
-        &[]
+        self.causes.as_deref().map_or(&[], |causes| causes.0.as_slice())
+    }
+
+    /// This error of the last attempt of a retry that ran out, with the errors of the attempts before it as its causes
+    /// (CORE-24).
+    #[cfg(feature = "runtime")]
+    pub(crate) fn with_causes(self, causes: Vec<Error>) -> Error {
+        Error { causes: if causes.is_empty() { None } else { Some(Box::new(Causes(causes))) }, ..self }
     }
 
     /// The failed cleanup steps of an operation, empty for an error without them.

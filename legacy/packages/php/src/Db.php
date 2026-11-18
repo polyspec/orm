@@ -852,16 +852,23 @@ final class Db
             }
             return $this->savepoint($outer, $fn);
         }
+        $earlier = [];
         for ($attempt = 0;; $attempt++) {
             // Outside the retry: an exception of a hook ends the transaction unchanged, DEADLOCK included (INT-193).
             $this->beforeBegin($readOnly, $timeoutMs);
             try {
                 return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
             } catch (OrmException $e) {
-                if ($e->code_ !== Code::DEADLOCK || $attempt >= $retry) {
+                if ($e->code_ !== Code::DEADLOCK) {
                     throw $e;
                 }
-                usleep((50000 << $attempt) + random_int(0, 20000));
+                // The next attempt begins right after the rollback, with no wait; the error of a retry that runs out
+                // carries the errors of the attempts before it as its causes (CORE-24).
+                if ($attempt >= $retry) {
+                    $e->keepCauses($earlier);
+                    throw $e;
+                }
+                $earlier[] = $e;
             }
         }
     }

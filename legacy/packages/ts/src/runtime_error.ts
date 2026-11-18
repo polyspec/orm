@@ -2,6 +2,8 @@ import * as codes from './codes.js';
 export class OrmError extends Error {
   /** The rollback error of a ROLLBACK error, whose cause is the callback error. */
   public readonly rollback?: unknown;
+  /** The errors of the attempts before this one of a transaction whose retry ran out, in their order (CORE-24). */
+  public causes: readonly OrmError[] = [];
 
   public constructor(
     public readonly code: string,

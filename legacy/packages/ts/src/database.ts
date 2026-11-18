@@ -825,6 +825,7 @@ export class Db {
       }
       return this.savepoint(outer, callback);
     }
+    const earlier: OrmError[] = [];
     for (let attempt = 0; ; attempt++) {
       if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
       // The hooks run before the attempt reserves a connection or sends a statement, outside the retry of its errors (INT-193).
@@ -835,8 +836,14 @@ export class Db {
         if (options.readOnly !== undefined) begin.readOnly = options.readOnly;
         return await this.run(callback, begin, record);
       } catch (error) {
-        if (!(error instanceof OrmError) || error.code !== codes.DEADLOCK || attempt >= retry) throw error;
-        await new Promise(resolve => setTimeout(resolve, (50 << attempt) + Math.floor(Math.random() * 20)));
+        if (!(error instanceof OrmError) || error.code !== codes.DEADLOCK) throw error;
+        // The next attempt begins right after the rollback, with no wait; the error of a retry that runs out carries the
+        // errors of the attempts before it as its causes (CORE-24).
+        if (attempt >= retry) {
+          error.causes = earlier;
+          throw error;
+        }
+        earlier.push(error);
       }
     }
   }

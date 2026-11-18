@@ -723,12 +723,6 @@ pub struct TransactionOptions {
 /// The number of retries of a transaction whose options state none (INT-43).
 pub const DEFAULT_RETRY: u32 = 3;
 
-/// The wait before attempt `attempt` (from 1) of a retried transaction: `50 << (attempt - 1)` milliseconds and `jitter`
-/// (CORE-24).
-fn retry_wait(attempt: u32, jitter: u64) -> std::time::Duration {
-    std::time::Duration::from_millis((50u64 << attempt.saturating_sub(1).min(10)) + jitter)
-}
-
 impl Db {
     /// Runs `callback` in a new transaction on a connection of the pool and passes it the transaction handle (CORE-20). A
     /// callback that succeeds commits. A callback that fails or panics rolls back, and its failure is returned unchanged
@@ -750,6 +744,7 @@ impl Db {
         };
         let record = audit.as_ref().map(|values| audit_record(self, values)).transpose().map_err(native_failure)?.map(Arc::new);
         let mut attempt = 0u32;
+        let mut earlier = Vec::new();
         loop {
             // The hooks of the connection are called before each attempt takes a connection (CORE-143).
             call_hooks(self, read_only).await?;
@@ -779,11 +774,16 @@ impl Db {
                     });
                 }
             };
-            if !failure.is_deadlock() || attempt >= retry {
+            if !failure.is_deadlock() {
                 return Err(failure);
             }
+            // The next attempt begins right after the rollback, with no wait; the error of a retry that runs out
+            // carries the errors of the attempts before it as its causes (CORE-24).
+            if attempt >= retry {
+                return Err(failure.with_causes(earlier));
+            }
+            earlier.push(failure);
             attempt += 1;
-            crate::clock::wait(retry_wait(attempt, rand::random::<u64>() % 20)).await;
         }
     }
 
@@ -1254,7 +1254,7 @@ mod tests {
             .await;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Deadlock && error.text() == "always"), "{ended:?}");
         assert_eq!(runs.load(Ordering::SeqCst), 1, "retry 0 runs once");
-        // CORE-24: a retry that runs out waits at no attempt; crate::clock::wait is the one wait of the retry path.
+        // CORE-24: a retry that runs out waits at no attempt; crate::clock holds every wait of the core.
         runs.store(0, Ordering::SeqCst);
         let waits = crate::clock::WAITS.load(Ordering::SeqCst);
         let ended = db

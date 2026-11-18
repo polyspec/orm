@@ -13,6 +13,8 @@ class OrmError(Exception):
         super().__init__(f"{code}: {message}")
         self.code = code
         self.cause = cause
+        # The errors of the attempts before this one of a transaction whose retry ran out, in their order (CORE-24).
+        self.causes: list[OrmError] = []
         # ROLLBACK error: a rollback failure; its cause is cause.
         if rollback is not None:
             self.rollback = rollback

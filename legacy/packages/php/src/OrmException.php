@@ -7,6 +7,14 @@ namespace Polyspec\Orm;
 final class OrmException extends \RuntimeException
 {
     /**
+     * The errors of the attempts before this one of a transaction whose retry ran out, in their order; empty for any
+     * other error (CORE-24).
+     *
+     * @var list<OrmException>
+     */
+    public private(set) array $causes = [];
+
+    /**
      * @param ?\Throwable $rollback the rollback error of a ROLLBACK error, whose
      *     previous exception is the callback error
      */
@@ -18,6 +26,17 @@ final class OrmException extends \RuntimeException
         public readonly array $cleanup = []
     ) {
         parent::__construct($code_ . ': ' . $message, 0, $previous);
+    }
+
+    /**
+     * Keeps the errors of the earlier attempts of a retry that ran out on this error of its last attempt (CORE-24).
+     *
+     * @internal
+     * @param list<OrmException> $causes
+     */
+    public function keepCauses(array $causes): void
+    {
+        $this->causes = $causes;
     }
 
     /**
