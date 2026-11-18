@@ -12,7 +12,7 @@ import { parseSync } from 'oxc-parser';
 import { generatedModels, generatorArgs } from '../../../../scripts/typescript/models.mts';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const root = resolve(client, '../..');
+const root = resolve(client, '../../..');
 // Directories in which to find sources that call a model: all sources that the scan can read
 const scannedDirs = [join(client, 'tests'), join(client, 'testing'), join(root, 'tests/conformance'), join(root, 'examples/thin-slice/ts')];
 const extensions = new Set(['.ts', '.mts', '.js', '.mjs']);

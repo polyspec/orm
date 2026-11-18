@@ -8,9 +8,9 @@ from pathlib import Path
 
 import jsonschema_rs
 
-SCHEMAS = Path(__file__).resolve().parents[3] / "tests" / "dbspec" / "schema"
+SCHEMAS = Path(__file__).resolve().parents[4] / "tests" / "dbspec" / "schema"
 ROOT_SCHEMA = (
-    Path(__file__).resolve().parents[3]
+    Path(__file__).resolve().parents[4]
     / "scripts"
     / "features"
     / "schema"

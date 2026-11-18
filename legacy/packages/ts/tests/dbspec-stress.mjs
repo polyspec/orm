@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 
-const root = new URL('../../../', import.meta.url);
+const root = new URL('../../../../', import.meta.url);
 const generator = fileURLToPath(new URL('tests/dbspec/stress.mts', root));
 // REFERENCE_RATIO is the documented reference value of the ratio of the median parse CPU time to the median CPU time of
 // the reference work (docs/spec/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the

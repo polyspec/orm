@@ -23,7 +23,7 @@ function checkSuccessAndFailure(
 
 caseTest('the TypeScript package entry recipe uses the pinned Node wrapper', () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
-  assert.match(makefile, /^\t\$\(NODE\) --conditions=orm-test --test --test-name-pattern='package-entry\/runtime-exports' packages\/ts\/tests\/statement_fault_entry\.mjs$/m);
+  assert.match(makefile, /^\t\$\(NODE\) --conditions=orm-test --test --test-name-pattern='package-entry\/runtime-exports' legacy\/packages\/ts\/tests\/statement_fault_entry\.mjs$/m);
 });
 
 caseTest('the collection PHPStan recipe removes its private cache after success and failure', () => {

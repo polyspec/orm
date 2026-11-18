@@ -1803,7 +1803,7 @@ caseTest('a go run, whose build has no step log, fails', () => {
 caseTest('generated Go model helpers build through the logged go-run wrapper', () => {
   const helpers = (readFeatures(repository.pathname).helpers ?? []).filter(helper => ['go-decimal-model-generated', 'go-markdown-model-generated'].includes(helper.id));
   assert.deepEqual(helpers.map(helper => helper.id), ['go-decimal-model-generated', 'go-markdown-model-generated']);
-  for (const helper of helpers) assert.match(helper.command, /node \.\.\/\.\.\/tests\/go-run\.mts/);
+  for (const helper of helpers) assert.match(helper.command, /node \.\.\/\.\.\/\.\.\/tests\/go-run\.mts/);
   assert.deepEqual(goRunErrors(helpers.map(helper => ({ name: helper.id, commands: [helper.command], dialect: 'sh' }))), []);
 });
 
