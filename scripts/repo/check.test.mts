@@ -3249,10 +3249,10 @@ caseTest('bindings-scaffold runs binding scaffold as bindings runs binding gener
   assert.deepEqual(jobRecipeLines(makefile, 'bindings-scaffold'), ['$(NODE) $(BINDING) scaffold --root $(CURDIR) --cargo "$(CARGO_LINK)"']);
 });
 
-// The release of TAG carries the Go module as binding 0.0.21 writes its recipes (GN-19f): rehearse-go-module rehearses
-// release-go-module on HEAD before release-go-module makes the tag of the Go module (B2.479), release-go-module only adds
-// the reference of that tag to the release, and release-go-module-push pushes it after release-go-module and before the
-// publish (B2.488). All three are recipes of packages/release.mk, so they run after release-recipes writes it.
+// The release of TAG carries the Go module as binding writes its recipes since 0.0.21 (GN-19f): rehearse-go-module
+// rehearses release-go-module on HEAD before release-go-module makes the tag of the Go module (B2.479), release-go-module
+// only adds the reference of that tag to the release, and release-go-module-push pushes it after release-go-module and
+// before the publish (B2.488). All three are recipes of packages/release.mk, so they run after release-recipes writes it.
 caseTest('ci-release rehearses the Go module before its tag and pushes the tag after release-go-module', () => {
   const lines = jobRecipeLines(text('Makefile'), 'ci-release');
   const step = (target: string) => lines.findIndex(line => new RegExp(`^@\\$\\(CI_JOB\\) setup \\$\\(CI_NAME\\) [a-z-]+ -- ${target}(?: |$)`).test(line));
