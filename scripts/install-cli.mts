@@ -56,7 +56,7 @@ if (action === 'uninstall') {
   mkdirSync(next, { recursive: true });
   try {
     const language = join(root, 'packages', 'dbspec-language');
-    const orm = join(root, 'packages', 'ts');
+    const orm = join(root, 'legacy', 'packages', 'ts');
     writeFileSync(join(next, 'package.json'), `${JSON.stringify({
       private: true,
       dependencies: { '@polyspec/dbspec-language': `file:${language}`, '@polyspec/orm': `file:${orm}`, ...required },
