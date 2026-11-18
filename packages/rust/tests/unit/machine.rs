@@ -273,8 +273,9 @@ fn a_transaction_machine_rolls_back_a_callback_that_panics() {
     close(&runtime, &db);
 }
 
-// Requirements: CORE-104, CORE-24. A failure of the kind deadlock runs steps 1 to 4 again after an Io step that waits,
-// and the callback is called once per attempt; retry 0 calls it once.
+// Requirements: CORE-104, CORE-24. A failure of the kind deadlock runs steps 1 to 4 again right after the rollback, with
+// no wait between attempts ("the next attempt begins right after the rollback, with no wait between attempts"), and the
+// callback is called once per attempt; retry 0 calls it once.
 #[test]
 fn a_transaction_machine_calls_its_callback_once_per_attempt() {
     let _case = polyspec_orm_testcase::case!();
@@ -293,8 +294,8 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
         TransactionOptions::default(),
     );
     let (steps, done) = drive(&runtime, &mut machine);
-    let failed = ["Io", "Call", "Io", "Io"];
-    assert_eq!(steps, [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(), "begin, call, rollback and wait twice, then a commit");
+    let failed = ["Io", "Call", "Io"];
+    assert_eq!(steps, [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(), "begin, call and rollback twice, with no wait, then a commit");
     assert_eq!(done.expect("the third attempt commits").into_handle().raw(), 3);
     drop(machine);
     assert_eq!(calls, 3);
@@ -313,6 +314,33 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
     assert!(matches!(&done, Err(Failure::Kind(error)) if error.kind() == Kind::Deadlock && error.text() == "always"), "{done:?}");
     drop(machine);
     assert_eq!(calls, 1, "retry 0 calls the callback once");
+    close(&runtime, &db);
+}
+
+// Requirements: CORE-24. A transaction whose retry runs out waits at no attempt: the machine has no wait step, and the
+// one wait of the retry path, crate::clock::wait, is not called ("the next attempt begins right after the rollback, with
+// no wait between attempts").
+#[test]
+fn an_exhausted_transaction_machine_waits_at_no_attempt() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-machine-retry-out");
+    let (runtime, db) = probe_db(&scratch);
+    let waits = crate::clock::WAITS.load(std::sync::atomic::Ordering::SeqCst);
+    let mut calls = 0u32;
+    let mut machine = db.clone().transaction(
+        |_tx: Tx| {
+            calls += 1;
+            Err::<Passthrough, _>(Failure::Kind(crate::transaction_conflict(format!("attempt {calls}"))))
+        },
+        TransactionOptions { retry: Some(2), ..TransactionOptions::default() },
+    );
+    let (steps, done) = drive(&runtime, &mut machine);
+    let failed = ["Io", "Call", "Io"];
+    assert_eq!(crate::clock::WAITS.load(std::sync::atomic::Ordering::SeqCst) - waits, 0, "no attempt waits through the clock");
+    assert_eq!(steps, [&failed[..], &failed[..], &["Io", "Call", "Io", "Done"][..]].concat(), "three attempts, with no wait");
+    assert!(matches!(&done, Err(Failure::Kind(error)) if error.kind() == Kind::Deadlock && error.text() == "attempt 3"), "{done:?}");
+    drop(machine);
+    assert_eq!(calls, 3);
     close(&runtime, &db);
 }
 
@@ -359,11 +387,11 @@ fn a_transaction_machine_calls_the_hooks_before_each_opening() {
         TransactionOptions { retry: Some(1), ..TransactionOptions::default() },
     );
     let (steps, done) = drive(&runtime, &mut machine);
-    let failed = ["Call", "Call", "Io", "Call", "Io", "Io"];
+    let failed = ["Call", "Call", "Io", "Call", "Io"];
     assert_eq!(
         steps,
         [&failed[..], &["Call", "Call", "Io", "Call", "Await", "Io", "Done"][..]].concat(),
-        "two hooks, begin, call, rollback and wait, then two hooks again and a commit"
+        "two hooks, begin, call and rollback, with no wait, then two hooks again and a commit"
     );
     assert_eq!(done.expect("the second attempt commits").into_handle().raw(), 2);
     drop(machine);

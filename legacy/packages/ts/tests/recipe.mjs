@@ -1833,12 +1833,17 @@ Object.assign(OPS, {
         if (s.fail) throw callbackError;
         if (attempts <= (s.conflicts ?? 0)) throw transactionConflict('the recipe conflict');
       }, options);
+      context.causes = 0;
+    } catch (error) {
+      context.causes = (error?.causes ?? []).length;
+      throw error;
     } finally {
       context.attempts = attempts;
     }
     return okValue;
   },
   'transaction.attempts': (_, context) => ({ value: { int: String(context.attempts) } }),
+  'transaction.causes': (_, context) => ({ value: { int: String(context.causes ?? 0) } }),
   // A client write takes wallMicros, which stays within the millisecond that Date.now reports, so that millisecond
   // bounds it: its first microsecond below and its last above (FCV-4).
   // The clock that the write on the connection takes (FCV-4): on MySQL and MariaDB the server clock, read on the

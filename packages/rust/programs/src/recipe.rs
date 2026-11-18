@@ -3217,6 +3217,8 @@ mod database {
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
         /// The callback runs of the transaction step that ended last (transaction.attempts).
         attempts: u64,
+        /// The causes of the error of the transaction step that ended last (transaction.causes).
+        causes: usize,
         /// The time of the last wait.start of the case (FCV-4).
         wait_start: Option<std::time::Instant>,
         /// The error of the last step that failed without an expected error, as its call returned it.
@@ -3251,6 +3253,7 @@ mod database {
                 listeners: HashMap::new(),
                 recordings: HashMap::new(),
                 attempts: 0,
+                causes: 0,
                 wait_start: None,
                 unexpected: None,
             }
@@ -3779,7 +3782,9 @@ mod database {
             Some(parent) => parent.savepoint_async(callback).await,
             None => db.transaction_async(callback, options).await,
         };
-        state.into_inner().1.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
+        let context = state.into_inner().1;
+        context.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
+        context.causes = result.as_ref().err().map_or(0, |error| error.causes().len());
         match result {
             Ok(()) => Ok(Output::fields(ok_value())),
             Err(error) if error.kind() == polyspec_orm::Kind::Config && error.text() == CALLBACK_FAILED => {
@@ -4218,6 +4223,7 @@ mod database {
                 return transaction_step(&db, &name, step, &steps, fail, catalog, context).await;
             }
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
+            "transaction.causes" => Output::fields(json!({ "value": { "int": context.causes.to_string() } })),
             // The clock that the write on the connection takes, so both edges are the reading itself: on MySQL and
             // MariaDB the server clock, read on the connection in its UTC session; elsewhere the client writes the
             // wall clock cut to the microsecond. A value written between two readings lies between their texts (FCV-4).

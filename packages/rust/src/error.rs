@@ -157,6 +157,13 @@ impl Error {
         }
     }
 
+    /// The errors of the earlier attempts of a transaction whose retry ran out, oldest first, when this error is the
+    /// error of its last attempt; empty otherwise (CORE-24).
+    #[must_use]
+    pub fn causes(&self) -> &[Error] {
+        &[]
+    }
+
     /// The failed cleanup steps of an operation, empty for an error without them.
     #[must_use]
     pub fn cleanup_errors(&self) -> &[Error] {

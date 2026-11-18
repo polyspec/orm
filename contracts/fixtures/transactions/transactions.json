@@ -2599,6 +2599,79 @@
       ]
     },
     {
+      "id": "an_exhausted_retry_keeps_the_earlier_errors_as_causes",
+      "requirements": [
+        "CORE-24",
+        "INT-43",
+        "INT-48"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "retry": 2,
+          "conflicts": 3,
+          "steps": [],
+          "expect": {
+            "mysql": {
+              "error": "deadlock"
+            },
+            "postgres": {
+              "error": "deadlock"
+            },
+            "sqlite": {
+              "error": "deadlock"
+            }
+          }
+        },
+        {
+          "op": "transaction.attempts",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "3"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction.causes",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "a_locked_sqlite_writer_is_canceled_and_not_retried",
       "databases_differ": "SQLite ends a write that waits for the lock of another connection after its busy timeout and reports no deadlock (PLN-24, CFG-12).",
       "only": [

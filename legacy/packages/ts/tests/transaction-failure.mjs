@@ -118,3 +118,34 @@ caseTest('transaction-failure/savepoint-end-attempts-both', async () => {
     assert.deepEqual(controls, ['SAVEPOINT orm_sp_1', 'RELEASE SAVEPOINT orm_sp_1']);
   });
 });
+
+// Requirements: CORE-24, INT-43, INT-48. A deadlock is retried with no wait between the attempts: the retry sets no timer,
+// so the test counts the calls of setTimeout while the transaction runs and measures no time (FCV-2: the wait is visible
+// only at this seam). The causes of the error are the cases of the recipe transactions.
+caseTest('transaction-failure/deadlock-retry-without-wait', async () => {
+  await withDatabase('retry.sqlite', async db => {
+    const { transactionConflict } = await import('../dist/index.js');
+    let attempts = 0;
+    let timers = 0;
+    let failure;
+    const setTimeoutOfTheProcess = globalThis.setTimeout;
+    globalThis.setTimeout = (...args) => {
+      timers++;
+      return setTimeoutOfTheProcess(...args);
+    };
+    try {
+      await db.transaction(async () => {
+        attempts++;
+        throw transactionConflict(`attempt ${attempts}`);
+      }, { retry: 2 });
+    } catch (error) {
+      failure = error;
+    } finally {
+      globalThis.setTimeout = setTimeoutOfTheProcess;
+    }
+    assert.equal(attempts, 3, 'retry 2 runs the callback three times');
+    assert.equal(timers, 0, 'no attempt waits before it runs');
+    assert.equal(failure?.code, 'DEADLOCK');
+    assert.equal(failure.message, 'DEADLOCK: attempt 3', 'the error of the last attempt');
+  });
+});

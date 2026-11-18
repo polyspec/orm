@@ -276,7 +276,9 @@ type databaseContext struct {
 	// held is the pool of the connection that sql.hold_connection holds.
 	held *sql.DB
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
-	attempts  int
+	attempts int
+	// causes are the causes of the error of the transaction step that ended last (transaction.causes).
+	causes    int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -1379,6 +1381,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return nil
 		}, options...)
 		c.attempts = attempts
+		c.causes = 0
+		var caused interface{ Causes() []error }
+		if errors.As(err, &caused) {
+			c.causes = len(caused.Causes())
+		}
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1414,6 +1421,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return okOutcome(), nil
 	case "transaction.attempts":
 		return countOutcome(int64(c.attempts)), nil
+	case "transaction.causes":
+		return countOutcome(int64(c.causes)), nil
 	case "clock.read":
 		return clockRead(s, c)
 	case "transaction.deadlock":

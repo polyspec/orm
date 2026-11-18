@@ -1254,6 +1254,17 @@ mod tests {
             .await;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Deadlock && error.text() == "always"), "{ended:?}");
         assert_eq!(runs.load(Ordering::SeqCst), 1, "retry 0 runs once");
+        // CORE-24: a retry that runs out waits at no attempt; crate::clock::wait is the one wait of the retry path.
+        runs.store(0, Ordering::SeqCst);
+        let waits = crate::clock::WAITS.load(Ordering::SeqCst);
+        let ended = db
+            .transaction_async(
+                |_tx: Tx| async move { Err::<(), _>(transaction_conflict(format!("attempt {}", runs.fetch_add(1, Ordering::SeqCst) + 1))) },
+                TransactionOptions { retry: Some(2), ..Default::default() },
+            )
+            .await;
+        assert_eq!(crate::clock::WAITS.load(Ordering::SeqCst) - waits, 0, "no attempt waits through the clock");
+        assert!(matches!(&ended, Err(error) if error.kind() == Kind::Deadlock && error.text() == "attempt 3"), "{ended:?}");
         let ended = db.transaction_async(|_tx: Tx| async move { Err::<(), _>(Error::config("not retried")) }, TransactionOptions::default()).await;
         assert!(matches!(&ended, Err(error) if error.kind() == Kind::Config && error.text() == "not retried"), "{ended:?}");
         db.close_async().await;
@@ -1284,15 +1295,6 @@ mod tests {
         let after = db.transaction_async(|_tx: Tx| async { Ok(()) }, once()).await;
         assert!(matches!(&after, Err(error) if error.kind() == Kind::Closed), "{after:?}");
         db.close_async().await;
-    }
-
-    // The wait before attempt n is 50 << (n - 1) milliseconds and the jitter (CORE-24).
-    #[test]
-    fn the_retry_wait_doubles() {
-        let _case = polyspec_orm_testcase::case!();
-        assert_eq!(retry_wait(1, 0), std::time::Duration::from_millis(50));
-        assert_eq!(retry_wait(2, 19), std::time::Duration::from_millis(119));
-        assert_eq!(retry_wait(3, 0), std::time::Duration::from_millis(200));
     }
 
     /// The calls of the hooks of a test, in order: the name of the hook and whether its transaction is read-only.

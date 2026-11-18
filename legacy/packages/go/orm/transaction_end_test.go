@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/polyspec/orm/legacy/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
@@ -328,6 +330,40 @@ func TestSavepointReportsFailedEnd(t *testing.T) {
 		wantBoth(t, "both statements", err, "callback failed", errStatementRejected.Error())
 		if n := strings.Count(err.Error(), errStatementRejected.Error()); n != 2 {
 			t.Fatalf("want both savepoint statements reported, got %d in %v", n, err)
+		}
+	})
+}
+
+// TestDeadlockRetryWaitsForNothing checks that a transaction retries a deadlock with no wait between its attempts
+// (docs/spec/core.md CORE-24, docs/spec/interfaces.md INT-43, INT-48). The transaction runs in a synctest bubble, whose
+// clock moves only when a goroutine of the bubble sleeps, so an unchanged clock shows that no attempt waited; the test
+// measures no time (FCV-2: the wait is visible only at this seam). The causes of the error are the cases of the recipe
+// transactions.
+//
+// Requirements: CORE-24, INT-43, INT-48.
+func TestDeadlockRetryWaitsForNothing(t *testing.T) {
+	testcase.Start(t)
+	dir := t.TempDir()
+	synctest.Test(t, func(t *testing.T) {
+		db, err := Connect("sqlite://"+filepath.Join(dir, "retry.sqlite"), Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer testcase.Close(t, db)
+		start := time.Now()
+		attempts := 0
+		err = db.Transaction(func() error {
+			attempts++
+			return TransactionConflict(fmt.Sprintf("attempt %d", attempts))
+		}, Retry(2))
+		if waited := time.Since(start); waited != 0 {
+			t.Errorf("the attempts waited %v on the clock of the bubble; want no wait", waited)
+		}
+		if attempts != 3 {
+			t.Errorf("attempts = %d; want 3, for retry 2", attempts)
+		}
+		if !IsDeadlock(err) || err.Error() != "DEADLOCK: attempt 3" {
+			t.Fatalf("err = %v; want the error of the last attempt, DEADLOCK: attempt 3", err)
 		}
 	})
 }

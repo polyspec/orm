@@ -3096,12 +3096,18 @@ final class Recipe
                         },
                         ...$options,
                     );
+                    $context['causes'] = 0;
+                } catch (\Throwable $error) {
+                    $context['causes'] = count($error->causes ?? []);
+                    throw $error;
                 } finally {
                     $context['attempts'] = $attempts;
                 }
                 return ['value' => ['bool' => true]];
             case 'transaction.attempts':
                 return ['value' => ['int' => (string) $context['attempts']]];
+            case 'transaction.causes':
+                return ['value' => ['int' => (string) ($context['causes'] ?? 0)]];
             case 'clock.read':
                 // The clock that the write on the connection takes, so both edges are the reading itself: on MySQL
                 // and MariaDB the server clock, read on the connection in its UTC session; elsewhere the client writes

@@ -1065,6 +1065,7 @@
             "transaction_hook.records",
             "clock.read",
             "transaction.attempts",
+            "transaction.causes",
             "transaction.deadlock",
             "utils.aes_rotate",
             "model.restore",
@@ -1478,6 +1479,9 @@
         },
         {
           "$ref": "#/$defs/ops/transaction.attempts"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.causes"
         },
         {
           "$ref": "#/$defs/ops/transaction.deadlock"
@@ -1959,6 +1963,23 @@
           "op": {
             "const": "transaction.attempts",
             "description": "The runs of the callback of the transaction step that ended last, whatever its outcome."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "transaction.causes": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "transaction.causes",
+            "description": "The number of causes of the error of the transaction step that ended last; 0 when it ended with no error."
           },
           "expect": {
             "$ref": "#/$defs/expect"

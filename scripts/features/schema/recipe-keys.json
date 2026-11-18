@@ -919,6 +919,10 @@
       "expect",
       "op"
     ],
+    "transaction.causes": [
+      "expect",
+      "op"
+    ],
     "transaction.deadlock": [
       "column",
       "connections",

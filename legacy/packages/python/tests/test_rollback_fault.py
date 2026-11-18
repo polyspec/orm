@@ -8,11 +8,12 @@ from types import SimpleNamespace
 import tempfile
 import tomllib
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from polyspec.orm import testing
 from polyspec.orm.database import Db
-from polyspec.orm.errors import OrmError
+from polyspec.orm.errors import OrmError, transaction_conflict
 
 from . import testcase
 from .entry_point_check import assert_import_does_not_load_testing
@@ -416,6 +417,44 @@ class HandleDisposalTest(unittest.TestCase):
                 "the closed pool disposes the checked-out connection on return",
             )
             self.assertTrue(db.closed)
+        finally:
+            db.close()
+
+
+class _RetryRecordingDb(Db):
+    def __init__(self):
+        self.connections = []
+        super().__init__("sqlite:///transaction-retry-fake.sqlite", {"poolSize": 1})
+
+    def _open(self):
+        connection = _TransactionRecordingConnection()
+        self.connections.append(connection)
+        return connection
+
+
+class TransactionRetryTest(unittest.TestCase):
+    # A transaction retries a deadlock with no wait between its attempts (docs/spec/core.md CORE-24,
+    # docs/spec/interfaces.md INT-43). The test counts the calls of time.sleep, the wait of the library, and measures
+    # no time (FCV-2: the wait is visible only at this seam). The causes of the error are the cases of the recipe
+    # transactions.
+    # Requirements: CORE-24, INT-43, INT-48.
+
+    def test_a_deadlock_is_retried_with_no_wait(self):
+        db = _RetryRecordingDb()
+        attempts = []
+
+        def conflict():
+            attempts.append(len(attempts) + 1)
+            raise transaction_conflict(f"attempt {len(attempts)}")
+
+        try:
+            with mock.patch("time.sleep") as sleep:
+                with self.assertRaises(OrmError) as caught:
+                    db.transaction(conflict, {"retry": 2})
+            self.assertEqual(attempts, [1, 2, 3], "retry 2 runs the callback three times")
+            self.assertEqual(sleep.call_count, 0, "no attempt waits before it runs")
+            error = caught.exception
+            self.assertEqual((error.code, str(error)), ("DEADLOCK", "DEADLOCK: attempt 3"), "the error of the last attempt")
         finally:
             db.close()
 

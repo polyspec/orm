@@ -4944,6 +4944,7 @@ _DATABASE_OPS = {
     "transaction.attempts": lambda step, context: _op_transaction_attempts(
         step, context
     ),
+    "transaction.causes": lambda step, context: _op_transaction_causes(step, context),
     "clock.read": lambda step, context: _op_clock_read(step, context),
     "transaction.deadlock": lambda step, context: _op_transaction_deadlock(
         step, context
@@ -5436,8 +5437,12 @@ def _op_transaction(step: dict, context: dict) -> dict:
         options["timeoutMs"] = step["timeout_ms"]
     if "audit" in step:
         options["audit"] = dict(_assignments(step["audit"], context))
+    context["causes"] = 0
     try:
         _connection_of(step, context).transaction(run, options)
+    except BaseException as error:
+        context["causes"] = len(getattr(error, "causes", ()))
+        raise
     finally:
         context["attempts"] = attempts[0]
     return {"value": {"bool": True}}
@@ -5445,6 +5450,10 @@ def _op_transaction(step: dict, context: dict) -> dict:
 
 def _op_transaction_attempts(_: dict, context: dict) -> dict:
     return {"value": {"int": str(context["attempts"])}}
+
+
+def _op_transaction_causes(_: dict, context: dict) -> dict:
+    return {"value": {"int": str(context.get("causes", 0))}}
 
 
 def _op_server_transactions(step: dict, context: dict) -> dict:

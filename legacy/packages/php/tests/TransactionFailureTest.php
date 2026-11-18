@@ -10,6 +10,10 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\StatementEvent;
 use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+
+require_once __DIR__ . '/RetrySleepProbe.php';
 
 // Requirements: INT-72, PLN-17.
 #[\PHPUnit\Framework\Attributes\Medium]
@@ -81,6 +85,30 @@ final class TransactionFailureTest extends TestCase
             }
         } finally {
             $log->close();
+        }
+    }
+
+    // Requirements: CORE-24, INT-43, INT-48.
+    // A deadlock is retried with no wait between the attempts: the test counts the calls of usleep while the transaction
+    // runs and measures no time (FCV-2: the wait is visible only at this seam). The causes of the error are the cases of
+    // the recipe transactions.
+    public function testADeadlockIsRetriedWithNoWait(): void
+    {
+        $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $attempts = 0;
+        $before = RetrySleepProbe::$calls;
+        try {
+            $db->transaction(static function () use (&$attempts): void {
+                $attempts++;
+                throw Orm::transactionConflict("attempt $attempts");
+            }, retry: 2);
+            self::fail('the retry runs out');
+        } catch (OrmException $error) {
+            self::assertSame(0, RetrySleepProbe::$calls - $before, 'no attempt waits before it runs');
+            self::assertSame(3, $attempts, 'retry 2 runs the callback three times');
+            self::assertSame([Code::DEADLOCK, 'DEADLOCK: attempt 3'], [$error->code_, $error->getMessage()], 'the error of the last attempt');
+        } finally {
+            $db->close();
         }
     }
 }
