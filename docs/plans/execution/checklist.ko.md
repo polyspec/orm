@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 10ee648b988047adfd64bf0e0075334582e9d7a0aa5a1c6d6f69442bf4730a5d -->
+<!-- source-sha256: 8737b18512252f9f996774b019bc80511bd6647e18691826575356141c2f909b -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -2174,3 +2174,8 @@
 | T660 | scripts/check/run.mts는 PATH의 make를 실행한다(:299, :322, :337, :349). 고침: check-run을 시작한 make를 실행하고 요약의 처음에 make와 MAKE_VERSION을 쓰며, AGENTS.md(EN, KO)는 "GNU make 3.81 이상, 고정하지 않음"을 적는다(3.81 메모는 f326cafb1의 Makefile:160이다). Red: version 검사와 쓴 줄의 시험이다. Green은 code만 바꾼다. 0.0.34 뒤의 행이다. | scripts/check/run.mts, AGENTS.md | make runner-check가 통과한다 | [ ] |
 | T661 | commit hook은 본문 줄의 폭(72열)을 검사하지 않는다. 73열에서 78열의 줄을 가진 commit이 hook을 통과했다. 0.0.34 뒤의 행이다. | package.json | hook이 73열 줄을 본문에 가진 commit을 거부한다 | [ ] |
 | T662 | binding 0.0.22와 json 0.0.40을 고정한다. run 44236602323(r236)은 binding 0.0.21의 생성 binding 시험에서 실패한다: Go build는 `undefined: made14`(B2.506)로, Python offline 시험은 `table owner already exists`(B2.508)로 끝나고, IntegerValue 행은 같게 비교되지 않는다(B2.507). binding 0.0.22가 셋을 고친다. | Cargo.lock, benchmarks/rust/Cargo.lock, package.json, package-lock.json, config/binding-python-siblings.txt, binding crate의 Cargo.toml, packages/의 scaffold 파일 | pin-deps --check가 통과한다. r236에서 그 셋으로 실패한 integration CI job이 통과한다 | [~] |
+| T663 | pin-deps --check(scripts/repo/pin-deps.mts:14)는 어떤 CI target에서도 실행되지 않으므로, 검사한 파일과 어긋난 고정이 어떤 job도 실패시키지 않는다. 고침: 정적 target에 추가한다. 0.0.34 뒤의 행이다. | Makefile, config/ci.json | 정적 CI target이 pin-deps --check를 실행한다 | [ ] |
+| T664 | legacy/packages/ts/tests/restore-analysis-shape.test.mjs:9는 생성된 model을 import하지만 clientScans(scripts/typescript/models.mts:13-21)에 빠져 있어, model이 그 사용 없이 생성된다. 고침: clientScans에 추가하고, 그 case가 요구하면 다시 생성한다. | scripts/typescript/models.mts | make ts-model-check가 통과한다 | [ ] |
+| T665 | legacy/packages/ts/tests/transaction-flow.mjs:53은 파일이 정의하지 않은 DATABASE를 넘긴다(T473). 고침: 형제 case 파일처럼 DATABASE를 정의한다. | legacy/packages/ts/tests/transaction-flow.mjs | make ts-check와 make ts-min-check가 통과한다 | [ ] |
+| T666 | DECIMAL_ENV도 run이 소유한 파일이다: databases-create가 run 디렉터리에 env 옆의 decimal-env를 쓰고(scripts/check/databases.mts:218), Makefile:73-78은 RUN_CONTEXT_DIR가 있으면 그 파일을, 없으면 빈 값을 준다. 원인: TEST_ENV와 같은 공유 상태 원인이다(T650). | Makefile, scripts/test-servers.test.mts | make orm-test-servers-check가 통과한다 | [ ] |
+| T667 | RELEASE_REHEARSAL_VERSION(Makefile:806)은 make 3.81에 없는 $(file)을 쓰지만, Makefile:166은 3.81을 지원한다고 적는다. 3.81에서 rehearsal은 'VERSION is required'에서 멈추고, make -n ci-release-rehearsal은 version 없이 TAG=v와 VERSION=을 쓴다. 0.0.34 뒤의 행이다. | Makefile | GNU Make 3.81에서 make -n ci-release-rehearsal이 VERSION의 version을 쓴다 | [ ] |
