@@ -26,7 +26,7 @@
     "DBS-113",
     "INT-34",
     "CFG-34",
-    "CFG-35",
+    "CFG-49",
     "INT-118",
     "INT-107",
     "CFG-28",
@@ -2220,11 +2220,11 @@
     },
     {
       "id": "catalog_read_budgets",
-      "databases_differ": "MySQL quotes the reserved name user with backticks (CFG-3), each builds its rows with its own text concatenation, and a stopped statement is looked up in each server's own statement list, which SQLite, with no server, has not (CFG-35).",
+      "databases_differ": "MySQL quotes the reserved name user with backticks (CFG-3), each builds its rows with its own text concatenation, and a stopped statement is looked up in each server's own statement list, which SQLite, with no server, has not (CFG-49).",
       "requirements": [
         "INT-115",
         "CFG-34",
-        "CFG-35"
+        "CFG-49"
       ],
       "steps": [
         {
@@ -2433,7 +2433,7 @@
             "mysql",
             "postgres"
           ],
-          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
+          "reason": "CFG-49: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
           "sql": {
             "mysql": "DO SLEEP(2)",
             "postgres": "SELECT pg_sleep(2)"
@@ -2496,7 +2496,7 @@
             "mysql",
             "postgres"
           ],
-          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
+          "reason": "CFG-49: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
           "sql": {
             "mysql": "DO SLEEP(2)",
             "postgres": "SELECT pg_sleep(2)"
@@ -10634,13 +10634,13 @@
     },
     {
       "id": "budget_stop_with_the_kill_refused",
-      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection, which the server can refuse to open (CFG-35); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
+      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection, which the server can refuse to open (CFG-49); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
         "INT-157",
         "INT-158",
-        "CFG-35"
+        "CFG-49"
       ],
       "only": [
         "mysql"
@@ -10703,12 +10703,12 @@
     },
     {
       "id": "budget_stops_keep_the_connections_of_the_catalog",
-      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection (CFG-35); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
+      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection (CFG-49); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
         "INT-157",
-        "CFG-35"
+        "CFG-49"
       ],
       "only": [
         "mysql"
@@ -10802,13 +10802,13 @@
     },
     {
       "id": "kill_connection_open_before_the_stream",
-      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection (CFG-35); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
+      "databases_differ": "Only MySQL stops a statement by KILL QUERY on another connection (CFG-49); PostgreSQL cancels by its protocol and SQLite interrupts in the process.",
       "not_through_pooler": "its own user with two connections is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
         "INT-157",
         "INT-158",
-        "CFG-35"
+        "CFG-49"
       ],
       "only": [
         "mysql"
@@ -10925,7 +10925,7 @@
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "CFG-1",
-        "CFG-35",
+        "CFG-48",
         "DIA-211"
       ],
       "only": [
