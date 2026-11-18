@@ -73,8 +73,16 @@ caseTest('a passed step that leaves a temporary entry fails and the entry is rem
   }
 });
 
-// The forked child is named after the shell until it runs exec; the step waits for the exec of sleep.
-const UNTIL_EXEC = 'until ps -o args= -p $! | grep -q "^sleep "; do :; done';
+// leaveSleep is the shell text that leaves `sleep <seconds>` in the group of the step and writes its pid to pidFile. A child
+// forked by sh is named after the shell until it runs exec, so node starts sleep and writes the pid on its 'spawn' event,
+// which comes after the exec, and then ends while sleep stays.
+const LEAVE_SLEEP = "const c = require('node:child_process').spawn('/bin/sleep', [process.argv[1]], { argv0: 'sleep', stdio: 'ignore' });"
+  + " c.on('error', e => { console.error(e.message); process.exit(1); });"
+  + " c.on('spawn', () => { require('node:fs').writeFileSync(process.argv[2], String(c.pid)); c.unref(); });";
+function leaveSleep(seconds: number, pidFile: string): string {
+  const quote = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`;
+  return `${quote(process.execPath)} -e ${quote(LEAVE_SLEEP)} ${seconds} ${quote(pidFile)}`;
+}
 
 // removeCase kills the process of a case that is still alive, and removes the temporary directory of the case.
 function removeCase(work: string, pid: number): void {
@@ -88,7 +96,7 @@ caseTest('a passed step that leaves a process in its group fails and the process
   let pid = 0;
   try {
     const { lines, step } = collect();
-    const error = await run('sh', ['-c', `sleep 37 >/dev/null 2>&1 & echo $! > ${pidFile}; ${UNTIL_EXEC}`], step).then(() => null, (error: unknown) => error);
+    const error = await run('sh', ['-c', leaveSleep(37, pidFile)], step).then(() => null, (error: unknown) => error);
     pid = Number(readFileSync(pidFile, 'utf8'));
     assert.ok(error instanceof Error, 'the step fails');
     assert.match(error.message, new RegExp(`left 1 processes: ${pid} sleep 37`));
@@ -106,7 +114,7 @@ caseTest('a failed step keeps its temporary entries in the report and leaves no 
   let pid = 0;
   try {
     const { lines, step } = collect();
-    await assert.rejects(run('sh', ['-c', `mkdir "$TMPDIR/out"; echo evidence > "$TMPDIR/out/result.txt"; sleep 38 >/dev/null 2>&1 & echo $! > ${pidFile}; ${UNTIL_EXEC}; exit 3`], step, () => {}, { keep }),
+    await assert.rejects(run('sh', ['-c', `mkdir "$TMPDIR/out"; echo evidence > "$TMPDIR/out/result.txt"; ${leaveSleep(38, pidFile)}; exit 3`], step, () => {}, { keep }),
       /exited with 3/);
     pid = Number(readFileSync(pidFile, 'utf8'));
     assert.equal(readFileSync(join(keep, 'out/result.txt'), 'utf8'), 'evidence\n');
