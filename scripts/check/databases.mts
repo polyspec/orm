@@ -10,12 +10,12 @@
 // create makes, on the servers of <servers env> (the file that make orm-test-servers writes), the MySQL and PostgreSQL databases
 // <name>_bench and <name>_decimal and the SQLite files of <directory>. It installs and seeds them from their canonical fixtures, and writes <directory>/env
 // (<servers env> with the BENCH_* and ORM_BENCH_MYSQL_DSN of this run) and
-// <directory>/decimal-env. create first drops the databases
+// <directory>/decimal-env. create keeps the databases of its run that exist (databasesToCreate) and first drops the databases
 // that ended runs left (drop-dead). drop drops them and purges the binary logs of the two MySQL servers up to what the
 // replica applied (purgeBinlogs); drop is the last step of a run and runs even when an earlier step failed, so the binary
 // logs that the run wrote leave with the run. <name> is lowercase letters, digits and underscores.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { render, type Command } from './commands.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
@@ -109,6 +109,20 @@ function dropDeadRuns(servers: Record<string, string>, env: NodeJS.ProcessEnv): 
     console.log(`databases: dropped the PostgreSQL database ${database} of run pid ${pid}, which no longer runs`);
   }
   return true;
+}
+
+// databasesToCreate is, of the databases <wanted> of a run, those that <existing> does not hold, in the order of <wanted>:
+// a create keeps the databases of its run that exist and creates only the missing ones, so every target of a kit job that
+// reads the servers runs databases-create and the first one creates what the next ones keep (T645).
+export const databasesToCreate = (existing: string[], wanted: string[]): string[] => wanted.filter(name => !existing.includes(name));
+
+// completeDatabases names the databases that MySQL and PostgreSQL both hold, or undefined when a server cannot be listed.
+function completeDatabases(servers: Record<string, string>, env: NodeJS.ProcessEnv): string[] | undefined {
+  const shown = mysqlAt(servers['ORM_RUN_MYSQL_DSN'] ?? '', ['-N', '-e', 'SHOW DATABASES'], env);
+  const listed = result('psql', ['-X', '-q', '-At', '-v', 'ON_ERROR_STOP=1', postgresServer(servers['ORM_RUN_POSTGRES_DSN'] ?? ''), '-c', 'SELECT datname FROM pg_database'], env);
+  if (shown.status !== 0 || listed.status !== 0) return undefined;
+  const postgres = new Set(listed.stdout.split('\n').filter(Boolean));
+  return shown.stdout.split('\n').filter(name => name && postgres.has(name));
 }
 
 // replicaState gives the SQL thread state and the last error of the replica (SHOW REPLICA STATUS), which name the cause when
@@ -250,17 +264,25 @@ if (import.meta.main) {
       // A killed run cannot drop its databases, so the databases of ended runs are dropped first.
       if (!dropDeadRuns(servers, env)) process.exit(1);
       mkdirSync(dir, { recursive: true });
-      const benchEnv = { ...env, BENCH_MYSQL_DSN: mysqlBench, BENCH_POSTGRES_DSN: postgresBench, BENCH_SQLITE_DSN: sqliteBench };
-      const bench = spawnSync('node', [join(root, 'scripts/bench-db.mts')], { cwd: root, env: benchEnv, stdio: 'inherit' });
-      if (bench.status !== 0) process.exit(bench.status ?? 1);
-      if (!await createDecimal(mysqlBench, postgresBench, `${name}_decimal`, resolve(dir), env)) process.exit(1);
+      // A database of the run is kept when both servers hold it and the file that names it is written: env for the bench
+      // database, decimal-env for the decimal one.
+      const listed = completeDatabases(servers, env);
+      if (listed === undefined) { console.error(`databases: create: cannot list the databases of the servers of ${serversPath}`); process.exit(1); }
+      const written = (database: string): boolean => existsSync(join(dir, database === `${name}_bench` ? 'env' : 'decimal-env'));
+      const toCreate = databasesToCreate(listed.filter(written), [`${name}_bench`, `${name}_decimal`]);
+      if (toCreate.includes(`${name}_bench`)) {
+        const benchEnv = { ...env, BENCH_MYSQL_DSN: mysqlBench, BENCH_POSTGRES_DSN: postgresBench, BENCH_SQLITE_DSN: sqliteBench };
+        const bench = spawnSync('node', [join(root, 'scripts/bench-db.mts')], { cwd: root, env: benchEnv, stdio: 'inherit' });
+        if (bench.status !== 0) process.exit(bench.status ?? 1);
+      }
+      if (toCreate.includes(`${name}_decimal`) && !await createDecimal(mysqlBench, postgresBench, `${name}_decimal`, resolve(dir), env)) process.exit(1);
       const lines = [readFileSync(serversPath, 'utf8').replace(/\n?$/, '\n'),
         `export ORM_BENCH_MYSQL_DSN='${ormBench}'\n`, `export BENCH_MYSQL_DSN='${mysqlBench}'\n`, `export BENCH_POSTGRES_DSN='${postgresBench}'\n`,
         `export BENCH_SQLITE_DSN='${sqliteBench}'\n`,
         ...(env['ORM_TEST_MYSQL_PRIVILEGE_DSN'] ? [`export ORM_TEST_MYSQL_PRIVILEGE_DSN='${env['ORM_TEST_MYSQL_PRIVILEGE_DSN']}'\n`] : [])];
       writeFileSync(join(dir, 'env.tmp'), lines.join(''));
       renameSync(join(dir, 'env.tmp'), join(dir, 'env'));
-      console.log(`databases: ${name}_bench and ${name}_decimal created and seeded`);
+      console.log(toCreate.length ? `databases: ${toCreate.join(' and ')} created and seeded` : `databases: ${name}_bench and ${name}_decimal of this run kept`);
       break;
     }
     case 'drop': {

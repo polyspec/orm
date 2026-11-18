@@ -344,7 +344,7 @@ build-php-ext: ## Build legacy/packages/php-ext into var/php-ext/polyspec_orm.so
 	$(ONLINE) $(NODE) $(KIT)/php-extension.$(KIT_EXT) build --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
 lint-php-ext: ## Check the names, the stub and the stub hash of the arginfo header of the extension; offline
 	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
-test-php-ext: build-php-ext ## Compare the declarations of the built extension with the PHP library, then run its unit tests with CASES=<pattern>; on the test servers (WITH_TEST_ENV); offline
+test-php-ext: build-php-ext databases-create ## Compare the declarations of the built extension with the PHP library, then run its unit tests with CASES=<pattern>; on the test servers (WITH_TEST_ENV); offline
 	$(WITH_TEST_ENV) $(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php -- --roots legacy/packages/php legacy/packages/php-ext
 
 # The tasks of P29: each runs its target for every runtime of packages/ (go, php, php-ext, python, rust, ts) (kit K1106).
@@ -1082,9 +1082,19 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # the server environment of TEST_ENV has no such database.
 # databases-create is the setup step databases/create of the runner (scripts/check/run.mts) and of make owner-check: it
 # builds the TypeScript client, creates the run-owned bench and decimal databases, and writes every DSN to the run environment before coverage reads database state.
-databases-create: typescript-current
-	$(READ_TYPESCRIPT)
-	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
+# A target that reads the servers in a kit job depends on it (T645), so the servers start and the databases of the run are
+# made inside make ci-targets, whose node of kit owns the servers until its last target ends (Makefile orm-test-servers,
+# T612). In a kit job the run directory is RUN_CONTEXT_DIR (T650) and the name follows from RUNTIME and the run; with no
+# run context and no DIRECTORY the target creates no database. Each create keeps the databases of its run that exist and
+# creates the missing ones (databasesToCreate), under an exclusive lease of the run directory, so two targets of one run
+# never create its databases at once. The lease is the run's own, not that of the servers: a run holds the shared lease
+# of the servers while it calls databases-create (scripts/check/run.mts), and an exclusive wait on it would never end.
+databases-create: SERVERS ?= $(abspath .runtime/servers/env)
+databases-create: DIRECTORY ?= $(RUN_CONTEXT_DIR)
+databases-create: NAME ?= $(if $(RUN_CONTEXT_DIR),orm_kit_$(subst -,_,$(RUNTIME))_$(GITHUB_RUN_ID)_$(GITHUB_RUN_ATTEMPT))
+databases-create: orm-test-servers $(if $(or $(DIRECTORY),$(RUN_CONTEXT_DIR)),typescript-current lease-tool)
+	@if test -z '$(DIRECTORY)'; then echo 'databases-create: no run context (RUNTIME, GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT) and no DIRECTORY; no run database is made'; \
+	else $(READ_TYPESCRIPT) && $(LEASE) run '$(DIRECTORY)/create.leases' exclusive --wait -- $(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'; fi
 
 run-databases:
 	( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
@@ -1235,7 +1245,7 @@ GO_TEST_CHECK_PACKAGES = $$(go list ./legacy/packages/go/cmd/... ./legacy/packag
 # The entries of mariadb, Test<Name>Mariadb, need the MariaDB servers, which a runner of the MySQL servers cannot hold:
 # dialect-facts-mariadb-check runs the MariaDB probes (TestDialectFactsMariadb), and mariadb-recipes-check/go the others.
 go-test-check: RUN_DIR = $(abspath .runtime/run)/go-test-check-$$PPID
-go-test-check: lease-tool python-venv-check php-vendor-check orm-codes-typescript go-test-check/cross-runtime
+go-test-check: databases-create lease-tool python-venv-check php-vendor-check orm-codes-typescript go-test-check/cross-runtime
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -skip '^Test[A-Za-z]*Mariadb$$' $(GO_TEST_CHECK_PACKAGES)
 	rm -rf $(RUN_DIR)
 
@@ -2451,7 +2461,7 @@ feature-coverage-of/%: typescript-current php-vendor-check php-models orm-instal
 	rm -rf $(RUN_DIR)
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard rust
-feature-verify-other: feature-check/build
+feature-verify-other: databases-create feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard other
 # feature-helper-check, feature-stress-mysql-check, and feature-stress-pg-sqlite-check run the helper checks of contracts/features.json.
 # FEATURE_STRESS_HELPERS is the helper of the stress bench that takes the longest time: the MySQL application of the stress plan
@@ -2864,7 +2874,7 @@ CONFORMANCE_PY_MODELS = $(abspath .runtime/run)/conformance-python-models
 conformance-python-models: lease-tool python-venv-check
 	$(call py_models_publish,$(CONFORMANCE_PY_MODELS),legacy/contracts/fixtures/bench/dbspec-set.json)
 
-conformance-check: conformance-result-check conformance-generated-methods-check conformance-fixed-clock-check
+conformance-check: databases-create conformance-result-check conformance-generated-methods-check conformance-fixed-clock-check
 
 # Kit's gates workflow runs the context preparation and cleanup of the php-ext job in separate job steps. This context gives that
 # job the same run-owned servers, benchmark fixtures and build-output directory as run-databases, while GITHUB_ENV carries the two

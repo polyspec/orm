@@ -1,33 +1,25 @@
 #!/usr/bin/env node
-// Own the servers and run databases of one Kit CI job (the php-ext runtime job). The provider calls prepare and cleanup in
-// separate workflow steps, so the run directory and database DSNs cross that boundary only through the job's GITHUB_ENV.
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+// Own the run directory of one Kit CI job (the php-ext runtime job). Kit runs prepare, make -k ci-targets and cleanup in one
+// step (ci-setup.mjs:203-207). The servers and the run databases are not started here: each target that reads them reaches
+// orm-test-servers and databases-create as make prerequisites, so their owner is the ci-targets node of kit, which stops
+// them when it ends (T645), and the Makefile derives the run directory from RUNTIME, GITHUB_RUN_ID and GITHUB_RUN_ATTEMPT
+// (RUN_CONTEXT_DIR, T650). Prepare creates the directory with its ownership marker; cleanup checks the marker and removes it.
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import { environmentFile } from './databases.mts';
 
-const SERVER_ENV = '.runtime/servers/env';
 const RUN_PARENT = '.runtime/run';
 const markerName = '.kit-job-context.json';
 
 export type ContextScope = 'php-ext';
-type ContextState = { schema: 1; scope: ContextScope; runId: string; attempt: string; serverStartAttempted: boolean; databaseCreateAttempted: boolean };
-export type ContextCommandResult = { status: number | null; signal: NodeJS.Signals | null };
-export type ContextCommand = (command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) => ContextCommandResult;
+type ContextState = { schema: 2; scope: ContextScope; runId: string; attempt: string };
 
-function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv): ContextCommandResult {
-  const result = spawnSync(command, args, { cwd, env, stdio: 'inherit' });
-  if (result.error) throw new Error(`${command} could not start: ${result.error.message}`);
-  return { status: result.status, signal: result.signal };
-}
-
-function identity(scope: ContextScope, env: NodeJS.ProcessEnv): { runId: string; attempt: string; name: string } {
+function identity(scope: ContextScope, env: NodeJS.ProcessEnv): { runId: string; attempt: string } {
   const runId = env.GITHUB_RUN_ID ?? '';
   const attempt = env.GITHUB_RUN_ATTEMPT ?? '';
   if (!/^\d+$/.test(runId) || !/^\d+$/.test(attempt)) {
     throw new Error(`GITHUB_RUN_ID and GITHUB_RUN_ATTEMPT must be numeric for an owned ${scope} context; set them in the workflow environment`);
   }
-  return { runId, attempt, name: `orm_kit_${scope.replace('-', '_')}_${runId}_${attempt}` };
+  return { runId, attempt };
 }
 
 function contextPath(root: string, scope: ContextScope, runId: string, attempt: string): string {
@@ -63,108 +55,35 @@ function readOwnedState(root: string, directory: string, scope: ContextScope, ru
   if (!markerStat.isFile() || markerStat.isSymbolicLink()) throw new Error(`refusing to use invalid ${scope} context ownership marker ${marker}`);
   const parsed: unknown = JSON.parse(readFileSync(marker, 'utf8'));
   if (!isObjectRecord(parsed)) throw new Error(`invalid context ownership marker ${marker}`);
-  if (parsed.schema !== 1 || parsed.scope !== scope || parsed.runId !== runId || parsed.attempt !== attempt
-      || typeof parsed.serverStartAttempted !== 'boolean' || typeof parsed.databaseCreateAttempted !== 'boolean') {
+  if (parsed.schema !== 2 || parsed.scope !== scope || parsed.runId !== runId || parsed.attempt !== attempt) {
     throw new Error(`${scope} context ownership marker does not match workflow run ${runId}/${attempt}`);
   }
-  return {
-    schema: 1,
-    scope,
-    runId,
-    attempt,
-    serverStartAttempted: parsed.serverStartAttempted,
-    databaseCreateAttempted: parsed.databaseCreateAttempted,
-  };
+  return { schema: 2, scope, runId, attempt };
 }
 
-const commandFailure = (result: ContextCommandResult): string => result.status === null
-  ? `was terminated by ${result.signal ?? 'an unknown signal'} without an exit status`
-  : `exited with ${result.status}`;
-
-/** Prepare one workflow job's server/database resources and publish their paths to following Actions steps. */
-export function prepareContext(scope: ContextScope, root: string = resolve(process.cwd()), env: NodeJS.ProcessEnv = process.env, command: ContextCommand = run): void {
+/** Create the owned run directory of one workflow job; the targets of make ci-targets start the servers and databases. */
+export function prepareContext(scope: ContextScope, root: string = resolve(process.cwd()), env: NodeJS.ProcessEnv = process.env): void {
   root = resolve(root);
-  const { runId, attempt, name } = identity(scope, env);
-  const githubEnv = env.GITHUB_ENV;
-  if (!githubEnv) throw new Error(`GITHUB_ENV is unset; run ${scope} context preparation in a GitHub Actions job so its DSNs reach the gate step`);
+  const { runId, attempt } = identity(scope, env);
   const directory = contextPath(root, scope, runId, attempt);
-  if (existsSync(resolve(root, SERVER_ENV))) throw new Error(`${resolve(root, SERVER_ENV)} already exists; refusing to take ownership of another server context`);
   mkdirSync(resolve(root, RUN_PARENT), { recursive: true });
   mkdirSync(directory, { recursive: false, mode: 0o700 });
-  const state: ContextState = { schema: 1, scope, runId, attempt, serverStartAttempted: false, databaseCreateAttempted: false };
-  writeState(directory, state);
-
-  state.serverStartAttempted = true;
-  writeState(directory, state);
-  const serversResult = command('make', ['--no-print-directory', 'orm-test-servers'], root, env);
-  if (serversResult.status !== 0 || serversResult.signal !== null) {
-    throw new Error(`make orm-test-servers ${commandFailure(serversResult)} for the ${scope} context; fix the pinned server setup and rerun the Kit gate`);
-  }
-  state.databaseCreateAttempted = true;
-  writeState(directory, state);
-  const testEnv = join(directory, 'env');
-  const databaseSetup = ['--no-print-directory', 'databases-create', `SERVERS=${resolve(root, SERVER_ENV)}`, `DIRECTORY=${directory}`, `NAME=${name}`];
-  const databaseResult = command('make', databaseSetup, root, env);
-  if (databaseResult.status !== 0 || databaseResult.signal !== null) {
-    throw new Error(`${scope} database setup ${commandFailure(databaseResult)} for ${name}; inspect the setup output and rerun the Kit gate`);
-  }
-  // The decimal databases of the run are in decimal-env (databases.mts createDecimal); the Makefile assigns DECIMAL_ENV
-  // itself, so its DSNs are exported as variables, as those of env are (T294).
-  const decimalEnv = join(directory, 'decimal-env');
-  for (const file of [testEnv, decimalEnv]) {
-    if (!existsSync(file)) throw new Error(`${file} was not written by the database setup; fix scripts/check/databases.mts create`);
-  }
-  const exports = { ...environmentFile(readFileSync(testEnv, 'utf8')), ...environmentFile(readFileSync(decimalEnv, 'utf8')), TEST_ENV: testEnv, STEP_RUN_DIR: directory };
-  for (const [key, value] of Object.entries(exports)) {
-    if (!/^[A-Z_][A-Z0-9_]*$/.test(key) || /[\r\n]/.test(value)) throw new Error(`${key} cannot be exported through GITHUB_ENV`);
-  }
-  appendFileSync(githubEnv, Object.entries(exports).map(([key, value]) => `${key}=${value}\n`).join(''));
-  console.log(`${scope} context ${runId}/${attempt} is ready; TEST_ENV, its database variables, the decimal DSNs and STEP_RUN_DIR are available to the provider gate`);
+  writeState(directory, { schema: 2, scope, runId, attempt });
+  console.log(`${scope} context ${runId}/${attempt} owns ${directory}; the targets that read the servers start them and create its databases`);
 }
 
-/** Drop the run databases, stop only the server set this context started, and remove only its marker-owned directory. */
-export function cleanupContext(scope: ContextScope, root: string = resolve(process.cwd()), env: NodeJS.ProcessEnv = process.env, command: ContextCommand = run): void {
+/** Remove only the marker-owned run directory; the ci-targets node of kit already stopped the servers it owned. */
+export function cleanupContext(scope: ContextScope, root: string = resolve(process.cwd()), env: NodeJS.ProcessEnv = process.env): void {
   root = resolve(root);
-  const { runId, attempt, name } = identity(scope, env);
+  const { runId, attempt } = identity(scope, env);
   const directory = contextPath(root, scope, runId, attempt);
   if (!existsSync(directory)) {
     console.log(`${scope} context ${runId}/${attempt} has no owned run directory to clean`);
     return;
   }
-  const state = readOwnedState(root, directory, scope, runId, attempt);
-  const failures: string[] = [];
-  let retainRunDirectory = false;
-  const servers = resolve(root, SERVER_ENV);
-  if (state.databaseCreateAttempted && !existsSync(servers)) {
-    failures.push(`database cleanup cannot run because ${servers} is missing`);
-    retainRunDirectory = true;
-  } else if (state.serverStartAttempted && existsSync(servers)) {
-    const runCleanupOperation = (label: string, operation: () => ContextCommandResult) => {
-      try {
-        const result = operation();
-        if (result.status !== 0 || result.signal !== null) failures.push(`${label} ${commandFailure(result)}`);
-        return result.status === 0 && result.signal === null;
-      } catch (error) {
-        failures.push(`${label} failed: ${error instanceof Error ? error.message : String(error)}`);
-        return false;
-      }
-    };
-    if (state.databaseCreateAttempted) {
-      runCleanupOperation('database cleanup', () => command('node', ['scripts/check/databases.mts', 'drop', servers, directory, name], root, env));
-    }
-    retainRunDirectory = !runCleanupOperation('server cleanup', () => command('make', ['--no-print-directory', 'orm-test-servers-stop'], root, env));
-  }
-  // Database drop normally removes this directory. Remove a partial setup only after server teardown; otherwise retain its files for diagnosis.
-  if (existsSync(directory) && !retainRunDirectory) {
-    try {
-      readOwnedState(root, directory, scope, runId, attempt);
-      rmSync(directory, { recursive: true });
-    } catch (error) {
-      failures.push(`owned context directory cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-  if (failures.length) throw new Error(`${scope} context cleanup failed: ${failures.join('; ')}`);
-  console.log(`${scope} context ${runId}/${attempt} resources were cleaned`);
+  readOwnedState(root, directory, scope, runId, attempt);
+  rmSync(directory, { recursive: true });
+  console.log(`${scope} context ${runId}/${attempt} run directory was removed`);
 }
 
 if (import.meta.main) {
