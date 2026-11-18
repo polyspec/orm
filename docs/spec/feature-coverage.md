@@ -680,7 +680,7 @@ A user of the generated bindings has this today:
 | `getsCount()`, `GroupRows`, `GroupRow` | INT-31, INT-68 to INT-71 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:84`, `packages/rust/src/collection.rs:407` |
 | `getsPage(page, perPage)`, `Page` | INT-32, INT-64 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:104` |
 | `getsLookaheadPage`, `getsCountLookaheadPage`, `LookaheadPage`, `GroupLookaheadPage` | INT-164 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:109`, `packages/rust/build/src/fixed.rs.txt:89` |
-| `getSum()`, `getAvg()` | DSL-62, DSL-63 | present, changed: `get_sum()` and `get_avg()` read the column that `sum(column)` or `avg(column)` names (CORE-205, CORE-207) | `packages/rust/build/src/fixed.rs.txt:94`, `packages/rust/build/src/fixed.rs.txt:99` |
+| `getSum()`, `getAvg()` | DSL-62, DSL-63 | present, changed: `get_sum()` and `get_avg()` read the column that `sum(column)` or `avg(column)` names (CORE-205, CORE-207) | `packages/rust/interface.json:5874`, `packages/rust/interface.json:5932` |
 | `addColumn<Col>Alias<Name>(fn)`, `addColumn<Name>(fn)` | DSL-73, DSL-74 | in the core, not in the contract | `packages/rust/src/core.rs:566`, `packages/rust/src/core.rs:574` |
 | a condition on a function, and the functions `orm.now()` to `orm.monthsLater()`, `orm.year()`, `orm.month()`, `orm.date()`, `orm.dayOfWeek()` with `ValueFunction` and `ColumnFunction` (PHP `Orm::now()`, `Func`) | DSL-54, DSL section 10 | in the core, not in the contract; the contract has `orm.value_function_unit` alone | `packages/rust/src/args.rs:34`, `packages/rust/interface.json:551` |
 
@@ -699,7 +699,7 @@ A user of the generated bindings has this today:
 | `fetchKey(fn)` | DSL-70 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:216` |
 | `fetchValue(fn)` | DSL-70 | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:222` |
 | `possible<Col>(value)` | DSL-85 | in the core, not in the contract | `packages/rust/src/core.rs:512` |
-| `forceIndex<Name>()` | DSL-78 | present, changed: `force_index(name)` takes the name as text (CORE-156) | `packages/rust/src/core.rs:592` |
+| `forceIndex<Name>()` | DSL-78 | present, changed: `force_index(name)` takes the name as text (CORE-156) | `packages/rust/interface.json:5969` |
 | `plus<Col>(n)`, `minus<Col>(n)` | DSL-102 | in the core, not in the contract | `packages/rust/src/core.rs:663`, `packages/rust/src/core.rs:667` |
 | `new<Name>(value)`, `get<Name>()` | DSL-101, DSL-115 | in the core, not in the contract | `packages/rust/src/core.rs:672`, `packages/rust/src/core.rs:677` |
 | `toJSON()`, `toJSONText()` (PHP `toJson`, Python `to_json_text`) | no rule | in the core, not in the contract | `packages/rust/build/src/fixed.rs.txt:257` |

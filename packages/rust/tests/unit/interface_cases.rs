@@ -832,6 +832,15 @@ async fn call_query(member: &str, receiver: Option<&mut Instance>, args: &Map<St
             Returned::Value(Value::Null)
         }
         ("query.get_sum", Some(Instance::Query(query))) => Returned::Value(Value::from(query.get_sum().await?)),
+        ("query.avg", Some(Instance::Query(query))) => {
+            query.avg(&text(args, "column", member));
+            Returned::Value(Value::Null)
+        }
+        ("query.get_avg", Some(Instance::Query(query))) => Returned::Value(query.get_avg().await?.map_or(Value::Null, Value::from)),
+        ("query.force_index", Some(Instance::Query(query))) => {
+            query.force_index(&text(args, "name", member));
+            Returned::Value(Value::Null)
+        }
         ("query.group_limit", Some(Instance::Query(query))) => {
             query.group_limit(uint(args, "count", member));
             Returned::Value(Value::Null)

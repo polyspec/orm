@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- `Query`에 `avg(column)`과 `get_avg()`가 있다(CORE-207, T610): 열의 평균이며 값이 남지 않으면 null이다.
+  `force_index(name)`은 DIA-7의 index 힌트이며, 엔티티의 index도 unique key도 아닌 이름은 다음 terminal에서
+  `config`다(CORE-156). 계약이 셋과 그 case를 선언한다.
 - docs/spec/core.md가 core의 member마다 모르는 열의 kind를 기록한다(CORE-158, T609): `Query`의 builder와 chain
   이름은 `config`, `query.value`와 engine member와 planner는 `column_unknown`이다. 기존 member는 자기 kind를
   유지하고 새 member는 같은 종류의 기존 member를 따른다.

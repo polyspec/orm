@@ -502,6 +502,26 @@ impl Query {
         Ok(self.core.related_many::<Query>(name)?.map(|rows| rows.models().cloned().collect()))
     }
 
+    /// Names the column `column` whose average `get_avg` returns; the last one called holds, and it replaces `sum`
+    /// (CORE-207). A name that is no column of the entity is `config` at the next terminal.
+    pub fn avg(&mut self, column: &str) {
+        if self.known_column(column) {
+            self.core.aggregate("avg", column);
+        }
+    }
+
+    /// Makes the statement of the query use the index or the unique key `name` of its entity; the last one called
+    /// holds (CORE-156, DIA-7). A name that is no index and no unique key is `config` at the next terminal.
+    pub fn force_index(&mut self, name: &str) {
+        let Some(known) = self.read_entity(|_, entity| entity.indexes.iter().chain(&entity.uniques).any(|key| key.name == name)) else { return };
+        if known {
+            self.core.force_index(name);
+        } else {
+            let message = format!("{name} is not an index of {}", self.entity());
+            self.core.fail(message);
+        }
+    }
+
     /// Assigns `value` to the column `column` for the next write (CORE-91). A name that is no column of the entity is
     /// `config` and a list or a map is `codec_encode`, each at the next terminal; the column decides at the write whether
     /// it takes any other value (CORE-62).
@@ -726,6 +746,16 @@ impl Query {
             return Err(error);
         }
         crate::model::get_sum(&self.core).await
+    }
+
+    /// The average of the column that `avg` named over the rows that the conditions select, None when no value is left
+    /// (CORE-207). A query without `avg` is `config`; the query does not change.
+    pub async fn get_avg(&self) -> Result<Option<f64>> {
+        // A refused `avg` named no column, so its error comes before the refusal of a query without `avg`.
+        if let Some(error) = self.core.err() {
+            return Err(error);
+        }
+        crate::model::get_avg(&self.core).await
     }
 
     /// Runs the count of the query (CORE-83).

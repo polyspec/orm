@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- A `Query` has `avg(column)` and `get_avg()`, the average of a column or null when no value is left (CORE-207,
+  T610), and `force_index(name)`, the index hint of DIA-7, whose name that is no index or unique key of the entity is
+  `config` at the next terminal (CORE-156); the contract declares the three and their cases.
 - docs/spec/core.md lists the kind of an unknown column per member of the core (CORE-158, T609): `config` for
   the builders of a `Query` and its chain names, `column_unknown` for `query.value`, the engine members and the
   planner; existing members keep their kind and a new member follows the existing member of its sort.
