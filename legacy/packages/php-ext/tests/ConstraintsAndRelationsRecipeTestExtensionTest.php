@@ -8,7 +8,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Tests\ConstraintsAndRelationsRecipeTest;
 
-// The constraints and relations recipe through the PHP extension (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+// The constraints and relations recipe through the PHP extension (docs/spec/feature-coverage.md FCV-22 and FCV-4).
 #[Medium]
 final class ConstraintsAndRelationsRecipeTestExtensionTest extends ConstraintsAndRelationsRecipeTest
 {

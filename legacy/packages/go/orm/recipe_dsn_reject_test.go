@@ -7,8 +7,8 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// TestRecipeDsnRejectNone runs the refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, without a database (FCV-3).
-// Requirements: CFG-2, CFG-17, CFG-19, CFG-26, FCV-15, PRT-64.
+// TestRecipeDsnRejectNone runs the refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, without a database (FCV-22).
+// Requirements: CFG-2, CFG-17, CFG-19, CFG-26, FCV-23, PRT-64.
 func TestRecipeDsnRejectNone(t *testing.T) {
 	testcase.Start(t)
 	recipe.Run(t, testcase.LegacyPath("contracts/fixtures/dsn_reject/dsn_reject.json"), recipe.None)
@@ -24,7 +24,7 @@ func TestRecipeDsnRejectCheckedNone(t *testing.T) {
 }
 
 // TestRecipeDsnRejectParametersNone runs the refusals of a parameter that the scheme does not accept and of each form of
-// the query rule, contracts/fixtures/dsn_reject/dsn_reject_parameters.json, without a database (FCV-3).
+// the query rule, contracts/fixtures/dsn_reject/dsn_reject_parameters.json, without a database (FCV-22).
 // Requirements: CFG-12, CFG-19, CFG-20, CFG-37, INT-187.
 func TestRecipeDsnRejectParametersNone(t *testing.T) {
 	testcase.Start(t)

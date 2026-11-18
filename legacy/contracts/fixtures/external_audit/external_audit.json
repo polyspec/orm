@@ -3,8 +3,7 @@
   "requirements": [
     "SCH-14",
     "DBS-110",
-    "DIA-154",
-    "DIA-183"
+    "DIA-154"
   ],
   "fixture": "contracts/fixtures/external_audit/dbspec-set.json",
   "cases": [

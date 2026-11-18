@@ -547,7 +547,7 @@ pub enum Conn {
     /// A reserved PostgreSQL connection with the output settings of its catalog session (INT-186).
     Postgres(PgSession),
     Sqlite(PoolConnection<Sqlite>),
-    /// A session of a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
+    /// A session of a markdown connection, which sends SQL in SQLite's dialect (DIA-154).
     Markdown(MarkdownLease),
 }
 

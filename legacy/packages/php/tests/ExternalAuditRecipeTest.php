@@ -1,7 +1,7 @@
 <?php
 
 // The external_audit recipe, contracts/fixtures/external_audit/external_audit.json, on each database
-// (docs/spec/feature-coverage.md FCV-3).
+// (docs/spec/feature-coverage.md FCV-22).
 // Requirements: SCH-14, DBS-110.
 declare(strict_types=1);
 

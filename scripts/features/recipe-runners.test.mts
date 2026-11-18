@@ -1,5 +1,5 @@
-// Requirements: FCV-15.
-// The check of one recipe runner per runtime: each rule of FCV-15 has an accepting tree and a refused one.
+// Requirements: FCV-23.
+// The check of one recipe runner per runtime: each rule of FCV-23 has an accepting tree and a refused one.
 import assert from 'node:assert/strict';
 import { caseTest } from '../../tests/testcase.mts';
 import { CASE_RUNNERS, findings, READERS, readTree, recipeBindings, stepOps, VECTOR_RUNNERS, type Tree } from './recipe-runners.mts';
@@ -100,7 +100,7 @@ caseTest('the tree of this checkout has no finding', () => {
   assert.deepEqual(findings(readTree()), []);
 });
 
-// The conformance bodies run through the vector runner of each runtime (FCV-15), so a declared runner program that is not a source
+// The conformance bodies run through the vector runner of each runtime (FCV-23), so a declared runner program that is not a source
 // is a finding.
 caseTest('a vector runner that is no source is a finding', () => {
   const [gone] = VECTOR_RUNNERS.go ?? [];
@@ -110,15 +110,3 @@ caseTest('a vector runner that is no source is a finding', () => {
   assert.match(findings(tree({ sources })).join('\n'), /the vector runner legacy\/packages\/go\/internal\/conformance\/main\.go does not exist/);
 });
 
-// The bodies of a case file run through the case runner of each runtime (FCV-15), so a runner that is no source, or that names no
-// case file, is a finding.
-caseTest('a case runner that is no source or names no case file is a finding', () => {
-  const runner = CASE_RUNNERS['tests/markdown/cases.json']?.go?.file;
-  assert.ok(runner !== undefined, 'Go declares a case runner of tests/markdown/cases.json');
-  const gone = new Map(tree().sources);
-  gone.delete(runner);
-  assert.match(findings(tree({ sources: gone })).join('\n'), /go: the case runner legacy\/packages\/go\/markdownmodel\/conformance_test\.go does not exist/);
-  const silent = new Map(tree().sources);
-  silent.set(runner, 'package markdownmodel');
-  assert.match(findings(tree({ sources: silent })).join('\n'), /go: the case runner legacy\/packages\/go\/markdownmodel\/conformance_test\.go names no tests\/markdown\/cases\.json/);
-});

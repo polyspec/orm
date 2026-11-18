@@ -1,7 +1,7 @@
 <?php
 
 // The recipe contracts/fixtures/aes_rotation/aes_rotation.json on MariaDB, a server of the MySQL dialect
-// (docs/spec/dialects.md DIA-200), as AesRotationMysqlTest runs it on MySQL (docs/spec/feature-coverage.md FCV-3). The
+// (docs/spec/dialects.md DIA-200), as AesRotationMysqlTest runs it on MySQL (docs/spec/feature-coverage.md FCV-22). The
 // entry of MariaDB is a class of its own, so the targets of the MySQL servers do not run it and the targets of the
 // MariaDB servers run only it.
 declare(strict_types=1);

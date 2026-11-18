@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use Polyspec\Orm\Tests\DbspecAddTablesStepsTest;
 
 // The add tables steps of the recipe tests/dbspec/add-tables-steps.json through the PHP extension
-// (docs/spec/feature-coverage.md FCV-3).
+// (docs/spec/feature-coverage.md FCV-22).
 // The requirements are those of the library entry DbspecAddTablesStepsTest.
 
 #[\PHPUnit\Framework\Attributes\Small]

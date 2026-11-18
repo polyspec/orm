@@ -18,7 +18,7 @@ bool markdown_session_answer(const char *what, zval *answer);
 /* The statement message of sql with its bound params (PRT-66), which the caller sends and releases. */
 void markdown_statement_message(zval *message, zend_string *sql, zval *params);
 
-/* The markdown connection as the PDO handle of a SQLite connection (Internal\MarkdownPdoAdapter, DIA-185). */
+/* The markdown connection as the PDO handle of a SQLite connection (Internal\MarkdownPdoAdapter, DIA-154). */
 void markdown_pdo_register(zend_class_entry *adapter_ce, zend_class_entry *statement_ce);
 bool markdown_pdo_connect(zend_string *address, zend_string *corpus, zend_string *token, zval *pragmas, zval *out);
 void markdown_pdo_session(zval *pdo, zval *out);

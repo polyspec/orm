@@ -1,5 +1,5 @@
 //! Requirements: CFG-4, CFG-5, CFG-5a, PRT-77.
-//! The connection_pool recipe, contracts/fixtures/connection_pool/connection_pool.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200) (docs/spec/feature-coverage.md FCV-3).
+//! The connection_pool recipe, contracts/fixtures/connection_pool/connection_pool.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200) (docs/spec/feature-coverage.md FCV-22).
 
 use polyspec_orm_tests::recipe;
 

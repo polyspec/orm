@@ -1517,7 +1517,7 @@ fail:
 }
 
 /* Opens the database that the scheme of the DSN selects, as Orm::connect does: markdown:// a SQLite connection whose statements a
- * flowmark server answers (DIA-185), the others a PDO connection. */
+ * flowmark server answers (DIA-154), the others a PDO connection. */
 static bool orm_connect_dsn(zend_string *dsn, zval *config, zval *out)
 {
     zend_string *scheme = NULL;
@@ -1583,7 +1583,7 @@ ZEND_METHOD(Polyspec_Orm_Orm, connectSchema)
     ZVAL_COPY_VALUE(return_value, &db);
 }
 
-/* Opens a markdown connection: a flowmark server runs SQL in SQLite's dialect on the corpus (DIA-185), so the connection is a
+/* Opens a markdown connection: a flowmark server runs SQL in SQLite's dialect on the corpus (DIA-154), so the connection is a
  * SQLite connection whose PDO adapter sends each statement over one session (MarkdownPdoAdapter). Connecting the session checks
  * that the server accepts the corpus and token. */
 static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out)

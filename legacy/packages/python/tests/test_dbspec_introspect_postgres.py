@@ -3,7 +3,7 @@
 # Requirements: DIA-138, DIA-139, DIA-140, DIA-141, DIA-142, DIA-143, DIA-144, DIA-145, DIA-146, DIA-147, DIA-148.
 # Requirements: DIA-149, DIA-150, DIA-151, DIA-152, DIA-153, DIA-198, DIA-39, DIA-44, DIA-49, DIA-50, DIA-59, DIA-71.
 # Requirements: FCV-2.
-# The suite unit dbspec_introspect-postgres (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit dbspec_introspect-postgres (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/dbspec_introspect/dbspec_introspect.json on postgres.
 from .recipe import recipe_tests
 from . import testcase

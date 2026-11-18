@@ -1,4 +1,4 @@
-# The suite unit transactions-postgres (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit transactions-postgres (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/transactions/transactions.json on postgres.
 from .recipe import recipe_tests
 from . import testcase

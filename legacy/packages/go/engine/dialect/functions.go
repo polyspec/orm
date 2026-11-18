@@ -241,7 +241,7 @@ func (Postgres) Fulltext(cols []string, value func(string) string, boolean bool)
 	return doc + " @@ plainto_tsquery('simple', " + value("") + ")", true
 }
 
-// Fulltext reports no full-text search: SQLite has no full-text index on a table (DIA-187).
+// Fulltext reports no full-text search: SQLite has no full-text index on a table (DIA-6).
 func (SQLite) Fulltext([]string, func(string) string, bool) (string, bool) {
 	return "", false
 }

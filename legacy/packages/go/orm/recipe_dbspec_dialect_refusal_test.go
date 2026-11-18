@@ -7,7 +7,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// TestRecipeDbspecDialectRefusalNone runs The refusal of an unknown dialect, tests/dbspec/dialect-refusal.json, without a database (FCV-3, FCV-4).
+// TestRecipeDbspecDialectRefusalNone runs The refusal of an unknown dialect, tests/dbspec/dialect-refusal.json, without a database (FCV-22, FCV-4).
 // Requirements: DBS-174.
 func TestRecipeDbspecDialectRefusalNone(t *testing.T) {
 	testcase.Start(t)

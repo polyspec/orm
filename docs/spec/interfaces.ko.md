@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: e106bf9af198e15684e95aacf2c8c57d66030a88327e998336bd3611b0e55a72 -->
+<!-- source-sha256: 209fba3f2b26fb5cb0d971985828977489bae1a7c4dcec0e28b5d553dad89e19 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -556,7 +556,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 
 ### Catalog 값 규칙
 
-- **INT-165** driver 값의 catalog 변환은 Go, TypeScript, Python, PHP, PHP 확장, Rust에서 각 데이터베이스마다 아래 표의 규칙을 검사한다: 읽기 전용 그리드 조회, 시간 값이 그 그리드 셀의 텍스트인 일반 읽기 전용 조회(INT-153), 기술된 테이블의 모든 읽기(테이블 페이지, 행 조회, insert와 update의 되읽기)에서다. 규칙마다 code 하나와 텍스트 하나가 있고, 모든 runtime에서 같다. INT-166만은 아무것도 거부하지 않고 MySQL `YEAR` 값의 셀을 정한다. 텍스트는 호출자나 데이터베이스가 준 값(INT-163), host 타입, driver가 알리는 타입 이름을 쓰지 않는다. 컬럼 label도 쓰지 않는다: 그리드 컬럼의 label은 값을 담을 수 있는 query 텍스트다(식 `YEAR('2020-01-02')` 같은 것). 컬럼은 결과에서 1부터 센 위치로 쓰며, 그리드 조회와 기술된 읽기에서 같다: message는 `<CODE>: column <n>: <text>`이고, n은 행 순서로, 행 안에서는 컬럼 순서로 처음 규칙을 어기는 값의 컬럼이다. INT-172만은 컬럼을 쓰지 않고 `<CODE>: <text>`이다: 한 runtime의 driver가 어느 컬럼을 디코드하지 못했는지 알리지 않기 때문이다. 규칙은 그 입력이 생길 수 있는 모든 데이터베이스에서 성립한다. Reach 열은 데이터베이스나 driver가 그 입력을 보낼 수 없는 곳을 적으며, 그것이 규칙을 빼는 이유는 아니다. markdown corpus는 SQLite의 dialect로 SQL을 실행하므로(DIA-185), SQLite 행은 flowmark에서도 성립한다. 모든 규칙에서 NULL은 null 셀이며, 거부되는 타입의 컬럼에서도 그렇다: MySQL `TIMESTAMP`, PostgreSQL `timestamptz`와 `timetz`, INT-170의 모든 타입이다(INT-103). 다만 PostgreSQL multirange를 담은 컬럼은 INT-185가 그 타입으로 거부한다. SQLite 텍스트는 범위보다 형식(INT-176부터 INT-178)을 먼저 검사하고, INT-173이 INT-174보다 앞서므로 MySQL 영날짜는 범위 밖이다. driver나 library의 실패는 INT-172이며 그 실패를 cause로 남긴다. 그것은 `DRIVER` 오류가 아니며, 변환의 어떤 오류도 catalog code 없이 나가지 않는다.
+- **INT-165** driver 값의 catalog 변환은 Go, TypeScript, Python, PHP, PHP 확장, Rust에서 각 데이터베이스마다 아래 표의 규칙을 검사한다: 읽기 전용 그리드 조회, 시간 값이 그 그리드 셀의 텍스트인 일반 읽기 전용 조회(INT-153), 기술된 테이블의 모든 읽기(테이블 페이지, 행 조회, insert와 update의 되읽기)에서다. 규칙마다 code 하나와 텍스트 하나가 있고, 모든 runtime에서 같다. INT-166만은 아무것도 거부하지 않고 MySQL `YEAR` 값의 셀을 정한다. 텍스트는 호출자나 데이터베이스가 준 값(INT-163), host 타입, driver가 알리는 타입 이름을 쓰지 않는다. 컬럼 label도 쓰지 않는다: 그리드 컬럼의 label은 값을 담을 수 있는 query 텍스트다(식 `YEAR('2020-01-02')` 같은 것). 컬럼은 결과에서 1부터 센 위치로 쓰며, 그리드 조회와 기술된 읽기에서 같다: message는 `<CODE>: column <n>: <text>`이고, n은 행 순서로, 행 안에서는 컬럼 순서로 처음 규칙을 어기는 값의 컬럼이다. INT-172만은 컬럼을 쓰지 않고 `<CODE>: <text>`이다: 한 runtime의 driver가 어느 컬럼을 디코드하지 못했는지 알리지 않기 때문이다. 규칙은 그 입력이 생길 수 있는 모든 데이터베이스에서 성립한다. Reach 열은 데이터베이스나 driver가 그 입력을 보낼 수 없는 곳을 적으며, 그것이 규칙을 빼는 이유는 아니다. markdown 연결은 SQLite의 dialect로 SQL을 계획하므로(DIA-154), SQLite 행은 markdown 연결에서도 성립한다. 모든 규칙에서 NULL은 null 셀이며, 거부되는 타입의 컬럼에서도 그렇다: MySQL `TIMESTAMP`, PostgreSQL `timestamptz`와 `timetz`, INT-170의 모든 타입이다(INT-103). 다만 PostgreSQL multirange를 담은 컬럼은 INT-185가 그 타입으로 거부한다. SQLite 텍스트는 범위보다 형식(INT-176부터 INT-178)을 먼저 검사하고, INT-173이 INT-174보다 앞서므로 MySQL 영날짜는 범위 밖이다. driver나 library의 실패는 INT-172이며 그 실패를 cause로 남긴다. 그것은 `DRIVER` 오류가 아니며, 변환의 어떤 오류도 catalog code 없이 나가지 않는다.
 
 | ID | 데이터베이스 | 값 | 거부 조건 | Code | 텍스트 | Reach |
 | --- | --- | --- | --- | --- | --- | --- |

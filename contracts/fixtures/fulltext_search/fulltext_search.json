@@ -4,7 +4,6 @@
     "DSL-32",
     "DSL-33",
     "DIA-6",
-    "DIA-187",
     "PRT-75",
     "DIA-154"
   ],
@@ -12,12 +11,11 @@
   "cases": [
     {
       "id": "normalize_alpha_beta",
-      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6).",
       "requirements": [
         "DSL-32",
         "DSL-33",
         "DIA-6",
-        "DIA-187",
         "PRT-75"
       ],
       "steps": [
@@ -69,12 +67,11 @@
     },
     {
       "id": "normalize_quotes_and_operators",
-      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6).",
       "requirements": [
         "DSL-32",
         "DSL-33",
         "DIA-6",
-        "DIA-187",
         "PRT-75"
       ],
       "steps": [
@@ -126,12 +123,11 @@
     },
     {
       "id": "normalize_tilde",
-      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6).",
       "requirements": [
         "DSL-32",
         "DSL-33",
         "DIA-6",
-        "DIA-187",
         "PRT-75"
       ],
       "steps": [
@@ -183,12 +179,11 @@
     },
     {
       "id": "blank_text",
-      "databases_differ": "dbspec has no full-text index, so MySQL creates its FULLTEXT index natively, which PostgreSQL does not need (DIA-71), and SQLite has no full-text search on a table (DIA-187).",
+      "databases_differ": "dbspec has no full-text index, so MySQL creates its FULLTEXT index natively, which PostgreSQL does not need (DIA-71), and SQLite has no full-text search on a table (DIA-6).",
       "requirements": [
         "DSL-32",
         "DSL-33",
         "DIA-6",
-        "DIA-187",
         "PRT-75"
       ],
       "steps": [
@@ -230,12 +225,11 @@
     },
     {
       "id": "chain_fulltext_boolean",
-      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6).",
       "requirements": [
         "DSL-32",
         "DSL-33",
         "DIA-6",
-        "DIA-187",
         "PRT-75"
       ],
       "steps": [
@@ -284,12 +278,11 @@
     },
     {
       "id": "chain_fulltext",
-      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6, DIA-187).",
+      "databases_differ": "A fulltext condition is MATCH on MySQL, which needs the FULLTEXT index that the case creates since dbspec declares none (DIA-71), and to_tsvector on PostgreSQL, and SQLite refuses it with OPERATOR_NOT_ALLOWED (DIA-6).",
       "requirements": [
         "DSL-32",
         "DSL-33",
         "DIA-6",
-        "DIA-187",
         "PRT-75"
       ],
       "steps": [

@@ -249,7 +249,7 @@ final class Orm
     /**
      * Connects to the flowmark server that markdown://127.0.0.1:<port>/<corpus>?token=<token> points at
      * (docs/spec/protocol.md §5). A flowmark server runs SQL in SQLite's dialect on the corpus (docs/spec/dialects.md
-     * DIA-154, DIA-185), so the connection is a SQLite connection whose statements its session answers: it opens one
+     * DIA-154), so the connection is a SQLite connection whose statements its session answers: it opens one
      * session, which sends the corpus and token in a connect message and states the _pragma values of the DSN; a server
      * that rejects the corpus or token answers CONFIG.
      */

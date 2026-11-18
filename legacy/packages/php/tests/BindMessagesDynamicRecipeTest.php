@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 // The markdown message and control recipe, tests/bind/messages-dynamic.json, without a database
-// (docs/spec/feature-coverage.md FCV-3, FCV-4). Requirements: PRT-67.
+// (docs/spec/feature-coverage.md FCV-22, FCV-4). Requirements: PRT-67.
 #[Medium]
 class BindMessagesDynamicRecipeTest extends TestCase
 {

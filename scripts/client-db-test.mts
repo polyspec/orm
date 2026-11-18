@@ -22,11 +22,9 @@ import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite
 import { implementationLanguages } from './features/languages.mts';
 import { readTree, type Binding } from './features/recipe-runners.mts';
 import { phpScope, readTree as readNamesTree } from './features/test-names.mts';
-import { readJsonFile } from './json/schema.mts';
 import { PROXYSQL_BACKEND_CONNECTIONS } from './test-servers.mts';
 
 const root = resolve(import.meta.dirname, '..');
-const MARKDOWN_CASES_SCHEMA = new URL('./json/schema/markdown-cases.schema.json', import.meta.url).pathname;
 // The lanes are the implementations of contracts/implementations.json, the one language set.
 const LANES = implementationLanguages();
 const isLane = (name: string): boolean => LANES.includes(name);
@@ -58,11 +56,11 @@ export const GO_LANE_PACKAGES = [
   './legacy/packages/go/orm/sqlite',
   './legacy/packages/go/testcase',
 ];
-// TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes. The measurements of PERF-1 belong to
-// perf-check and feature-performance-check, which read the bench DSNs and report the timing; they assert no client result. The
-// entries of mariadb, Test<Name>Mariadb (the recipe entries TestRecipe<Name>Mariadb among them), need the MariaDB servers, which a
-// runner of the MySQL servers cannot hold (scripts/ci/server-programs.mts); mariadb-recipes-check/go runs them.
-export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite)|Test[A-Za-z]*Mariadb)$';
+// The measurements of PERF-1 belong to perf-check and feature-performance-check, which read the bench DSNs and report the timing;
+// they assert no client result. The entries of mariadb, Test<Name>Mariadb (the recipe entries TestRecipe<Name>Mariadb among
+// them), need the MariaDB servers, which a runner of the MySQL servers cannot hold (scripts/ci/server-programs.mts); mariadb-
+// recipes-check/go runs them.
+export const GO_LANE_SKIP = '^(TestPerformanceMeasurement(Mysql|Postgres|SQLite)|Test[A-Za-z]*Mariadb)$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
   'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest'];
@@ -149,16 +147,14 @@ export function rustPoolerThreadArguments(backends: number, poolSize: number): s
 
 /**
  * Returns the exact Rust symbols that another target owns, for the generic client test run to skip, as GO_LANE_SKIP does for Go: the
- * markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server, and the measurements of
- * PERF-1, which feature-performance-check runs on the bench DSNs (T334-3-11), and the decimal round trips, which decimal-physical-check
+ * measurements of PERF-1, which feature-performance-check runs on the bench DSNs (T334-3-11), and the decimal round trips, which decimal-physical-check
  * runs on the DSNs of the decimal databases that run-databases writes for it (T570). The recipe entries of mariadb are the test program
  * mariadb, which a plain cargo test does not run (test = false), so the workspace run needs no skip of them.
  */
-export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
-  const markdown = readJsonFile<{ cases: { id: string }[] }>(resolve(repository, 'tests/markdown/cases.json'), MARKDOWN_CASES_SCHEMA);
+export function rustOwnedElsewhereSkipArguments(): string[] {
   const measurements = ['mysql', 'postgres', 'sqlite'].map(database => `coverage_performance_gate::coverage_hot_path_gate_${database}`);
   const decimals = ['mysql', 'postgres', 'sqlite'].map(database => `decimal_physical::decimal_${database}`);
-  return [...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort(), ...measurements, ...decimals].flatMap(symbol => ['--skip', symbol]);
+  return [...measurements, ...decimals].flatMap(symbol => ['--skip', symbol]);
 }
 
 // The binding crates of the targets of packages/rust/interface.json, which the whole workspace leaves out: their sources are
@@ -181,7 +177,7 @@ const RUST_TESTS: Command = {
   program: 'node',
   args: [
     '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', ...bindingExcludeArguments(root), '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
-    ...rustOwnedElsewhereSkipArguments(root), '--exact',
+    ...rustOwnedElsewhereSkipArguments(), '--exact',
     // The pooler lane keeps PROXYSQL_BACKEND_CONNECTIONS server connections, so its Rust tests run no more pools at once than that (T343-1).
     ...(process.env['ORM_CLIENT_DB_POOLER'] === '1' ? rustPoolerThreadArguments(PROXYSQL_BACKEND_CONNECTIONS, rustTargetPoolSize(root)) : []),
   ],

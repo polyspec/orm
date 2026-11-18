@@ -9,7 +9,7 @@ import (
 )
 
 // executeRequest is db.execute (INT-76, DSL-113): it compiles the request of the step against the schema that the step names
-// relative to the recipe, for the dialect of the database of the case (SQLite for markdown, FCV-3), and runs the first step
+// relative to the recipe, for the dialect of the database of the case (FCV-22), and runs the first step
 // of the plan with Execute on the connection, with the parameters of the step.
 func executeRequest(s databaseStep, c *databaseContext) error {
 	db, err := connectionOf(s, c)

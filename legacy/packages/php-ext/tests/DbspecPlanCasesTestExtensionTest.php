@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use Polyspec\Orm\Tests\DbspecPlanCasesTest;
 
 // The plan cases of the recipe tests/dbspec/plan-cases.json through the PHP extension
-// (docs/spec/feature-coverage.md FCV-3).
+// (docs/spec/feature-coverage.md FCV-22).
 // The requirements are those of the library entry DbspecPlanCasesTest.
 
 #[\PHPUnit\Framework\Attributes\Small]

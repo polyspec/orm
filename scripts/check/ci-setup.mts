@@ -33,7 +33,6 @@ export const CI_SETUP: Record<string, string> = {
   // wasm-bindgen CLI that make node-package runs (make orm-install-wasm-bindgen).
   'binding-python': 'binding-python',
   'wasm-bindgen': 'wasm-bindgen',
-  flowmark: 'flowmark',
 };
 
 // PROVISIONED are the needs that the `uses:` steps of a group job prepare before its run step: the packages of
@@ -66,7 +65,6 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
   python: ['python'],
   'binding-python': ['binding-python'],
   'wasm-bindgen': ['wasm-bindgen'],
-  flowmark: ['flowmark'],
 };
 
 // STEP_OUTPUT is, for each setup step, the group output that makes that step run (`--when <output>` of its line in the recipe
@@ -89,19 +87,16 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   // The wheel of the Python binding and the wasm-bindgen CLI are installed only for a group that runs their tests.
   'binding-python': 'binding-python',
   'wasm-bindgen': 'wasm-bindgen',
-  // flowmark installs the flowmark build that markdown-conformance-check runs (make orm-install-flowmark).
-  flowmark: 'flowmark',
 };
 
 // SETUP_NEEDS maps each need the runner's setup phase prepares to the needs that phase itself requires. databases (the setup phase
 // servers and databases/create (scripts/check/databases.mts) prepare: a server is started by make orm-test-servers from server-programs,
 // and is managed by the Go lease runner, whose sole external dependency is installed by go-lease, and databases.mts sets up the bench database (scripts/bench-db.mts) and
-// the decimal database through the TypeScript client, which make databases-create builds. A case runs on MySQL, PostgreSQL,
-// SQLite and flowmark, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs flowmark too. So a target that
-// needs databases also needs these needs (expandNeeds).
+// the decimal database through the TypeScript client, which make databases-create builds. A case runs on MySQL, PostgreSQL
+// and SQLite. So a target that needs databases also needs these needs (expandNeeds).
 // php-min reads that release through scripts/php/php-min.mts, and that script reads composer.json as its schema, so it needs node_modules.
 export const SETUP_NEEDS: Record<string, string[]> = {
-  databases: ['go-lease', 'node-modules', 'server-programs', 'flowmark'],
+  databases: ['go-lease', 'node-modules', 'server-programs'],
   'mysql-privilege-server': ['databases'],
   // The MariaDB servers are started from server-programs and managed by the Go lease runner.
   'mariadb-server': ['go-lease', 'server-programs'],

@@ -2108,7 +2108,7 @@ class Db:
         self.parsed = parse_dsn(dsn)
         # driver is the database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark
         # server serves. sql_driver is the dialect of the statements the connection sends: mysql, postgres or sqlite,
-        # which a markdown connection is, since a flowmark server runs SQL in SQLite's dialect (DIA-185).
+        # which a markdown connection is, since a flowmark server runs SQL in SQLite's dialect (DIA-154).
         self.driver = self.parsed.driver
         self.corpus = self.driver == "markdown"
         self.sql_driver = "sqlite" if self.corpus else self.driver
@@ -2222,7 +2222,7 @@ class Db:
         if self.driver == "mysql":
             return _MysqlConnection(self.parsed, self.statement_timeout_ms)
         if self.driver == "markdown":
-            # A flowmark server runs SQL in SQLite's dialect (DIA-185): its session is a SQLite connection.
+            # A flowmark server runs SQL in SQLite's dialect (DIA-154): its session is a SQLite connection.
             return MarkdownConnection(self.parsed.markdown)
         return _PostgresConnection(self.parsed, self.statement_timeout_ms)
 

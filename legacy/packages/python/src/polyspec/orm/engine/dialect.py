@@ -196,7 +196,7 @@ class Dialect:
         return f"{col} LIKE {value('like_contains')}"
 
     def fulltext(self, cols, value, boolean: bool):
-        # A full-text match is refused unless the dialect has one (DIA-187).
+        # A full-text match is refused unless the dialect has one (DIA-6).
         return None
 
     def tuple_in(self, cols, rows, negate: bool) -> str:
@@ -546,7 +546,7 @@ class SqliteDialect(Dialect):
         return f"instr({col}, {value('')}) > 0"
 
     def fulltext(self, cols, value, boolean):
-        # SQLite has no full-text search on a table (DIA-187).
+        # SQLite has no full-text search on a table (DIA-6).
         return None
 
     def tuple_in(self, cols, rows, negate):

@@ -1,7 +1,7 @@
 <?php
 
 // The add tables steps of the recipe tests/dbspec/add-tables-steps.json, without a database
-// (docs/spec/feature-coverage.md FCV-3).
+// (docs/spec/feature-coverage.md FCV-22).
 // Requirements: INT-56, SCH-8.
 
 declare(strict_types=1);

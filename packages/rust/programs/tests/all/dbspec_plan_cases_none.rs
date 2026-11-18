@@ -1,4 +1,4 @@
-//! The dbspec plan cases of the recipe tests/dbspec/plan-cases.json without a database (docs/spec/feature-coverage.md FCV-3, FCV-4):
+//! The dbspec plan cases of the recipe tests/dbspec/plan-cases.json without a database (docs/spec/feature-coverage.md FCV-22, FCV-4):
 //! each case is the trial dbspec_plan_cases_none::<case id>, whose steps run through the shared runner. The steps parse the source
 //! and the plan, emit the plan, diff it, and write its steps for MySQL, PostgreSQL and SQLite.
 //! Requirements: PLN-45, PLN-46, PLN-47, PLN-48, PLN-49, PLN-50, PLN-51, PLN-52, PLN-53, PLN-54, PLN-55, PLN-56, PLN-57,

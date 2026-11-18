@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 // The markdown message recipe of a text that is not UTF-8, tests/bind/messages-raw-text.json, without a database
-// (docs/spec/feature-coverage.md FCV-3, FCV-4): a PHP string holds any bytes. Requirements: PRT-67.
+// (docs/spec/feature-coverage.md FCV-22, FCV-4): a PHP string holds any bytes. Requirements: PRT-67.
 #[Medium]
 class BindMessagesRawTextRecipeTest extends TestCase
 {

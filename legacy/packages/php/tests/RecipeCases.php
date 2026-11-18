@@ -39,14 +39,8 @@ trait RecipeCases
         return Recipe::casesOn(static::recipe(), 'sqlite');
     }
 
-    /** @return array<string, array{0: string}> the cases of the recipe on flowmark, as a data provider (FCV-3) */
-    public static function casesOnMarkdown(): array
-    {
-        return Recipe::casesOn(static::recipe(), 'markdown');
-    }
-
     /**
-     * The cases that run on MariaDB, a server of the MySQL dialect: those that run on MySQL (DIA-200, FCV-3).
+     * The cases that run on MariaDB, a server of the MySQL dialect: those that run on MySQL (DIA-200, FCV-22).
      *
      * @return array<string, array{string}>
      */

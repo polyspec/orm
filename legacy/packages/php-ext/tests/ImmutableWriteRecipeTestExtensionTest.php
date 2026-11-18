@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Tests\ImmutableWriteRecipeTest;
 
-// The immutable_write recipe through the PHP extension (docs/spec/feature-coverage.md FCV-3).
+// The immutable_write recipe through the PHP extension (docs/spec/feature-coverage.md FCV-22).
 // Requirements: DBS-84.
 #[Medium]
 final class ImmutableWriteRecipeTestExtensionTest extends ImmutableWriteRecipeTest

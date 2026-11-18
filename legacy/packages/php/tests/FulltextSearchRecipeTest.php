@@ -1,8 +1,8 @@
 <?php
 
 // The full-text search recipe, contracts/fixtures/fulltext_search/fulltext_search.json, on each database
-// (docs/spec/feature-coverage.md FCV-3).
-// Requirements: DSL-32, DSL-33, DIA-6, DIA-187, PRT-75, FCV-4, FCV-9, FCV-10.
+// (docs/spec/feature-coverage.md FCV-22).
+// Requirements: DSL-32, DSL-33, DIA-6, PRT-75, FCV-4, FCV-9, FCV-10.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

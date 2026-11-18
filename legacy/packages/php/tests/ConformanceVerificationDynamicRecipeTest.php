@@ -2,7 +2,7 @@
 
 // The conformance_verification recipe of the runtimes that type no value at compile time,
 // contracts/fixtures/conformance_verification/conformance_verification_dynamic.json, on each database
-// (docs/spec/feature-coverage.md FCV-3).
+// (docs/spec/feature-coverage.md FCV-22).
 // Requirements: PRT-67.
 declare(strict_types=1);
 

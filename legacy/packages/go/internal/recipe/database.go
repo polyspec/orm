@@ -1,6 +1,6 @@
 package recipe
 
-// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+// The database path (FCV-22 and FCV-4): each case runs on a case database of its own through the public catalog API.
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"math"
 	"net/url"
 	"os"
@@ -41,11 +40,10 @@ import (
 const schemaPath = "scripts/features/schema/recipe.schema.json"
 
 type databaseFile struct {
-	Schema  string `json:"$schema"`
-	Fixture string `json:"fixture"`
-	// The set that flowmark installs for a case of the markdown suite (FCV-3).
-	Seed  *seed          `json:"seed"`
-	Cases []databaseCase `json:"cases"`
+	Schema  string         `json:"$schema"`
+	Fixture string         `json:"fixture"`
+	Seed    *seed          `json:"seed"`
+	Cases   []databaseCase `json:"cases"`
 }
 
 type seed struct {
@@ -295,8 +293,6 @@ type databaseContext struct {
 	waitStart time.Time
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
-	// corpusDir is the directory of the corpus of a case of the markdown suite.
-	corpusDir string
 	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
 	applyStep int
 	// records are the requests that a record action of the installed hook saw (hook.records).
@@ -305,17 +301,17 @@ type databaseContext struct {
 	transactionHooks []transactionHookRecord
 }
 
-// runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-3).
+// runDatabase runs every case of the recipe at path on database, each as a subtest on a case database of its own (FCV-22).
 func runDatabase(t *testing.T, path, database string) {
 	t.Helper()
-	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "markdown" && database != "mariadb" {
+	if database != "mysql" && database != "postgres" && database != "sqlite" && database != "mariadb" {
 		t.Fatalf("recipe %s: unknown database %s", path, database)
 	}
 	f := readRecipe[databaseFile](t, path)
 	if f.Fixture == "" {
 		t.Fatalf("recipe %s: no fixture, so it has no database", path)
 	}
-	// A fixture of "none" runs every case on an empty case database (FCV-3); the helper never infers it.
+	// A fixture of "none" runs every case on an empty case database (FCV-22); the helper never infers it.
 	var schema *orm.Schema
 	var external []*orm.Schema
 	if f.Fixture != "none" {
@@ -537,19 +533,7 @@ func fixtureSchema(setPath string) (*orm.Schema, []*orm.Schema, error) {
 func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database string, schema *orm.Schema, external []*orm.Schema) {
 	step := testcase.Of(t)
 	ctx := step.Context()
-	markdown := database == "markdown"
-	var dsn, corpusDir string
-	if markdown {
-		// flowmark install creates the corpus from the set (DIA-189), so the case has no install and no catalog connection.
-		relative, _ := strings.CutSuffix(f.Schema, schemaPath)
-		setPath := ""
-		if f.Fixture != "none" && (c.Install == nil || *c.Install) {
-			setPath = filepath.Join(filepath.Dir(path), relative, f.Fixture)
-		}
-		dsn, corpusDir = testdb.NewCorpusDir(t, setPath)
-	} else {
-		dsn = testdb.New(t, database)
-	}
+	dsn := testdb.New(t, database)
 	var db *orm.DB
 	var err error
 	db, err = orm.Connect(dsn, orm.Config{})
@@ -558,13 +542,7 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	}
 	defer testcase.Close(t, db)
 	// A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
-	if markdown && schema != nil && (c.Install == nil || *c.Install) {
-		// flowmark install made the corpus from the set; the connection takes the set as an install registers it.
-		if err := db.Utils().Schema().Register(schema); err != nil {
-			t.Fatalf("recipe %s case %s on %s: register: %v", path, c.ID, database, err)
-		}
-	}
-	if !markdown && schema != nil && (c.Install == nil || *c.Install) {
+	if schema != nil && (c.Install == nil || *c.Install) {
 		for _, shared := range append(external, schema) {
 			if err := db.Utils().Schema().Install(shared); err != nil {
 				t.Fatalf("recipe %s case %s on %s: install: %v", path, c.ID, database, err)
@@ -582,15 +560,12 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 	if err != nil {
 		t.Fatalf("recipe %s case %s on %s: current namespace: %v", path, c.ID, database, err)
 	}
-	name := "recipe"
-	if !markdown {
-		name = testdb.DatabaseOf(t, dsn)
-		if database == "sqlite" {
-			name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
-		}
+	name := testdb.DatabaseOf(t, dsn)
+	if database == "sqlite" {
+		name = strings.TrimSuffix(filepath.Base(strings.TrimPrefix(dsn, "sqlite://")), ".sqlite")
 	}
 	state := &databaseContext{
-		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, corpusDir: corpusDir, schema: schema, tablePath: f.Fixture != generatedFixture,
+		t: t, ctx: ctx, db: db, dir: filepath.Dir(path), catalog: catalog, namespace: namespace, database: database, dsn: dsn, schema: schema, tablePath: f.Fixture != generatedFixture,
 		bound: map[string]bound{"database": {value: map[string]any{"text": name}}},
 	}
 	defer func() {
@@ -696,15 +671,15 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 	return runStepWith(s, c, databaseOp)
 }
 
-// onDatabase reports whether a case or step with the list only runs on database. A corpus speaks SQLite's dialect, so
-// what names sqlite names it too; MariaDB is a server of the MySQL dialect (DIA-200), so what names mysql names it too.
+// onDatabase reports whether a case or step with the list only runs on database. MariaDB is a server of the MySQL
+// dialect (DIA-200), so what names mysql names it too.
 func onDatabase(only []string, database string) bool {
-	return len(only) == 0 || slices.Contains(only, database) || (database == "markdown" && slices.Contains(only, "sqlite")) ||
+	return len(only) == 0 || slices.Contains(only, database) ||
 		(database == "mariadb" && slices.Contains(only, "mysql"))
 }
 
 // serverVariable is the variable that an env: DSN of a step names on database: on MariaDB, a variable of the MySQL servers
-// names the same server of the MariaDB servers, ORM_TEST_MYSQL_ becoming ORM_TEST_MARIADB_ (FCV-3).
+// names the same server of the MariaDB servers, ORM_TEST_MYSQL_ becoming ORM_TEST_MARIADB_ (FCV-22).
 func serverVariable(name, database string) string {
 	if rest, ok := strings.CutPrefix(name, "ORM_TEST_MYSQL_"); ok && database == "mariadb" {
 		return "ORM_TEST_MARIADB_" + rest
@@ -1404,17 +1379,6 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{}}, nil
 	case "database.read_only":
 		// The file of the case database becomes one that the process may only read (CFG-24).
-		if c.database == "markdown" {
-			if err := chmodCorpus(c.corpusDir, true); err != nil {
-				return outcome{}, err
-			}
-			c.t.Cleanup(func() {
-				if err := chmodCorpus(c.corpusDir, false); err != nil {
-					c.t.Errorf("restoring the modes of the corpus %s: %v", c.corpusDir, err)
-				}
-			})
-			return outcome{fields: map[string]any{}}, nil
-		}
 		path, _, _ := strings.Cut(strings.TrimPrefix(c.dsn, "sqlite://"), "?")
 		if err := os.Chmod(path, 0o444); err != nil {
 			return outcome{}, err
@@ -2025,33 +1989,27 @@ func sqlExecText(raw json.RawMessage, c *databaseContext) (string, bool, error) 
 	return text, present, nil
 }
 
-// dialect is the SQL dialect of the case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
+// dialect is the SQL dialect of the case database: MariaDB runs SQL in MySQL's (DIA-200).
 func (c *databaseContext) dialect() string {
 	return dialectOf(c.database)
 }
 
-// server is the server of the case database that the public dbspec calls take (DIA-203): the markdown corpus answers in
-// SQLite's dialect, as its server.
+// server is the server of the case database that the public dbspec calls take (DIA-203).
 func (c *databaseContext) server() dbspec.Server {
-	if c.database == "markdown" {
-		return dbspec.ServerSQLite
-	}
 	return dbspec.Server(c.database)
 }
 
 // dialectOf is the SQL dialect of database.
 func dialectOf(database string) string {
 	switch database {
-	case "markdown":
-		return "sqlite"
 	case "mariadb":
 		return "mysql"
 	}
 	return database
 }
 
-// dialectKey is the key of a value that names its text by database: a corpus runs SQL in SQLite's dialect (DIA-185) and
-// MariaDB in MySQL's (DIA-200), so each reads the entry of its dialect unless the value states its own (FCV-3).
+// dialectKey is the key of a value that names its text by database: MariaDB runs SQL in MySQL's dialect (DIA-200), so it
+// reads the entry of its dialect unless the value states its own (FCV-22).
 func dialectKey[V any](database string, entries map[string]V) string {
 	if _, own := entries[database]; !own {
 		return dialectOf(database)
@@ -2624,21 +2582,4 @@ func inspectedSchema(raw json.RawMessage, c *databaseContext) (string, error) {
 	}
 	path, _, _ := strings.Cut(c.dsn, "?")
 	return path[strings.LastIndex(path, "/")+1:], nil
-}
-
-// chmodCorpus makes the directories of a corpus ones the process may only read, or writable again.
-func chmodCorpus(root string, readOnly bool) error {
-	mode := os.FileMode(0o755)
-	if readOnly {
-		mode = 0o555
-	}
-	return filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			return os.Chmod(path, mode)
-		}
-		return nil
-	})
 }

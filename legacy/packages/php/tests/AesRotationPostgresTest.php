@@ -1,7 +1,7 @@
 <?php
 
 // Requirements: COD-7, COD-8, PLN-44, INT-60, INT-75, INT-131.
-// Recipe conversion of the AES rotation: FCV-3 and FCV-4 (docs/spec/feature-coverage.md), suite unit
+// Recipe conversion of the AES rotation: FCV-22 and FCV-4 (docs/spec/feature-coverage.md), suite unit
 // aes_rotation-postgres.
 declare(strict_types=1);
 

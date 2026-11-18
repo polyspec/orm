@@ -11,7 +11,7 @@ import (
 // dbspecApplyRecipe is the recipe of the public apply API, relative to this package directory.
 var dbspecApplyRecipe = testcase.LegacyPath("contracts/fixtures/dbspec_apply/dbspec_apply.json")
 
-// TestRecipeDbspecApplyMysql runs the dbspec_apply recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeDbspecApplyMysql runs the dbspec_apply recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.
 func TestRecipeDbspecApplyMysql(t *testing.T) {
 	testcase.Group(t)
@@ -19,28 +19,22 @@ func TestRecipeDbspecApplyMysql(t *testing.T) {
 }
 
 // TestRecipeDbspecApplyMariadb runs the dbspec_apply recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeDbspecApplyMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecApplyRecipe, "mariadb")
 }
 
-// TestRecipeDbspecApplyPostgres runs the dbspec_apply recipe on PostgreSQL, each case on a case database (FCV-3).
+// TestRecipeDbspecApplyPostgres runs the dbspec_apply recipe on PostgreSQL, each case on a case database (FCV-22).
 // Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.
 func TestRecipeDbspecApplyPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecApplyRecipe, "postgres")
 }
 
-// TestRecipeDbspecApplySqlite runs the dbspec_apply recipe on SQLite, each case on a case database (FCV-3).
+// TestRecipeDbspecApplySqlite runs the dbspec_apply recipe on SQLite, each case on a case database (FCV-22).
 // Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.
 func TestRecipeDbspecApplySqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecApplyRecipe, "sqlite")
-}
-
-// TestRecipeDbspecApplyMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeDbspecApplyMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, dbspecApplyRecipe, "markdown")
 }

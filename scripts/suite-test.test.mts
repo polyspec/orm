@@ -34,7 +34,7 @@ caseTest('each file another check runs is a test file of its runtime, and that c
   }
 });
 
-// The recipe entries of mariadb need the MariaDB servers, which the runner of a suite cannot hold (DIA-200, FCV-3).
+// The recipe entries of mariadb need the MariaDB servers, which the runner of a suite cannot hold (DIA-200, FCV-22).
 caseTest('the suites leave the recipe entries of mariadb to make mariadb-recipes-check', () => {
   const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
   for (const lane of SUITE_LANES) {

@@ -1,4 +1,4 @@
-# The suite unit immutable_write-postgres (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit immutable_write-postgres (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/immutable_write/immutable_write.json on postgres.
 # Requirements: DBS-84.
 from .recipe import recipe_tests

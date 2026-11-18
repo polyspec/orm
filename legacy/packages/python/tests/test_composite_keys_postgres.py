@@ -1,4 +1,4 @@
-# The suite unit composite_keys-postgres (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit composite_keys-postgres (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/composite_keys/composite_keys.json on postgres.
 # Requirements: DSL-82, INT-87, PRT-12, PRT-40.
 from .recipe import recipe_tests

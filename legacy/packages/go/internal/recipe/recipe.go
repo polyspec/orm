@@ -38,7 +38,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// None is the database part of a recipe without a database (FCV-3).
+// None is the database part of a recipe without a database (FCV-22).
 const None = "none"
 
 type file struct {

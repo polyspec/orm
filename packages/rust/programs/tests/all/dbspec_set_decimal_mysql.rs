@@ -1,5 +1,5 @@
-// Requirements: DBS-108, SCH-7, FCV-3, FCV-4 (docs/spec/feature-coverage.md).
-//! The recipe tests/dbspec/set-decimal.json on mysql (docs/spec/feature-coverage.md FCV-3).
+// Requirements: DBS-108, SCH-7, FCV-22, FCV-4 (docs/spec/feature-coverage.md).
+//! The recipe tests/dbspec/set-decimal.json on mysql (docs/spec/feature-coverage.md FCV-22).
 
 use polyspec_orm_tests::recipe;
 

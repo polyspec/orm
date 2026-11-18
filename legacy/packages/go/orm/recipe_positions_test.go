@@ -7,7 +7,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// TestRecipePositionsNone runs the declaration position cases of the dbspec parse recipe, tests/dbspec/positions.json, without a database (FCV-3).
+// TestRecipePositionsNone runs the declaration position cases of the dbspec parse recipe, tests/dbspec/positions.json, without a database (FCV-22).
 // Requirements: ORES-72.
 func TestRecipePositionsNone(t *testing.T) {
 	testcase.Start(t)

@@ -9,7 +9,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Tests\CatalogConnectionSqliteOnlyRecipeTest;
 
-// The catalog connection sqlite-only recipe through the PHP extension (docs/spec/feature-coverage.md FCV-3).
+// The catalog connection sqlite-only recipe through the PHP extension (docs/spec/feature-coverage.md FCV-22).
 #[Medium]
 final class CatalogConnectionSqliteOnlyRecipeTestExtensionTest extends CatalogConnectionSqliteOnlyRecipeTest
 {

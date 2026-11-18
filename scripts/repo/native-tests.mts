@@ -21,10 +21,10 @@ export type NativeTestInputs = {
   read: (file: string) => string;
 };
 
-// The text of FCV-2 in the spec: from its own line to the line of FCV-3.
+// The text of FCV-2 in the spec: from its own line to the line of FCV-22.
 const fcv2 = (spec: string): string => {
   const start = spec.indexOf('- **FCV-2**');
-  const end = spec.indexOf('- **FCV-3**', start);
+  const end = spec.indexOf('- **FCV-22**', start);
   return start === -1 || end === -1 ? '' : spec.slice(start, end);
 };
 

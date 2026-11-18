@@ -1,4 +1,4 @@
-// The suite unit composite_keys-postgres (docs/spec/feature-coverage.md FCV-3).
+// The suite unit composite_keys-postgres (docs/spec/feature-coverage.md FCV-22).
 // Requirements: DSL-82, INT-87, PRT-12, PRT-40.
 import { runRecipe } from './recipe.mjs';
 

@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
 // The MySQL introspection of the checks of SHOW CREATE TABLE on the canned catalog of tests/dbspec/show-create.json,
-// the recipe tests/dbspec/show-create-introspect.json (docs/spec/feature-coverage.md FCV-3, FCV-4).
+// the recipe tests/dbspec/show-create-introspect.json (docs/spec/feature-coverage.md FCV-22, FCV-4).
 // Requirements: DIA-84.
 #[Small]
 class DbspecShowCreateIntrospectTest extends TestCase

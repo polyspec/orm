@@ -1,4 +1,0 @@
-// The suite unit performance_gate-markdown (docs/spec/feature-coverage.md FCV-3).
-import { runRecipe } from './recipe.mjs';
-
-await runRecipe('contracts/fixtures/performance_gate/performance_gate.json', 'markdown');

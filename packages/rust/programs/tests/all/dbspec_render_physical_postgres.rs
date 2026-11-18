@@ -1,5 +1,5 @@
-// Requirements: DIA-113, FCV-3, FCV-4 (docs/spec/feature-coverage.md).
-//! The recipe tests/dbspec/render-physical.json on postgres (docs/spec/feature-coverage.md FCV-3).
+// Requirements: DIA-113, FCV-22, FCV-4 (docs/spec/feature-coverage.md).
+//! The recipe tests/dbspec/render-physical.json on postgres (docs/spec/feature-coverage.md FCV-22).
 
 use polyspec_orm_tests::recipe;
 

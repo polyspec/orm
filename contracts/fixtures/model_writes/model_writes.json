@@ -13,8 +13,7 @@
     "DSL-110",
     "PLN-26",
     "DIA-154",
-    "DBS-79",
-    "DIA-159"
+    "DBS-79"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [
@@ -2970,8 +2969,7 @@
     {
       "id": "create_without_order_column",
       "requirements": [
-        "DBS-79",
-        "DIA-159"
+        "DBS-79"
       ],
       "steps": [
         {

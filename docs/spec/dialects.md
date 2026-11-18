@@ -19,7 +19,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
      silent difference.
   4. A difference in an answer that is the server's own, such as the text of a server error or the name of an
      introspected type, is the result of the case on that server, which its recipe states as the `mariadb` expect of the
-     case (FCV-3).
+     case (FCV-22).
 
 - **DIA-201** The server and its error numbers — MySQL 8.4 / MariaDB 11.8 (probes `mysql.env.server`,
   `mariadb.env.server`): a client of the `mysql` dialect reads the server once when it connects, by `SELECT VERSION()`;

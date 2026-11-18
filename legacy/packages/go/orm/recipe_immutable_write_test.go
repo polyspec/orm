@@ -9,7 +9,7 @@ import (
 
 var immutableWriteRecipe = testcase.LegacyPath("contracts/fixtures/immutable_write/immutable_write.json")
 
-// TestRecipeImmutableWriteMysql runs the immutable_write recipe on Mysql, each case on a case database (FCV-3).
+// TestRecipeImmutableWriteMysql runs the immutable_write recipe on Mysql, each case on a case database (FCV-22).
 // Requirements: DBS-84.
 func TestRecipeImmutableWriteMysql(t *testing.T) {
 	testcase.Group(t)
@@ -17,28 +17,22 @@ func TestRecipeImmutableWriteMysql(t *testing.T) {
 }
 
 // TestRecipeImmutableWriteMariadb runs the immutable_write recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeImmutableWriteMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, immutableWriteRecipe, "mariadb")
 }
 
-// TestRecipeImmutableWritePostgres runs the immutable_write recipe on Postgres, each case on a case database (FCV-3).
+// TestRecipeImmutableWritePostgres runs the immutable_write recipe on Postgres, each case on a case database (FCV-22).
 // Requirements: DBS-84.
 func TestRecipeImmutableWritePostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, immutableWriteRecipe, "postgres")
 }
 
-// TestRecipeImmutableWriteSqlite runs the immutable_write recipe on Sqlite, each case on a case database (FCV-3).
+// TestRecipeImmutableWriteSqlite runs the immutable_write recipe on Sqlite, each case on a case database (FCV-22).
 // Requirements: DBS-84.
 func TestRecipeImmutableWriteSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, immutableWriteRecipe, "sqlite")
-}
-
-// TestRecipeImmutableWriteMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeImmutableWriteMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, immutableWriteRecipe, "markdown")
 }

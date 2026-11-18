@@ -42124,7 +42124,7 @@
   "db.sql_driver": [
     {
       "id": "a_sqlite_dsn",
-      "rule": "DIA-185",
+      "rule": "DIA-154",
       "receiver": {
         "new": "db.connect_schema",
         "args": {

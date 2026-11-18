@@ -1,5 +1,5 @@
 //! The refused TLS options, contracts/fixtures/dsn_reject/dsn_reject_checked.json, without a database
-//! (docs/spec/feature-coverage.md FCV-3).
+//! (docs/spec/feature-coverage.md FCV-22).
 //! Requirements: CFG-18, CFG-36, INT-187.
 //!
 //! Rust runs the TLS cases of the recipe. Its configuration holds `pool_size`, `pool_idle_size`, `pool_lifetime_ms` and

@@ -1,5 +1,5 @@
 //! The immutable_write recipe, contracts/fixtures/immutable_write/immutable_write.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200)
-//! (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+//! (docs/spec/feature-coverage.md FCV-22 and FCV-4).
 //! Requirements: DBS-84.
 
 use polyspec_orm_tests::recipe;

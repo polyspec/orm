@@ -315,7 +315,7 @@ async function recipeOutput(path: string): Promise<string> {
 }
 
 // recipeCaseIds is the ids of the cases of a recipe file that run on database: a case with `only` runs on the databases it
-// names (FCV-3). The recipe is the list of the cases of its owner.
+// names (FCV-22). The recipe is the list of the cases of its owner.
 export function recipeCaseIds(text: string, database: string): string[] {
   return parseRecipeCases(text, 'recipe').cases.filter(item => item.only === undefined || item.only.includes(database)).map(item => item.id);
 }

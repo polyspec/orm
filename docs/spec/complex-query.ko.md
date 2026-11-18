@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-query -->
-<!-- source-sha256: 915e7d93a453186d095771999dda44ae44d2e1c9b76d3855981992bff4a8d08d -->
+<!-- source-sha256: 14ff992f5462c58c1d69303cce42e69b2c2aeaa8f60c6a7da92c11b6936bd3f4 -->
 # 복잡한 쿼리 예 — 상품 검색 목록
 
 이 예는 [dsl.md](dsl.ko.md)의 문법을 사용하며 여러 관계와 조건 패턴을 함께 사용한다.
@@ -214,7 +214,7 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
   link: {kind: one, parent_column: seq, child_column: product_seq}
 ```
 
-- **CPX-2** 문장은 8개다. 페이지 행 쿼리, 페이지 개수 쿼리, 관계마다 쿼리 하나를 실행한다. 행 쿼리와 개수 쿼리는 같은 semijoin 필터를 쓴다. 공개 API는 `multi_statement`를 제외한다. fixture `contracts/fixtures/complex_query`는 이 예제를 모든 구현이 MySQL, PostgreSQL, SQLite에서 실행하는 case로 정한다: schema `complex_query.dbs`, 그리고 recipe(docs/spec/feature-coverage.md FCV-3)인 `complex_query.json`의 seed, 입력, 페이지 결과, 순서 있는 plan 단계와 database별 statement event다. MySQL과 PostgreSQL에서 검색은 정확히 그 8개 문장을 그 순서로 실행하고 그 페이지를 돌려준다. full-text 연산자가 없는 SQLite에서는 어떤 문장보다 먼저 `OPERATOR_NOT_ALLOWED`로 거부된다.
+- **CPX-2** 문장은 8개다. 페이지 행 쿼리, 페이지 개수 쿼리, 관계마다 쿼리 하나를 실행한다. 행 쿼리와 개수 쿼리는 같은 semijoin 필터를 쓴다. 공개 API는 `multi_statement`를 제외한다. fixture `contracts/fixtures/complex_query`는 이 예제를 모든 구현이 MySQL, PostgreSQL, SQLite에서 실행하는 case로 정한다: schema `complex_query.dbs`, 그리고 recipe(docs/spec/feature-coverage.md FCV-22)인 `complex_query.json`의 seed, 입력, 페이지 결과, 순서 있는 plan 단계와 database별 statement event다. MySQL과 PostgreSQL에서 검색은 정확히 그 8개 문장을 그 순서로 실행하고 그 페이지를 돌려준다. full-text 연산자가 없는 SQLite에서는 어떤 문장보다 먼저 `OPERATOR_NOT_ALLOWED`로 거부된다.
 - **CPX-3** 부모 행이 0개이면 1~6단계를 실행하지 않는다. 빈 IN 목록은 허용하지 않는다.
 - **CPX-4** 이 Plan은 값과 무관하게 형태가 고정되어 캐시된다. 사용자 `IN` 목록 길이는 2의 거듭제곱 bucket으로 채워 bucket마다 형태가 하나다. 관계 단계의 IN은 `LIST_EXPAND` 슬롯을 사용하므로 부모 행 수와 무관하게 캐시를 재사용한다. 한 형태의 두 요청은 parameter를 어떤 순서로 주었든 캐시된 plan을 함께 쓰고, 각각 자기 값으로 읽고 쓴다: 모든 runtime이 모든 데이터베이스에서 실행하는 recipe `conformance_verification`의 case `plan_cache_reads_each_request_with_its_values`(어느 순서로든 추가한 scalar subquery column, join의 on과 where, where, where와 부모 조건을 가진 relation, limit)와 `plan_cache_writes_each_request_with_its_values`(중복 갱신을 가진 insert, batch insert의 행, optimistic column을 가진 update)가 두 요청의 statement 문장이 하나이고 값은 각자의 것임을 보인다.
 - **CPX-5** 한 질의에서 alias 없이 같은 자식 entity의 relation 두 개는 같은 결과 이름을 가지며, 그 질의는 `CONFIG`로 거부된다. 메시지는 그 결과 이름 `<x>_model`(many relation이면 `<x>_models`)과 alias 호출 `alias<Name>()`을 모든 구현에서 명시한다. 예: `relation user_model is used twice; call alias<Name>() on one of them, such as aliasWriter()`.

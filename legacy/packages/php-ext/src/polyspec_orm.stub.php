@@ -1120,7 +1120,7 @@ final class PgsqlStatementIterator implements \Iterator
 
 /**
  * @internal The PDO connection of a markdown connection: a SQLite connection whose statements a flowmark server answers
- * over one session (DIA-185, docs/spec/protocol.md PRT-65 to PRT-71). Each statement is one statement message, and its
+ * over one session (DIA-154, docs/spec/protocol.md PRT-65 to PRT-71). Each statement is one statement message, and its
  * answer the rows that its statement adapter reads.
  */
 final class MarkdownPdoAdapter extends \PDO
@@ -1656,7 +1656,7 @@ final class Db
     private ?\Closure $requestHook;
     private ?Cancellation $cancellation;
     private int $cancellationSlot = 0;
-    /** The dialect of the statements: mysql, postgres or sqlite, which a markdown connection is (DIA-185). */
+    /** The dialect of the statements: mysql, postgres or sqlite, which a markdown connection is (DIA-154). */
     private readonly string $driver;
     private readonly Config $config;
     private readonly \DateTimeZone $zone;

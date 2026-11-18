@@ -7,7 +7,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// TestRecipeDefaultSelectSetNone runs The default select set, tests/planner/default-select-set.json, without a database (FCV-3, FCV-4).
+// TestRecipeDefaultSelectSetNone runs The default select set, tests/planner/default-select-set.json, without a database (FCV-22, FCV-4).
 // Requirements: PRT-9, DBS-68.
 func TestRecipeDefaultSelectSetNone(t *testing.T) {
 	testcase.Start(t)

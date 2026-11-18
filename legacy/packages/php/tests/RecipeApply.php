@@ -40,7 +40,7 @@ final class RecipeApply
         'sqlite' => ['PRAGMA foreign_keys = ON'],
     ];
 
-    // MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+    // MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-22).
     private const SERVER_ENV = [
         'mysql' => 'ORM_TEST_MYSQL_SERVER_DSN',
         'mariadb' => 'ORM_TEST_MARIADB_SERVER_DSN',
@@ -93,24 +93,21 @@ final class RecipeApply
         return self::command($s, $context, $runStep);
     }
 
-    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200). */
+    /** The SQL dialect of a case database: MariaDB runs SQL in MySQL's (DIA-200). */
     public static function dialect(string $database): string
     {
-        return ['markdown' => 'sqlite', 'mariadb' => 'mysql'][$database] ?? $database;
+        return ['mariadb' => 'mysql'][$database] ?? $database;
     }
 
-    /**
-     * The server of a case database that the public dbspec calls take (DIA-203): a corpus answers in SQLite's dialect,
-     * as its server.
-     */
+    /** The server of a case database that the public dbspec calls take (DIA-203). */
     public static function server(string $database): string
     {
-        return $database === 'markdown' ? 'sqlite' : $database;
+        return $database;
     }
 
     /**
-     * The key of a value that names its text by database: a corpus reads the SQLite entry unless the value states its
-     * own (DIA-185).
+     * The key of a value that names its text by database: MariaDB reads the MySQL entry unless the value states its
+     * own (DIA-200).
      */
     public static function dialectKey(string $database, array $entries): string
     {
@@ -145,16 +142,11 @@ final class RecipeApply
     }
 
     /**
-     * The direct connection to the database of the case DSN dsn, with the rules of a new connection. A corpus is
-     * reached through one session of its flowmark server, which answers SQLite's statements with SQLite's rules
-     * (DIA-185).
+     * The direct connection to the database of the case DSN dsn, with the rules of a new connection.
      */
     private static function direct(string $database, string $dsn): PDO
     {
-        if ($database === 'markdown') {
-            $pdo = markdown_session_pdo($dsn);
-            $database = 'sqlite';
-        } elseif ($database === 'sqlite') {
+        if ($database === 'sqlite') {
             // A session with busy timeout 0, so it does not wait for the write lock of another session.
             $pdo = new PDO('sqlite:' . substr($dsn, strlen('sqlite://')), null, null, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

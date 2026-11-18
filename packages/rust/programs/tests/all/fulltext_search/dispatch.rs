@@ -1,6 +1,6 @@
 //! The query.search op of the fulltext_search recipe (docs/spec/feature-coverage.md FCV-4, PRT-75): the count of the Author
 //! model under a fulltext_boolean condition over the columns of the step. The statement is compiled by the planner of the
-//! case dialect (which refuses SQLite, DIA-187). A text with no term is run on the case connection through the generated
+//! case dialect (which refuses SQLite, DIA-6). A text with no term is run on the case connection through the generated
 //! model, so that the bind check refuses it with IR_INVALID. The test program includes the models of the bench set as
 //! `crate::model`, and the three modules of the recipe share this file.
 

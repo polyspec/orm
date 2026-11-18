@@ -11,7 +11,7 @@ import (
 // statementEventsRecipe is the recipe of the statement events, relative to this package directory.
 var statementEventsRecipe = testcase.LegacyPath("contracts/fixtures/statement_events/statement_events.json")
 
-// TestRecipeStatementEventsMysql runs the statement_events recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeStatementEventsMysql runs the statement_events recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: DBS-108, DBS-119, DBS-120, INT-55, INT-77, INT-91, SCH-7, SCH-11.
 func TestRecipeStatementEventsMysql(t *testing.T) {
 	testcase.Group(t)
@@ -19,28 +19,22 @@ func TestRecipeStatementEventsMysql(t *testing.T) {
 }
 
 // TestRecipeStatementEventsMariadb runs the statement_events recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeStatementEventsMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, statementEventsRecipe, "mariadb")
 }
 
-// TestRecipeStatementEventsPostgres runs the statement_events recipe on PostgreSQL, each case on a case database (FCV-3).
+// TestRecipeStatementEventsPostgres runs the statement_events recipe on PostgreSQL, each case on a case database (FCV-22).
 // Requirements: DBS-108, DBS-119, DBS-120, INT-55, INT-77, INT-91, SCH-7, SCH-11.
 func TestRecipeStatementEventsPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, statementEventsRecipe, "postgres")
 }
 
-// TestRecipeStatementEventsSqlite runs the statement_events recipe on SQLite, each case on a case database (FCV-3).
+// TestRecipeStatementEventsSqlite runs the statement_events recipe on SQLite, each case on a case database (FCV-22).
 // Requirements: DBS-108, DBS-119, DBS-120, INT-55, INT-77, INT-91, SCH-7, SCH-11.
 func TestRecipeStatementEventsSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, statementEventsRecipe, "sqlite")
-}
-
-// TestRecipeStatementEventsMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeStatementEventsMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, statementEventsRecipe, "markdown")
 }

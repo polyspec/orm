@@ -1,5 +1,5 @@
 // The client of a flowmark server that serves markdown:// connections (docs/spec/protocol.md §5 "Markdown connections",
-// docs/spec/dialects.md "Markdown"). A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-185), so a
+// docs/spec/dialects.md "Markdown"). A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-154), so a
 // markdown connection is a SQLite connection whose statements the server answers: the driver below sends each statement in a
 // statement message and reads its answer as node:sqlite reads a row.
 import { isUtf8 } from 'node:buffer';
@@ -358,7 +358,7 @@ async function dialStatements(dsn: MarkdownDsn, signal: AbortSignal | undefined)
  */
 class MarkdownPoolDriver implements DriverPool {
   public readonly name = 'sqlite' as const;
-  // A flowmark server answers SQL in SQLite's dialect, as its server (DIA-185, DIA-203).
+  // A flowmark server answers SQL in SQLite's dialect, as its server (DIA-154, DIA-203).
   public readonly server = 'sqlite' as const;
   public constructor(private readonly pool: ConnectionPool<MarkdownSession>) {}
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {

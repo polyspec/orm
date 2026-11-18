@@ -92,12 +92,6 @@ caseTest('the Go lane leaves the measurements of PERF-1 to perf-check, which rea
   }
 });
 
-// A case that needs what another target passes (the server of FLOWMARK) stays out of the Rust lane (T334-3-28).
-caseTest('the Rust lane skips the cases that markdown-conformance-check owns', () => {
-  const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
-  assert.ok(skipped.includes('markdown_conformance::insert_one'), 'a markdown conformance case');
-});
-
 // The packages of go-test-check, which builds and exports what their cross-runtime tests need (T334-3-27).
 const goTestCheckRoots = ['legacy/packages/go/cmd', 'legacy/packages/go/procevent', 'legacy/packages/go/internal'];
 
@@ -110,28 +104,20 @@ caseTest('the Go lane runs every package of legacy/packages/go that go-test-chec
   assert.deepEqual([...GO_LANE_PACKAGES].sort(), expected);
 });
 
-caseTest('the Go lane leaves the markdown conformance test to the target that passes its server (T334-3-27)', () => {
-  const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
-  assert.match(makefile, /^\tFLOWMARK=\$\(FLOWMARK\) \$\(GO_TEST\) \.\/legacy\/packages\/go\/markdownmodel -run '\^TestMarkdownConformance\$\$' -count=1$/m);
-  const skip = new RegExp(GO_LANE_SKIP);
-  assert.ok(skip.test('TestMarkdownConformance'), 'the markdown conformance test');
-  assert.ok(!skip.test('TestMarkdownConformanceHelper'), 'a skip names the whole test');
-});
-
 caseTest('the Rust lane runs the recipe programs in its workspace run and leaves out only what another target owns', () => {
-  const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
+  const skipped = rustOwnedElsewhereSkipArguments().filter((_, index) => index % 2 === 1);
   for (const database of ['mysql', 'postgres', 'sqlite']) {
     assert.ok(skipped.includes(`coverage_performance_gate::coverage_hot_path_gate_${database}`), `the measurement of ${database}`);
     assert.ok(!skipped.includes(`model_writes_chain_${database}`), `the recipe program of ${database}`);
   }
-  assert.ok(skipped.every(symbol => symbol.startsWith('markdown_conformance::') || symbol.startsWith('coverage_performance_gate::coverage_hot_path_gate_') || symbol.startsWith('decimal_physical::decimal_')), skipped.join(' '));
+  assert.ok(skipped.every(symbol => symbol.startsWith('coverage_performance_gate::coverage_hot_path_gate_') || symbol.startsWith('decimal_physical::decimal_')), skipped.join(' '));
 });
 
 // The decimal round trip of each database reads the DSN of the decimal database of a run, DECIMAL_<DATABASE>_DSN, which
 // run-databases writes for make decimal-physical-check alone (scripts/decimal-physical-check.mts). So the run of the
 // workspace leaves the three tests to that target, and their message for a missing DSN names it (T570).
 caseTest('the Rust lane leaves the decimal round trips to decimal-physical-check, and their message names it', () => {
-  const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
+  const skipped = rustOwnedElsewhereSkipArguments().filter((_, index) => index % 2 === 1);
   for (const database of ['mysql', 'postgres', 'sqlite']) assert.ok(skipped.includes(`decimal_physical::decimal_${database}`), `the decimal round trip of ${database}`);
   assert.ok(!skipped.includes('decimal_physical::schema_set_edited_manifest_sqlite'), 'the schema set test of decimal_physical reads no decimal database');
   const source = readFileSync(resolve(root, 'packages/rust/programs/tests/all/decimal_physical.rs'), 'utf8');
@@ -141,7 +127,7 @@ caseTest('the Rust lane leaves the decimal round trips to decimal-physical-check
 });
 
 // The entries of mariadb need the MariaDB servers, which a runner of the MySQL servers cannot hold; mariadb-recipes-check
-// runs them (DIA-200, FCV-3).
+// runs them (DIA-200, FCV-22).
 caseTest('the Go lane leaves the entries of mariadb to mariadb-recipes-check/go', () => {
   const skip = new RegExp(GO_LANE_SKIP);
   assert.ok(skip.test('TestRecipeAesRotationMariadb'), 'a Go recipe entry of mariadb');

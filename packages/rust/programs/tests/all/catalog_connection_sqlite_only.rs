@@ -1,6 +1,6 @@
 // Requirements: INT-103
 //! The catalog_connection sqlite-only recipe, contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json,
-//! on sqlite (docs/spec/feature-coverage.md FCV-3).
+//! on sqlite (docs/spec/feature-coverage.md FCV-22).
 
 use polyspec_orm_tests::recipe;
 

@@ -1925,7 +1925,7 @@ class CatalogConnection:
     """A catalog connection to a MySQL, PostgreSQL or SQLite database, or a markdown corpus, selected by its DSN. Each
     operation runs in its own session, a fresh transaction; the connection of a committed mutation stays for the next
     session (INT-106e). A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite
-    catalog (DIA-185)."""
+    catalog (DIA-154)."""
 
     def __init__(self, parsed: ParsedDsn):
         self._parsed = parsed

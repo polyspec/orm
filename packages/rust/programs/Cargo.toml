@@ -32,13 +32,13 @@ path = "../../../examples/thin-slice/rust/main.rs"
 test = false
 
 # The test program of the crate: each module is a recipe entry or a native test file, and each of its tests is the trial
-# <module>::<name> (FCV-3). `--test all -- <module>::` selects a module.
+# <module>::<name> (FCV-22). `--test all -- <module>::` selects a module.
 [[test]]
 name = "all"
 path = "tests/all/main.rs"
 harness = false
 
-# The program of the recipe entries of mariadb, each module a recipe on MariaDB (FCV-3, DIA-200). Its cases need the MariaDB
+# The program of the recipe entries of mariadb, each module a recipe on MariaDB (FCV-22, DIA-200). Its cases need the MariaDB
 # servers, which a runner of the MySQL servers cannot hold, so a plain cargo test leaves it out (test = false) and make
 # mariadb-recipes-check/rust runs it by `--test mariadb`.
 [[test]]

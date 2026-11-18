@@ -267,7 +267,7 @@ func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
 	})
 }
 
-// TestSavepointReportsFailedEnd checks DIA-181 and PLN-17 for nested savepoints:
+// TestSavepointReportsFailedEnd checks PLN-17 for nested savepoints:
 // when ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT fails, the callback error, a panic,
 // and an already ended callback report that error together, and that a successful callback returns
 // the failed RELEASE SAVEPOINT.

@@ -1,5 +1,5 @@
 # Requirements: CFG-15, INT-155.
-# The suite unit transactions-mariadb (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit transactions-mariadb (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/transactions/transactions.json on MariaDB, a server of the MySQL dialect (DIA-200).
 from .recipe import recipe_tests
 from . import testcase

@@ -3,7 +3,7 @@
 // Requirements: INT-103
 
 // The catalog connection sqlite-only recipe, contracts/fixtures/catalog_connection/catalog_connection-sqlite-only.json,
-// on SQLite and flowmark (docs/spec/feature-coverage.md FCV-3).
+// on SQLite (docs/spec/feature-coverage.md FCV-22).
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

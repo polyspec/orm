@@ -1,5 +1,5 @@
-# Requirements: FCV-3, FCV-4, FCV-9, FCV-13, CFG-10, CFG-19.
-# The suite unit model_socket-mysql (docs/spec/feature-coverage.md FCV-3): the recipe
+# Requirements: FCV-22, FCV-4, FCV-9, FCV-13, CFG-10, CFG-19.
+# The suite unit model_socket-mysql (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/model_socket/model_socket.json on mysql.
 from .recipe import recipe_tests
 from . import testcase

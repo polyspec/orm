@@ -269,7 +269,7 @@ static bool as_bool(zval *v)
     return v != NULL && zend_is_true(v);
 }
 
-/* A markdown connection is a corpus that a flowmark server serves; its statements are SQLite's (DIA-185). */
+/* A markdown connection is a corpus that a flowmark server serves; its statements are SQLite's (DIA-154). */
 static bool is_corpus(zval *self)
 {
     return as_bool(rd(self, "corpus"));

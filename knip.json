@@ -103,8 +103,6 @@
         "testing/dbspec/introspect/typescript.mts",
         // the dbspec tool command that the dbspec checks run from legacy/packages/ts/dist
         "src/tools/cli.ts",
-        // the generated models of the Markdown fixture, which the markdown tests load from dist
-        "src/models/markdown_fixture/models.ts",
         // the generated models of the decimal fixture, which the decimal tests load from dist
         "src/models/decimal_fixture/models.ts"
       ]

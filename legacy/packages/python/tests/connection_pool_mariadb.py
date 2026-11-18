@@ -1,5 +1,5 @@
 # Requirements: CFG-4, CFG-5, CFG-5a, PRT-77.
-# The suite unit connection_pool-mariadb (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit connection_pool-mariadb (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/connection_pool/connection_pool.json on MariaDB, a server of the MySQL dialect (DIA-200).
 from .recipe import recipe_tests
 from . import testcase

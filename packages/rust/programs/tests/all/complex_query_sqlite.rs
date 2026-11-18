@@ -1,6 +1,6 @@
 // Requirements: DSL-159.
 //! The complex_query recipe, contracts/fixtures/complex_query/complex_query.json, on sqlite
-//! (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+//! (docs/spec/feature-coverage.md FCV-22 and FCV-4).
 
 use polyspec_orm_tests::recipe;
 

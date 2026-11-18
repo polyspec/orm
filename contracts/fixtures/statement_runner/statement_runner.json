@@ -3,8 +3,7 @@
   "requirements": [
     "DIA-154",
     "INT-150",
-    "INT-77",
-    "DIA-185"
+    "INT-77"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [

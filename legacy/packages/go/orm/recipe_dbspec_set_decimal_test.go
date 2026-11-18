@@ -1,4 +1,4 @@
-// Requirements: DBS-108, SCH-7, FCV-3, FCV-4 (docs/spec/feature-coverage.md).
+// Requirements: DBS-108, SCH-7, FCV-22, FCV-4 (docs/spec/feature-coverage.md).
 package orm_test
 
 import (
@@ -19,7 +19,7 @@ func TestRecipeDbspecSetDecimalMysql(t *testing.T) {
 }
 
 // TestRecipeDbspecSetDecimalMariadb runs the dbspec_set_decimal recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeDbspecSetDecimalMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecSetDecimalRecipe, "mariadb")
@@ -37,10 +37,4 @@ func TestRecipeDbspecSetDecimalPostgres(t *testing.T) {
 func TestRecipeDbspecSetDecimalSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecSetDecimalRecipe, "sqlite")
-}
-
-// TestRecipeDbspecSetDecimalMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeDbspecSetDecimalMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, dbspecSetDecimalRecipe, "markdown")
 }

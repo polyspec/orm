@@ -8,7 +8,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Tests\GeneratorScanTest;
 
 // The generator scan recipe, contracts/fixtures/generator_scan/generator_scan.json, through the PHP extension
-// (docs/spec/feature-coverage.md FCV-3).
+// (docs/spec/feature-coverage.md FCV-22).
 // Requirements: DSL-44, DSL-151, DSL-152.
 #[Medium]
 final class GeneratorScanTestExtensionTest extends GeneratorScanTest

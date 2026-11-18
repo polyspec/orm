@@ -1,4 +1,4 @@
-# The suite unit constraints_and_relations-sqlite (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit constraints_and_relations-sqlite (docs/spec/feature-coverage.md FCV-22): the recipe
 # Requirements: CFG-33, INT-87, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14.
 # contracts/fixtures/constraints_and_relations/constraints_and_relations.json on SQLite.
 from .recipe import recipe_tests

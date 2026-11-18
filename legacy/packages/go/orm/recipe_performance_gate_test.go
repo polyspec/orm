@@ -10,7 +10,7 @@ import (
 // performanceGateRecipe is the correctness recipe of the hot-path performance gate, relative to this package directory.
 var performanceGateRecipe = testcase.LegacyPath("contracts/fixtures/performance_gate/performance_gate.json")
 
-// TestRecipePerformanceGateMysql runs the performance_gate recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipePerformanceGateMysql runs the performance_gate recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: PERF-1.
 func TestRecipePerformanceGateMysql(t *testing.T) {
 	testcase.Group(t)
@@ -18,28 +18,22 @@ func TestRecipePerformanceGateMysql(t *testing.T) {
 }
 
 // TestRecipePerformanceGateMariadb runs the performance_gate recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipePerformanceGateMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, performanceGateRecipe, "mariadb")
 }
 
-// TestRecipePerformanceGatePostgres runs the performance_gate recipe on PostgreSQL (FCV-3).
+// TestRecipePerformanceGatePostgres runs the performance_gate recipe on PostgreSQL (FCV-22).
 // Requirements: PERF-1.
 func TestRecipePerformanceGatePostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, performanceGateRecipe, "postgres")
 }
 
-// TestRecipePerformanceGateSqlite runs the performance_gate recipe on SQLite (FCV-3).
+// TestRecipePerformanceGateSqlite runs the performance_gate recipe on SQLite (FCV-22).
 // Requirements: PERF-1.
 func TestRecipePerformanceGateSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, performanceGateRecipe, "sqlite")
-}
-
-// TestRecipePerformanceGateMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipePerformanceGateMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, performanceGateRecipe, "markdown")
 }

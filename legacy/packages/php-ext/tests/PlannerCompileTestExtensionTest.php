@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use PHPUnit\Framework\Attributes\Small;
 use Polyspec\Orm\Tests\PlannerCompileTest;
 
-// The planner compile recipe, tests/planner/compile.json, through the PHP extension (FCV-3 of
+// The planner compile recipe, tests/planner/compile.json, through the PHP extension (FCV-22 of
 // docs/spec/feature-coverage.md).
 // Requirements: COD-4, DIA-33, PRT-69, PRT-6, PRT-13, PRT-14, PRT-16, PRT-17, PRT-20, PRT-21, PRT-22, PRT-23, PRT-25,
 // Requirements: PRT-31, PRT-32, PRT-33,

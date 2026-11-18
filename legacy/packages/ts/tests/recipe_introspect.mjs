@@ -101,15 +101,11 @@ async function catalogQueryFailure(dialect, database, dsn) {
   }
 }
 
-// The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
-const sqlDialect = database => ({ markdown: 'sqlite', mariadb: 'mysql' })[database] ?? database;
-
-// The server of a case database that the public dbspec calls take (DIA-203): the markdown corpus answers in SQLite's dialect, as its
-// server.
-const serverOf = database => (database === 'markdown' ? 'sqlite' : database);
+// The SQL dialect of a case database: MariaDB runs SQL in MySQL's (DIA-200).
+const sqlDialect = database => ({ mariadb: 'mysql' })[database] ?? database;
 
 // refusable reports whether the expect of dbspec.introspect on the case database names refused, an integer: the expect of the
-// database, else of its dialect, as the runner reads it (FCV-3).
+// database, else of its dialect, as the runner reads it (FCV-22).
 function refusable(step, native, database) {
   const expect = step.expect ?? {};
   const outcome = expect[Object.hasOwn(expect, native) ? native : database];
@@ -124,8 +120,7 @@ function refusable(step, native, database) {
 // compares; a refusal elsewhere, and of a statement other than the vector's, is an error (DIA-200, rule 4).
 export async function introspectStep(step, context) {
   const { dsn, dir } = context;
-  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's;
-  // MariaDB runs SQL in MySQL's (DIA-200).
+  // MariaDB runs SQL in MySQL's dialect (DIA-200).
   const native = context.database;
   const database = sqlDialect(native);
   // The other dialect, for every database or per database.
@@ -158,7 +153,7 @@ export async function introspectStep(step, context) {
     if (refuses) throw new Error(`the statements of vector ${step.case} ran on ${native}, whose expect names their refusal`);
     const counted = counting(database, session.connection);
     counter = counted.counter;
-    result = await introspectDbspec(counted.proxy, database, serverOf(native), 'introspected');
+    result = await introspectDbspec(counted.proxy, database, native, 'introspected');
   } finally {
     await session.close();
   }
@@ -209,8 +204,7 @@ const documentText = lines => `${lines.join('\n')}\n`;
 // run, the target is read again and no table or column named dbspec$ remains.
 export async function planPhysicalStep(step, context) {
   const { dsn, dir } = context;
-  // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is SQLite's;
-  // MariaDB runs SQL in MySQL's (DIA-200).
+  // MariaDB runs SQL in MySQL's dialect (DIA-200).
   const native = context.database;
   const database = sqlDialect(native);
   const id = step.case;
@@ -264,7 +258,7 @@ export async function planPhysicalStep(step, context) {
       if (violations !== '0') throw new Error(`foreign_key_check returns ${violations} rows`);
     };
     const schemaIs = async (what, want) => {
-      const { document, unsupported } = await introspectDbspec(session.connection, database, serverOf(native), 'introspected');
+      const { document, unsupported } = await introspectDbspec(session.connection, database, native, 'introspected');
       if (unsupported.length > 0) throw new Error(`${what}: unsupported objects ${JSON.stringify(unsupported)}`);
       const got = document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '';
       if (got !== want) throw new Error(`${what}: the schema text differs\n--- want\n${want}--- got\n${got}`);

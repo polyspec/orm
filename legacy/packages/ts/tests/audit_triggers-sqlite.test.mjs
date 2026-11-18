@@ -1,4 +1,4 @@
-// The suite unit audit_triggers-sqlite (docs/spec/feature-coverage.md FCV-3).
+// The suite unit audit_triggers-sqlite (docs/spec/feature-coverage.md FCV-22).
 import { runRecipe } from './recipe.mjs';
 
 await runRecipe('contracts/fixtures/audit_triggers/audit_triggers.json', 'sqlite');

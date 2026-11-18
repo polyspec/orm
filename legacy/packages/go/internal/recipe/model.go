@@ -1119,7 +1119,7 @@ func rankedTaskOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, erro
 const searchEntity = "author"
 
 // searchOp is query.search (FCV-4, PRT-75): the IR of a count with a fulltext_boolean predicate over the columns of the
-// model. The request is compiled with the engine of the case dialect, which refuses SQLite (DIA-187), and the expect is
+// model. The request is compiled with the engine of the case dialect, which refuses SQLite (DIA-6), and the expect is
 // the statement text and the bind value after the DIA-6 transform. A text with no term is run on the case connection
 // through the generated model, so that the bind check refuses it with IR_INVALID.
 func searchOp(s databaseStep, c *databaseContext) (outcome, error) {

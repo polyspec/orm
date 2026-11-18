@@ -1,7 +1,7 @@
 <?php
 
 // The complex_query recipe, contracts/fixtures/complex_query/complex_query.json, on
-// sqlite (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+// sqlite (docs/spec/feature-coverage.md FCV-22 and FCV-4).
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

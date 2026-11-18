@@ -1,7 +1,7 @@
 <?php
 
 // The performance gate correctness recipe, contracts/fixtures/performance_gate/performance_gate.json, on each database
-// (docs/spec/feature-coverage.md FCV-3, FCV-4). The timing of the gate stays in the performance coverage cases.
+// (docs/spec/feature-coverage.md FCV-22, FCV-4). The timing of the gate stays in the performance coverage cases.
 // Requirements: PERF-1.
 declare(strict_types=1);
 

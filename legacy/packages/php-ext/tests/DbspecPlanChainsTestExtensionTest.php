@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use Polyspec\Orm\Tests\DbspecPlanChainsTest;
 
 // The plan chains of the recipe tests/dbspec/plan-chains.json through the PHP extension (docs/spec/feature-
-// coverage.md FCV-3).
+// coverage.md FCV-22).
 // The requirements are those of the library entry DbspecPlanChainsTest.
 
 #[\PHPUnit\Framework\Attributes\Small]

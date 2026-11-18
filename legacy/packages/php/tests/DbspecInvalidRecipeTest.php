@@ -1,6 +1,6 @@
 <?php
 
-// The invalid recipe, tests/dbspec/invalid.json, without a database (docs/spec/feature-coverage.md FCV-3, FCV-4).
+// The invalid recipe, tests/dbspec/invalid.json, without a database (docs/spec/feature-coverage.md FCV-22, FCV-4).
 // Requirements: DBS-3, DBS-32, DBS-33, DBS-34, DBS-36, DBS-37, DBS-38, DBS-39, DBS-40, DBS-42, DBS-43, DBS-46, DBS-48,
 // Requirements: DBS-49, DBS-50, DBS-51, DBS-52, DBS-53, DBS-58, DBS-60, DBS-61, DBS-62, DBS-63, DBS-64, DBS-70, DBS-71,
 // Requirements: DBS-72, DBS-74, DBS-75, DBS-76, DBS-78, DBS-79, DBS-80, DBS-84,

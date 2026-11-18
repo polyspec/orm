@@ -1,4 +1,4 @@
-# The suite unit audit_triggers-sqlite (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit audit_triggers-sqlite (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/audit_triggers/audit_triggers.json on sqlite.
 from .recipe import recipe_tests
 from . import testcase

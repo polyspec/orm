@@ -1,5 +1,5 @@
 //! The refusal of a server that is not a server of the dialect, the case introspect-server-of-another-dialect of
-//! tests/dbspec/dialect-refusal.json, without a database (docs/spec/feature-coverage.md FCV-3, FCV-4).
+//! tests/dbspec/dialect-refusal.json, without a database (docs/spec/feature-coverage.md FCV-22, FCV-4).
 //! Requirements: DBS-174.
 //!
 //! Rust runs only this case of the recipe. Rust takes a dialect and a server by the enum types `Dialect` and `Server`, so the

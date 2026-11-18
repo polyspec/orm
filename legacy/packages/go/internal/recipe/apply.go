@@ -73,7 +73,7 @@ func applyDirectDSN(c *databaseContext, dsn string) (string, error) {
 	if c.dialect() == "sqlite" {
 		return dsn, nil
 	}
-	// On MariaDB the variable of the MySQL dialect names the MariaDB server (FCV-3).
+	// On MariaDB the variable of the MySQL dialect names the MariaDB server (FCV-22).
 	variable := serverVariable(applyServerEnv[c.dialect()], c.database)
 	server := os.Getenv(variable)
 	if server == "" {

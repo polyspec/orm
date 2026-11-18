@@ -301,7 +301,7 @@ pub struct ParsedDsn {
 }
 
 impl ParsedDsn {
-    /// The database whose SQL the connection runs: a corpus that a flowmark server serves runs SQL in SQLite's dialect (DIA-185).
+    /// The database whose SQL the connection runs: a markdown connection runs SQL in SQLite's dialect (DIA-154).
     pub fn sql_driver(&self) -> &'static str {
         match self.options {
             ConnectOptions::Markdown(_) => "sqlite",
@@ -729,7 +729,7 @@ pub(crate) struct DbInner {
     idle_trim: tokio::sync::Mutex<()>,
     /// The PostgreSQL options of the pool, which a LISTEN subscription connects with; None on other databases.
     pub(crate) listen: Option<sqlx::postgres::PgConnectOptions>,
-    /// The dialect the connection plans for: SQLite's on a markdown connection, whose server runs SQL in SQLite's dialect (DIA-185).
+    /// The dialect the connection plans for: SQLite's on a markdown connection, which sends SQL in SQLite's dialect (DIA-154).
     pub(crate) dialect: Option<Dialect>,
     /// The server of a mysql connection, read once by `VERSION()` when the connection opens, never by the handshake (DIA-201);
     /// MySQL on every other database.
@@ -1225,8 +1225,8 @@ impl Db {
         }
     }
 
-    /// The database whose SQL the connection runs: sqlite on a markdown connection, whose server runs SQL in SQLite's
-    /// dialect (DIA-185), and otherwise the driver.
+    /// The database whose SQL the connection runs: sqlite on a markdown connection, which sends SQL in SQLite's
+    /// dialect (DIA-154), and otherwise the driver.
     pub fn sql_driver(&self) -> &'static str {
         match &self.inner.pool {
             Pool::Markdown(_) => "sqlite",
@@ -1264,8 +1264,8 @@ impl Db {
     }
 
     /// The server of the connection that dbspec introspects by (DIA-203): the server that connect read on a mysql
-    /// connection (DIA-201), and the database's own on PostgreSQL and SQLite; a markdown connection answers in SQLite's
-    /// dialect, as its server (DIA-185).
+    /// connection (DIA-201), and the database's own on PostgreSQL and SQLite; a markdown connection plans in SQLite's
+    /// dialect, as SQLite (DIA-154).
     pub(crate) fn dbspec_server(&self) -> crate::dbspec::Server {
         match (&self.inner.pool, self.inner.server) {
             (Pool::MySql(_), crate::MySqlServer::MariaDb) => crate::dbspec::Server::MariaDb,

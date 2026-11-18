@@ -33,7 +33,7 @@ mod bind_model {
     include!(concat!(env!("OUT_DIR"), "/bind/orm_model.rs"));
 }
 
-/// The database part of a recipe without a database (FCV-3).
+/// The database part of a recipe without a database (FCV-22).
 pub const NONE: &str = "none";
 
 /// The schema of the request validation ops: the bench model, whose manifest the requests are checked against.
@@ -2233,7 +2233,7 @@ const SEND_COLUMNS: &[&str] = &[
     "slots.bool_value",
 ];
 
-/// One markdown.send step (FCV-3, FCV-4): a transaction begin, or the typed query of a slot column. The step runs on a
+/// One markdown.send step (FCV-22, FCV-4): a transaction begin, or the typed query of a slot column. The step runs on a
 /// connection to a listener that records the first message it receives, and its expect is compared with that message, or with
 /// the code of the error that the call returned before it sent one.
 fn markdown_send(step: &Value) -> Result<(), String> {
@@ -2897,7 +2897,7 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
     }
 }
 
-/// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+/// The database path (FCV-22 and FCV-4): each case runs on a case database of its own through the public catalog API.
 pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelError, ModelFuture, CASE_CONNECTION};
 
 /// The member in which a step of the table path keeps the written order of an object, since serde_json sorts the keys of
@@ -2989,23 +2989,20 @@ mod database {
         count
     }
 
-    /// The databases of a recipe with a fixture (FCV-3).
+    /// The databases of a recipe with a fixture (FCV-22).
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
-    /// The database of the markdown suite of a recipe, a corpus that flowmark serves (FCV-3).
-    const MARKDOWN: &str = "markdown";
-    /// The database of the MariaDB suite of a recipe, a server of the MySQL dialect (DIA-200, FCV-3).
+    /// The database of the MariaDB suite of a recipe, a server of the MySQL dialect (DIA-200, FCV-22).
     const MARIADB: &str = "mariadb";
 
-    /// The SQL dialect of a database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200).
+    /// The SQL dialect of a database: MariaDB runs SQL in MySQL's (DIA-200).
     fn dialect_of(database: &str) -> &str {
         match database {
-            MARKDOWN => "sqlite",
             MARIADB => "mysql",
             other => other,
         }
     }
 
-    /// The variable that an env: DSN of a step names on `database`: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3).
+    /// The variable that an env: DSN of a step names on `database`: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-22).
     fn server_variable(name: &str, database: &str) -> String {
         match name.strip_prefix("ORM_TEST_MYSQL_") {
             Some(rest) if database == MARIADB => format!("ORM_TEST_MARIADB_{rest}"),
@@ -3222,8 +3219,6 @@ mod database {
         attempts: u64,
         /// The time of the last wait.start of the case (FCV-4).
         wait_start: Option<std::time::Instant>,
-        /// The directory of the corpus of a case of the markdown suite.
-        corpus: Option<std::path::PathBuf>,
         /// The error of the last step that failed without an expected error, as its call returned it.
         unexpected: Option<polyspec_orm::Error>,
     }
@@ -3257,7 +3252,6 @@ mod database {
                 recordings: HashMap::new(),
                 attempts: 0,
                 wait_start: None,
-                corpus: None,
                 unexpected: None,
             }
         }
@@ -3286,8 +3280,7 @@ mod database {
     }
 
     fn trials_of(entry: &str, path: &str, database: &str, models: Models, written_order: bool) -> Vec<polyspec_orm_testcase::Trial> {
-        let markdown = database == MARKDOWN;
-        assert!(markdown || database == MARIADB || DATABASES.contains(&database), "recipe {path}: unknown database {database}");
+        assert!(database == MARIADB || DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let (root, text) = super::recipe_text(path);
         let (mut recipe, ordered) = read_recipe(&root.join(path), &text);
         supersede(&root, path, &mut recipe);
@@ -3295,10 +3288,8 @@ mod database {
         recipe["seed_order"] = json!(seed_order(member(&ordered, "seed")));
         let recipe = Arc::new(recipe);
         let Some(fixture) = recipe["fixture"].as_str() else { panic!("recipe {path}: no fixture, so it has no database") };
-        // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+        // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-22).
         let schema = if fixture == "none" { None } else { Some(Arc::new(fixture_schema(&root.join(fixture)))) };
-        // The set that flowmark install makes the corpus of a case of the markdown suite from (DIA-189).
-        let set = Arc::new((fixture != "none").then(|| root.join(fixture)));
         let dir = Arc::new(root.join(path).parent().map(Path::to_path_buf).unwrap_or_default());
         let Some(cases) = recipe["cases"].as_array() else { panic!("recipe {path} has no cases") };
         let ordered_cases: Vec<Value> =
@@ -3309,7 +3300,7 @@ mod database {
             .filter(|(_, case)| on_database(&case["only"], database))
             .filter(|(_, case)| case["not_through_pooler"].is_null() || std::env::var("ORM_CLIENT_DB_POOLER").as_deref() != Ok("1"))
             .map(|(index, case)| {
-                let (recipe, schema, dir, models, set) = (recipe.clone(), schema.clone(), dir.clone(), models.clone(), set.clone());
+                let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models.clone());
                 let mut case = case.clone();
                 case["seed_order"] = ordered_cases[index].clone();
                 if written_order {
@@ -3320,7 +3311,7 @@ mod database {
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), move || async move {
-                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, (*set).as_deref(), &*models).await;
+                    run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, &*models).await;
                     super::report_case(&id, &database);
                 })
             })
@@ -3534,16 +3525,16 @@ mod database {
         (manifest, install_first)
     }
 
-    /// Whether a case or step with the list `only` runs on `database`. A corpus speaks SQLite's dialect, so what names sqlite
-    /// names it too (DIA-185), and MariaDB is a server of the MySQL dialect, so what names mysql names it too (DIA-200).
+    /// Whether a case or step with the list `only` runs on `database`. MariaDB is a server of the MySQL dialect, so what
+    /// names mysql names it too (DIA-200).
     fn on_database(only: &Value, database: &str) -> bool {
         only.as_array().is_none_or(|only| {
             only.iter().any(|name| name.as_str() == Some(database) || (database != dialect_of(database) && name.as_str() == Some(dialect_of(database))))
         })
     }
 
-    /// The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect
-    /// unless the value states its own (FCV-3).
+    /// The key of a value that names its text by database: a MariaDB server reads the entry of its dialect unless the value
+    /// states its own (FCV-22).
     fn dialect_key<'v>(database: &'v str, entries: &Value) -> &'v str {
         if entries.get(database).is_none() {
             return dialect_of(database);
@@ -3551,8 +3542,7 @@ mod database {
         database
     }
 
-    /// The server of the case database that the public dbspec calls take (DIA-203): MariaDB on mariadb, and the markdown corpus,
-    /// which answers in SQLite's dialect, as SQLite.
+    /// The server of the case database that the public dbspec calls take (DIA-203): MariaDB on mariadb.
     fn case_server(database: &str) -> Server {
         match database {
             MARIADB => Server::MariaDb,
@@ -3562,12 +3552,8 @@ mod database {
         }
     }
 
-    /// Runs one case on a database of its own and removes it: a case database, or on flowmark a corpus that flowmark install
-    /// made from the set of the fixture (DIA-189). A failure names the recipe, the case, the index of the step and the database.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the inputs of a case: the recipe, the case, the database, the schema, the directory, the set and the models"
-    )]
+    /// Runs one case on a case database of its own and removes it. A failure names the recipe, the case, the index of the step
+    /// and the database.
     async fn run_case(
         path: &str,
         recipe: &Value,
@@ -3575,24 +3561,13 @@ mod database {
         database: &str,
         schemas: Option<&(Schema, Vec<Schema>)>,
         dir: &Path,
-        set: Option<&Path>,
         models: &(dyn Fn() -> Box<dyn ModelDispatcher> + Send + Sync),
     ) {
         let id = case["id"].as_str().unwrap_or_default();
-        let result = if database == MARKDOWN {
-            // A case with install: false starts on a corpus with no table, and its steps install the fixture (FCV-9).
-            let corpus = crate::markdown::case_corpus(set.filter(|_| case["install"].as_bool() != Some(false))).await;
-            let target = CaseTarget { name: crate::markdown::CASE_CORPUS, dsn: &corpus.dsn, corpus: Some(&corpus.dir) };
-            let result = case_body(CaseRun { recipe, case, database, schemas, dir, target, models }).await;
-            drop(corpus);
-            result
-        } else {
-            let case_database = CaseDatabase::create(database).await;
-            let target = CaseTarget { name: case_database.name(), dsn: case_database.dsn(), corpus: None };
-            let result = case_body(CaseRun { recipe, case, database, schemas, dir, target, models }).await;
-            case_database.drop().await;
-            result
-        };
+        let case_database = CaseDatabase::create(database).await;
+        let target = CaseTarget { name: case_database.name(), dsn: case_database.dsn() };
+        let result = case_body(CaseRun { recipe, case, database, schemas, dir, target, models }).await;
+        case_database.drop().await;
         if let Err(failure) = result {
             panic!("recipe {path}, case {id}, {failure}");
         }
@@ -3611,12 +3586,11 @@ mod database {
         models: &'a (dyn Fn() -> Box<dyn ModelDispatcher> + Send + Sync),
     }
 
-    /// The database of a case: its name, its DSN and, on flowmark, the directory of its corpus.
+    /// The database of a case: its name and its DSN.
     #[derive(Clone, Copy)]
     struct CaseTarget<'a> {
         name: &'a str,
         dsn: &'a str,
-        corpus: Option<&'a Path>,
     }
 
     async fn case_body(run: CaseRun<'_>) -> Result<(), String> {
@@ -3631,13 +3605,8 @@ mod database {
         let CaseRun { recipe, case, database, schemas, dir, target, models } = run;
         // A case with "install": false installs its fixture by its schema.install ops (FCV-9).
         if let Some(fixture) = schemas.filter(|_| case["install"].as_bool() != Some(false)) {
-            if database == MARKDOWN {
-                // flowmark install made the corpus from the set; the connection takes the set as an install registers it.
-                db.utils().schema().register(&fixture.0).map_err(|e| format!("database {database}: register: {e}"))?;
-            } else {
-                install_fixture(db, fixture).await.map_err(|e| format!("database {database}: schema install: {e}"))?;
-                polyspec_orm_testcase::step("schema installed");
-            }
+            install_fixture(db, fixture).await.map_err(|e| format!("database {database}: schema install: {e}"))?;
+            polyspec_orm_testcase::step("schema installed");
         }
         let mut catalog = Some(CatalogConnection::connect(target.dsn).await.map_err(|e| format!("database {database}: catalog connection: {e}"))?);
         let result = run_steps(&mut catalog, db, dir, recipe, case, database, schemas, target, models).await;
@@ -3666,7 +3635,6 @@ mod database {
         let namespace = open.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": target.name })))]);
         let mut context = Context::new(namespace, database, target.dsn.to_owned(), bound, db, dir, models(), schemas);
-        context.corpus = target.corpus.map(Path::to_path_buf);
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
         context.models.close().await;
@@ -4289,7 +4257,7 @@ mod database {
             }
             "db.execute" => {
                 // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the
-                // recipe, for the dialect of the database of the case (SQLite for markdown, MySQL for MariaDB, FCV-3), and runs
+                // recipe, for the dialect of the database of the case (MySQL for MariaDB, FCV-22), and runs
                 // its first step.
                 let db = connection_db(step, context).map_err(fault)?;
                 let schema = crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default().to_owned();
@@ -4717,12 +4685,7 @@ mod database {
                 Output::fields(json!({}))
             }
             "database.read_only" => {
-                // The file of the case database becomes one that the process may only read (CFG-24); a corpus becomes folders
-                // that the server may only read, which the run makes writable again at its end.
-                if let Some(corpus) = &context.corpus {
-                    crate::markdown::read_only_corpus(corpus).map_err(fault)?;
-                    return Ok(Output::fields(json!({})));
-                }
+                // The file of the case database becomes one that the process may only read (CFG-24).
                 let path = context.dsn.strip_prefix("sqlite://").unwrap_or(&context.dsn).split('?').next().unwrap_or_default().to_owned();
                 let mut permissions = std::fs::metadata(&path).map_err(|e| fault(format!("{path}: {e}")))?.permissions();
                 permissions.set_readonly(true);
@@ -5295,8 +5258,8 @@ mod database {
                 ConnectOptions::MySql(options) => on_native_connection!(@open options, $connection, $body),
                 ConnectOptions::Postgres(options) => on_native_connection!(@open options, $connection, $body),
                 ConnectOptions::Sqlite(options) => on_native_connection!(@open options, $connection, $body),
-                // A corpus has no driver of its own: one session of its flowmark server runs the statements in SQLite's dialect
-                // (DIA-185).
+                // A markdown connection has no driver of its own: one session of its server runs the statements in SQLite's
+                // dialect (DIA-154).
                 ConnectOptions::Markdown(dsn) => {
                     let pool = polyspec_orm::markdown::MarkdownPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
                     let result = match pool.acquire().await {
@@ -5316,7 +5279,7 @@ mod database {
         }};
     }
 
-    /// The statements of the dbspec ops on one native connection: of a SQL driver, or the session of a flowmark corpus.
+    /// The statements of the dbspec ops on one native connection: of a SQL driver, or the session of a markdown connection.
     trait NativeSql {
         /// Runs one statement.
         async fn exec(&mut self, sql: &str) -> Result<(), String>;
@@ -5356,7 +5319,7 @@ mod database {
         async fn exec(&mut self, sql: &str) -> Result<(), String> {
             self.raw(sql).await.map_err(|e| e.to_string())
         }
-        /// A corpus is no MySQL server, so no failure holds a MySQL error number.
+        /// A markdown connection is no MySQL server, so no failure holds a MySQL error number.
         async fn exec_numbered(&mut self, sql: &str) -> Result<(), (Option<u16>, String)> {
             self.raw(sql).await.map_err(|e| (None, e.to_string()))
         }
@@ -5460,7 +5423,6 @@ mod database {
     /// its behavior steps. A step with dialects runs only on those; a step with fails must fail; a query compares its first
     /// value, as text, with want, and a NULL or absent value fails it (DIA-113).
     async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
-        // A corpus runs the statements of SQLite (DIA-185).
         let database = dialect_of(database);
         use sqlx::{ConnectOptions as _, Connection as _};
         let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
@@ -5505,7 +5467,6 @@ mod database {
     /// the target is read again and no table or column named dbspec$ remains.
     async fn plan_physical(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
         let server = case_server(database);
-        // A corpus runs the statements of SQLite (DIA-185).
         let database = dialect_of(database);
         use dbspec::Dialect;
         use sqlx::{ConnectOptions as _, Connection as _};
@@ -5700,7 +5661,6 @@ mod database {
     /// refused, a statement of the vector that the server refuses ends the step with the server's error number, which the
     /// expect compares; a refusal elsewhere, and of a statement other than the vector's, is an error (DIA-200, rule 4).
     async fn introspect_step(step: &Value, case_database: &str, dsn: &str, dir: &Path) -> Result<Value, String> {
-        // A corpus runs the statements of SQLite (DIA-185).
         let database = dialect_of(case_database);
         use dbspec::Dialect;
         use sqlx::{ConnectOptions as _, Connection as _};
@@ -6042,7 +6002,8 @@ mod database {
             ConnectOptions::MySql(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
             ConnectOptions::Postgres(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
             ConnectOptions::Sqlite(options) => exec_and_close(options.connect().await.map_err(|e| e.to_string())?, sql).await,
-            // A corpus has no driver of its own: one session of the flowmark server runs the statement in its dialect (DIA-185).
+            // A markdown connection has no driver of its own: one session of its server runs the statement in SQLite's dialect
+            // (DIA-154).
             ConnectOptions::Markdown(dsn) => {
                 let pool = polyspec_orm::markdown::MarkdownPool::connect(dsn, 1).await.map_err(|e| e.to_string())?;
                 let result = match pool.acquire().await {
@@ -6184,7 +6145,7 @@ mod tables {
     /// record_param action and the row count of a locked_read action (hook.records).
     type Record = (String, String, Option<Value>, Option<Value>);
 
-    /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
+    /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-22, FCV-4).
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
         let root = polyspec_orm_testcase::manifest_dir().join("../../..");
         let schema = super::database::fixture_schema_of(&root.join(fixture));
@@ -7643,7 +7604,7 @@ mod tables {
                 "pool.transactions" => {
                     // Count read-only transactions at once: the first hold of them stay open until hold have begun, so the
                     // pool shows the connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no
-                    // write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221). A transaction future is
+                    // write lock, so SQLite holds them at once too (DIA-221). A transaction future is
                     // not Send, so the tasks run on a LocalSet.
                     use std::sync::atomic::{AtomicU32, Ordering};
                     use std::sync::Arc;

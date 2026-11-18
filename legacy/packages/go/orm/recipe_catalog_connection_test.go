@@ -10,7 +10,7 @@ import (
 // catalogConnectionRecipe is the recipe of the live catalog connection, relative to this package directory.
 var catalogConnectionRecipe = testcase.LegacyPath("contracts/fixtures/catalog_connection/catalog_connection.json")
 
-// TestRecipeCatalogConnectionMysql runs the catalog_connection recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeCatalogConnectionMysql runs the catalog_connection recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: INT-107, INT-101, INT-103, INT-104, INT-109, INT-111, INT-113, INT-114, INT-115, INT-117, INT-123,
 // INT-136, SCH-6a.
 // Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
@@ -23,14 +23,14 @@ func TestRecipeCatalogConnectionMysql(t *testing.T) {
 }
 
 // TestRecipeCatalogConnectionMariadb runs the catalog_connection recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeCatalogConnectionMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, catalogConnectionRecipe, "mariadb")
 }
 
 // TestRecipeCatalogConnectionPostgres runs the catalog_connection recipe on PostgreSQL, each case on a case database
-// (FCV-3).
+// (FCV-22).
 // Requirements: INT-101, INT-103, INT-104, INT-109, INT-111, INT-113, INT-114, INT-115, INT-117, INT-123,
 // INT-136, SCH-6a.
 // Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
@@ -42,7 +42,7 @@ func TestRecipeCatalogConnectionPostgres(t *testing.T) {
 	recipe.Run(t, catalogConnectionRecipe, "postgres")
 }
 
-// TestRecipeCatalogConnectionSqlite runs the catalog_connection recipe on SQLite, each case on a case database (FCV-3).
+// TestRecipeCatalogConnectionSqlite runs the catalog_connection recipe on SQLite, each case on a case database (FCV-22).
 // Requirements: INT-101, INT-103, INT-104, INT-109, INT-111, INT-113, INT-114, INT-115, INT-117, INT-123,
 // INT-136, SCH-6a.
 // Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
@@ -51,10 +51,4 @@ func TestRecipeCatalogConnectionPostgres(t *testing.T) {
 func TestRecipeCatalogConnectionSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, catalogConnectionRecipe, "sqlite")
-}
-
-// TestRecipeCatalogConnectionMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeCatalogConnectionMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, catalogConnectionRecipe, "markdown")
 }

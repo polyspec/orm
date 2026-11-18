@@ -1,4 +1,4 @@
-//! The add tables steps of the recipe tests/dbspec/add-tables-steps.json without a database (docs/spec/feature-coverage.md FCV-3,
+//! The add tables steps of the recipe tests/dbspec/add-tables-steps.json without a database (docs/spec/feature-coverage.md FCV-22,
 //! FCV-4): each case is the trial dbspec_add_tables_steps_none::<case id>, whose steps run through the shared runner.
 //! Requirements: INT-56, SCH-8.
 

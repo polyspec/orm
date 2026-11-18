@@ -1224,7 +1224,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
         return true;
     }
     if (streq(op, "fulltext") || streq(op, "fulltext_boolean")) {
-        /* PRT-75: cols and p only; each column is a text column without a codec (DIA-6, DIA-187). */
+        /* PRT-75: cols and p only; each column is a text column without a codec (DIA-6). */
         HashTable *fcols = ha(orm_hash_value(p, "cols", sizeof("cols") - 1, true));
         if (!has_items(fcols) || !has(p, "p") || *str(c, p, "column", "") != '\0'
             || has_items(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true))) || has(p, "sub") || has(p, "fn")

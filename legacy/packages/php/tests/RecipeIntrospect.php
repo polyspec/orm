@@ -14,7 +14,7 @@ use RuntimeException;
 /** The dbspec.introspect op (docs/spec/feature-coverage.md FCV-4, DIA-133, DIA-198) of the recipe runner. */
 final class RecipeIntrospect
 {
-    /** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200). */
+    /** The SQL dialect of a case database: MariaDB runs SQL in MySQL's (DIA-200). */
     private const CONNECTION_RULES = [
         'mysql' => ["SET time_zone = '+00:00'"],
         'postgres' => ['SET client_min_messages = warning', "SET TimeZone = 'UTC'"],
@@ -35,9 +35,7 @@ final class RecipeIntrospect
      */
     public static function step(RecipeStep $step, array $context): array
     {
-        // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's, and its SQL is
-        // SQLite's; MariaDB runs SQL in MySQL's (DIA-200).
-        $markdown = $context['database'] === 'markdown';
+        // MariaDB runs SQL in MySQL's dialect (DIA-200).
         $database = RecipeApply::dialect($context['database']);
         $server = RecipeApply::server($context['database']);
         if (isset($step['catalog_of'])) {
@@ -60,12 +58,8 @@ final class RecipeIntrospect
         // tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
         $extra = $vector['statements'] ?? [];
         $extra = array_is_list($extra) ? $extra : [];
-        if ($markdown) {
-            $pdo = CountingPdo::over(markdown_session_pdo($context['dsn']));
-        } else {
-            [, $pdoDsn, $user, $password] = Orm::parseDsn($context['dsn']);
-            $pdo = new CountingPdo($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        }
+        [, $pdoDsn, $user, $password] = Orm::parseDsn($context['dsn']);
+        $pdo = new CountingPdo($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $schema = match ($database) {
             'mysql' => ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/'),
             'postgres' => 'public',
@@ -152,8 +146,7 @@ final class RecipeIntrospect
      */
     public static function planPhysical(RecipeStep $step, array $context): array
     {
-        // A corpus runs SQL in SQLite's dialect (DIA-185): its native session is its flowmark server's (case_admin);
-        // MariaDB runs SQL in MySQL's (DIA-200).
+        // MariaDB runs SQL in MySQL's dialect (DIA-200).
         $database = RecipeApply::dialect($context['database']);
         $id = $step['case'];
         $matching = array_values(array_filter(

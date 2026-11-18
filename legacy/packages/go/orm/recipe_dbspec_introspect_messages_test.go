@@ -7,7 +7,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// TestRecipeDbspecIntrospectMessagesNone runs The SQLite unsupported column reason of tests/dbspec/introspect-messages.json on a memory connection (docs/spec/feature-coverage.md FCV-3, FCV-4).
+// TestRecipeDbspecIntrospectMessagesNone runs The SQLite unsupported column reason of tests/dbspec/introspect-messages.json on a memory connection (docs/spec/feature-coverage.md FCV-22, FCV-4).
 // Requirements: DIA-191.
 func TestRecipeDbspecIntrospectMessagesNone(t *testing.T) {
 	testcase.Start(t)

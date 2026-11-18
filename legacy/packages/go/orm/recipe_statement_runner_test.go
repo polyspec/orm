@@ -11,7 +11,7 @@ import (
 // statementRunnerRecipe is the recipe of the statement runner, relative to this package directory.
 var statementRunnerRecipe = testcase.LegacyPath("contracts/fixtures/statement_runner/statement_runner.json")
 
-// TestRecipeStatementRunnerMysql runs the statement_runner recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeStatementRunnerMysql runs the statement_runner recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: INT-150, INT-77.
 func TestRecipeStatementRunnerMysql(t *testing.T) {
 	testcase.Group(t)
@@ -19,28 +19,22 @@ func TestRecipeStatementRunnerMysql(t *testing.T) {
 }
 
 // TestRecipeStatementRunnerMariadb runs the statement_runner recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeStatementRunnerMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, statementRunnerRecipe, "mariadb")
 }
 
-// TestRecipeStatementRunnerPostgres runs the statement_runner recipe on PostgreSQL, each case on a case database (FCV-3).
+// TestRecipeStatementRunnerPostgres runs the statement_runner recipe on PostgreSQL, each case on a case database (FCV-22).
 // Requirements: INT-150, INT-77.
 func TestRecipeStatementRunnerPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, statementRunnerRecipe, "postgres")
 }
 
-// TestRecipeStatementRunnerSqlite runs the statement_runner recipe on SQLite, each case on a case database (FCV-3).
+// TestRecipeStatementRunnerSqlite runs the statement_runner recipe on SQLite, each case on a case database (FCV-22).
 // Requirements: INT-150, INT-77.
 func TestRecipeStatementRunnerSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, statementRunnerRecipe, "sqlite")
-}
-
-// TestRecipeStatementRunnerMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeStatementRunnerMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, statementRunnerRecipe, "markdown")
 }

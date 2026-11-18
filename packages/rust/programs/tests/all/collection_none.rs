@@ -1,4 +1,4 @@
-//! The collection recipe, tests/collection/collection.json, without a database (docs/spec/feature-coverage.md FCV-3, FCV-4): the
+//! The collection recipe, tests/collection/collection.json, without a database (docs/spec/feature-coverage.md FCV-22, FCV-4): the
 //! identity of a collection key of every type.
 //! Requirements: INT-11, INT-63, PRT-35.
 

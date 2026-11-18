@@ -40,7 +40,7 @@ final class Db
     /**
      * @internal Orm::connect creates connections. $driver is the dialect of the statements the PDO handle runs: mysql,
      * postgres or sqlite. $corpus says that the handle reaches a flowmark server, which answers SQL in SQLite's
-     * dialect on a corpus (docs/spec/dialects.md DIA-154, DIA-185), so its dialect is sqlite.
+     * dialect on a corpus (docs/spec/dialects.md DIA-154), so its dialect is sqlite.
      */
     public function __construct(
         \PDO $pdo,

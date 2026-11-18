@@ -1,5 +1,5 @@
 # Requirements: INT-150, INT-77, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14 (docs/spec/feature-coverage.md).
-# The suite unit statement_runner-mariadb (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit statement_runner-mariadb (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/statement_runner/statement_runner.json on MariaDB, a server of the MySQL dialect (DIA-200).
 # Requirements: INT-150, INT-77.
 from .recipe import recipe_tests

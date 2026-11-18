@@ -545,7 +545,7 @@ export class Db {
 
   /**
    * pool is the driver pool of the connection. corpus says that it reaches a flowmark server, which answers SQL in SQLite's
-   * dialect on a corpus (DIA-185), so its pool is a SQLite pool.
+   * dialect on a corpus (DIA-154), so its pool is a SQLite pool.
    */
   private constructor(/** @internal */ public readonly pool: DriverPool, public readonly zone: string, options: ConnectOptions, aes: AesConfig, private readonly corpus = false) {
     this.blindIndexKey = options.blindIndexKey ?? '';
@@ -577,7 +577,7 @@ export class Db {
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError(codes.CONFIG, 'pool lifetime must not be negative');
     const bounds = { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 };
     const aes = aesConfig(options);
-    // A flowmark server runs SQL in SQLite's dialect (DIA-185): a markdown connection is a SQLite connection whose statements it answers.
+    // A flowmark server runs SQL in SQLite's dialect (DIA-154): a markdown connection is a SQLite connection whose statements it answers.
     const pool = parsed.driver === 'markdown' ? openMarkdown(parsed.markdown, bounds) : openDriver(dsn, parsed, bounds, statementCacheSize, options.statementTimeoutMs ?? 0);
     const db = new Db(pool, parsed.zone, options, aes, parsed.driver === 'markdown');
     // Opens one connection and returns it to the pool. It does not send a statement to check the connection; a markdown session

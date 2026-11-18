@@ -6,8 +6,8 @@ namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Attributes\Medium;
 
-// The decimal document set on each database (docs/spec/feature-coverage.md FCV-3).
-// Requirements: DBS-108, SCH-7, FCV-3, FCV-4 (docs/spec/feature-coverage.md).
+// The decimal document set on each database (docs/spec/feature-coverage.md FCV-22).
+// Requirements: DBS-108, SCH-7, FCV-22, FCV-4 (docs/spec/feature-coverage.md).
 #[Medium]
 class DbspecSetDecimalRecipeTest extends DatabaseRecipeTestCase
 {

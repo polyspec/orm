@@ -11,7 +11,7 @@ import (
 )
 
 // TestRecipePublicInterfaceSignedNone runs the case of the signed limit, which Rust refuses at compile time, without a database
-// (FCV-3, FCV-4). The builder runs on a model with no connection: the terminal returns the first error before it resolves one, so
+// (FCV-22, FCV-4). The builder runs on a model with no connection: the terminal returns the first error before it resolves one, so
 // no statement can be sent.
 // Requirements: INT-159.
 func TestRecipePublicInterfaceSignedNone(t *testing.T) {

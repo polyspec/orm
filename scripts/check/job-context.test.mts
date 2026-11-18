@@ -192,7 +192,7 @@ caseTest('the Kit jobs declare the context and setup targets that own their nati
   assert.deepEqual(config.setup.runtimes.php, ['orm-install-php']);
   // The php-ext job also runs the checks that AGENTS.md names as the enforcement of a rule and that need the servers of its context
   // and every client (T617), so it installs the Go modules, Python and the TypeScript interfaces as well.
-  assert.deepEqual(config.setup.runtimes['php-ext'], ['orm-install-php-extension-runtime', 'orm-install-server-programs', 'orm-install-go-lease', 'orm-install-flowmark', 'orm-install-rust', 'orm-install-go', 'orm-install-python', 'orm-install-interfaces-typescript']);
+  assert.deepEqual(config.setup.runtimes['php-ext'], ['orm-install-php-extension-runtime', 'orm-install-server-programs', 'orm-install-go-lease', 'orm-install-rust', 'orm-install-go', 'orm-install-python', 'orm-install-interfaces-typescript']);
   assert.deepEqual(config.setup.runtimes.python, ['orm-install-python', 'orm-install-rust', 'orm-install-binding-python']);
   assert.deepEqual(config.setup.runtimes.ts, ['orm-install-interfaces-typescript', 'orm-install-typescript-runtime', 'orm-install-rust', 'orm-install-wasm-bindgen']);
   assert.ok(isRecord(config.tools));

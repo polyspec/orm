@@ -1,4 +1,4 @@
-//! The test program of the recipe entries of mariadb (docs/spec/feature-coverage.md FCV-3, docs/spec/dialects.md DIA-200): each
+//! The test program of the recipe entries of mariadb (docs/spec/feature-coverage.md FCV-22, docs/spec/dialects.md DIA-200): each
 //! module runs one recipe on MariaDB, a server of the MySQL dialect, and its tests are the trials `<module>::<case>`. The entries
 //! need the MariaDB servers of make orm-test-mariadb, which a runner of the MySQL servers cannot hold, so the program is no test
 //! of a plain cargo test (test = false in Cargo.toml) and make mariadb-recipes-check/rust runs it by `--test mariadb`. The

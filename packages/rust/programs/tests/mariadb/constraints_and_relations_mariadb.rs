@@ -1,5 +1,5 @@
 //! Requirements: CFG-33, INT-87, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14.
-//! The constraints_and_relations recipe, contracts/fixtures/constraints_and_relations/constraints_and_relations.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200) (docs/spec/feature-coverage.md FCV-3, FCV-4).
+//! The constraints_and_relations recipe, contracts/fixtures/constraints_and_relations/constraints_and_relations.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200) (docs/spec/feature-coverage.md FCV-22, FCV-4).
 
 use polyspec_orm_tests::recipe;
 

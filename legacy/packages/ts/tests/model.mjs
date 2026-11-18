@@ -482,7 +482,7 @@ programCase('failedRollback', ['sqlite'], () => withTemporaryDirectory('orm-ts-m
 // If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which ends a nested transaction's savepoint, fails, the callback
 // reports its error together with that error, and a successful callback reports the failed RELEASE SAVEPOINT. The real SQLite
 // does not reject this statement, so the control of the transaction connection makes it fail.
-// Requirements: DIA-181, PLN-17.
+// Requirements: PLN-17.
 programCase('failedSavepointEnd', ['sqlite'], () => withTemporaryDirectory('orm-ts-model-', async work => {
   const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
   try {

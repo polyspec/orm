@@ -652,7 +652,7 @@ def model_ops(native, database_value, step_argument, audit_source_of):
 
     def query_search(step, context):
         """query.search (FCV-4, PRT-75): a count with a fulltext_boolean chain key over the columns. The statement is compiled
-        with the engine of the case dialect (DIA-187 refuses SQLite); a blank text runs on the case connection, where the bind
+        with the engine of the case dialect (DIA-6 refuses SQLite); a blank text runs on the case connection, where the bind
         check refuses it with IR_INVALID (DIA-6)."""
         db = connection(step["connection"], context)
         if step["model"] != "Author":
@@ -664,8 +664,8 @@ def model_ops(native, database_value, step_argument, audit_source_of):
             [step["text"]],
         )
         built = author.core.build("count")
-        # A corpus runs SQL in SQLite's dialect (DIA-185), MariaDB in MySQL's (DIA-200).
-        dialect = {"markdown": "sqlite", "mariadb": "mysql"}.get(
+        # MariaDB runs SQL in MySQL's dialect (DIA-200).
+        dialect = {"mariadb": "mysql"}.get(
             context["database"], context["database"]
         )
         plan = Engine(author.core.ent.model.runtime, dialect).compile(built.finish())

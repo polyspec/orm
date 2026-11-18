@@ -19,7 +19,7 @@ func TestTransactionFailureRollback(t *testing.T) {
 	wantBoth(t, "transaction callback", err, "callback failed", errRollbackRejected.Error())
 }
 
-// Requirements: DIA-181, PLN-17.
+// Requirements: PLN-17.
 func TestTransactionFailureSavepointEnd(t *testing.T) {
 	testcase.Start(t)
 	useFailingDriver(t, "sqlite")

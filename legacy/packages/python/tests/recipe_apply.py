@@ -18,8 +18,6 @@ from polyspec.orm.dbspec.apply import (
 )
 from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.plan import parse_plan
-from polyspec.orm.database import parse_dsn
-from polyspec.orm.markdown import MarkdownConnection
 
 from . import recipe as _recipe
 from .case_database import case_database, case_server
@@ -36,7 +34,7 @@ _CONNECTION_RULES = {
 }
 _SERVER_ENV = {
     "mysql": "ORM_TEST_MYSQL_SERVER_DSN",
-    # MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+    # MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-22).
     "mariadb": "ORM_TEST_MARIADB_SERVER_DSN",
     "postgres": "ORM_TEST_POSTGRES_SERVER_DSN",
 }
@@ -49,8 +47,8 @@ _COMMANDS = {
 
 
 def _dialect_of(database: str) -> str:
-    """The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200)."""
-    return {"markdown": "sqlite", "mariadb": "mysql"}.get(database, database)
+    """The SQL dialect of a case database: MariaDB runs SQL in MySQL's (DIA-200)."""
+    return {"mariadb": "mysql"}.get(database, database)
 
 
 class _Stop(Exception):
@@ -72,16 +70,9 @@ class _Session:
     def __init__(self, dialect: str, connection) -> None:
         self.dialect = dialect
         self.connection = connection
-        # A corpus session already runs a statement with its values and answers {'rows': [...]}.
-        self.adapter = (
-            connection
-            if isinstance(connection, MarkdownConnection)
-            else Adapter(dialect, connection)
-        )
+        self.adapter = Adapter(dialect, connection)
 
     def run(self, text: str) -> list:
-        if isinstance(self.connection, MarkdownConnection):
-            return self.connection.execute(text, [])["rows"]
         if self.dialect == "sqlite":
             cursor = self.connection.execute(text)
             rows = cursor.fetchall()
@@ -101,10 +92,7 @@ class _Session:
 def _direct(context: dict, dsn: str) -> _Session:
     """The session of a direct connection to the database of the case DSN dsn, with the rules of a new connection."""
     database = context["database"]
-    if database == "markdown":
-        # A corpus is reached through one session of its flowmark server, which answers SQLite's statements (DIA-185).
-        connection = MarkdownConnection(parse_dsn(dsn).markdown)
-    elif database == "sqlite":
+    if database == "sqlite":
         connection = sqlite3.connect(
             unquote(dsn[len("sqlite://") :]), isolation_level=None
         )

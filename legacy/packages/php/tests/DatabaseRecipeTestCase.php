@@ -7,10 +7,9 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * The test class of a recipe that runs on each database (docs/spec/feature-coverage.md FCV-3): a recipe test extends
- * it and names its recipe, and every case runs on MySQL, PostgreSQL, SQLite and flowmark as testMysql, testPostgres,
- * testSqlite and testMarkdown; a markdown connection runs the cases that SQLite runs (DIA-154). The SQLite and flowmark
- * runs are those of SqliteRecipeTestCase.
+ * The test class of a recipe that runs on each database (docs/spec/feature-coverage.md FCV-22): a recipe test extends
+ * it and names its recipe, and every case runs on MySQL, PostgreSQL and SQLite as testMysql, testPostgres and
+ * testSqlite. The SQLite run is that of SqliteRecipeTestCase.
  */
 abstract class DatabaseRecipeTestCase extends SqliteRecipeTestCase
 {

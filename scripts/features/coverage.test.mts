@@ -165,7 +165,7 @@ function declaredPhpMethods(file: string, seen = new Set<string>()): string {
 
 // The go and php runners select their entry by its method name; the other runners run the whole file, so an entry of theirs
 // names no symbol and the checker refuses one.
-// Requirements: FCV-3.
+// Requirements: FCV-22.
 caseTest('only the go and php entries name a symbol', () => {
   const root = new URL('../..', import.meta.url).pathname;
   const wrong: string[] = [];
@@ -926,7 +926,7 @@ caseTest('a run is the exit status of its entry and the lines it wrote', async (
   }
 });
 
-// Requirements: FCV-3.
+// Requirements: FCV-22.
 caseTest('Go, PHP, and Rust native cases execute through their owning files', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases: { language: string; part: string; file: string; runner: string; symbol?: string }[] = [

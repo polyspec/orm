@@ -12,7 +12,6 @@
     "INT-36",
     "INT-37",
     "PLN-16",
-    "DIA-161",
     "INT-38",
     "PRT-65",
     "INT-49",
@@ -2711,7 +2710,7 @@
     {
       "id": "restore_key",
       "requirements": [
-        "DIA-161"
+        "INT-38"
       ],
       "seed": {
         "rows": {
@@ -2866,7 +2865,6 @@
     {
       "id": "restore_condition",
       "requirements": [
-        "DIA-161",
         "INT-38"
       ],
       "seed": {
@@ -3086,7 +3084,7 @@
     {
       "id": "restore_no_key",
       "requirements": [
-        "DIA-161"
+        "INT-38"
       ],
       "seed": {
         "rows": {
@@ -3305,7 +3303,7 @@
     {
       "id": "restore_rewritten_key",
       "requirements": [
-        "DIA-161"
+        "INT-38"
       ],
       "seed": {
         "rows": {
@@ -3512,7 +3510,7 @@
     {
       "id": "restore_hook_set_key",
       "requirements": [
-        "DIA-161"
+        "INT-38"
       ],
       "seed": {
         "rows": {
@@ -3710,7 +3708,7 @@
     {
       "id": "restore_rewritten_key_set_scope",
       "requirements": [
-        "DIA-161"
+        "INT-38"
       ],
       "seed": {
         "rows": {

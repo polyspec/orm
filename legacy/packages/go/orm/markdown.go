@@ -204,7 +204,7 @@ func openMarkdown(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	if err := pool.PingContext(ctx); err != nil {
 		return nil, errors.Join(mapDriverErr(err, ""), pool.Close())
 	}
-	// A flowmark server runs SQL in SQLite's dialect (DIA-185): this connection is a SQLite connection whose statements it answers.
+	// A markdown connection is a SQLite connection whose statements the server answers (DIA-154).
 	return &DB{corpus: true, sql: pool, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}}, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}, cfg: cfg, driver: "sqlite", location: dsn.location}, nil
 }
 

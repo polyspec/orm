@@ -1,4 +1,4 @@
-// The one recipe runner per runtime (FCV-15): a test file that runs a recipe (it names the recipe file, or a PHP extension test
+// The one recipe runner per runtime (FCV-23): a test file that runs a recipe (it names the recipe file, or a PHP extension test
 // extends a PHP test that names it) hands the recipe to the runner of its runtime and implements no op; a runner dispatches an op by its full name and refuses an op it does not name; only the runner of a
 // runtime refuses an op, so a runtime has no second runner; every op of the recipe schema is the op of a step of a recipe.
 // `node scripts/features/recipe-runners.mts` prints each finding and exits 1 when there is one.
@@ -33,7 +33,7 @@ export const RUNNERS: { [implementation: string]: Runner } = {
 };
 
 /**
- * VECTOR_RUNNERS are the runner programs of the conformance bodies of each runtime (FCV-15): tests/conformance/check/recipe_vectors.mts
+ * VECTOR_RUNNERS are the runner programs of the conformance bodies of each runtime (FCV-23): tests/conformance/check/recipe_vectors.mts
  * runs the generated-method and fixed-clock bodies of tests/conformance/vectors.json through them in every runtime, the PHP extension
  * through the PHP runner, so those bodies are cases that every runtime runs and not native tests.
  */
@@ -43,22 +43,13 @@ export const VECTOR_RUNNERS: Record<string, string[]> = RUNNER_SOURCES;
 export type CaseRunner = { file: string; tests: string[] };
 
 /**
- * CASE_RUNNERS are the tests that run every case of a case file whose bodies each runtime writes, in every runtime (FCV-15): each
+ * CASE_RUNNERS are the tests that run every case of a case file whose bodies each runtime writes, in every runtime (FCV-23): each
  * reads the ids and the expected results of the file, runs the body of each id and fails, before any case runs, when the file holds
  * an id that it has no body for or it has a body that the file does not name. So those bodies are cases that every runtime runs and
  * not native tests. `tests` are the names that the FCV-2 rule reads in the file and that run the cases; a TypeScript or Python test
  * named by the id of its case is no such name.
  */
-export const CASE_RUNNERS: Record<string, Record<string, CaseRunner>> = {
-  'tests/markdown/cases.json': {
-    go: { file: 'legacy/packages/go/markdownmodel/conformance_test.go', tests: ['TestMarkdownConformance'] },
-    php: { file: 'legacy/packages/php/tests/MarkdownConformanceTest.php', tests: ['testMarkdownConformance'] },
-    'php-extension': { file: 'legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php', tests: ['testMarkdownConformance'] },
-    typescript: { file: 'legacy/packages/ts/tests/markdown_conformance.mjs', tests: [] },
-    python: { file: 'legacy/packages/python/tests/markdown_conformance.py', tests: [] },
-    rust: { file: 'packages/rust/programs/tests/all/markdown_conformance.rs', tests: ['trials'] },
-  },
-};
+export const CASE_RUNNERS: Record<string, Record<string, CaseRunner>> = {};
 
 /** The tests of CASE_RUNNERS, each as its file and its name joined by NUL, which the FCV-2 rule reads as no native test. */
 export const caseRunnerTests = (): Set<string> =>
@@ -108,7 +99,7 @@ export function stepOps(value: unknown, found: Set<string> = new Set()): Set<str
   return found;
 }
 
-// findings is what the tree breaks of FCV-15, one text per defect.
+// findings is what the tree breaks of FCV-23, one text per defect.
 export function findings(tree: Tree): string[] {
   const out: string[] = [];
   for (const reader of Object.keys(READERS)) if (!tree.readers.includes(reader)) out.push(`${reader}: a reader of READERS that names no recipe`);

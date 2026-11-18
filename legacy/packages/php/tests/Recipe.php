@@ -53,7 +53,7 @@ final class Recipe
     /** The time of the last wait.start (FCV-4), in nanoseconds. */
     private static int $waitStart = 0;
 
-    /** The ops that RecipeModel runs, by their full names (FCV-15). */
+    /** The ops that RecipeModel runs, by their full names (FCV-23). */
     private const MODEL_OPS = [
         'model.arithmetic',
         'model.assign',
@@ -85,7 +85,7 @@ final class Recipe
         'pool.transactions',
     ];
 
-    /** The database part of a recipe without a database (FCV-3). */
+    /** The database part of a recipe without a database (FCV-22). */
     public const NONE = 'none';
 
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
@@ -129,7 +129,7 @@ final class Recipe
             $recipe = RecipeKeys::decoded($path, (string) file_get_contents(ormLegacyRoot() . '/' . $path));
             self::$caseIds[$path] = [];
             self::$databaseCaseIds[$path] = [
-                'mysql' => [], 'postgres' => [], 'sqlite' => [], 'markdown' => [], 'mariadb' => [],
+                'mysql' => [], 'postgres' => [], 'sqlite' => [], 'mariadb' => [],
             ];
             foreach ($recipe['cases'] as $case) {
                 self::$caseIds[$path][$case['id']] = [$case['id']];
@@ -234,8 +234,8 @@ final class Recipe
     }
 
     /**
-     * A case with `only` runs on the databases that it names, a markdown connection on what names sqlite too, and a
-     * case with `not_through_pooler` outside the pooler lane.
+     * A case with `only` runs on the databases that it names, MariaDB on what names mysql too, and a case with
+     * `not_through_pooler` outside the pooler lane.
      *
      * @param array<string, mixed> $case
      */
@@ -848,7 +848,7 @@ final class Recipe
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
             if (isset($config['session_read'])) {
-                // The query of the session may name its text by database (FCV-3), as the settings of MySQL and MariaDB
+                // The query of the session may name its text by database (FCV-22), as the settings of MySQL and MariaDB
                 // differ (DIA-208).
                 $sql = $config['session_read']['sql'];
                 $sql = is_array($sql) ? $sql[self::dialectKey($database, $sql)] : $sql;
@@ -2623,30 +2623,29 @@ final class Recipe
         return var_export($value, true);
     }
 
-    // The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+    // The database path (FCV-22 and FCV-4): each case runs on a case database of its own through the public catalog API.
 
-    /** The databases of a recipe with a fixture (FCV-3). */
-    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'markdown', 'mariadb'];
+    /** The databases of a recipe with a fixture (FCV-22). */
+    private const DATABASES = ['mysql', 'postgres', 'sqlite', 'mariadb'];
 
-    /** The SQL dialect of a database that is not a dialect of its own: a corpus runs SQLite's (DIA-185), MariaDB MySQL's (DIA-200). */
-    private const DIALECT_OF = ['markdown' => 'sqlite', 'mariadb' => 'mysql'];
+    /** The SQL dialect of a database that is not a dialect of its own: MariaDB runs MySQL's (DIA-200). */
+    private const DIALECT_OF = ['mariadb' => 'mysql'];
 
     /**
-     * Whether a case or step with the list $only runs on database: a corpus speaks SQLite's dialect, so what names
-     * sqlite names it too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3).
+     * Whether a case or step with the list $only runs on database: MariaDB is a server of the MySQL dialect, so what
+     * names mysql names it too (FCV-22).
      *
      * @param list<string>|null $only
      */
     private static function onDatabase(?array $only, string $database): bool
     {
         return $only === null || in_array($database, $only, true)
-            || ($database === 'markdown' && in_array('sqlite', $only, true))
             || ($database === 'mariadb' && in_array('mysql', $only, true));
     }
 
     /**
-     * The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect
-     * unless the value states its own (FCV-3).
+     * The key of a value that names its text by database: a MariaDB server reads the entry of its dialect unless the
+     * value states its own (FCV-22).
      */
     private static function dialectKey(string $database, mixed $entries): string
     {
@@ -2661,7 +2660,7 @@ final class Recipe
         return self::DIALECT_OF[$context['database']] ?? $context['database'];
     }
 
-    /** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3). */
+    /** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-22). */
     private static function serverVariable(string $name, string $database): string
     {
         return $database === 'mariadb' && str_starts_with($name, 'ORM_TEST_MYSQL_')
@@ -2686,22 +2685,11 @@ final class Recipe
         if (!isset($recipe['fixture'])) {
             Assert::fail("recipe $path: no fixture, so it has no database");
         }
-        // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+        // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-22).
         [$schema, $installFirst] = $recipe['fixture'] === 'none'
             ? [null, []]
             : (self::$schemas[$recipe['fixture']] ??= self::fixtureSchema($root . '/' . $recipe['fixture']));
         $caseArgs = [$path, $recipe, $case, $database, $schema, $installFirst];
-        if ($database === 'markdown') {
-            // flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a corpus
-            // of no table.
-            $setPath = $recipe['fixture'] !== 'none' && ($case['install'] ?? true) !== false
-                ? $root . '/' . $recipe['fixture']
-                : null;
-            CaseCorpus::with($setPath, static function (string $dsn, string $dir) use ($caseArgs): void {
-                self::runDatabaseCase(...array_merge($caseArgs, [$dsn, CaseCorpus::NAME, $dir]));
-            });
-            return;
-        }
         with_case_database(
             $database,
             static function (string $step): void {
@@ -2758,8 +2746,7 @@ final class Recipe
 
     /**
      * Installs the Schema on the case database, connects the catalog, binds `database` to the name of the case
-     * database, inserts the seed rows of the recipe and then of the case, runs the steps and closes the catalog. On a
-     * corpus, at $corpusDir, flowmark install made the tables of the set, and the connection registers it.
+     * database, inserts the seed rows of the recipe and then of the case, runs the steps and closes the catalog.
      */
     private static function runDatabaseCase(
         string $path,
@@ -2770,17 +2757,12 @@ final class Recipe
         array $installFirst,
         string $dsn,
         string $name,
-        ?string $corpusDir = null,
     ): void {
         $db = Orm::connect($dsn, new Config());
         try {
             // A case with install: false installs nothing before its steps; its steps install the
             // schema themselves (FCV-4).
-            if ($schema !== null && ($case['install'] ?? true) !== false && $database === 'markdown') {
-                // flowmark install made the corpus from the set; the connection takes the set as an install
-                // registers it.
-                $db->utils()->schema()->register($schema);
-            } elseif ($schema !== null && ($case['install'] ?? true) !== false) {
+            if ($schema !== null && ($case['install'] ?? true) !== false) {
                 foreach ([...$installFirst, $schema] as $shared) {
                     $db->utils()->schema()->install($shared);
                 }
@@ -2791,7 +2773,6 @@ final class Recipe
                 'namespace' => '',
                 'database' => $database,
                 'dsn' => $dsn,
-                'corpusDir' => $corpusDir,
                 'schema' => $schema,
                 'fixture' => ormLegacyRoot() . '/' . $recipe['fixture'],
                 'tablePath' => $recipe['fixture'] !== self::GENERATED_FIXTURE,
@@ -2821,8 +2802,7 @@ final class Recipe
                     }
                 }
                 foreach ($case['steps'] as $index => $step) {
-                    // A step with `only` runs on the databases that it names, and no other; a markdown connection runs
-                    // what names sqlite.
+                    // A step with `only` runs on the databases that it names, and no other.
                     if (!self::onDatabase($step['only'] ?? null, $database)) {
                         continue;
                     }
@@ -2894,7 +2874,7 @@ final class Recipe
             $raw['expect'] = $raw['expect_unnamed'];
         }
         $step = new RecipeStep($raw);
-        // A markdown connection reads the sqlite entry of an expect that names no result of its own (DIA-185).
+        // A MariaDB server reads the mysql entry of an expect that names no result of its own (DIA-200).
         $key = self::dialectKey($context['database'], $raw['expect'] ?? null);
         $expected = isset($step['expect'][$key])
             ? self::resolveRefs($step['expect'][$key], $context)
@@ -3407,8 +3387,7 @@ final class Recipe
                 return ['bind' => new RecipeSubscription($stop, $recording)];
             case 'db.execute':
                 // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to
-                // the recipe, for the dialect of the database of the case (SQLite for markdown, MySQL for MariaDB,
-                // FCV-3), and runs the first step.
+                // the recipe, for the dialect of the database of the case (MySQL for MariaDB, FCV-22), and runs the first step.
                 $schema = realpath($context['dir'] . '/' . $s['schema']);
                 if ($schema === false) {
                     Assert::fail("db.execute: the schema {$s['schema']} is missing");
@@ -3720,12 +3699,7 @@ final class Recipe
                 );
                 return [];
             case 'database.read_only':
-                // The file of the case database becomes one that the process may only read (CFG-24); a corpus, its
-                // directories, which CaseCorpus makes writable again when the case ends.
-                if ($context['database'] === 'markdown') {
-                    CaseCorpus::chmodTree((string) $context['corpusDir'], true);
-                    return [];
-                }
+                // The file of the case database becomes one that the process may only read (CFG-24).
                 Assert::assertTrue(chmod(explode('?', substr($context['dsn'], strlen('sqlite://')))[0], 0o444));
                 return [];
             // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
@@ -4276,7 +4250,7 @@ final class Recipe
 
     /**
      * query.search (FCV-4, PRT-75): the count of a fulltext_boolean chain over the columns, through the fulltext
-     * chain of the model. The request is compiled on the dialect of the case connection (DIA-187 refuses SQLite), and
+     * chain of the model. The request is compiled on the dialect of the case connection (DIA-6 refuses SQLite), and
      * its bind values are those of the statement: the DIA-6 transform of the dialect, which refuses a blank text with
      * IR_INVALID, and binds its terms on MySQL and the text as it is on PostgreSQL.
      */

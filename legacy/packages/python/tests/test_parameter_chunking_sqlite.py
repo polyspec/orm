@@ -1,4 +1,4 @@
-# Recipe conversion of the parameter chunking: FCV-3 and FCV-4 (docs/spec/feature-coverage.md), suite unit parameter_chunking-sqlite.
+# Recipe conversion of the parameter chunking: FCV-22 and FCV-4 (docs/spec/feature-coverage.md), suite unit parameter_chunking-sqlite.
 from .recipe import recipe_tests
 from . import testcase
 

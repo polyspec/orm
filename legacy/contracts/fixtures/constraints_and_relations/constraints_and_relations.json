@@ -340,11 +340,6 @@
               "message_holds": "FOREIGN KEY constraint failed",
               "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)",
               "driver_cause": true
-            },
-            "markdown": {
-              "error": "FOREIGN_KEY",
-              "message": "FOREIGN_KEY: constraint failed: FOREIGN KEY constraint failed (1811) (SQLITE_CONSTRAINT_TRIGGER)",
-              "driver_cause": true
             }
           }
         },
@@ -474,11 +469,6 @@
               "message_holds": "CHECK constraint failed: ck_author_counts",
               "message_suffix": " (SQLITE_CONSTRAINT_CHECK)",
               "driver_cause": true
-            },
-            "markdown": {
-              "error": "CONSTRAINT",
-              "message": "CONSTRAINT: constraint failed: CHECK constraint failed: ck_author_counts (275) (SQLITE_CONSTRAINT_CHECK)",
-              "driver_cause": true
             }
           }
         },
@@ -514,11 +504,6 @@
               "error": "DUPLICATE_KEY",
               "message_holds": "UNIQUE constraint failed: author.uuid",
               "message_suffix": " (SQLITE_CONSTRAINT_UNIQUE)",
-              "driver_cause": true
-            },
-            "markdown": {
-              "error": "DUPLICATE_KEY",
-              "message": "DUPLICATE_KEY: constraint failed: UNIQUE constraint failed: author.uuid (2067) (SQLITE_CONSTRAINT_UNIQUE)",
               "driver_cause": true
             }
           }

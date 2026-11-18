@@ -18,7 +18,6 @@
         "orm-install-php-extension-runtime",
         "orm-install-server-programs",
         "orm-install-go-lease",
-        "orm-install-flowmark",
         "orm-install-rust",
         "orm-install-go",
         "orm-install-python",

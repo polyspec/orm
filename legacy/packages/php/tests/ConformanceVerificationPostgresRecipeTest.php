@@ -2,7 +2,7 @@
 
 // Requirements: DIA-18, DIA-24, DIA-56, DSL-137, INT-39, PRT-77.
 // The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on
-// postgres (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+// postgres (docs/spec/feature-coverage.md FCV-22 and FCV-4).
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

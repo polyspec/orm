@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 // The refusal of an unknown dialect, tests/dbspec/dialect-refusal.json, without a database
-// (docs/spec/feature-coverage.md FCV-3, FCV-4). Requirements: DBS-174.
+// (docs/spec/feature-coverage.md FCV-22, FCV-4). Requirements: DBS-174.
 #[Medium]
 class DbspecDialectRefusalRecipeTest extends TestCase
 {

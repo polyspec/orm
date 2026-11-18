@@ -1,4 +1,4 @@
-//! The markdown message and control recipe, tests/bind/messages.json, without a database (docs/spec/feature-coverage.md FCV-3,
+//! The markdown message and control recipe, tests/bind/messages.json, without a database (docs/spec/feature-coverage.md FCV-22,
 //! FCV-4). Requirements: PRT-67.
 
 use polyspec_orm_tests::recipe;

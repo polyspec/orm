@@ -12,7 +12,7 @@ import (
 // constraintsAndRelationsRecipe is the recipe of the constraints and relations, relative to this package directory.
 var constraintsAndRelationsRecipe = testcase.LegacyPath("contracts/fixtures/constraints_and_relations/constraints_and_relations.json")
 
-// TestRecipeConstraintsAndRelationsMysql runs the constraints_and_relations recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeConstraintsAndRelationsMysql runs the constraints_and_relations recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: CFG-33, INT-87.
 func TestRecipeConstraintsAndRelationsMysql(t *testing.T) {
 	testcase.Group(t)
@@ -20,28 +20,22 @@ func TestRecipeConstraintsAndRelationsMysql(t *testing.T) {
 }
 
 // TestRecipeConstraintsAndRelationsMariadb runs the constraints_and_relations recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeConstraintsAndRelationsMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, constraintsAndRelationsRecipe, "mariadb")
 }
 
-// TestRecipeConstraintsAndRelationsPostgres runs the constraints_and_relations recipe on PostgreSQL, each case on a case database (FCV-3).
+// TestRecipeConstraintsAndRelationsPostgres runs the constraints_and_relations recipe on PostgreSQL, each case on a case database (FCV-22).
 // Requirements: CFG-33, INT-87.
 func TestRecipeConstraintsAndRelationsPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, constraintsAndRelationsRecipe, "postgres")
 }
 
-// TestRecipeConstraintsAndRelationsSqlite runs the constraints_and_relations recipe on SQLite, each case on a case database (FCV-3).
+// TestRecipeConstraintsAndRelationsSqlite runs the constraints_and_relations recipe on SQLite, each case on a case database (FCV-22).
 // Requirements: CFG-33, INT-87.
 func TestRecipeConstraintsAndRelationsSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, constraintsAndRelationsRecipe, "sqlite")
-}
-
-// TestRecipeConstraintsAndRelationsMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeConstraintsAndRelationsMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, constraintsAndRelationsRecipe, "markdown")
 }

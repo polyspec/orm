@@ -161,7 +161,7 @@ final class Catalog
     /**
      * Opens the catalog connection of a mysql, postgres, sqlite or markdown DSN. A SQLite DSN must name an existing
      * regular file, and the connection never creates one. A flowmark server runs SQL in SQLite's dialect on the
-     * corpus, so the catalog of a corpus is a SQLite catalog (docs/spec/dialects.md DIA-185).
+     * corpus, so the catalog of a corpus is a SQLite catalog (docs/spec/dialects.md DIA-154).
      */
     public static function connect(string $dsn): self
     {

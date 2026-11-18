@@ -1,4 +1,4 @@
-//! The composite_keys recipe, contracts/fixtures/composite_keys/composite_keys.json, on sqlite (docs/spec/feature-coverage.md FCV-3, FCV-4).
+//! The composite_keys recipe, contracts/fixtures/composite_keys/composite_keys.json, on sqlite (docs/spec/feature-coverage.md FCV-22, FCV-4).
 //! Requirements: DSL-82, INT-87, PRT-12, PRT-40.
 
 use polyspec_orm_tests::recipe;

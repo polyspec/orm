@@ -1,5 +1,5 @@
 # Requirements: INT-51, INT-52, INT-53, INT-61, INT-73, INT-134.
-# The suite unit utils-postgres (docs/spec/feature-coverage.md FCV-3): the recipe contracts/fixtures/utils/utils.json on Postgres.
+# The suite unit utils-postgres (docs/spec/feature-coverage.md FCV-22): the recipe contracts/fixtures/utils/utils.json on Postgres.
 from .recipe import recipe_tests
 from . import testcase
 

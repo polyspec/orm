@@ -80,7 +80,7 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 	}
 	switch parsed.driver {
 	case "markdown":
-		// A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185).
+		// A markdown connection plans in SQLite's dialect, so the catalog of a corpus is a SQLite catalog (DIA-154).
 		db, err := open(context.Background(), parsed, Config{})
 		if err != nil {
 			return nil, err

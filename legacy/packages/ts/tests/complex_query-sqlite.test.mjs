@@ -1,4 +1,4 @@
-// The suite unit complex_query-sqlite (docs/spec/feature-coverage.md FCV-3).
+// The suite unit complex_query-sqlite (docs/spec/feature-coverage.md FCV-22).
 import { runRecipe } from './recipe.mjs';
 
 await runRecipe('contracts/fixtures/complex_query/complex_query.json', 'sqlite');

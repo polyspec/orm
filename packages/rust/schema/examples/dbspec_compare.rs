@@ -308,7 +308,7 @@ fn plan_case(id: String, steps: &[Value]) -> Result<PlanCase, String> {
 }
 
 /// The validation sections of tests/dbspec/plan-cases.json, read from the recipes plan-invalid, plan-chains, plan-parse and
-/// plan-comparisons .json beside it (FCV-3): each case's lines are those that its refs bind by an earlier parse step.
+/// plan-comparisons .json beside it (FCV-22): each case's lines are those that its refs bind by an earlier parse step.
 struct PlanRecipes {
     invalid: Vec<PlanCase>,
     chains: Vec<ChainCase>,

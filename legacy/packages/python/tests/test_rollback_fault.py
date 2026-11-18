@@ -192,7 +192,7 @@ class RollbackFaultTest(unittest.TestCase):
         self.assertIn("not authorized", str(error.rollback))
         self.assertEqual(refused, ["ROLLBACK"])
 
-    # Requirements: DIA-181, PLN-17.
+    # Requirements: PLN-17.
     def test_a_failed_savepoint_rollback_and_transaction_rollback_report_both(self):
         raw = self.db._shared.pool._idle[0].connection
         self.addCleanup(raw.set_authorizer, None)

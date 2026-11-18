@@ -288,7 +288,7 @@
     },
     "scripts/repo/offline-tests.mts": {
       "kind": "policy",
-      "reason": "the selection by name of the Rust and Python tests of this repository that read neither a database server nor flowmark (T570, T580), for the offline test targets; it reads the listing of cargo test and of unittest, and the naming rule is this repository's"
+      "reason": "the selection by name of the Rust and Python tests of this repository that read no database server (T570, T580), for the offline test targets; it reads the listing of cargo test and of unittest, and the naming rule is this repository's"
     },
     "scripts/repo/node.mts": {
       "kind": "policy",
@@ -449,7 +449,7 @@
     },
     "scripts/features/recipe-runners.mts": {
       "kind": "policy",
-      "reason": "the rule of this repository that each runtime has one recipe runner (FCV-15); no ecosystem tool knows these runners"
+      "reason": "the rule of this repository that each runtime has one recipe runner (FCV-23); no ecosystem tool knows these runners"
     },
     "scripts/features/test-names.mts": {
       "kind": "policy",

@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Tests\ExternalAuditRecipeTest;
 
-// The external_audit recipe through the PHP extension (docs/spec/feature-coverage.md FCV-3).
+// The external_audit recipe through the PHP extension (docs/spec/feature-coverage.md FCV-22).
 // Requirements: SCH-14, DBS-110.
 #[Medium]
 final class ExternalAuditRecipeTestExtensionTest extends ExternalAuditRecipeTest

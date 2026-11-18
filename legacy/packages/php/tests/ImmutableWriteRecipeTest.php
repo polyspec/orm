@@ -1,7 +1,7 @@
 <?php
 
 // The immutable_write recipe, contracts/fixtures/immutable_write/immutable_write.json, on each database
-// (docs/spec/feature-coverage.md FCV-3).
+// (docs/spec/feature-coverage.md FCV-22).
 // Requirements: DBS-84.
 declare(strict_types=1);
 

@@ -1,4 +1,4 @@
-/* A markdown connection as the PDO handle of a SQLite connection (docs/spec/dialects.md DIA-154, DIA-185): a flowmark
+/* A markdown connection as the PDO handle of a SQLite connection (docs/spec/dialects.md DIA-154): a flowmark
  * server runs the statements of SQL in SQLite's dialect on the corpus, so each statement that the handle prepares or runs
  * is one statement message of its session (docs/spec/protocol.md PRT-65 to PRT-71), and its answer is read as pdo_sqlite
  * reads a row. Every SQL surface of the connection reads and writes through it.

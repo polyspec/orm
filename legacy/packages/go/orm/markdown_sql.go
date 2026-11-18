@@ -17,7 +17,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/engine/ir"
 )
 
-// A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-185): the statement message and its
+// The client sends each statement of SQL in SQLite's dialect to the server (DIA-154): the statement message and its
 // answer below. Every SQL surface of a connection, a catalog connection included, reads and writes
 // through the database/sql driver over it, so what a connection states in SQL it states as a SQLite connection does.
 

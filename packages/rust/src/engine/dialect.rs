@@ -194,7 +194,7 @@ impl Dialect {
     }
 
     /// A full-text match of cols against value, in boolean mode when boolean is set. None when the dialect has no
-    /// full-text search on a table (DIA-187).
+    /// full-text search on a table (DIA-6).
     pub fn fulltext(self, cols: &[String], value: &mut dyn FnMut(&str) -> String, boolean: bool) -> Option<String> {
         match self {
             Dialect::MySql => Some(if boolean {

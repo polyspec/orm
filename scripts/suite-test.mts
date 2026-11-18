@@ -5,7 +5,7 @@
 // Usage: node scripts/suite-test.mts <php|typescript|python> [--list]
 //   --list prints the commands and runs none.
 // Each file runs from the checkout root with the environment of the make target (the servers and databases of TEST_ENV,
-// FLOWMARK, ORM_PYTHON). ORM_SUITE_LANES (default 4) is the number of files that run at the same time; a case of a database
+// ORM_PYTHON). ORM_SUITE_LANES (default 4) is the number of files that run at the same time; a case of a database
 // test makes a database of its own (FCV-9), so files do not share state. The files that run a recipe of contracts/fixtures run
 // after the others, one at a time, as the recipe targets of every database run their cases (docs/spec/dialects.md DIA-212).
 import { resolve } from 'node:path';
@@ -26,8 +26,7 @@ const DATABASES = ['mysql', 'postgres', 'sqlite'] as const;
 /**
  * OWNED_ELSEWHERE are the test files that another check runs with arguments of its own, each with that check's source, which
  * names the file: the measurements of PERF-1 (scripts/features/performance-reference.mts, make feature-performance-check), the
- * decimal round trip on each database (scripts/decimal-physical-check.mts, --dialect), the markdown conformance cases
- * against the flowmark server (make markdown-conformance-check/<runtime>), the PHP query cancellation cases, which load the
+ * decimal round trip on each database (scripts/decimal-physical-check.mts, --dialect), the PHP query cancellation cases, which load the
  * SQLite cancellation helper that make php-query-cancellation-check builds first, and the TypeScript interface recipe, which
  * reads the TypeScript extractor that make public-interface-typescript-check requires (CI group client_db_typescript).
  */
@@ -37,9 +36,6 @@ export const OWNED_ELSEWHERE: Record<string, string> = {
   'legacy/packages/php/tests/DecimalModelDbTest.php': 'scripts/decimal-physical-check.mts',
   'legacy/packages/ts/tests/decimal_model_db.mjs': 'scripts/decimal-physical-check.mts',
   'legacy/packages/python/tests/decimal_model_db.py': 'scripts/decimal-physical-check.mts',
-  'legacy/packages/php/tests/MarkdownConformanceTest.php': 'Makefile',
-  'legacy/packages/ts/tests/markdown_conformance.mjs': 'Makefile',
-  'legacy/packages/python/tests/markdown_conformance.py': 'Makefile',
   'legacy/packages/php/tests/QueryCancellationTest.php': 'Makefile',
   'legacy/packages/ts/tests/public_interface-none.test.mjs': 'Makefile',
 };
@@ -48,7 +44,7 @@ export const OWNED_ELSEWHERE: Record<string, string> = {
  * MARIADB_ENTRY is the name of a recipe entry of the database mariadb in a lane of the suites: <recipe>-mariadb.test.mjs, the
  * Python module <recipe>_mariadb and the PHP class <Name>Mariadb...Test. The entries need the MariaDB servers, which a runner of
  * the MySQL servers of a suite cannot hold (scripts/ci/server-programs.mts), and make mariadb-recipes-check/<runtime> runs them
- * (DIA-200, FCV-3).
+ * (DIA-200, FCV-22).
  */
 export const MARIADB_ENTRY = /(?:-mariadb\.test\.mjs|\/[a-z_]+_mariadb\.py|\/[A-Za-z]+Mariadb[A-Za-z]*Test\.php)$/;
 
@@ -60,7 +56,7 @@ export function suiteTests(lane: SuiteLane, tests: Record<string, string[]> = im
 }
 
 /**
- * recipeEntries is the test files of `lane` that run a recipe of contracts/fixtures, the recipes of a fixture (FCV-3). The
+ * recipeEntries is the test files of `lane` that run a recipe of contracts/fixtures, the recipes of a fixture (FCV-22). The
  * cases of such a recipe create and drop databases, and DDL of two cases at once on MariaDB can leave a trigger backup that
  * fails a later DROP DATABASE (DIA-212), so the recipe runs of every database run one case at a time.
  */

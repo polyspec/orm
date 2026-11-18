@@ -1,5 +1,5 @@
 //! The complex_query recipe, contracts/fixtures/complex_query/complex_query.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200)
-//! (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+//! (docs/spec/feature-coverage.md FCV-22 and FCV-4).
 
 use polyspec_orm_tests::recipe;
 

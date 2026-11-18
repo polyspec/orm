@@ -1,5 +1,5 @@
 # Requirements: PRT-67.
-# The suite unit conformance_verification_dynamic-postgres (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit conformance_verification_dynamic-postgres (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/conformance_verification/conformance_verification_dynamic.json on postgres.
 from .recipe import recipe_tests
 from . import testcase

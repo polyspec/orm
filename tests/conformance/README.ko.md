@@ -1,11 +1,11 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 1e3c8f39680dfbeeac436e046d739a94b1c4a985abfac93b13f329be805d5c5d -->
+<!-- source-sha256: d352d8dc6891a50c91f354926bedb945493ea1d683d0d2cded1a2041a043e699 -->
 # Conformance
 
 conformance vector의 동작은 recipe
 [`conformance_verification`](../../contracts/fixtures/conformance_verification/conformance_verification.json)이며, 여섯
 구현 각각이 자기 recipe helper로 MySQL, PostgreSQL, SQLite에서 실행한다
-([feature coverage](../../docs/spec/feature-coverage.ko.md) FCV-3). 새 동작은 그 recipe의 새 case다.
+([feature coverage](../../docs/spec/feature-coverage.ko.md) FCV-22). 새 동작은 그 recipe의 새 case다.
 
 recipe step이 될 수 없는 것은 여기 남으며, 각 구현의 runner에 native body로 있다.
 

@@ -1,6 +1,6 @@
 <?php
 
-// The set-parse recipe, tests/dbspec/set-parse.json, without a database (docs/spec/feature-coverage.md FCV-3, FCV-4).
+// The set-parse recipe, tests/dbspec/set-parse.json, without a database (docs/spec/feature-coverage.md FCV-22, FCV-4).
 // Requirements: DBS-2, DBS-28, DBS-29, DBS-30, DBS-31, DBS-156, DBS-168, DBS-171.
 declare(strict_types=1);
 

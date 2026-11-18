@@ -82,7 +82,7 @@ function referencedNames(node, names = new Set()) {
 
 // Reads only the committed generated file with oxc-parser.
 caseTest('a generated model file imports only what it uses and declares each type once', () => {
-  for (const file of ['src/models/models.ts', 'src/models/decimal_fixture/models.ts', 'src/models/markdown_fixture/models.ts']) {
+  for (const file of ['src/models/models.ts', 'src/models/decimal_fixture/models.ts']) {
     const { program, errors } = parseSync(file, readFileSync(join(client, file), 'utf8'));
     assert.deepEqual(errors.map(error => error.message), [], `${file} parses`);
     const used = referencedNames(program.body);

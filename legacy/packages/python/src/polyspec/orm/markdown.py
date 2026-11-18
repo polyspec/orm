@@ -1,5 +1,5 @@
 # The client of a flowmark server that serves markdown:// connections (docs/spec/protocol.md §5 "Markdown connections",
-# docs/spec/dialects.md "Markdown"). A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-185),
+# docs/spec/dialects.md "Markdown"). A flowmark server runs a statement of SQL in SQLite's dialect on the corpus (DIA-154),
 # so a markdown connection is a SQLite connection whose statements the server answers: the connection below sends each
 # statement in a statement message and reads its answer as sqlite3 reads a row. The rules are the same as the Go client's
 # markdown.go and markdown_sql.go.

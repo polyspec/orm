@@ -12,7 +12,7 @@ import (
 // parameterChunkingRecipe is the recipe of parameter chunking, relative to this package directory.
 var parameterChunkingRecipe = testcase.LegacyPath("contracts/fixtures/parameter_chunking/parameter_chunking.json")
 
-// TestRecipeParameterChunkingMysql runs the parameter_chunking recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeParameterChunkingMysql runs the parameter_chunking recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: PLN-44, PRT-35, PRT-76.
 func TestRecipeParameterChunkingMysql(t *testing.T) {
 	testcase.Group(t)
@@ -20,28 +20,22 @@ func TestRecipeParameterChunkingMysql(t *testing.T) {
 }
 
 // TestRecipeParameterChunkingMariadb runs the parameter_chunking recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeParameterChunkingMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, parameterChunkingRecipe, "mariadb")
 }
 
-// TestRecipeParameterChunkingPostgres runs the parameter_chunking recipe on PostgreSQL, each case on a case database (FCV-3).
+// TestRecipeParameterChunkingPostgres runs the parameter_chunking recipe on PostgreSQL, each case on a case database (FCV-22).
 // Requirements: PLN-44, PRT-35, PRT-76.
 func TestRecipeParameterChunkingPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, parameterChunkingRecipe, "postgres")
 }
 
-// TestRecipeParameterChunkingSqlite runs the parameter_chunking recipe on SQLite, each case on a case database (FCV-3).
+// TestRecipeParameterChunkingSqlite runs the parameter_chunking recipe on SQLite, each case on a case database (FCV-22).
 // Requirements: PLN-44, PRT-35, PRT-76.
 func TestRecipeParameterChunkingSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, parameterChunkingRecipe, "sqlite")
-}
-
-// TestRecipeParameterChunkingMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeParameterChunkingMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, parameterChunkingRecipe, "markdown")
 }

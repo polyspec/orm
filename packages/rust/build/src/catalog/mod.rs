@@ -80,7 +80,7 @@ pub struct CatalogConnection {
 impl CatalogConnection {
     pub async fn connect(raw: &str) -> Result<Self, CatalogError> {
         let parsed = polyspec_orm::db::parse_dsn(raw).map_err(|e| e.to_string())?;
-        // A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185).
+        // A markdown connection sends SQL in SQLite's dialect, so its catalog is a SQLite catalog (DIA-154).
         let dialect = parsed.sql_driver().to_owned();
         // The catalog fixes the character set of its connection, so that the encoding is no setting of a read (INT-185): `SET NAMES
         // utf8mb4` on MySQL, and on PostgreSQL the `UTF8` client_encoding, last among the options so that no option of the DSN

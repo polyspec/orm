@@ -89,7 +89,7 @@ from polyspec.orm.names import ChainKey
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.styled_value import StyledValue
 
-from .case_database import case_corpus, case_database
+from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import (
@@ -114,7 +114,7 @@ from .vector_case import VectorCase, vector_load_tests
 ROOT = Path(__file__).resolve().parents[3]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 
-# NONE is the database part of a recipe without a database (FCV-3).
+# NONE is the database part of a recipe without a database (FCV-22).
 NONE = "none"
 
 
@@ -2591,27 +2591,21 @@ def _equal(got: dict, want: dict, ordered: bool) -> bool:
     return got[kind] == want[kind]
 
 
-# The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-DATABASES = ("mysql", "postgres", "sqlite", "markdown", "mariadb")
-# The SQL dialect of a database that is not a dialect of its own: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in
-# MySQL's (DIA-200).
-_DIALECT_OF = {"markdown": "sqlite", "mariadb": "mysql"}
+# The database path (FCV-22 and FCV-4): each case runs on a case database of its own through the public catalog API.
+DATABASES = ("mysql", "postgres", "sqlite", "mariadb")
+# The SQL dialect of a database that is not a dialect of its own: MariaDB runs SQL in MySQL's (DIA-200).
+_DIALECT_OF = {"mariadb": "mysql"}
 
 
 def _on_database(only, database: str) -> bool:
-    """Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names
-    sqlite names it too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3)."""
-    return (
-        not only
-        or database in only
-        or (database == "markdown" and "sqlite" in only)
-        or (database == "mariadb" and "mysql" in only)
-    )
+    """Whether a case or step with the list only runs on database: MariaDB is a server of the MySQL dialect, so what
+    names mysql names it too (FCV-22)."""
+    return not only or database in only or (database == "mariadb" and "mysql" in only)
 
 
 def _dialect_key(database: str, entries) -> str:
-    """The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their
-    dialect unless the value states its own (FCV-3)."""
+    """The key of a value that names its text by database: a MariaDB server reads the entry of its dialect unless the
+    value states its own (FCV-22)."""
     if database not in (entries or {}):
         return _DIALECT_OF.get(database, database)
     return database
@@ -2624,7 +2618,7 @@ def _dialect_of(context: dict) -> str:
 
 def _server_variable(name: str, database: str) -> str:
     """The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_
-    (FCV-3)."""
+    (FCV-22)."""
     if database == "mariadb" and name.startswith("ORM_TEST_MYSQL_"):
         return "ORM_TEST_MARIADB_" + name[len("ORM_TEST_MYSQL_") :]
     return name
@@ -2643,30 +2637,13 @@ def _database_recipe_tests(path: str, database: str):
     recipe = json.loads(text)
     if "fixture" not in recipe:
         raise ValueError(f"recipe {path}: no fixture, so it has no database")
-    markdown = database == "markdown"
     fixture = recipe["fixture"]
-    # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+    # A fixture of none runs every case on an empty case database; the helper never infers it (FCV-22).
     schema, install_first = (
         (None, []) if fixture == NONE else _fixture_schema(ROOT / fixture)
     )
 
     def check(test: unittest.TestCase, case: dict) -> None:
-        if markdown:
-            # flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a
-            # corpus of no table.
-            installed = fixture != NONE and case.get("install", True) is not False
-            with case_corpus(ROOT / fixture if installed else None) as (dsn, corpus):
-                _run_case(
-                    path,
-                    recipe,
-                    case,
-                    database,
-                    schema,
-                    dsn,
-                    install_first,
-                    corpus,
-                )
-            return
         with (
             tempfile.TemporaryDirectory(prefix="orm_recipe_") as directory,
             case_database(database, directory, "orm_recipe") as dsn,
@@ -2731,18 +2708,13 @@ def _run_case(
     schema: Schema | None,
     dsn: str,
     install_first: list,
-    corpus: Path | None = None,
 ) -> None:
     db = Db.connect(dsn)
     try:
         if schema is not None and case.get("install", True) is not False:
-            if database == "markdown":
-                # flowmark install made the corpus from the set; the connection takes the set as an install registers it.
-                db.utils().schema().register(schema)
-            else:
-                for shared in [*install_first, schema]:
-                    db.utils().schema().install(shared)
-        _run_case_on(path, recipe, case, database, schema, dsn, db, corpus)
+            for shared in [*install_first, schema]:
+                db.utils().schema().install(shared)
+        _run_case_on(path, recipe, case, database, schema, dsn, db)
     finally:
         db.close()
 
@@ -2766,7 +2738,6 @@ def _run_case_on(
     schema: Schema | None,
     dsn: str,
     db: Db,
-    corpus: Path | None = None,
 ) -> None:
     catalog = connect_catalog(dsn)
     closers: list = []
@@ -2776,8 +2747,6 @@ def _run_case_on(
         "namespace": None,
         "database": database,
         "dsn": dsn,
-        # The directory of the corpus of a case of the markdown suite.
-        "corpus": corpus,
         "schema": schema,
         "tables": {},
         "bound": {"database": {"text": _database_name(dsn)}},
@@ -3284,21 +3253,9 @@ def _op_replica_await(step: dict, context: dict) -> dict:
 
 
 def _op_database_read_only(step: dict, context: dict) -> dict:
-    """The file of the case database becomes one that the process may only read (CFG-24); a corpus, its directories."""
-    if context["database"] == "markdown":
-        _chmod_corpus(context["corpus"], True)
-        context["closers"].append(lambda: _chmod_corpus(context["corpus"], False))
-        return {}
+    """The file of the case database becomes one that the process may only read (CFG-24)."""
     os.chmod(context["dsn"].removeprefix("sqlite://").split("?")[0], 0o444)
     return {}
-
-
-def _chmod_corpus(root: Path, read_only: bool) -> None:
-    """Makes the directories of the corpus at root ones the process may only read, or writable again."""
-    root.chmod(0o555 if read_only else 0o755)
-    for entry in root.iterdir():
-        if entry.is_dir() and not entry.is_symlink():
-            _chmod_corpus(entry, read_only)
 
 
 def _op_db_listen(step: dict, context: dict) -> dict:
@@ -4435,7 +4392,7 @@ def _utils_groups(step: dict, context: dict) -> dict:
 def _pool_transactions(step: dict, context: dict) -> dict:
     """Count read-only transactions in threads of their own: the first hold of them stay open until hold
     have begun, so the pool shows the connections that they take at once (CFG-4, CFG-5). A read-only
-    transaction takes no write lock, so SQLite and a flowmark corpus hold them at once too (DIA-221)."""
+    transaction takes no write lock, so SQLite holds them at once too (DIA-221)."""
     db = _connection_of(step, context)
     lock = threading.Lock()
     gate = threading.Event()
@@ -4495,7 +4452,7 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
 
 def _op_db_execute(step: dict, context: dict) -> dict:
     """db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the recipe, for
-    the dialect of the database of the case (SQLite for markdown, MySQL for MariaDB, FCV-3), and runs the first step of the plan with execute."""
+    the dialect of the database of the case (MySQL for MariaDB, FCV-22), and runs the first step of the plan with execute."""
     model = _validation_model((context["dir"] / step["schema"]).resolve())
     if "manifest_hash" in step["request"]:
         raise AssertionError("db.execute: the request already holds manifest_hash")
@@ -5058,7 +5015,6 @@ def _run_database_step(raw_step: dict, context: dict) -> None:
     an error passes only when the call fails with that orm error code."""
     if not _on_database(raw_step.get("only"), context["database"]):
         return
-    # A markdown connection reads the sqlite entry of an expect, and an entry of its own only where its result differs.
     key = _dialect_key(context["database"], raw_step.get("expect"))
     step = ReadStep(raw_step, key)
     op = _DATABASE_OPS.get(step["op"]) or _MODEL_OPS.get(step["op"])

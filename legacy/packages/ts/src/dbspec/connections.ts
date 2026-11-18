@@ -19,7 +19,7 @@ export interface DbspecPostgresConnection {
 
 /**
  * A prepared statement of a SQLite connection: the methods that dbspec calls. A node:sqlite statement answers at once; the statement
- * of a connection that answers asynchronously, such as a session of a flowmark server (docs/spec/dialects.md DIA-185), answers with a
+ * of a connection that answers asynchronously, such as a session of a flowmark server (docs/spec/dialects.md DIA-154), answers with a
  * promise, which dbspec awaits.
  */
 export interface DbspecSqliteStatement {

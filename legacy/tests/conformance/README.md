@@ -4,7 +4,7 @@
 The behaviour of the conformance vectors is the recipe
 [`conformance_verification`](../../contracts/fixtures/conformance_verification/conformance_verification.json), which each
 of the six implementations runs on MySQL, PostgreSQL and SQLite through its recipe helper
-([feature coverage](../../../docs/spec/feature-coverage.md) FCV-3). A new behaviour is a new case of that recipe.
+([feature coverage](../../../docs/spec/feature-coverage.md) FCV-22). A new behaviour is a new case of that recipe.
 
 What cannot be a recipe step stays here, as a native body in the runner of each implementation:
 

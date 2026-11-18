@@ -2236,7 +2236,7 @@ function checkCurrent(current: readonly CatalogValue[][], original: readonly Cat
 
 /**
  * Connects to the database that a mysql, postgres, sqlite or markdown DSN selects. A SQLite file must exist. A flowmark server runs SQL
- * in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-185).
+ * in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog (DIA-154).
  */
 export async function connectCatalog(dsn: string): Promise<CatalogConnection> {
   const parsed = parseDsn(dsn);

@@ -12,7 +12,7 @@ import (
 // modelWritesRecipe is the recipe of the generated-model writes, relative to this package directory.
 var modelWritesRecipe = testcase.LegacyPath("contracts/fixtures/model_writes/model_writes.json")
 
-// TestRecipeModelWritesMysql runs the model_writes recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeModelWritesMysql runs the model_writes recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-109, DSL-110, PLN-26.
 func TestRecipeModelWritesMysql(t *testing.T) {
 	testcase.Group(t)
@@ -20,28 +20,22 @@ func TestRecipeModelWritesMysql(t *testing.T) {
 }
 
 // TestRecipeModelWritesMariadb runs the model_writes recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeModelWritesMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, modelWritesRecipe, "mariadb")
 }
 
-// TestRecipeModelWritesPostgres runs the model_writes recipe on PostgreSQL, each case on a case database (FCV-3).
+// TestRecipeModelWritesPostgres runs the model_writes recipe on PostgreSQL, each case on a case database (FCV-22).
 // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-109, DSL-110, PLN-26.
 func TestRecipeModelWritesPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, modelWritesRecipe, "postgres")
 }
 
-// TestRecipeModelWritesSqlite runs the model_writes recipe on SQLite, each case on a case database (FCV-3).
+// TestRecipeModelWritesSqlite runs the model_writes recipe on SQLite, each case on a case database (FCV-22).
 // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-109, DSL-110, PLN-26.
 func TestRecipeModelWritesSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, modelWritesRecipe, "sqlite")
-}
-
-// TestRecipeModelWritesMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeModelWritesMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, modelWritesRecipe, "markdown")
 }

@@ -1,5 +1,5 @@
 // offline-tests.mts names by their names the tests that make test-rust and make test-python run without the test servers
-// and without flowmark, and counts the tests that it leaves to the targets with them (T570, T580).
+// and counts the tests that it leaves to the targets with them (T570, T580).
 import assert from 'node:assert/strict';
 import { caseTest } from '../../tests/testcase.mts';
 import { listedTests, pythonNeed, pythonSelection, rustGroups, rustNeed, rustSelection } from './offline-tests.mts';
@@ -12,15 +12,14 @@ const MAIN = [
   '        polyspec_orm_testcase::Group::recipe("aes_rotation_mysql", aes_rotation_mysql::trials),',
   '        polyspec_orm_testcase::Group::recipe("aes_rotation_postgres", aes_rotation_postgres::trials),',
   '        polyspec_orm_testcase::Group::recipe("aes_rotation_sqlite", aes_rotation_sqlite::trials),',
-  '        polyspec_orm_testcase::Group::recipe("aes_rotation_markdown", aes_rotation_markdown::trials),',
   '        polyspec_orm_testcase::Group::new("codec_none", codec_none::trials),',
-  '        polyspec_orm_testcase::Group::new("markdown_conformance", markdown_conformance::trials),',
+  '        polyspec_orm_testcase::Group::new("decimal_physical", decimal_physical::trials),',
   '        polyspec_orm_testcase::Group::new("markdown_session", markdown_session::trials).in_order(),',
   '    ]);',
   '}',
 ].join('\n');
 const GROUPS = new Set(rustGroups(MAIN));
-const ELSEWHERE = new Set(['markdown_conformance::insert_one']);
+const ELSEWHERE = new Set(['decimal_physical::decimal_sqlite']);
 const LISTING = [
   'driver::tests::declared_mysql_text_decodes_utf8_bytes: test',
   'dialect_mysql::tests::renders_a_limit: test',
@@ -33,23 +32,22 @@ const LISTING = [
   'aes_rotation_mysql::rotation_path_codes: test',
   'aes_rotation_postgres::read_path_codes: test',
   'aes_rotation_sqlite::read_path_codes: test',
-  'aes_rotation_markdown::read_path_codes: test',
   'codec_none::json_depth: test',
-  'markdown_conformance::insert_one: test',
+  'decimal_physical::decimal_sqlite: test',
   'markdown_session::refused_row_sends_close: test',
   'src/lib.rs - Db::connect (line 12): test',
   '',
-  '17 tests, 0 benchmarks',
+  '16 tests, 0 benchmarks',
 ].join('\n');
 
 caseTest('the groups of the Rust test program are the names that its main.rs lists', () => {
-  assert.deepEqual([...GROUPS], ['zone', 'rollback', 'aes_rotation_mysql', 'aes_rotation_postgres', 'aes_rotation_sqlite', 'aes_rotation_markdown', 'codec_none', 'markdown_conformance', 'markdown_session']);
+  assert.deepEqual([...GROUPS], ['zone', 'rollback', 'aes_rotation_mysql', 'aes_rotation_postgres', 'aes_rotation_sqlite', 'codec_none', 'decimal_physical', 'markdown_session']);
   assert.throws(() => rustGroups('fn main() {}'), /lists no group/);
 });
 
 caseTest('a listing of cargo test names a test on each line that ends in `: test`', () => {
   const names = listedTests(LISTING);
-  assert.equal(names.length, 16);
+  assert.equal(names.length, 15);
   assert.equal(names.at(-1), 'src/lib.rs - Db::connect (line 12)');
   assert.deepEqual(listedTests('16 tests, 0 benchmarks\n'), []);
 });
@@ -58,7 +56,6 @@ caseTest('the name of a Rust test says what it runs on: the database of its grou
   const need = (name: string) => rustNeed(name, GROUPS, ELSEWHERE);
   assert.equal(need('aes_rotation_mysql::read_path_codes'), 'mysql');
   assert.equal(need('aes_rotation_postgres::read_path_codes'), 'postgres');
-  assert.equal(need('aes_rotation_markdown::read_path_codes'), 'flowmark');
   assert.equal(need('aes_rotation_sqlite::read_path_codes'), undefined);
   assert.equal(need('codec_none::json_depth'), undefined);
   assert.equal(need('rollback::transaction_forms_rollback_fault_mysql'), 'mysql');
@@ -66,7 +63,7 @@ caseTest('the name of a Rust test says what it runs on: the database of its grou
   assert.equal(need('rollback::transaction_forms_rollback_fault_sqlite'), undefined);
   assert.equal(need('zone::dropping_a_query_cancels_it_servers'), 'servers');
   // The tests that the run of the workspace with the servers leaves to another target are left here as well.
-  assert.equal(need('markdown_conformance::insert_one'), 'elsewhere');
+  assert.equal(need('decimal_physical::decimal_sqlite'), 'elsewhere');
   assert.equal(need('markdown_session::refused_row_sends_close'), undefined);
   // A test of another program of the workspace is no test of a group: its module names a dialect, not a server.
   assert.equal(need('dialect_mysql::tests::renders_a_limit'), undefined);
@@ -78,8 +75,8 @@ caseTest('the name of a Rust test says what it runs on: the database of its grou
 
 caseTest('the offline selection of the Rust tests skips a left group whole and a left test of another group by its name, and counts them', () => {
   const { skips, left, selected } = rustSelection(listedTests(LISTING), GROUPS, ELSEWHERE);
-  assert.deepEqual(skips, ['zone::dropping_a_query_cancels_it_servers', 'rollback::transaction_forms_rollback_fault_mysql', 'rollback::transaction_forms_rollback_fault_postgres', 'aes_rotation_mysql::', 'aes_rotation_postgres::', 'aes_rotation_markdown::', 'markdown_conformance::']);
-  assert.deepEqual(left, { mysql: 3, postgres: 2, servers: 1, flowmark: 1, elsewhere: 1 });
+  assert.deepEqual(skips, ['zone::dropping_a_query_cancels_it_servers', 'rollback::transaction_forms_rollback_fault_mysql', 'rollback::transaction_forms_rollback_fault_postgres', 'aes_rotation_mysql::', 'aes_rotation_postgres::', 'decimal_physical::']);
+  assert.deepEqual(left, { mysql: 3, postgres: 2, servers: 1, elsewhere: 1 });
   assert.equal(selected, 8);
 });
 
@@ -97,7 +94,6 @@ const PACKAGE = 'legacy.packages.python.tests';
 const MODULES: Record<string, string[]> = {
   [`${PACKAGE}.test_aes_rotation_mysql`]: ['read_path_codes', 'rotation_path_codes'],
   [`${PACKAGE}.test_aes_rotation_postgres`]: ['read_path_codes'],
-  [`${PACKAGE}.test_aes_rotation_markdown`]: ['read_path_codes'],
   [`${PACKAGE}.test_aes_rotation_sqlite`]: ['read_path_codes'],
   [`${PACKAGE}.test_mysql_found_rows`]: [`${PACKAGE}.test_mysql_found_rows.FoundRowsTest.test_mysql_flag_is_set`],
   [`${PACKAGE}.test_statement_runner`]: [
@@ -107,13 +103,12 @@ const MODULES: Record<string, string[]> = {
     `${PACKAGE}.test_statement_runner.StatementRunnerTest.test_value_types_servers`,
   ],
 };
-const FILES = ['__init__.py', 'recipe.py', 'aes_rotation_mariadb.py', 'test_aes_rotation_mysql.py', 'test_aes_rotation_postgres.py', 'test_aes_rotation_markdown.py', 'test_aes_rotation_sqlite.py', 'test_mysql_found_rows.py', 'test_statement_runner.py'];
+const FILES = ['__init__.py', 'recipe.py', 'aes_rotation_mariadb.py', 'test_aes_rotation_mysql.py', 'test_aes_rotation_postgres.py', 'test_aes_rotation_sqlite.py', 'test_mysql_found_rows.py', 'test_statement_runner.py'];
 const testsOf = (module: string): string[] => MODULES[module] ?? [];
 
 caseTest('the name of a Python test module says what it runs on by its end', () => {
   assert.equal(pythonNeed('test_aes_rotation_mysql.py'), 'mysql');
   assert.equal(pythonNeed('test_aes_rotation_postgres.py'), 'postgres');
-  assert.equal(pythonNeed('test_aes_rotation_markdown.py'), 'flowmark');
   assert.equal(pythonNeed('test_aes_rotation_sqlite.py'), undefined);
   assert.equal(pythonNeed('test_mysql_found_rows.py'), undefined);
   assert.equal(pythonNeed('test_mysql.py'), undefined);
@@ -122,7 +117,7 @@ caseTest('the name of a Python test module says what it runs on by its end', () 
 caseTest('the offline selection of the Python tests names an offline module, and the offline tests of a module that holds a test of a server', () => {
   const { names, left, selected } = pythonSelection(FILES, testsOf);
   assert.deepEqual(names, [`${PACKAGE}.test_aes_rotation_sqlite`, `${PACKAGE}.test_mysql_found_rows`, `${PACKAGE}.test_statement_runner.StatementRunnerTest.test_active_frame_sqlite`]);
-  assert.deepEqual(left, { mysql: 3, postgres: 2, servers: 1, flowmark: 1, elsewhere: 0 });
+  assert.deepEqual(left, { mysql: 3, postgres: 2, servers: 1, elsewhere: 0 });
   assert.equal(selected, 3);
 });
 

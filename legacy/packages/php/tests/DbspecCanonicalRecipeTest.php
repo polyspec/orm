@@ -1,6 +1,6 @@
 <?php
 
-// The canonical recipe, tests/dbspec/canonical.json, without a database (docs/spec/feature-coverage.md FCV-3, FCV-4).
+// The canonical recipe, tests/dbspec/canonical.json, without a database (docs/spec/feature-coverage.md FCV-22, FCV-4).
 // Requirements: DBS-3, DBS-32, DBS-35, DBS-36, DBS-37, DBS-38, DBS-39, DBS-40, DBS-43, DBS-44, DBS-45, DBS-47, DBS-48,
 // Requirements: DBS-49, DBS-50, DBS-51, DBS-52, DBS-53, DBS-54, DBS-55, DBS-56, DBS-57, DBS-58, DBS-63, DBS-66, DBS-67,
 // Requirements: DBS-68, DBS-74, DBS-75, DBS-76, DBS-78, DBS-79, DBS-80, DBS-84,

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 8f031d441cd56f2284fb3656e5a54e3924df5700e14992145b95c085b255d43f -->
+<!-- source-sha256: dab513b4a82aaeea635e672f915dfeee2994f061a44979b84db74a8e390a7f5c -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -16,7 +16,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
   3. MariaDB가 전혀 지닐 수 없는 동작은 MariaDB에서 [errors](errors.yaml)의 정해진 error code로 거부하며, 모든 runtime에서
      같고, 다른 결과를 낼 문보다 먼저 거부한다. 조용한 차이는 없다.
   4. server 자신의 답에 있는 차이(server error의 문구, introspect한 type 이름 등)는 그 server에서 그 case의 결과이며, recipe는
-     그것을 case의 `mariadb` expect로 적는다(FCV-3).
+     그것을 case의 `mariadb` expect로 적는다(FCV-22).
 
 - **DIA-201** server와 그 error 번호 — MySQL 8.4 / MariaDB 11.8 (probe `mysql.env.server`,
   `mariadb.env.server`): `mysql` dialect의 클라이언트는 연결할 때 한 번 `SELECT VERSION()`으로 server를 읽는다.

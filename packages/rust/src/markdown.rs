@@ -1,6 +1,6 @@
 //! The markdown connection (docs/spec/protocol.md §5 "Markdown connections"): the DSN
-//! `markdown://127.0.0.1:<port>/<corpus>?token=<token>` selects a flowmark server instead of a database. The server runs SQL
-//! in SQLite's dialect on the corpus (DIA-185), so the connection plans every request as a SQLite connection does and sends
+//! `markdown://127.0.0.1:<port>/<corpus>?token=<token>` selects a flowmark server instead of a database. The connection
+//! speaks SQLite's dialect (DIA-154): it plans every request as a SQLite connection does and sends
 //! each statement over a session of the server: `{"op": "statement", "sql", "params"}`, answered with its columns, rows,
 //! `affected`, `last_insert_id` and `more`.
 

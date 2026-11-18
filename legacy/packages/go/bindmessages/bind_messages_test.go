@@ -21,7 +21,7 @@ import (
 	"github.com/polyspec/orm/legacy/packages/go/testcase"
 )
 
-// TestRecipeBindMessagesNone runs the markdown message and control recipe, tests/bind/messages.json, without a database (FCV-3,
+// TestRecipeBindMessagesNone runs the markdown message and control recipe, tests/bind/messages.json, without a database (FCV-22,
 // FCV-4): each markdown.send step runs one typed public call on a listener that records the first message it receives.
 // Requirements: PRT-67.
 func TestRecipeBindMessagesNone(t *testing.T) {
@@ -30,7 +30,7 @@ func TestRecipeBindMessagesNone(t *testing.T) {
 }
 
 // TestRecipeBindMessagesRawTextNone runs the cases of a text that is not UTF-8, tests/bind/messages-raw-text.json, without a
-// database (FCV-3, FCV-4): a Go string holds any bytes, so the text_hex wrapper is its host value.
+// database (FCV-22, FCV-4): a Go string holds any bytes, so the text_hex wrapper is its host value.
 // Requirements: PRT-67.
 func TestRecipeBindMessagesRawTextNone(t *testing.T) {
 	testcase.Start(t)
@@ -38,7 +38,7 @@ func TestRecipeBindMessagesRawTextNone(t *testing.T) {
 }
 
 // TestRecipePublicInterfaceNone runs the public interface recipe, contracts/fixtures/public_interface/public_interface.json,
-// without a database (FCV-3, FCV-4).
+// without a database (FCV-22, FCV-4).
 // Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64, INT-74, INT-88, INT-89, INT-130.
 func TestRecipePublicInterfaceNone(t *testing.T) {
 	testcase.Start(t)

@@ -5463,7 +5463,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, connect)
     ZVAL_STR_COPY(&dsn_arg, dsn);
     if (strncasecmp(ZSTR_VAL(dsn), "markdown://", 11) == 0) {
         /* A flowmark server runs SQL in SQLite's dialect on the corpus, so the catalog of a corpus is a SQLite catalog
-         * (DIA-185); Orm::connect reads the DSN. */
+         * (DIA-154); Orm::connect reads the DSN. */
         array_init(&parsed);
         add_next_index_string(&parsed, "sqlite");
         add_next_index_string(&parsed, "");

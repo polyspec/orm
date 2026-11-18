@@ -3,7 +3,7 @@
 // `test-servers.mts mariadb-start` (make orm-test-mariadb), `test-servers.mts mariadb-stop` (make orm-test-mariadb-stop) and the
 // stop of test-servers.mts. MariaDB is a server of the mysql
 // dialect (DIA-200): the clients reach it with mysql:// DSNs, and the recipes run their cases on it as the database mariadb
-// (FCV-3). Its servers are their own set, apart from the MySQL and PostgreSQL servers of `start`, since the CI runner installs
+// (FCV-22). Its servers are their own set, apart from the MySQL and PostgreSQL servers of `start`, since the CI runner installs
 // either the MySQL or the MariaDB packages, which conflict, and a CI group of MariaDB starts only these: they have their own
 // data directories under .runtime/servers, their own four free ports, their own lease directory and the environment file
 // .runtime/servers/mariadb.env, which WITH_MARIADB_ENV of the Makefile reads.
@@ -89,7 +89,7 @@ const mariadbPid = (p: Paths, role: MariadbRole): string =>
   ({ primary: p.mariadbPid, replica: p.mariadbReplicaPid, privilege: p.mariadbPrivilegePid })[role];
 
 // mariadbEnvironment is the environment file of the MariaDB servers on <ports>: the variables of the MySQL servers with MARIADB in
-// place of MYSQL, which the recipe runners read for the database mariadb (FCV-3). ORM_TEST_MARIADB_PRIVILEGE_DSN is the
+// place of MYSQL, which the recipe runners read for the database mariadb (FCV-22). ORM_TEST_MARIADB_PRIVILEGE_DSN is the
 // ORM_TEST_MYSQL_PRIVILEGE_DSN of MariaDB, and ORM_TEST_MARIADB_PROXYSQL_DSN its ORM_TEST_PROXYSQL_DSN, the pooler of the user orm.
 export function mariadbEnvironment(p: Paths, ports: MariadbPorts): Record<string, string> {
   const primary = `mysql://root@127.0.0.1:${ports.mariadb}`;

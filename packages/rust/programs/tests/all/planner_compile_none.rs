@@ -1,4 +1,4 @@
-//! The planner compile recipe, tests/planner/compile.json, without a database (docs/spec/feature-coverage.md FCV-3, FCV-4). Each case
+//! The planner compile recipe, tests/planner/compile.json, without a database (docs/spec/feature-coverage.md FCV-22, FCV-4). Each case
 //! of the recipe is the trial planner_compile_none::<case id>, whose planner.compile steps run through the shared runner.
 //! Requirements: COD-4, DIA-33, PRT-69, PRT-6, PRT-13, PRT-14, PRT-16, PRT-17, PRT-20, PRT-21, PRT-22, PRT-23, PRT-25, PRT-31, PRT-32, PRT-33,
 //! DSL-16, DSL-24, DSL-34, DSL-74, DSL-78, DSL-99, DSL-138, DSL-147, DSL-148, DIA-1, DIA-2, DIA-3, DIA-4, DIA-5, DIA-7, DIA-8,

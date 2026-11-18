@@ -309,7 +309,7 @@ caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe 
   }
 });
 
-// Requirements: FCV-3, FCV-12.
+// Requirements: FCV-22, FCV-12.
 caseTest('the cases of a recipe on a database leave out a case that names only other databases', () => {
   const text = JSON.stringify({ cases: [{ id: 'all' }, { id: 'lite', only: ['sqlite'] }] });
   assert.deepEqual(recipeCaseIds(text, 'sqlite'), ['all', 'lite']);

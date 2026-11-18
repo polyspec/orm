@@ -1745,7 +1745,7 @@ mod tests {
     // included, and that error are reported together as rollback_failed, and a successful callback returns the failed RELEASE
     // SAVEPOINT (CORE-21, CORE-25).
     #[tokio::test]
-    // Requirements: DIA-181, PLN-17.
+    // Requirements: PLN-17.
     async fn savepoint_end_failures_are_reported() {
         let _case = polyspec_orm_testcase::case!();
         let _denial = SQLITE_DENIAL.lock().await;

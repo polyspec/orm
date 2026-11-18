@@ -53,8 +53,6 @@ enum Conn {
     MySql(MySqlConnection),
     Postgres(PgConnection),
     Sqlite(SqliteConnection),
-    /// The session of a flowmark corpus, whose statements are in SQLite's dialect (DIA-185).
-    Markdown(polyspec_orm::markdown::MarkdownLease),
 }
 
 impl Conn {
@@ -63,11 +61,6 @@ impl Conn {
             Conn::MySql(c) => c.close().await,
             Conn::Postgres(c) => c.close().await,
             Conn::Sqlite(c) => c.close().await,
-            // The session closes when its lease drops, instead of returning to the pool.
-            Conn::Markdown(mut c) => {
-                c.discard();
-                Ok(())
-            }
         }
         .map_err(|e| e.to_string())
     }
@@ -79,7 +72,6 @@ impl CatalogQuerier for Conn {
             Conn::MySql(c) => CatalogQuerier::rows(c, query).await,
             Conn::Postgres(c) => CatalogQuerier::rows(c, query).await,
             Conn::Sqlite(c) => CatalogQuerier::rows(c, query).await,
-            Conn::Markdown(c) => CatalogQuerier::rows(c, query).await,
         }
     }
 }
@@ -90,7 +82,6 @@ impl ApplyConnection for Conn {
             Conn::MySql(c) => ApplyConnection::execute(c, statement).await,
             Conn::Postgres(c) => ApplyConnection::execute(c, statement).await,
             Conn::Sqlite(c) => ApplyConnection::execute(c, statement).await,
-            Conn::Markdown(c) => ApplyConnection::execute(c, statement).await,
         }
     }
 
@@ -99,7 +90,6 @@ impl ApplyConnection for Conn {
             Conn::MySql(c) => ApplyConnection::execute_bound(c, statement, args).await,
             Conn::Postgres(c) => ApplyConnection::execute_bound(c, statement, args).await,
             Conn::Sqlite(c) => ApplyConnection::execute_bound(c, statement, args).await,
-            Conn::Markdown(c) => ApplyConnection::execute_bound(c, statement, args).await,
         }
     }
 
@@ -108,7 +98,6 @@ impl ApplyConnection for Conn {
             Conn::MySql(c) => ApplyConnection::query_bound(c, query, args).await,
             Conn::Postgres(c) => ApplyConnection::query_bound(c, query, args).await,
             Conn::Sqlite(c) => ApplyConnection::query_bound(c, query, args).await,
-            Conn::Markdown(c) => ApplyConnection::query_bound(c, query, args).await,
         }
     }
 }
@@ -149,7 +138,7 @@ struct State {
     plans: HashMap<String, Plan>,
     sessions: HashMap<String, Conn>,
     step: usize,
-    /// Whether the case runs on MariaDB, a server of the MySQL dialect whose direct server is its own (DIA-200, FCV-3).
+    /// Whether the case runs on MariaDB, a server of the MySQL dialect whose direct server is its own (DIA-200, FCV-22).
     mariadb: bool,
 }
 
@@ -170,9 +159,7 @@ impl ApplyOps {
         let runtime = self.runtime.as_ref().ok_or("the runtime of the apply ops")?;
         self.state.mariadb = database == "mariadb";
         let state = &mut self.state;
-        // A corpus runs the statements of SQLite and reads its entries (DIA-185); its DSN names the corpus.
         let database = match database {
-            "markdown" => "sqlite",
             // MariaDB is a server of the MySQL dialect (DIA-200).
             "mariadb" => "mysql",
             other => other,
@@ -226,8 +213,7 @@ fn dialect_of(database: &str) -> Result<Dialect, String> {
 }
 
 /// The server of the case database that the public dbspec calls take (DIA-203): MariaDB on a case of MariaDB, and the
-/// server of the dialect's own database otherwise; a markdown corpus, already read as sqlite, answers in SQLite's dialect, as
-/// its server.
+/// server of the dialect's own database otherwise.
 fn server_of(database: &str, mariadb: bool) -> Result<Server, String> {
     match (dialect_of(database)?, mariadb) {
         (Dialect::MySql, true) => Ok(Server::MariaDb),
@@ -269,12 +255,7 @@ async fn direct(database: &str, mariadb: bool, dsn: &str) -> Result<Conn, String
                 let connection = SqliteConnection::connect_with(&options).await.map_err(|e| e.to_string())?;
                 (Conn::Sqlite(connection), "PRAGMA foreign_keys = ON")
             }
-            // A corpus: one session of its flowmark server, which holds the pool of the session.
-            ConnectOptions::Markdown(options) => {
-                let pool = polyspec_orm::markdown::MarkdownPool::connect(options, 1).await.map_err(|e| e.to_string())?;
-                (Conn::Markdown(pool.acquire().await.map_err(|e| e.to_string())?), "PRAGMA foreign_keys = ON")
-            }
-            _ => return Err(format!("{dsn} is not sqlite:// or markdown://")),
+            _ => return Err(format!("{dsn} is not sqlite://")),
         },
     };
     ApplyConnection::execute(&mut session, rule).await.map_err(|e| format!("{rule}: {e}"))?;
@@ -293,7 +274,7 @@ async fn through_pooler(dsn: &str) -> Result<Conn, String> {
 
 /// The text of a step field that holds SQL: the string itself, or the entry of the database.
 /// The statement of a step for the case database: MariaDB reads its own entry when the step states one, else the entry of
-/// its dialect (DIA-200, FCV-3).
+/// its dialect (DIA-200, FCV-22).
 fn sql_of(step: &Value, database: &str, mariadb: bool, event_step: usize) -> Result<String, String> {
     let field = &crate::recipe_reads::read(step, "sql")["sql"];
     let own = if mariadb { field["mariadb"].as_str() } else { None };
@@ -377,13 +358,6 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                 dbspec::manifest(&[&introspection.document]).map_err(|e| format!("manifest: {e:?}"))?.schema_text
             };
             Ok(json!({ "value": { "text": text } }))
-        }
-        // On a corpus the other database is a new corpus, with no table.
-        "dbspec.other_database" if dsn.starts_with("markdown://") => {
-            let other = crate::markdown::case_corpus(None).await;
-            let result = other_steps(state, step, database, &other.dsn).await;
-            drop(other);
-            result.map(|()| json!({}))
         }
         "dbspec.other_database" => {
             // The other database is on the server of the case, which direct connects to: MariaDB's own on MariaDB (DIA-200).

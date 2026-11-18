@@ -12,38 +12,31 @@ import (
 // requestHookRecipe is the recipe of the request hook, relative to this package directory.
 var requestHookRecipe = testcase.LegacyPath("contracts/fixtures/request_hook/request_hook.json")
 
-// Requirements: INT-78, PRT-2, PRT-65, DIA-161.
-// TestRecipeRequestHookMysql runs the request_hook recipe on MySQL, each case on a case database (FCV-3).
-// Requirements: PRT-65, INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, DIA-161, INT-38.
+// Requirements: INT-78, PRT-2, PRT-65.
+// TestRecipeRequestHookMysql runs the request_hook recipe on MySQL, each case on a case database (FCV-22).
+// Requirements: PRT-65, INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, INT-38.
 func TestRecipeRequestHookMysql(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, requestHookRecipe, "mysql")
 }
 
 // TestRecipeRequestHookMariadb runs the request_hook recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeRequestHookMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, requestHookRecipe, "mariadb")
 }
 
-// TestRecipeRequestHookPostgres runs the request_hook recipe on PostgreSQL, each case on a case database (FCV-3).
-// Requirements: PRT-65, INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, DIA-161, INT-38.
+// TestRecipeRequestHookPostgres runs the request_hook recipe on PostgreSQL, each case on a case database (FCV-22).
+// Requirements: PRT-65, INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, INT-38.
 func TestRecipeRequestHookPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, requestHookRecipe, "postgres")
 }
 
-// TestRecipeRequestHookSqlite runs the request_hook recipe on SQLite, each case on a case database (FCV-3).
-// Requirements: PRT-65, INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, DIA-161, INT-38.
+// TestRecipeRequestHookSqlite runs the request_hook recipe on SQLite, each case on a case database (FCV-22).
+// Requirements: PRT-65, INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, INT-38.
 func TestRecipeRequestHookSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, requestHookRecipe, "sqlite")
-}
-
-// TestRecipeRequestHookMarkdown runs the request_hook recipe on flowmark, each case on a corpus of its own (FCV-3).
-// Requirements: PRT-65, INT-78.
-func TestRecipeRequestHookMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, requestHookRecipe, "markdown")
 }

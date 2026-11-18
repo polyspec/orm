@@ -1,4 +1,4 @@
-# The suite unit external_audit-sqlite (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit external_audit-sqlite (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/external_audit/external_audit.json on sqlite.
 # Requirements: SCH-14, DBS-110.
 from .recipe import recipe_tests

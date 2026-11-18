@@ -6,14 +6,13 @@ import pg from 'pg';
 import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspectDbspec, parsePlan, recoverPlans, rollbackPlans } from '../dist/dbspec/index.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { mysqlTestOptions } from './mysql-test-options.mjs';
-import { markdownSqlite } from './markdown_sqlite.mjs';
 import { checkMessageHolds } from './recipe.mjs';
 
 // The fixed clock of the commands in microseconds, 2023-11-14T22:13:20Z.
 const NOW = () => 1_700_000_000_000_000;
 // The statements that a client runs on a new direct connection.
 const CONNECTION_RULES = { mysql: ["SET time_zone = '+00:00'"], postgres: ["SET TimeZone = 'UTC'"], sqlite: ['PRAGMA foreign_keys = ON'] };
-// The direct server of each database: MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-3).
+// The direct server of each database: MariaDB, a server of the MySQL dialect, is a server of its own (DIA-200, FCV-22).
 const SERVER_ENV = { mysql: 'ORM_TEST_MYSQL_SERVER_DSN', mariadb: 'ORM_TEST_MARIADB_SERVER_DSN', postgres: 'ORM_TEST_POSTGRES_SERVER_DSN' };
 const COMMANDS = { 'dbspec.apply': applyPlans, 'dbspec.recover': recoverPlans, 'dbspec.rollback': rollbackPlans, 'dbspec.finalize': finalizePlans };
 // What an on with stop throws from the event handler, so the code of the command is stopped.
@@ -25,11 +24,8 @@ function required(name) {
   return value;
 }
 
-/** The SQL dialect of a case database: a corpus runs SQL in SQLite's (DIA-185), MariaDB in MySQL's (DIA-200). */
-const dialectOf = database => ({ markdown: 'sqlite', mariadb: 'mysql' })[database] ?? database;
-// The server of a case database that the public dbspec calls take (DIA-203): the markdown corpus answers in SQLite's dialect, as its
-// server.
-const serverOf = database => (database === 'markdown' ? 'sqlite' : database);
+/** The SQL dialect of a case database: MariaDB runs SQL in MySQL's (DIA-200). */
+const dialectOf = database => ({ mariadb: 'mysql' })[database] ?? database;
 
 /** f called at most once: each later call returns the result of the first. */
 function once(f) {
@@ -49,22 +45,6 @@ function once(f) {
  * statement, and destroy ends it at once, so that a statement that a step guard ended does not hold the case's cleanup.
  */
 async function open(database, target) {
-  if (database === 'markdown') {
-    // A corpus is reached through one session of its flowmark server, which answers SQLite's statements (DIA-185).
-    const corpus = await markdownSqlite(target.dsn);
-    // A statement of the corpus session runs synchronously, so no statement is running when destroy is called.
-    const close = once(() => corpus.close());
-    return {
-      connection: corpus,
-      close,
-      destroy: close,
-      run: async text => {
-        const statement = corpus.prepare(text);
-        statement.setReturnArrays(true);
-        return statement.all();
-      },
-    };
-  }
   if (database === 'sqlite') {
     const db = new DatabaseSync(target.path);
     // node:sqlite runs a statement synchronously, so no statement is running when destroy is called.
@@ -157,7 +137,7 @@ async function command(s, context, runStep) {
   let code = 'ok';
   let message;
   try {
-    await COMMANDS[s.op](session.connection, dialectOf(context.database), serverOf(context.database), plans, NOW, handler);
+    await COMMANDS[s.op](session.connection, dialectOf(context.database), context.database, plans, NOW, handler);
   } catch (error) {
     const failure = error instanceof AggregateError ? error.errors[0] : error;
     message = failure.message;
@@ -203,7 +183,7 @@ export function applyOps({ sql, runStep }) {
       return { value: { array: rows.map(row => ({ array: Array.from(row, cell) })) } };
     },
     'dbspec.schema': async (s, context) => {
-      const { document, unsupported } = await introspectDbspec(sessionOf(s, context).connection, dialectOf(context.database), serverOf(context.database), 'x');
+      const { document, unsupported } = await introspectDbspec(sessionOf(s, context).connection, dialectOf(context.database), context.database, 'x');
       if (unsupported.length > 0) throw new Error(`dbspec.schema: unsupported ${JSON.stringify(unsupported)}`);
       return { value: { text: document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '' } };
     },

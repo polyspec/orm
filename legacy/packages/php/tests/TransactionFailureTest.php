@@ -11,7 +11,7 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\StatementEvent;
 use PHPUnit\Framework\TestCase;
 
-// Requirements: INT-72, DIA-181, PLN-17.
+// Requirements: INT-72, PLN-17.
 #[\PHPUnit\Framework\Attributes\Medium]
 final class TransactionFailureTest extends TestCase
 {

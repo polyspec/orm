@@ -1,5 +1,5 @@
 //! The performance_gate recipe, contracts/fixtures/performance_gate/performance_gate.json, on MariaDB, a server of the MySQL dialect (docs/spec/dialects.md DIA-200)
-//! (docs/spec/feature-coverage.md FCV-3, FCV-4).
+//! (docs/spec/feature-coverage.md FCV-22, FCV-4).
 //! Requirements: PERF-1.
 
 use polyspec_orm_tests::recipe;

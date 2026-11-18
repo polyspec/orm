@@ -963,28 +963,6 @@ caseTest('every Python run of run-tests goes through the testcase harness and gi
     'every Python run of run-tests goes through PYTHON_TESTS');
 });
 
-caseTest('a whole suite that holds markdown units gets the pinned flowmark, and flowmark-check refuses a missing one', () => {
-  // test-php-ext runs the native tests of the extension and python-unit-check discovers every Python test; both hold markdown
-  // units and run without WITH_TEST_ENV, so each exports FLOWMARK itself. A simple assignment takes the value FLOWMARK has
-  // where make reads it, so the export must follow the definition of FLOWMARK; the database of make (-p) holds the value that
-  // the target exports.
-  const lines = text('Makefile').split('\n');
-  for (const target of ['test-php-ext', 'python-unit-check']) {
-    const exportLine = lines.indexOf(`${target}: export FLOWMARK := $(FLOWMARK)`) + 1;
-    assert.ok(exportLine > 0, `${target} exports FLOWMARK`);
-    assert.ok(lines.includes(`${target}: flowmark-check`), `${target} runs flowmark-check first`);
-    const database = spawnSync('make', ['-pn', target], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment(), maxBuffer: 1 << 28 });
-    assert.equal(database.status, 0, database.stderr);
-    // GNU make 3.81 prints a target variable as `# FLOWMARK := value` and GNU make 4 as `<target>: FLOWMARK := value`.
-    const exported = new RegExp(`line ${exportLine}\\)\\n(?:# |${target}: )FLOWMARK := (.*)$`, 'm').exec(database.stdout)?.[1];
-    assert.equal(exported, join(repository.pathname, '.runtime/bin/flowmark'), `${target} exports the pinned flowmark`);
-  }
-  const check = (flowmark: string) => spawnSync('make', ['-s', 'flowmark-check', `FLOWMARK=${flowmark}`], { cwd: repository.pathname, encoding: 'utf8', env: isolatedEnvironment() }).status;
-  assert.notEqual(check(''), 0, 'an empty FLOWMARK is refused');
-  assert.notEqual(check(join(repository.pathname, '.runtime/bin/no-flowmark')), 0, 'a missing FLOWMARK is refused');
-  assert.equal(check(process.execPath), 0, 'an executable FLOWMARK passes');
-});
-
 caseTest('the PHP extension suite and its profiled native cases use their owning inputs', () => {
   const makefile = text('Makefile');
   const filterText = /^PHP_EXTENSION_NATIVE_CASES = (.+)$/m.exec(makefile)?.[1];
@@ -996,8 +974,6 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
     'Polyspec\\Orm\\Extension\\Tests\\MermaidErrorBoundaryTest::testCatalogBuildFailureBecomesDiagnostic',
     'Polyspec\\Orm\\Extension\\Tests\\MermaidErrorBoundaryTest::testUnexpectedNativeCatalogErrorKeepsIdentity',
     'Polyspec\\Orm\\Extension\\Tests\\ParentSlotExpansionNativeTest::testBareDollarInLiteralIsPreserved',
-    'Polyspec\\Orm\\Extension\\Tests\\MarkdownConformanceNativeTest::testMarkdownConformance "insert_one"',
-    'Polyspec\\Orm\\Extension\\Tests\\MarkdownConformanceNativeTest::testGeneratedModelOperationsAreNativeExtensionMethods',
   ]) {
     assert.ok(!nativeCases.test(test), `${test} requires its dedicated native-test profile`);
   }
@@ -1023,19 +999,6 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   const dbspecPhpExtensionTargets = /^CI_TARGETS_dbspec_php_extension = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
   assert.ok(dbspecPhpExtensionTargets.includes('mermaid-error-php-extension-check'));
   assert.ok(dbspecPhpExtensionTargets.includes('parent-slot-expansion-php-extension-check'));
-  const markdownTarget = makefile.indexOf('markdown-conformance-check/php-extension:');
-  assert.notEqual(markdownTarget, -1, 'the markdown extension conformance target must remain registered');
-  const checkTargets = /^CHECK_TARGETS = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
-  const markdownTargets = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']
-    .map(runtime => `markdown-conformance-check/${runtime}`);
-  for (const target of markdownTargets) assert.ok(checkTargets.includes(target), `${target} remains in CHECK_TARGETS`);
-  const conformanceTargets = /^CI_TARGETS_conformance = (.+)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
-  assert.ok(!conformanceTargets.some(target => markdownTargets.includes(target)), 'native markdown checks run in their runtime groups');
-  const markdownRecipeEnd = makefile.indexOf('\n\n', markdownTarget);
-  const markdownRecipe = makefile.slice(markdownTarget, markdownRecipeEnd === -1 ? undefined : markdownRecipeEnd);
-  assert.ok(markdownRecipe.includes('FLOWMARK=$(FLOWMARK)'));
-  assert.ok(markdownRecipe.includes('legacy/packages/php-ext/tests/MarkdownConformanceNativeTest.php'));
-  assert.doesNotMatch(markdownRecipe, /--filter/, 'the dedicated target runs the complete native markdown test file');
 });
 
 caseTest('the Rust test recipe gives Kit one libtest thread option', async () => {
@@ -1168,8 +1131,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   }
   for (const runtime of ['go', 'php', 'php-extension', 'typescript', 'python', 'rust']) {
     const groupRuntime = runtime.replaceAll('-', '_');
-    const markdown = [`markdown-conformance-check/${runtime}`, `markdown-session-check/${runtime}`];
-    assert.deepEqual(targets[`markdown_${groupRuntime}`], markdown, `${markdown.join(' and ')} are the only targets in their native runtime cell`);
+    const markdown = [`markdown-session-check/${runtime}`];
+    assert.deepEqual(targets[`markdown_${groupRuntime}`], markdown, `${markdown.join(' and ')} is the only target in its native runtime cell`);
   }
   assert.deepEqual(targets.feature_performance, ['feature-performance-check'], 'the performance measurement has its own CI job');
   // The suite of each runtime has its own CI job (scripts/suite-test.mts).
@@ -1345,11 +1308,10 @@ caseTest('every CI group uploads the report directory that the runner writes', (
 
 // The group setup case (G5.127) checks, for every group in CI_GROUPS, whether the group runs the target's need and the setup step of that need's setup stage requires,
 // using the repository's Makefile and contracts/check-inputs.json. databases/create starts the server as a server-programs
-// program, and a case runs on flowmark too, so a group of a target that declares only databases also needs the server-programs and the
-// flowmark outputs. The output is checked in the control case, where the target does not look at databases: stress-db skips the
-// server-programs and the flowmark setup steps.
+// program, so a group of a target that declares only databases also needs the server-programs output. The output is checked in the
+// control case, where the target does not look at databases: stress-db skips the server-programs setup step.
 caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', () => {
-  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs', 'flowmark']);
+  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go-lease', 'node-modules', 'server-programs']);
   assert.deepEqual(expandNeeds(['php-extension-tools']), ['php-extension-tools', 'php', 'composer', 'node-modules']);
   assert.deepEqual(expandNeeds(['interfaces-typescript']), ['interfaces-typescript', 'node-modules']);
   assert.deepEqual(expandNeeds(['rust', 'go']), ['rust', 'go']);
@@ -1365,19 +1327,16 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.equal(outputs('static')['interfaces-typescript'], true, 'the static TypeScript extractor installs its pinned checker');
   for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
     assert.equal(outputs('conformance')[need], true, `the cross-runtime comparison group installs ${need}`);
-  // A case runs on MySQL, PostgreSQL, SQLite and flowmark, and WITH_TEST_ENV hands FLOWMARK to every target, so each group that
-  // prepares the databases installs flowmark (feature_verify_other runs the markdown entries of its verifications).
-  for (const group of groups) if (outputs(group).databases) assert.equal(outputs(group).flowmark, true, `${group} prepares the databases and installs flowmark`);
   const declaredOnly = (names: readonly string[], declared: Record<string, string[]>) => {
     const wanted = new Set(names.flatMap(name => declared[name] ?? []));
     return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.filter(need => output !== 'server-programs' || need !== 'databases').some(need => wanted.has(need))]));
   };
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly).map(line => line.replace(/ which installs.*/, '')),
-    ['CI group stress-db skips the setup step server-programs,', 'CI group stress-db skips the setup step flowmark,']);
+    ['CI group stress-db skips the setup step server-programs,']);
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
   // A group of the MariaDB servers installs the MariaDB packages, which conflict with the MySQL ones, so it starts no MySQL server.
   assert.deepEqual(groupOutputs(['m'], { m: ['go', 'mariadb-server'] }),
-    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, mariadb: true, databases: false, python: false, 'binding-python': false, 'wasm-bindgen': false, flowmark: false });
+    { 'node-modules': false, 'interfaces-typescript': false, go: true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, mariadb: true, databases: false, python: false, 'binding-python': false, 'wasm-bindgen': false });
   assert.deepEqual(groupSetupErrors({ both: ['m', 'd'] }, { m: ['go', 'mariadb-server'], d: ['go', 'databases'] }).filter(line => line.includes('mariadb-server')),
     ['CI group both needs both databases and mariadb-server; the runner installs the MySQL or the MariaDB packages, which conflict, so the targets of MariaDB are a group of their own']);
 });
@@ -3034,7 +2993,7 @@ const nativeInputs = (lines: string[], files: Record<string, string> = nativeFil
   recipeTests: new Set(['legacy/packages/go/orm/recipe_a_test.go']),
   caseRunnerTests: new Set<string>(),
   spec: ['- **FCV-1** Each feature declares its coverage.', '- **FCV-2** One spec holds every orm test.', ...lines,
-    '- **FCV-3** A recipe with a fixture is one suite unit per database.', '  - In `legacy/packages/go/orm/a_test.go`, `TestShared` stays as a native test: this line is outside FCV-2.', ''].join('\n'),
+    '- **FCV-22** A recipe with a fixture is one suite unit per database.', '  - In `legacy/packages/go/orm/a_test.go`, `TestShared` stays as a native test: this line is outside FCV-2.', ''].join('\n'),
   files: Object.keys(files),
   read: (file: string) => {
     const content = files[file];
@@ -3064,7 +3023,7 @@ caseTest('the harness function trials of a Rust file of cases is its native test
   assert.ok(shared !== undefined, 'the fixture has the shared feature');
   const widened = { ...inputs, tests: { ...inputs.tests, rust: [...inputs.tests.rust, harness] }, features: [{ ...shared, files: [...shared.files, harness] }, ...others] };
   assert.deepEqual(nativeTestErrors(widened), [unstated(harness, 'trials')]);
-  assert.deepEqual(nativeTestErrors({ ...widened, spec: widened.spec.replace('- **FCV-3**', `  - In \`${harness}\`, \`trials\` stays as a native test: a compile fixture.\n- **FCV-3**`) }), []);
+  assert.deepEqual(nativeTestErrors({ ...widened, spec: widened.spec.replace('- **FCV-22**', `  - In \`${harness}\`, \`trials\` stays as a native test: a compile fixture.\n- **FCV-22**`) }), []);
 });
 caseTest('a native test that a line of FCV-2 names with its reason passes, and so do a recipe, an internal and a one-runtime test', () => {
   // recipe_a_test.go runs a recipe, internal_test.go is no test of the inventory, and only_test.go is a feature of Go alone.
@@ -3076,9 +3035,9 @@ caseTest('a native test that a line of FCV-2 names with its reason passes, and s
   // A line may name the test of one runtime, which needs no line, as long as the test is there.
   assert.deepEqual(nativeTestErrors(nativeInputs([...statedAll, '  - In `legacy/packages/go/orm/only_test.go`, `TestGoOnly` stays as a native test: only Go has it.'])), []);
 });
-// A test that runs every case of a case file in every runtime (CASE_RUNNERS, FCV-15) is no native test, and the other tests of its
+// A test that runs every case of a case file in every runtime (CASE_RUNNERS, FCV-23) is no native test, and the other tests of its
 // file still are (T400-1).
-// Requirements: FCV-2, FCV-15.
+// Requirements: FCV-2, FCV-23.
 caseTest('a case runner test is no native test, and the other tests of its file are', () => {
   const inputs = nativeInputs(statedAll.slice(1));
   assert.deepEqual(nativeTestErrors({ ...inputs, caseRunnerTests: new Set(['legacy/packages/go/orm/a_test.go\0TestShared']) }), [unstated('legacy/packages/go/orm/a_test.go', 'TestStated')]);
@@ -3380,9 +3339,9 @@ caseTest('a build of the PHP extension crate of the binding takes the libclang a
 });
 
 // make test-rust and make test-python are offline: their help says so, and they run in the runtime jobs, which start no
-// server. A test that reads a database server or flowmark fails without it, so each recipe selects by name the tests that
-// read neither (scripts/repo/offline-tests.mts) and reads no environment of the servers; a selection of no test is an
-// error. The tests that it leaves run in a target of a CI group that prepares the databases and flowmark: the Rust ones in
+// server. A test that reads a database server fails without it, so each recipe selects by name the tests that
+// read none (scripts/repo/offline-tests.mts) and reads no environment of the servers; a selection of no test is an
+// error. The tests that it leaves run in a target of a CI group that prepares the databases: the Rust ones in
 // client-db-rust-check, which runs the workspace, and the Python ones in suite-python-check, which runs every test file
 // (T570, T580).
 caseTest('T570, T580: the offline test targets of Rust and Python select their tests by name, and a group with the databases runs the tests they leave', () => {
@@ -3398,10 +3357,10 @@ caseTest('T570, T580: the offline test targets of Rust and Python select their t
     assert.ok(selected !== '', `${target} writes its selection into no file (PUBLISH)`);
     const tests = run.split('\n').filter(line => line.includes(`$(cat ${selected})`));
     assert.equal(tests.length, 1, `one line of ${target} runs the tests of the selection ${selected}`);
-    assert.doesNotMatch(run, /\$\{ORM_TEST_SERVERS_LEASES:\?|\bFLOWMARK=|ORM_TEST_\w*DSN=/, `${target} reads the test servers or flowmark, and it is offline`);
+    assert.doesNotMatch(run, /\$\{ORM_TEST_SERVERS_LEASES:\?|ORM_TEST_\w*DSN=/, `${target} reads the test servers, and it is offline`);
     // make exports the variables of the file TEST_ENV of a checkout whose servers run, and the run of the tests starts without them.
     const [line = ''] = tests;
-    assert.match(line, /^(?:cd \S+ && )?env -u FLOWMARK (?:-u [A-Z0-9_]+ )+/, `${target} starts its tests with the variables that make exports from TEST_ENV; start them through WITHOUT_SERVERS`);
+    assert.match(line, /^(?:cd \S+ && )?env (?:-u [A-Z0-9_]+ )+/, `${target} starts its tests with the variables that make exports from TEST_ENV; start them through WITHOUT_SERVERS`);
     const environment = join(mkdtempSync(join(tmpdir(), 'orm-offline-env-')), 'env');
     try {
       writeFileSync(environment, "export ORM_TEST_MYSQL_DSN='mysql://u@127.0.0.1:1/d'\nexport ORM_TOOLS_POSTGRES_DSN='postgres://u@127.0.0.1:1/d'\n");
@@ -3416,7 +3375,7 @@ caseTest('T570, T580: the offline test targets of Rust and Python select their t
     }
     assert.doesNotMatch(run, / discover /, `${target} runs every test of its tree; it runs the tests of its selection`);
     assert.ok(!(needs[target] ?? []).includes('databases'), `${target} declares the need databases, and it runs without the servers`);
-    // The tests that the selection leaves run where the servers and flowmark are.
+    // The tests that the selection leaves run where the servers are.
     assert.ok(makeTargets(makefile).some(entry => entry.target === servers), `the Makefile defines no target ${servers}`);
     assert.ok((needs[servers] ?? []).includes('databases'), `${servers} declares no need databases in contracts/check-inputs.json`);
     const jobs = groups.filter(group => (targets[group] ?? []).includes(servers));
@@ -3424,7 +3383,6 @@ caseTest('T570, T580: the offline test targets of Rust and Python select their t
     for (const group of jobs) {
       const outputs = groupOutputs(targets[group] ?? [], needs);
       assert.equal(outputs.databases, true, `the group ${group} of ${servers} prepares no databases`);
-      assert.equal(outputs.flowmark, true, `the group ${group} of ${servers} installs no flowmark`);
     }
     assert.match(makeDryRun(servers), /ORM_TEST_SERVERS_LEASES/, `${servers} reads no test servers (WITH_TEST_ENV)`);
   }

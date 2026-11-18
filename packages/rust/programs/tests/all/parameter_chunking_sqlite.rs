@@ -1,6 +1,6 @@
-// Recipe conversion of the parameter chunking: FCV-3 and FCV-4 (docs/spec/feature-coverage.md), suite unit parameter_chunking-sqlite.
+// Recipe conversion of the parameter chunking: FCV-22 and FCV-4 (docs/spec/feature-coverage.md), suite unit parameter_chunking-sqlite.
 //! The parameter_chunking recipe, contracts/fixtures/parameter_chunking/parameter_chunking.json, on sqlite
-//! (docs/spec/feature-coverage.md FCV-3 and FCV-4).
+//! (docs/spec/feature-coverage.md FCV-22 and FCV-4).
 
 use polyspec_orm_tests::recipe;
 

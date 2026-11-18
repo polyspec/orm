@@ -27,8 +27,7 @@ import { paramUses } from '../dist/engine/params.js';
 import { Engine, Service, connect as connectBench } from '../dist/index.js';
 import { spawn } from 'node:child_process';
 import { styledField } from '../dist/core.js';
-import { relatedDsn, withCaseCorpus, withCaseDatabase } from './case-database.mjs';
-import { chmod, readdir } from 'node:fs/promises';
+import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { connectDsn, modelOps } from './recipe_model.mjs';
@@ -40,7 +39,7 @@ import { readStep } from './recipe_reads.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 import { caseTest } from '../../../../tests/testcase.mts';
 
-// NONE is the database part of a recipe without a database (FCV-3).
+// NONE is the database part of a recipe without a database (FCV-22).
 export const NONE = 'none';
 
 // reportCase appends the pass of a case to the file that ORM_RECIPE_RESULTS names, the line the feature checker reads
@@ -544,27 +543,26 @@ function equal(got, want, ordered) {
   return got[kind] === want[kind];
 }
 
-// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
+// The database path (FCV-22 and FCV-4): each case runs on a case database of its own through the public catalog API.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'markdown', 'mariadb']);
+const DATABASES = new Set(['mysql', 'postgres', 'sqlite', 'mariadb']);
 
 /**
- * Whether a case or step with the list only runs on database: a corpus speaks SQLite's dialect, so what names sqlite names it
- * too, and MariaDB is a server of the MySQL dialect, so what names mysql names it too (FCV-3, DIA-200).
+ * Whether a case or step with the list only runs on database: MariaDB is a server of the MySQL dialect, so what names mysql names
+ * it too (FCV-22, DIA-200).
  */
 function onDatabase(only, database) {
-  return only === undefined || only.includes(database) || (database === 'markdown' && only.includes('sqlite'))
-    || (database === 'mariadb' && only.includes('mysql'));
+  return only === undefined || only.includes(database) || (database === 'mariadb' && only.includes('mysql'));
 }
 
-/** The SQL dialect of a database: a corpus runs SQL in SQLite's (DIA-185), and MariaDB in MySQL's (DIA-200). */
+/** The SQL dialect of a database: MariaDB runs SQL in MySQL's (DIA-200). */
 function dialectOfDatabase(database) {
-  return { markdown: 'sqlite', mariadb: 'mysql' }[database] ?? database;
+  return { mariadb: 'mysql' }[database] ?? database;
 }
 
 /**
- * The key of a value that names its text by database: a corpus and a MariaDB server read the entry of their dialect unless the
- * value states its own (FCV-3).
+ * The key of a value that names its text by database: a MariaDB server reads the entry of its dialect unless the value states its
+ * own (FCV-22).
  */
 function dialectKey(database, entries) {
   return Object.hasOwn(entries ?? {}, database) ? database : dialectOfDatabase(database);
@@ -575,20 +573,12 @@ function dialectOf(context) {
   return dialectOfDatabase(context.database);
 }
 
-/** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-3). */
+/** The variable that an env: DSN of a step names on database: on MariaDB, ORM_TEST_MYSQL_ names ORM_TEST_MARIADB_ (FCV-22). */
 function serverVariable(name, database) {
   return database === 'mariadb' && name.startsWith('ORM_TEST_MYSQL_') ? `ORM_TEST_MARIADB_${name.slice('ORM_TEST_MYSQL_'.length)}` : name;
 }
 
-/** Makes the directories of the corpus at root ones the process may only read, or writable again. */
-async function chmodCorpus(root, readOnly) {
-  await chmod(root, readOnly ? 0o555 : 0o755);
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    if (entry.isDirectory()) await chmodCorpus(join(root, entry.name), readOnly);
-  }
-}
-
-// databaseRecipe registers one test per case of the recipe at path on the database (FCV-3).
+// databaseRecipe registers one test per case of the recipe at path on the database (FCV-22).
 async function databaseRecipe(path, database) {
   if (!DATABASES.has(database)) throw new Error(`recipe ${path}: unknown database ${database}`);
   const text = await readFile(resolve(root, path), 'utf8');
@@ -596,22 +586,14 @@ async function databaseRecipe(path, database) {
   const recipe = JSON.parse(text);
   const name = path;
   if (recipe.fixture === undefined) throw new Error(`recipe ${name}: no fixture, so it has no database`);
-  const markdown = database === 'markdown';
   const fixture = recipe.fixture;
-  // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-3).
+  // A fixture of none runs every case on an empty case database; the helper never infers it (FCV-22).
   const { schema, installFirst } = fixture === NONE_FIXTURE
     ? { schema: undefined, installFirst: [] }
     : await fixtureSchema(resolve(root, fixture));
   for (const recipeCase of recipe.cases) {
     if (!onDatabase(recipeCase.only, database)) continue;
     if (recipeCase.not_through_pooler !== undefined && process.env.ORM_CLIENT_DB_POOLER === '1') continue;
-    if (markdown) {
-      // flowmark install creates the corpus from the set (DIA-189); a case with install: false starts on a corpus of no table.
-      const setPath = fixture !== NONE_FIXTURE && recipeCase.install !== false ? resolve(root, fixture) : null;
-      registerRecipeCase(recipeCase, database, ({ step }) =>
-        withCaseCorpus(setPath, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
-      continue;
-    }
     registerRecipeCase(recipeCase, database, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
@@ -675,11 +657,7 @@ async function runCase({ name, recipe, recipeCase, database, schema, installFirs
   const db = await Db.connect(caseDatabase.dsn);
   try {
     // A case with install: false gets no fixture here; its steps install it (FCV-4, schema.install).
-    if (schema !== undefined && recipeCase.install !== false && database === 'markdown') {
-      // flowmark install made the corpus from the set; the connection takes the set as an install registers it.
-      db.utils().schema().register(schema);
-      step('schema registered');
-    } else if (schema !== undefined && recipeCase.install !== false) {
+    if (schema !== undefined && recipeCase.install !== false) {
       for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
       step('schema installed');
     }
@@ -710,7 +688,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, corpusDir: caseDatabase.dir, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], transactionHooks: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], transactionHooks: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -1069,13 +1047,8 @@ const OPS = {
     if (row.waited === null) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     return {};
   },
-  // The file of the case database becomes one that the process may only read (CFG-24); a corpus, its directories.
+  // The file of the case database becomes one that the process may only read (CFG-24).
   async 'database.read_only'(s, context) {
-    if (context.database === 'markdown') {
-      await chmodCorpus(context.corpusDir, true);
-      context.closers.push(() => chmodCorpus(context.corpusDir, false));
-      return {};
-    }
     chmodSync(context.dsn.slice('sqlite://'.length).split('?')[0], 0o444);
     return {};
   },
@@ -1262,13 +1235,13 @@ async function runStep(rawStep, context) {
   const op = OPS[s.op] ?? MODEL_OPS[s.op] ?? APPLY_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
   // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly the
-  // three servers of those; a markdown connection reads the sqlite entry, and an entry of its own is named only where its result differs.
+  // three servers of those.
   if (!onDatabase(s.only, context.database)) return;
   if (s.expect !== undefined) {
     const only = s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite'];
-    const servers = names => names.filter(each => each !== 'markdown' && each !== 'mariadb').sort().join(',');
+    const servers = names => names.filter(each => each !== 'mariadb').sort().join(',');
     const named = Object.keys(s.expect);
-    if (servers(named) !== servers(only) || (named.includes('markdown') && !only.includes('sqlite')) || (named.includes('mariadb') && !only.includes('mysql'))) throw new Error(`the expect of ${s.op} names ${named.sort().join(',')}, want ${servers(only)}`);
+    if (servers(named) !== servers(only) || (named.includes('mariadb') && !only.includes('mysql'))) throw new Error(`the expect of ${s.op} names ${named.sort().join(',')}, want ${servers(only)}`);
   }
   const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[dialectKey(context.database, rawStep.expect)], context));
   let actual;
@@ -2404,8 +2377,8 @@ const TABLE_OPS = {
   // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
   async 'pool.transactions'(s, context) {
     // Count read-only transactions at once: the first hold of them stay open until hold have begun, so the pool shows the
-    // connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no write lock, so SQLite and a flowmark
-    // corpus hold them at once too (DIA-221).
+    // connections that they take at once (CFG-4, CFG-5). A read-only transaction takes no write lock, so SQLite
+    // holds them at once too (DIA-221).
     const db = connectionOf(s, context);
     let [active, peak, open, begun] = [0, 0, 0, 0];
     let release;
@@ -2585,7 +2558,7 @@ Object.assign(OPS, {
     return { bind: subscription };
   },
   // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to the recipe, for the
-  // dialect of the database of the case (SQLite for markdown, MySQL for MariaDB, FCV-3), and runs the first step of the plan
+  // dialect of the database of the case (MySQL for MariaDB, FCV-22), and runs the first step of the plan
   // with execute.
   async 'db.execute'(s, context) {
     const { model, hash } = validationModel(resolve(root, context.dir, s.schema));

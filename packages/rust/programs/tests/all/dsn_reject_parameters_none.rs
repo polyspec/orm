@@ -1,5 +1,5 @@
 //! The refused DSN parameters, contracts/fixtures/dsn_reject/dsn_reject_parameters.json, without a database
-//! (docs/spec/feature-coverage.md FCV-3).
+//! (docs/spec/feature-coverage.md FCV-22).
 //! Requirements: CFG-12, CFG-19, CFG-20, CFG-37, INT-187.
 
 use polyspec_orm_tests::recipe;

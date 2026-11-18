@@ -2,6 +2,6 @@
 # comment is the argument list of one `vendor-php/bin/orm-gen gen` run from the repository root: the document set, the output
 # directory and the namespace. make php-models writes them, and make php-model-check checks them with --check.
 --set legacy/contracts/fixtures/bench/dbspec-set.json --out legacy/packages/php/gen --namespace Polyspec\Orm\Tests\Model
---set legacy/tests/markdown/corpus/dbspec/dbspec-set.json --out legacy/packages/php/markdownmodel --namespace Polyspec\Orm\Tests\MarkdownModel
+--set legacy/contracts/fixtures/markdown_model/dbspec-set.json --out legacy/packages/php/markdownmodel --namespace Polyspec\Orm\Tests\MarkdownModel
 --set legacy/contracts/fixtures/complex_query/dbspec-set.json --out legacy/packages/php/complexmodel --namespace Polyspec\Orm\Tests\ComplexModel
 --set legacy/tests/bind/dbspec-set.json --out legacy/packages/php/bindmodel --namespace Polyspec\Orm\Tests\BindModel

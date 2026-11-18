@@ -1,6 +1,6 @@
 <?php
 
-// Recipe conversion of the parameter chunking: FCV-3 and FCV-4 (docs/spec/feature-coverage.md), suite unit
+// Recipe conversion of the parameter chunking: FCV-22 and FCV-4 (docs/spec/feature-coverage.md), suite unit
 // parameter_chunking-postgres.
 declare(strict_types=1);
 

@@ -104,7 +104,7 @@ export interface Dialect {
   columnFunction(name: string, col: string, arg: (i: number) => string): string | undefined;
   valueFunction(name: string, arg: () => string, now: () => string): string | undefined;
   containsBinary(col: string, value: (transform: string) => string): string;
-  /** A full-text match of cols against value, in boolean mode when boolean is set; undefined when the dialect has no full-text search (DIA-187). */
+  /** A full-text match of cols against value, in boolean mode when boolean is set; undefined when the dialect has no full-text search (DIA-6). */
   fulltext(cols: readonly string[], value: (transform: string) => string, boolean: boolean): string | undefined;
   tupleIn(cols: readonly string[], rows: readonly (readonly string[])[], negate: boolean): string;
   random(): string;

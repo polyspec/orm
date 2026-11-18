@@ -1,4 +1,4 @@
-// Requirements: DIA-113, FCV-3, FCV-4 (docs/spec/feature-coverage.md).
+// Requirements: DIA-113, FCV-22, FCV-4 (docs/spec/feature-coverage.md).
 package orm_test
 
 import (
@@ -19,7 +19,7 @@ func TestRecipeDbspecRenderPhysicalMysql(t *testing.T) {
 }
 
 // TestRecipeDbspecRenderPhysicalMariadb runs the dbspec_render_physical recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeDbspecRenderPhysicalMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecRenderPhysicalRecipe, "mariadb")
@@ -37,10 +37,4 @@ func TestRecipeDbspecRenderPhysicalPostgres(t *testing.T) {
 func TestRecipeDbspecRenderPhysicalSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecRenderPhysicalRecipe, "sqlite")
-}
-
-// TestRecipeDbspecRenderPhysicalMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeDbspecRenderPhysicalMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, dbspecRenderPhysicalRecipe, "markdown")
 }

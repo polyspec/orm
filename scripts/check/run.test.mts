@@ -95,11 +95,11 @@ caseTest('the feature verification targets declare the TypeScript extractor need
 caseTest('the suite targets and the comparison declare every client and fixture setup need', () => {
   const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
   if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
-  // A suite runs the test files of its runtime on the servers of a run and on flowmark (scripts/suite-test.mts).
+  // A suite runs the test files of its runtime on the servers of a run (scripts/suite-test.mts).
   const suites: Record<string, string[]> = {
-    'suite-php-check': ['php', 'composer', 'databases', 'flowmark'],
-    'suite-typescript-check': ['node-modules', 'databases', 'flowmark'],
-    'suite-python-check': ['python', 'databases', 'flowmark'],
+    'suite-php-check': ['php', 'composer', 'databases'],
+    'suite-typescript-check': ['node-modules', 'databases'],
+    'suite-python-check': ['python', 'databases'],
   };
   for (const [name, needs] of Object.entries(suites)) {
     const declared: unknown = inputs.targets[name];
@@ -111,9 +111,7 @@ caseTest('the suite targets and the comparison declare every client and fixture 
   for (const need of ['go', 'rust', 'php', 'php-extension-tools', 'python', 'databases', 'node-modules'])
     assert.ok(comparison.needs.includes(need), `the cross-runtime comparison independently declares ${need}`);
   assert.ok(expandNeeds(['databases']).includes('server-programs'));
-  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs', 'flowmark']);
-  // flowmark is the fourth database of a case, and WITH_TEST_ENV hands every target FLOWMARK, so databases installs it.
-  assert.ok(expandNeeds(['databases']).includes('flowmark'));
+  assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs']);
   assert.ok(expandNeeds(['databases']).includes('go-lease'));
   const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
   // T299: make exports every variable of the TEST_ENV file of the run into itself.

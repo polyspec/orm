@@ -10,7 +10,7 @@ import (
 // dsnConnectionRecipe is the recipe of the DSN connection, relative to this package directory.
 var dsnConnectionRecipe = testcase.LegacyPath("contracts/fixtures/dsn_connection/dsn_connection.json")
 
-// TestRecipeDsnConnectionMysql runs the dsn_connection recipe on MySQL, each case on a case database (FCV-3).
+// TestRecipeDsnConnectionMysql runs the dsn_connection recipe on MySQL, each case on a case database (FCV-22).
 // Requirements: CFG-1, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14, CFG-19, CFG-2, CFG-26, CFG-16, DIA-57, DSL-141, CFG-27, CFG-28, CFG-29, CFG-6, CFG-12, CFG-13, CFG-21, CFG-22, CFG-23, CFG-25, CFG-24, DIA-192, DIA-193, DIA-194, DIA-195, DIA-196, PRT-74.
 func TestRecipeDsnConnectionMysql(t *testing.T) {
 	testcase.Group(t)
@@ -18,28 +18,22 @@ func TestRecipeDsnConnectionMysql(t *testing.T) {
 }
 
 // TestRecipeDsnConnectionMariadb runs the dsn_connection recipe on MariaDB, a server of the MySQL dialect, each case on a case
-// database (DIA-200, FCV-3).
+// database (DIA-200, FCV-22).
 func TestRecipeDsnConnectionMariadb(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dsnConnectionRecipe, "mariadb")
 }
 
-// TestRecipeDsnConnectionPostgres runs the dsn_connection recipe on PostgreSQL (FCV-3).
+// TestRecipeDsnConnectionPostgres runs the dsn_connection recipe on PostgreSQL (FCV-22).
 // Requirements: CFG-1.
 func TestRecipeDsnConnectionPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dsnConnectionRecipe, "postgres")
 }
 
-// TestRecipeDsnConnectionSqlite runs the dsn_connection recipe on SQLite (FCV-3).
+// TestRecipeDsnConnectionSqlite runs the dsn_connection recipe on SQLite (FCV-22).
 // Requirements: CFG-1.
 func TestRecipeDsnConnectionSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dsnConnectionRecipe, "sqlite")
-}
-
-// TestRecipeDsnConnectionMarkdown runs the recipe on flowmark, each case on a corpus of its own (FCV-3).
-func TestRecipeDsnConnectionMarkdown(t *testing.T) {
-	testcase.Group(t)
-	recipe.Run(t, dsnConnectionRecipe, "markdown")
 }

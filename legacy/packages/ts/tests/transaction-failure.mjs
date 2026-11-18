@@ -44,7 +44,7 @@ caseTest('transaction-failure/rollback-primary-and-cleanup', async () => {
   });
 });
 
-// Requirements: DIA-181, PLN-17.
+// Requirements: PLN-17.
 caseTest('transaction-failure/savepoint-end-attempts-both', async () => {
   const scenarios = [
     { name: 'rollback-only', rejected: ['ROLLBACK TO SAVEPOINT '], count: 1 },

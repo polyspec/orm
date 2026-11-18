@@ -12,7 +12,7 @@ use Polyspec\Orm\OrmException;
 
 /**
  * A markdown connection as the PDO handle of a SQLite connection: a flowmark server runs the statements of SQL in
- * SQLite's dialect on the corpus (docs/spec/dialects.md DIA-154, DIA-185), so each statement that the handle prepares
+ * SQLite's dialect on the corpus (docs/spec/dialects.md DIA-154), so each statement that the handle prepares
  * or runs is one statement message of its session (docs/spec/protocol.md PRT-65), and its answer is read as pdo_sqlite
  * reads a row (PRT-69). Every SQL surface of the connection reads and writes through it.
  *

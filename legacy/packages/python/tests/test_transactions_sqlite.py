@@ -1,5 +1,5 @@
 # Requirements: CFG-15, INT-155, CFG-12.
-# The suite unit transactions-sqlite (docs/spec/feature-coverage.md FCV-3): the recipe
+# The suite unit transactions-sqlite (docs/spec/feature-coverage.md FCV-22): the recipe
 # contracts/fixtures/transactions/transactions.json on sqlite.
 from .recipe import recipe_tests
 from . import testcase

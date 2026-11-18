@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 // The chain value recipe, contracts/fixtures/dsl/dsl.json, without a database
-// (docs/spec/feature-coverage.md FCV-3, FCV-4). Requirements: DSL-49, DSL-50, PLN-4.
+// (docs/spec/feature-coverage.md FCV-22, FCV-4). Requirements: DSL-49, DSL-50, PLN-4.
 #[Medium]
 class DslRecipeTest extends TestCase
 {
