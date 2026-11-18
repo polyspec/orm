@@ -32,12 +32,21 @@ mod disposal_tests;
 mod test_fixtures;
 
 #[cfg(test)]
+#[path = "../../tests/unit/catalog_retry.rs"]
+mod retry_tests;
+
+#[cfg(test)]
 #[path = "../../tests/unit/catalog_value.rs"]
 mod value_tests;
 
 #[cfg(test)]
 #[path = "../../tests/unit/catalog_tool_errors.rs"]
 mod tool_error_tests;
+
+/// Whether a refused connect is tried again: a 1226 inside the reopen window (CFG-48) is retried on a timer.
+fn refused_connect_is_retried(message: &str, now: std::time::Instant, reopen_until: std::time::Instant) -> bool {
+    message.contains("1226") && now < reopen_until
+}
 
 /// A connection that the server refuses, with the code of the driver error (CFG-1).
 fn connect_error(error: sqlx::Error) -> CatalogError {
@@ -320,8 +329,9 @@ impl CatalogConnection {
     /// from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
     pub(super) async fn open_connection(&self) -> Result<Conn, CatalogError> {
         let mut acquired = Conn::acquire(&self.pool).await;
-        while acquired.as_ref().err().is_some_and(|error| error.to_string().contains("1226")) && std::time::Instant::now() < *self.reopen_until.lock().unwrap()
-        {
+        while acquired.as_ref().err().is_some_and(|error| {
+            refused_connect_is_retried(&error.to_string(), std::time::Instant::now(), *self.reopen_until.lock().unwrap())
+        }) {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             acquired = Conn::acquire(&self.pool).await;
         }
