@@ -64,7 +64,7 @@
     ],
     "ts": [
       "go",
-      "wasm-bindgen"
+      "wasmBindgen"
     ]
   },
   "contexts": {

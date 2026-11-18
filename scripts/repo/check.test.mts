@@ -3477,13 +3477,13 @@ caseTest('T614: every setup target installs the tools it runs through their mise
 // Each CI job installs the tools that its setup and its targets run: tools.<runtime> names them, or a setup target of the job
 // installs them with make install-tools (T631).
 caseTest('T631: every CI job installs the tools of mise.toml that the recipes of its setup and its targets run', () => {
-  const mise = '[tools]\nnode = "1"\ngo = "1"\nuv = "1"\n"github:PyO3/maturin" = "1"\n';
+  const mise = '[tools]\nnode = "1"\ngo = "1"\nuv = "1"\n"github:PyO3/maturin" = "1"\n"github:wasm-bindgen/wasm-bindgen" = "1"\n';
   const makefile = [
     'GO := $(KIT_TOOLS)/mise/shims/go', 'BUILD = $(PUBLISH) out go build ./x',
     'a: b', 'b:', '\t$(BUILD)', 'c:', '\t$(MAKE) install-tools TOOLS="uv"', '\tuv sync', 'd:', '\t$(GO) vet ./...', '\tnode x.mjs',
-    'e:', '\tmaturin build',
+    'e:', '\tmaturin build', 'f:', '\twasm-bindgen --version',
   ].join('\n') + '\n';
-  assert.deepEqual(jobToolErrors(makefile, { setup: { runtimes: { rust: [], python: ['c'] } }, targets: { runtimes: { rust: ['a'], python: ['d', 'e'] } }, tools: { python: ['go'] } }, mise), [
+  assert.deepEqual(jobToolErrors(makefile, { setup: { runtimes: { rust: [], python: ['c'] } }, targets: { runtimes: { rust: ['a'], python: ['d', 'e', 'f'] } }, tools: { python: ['go', 'wasmBindgen'] } }, mise), [
     'the rust job of config/ci.json runs go in b, and neither tools.rust nor a make install-tools of its setup names go',
     'the python job of config/ci.json runs maturin in e, and neither tools.python nor a make install-tools of its setup names maturin',
   ]);

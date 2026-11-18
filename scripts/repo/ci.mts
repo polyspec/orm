@@ -958,6 +958,8 @@ export function jobToolErrors(makefile: string, config: { setup?: { shared?: str
   const errors: string[] = [];
   const tools = /^\[tools\]\n([\s\S]*?)(?=^\[|(?![\s\S]))/m.exec(mise)?.[1] ?? '';
   const keys = [...tools.matchAll(/^"?([^"=\s#[]+)"?\s*=/gm)].map(match => (match[1] ?? '').split(/[/:]/).at(-1) ?? '').filter(key => key !== 'node' && key !== 'npm');
+  // kit names a tool of mise.toml in camel case (wasm-bindgen is wasmBindgen), and tools.<runtime> names it so.
+  const name = (key: string): string => key.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
   const variables = makeVariables(makefile);
   const selector = (word: string): string | undefined => {
     const command = /\/mise\/shims\/([^/]+)$/.exec(word)?.[1] ?? word;
@@ -979,7 +981,8 @@ export function jobToolErrors(makefile: string, config: { setup?: { shared?: str
     for (const target of reached(makefile, [...setup, ...targets]))
       for (const line of recipeLines(makefile, target))
         for (const word of expand(line, variables).split(/[\s;&|()`"']+/)) {
-          const tool = selector(word);
+          const found = selector(word);
+          const tool = found === undefined ? undefined : name(found);
           if (tool === undefined || installed.has(tool)) continue;
           const list = users.get(tool) ?? [];
           if (!list.includes(target)) list.push(target);
