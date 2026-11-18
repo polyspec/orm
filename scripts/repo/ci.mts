@@ -1011,7 +1011,7 @@ export function goModuleErrors(makefile: string, config: { setup?: { shared?: st
   const variables = makeVariables(makefile);
   const members = [...work.matchAll(/^\s*(?:use\s+)?\.\/(\S+)\s*$/gm)].map(match => match[1] ?? '').filter(folder => folder !== '');
   const folder = (line: string): string => /^\s*cd\s+(\S+)\s*&&/.exec(line)?.[1]?.replace(/^\$\(CURDIR\)\/?/, '').replace(/\/$/, '') || '.';
-  const isGo = (word: string): boolean => word === 'go' || /\/mise\/shims\/go$/.test(word);
+  const isGo = (word: string): boolean => word === 'go' || word.endsWith('/mise/shims/go');
   const runs = (line: string): string[] => {
     if (/\bbinding\s+check\b/.test(line)) return /--go\b/.test(line) ? ['packages/go'] : [];
     return line.split(/[\s;&|()`"']+/).some(isGo) ? [folder(line)] : [];
