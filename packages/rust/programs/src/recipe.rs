@@ -4826,6 +4826,7 @@ mod database {
                 if enabled == 0 {
                     return Err(fault("sql.user_errors: performance_schema is off on this server, so the count of its errors is unknown".to_owned()));
                 }
+                let mut fields = json!({});
                 match mark.as_str() {
                     "start" => {
                         if context.user_error_starts.contains_key(&(user.clone(), error)) {
@@ -4837,15 +4838,12 @@ mod database {
                         let Some(start) = context.user_error_starts.remove(&(user.clone(), error)) else {
                             return Err(fault(format!("sql.user_errors: an end with no start for user {user} and error {error}")));
                         };
-                        let increase = count as i64 - start;
-                        let expect = crate::recipe_reads::read(step, "expect")["expect"].as_i64().ok_or_else(|| fault("sql.user_errors: the end states no expect".to_owned()))?;
-                        if increase != expect {
-                            return Err(fault(format!("sql.user_errors: the server recorded {increase} errors {error} for user {user}, want {expect}")));
-                        }
+                        // The end returns the increase: the expect of the step compares it as any op's output (recipe.rs:4042).
+                        fields = json!({ "increase": count as i64 - start });
                     }
                     other => return Err(fault(format!("sql.user_errors: mark {other} is neither start nor end"))),
                 }
-                Output::fields(json!({}))
+                Output::fields(fields)
             }
             "sql.exec" => {
                 if let Some(sql) = sql_entry(&crate::recipe_reads::read(step, "sql")["sql"], context).map_err(fault)? {

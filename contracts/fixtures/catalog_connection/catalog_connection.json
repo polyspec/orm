@@ -21681,15 +21681,16 @@
         {
           "op": "catalog.reconnect",
           "user_from_database": "o1_",
+          "refused_code": "driver",
           "refused_message": "max_user_connections",
-          "refused_code": "1226"
+          "connects": 1
         },
         {
           "op": "sql.user_errors",
           "user": "o1_",
           "error": 1226,
           "mark": "end",
-          "expect": 1
+          "expect": {"mysql": {"increase": 1}}
         },
         {
           "op": "sql.release_connection"
