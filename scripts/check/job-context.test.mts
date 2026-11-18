@@ -108,14 +108,19 @@ caseTest('the Kit jobs declare the context and setup targets that own their nati
   assert.match(makefile, /^orm-install-typescript-runtime: orm-install-go-lease orm-codes-typescript build-ts$/m);
 });
 
-// dryRun runs make -n of target with the make of this run (MAKE) and the environment env, less the variables by which a
-// calling make hands its command line and level to a sub-make: kit (target-report.mjs:25,160) and make check-run
-// (scripts/check/run.mts:53-58) drop the same four, so a dry run reads the Makefile as the make of a ci-targets target does.
-function dryRun(target: string, env: NodeJS.ProcessEnv = process.env, args: string[] = []): string {
+// runMake runs the make of this run (MAKE) with args and the environment env, less the variables by which a calling make
+// hands its command line and level to a sub-make: kit (target-report.mjs:25,160) and make check-run
+// (scripts/check/run.mts:53-58) drop the same four, so the run reads the Makefile as the make of a ci-targets target does.
+function runMake(args: string[], env: NodeJS.ProcessEnv = process.env): string {
   const clean = Object.fromEntries(Object.entries(env).filter(([name]) => !['MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES'].includes(name)));
-  const dry = spawnSync(process.env.MAKE || 'make', ['-n', '--no-print-directory', target, ...args], { cwd: repo, encoding: 'utf8', env: clean });
-  assert.equal(dry.status, 0, `make -n ${target} failed: ${dry.stderr}`);
-  return dry.stdout;
+  const run = spawnSync(process.env.MAKE || 'make', ['--no-print-directory', ...args], { cwd: repo, encoding: 'utf8', env: clean });
+  assert.equal(run.status, 0, `make ${args.join(' ')} failed: ${run.stderr}`);
+  return run.stdout;
+}
+
+// dryRun runs make -n of target through runMake.
+function dryRun(target: string, env: NodeJS.ProcessEnv = process.env, args: string[] = []): string {
+  return runMake(['-n', target, ...args], env);
 }
 
 // The test servers and the run databases of the php-ext job are started inside make -k ci-targets (T645), not by the
@@ -190,4 +195,38 @@ caseTest('a target that reads the servers reads the env file of the run of the j
   assert.equal(read({ ...base, GITHUB_RUN_ID: '4321', GITHUB_RUN_ATTEMPT: '2' }, ['RUNTIME=php-ext']), resolve(repo, '.runtime/run/kit-php-ext-4321-2/env'), 'a target of the job reads another env file than that of its run');
   assert.equal(read(base), resolve(repo, '.runtime/servers/env'));
   assert.equal(read({ ...base, GITHUB_RUN_ID: '4321', GITHUB_RUN_ATTEMPT: '2' }, ['RUNTIME=php-ext', 'TEST_ENV=/tmp/given/env']), '/tmp/given/env');
+});
+
+// A target gets the DSNs of the servers only through WITH_TEST_ENV, never from a make-wide export (T651). The export of
+// every variable of the TEST_ENV file into make itself (T299) gave each target the servers without saying so, so a target
+// reached a database although its recipe and its dry run named neither TEST_ENV nor the lease. The suites of these targets
+// read ORM_TEST_*_DSN: test-php-ext (legacy/packages/php-ext/tests/MysqlSessionNativeTest.php:19), test-php
+// (legacy/packages/php/tests/case_database.php:143-144), test-go (legacy/packages/go/internal/testdb/testdb.go:73-74) and
+// test-ts (legacy/packages/ts/tests/case-database.mjs:57,65). Not proven: that kit's runners select every file under
+// --roots, and that no narrower target reaches a DSN through a deeper helper.
+// The case runs a probe target that prints its environment, with TEST_ENV naming a file whose DSN is a sentinel, so it reads
+// what make exports to a recipe whatever the Makefile calls its variables.
+caseTest('the Makefile exports no variable of the TEST_ENV file into make itself (T651)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'orm-test-env-'));
+  try {
+    const file = join(root, 'env');
+    writeFileSync(file, "export ORM_TEST_POSTGRES_DSN='sentinel-t651'\n");
+    // The probe target is a makefile of its own beside the Makefile, so any make that runs the repository (3.81 included,
+    // Makefile:160) reads it.
+    const probe = join(root, 'probe.mk');
+    writeFileSync(probe, 'probe-env:\n\t@env\n');
+    const env = runMake(['-f', 'Makefile', '-f', probe, 'probe-env', `TEST_ENV=${file}`]);
+    assert.doesNotMatch(env, /^ORM_TEST_POSTGRES_DSN=sentinel-t651$/m, 'the Makefile exports every variable of the TEST_ENV file into make');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+caseTest('each target whose suite reads ORM_TEST_*_DSN reaches the DSNs through WITH_TEST_ENV (T651)', () => {
+  const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
+  for (const target of ['test-php-ext', 'test-php', 'test-go', 'test-ts']) {
+    const recipe = new RegExp(`^${target}:(?!\\s*(?:export\\s+)?[A-Za-z_][A-Za-z0-9_]*\\s*[:?+]?=)[^\\n]*\\n((?:\\t[^\\n]*\\n)+)`, 'm').exec(makefile);
+    assert.ok(recipe, `the Makefile has no recipe of ${target}`);
+    assert.match(recipe[1] ?? '', /\$\(WITH_TEST_ENV\)/, `${target} reads the DSNs of the servers without WITH_TEST_ENV`);
+  }
 });

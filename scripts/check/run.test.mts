@@ -113,9 +113,6 @@ caseTest('the suite targets and the comparison declare every client and fixture 
   assert.ok(expandNeeds(['databases']).includes('server-programs'));
   assert.deepEqual(SETUP_NEEDS['databases'], ['go-lease', 'node-modules', 'server-programs']);
   assert.ok(expandNeeds(['databases']).includes('go-lease'));
-  const makefile = readFileSync(join(repo, 'Makefile'), 'utf8');
-  // T299: make exports every variable of the TEST_ENV file of the run into itself.
-  assert.match(makefile, /\$\(foreach v,\$\(TEST_ENV_NAMES\),\$\(eval export \$\(v\) :=/);
 });
 
 // stub runs runChecks with stub commands. The database command (node scripts/check/databases.mts) logs `databases <action>`, and a make target logs its own
