@@ -1365,6 +1365,25 @@
       ]
     },
     {
+      "id": "request_params",
+      "name": [
+        "request",
+        "params"
+      ],
+      "module": "",
+      "kind": "record",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {
+        "targets": ["php", "python", "node", "go"],
+        "reason": "CORE-70"
+      },
+      "core_type": "polyspec_orm::RequestParams",
+      "fields": [
+        {"name": ["params"], "type": {"list": {"unit": "orm_value"}}, "required": true}
+      ]
+    },
+    {
       "id": "observed_request",
       "name": [
         "observed",
@@ -2029,6 +2048,23 @@
             "path": "polyspec_orm::Db::with_cancel",
             "receiver": "&self"
           }
+        },
+        {
+          "id": "db.with_request_hook",
+          "name": ["with", "request", "hook"],
+          "kind": "method",
+          "visibility": "public",
+          "parameters": [
+            {
+              "name": ["hook"],
+              "type": {"function": {"parameters": ["text", {"unit": "request_params"}], "returns": "none", "async_allowed": false}},
+              "required": true
+            }
+          ],
+          "returns": {"unit": "db"},
+          "raises": [],
+          "wait": "none",
+          "core": {"path": "polyspec_orm::Db::with_request_hook", "receiver": "&self"}
         },
         {
           "id": "db.with_request_log",
