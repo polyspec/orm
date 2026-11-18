@@ -3273,8 +3273,8 @@ dbspec-go-check/render-physical:
 	$(WITH_TEST_ENV) $(RUN_TESTS) go --cwd legacy/packages/go -- -count=1 -timeout=0 ./orm -run '^TestRecipeDbspec(RenderPhysical|SetDecimal)(Mysql|Postgres|Sqlite)$$' -count=1
 # dbspec-go-check/unicode checks that the three table files written by the generator of tests/dbspec/unicode match the current Go tables, and that the C extension and the Python module
 # give the same classification as Go at every code point.
-dbspec-go-check/unicode:
-	$(RUN_TESTS) go --cwd . -- -count=1 -timeout=0 ./tests/dbspec/unicode -count=1
+dbspec-go-check/unicode: python-venv-check
+	ORM_PYTHON=$(PYTHON_VENV)/bin/python $(RUN_TESTS) go --cwd . -- -count=1 -timeout=0 ./tests/dbspec/unicode -count=1
 
 docs-dev:
 	$(NPM) run docs:dev
