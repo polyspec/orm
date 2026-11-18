@@ -2,8 +2,8 @@
 
 // The recipe contracts/fixtures/dbspec_introspect/dbspec_introspect.json on MariaDB, a server of the MySQL dialect
 // (docs/spec/dialects.md DIA-200), as DbspecIntrospectRecipeTest runs it on MySQL (docs/spec/feature-coverage.md
-// FCV-22). The entry of MariaDB is a class of its own, so the targets of the MySQL servers do not run it and the targets
-// of the MariaDB servers run only it.
+// FCV-22). The entry of MariaDB is a class of its own, so the targets of the MySQL servers do not run it and the
+// targets of the MariaDB servers run only it.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

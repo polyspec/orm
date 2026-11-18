@@ -2623,7 +2623,8 @@ final class Recipe
         return var_export($value, true);
     }
 
-    // The database path (FCV-22 and FCV-4): each case runs on a case database of its own through the public catalog API.
+    // The database path (FCV-22 and FCV-4): each case runs on a case database of its own through the public
+    // catalog API.
 
     /** The databases of a recipe with a fixture (FCV-22). */
     private const DATABASES = ['mysql', 'postgres', 'sqlite', 'mariadb'];
@@ -3387,7 +3388,8 @@ final class Recipe
                 return ['bind' => new RecipeSubscription($stop, $recording)];
             case 'db.execute':
                 // db.execute (INT-76, DSL-113): compiles the request against the schema that the step names relative to
-                // the recipe, for the dialect of the database of the case (MySQL for MariaDB, FCV-22), and runs the first step.
+                // the recipe, for the dialect of the database of the case (MySQL for MariaDB, FCV-22), and runs the
+                // first step.
                 $schema = realpath($context['dir'] . '/' . $s['schema']);
                 if ($schema === false) {
                     Assert::fail("db.execute: the schema {$s['schema']} is missing");
