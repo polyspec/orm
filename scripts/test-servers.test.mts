@@ -822,6 +822,39 @@ caseTest('startLogged resolves when the ready line is written at once, before th
   }
 });
 
+// LOGGING_SERVER is the server of the logReader case: it logs its ready line, and once its stdin ends 2000 more lines.
+const LOGGING_SERVER = "console.log('before'); console.log('ready-now'); process.stdin.resume(); process.stdin.on('end', () => { for (let i = 0; i < 2000; i++) console.log('after ' + i); process.exit(0); });";
+
+// The server of the logReader case exits only once every write of its stdout has completed (T643). On Linux its stdout is a
+// non-blocking socket: a write that the socket does not take at once is queued, and a process.exit before its callback
+// drops it, so the log of the case ended at `after 573`. The probe counts the writes of stdout and their callbacks and
+// records both when process.exit is called, so the case fails on every system, not only when a socket is full.
+caseTest('the server of the logReader case exits after every write of its stdout completed', () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-exit-probe-')));
+  try {
+    const probe = join(dir, 'probe.cjs');
+    const record = join(dir, 'writes');
+    writeFileSync(probe, [
+      "let issued = 0, completed = 0;",
+      "const write = process.stdout.write.bind(process.stdout);",
+      "process.stdout.write = (chunk, encoding, callback) => {",
+      "  if (typeof encoding === 'function') { callback = encoding; encoding = undefined; }",
+      "  issued++;",
+      "  return write(chunk, encoding, (...args) => { completed++; if (callback) callback(...args); });",
+      "};",
+      "const exit = process.exit.bind(process);",
+      "process.exit = code => { require('node:fs').writeFileSync(process.env.EXIT_PROBE, `${issued} ${completed}`); exit(code); };",
+    ].join('\n'));
+    const run = spawnSync(process.execPath, ['--require', probe, '-e', LOGGING_SERVER], { input: '', encoding: 'utf8', env: { ...isolatedEnvironment(), EXIT_PROBE: record } });
+    assert.equal(run.status, 0, run.stderr);
+    const [issued, completed] = readFileSync(record, 'utf8').split(' ').map(Number);
+    assert.equal(issued, 2002, 'the server wrote its 2002 lines');
+    assert.equal(completed, issued, `the server called process.exit after ${completed} of its ${issued} writes completed`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // logReader learns that a server is ready from a pipe, not from the events of a file (T501-1): on macOS the change events
 // of a log stopped under load and a start waited forever. The reader appends the output of the server to its log, gives
 // its lines until the ready line on its pipe, and keeps appending until the server ends, so the server gets no SIGPIPE; it
@@ -832,7 +865,7 @@ caseTest('logReader reports the ready line by its pipe and ends with its server'
   try {
     const reader = logReader(log, 'ready-now');
     const lines: string[] = [];
-    const server = spawn(process.execPath, ['-e', "console.log('before'); console.log('ready-now'); process.stdin.resume(); process.stdin.on('end', () => { for (let i = 0; i < 2000; i++) console.log('after ' + i); process.exit(0); });"], { stdio: ['pipe', reader.input, reader.input] });
+    const server = spawn(process.execPath, ['-e', LOGGING_SERVER], { stdio: ['pipe', reader.input, reader.input] });
     reader.attached();
     reader.lines(text => lines.push(text));
     assert.equal(await reader.ready, true, 'the reader reports the ready line');
