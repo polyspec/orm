@@ -780,7 +780,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
      `rollback_failed`(CORE-25)이고, 그 `callbackError`가 이 실패다.
   콜백의 handle은 4단계가 문장을 보내기 전에 끝난다(CORE-23). 기계가 실패로 끝날 때 가지고 있던 `Passthrough`는 drop되고,
   그 drop이 언어 쪽의 값을 놓아 준다.
-- **CORE-104** CORE-24의 재시도는 CORE-24가 적는 대로 기다리는 `Io` 단계 뒤에 1~4단계를 다시 하는 것이다: 기계는 시도마다
+- **CORE-104** CORE-24의 재시도는 시도 사이에 기다리는 단계 없이 1~4단계를 다시 하는 것이다: 기계는 시도마다
   `callback`을 한 번 호출하며(`F`가 `FnMut`인 이유다), commit이 `deadlock`으로 실패한 시도의 값은 drop한다. 실패
   `Failure::Raised`는 코어에게 kind가 없으므로, 언어 코드가 잡지 않은 콜백 문장의 예외는 kind가 `deadlock`이었어도 바인딩을
   통해서는 재시도되지 않는다: 계약은 `callback`의 함수 타입에 `errors.recognize`를 적지 않는데, 생성기가 `machine`과 함께

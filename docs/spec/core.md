@@ -935,7 +935,7 @@ no member gives a `tx` that a case can name.
      (CORE-25), whose `callbackError` is that failure.
   The handle of the callback is ended (CORE-23) before step 4 sends its statement. A `Passthrough` that the machine
   holds when it ends with a failure is dropped, which releases its value in the language.
-- **CORE-104** The retry of CORE-24 is steps 1 to 4 again, after an `Io` step that waits as CORE-24 states: the machine
+- **CORE-104** The retry of CORE-24 is steps 1 to 4 again, with no wait step between attempts: the machine
   calls `callback` once per attempt, which is why `F` is `FnMut`, and drops the value of an attempt whose commit failed
   with `deadlock`. A failure `Failure::Raised` has no kind for the core, so an exception of a statement of the callback
   that the language code does not catch is not retried through a binding, although its kind was `deadlock`: the
