@@ -665,9 +665,7 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         )
         built = author.core.build("count")
         # MariaDB runs SQL in MySQL's dialect (DIA-200).
-        dialect = {"mariadb": "mysql"}.get(
-            context["database"], context["database"]
-        )
+        dialect = {"mariadb": "mysql"}.get(context["database"], context["database"])
         plan = Engine(author.core.ent.model.runtime, dialect).compile(built.finish())
         # The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
         # fulltext_boolean on MySQL and fulltext_text, which binds the text as it is, on PostgreSQL). Both refuse a text

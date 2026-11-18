@@ -27,4 +27,3 @@ def case_server(database: str) -> str:
     """The server of a case database that the public dbspec calls take (DIA-203): every case database is its own server,
     MariaDB among them (DIA-200)."""
     return database
-
