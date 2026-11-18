@@ -124,9 +124,6 @@ class Collection:
     def get(self, key: Key) -> Model | None:
         return self._items.get(key_text(key), {}).get("value")
 
-    def has(self, key: Key) -> bool:
-        return key_text(key) in self._items
-
     def first(self) -> Model | None:
         for item in self._items.values():
             return item["value"]
