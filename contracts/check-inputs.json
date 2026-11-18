@@ -440,6 +440,16 @@
         "package-lock.json"
       ]
     },
+    "no-flowmark-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "tests/repo/no-flowmark.test.mts"
+      ]
+    },
     "makefile-pinned-node-recipes-check": {
       "scope": "owner",
       "needs": [
