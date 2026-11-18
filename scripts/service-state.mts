@@ -21,6 +21,13 @@ interface Step {
 
 type Server = 'mysql' | 'postgres';
 
+// The session zone of the MySQL setup: the zone that the connection of orm sets (packages/rust/src/db.rs:604-605,
+// timezone "+00:00"). The test servers run in Asia/Seoul, and MySQL stores a TIMESTAMP in UTC from the session zone, so a
+// value that the setup wrote in the server zone read back nine hours off through orm (T644). The service case
+// a_condition_joined_by_or_updates_no_soft_deleted_row_mysql of contracts/interface/service.json and its revision and
+// delete twins write a TIMESTAMP here and read it through orm, so they fail when the two zones differ.
+const MYSQL_SESSION_TIME_ZONE = '+00:00';
+
 // The address variables of the services (SVC-1).
 const ADDRESSES: Record<string, Server> = { ORM_TEST_MYSQL_DSN: 'mysql', ORM_TEST_POSTGRES_DSN: 'postgres' };
 
@@ -84,7 +91,7 @@ function setup(server: Server, dsn: string, scope: string, step: Step) {
     if (!Array.isArray(row)) throw new StateError(`${what}: a row is no list`);
     return `(${row.map(cell => quoteValue(cell, what)).join(', ')})`;
   });
-  let sql = `CREATE TABLE IF NOT EXISTS ${table} (${columns});\n`;
+  let sql = `${server === 'mysql' ? `SET time_zone = '${MYSQL_SESSION_TIME_ZONE}';\n` : ''}CREATE TABLE IF NOT EXISTS ${table} (${columns});\n`;
   if (values.length > 0) {
     sql += server === 'mysql' ? `INSERT IGNORE INTO ${table} VALUES ${values.join(', ')};\n` : `INSERT INTO ${table} VALUES ${values.join(', ')} ON CONFLICT DO NOTHING;\n`;
   }
