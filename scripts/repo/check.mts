@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { groupSetupErrors } from '../check/ci-setup.mts';
 import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciRecipeErrors, checkTargets, ciSetupErrors, lockedCacheErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
 import { workflowSteps } from './workflow.mts';
+import { imageToolErrors } from './recipes.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -42,6 +43,8 @@ const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
 // The CI workflow gives the database check's servers and variables through make orm-test-servers.
 failures.push(...ciServerErrors(ci, SERVER_VARIABLES, makefile));
+// A recipe finds each tool where the job installed it, not through the runner image (T629, T630).
+failures.push(...imageToolErrors(makefile));
 // Every job of ci.yml restores the caches of its locked installs, keyed by the outputs of the job plan.
 failures.push(...lockedCacheErrors(ci, makefile));
 

@@ -98,3 +98,18 @@ export function workflowTargets(workflow: string, path?: string): string[] {
 export function workflowCommands(workflow: string, makefile: string, path?: string): SimpleCommand[] {
   return recipeCommands(makefile, workflowTargets(workflow, path));
 }
+
+// imageToolErrors returns one error for each place where a recipe of the Makefile finds a tool through the runner image rather
+// than where the job's own install put it (T629, T630): a recipe line that calls brew, which no job installs, and a recipe line
+// that puts ~/.cargo/bin on PATH itself. rustup is the one tool that the machine provides (kit install-rust), and it keeps rustup,
+// cargo and rustc in ~/.cargo/bin, so the PATH that the Makefile exports starts with $(HOME)/.cargo/bin once for every recipe.
+export function imageToolErrors(makefile: string): string[] {
+  const errors: string[] = [];
+  if (!/^export PATH := \$\(HOME\)\/\.cargo\/bin:/m.test(makefile)) errors.push('the Makefile does not export a PATH that starts with $(HOME)/.cargo/bin; a recipe then finds rustup and cargo through the PATH of the runner image');
+  for (const entry of makeTargets(makefile))
+    for (const line of entry.commands) {
+      if (/(?<![\w/.@-])brew\s/.test(line)) errors.push(`${entry.target} calls brew, a tool of the runner image that no job installs; read the tool where the job's install put it: ${line.trim()}`);
+      if (/\.cargo\/bin/.test(line)) errors.push(`${entry.target} puts ~/.cargo/bin on PATH itself; the PATH that the Makefile exports holds it: ${line.trim()}`);
+    }
+  return errors;
+}

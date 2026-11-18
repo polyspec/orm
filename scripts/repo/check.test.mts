@@ -27,7 +27,7 @@ import { type Json, parseJsonValue } from '../json/schema.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
-import { recipeLines as jobRecipeLines } from './recipes.mts';
+import { imageToolErrors, recipeLines as jobRecipeLines } from './recipes.mts';
 import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
@@ -491,6 +491,20 @@ caseTest('the Makefile includes no recipe file of @polyspec/kit', () => {
   const makefile = text('Makefile');
   assert.deepEqual(makefile.split('\n').filter(line => /^\s*-?include\b.*@polyspec\/kit/.test(line)), []);
   assert.match(makefile, /^export CARGO_TARGET_DIR := \$\(abspath packages\/rust\/target\)$/m);
+});
+
+// T629, T630: a recipe finds each tool where the job's own install put it, never through the PATH of the runner image: no recipe
+// calls brew, and cargo is on the PATH that the Makefile exports, from the folder where the rustup of the job installs it.
+caseTest('a recipe finds each tool where the job installed it, not through the runner image', () => {
+  assert.deepEqual(imageToolErrors(text('Makefile')), []);
+  const head = 'export PATH := $(HOME)/.cargo/bin:$(KIT_TOOLS)/bin:$(PATH)\n';
+  assert.deepEqual(imageToolErrors(`${head}a:\n\tprefix="$$(brew --prefix php@8.4)"\nb:\n\tPATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_LINK) fetch\nc:\n\t$(CARGO_LINK) build\n`), [
+    'a calls brew, a tool of the runner image that no job installs; read the tool where the job\'s install put it: prefix="$$(brew --prefix php@8.4)"',
+    'b puts ~/.cargo/bin on PATH itself; the PATH that the Makefile exports holds it: PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_LINK) fetch',
+  ]);
+  assert.deepEqual(imageToolErrors('export PATH := $(KIT_TOOLS)/bin:$(PATH)\nc:\n\t$(CARGO_LINK) build\n'), [
+    'the Makefile does not export a PATH that starts with $(HOME)/.cargo/bin; a recipe then finds rustup and cargo through the PATH of the runner image',
+  ]);
 });
 
 caseTest('the root holds the lint configurations that the lint tools read', () => {
