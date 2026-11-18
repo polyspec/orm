@@ -9,6 +9,8 @@
 
 ## 0.0.34
 
+- v0.0.34 has no generated typed models (T601): the bindings expose the dynamic `Query`, and only the build crate
+  writes Rust models; the typed models of the bindings follow on the lane `lane/models`.
 - This release is not a replacement of the hand-written packages (CORE-1, FCV-21). v0.0.34 releases the Rust core and the bindings that binding 0.0.21 generates from its interface contract, `packages/rust/interface.json`: `@polyspec/orm` of `packages/ts`, `polyspec-orm` of `packages/python`, `polyspec/orm` of `packages/php-ext` and the Go module of `packages/go`. The hand-written clients stay under `legacy/packages`, and v0.0.34 does not release them. The table of the public surface against the contract (docs/spec/feature-coverage.md, FCV-21) holds every public member of the hand-written packages with its status, and docs/operations/usage.md states what a user of the release has.
 
 - `db.transaction` refuses a callback that declares no parameter before the transaction opens, with the kind `invalid_callback` of the binding, and does not call it (CORE-20, T590): such a callback has no `Tx` and its statements ran through the `Db`, outside the transaction, in Node and PHP without a failure. The generated call of binding 0.0.21 checks the declared parameters (B2.467), and the generated test `GN-6bu` of Node, Python and PHP holds it. The options of a transaction have their defaults in the contract (CORE-20, T594): each field of `transaction_options` and the parameter `options` may be left out, so `db.transaction(callback)` is a whole call in every binding; the cases `a_callback_alone_takes_the_defaults_of_the_options` and `an_empty_record_of_options_takes_the_defaults` of `db.transaction` hold it.

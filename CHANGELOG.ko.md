@@ -10,6 +10,8 @@
 
 ## 0.0.34
 
+- v0.0.34에는 생성 typed model이 없다(T601): binding은 동적 `Query`를 내놓고, Rust model은 build crate만 쓴다.
+  binding의 typed model은 lane `lane/models`에서 뒤따른다.
 - 이 릴리스는 손으로 쓴 패키지를 대체하지 않는다(CORE-1, FCV-21). v0.0.34는 Rust 코어와, binding 0.0.21이 그 interface contract `packages/rust/interface.json`에서 생성한 바인딩을 릴리스한다. 바인딩은 `packages/ts`의 `@polyspec/orm`, `packages/python`의 `polyspec-orm`, `packages/php-ext`의 `polyspec/orm`, `packages/go`의 Go module이다. 손으로 쓴 클라이언트는 `legacy/packages`에 남으며 v0.0.34는 그것을 릴리스하지 않는다. contract에 견준 공개 표면의 표(docs/spec/feature-coverage.ko.md, FCV-21)에 손으로 쓴 패키지의 공개 멤버와 그 상태가 모두 있고, 릴리스 사용자가 가진 것은 docs/operations/usage.ko.md에 있다.
 
 - `db.transaction`은 매개변수를 선언하지 않은 callback을 트랜잭션이 열리기 전에 바인딩의 kind `invalid_callback`으로 거절하고 호출하지 않는다(CORE-20, T590): 그런 callback은 `Tx`를 받지 못하며, Node와 PHP에서는 그 문장이 실패 없이 `Db`를 거쳐 트랜잭션 밖에서 실행되었다. binding 0.0.21의 생성된 호출이 선언된 매개변수를 검사하고(B2.467), Node, Python, PHP의 생성된 시험 `GN-6bu`가 이를 담는다. 트랜잭션의 options는 계약에서 기본값을 가진다(CORE-20, T594): `transaction_options`의 각 field와 매개변수 `options`를 생략할 수 있으므로 `db.transaction(callback)`은 모든 바인딩에서 온전한 호출이다. `db.transaction`의 case `a_callback_alone_takes_the_defaults_of_the_options`와 `an_empty_record_of_options_takes_the_defaults`가 이를 담는다.
