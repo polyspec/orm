@@ -2,9 +2,10 @@
 # Each entry names the kept code and its reason.
 # ruff: F821 is ignored for this file by ruff.toml, since an entry is a bare name or an attribute of `_`.
 
-# unittest calls these by name: setUpModule before the tests of a module, load_tests to build its suite, and
-# shortDescription to describe a test; a TestCase subclass is found by discovery, never referenced.
+# unittest calls these by name: setUpModule before the tests of a module and tearDownModule after them, load_tests to
+# build its suite, and shortDescription to describe a test; a TestCase subclass is found by discovery, never referenced.
 setUpModule
+tearDownModule
 load_tests
 _.shortDescription
 SetParseVectors
@@ -37,6 +38,8 @@ _.in_use
 _.fetched_values  # identity-map rows of a load
 _.for_share  # query builder locks, conditions and order
 _.for_share_no_wait
+_.for_update  # also the recipe locks update, update_nowait (tests/recipe_model.py:132-137 _LOCKS, getattr :599)
+_.for_update_no_wait
 _.or_not
 _.order_by_random
 _.today  # values: time helpers
