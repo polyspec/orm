@@ -2155,6 +2155,7 @@
         "legacy/packages/php/tests/RollbackTest.php",
         "legacy/packages/php/tests/TransactionFailureTest.php",
         "legacy/packages/php/tests/TransactionFailureCases.php",
+        "legacy/packages/php/tests/RetrySleepProbe.php",
         "legacy/packages/php/tests/ModelTestFailingPdo.php",
         "packages/rust/tests/cases/rollback.rs",
         "legacy/packages/ts/tests/transaction-failure.mjs",
@@ -2315,6 +2316,7 @@
             "legacy/packages/php/src/Db.php",
             "legacy/packages/php/tests/TransactionFailureTest.php",
             "legacy/packages/php/tests/TransactionFailureCases.php",
+            "legacy/packages/php/tests/RetrySleepProbe.php",
             "legacy/packages/php/tests/ModelTestFailingPdo.php"
           ]
         },
