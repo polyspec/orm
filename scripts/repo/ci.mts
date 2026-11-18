@@ -965,14 +965,7 @@ export function jobToolErrors(makefile: string, config: { setup?: { shared?: str
     const command = /\/mise\/shims\/([^/]+)$/.exec(word)?.[1] ?? word;
     return keys.find(key => key === command) ?? (word === command ? undefined : keys.find(key => key === command.replace(/\d+$/, '')));
   };
-  const runtimes = Object.keys({ ...config.setup?.runtimes, ...config.targets?.runtimes });
-  const jobs: [string, string[], string[]][] = [
-    ['shared', config.setup?.shared ?? [], config.targets?.shared ?? []],
-    ...runtimes.map((runtime): [string, string[], string[]] => {
-      const setup = config.setup?.runtimes?.[runtime] ?? [];
-      return [runtime, setup.length ? setup : [`deps-${runtime}`], config.targets?.runtimes?.[runtime] ?? []];
-    }),
-  ];
+  const jobs = ciJobs(config);
   for (const [job, setup, targets] of jobs) {
     const installed = new Set([...(config.tools?.[job] ?? []), ...recipeCommands(makefile, setup)
       .filter(command => command.name === 'make' && command.args.includes('install-tools'))
@@ -994,6 +987,19 @@ export function jobToolErrors(makefile: string, config: { setup?: { shared?: str
   return errors;
 }
 
+// The jobs of config/ci.json, each as its name, its setup targets and its targets: the job shared, and one job of each runtime
+// that the setup or the targets name, whose setup is deps-<runtime> when config/ci.json names none.
+function ciJobs(config: { setup?: { shared?: string[]; runtimes?: Record<string, string[]> }; targets?: { shared?: string[]; runtimes?: Record<string, string[]> } }): [string, string[], string[]][] {
+  const runtimes = Object.keys({ ...config.setup?.runtimes, ...config.targets?.runtimes });
+  return [
+    ['shared', config.setup?.shared ?? [], config.targets?.shared ?? []],
+    ...runtimes.map((runtime): [string, string[], string[]] => {
+      const setup = config.setup?.runtimes?.[runtime] ?? [];
+      return [runtime, setup.length ? setup : [`deps-${runtime}`], config.targets?.runtimes?.[runtime] ?? []];
+    }),
+  ];
+}
+
 // A Go module setup is a recipe line of a setup target of a CI job that runs `go mod download` in a folder: the folder of
 // its leading `cd <folder> &&`, else the root. CI runs the targets with GOPROXY=off, so a job whose setup or targets run a go
 // command in a folder downloads the modules of that folder in its setup first (T631): a go command of the root builds in the
@@ -1010,14 +1016,7 @@ export function goModuleErrors(makefile: string, config: { setup?: { shared?: st
     if (/\bbinding\s+check\b/.test(line)) return /--go\b/.test(line) ? ['packages/go'] : [];
     return line.split(/[\s;&|()`"']+/).some(isGo) ? [folder(line)] : [];
   };
-  const runtimes = Object.keys({ ...config.setup?.runtimes, ...config.targets?.runtimes });
-  const jobs: [string, string[], string[]][] = [
-    ['shared', config.setup?.shared ?? [], config.targets?.shared ?? []],
-    ...runtimes.map((runtime): [string, string[], string[]] => {
-      const setup = config.setup?.runtimes?.[runtime] ?? [];
-      return [runtime, setup.length ? setup : [`deps-${runtime}`], config.targets?.runtimes?.[runtime] ?? []];
-    }),
-  ];
+  const jobs = ciJobs(config);
   for (const [job, setup, targets] of jobs) {
     const downloads = new Set<string>();
     for (const target of reached(makefile, setup))
