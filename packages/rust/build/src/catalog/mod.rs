@@ -58,8 +58,6 @@ pub struct CatalogConnection {
     dialect: String,
     /// The server, which the connection reads once when it connects (DIA-201).
     server: polyspec_orm_schema::dbspec::Server,
-    /// Until when a refused connect is a socket of this catalog still on the server (CFG-35).
-    reopen_until: std::sync::Mutex<std::time::Instant>,
     /// The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it before its
     /// first stream and checks it before each stream, so that a stop always has its kill connection.
     killer: Option<Conn>,
@@ -237,7 +235,6 @@ impl CatalogConnection {
             // A kill that fails returns its own error (CFG-35), such as the driver refusal of max_user_connections, and not the budget error.
             if let Err(error) = self.kill_query(id).await {
                 connection.close_now();
-                self.closed_connection();
                 return Err(error);
             }
             // The next command on the connection first reads the end of the killed statement, which is the error of the kill,
@@ -301,24 +298,9 @@ impl CatalogConnection {
                 if let Some(dead) = self.killer.take() {
                     dead.close_now();
                 }
-                self.closed_connection();
             }
             self.ensure_killer().await?;
         }
-        Ok(())
-    }
-    async fn kill_query(&mut self, id: u64) -> Result<(), CatalogError> {
-        self.ensure_killer().await?;
-        let Some(killer) = self.killer.as_mut() else {
-            return Err("CATALOG_CONNECTION: the kill connection is missing".into());
-        };
-        if let Err(error) = killer.exec(&format!("KILL QUERY {id}"), &[]).await {
-            if let Some(killer) = self.killer.take() {
-                killer.close_now();
-            }
-            self.closed_connection();
-        }
-        self.killer = Some(self.open_connection().await?);
         Ok(())
     }
     /// Kills the running statement of the MySQL connection id through the kill connection (CFG-49). A kill that fails is
@@ -340,21 +322,13 @@ impl CatalogConnection {
                     if let Some(killer) = self.killer.take() {
                         killer.close_now();
                     }
-                    self.closed_connection();
                 }
             }
         }
         Err(failure.unwrap_or_else(|| "CATALOG_CONNECTION: the kill failed".into()))
     }
-    /// Starts the time in which a refused connect of MySQL is the closed connection still on the server.
-    pub(super) fn closed_connection(&self) {
-        if self.dialect == "mysql" {
-            *self.reopen_until.lock().unwrap() = std::time::Instant::now() + REOPEN_AFTER_CLOSE;
-        }
-    }
-    /// Opens a connection. A socket that this catalog closed holds its place in max_user_connections until the server ends
-    /// that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35
-    /// from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+    /// Opens a connection. A refused connect fails at once with its error (CFG-48): the server does not say when the place of a
+    /// closed connection frees, so no reopen waits for it.
     pub(super) async fn open_connection(&self) -> Result<Conn, CatalogError> {
         Conn::acquire(&self.pool).await.map_err(connect_error)
     }
