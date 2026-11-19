@@ -113,8 +113,18 @@ impl BeforeTransactionHook {
 
 /// The parameters of the request a [`RequestHook`] receives: it reads the values that the request binds and adds
 /// parameters.
+#[derive(Default)]
 pub struct RequestParams {
-    params: Vec<Param>,
+    /// The values that the request binds, in the order of their index.
+    pub params: Vec<Param>,
+}
+
+/// What a request text hook returns (CORE-70): the request as its JSON text and the parameters that it binds.
+pub struct RequestChange {
+    /// The request as its JSON text (FMS-31), which replaces the request.
+    pub request: String,
+    /// The parameters of the request after the hook.
+    pub params: Vec<Param>,
 }
 
 impl RequestParams {
@@ -1122,6 +1132,21 @@ impl Db {
     /// replaces the hook of a hooked handle.
     pub fn with_request_hook(&self, hook: impl for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync + 'static) -> Db {
         Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)), cancel: self.cancel.clone(), log: self.log.clone() }
+    }
+
+    /// The synchronous form of [`Db::with_request_hook`] (CORE-70): the hook receives the request as its JSON text and the
+    /// parameters, and returns the changed text and parameters, as the hooks of the legacy hosts change the request in place
+    /// and add parameters (docs/operations/usage.md "Request hook"). A text that is no request fails the operation.
+    pub fn with_request_text_hook(&self, hook: impl Fn(String, RequestParams) -> RequestChange + Send + Sync + 'static) -> Db {
+        self.with_request_hook(move |request, params| {
+            let owned = RequestParams { params: std::mem::take(&mut params.params) };
+            let change = hook(request.to_json(), owned);
+            let result = crate::ir::Request::from_json(&change.request).map(|parsed| {
+                *request = parsed;
+                params.params = change.params;
+            });
+            Box::pin(std::future::ready(result))
+        })
     }
 
     /// Registers `hook` on the connection and returns what removes it (CORE-143): the member `db.before_transaction` of
