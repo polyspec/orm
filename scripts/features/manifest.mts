@@ -50,7 +50,7 @@ export function readFeatures(root: string): FeatureManifest {
 }
 
 /** A native command of an owner of a feature that runs a recipe, with the language of the owner and the database that lists it. */
-export type OwnerRecipeCommand = { language: string; database: string; recipe: string; command: NativeCommand };
+export type OwnerRecipeCommand = { language: string; part: string; database: string; recipe: string; command: NativeCommand };
 
 /** ownerRecipeCommands lists the recipe commands of the owners of a feature; every holds when each list of each owner has one, the feature's owners are then recipe owners. */
 export function ownerRecipeCommands(feature: ManifestFeature): { every: boolean; commands: OwnerRecipeCommand[] } {
@@ -62,7 +62,7 @@ export function ownerRecipeCommands(feature: ManifestFeature): { every: boolean;
     if (!commands.length || commands.some(([, list]) => !(list ?? []).some(command => command.recipe))) every = false;
     for (const [database, list] of commands) {
       for (const command of list ?? []) {
-        if (command.recipe) found.push({ language, database, recipe: command.recipe, command });
+        if (command.recipe) found.push({ language, part: owner.part, database, recipe: command.recipe, command });
       }
     }
   }
@@ -76,7 +76,10 @@ function withRecipeCases(manifest: FeatureManifest, root: string): FeatureManife
   for (const feature of manifest.features) {
     const { every, commands } = ownerRecipeCommands(feature);
     const whole = new Set<string>();
-    for (const { database, recipe: path, command } of commands) {
+    for (const { part, database, recipe: declared, command } of commands) {
+      // An owner under legacy/ runs the frozen copy of its recipe (CORE-1), so its list is the cases of that copy, the path
+      // that requestedRecipe of coverage.mts reads.
+      const path = part.startsWith('legacy/') ? `legacy/${declared}` : declared;
       const recipe = recipes.get(path) ?? parseRecipeCases(readFileSync(resolve(root, path), 'utf8'), path);
       recipes.set(path, recipe);
       const on = command.database ?? database;

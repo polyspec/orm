@@ -212,7 +212,9 @@ caseTest('the recipe is the list of the cases of its owners', () => {
   for (const feature of readFeatures(root).features ?? []) {
     const { every, commands } = ownerRecipeCommands(feature);
     const whole = new Set<string>();
-    for (const { language, database, recipe, command } of commands) {
+    for (const { language, part, database, recipe: declared, command } of commands) {
+      // An owner under legacy/ lists the cases of the frozen copy of its recipe (CORE-1).
+      const recipe = part.startsWith('legacy/') ? `legacy/${declared}` : declared;
       const ids = recipeCaseIds(readFileSync(resolve(root, recipe), 'utf8'), command.database ?? database);
       ids.forEach(id => whole.add(id));
       if (JSON.stringify([...command.cases].sort()) !== JSON.stringify([...ids].sort()))
@@ -269,7 +271,10 @@ caseTest('a recipe owner runs once and is read from the results its runner write
   try {
     await mkdir(join(directory, 'legacy/packages/ts/tests'), { recursive: true });
     await mkdir(join(directory, 'contracts/fixtures/sample'), { recursive: true });
-    await writeFile(join(directory, recipe), JSON.stringify({ cases: [{ id: 'first', steps: [] }, { id: 'second', steps: [] }] }));
+    await mkdir(join(directory, 'legacy/contracts/fixtures/sample'), { recursive: true });
+    // The owner is under legacy/, so it reads the frozen copy of the recipe (CORE-1); the two copies hold the same cases.
+    for (const copy of [recipe, join('legacy', recipe)])
+      await writeFile(join(directory, copy), JSON.stringify({ cases: [{ id: 'first', steps: [] }, { id: 'second', steps: [] }] }));
     const both = sampleOwner(entry, recipe, ['first', 'second']);
 
     await writeFile(join(directory, entry), script(['CASE first PASS', 'CASE second PASS']));
@@ -284,7 +289,7 @@ caseTest('a recipe owner runs once and is read from the results its runner write
     assert.match((await outcome(both, directory)).text, /exit 1/);
     // The recipe is the list: a command that names other cases is refused before anything runs.
     assert.match((await outcome(sampleOwner(entry, recipe, ['first']), directory)).text,
-      /cases differ from recipe contracts\/fixtures\/sample\/sample\.json: declared first; recipe first,second/);
+      /cases differ from recipe legacy\/contracts\/fixtures\/sample\/sample\.json: declared first; recipe first,second/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -298,8 +303,11 @@ caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe 
     await mkdir(join(directory, 'legacy/packages/ts/tests'), { recursive: true });
     await writeFile(join(directory, entry), `import { appendFileSync } from 'node:fs';\nappendFileSync(process.env.ORM_RECIPE_RESULTS, 'CASE first PASS\\n');\n`);
     for (const recipe of ['tests/sample/sample.json', 'contracts/fixtures/sample/sample.json', 'docs/sample/sample.json']) {
-      await mkdir(join(directory, dirname(recipe)), { recursive: true });
-      await writeFile(join(directory, recipe), JSON.stringify({ cases: [{ id: 'first', steps: [] }] }));
+      // The owner is under legacy/, so it reads the frozen copy of the recipe (CORE-1) beside the declared one.
+      for (const copy of [recipe, join('legacy', recipe)]) {
+        await mkdir(join(directory, dirname(copy)), { recursive: true });
+        await writeFile(join(directory, copy), JSON.stringify({ cases: [{ id: 'first', steps: [] }] }));
+      }
     }
     assert.deepEqual((await outcome(sampleOwner(entry, 'tests/sample/sample.json', ['first']), directory)).errors, []);
     assert.deepEqual((await outcome(sampleOwner(entry, 'contracts/fixtures/sample/sample.json', ['first']), directory)).errors, []);

@@ -956,9 +956,12 @@ caseTest('a legacy owner declares the cases of its frozen recipe, not the cases 
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
   const recipe = 'contracts/fixtures/sample/sample.json';
   try {
-    // The features declare two cases; the frozen copy the legacy owner runs has one.
+    // The contracts copy has two cases; the frozen copy the legacy owner runs has one, and the owner declares that one.
     await writeLegacyTypescriptRoot(root, recipe, '{"cases":[{"id":"first"},{"id":"second"}]}\n', '{"cases":[{"id":"first"}]}\n');
-    assert.deepEqual(await runSelected(legacyTypescriptManifest(recipe, ['first', 'second']), root, ['owner/typescript']), []);
+    assert.deepEqual(await runSelected(legacyTypescriptManifest(recipe, ['first']), root, ['owner/typescript']), []);
+    // A declaration that differs from the frozen copy fails, even when it is the list of the contracts copy (FCV-12).
+    assert.match((await runSelected(legacyTypescriptManifest(recipe, ['first', 'second']), root, ['owner/typescript'])).join('\n'),
+      /cases differ from recipe legacy\/contracts\/fixtures\/sample\/sample\.json: declared first,second; recipe first/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

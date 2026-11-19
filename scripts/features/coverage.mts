@@ -353,13 +353,14 @@ async function entryTest(item: Item, command: NativeCommand, root: string): Prom
     throw new Error('invalid test command');
   const database = command.database ?? item.database;
   const cases = recipe === undefined ? command.cases : recipeCaseIds(await readFile(requestedRecipe(root, item.part, recipe), 'utf8'), database);
-  // A recipe owner under legacy/ declares the cases of its frozen copy (CORE-1), the same copy that gives the requested cases.
-  const declaredCases = recipe !== undefined && item.part.startsWith('legacy/') ? cases : command.cases;
-  const declared = [...declaredCases].sort();
+  // The recipe is the list of its owners (FCV-12): a recipe owner under legacy/ declares the cases of its frozen copy
+  // (CORE-1), the copy that gives the requested cases, and any other owner the cases of the recipe at its declared path.
+  const declared = [...command.cases].sort();
   const listed = [...cases].sort();
-  if (declaredCases.some(id => !cases.includes(id)) ||
+  const source = recipe !== undefined && item.part.startsWith('legacy/') ? `legacy/${recipe}` : recipe;
+  if (command.cases.some(id => !cases.includes(id)) ||
       (!item.selected && (declared.length !== listed.length || declared.some((id, index) => id !== listed[index]))))
-    throw new Error(`cases differ from recipe ${recipe}: declared ${declared.join(',')}; recipe ${listed.join(',')}`);
+    throw new Error(`cases differ from recipe ${source}: declared ${declared.join(',')}; recipe ${listed.join(',')}`);
   const symbol = command.symbol ?? '';
   const directory = resolve(root, testDirectoryOf(item.language));
   if (command.runner === 'node')
