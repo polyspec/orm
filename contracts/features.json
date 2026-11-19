@@ -1186,7 +1186,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node tests/run-long.mts typescript-types -- tsc -p legacy/packages/ts/tsconfig.json --noEmit",
+          "command": "node tests/run-long.mts typescript-types -- node_modules/.bin/tsc -p legacy/packages/ts/tsconfig.json --noEmit",
           "shard": "other",
           "inputs": [
             "legacy/packages/ts/tsconfig.json",
@@ -1781,7 +1781,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node tests/run-long.mts typescript-types -- tsc -p legacy/packages/ts/tsconfig.json --noEmit",
+          "command": "node tests/run-long.mts typescript-types -- node_modules/.bin/tsc -p legacy/packages/ts/tsconfig.json --noEmit",
           "shard": "other",
           "inputs": [
             "legacy/packages/ts/tsconfig.json",
