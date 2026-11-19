@@ -21626,6 +21626,7 @@
     {
       "id": "refused_retry_after_a_write_session",
       "databases_differ": "max_user_connections, the limit that refuses the reconnect, is a limit of the servers of the mysql dialect only (CFG-48, DIA-211).",
+      "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "only": [
         "mysql"
       ],
