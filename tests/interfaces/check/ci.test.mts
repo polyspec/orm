@@ -37,14 +37,14 @@ function validateGeneratedCI(workflow: string, makefile: string, features: strin
     if (!targets.has(target)) throw new Error(`CHECK_TARGETS must include ${target}`);
   }
   // Every CHECK_TARGETS target runs in one CI place: a CI group (its job runs it with make ci-test GROUP=<group>), a gate of
-  // kit (CI_KIT_GATES, which the gates workflow runs), the docs job's make docs-ci, or the editor job's make ci-vscode-integration. The targets of docs-ci are read from the
+  // kit (CI_KIT_GATES, which the gates workflow runs), or the docs job's make docs-ci. The targets of docs-ci are read from the
   // Makefile by jobTargets, the parser of the CI coverage check, so this test and that check agree on the docs job.
   const grouped = new Set(makeVariable(makefile, 'CI_GROUPS').flatMap(group => makeVariable(makefile, `CI_TARGETS_${group}`)));
   const gates = new Set(makeVariable(makefile, 'CI_KIT_GATES'));
   const own = jobTargets(makefile);
-  const docs = new Set(own.docs), editor = new Set(own.editor);
+  const docs = new Set(own.docs);
   for (const target of targets) {
-    if (!grouped.has(target) && !gates.has(target) && !docs.has(target) && !editor.has(target)) throw new Error(`no CI place runs ${target} of CHECK_TARGETS: no CI group of CI_GROUPS, gate, the docs job or the editor job runs it`);
+    if (!grouped.has(target) && !gates.has(target) && !docs.has(target)) throw new Error(`no CI place runs ${target} of CHECK_TARGETS: no CI group of CI_GROUPS, gate or the docs job runs it`);
   }
   if (!features.includes(INTERFACE_COMMAND)) throw new Error(`contracts/features.json must verify ${INTERFACE_COMMAND}`);
 }

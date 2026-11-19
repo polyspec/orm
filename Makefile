@@ -1043,7 +1043,7 @@ CI_TARGETS_suite_python = suite-python-check
 # The group preflight runs the checks of the structure of the repository, in seconds, in the job preflight that every other job
 # of ci.yml needs, so a defect they find ends the run before any suite starts (T428).
 CI_TARGETS_preflight = repo-check spec-release-check runner-check docs-rules-check comment-language-check
-CI_TARGETS_static = connection-sqlite-several-processes-python-check recipe-runners-check recipe-branches-check group-count-boolean-unit-check typescript-build-unit-check docs-parse-check release-coverage testcase-check orm-test-servers-check orm-test-container-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-lsp-check orm-install-cli-check go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-lock-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check bind-models-check fuzz-check package-check ts-model-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-check collection-get-phpstan-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check no-flowmark-check legacy-paths-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check catalog-value-rust-check catalog-tool-errors-rust-check collection-recipe-check suite-test-unit-check
+CI_TARGETS_static = connection-sqlite-several-processes-python-check recipe-runners-check recipe-branches-check group-count-boolean-unit-check typescript-build-unit-check docs-parse-check release-coverage testcase-check orm-test-servers-check orm-test-container-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check go-model-check go-sqlite-version-check php-model-check client-unit-check php-gen-unit-check phpstan-test-runner-helper-check php-test-assertions-helper-check dbspec-sqlite-literal-rows-helper-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-lock-check codec-check ir-validate-check recipe-unknown-key-check conformance-refusal-check bind-check bind-models-check fuzz-check package-check ts-model-check ts-aes-auth-check ts-codec-errors-check sqlite-version-ts-check relation-parent-bind-rust-check collection-composite-key-check interface-typescript-extractor-check collection-php-extension-check model-types-php-extension-check model-native-php-extension-check model-chunk-composite-native-php-extension-check feature-unit-check generated-lint-check link-check collection-get-phpstan-check rust-build-environment-check rust-build-outdir-check rust-duplicate-catalog-check php-catalog-bounds-check rust-time-precision-check php-codec-causes-check scalar-subquery-column-check nowait-restore-check dbspec-language-check rust-150-check dbspec-verify-errors-check php-extension-build-logs-check column-function-metadata-check paged-read-rust-check page-cache-unit-check rust-compiler-fixtures-check native-error-cause-check request-hook-php-extension-check rust-causes-check go-catalog-session-error-check catalog-php-extension-surface-check go-package-entry-check native-arginfo-php-extension-check request-hook-audit-native-binding-check transaction-failure-php-extension-check transaction-failure-go-check transaction-failure-php-check transaction-failure-typescript-check transaction-failure-python-check transaction-failure-rust-check php-package-entry-check php-extension-package-entry-check rust-package-entry-check typescript-package-entry-check python-package-entry-check interface-api-binding-unit-check native-api-equivalence-check model-query-write-php-extension-unit-check php-lifecycle-extension-native-check complex-query-typescript-unit-check python-complex-query-check complex-query-typescript-request-check makefile-pinned-node-recipes-check no-flowmark-check legacy-paths-check audit-native-method-assertions-helper-check rust-closed-executor-check physical-command-case-helper-check typescript-conditional-entry-helper-check typescript-database-case-fixture-helper-check php-plan-cache-memory-check split-read-plan-check typescript-performance-gate-unit-check typescript-test-exact-keys-check php-go-text-check catalog-value-rust-check catalog-tool-errors-rust-check collection-recipe-check suite-test-unit-check
 CI_TARGETS_clients_db = example-check
 CI_TARGETS_performance = perf-check
 CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check go-test-check catalog-connection-check/go dsn-connection-check/go connection-pool-check/go statement-events-check/go model-queries-check/go constraints-and-relations-check/go request-hook-check/go parameter-chunking-check/go aes-rotation-check/go audit-triggers-check/go conformance-verification-check/go complex-query-check/go conformance-generated-methods-check/go conformance-fixed-clock-check/go raw-text-check/go
@@ -1132,7 +1132,7 @@ CI_RUN = $(or $(GITHUB_RUN_ID),local)-$(or $(GITHUB_RUN_ATTEMPT),1)
 CI_EMPTY :=
 CI_SPACE := $(CI_EMPTY) $(CI_EMPTY)
 CI_COMMA := ,
-.PHONY: ci-plan ci-lock-hashes ci-test ci-preflight ci-summary ci-docs ci-documents ci-editor ci-site
+.PHONY: ci-plan ci-lock-hashes ci-test ci-preflight ci-summary ci-docs ci-documents ci-site
 
 # ci-plan writes the outputs of the job plan of ci.yml, which the uses: steps of the other jobs read before their run step:
 # the cache keys (ci-lock-hashes), the matrix of the group jobs with whether each group sets up PHP and Rust (groups and
@@ -1192,17 +1192,6 @@ ci-documents:
 	@$(CI_JOB) setup $(CI_NAME) go -- install-tools 'TOOLS=go alint'
 	@$(CI_JOB) check $(CI_NAME) -- documents-ci
 	@$(CI_JOB) check $(CI_NAME) -- diff-size-check
-	@$(CI_JOB) end $(CI_NAME)
-
-# ci-editor runs the job editor of ci.yml: the VS Code integration test of the dbspec extension on a virtual X server, inside
-# the VS Code that make orm-install-vscode installs.
-ci-editor: CI_NAME = $(CI_RUN)-editor
-ci-editor:
-	@$(CI_JOB) begin $(CI_NAME)
-	@$(CI_JOB) setup $(CI_NAME) go -- install-tools TOOLS=go
-	@$(CI_JOB) setup $(CI_NAME) go-lease-modules -- orm-install-go-lease
-	@$(CI_JOB) setup $(CI_NAME) vscode -- orm-install-vscode
-	@$(CI_JOB) check $(CI_NAME) -- ci-vscode-integration
 	@$(CI_JOB) end $(CI_NAME)
 
 # ci-site runs the job site of docs-pages.yml: it builds docs/.vitepress/dist, which the next step uploads as the Pages
@@ -3227,8 +3216,8 @@ orm-install-vscode:
 dbspec-vscode-integration: dbspec-vscode-check
 	$(NODE) packages/dbspec-vscode/tests/integration/run.mjs --vscode $(CURDIR)/var/tools/vscode
 
-# ci-vscode-integration runs dbspec-vscode-integration on a virtual X server (xvfb-run), since VS Code needs a display; the
-# editor job of CI runs it on Linux, and a desktop runs dbspec-vscode-integration itself.
+# ci-vscode-integration runs dbspec-vscode-integration on a virtual X server (xvfb-run), since VS Code needs a display; it is
+# a local e2e on Linux, and a desktop runs dbspec-vscode-integration itself. CI does not run it (T704).
 .PHONY: ci-vscode-integration
 ci-vscode-integration:
 	xvfb-run -a $(MAKE) --no-print-directory dbspec-vscode-integration
