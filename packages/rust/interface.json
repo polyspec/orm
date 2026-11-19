@@ -9200,6 +9200,17 @@
       }
     },
     {
+      "member": "db.transaction",
+      "file": "contracts/interface/core.json",
+      "group": "db.transaction.no_parameter",
+      "only": {
+        "targets": [
+          "go"
+        ],
+        "reason": "CORE-20"
+      }
+    },
+    {
       "member": "db.before_transaction",
       "file": "contracts/interface/core.json",
       "group": "db.before_transaction",
