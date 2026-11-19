@@ -45328,7 +45328,11 @@
       "callback": {
         "function": {
           "names": [],
-          "calls": []
+          "calls": [],
+          "result": {
+            "kind": "text",
+            "value": "done"
+          }
         }
       },
       "options": {
