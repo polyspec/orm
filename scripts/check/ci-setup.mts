@@ -46,7 +46,7 @@ export const PROVISIONED = ['node-modules', 'php', 'php-min'];
 // setup phase: databases uses servers and databases/create, the privilege server is a separate optional MySQL fixture, and
 // mariadb-server starts the MariaDB servers (make orm-test-mariadb), a set of their own. The rest are prepared by the CI setup
 // steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
-export const NEEDS = ['databases', 'mysql-privilege-server', 'mariadb-server', ...new Set([...PROVISIONED, ...Object.values(CI_SETUP).filter(need => need !== 'databases')])];
+export const NEEDS = [...new Set(['databases', 'mysql-privilege-server', 'mariadb-server', ...PROVISIONED, ...Object.values(CI_SETUP)])];
 
 // GROUP_OUTPUTS maps each output of a group (the job runner gives it to every make call of the job as CI_GROUP_<OUTPUT>, and
 // make ci-plan writes php and rust into the matrix of the group job) to the need that makes that output true. php installs two PHP releases (the lowest
