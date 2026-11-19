@@ -1162,6 +1162,7 @@ ci-test:
 	@$(CI_JOB) setup $(CI_NAME) php-extension-tools --when php-extension-tools -- orm-install-php-extension-tools
 	@$(CI_JOB) setup $(CI_NAME) server-programs --when server-programs -- orm-install-server-programs
 	@ORM_SERVERS_OWNER=$$PPID $(CI_JOB) setup $(CI_NAME) servers --when databases -- orm-test-servers
+	@ORM_SERVERS_OWNER=$$PPID $(CI_JOB) setup $(CI_NAME) mariadb-servers --when mariadb -- orm-test-mariadb
 	@$(CI_JOB) check $(CI_NAME) -- check-run GROUP=$(GROUP)
 	@$(CI_JOB) always $(CI_NAME) -- ci-summary
 	@$(CI_JOB) end $(CI_NAME)

@@ -27,6 +27,8 @@ export const CI_SETUP: Record<string, string> = {
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
+  // The MariaDB servers (make orm-test-mariadb) are started for the groups whose targets need mariadb-server.
+  'mariadb-servers': 'mariadb-server',
   'orm-install-python': 'python',
   // The service selections of the generated tests of the bindings (T582-1) run in the groups that prepare the databases:
   // the Python one needs the wheel of packages/python in its venv (make orm-install-binding-python), and the Node one the
@@ -82,6 +84,7 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
+  'mariadb-servers': 'mariadb',
   // orm-install-python installs the Python and venv backend of mise.toml and makes the venv from that Python (make python-venv).
   'orm-install-python': 'python',
   // The wheel of the Python binding and the wasm-bindgen CLI are installed only for a group that runs their tests.
