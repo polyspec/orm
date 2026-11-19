@@ -2058,13 +2058,14 @@
             {
               "name": ["hook"],
               "type": {"function": {"parameters": ["text", {"unit": "request_params"}], "returns": "none", "async_allowed": false}},
-              "required": true
+              "required": true,
+              "keeps": true
             }
           ],
           "returns": {"unit": "db"},
           "raises": [],
           "wait": "none",
-          "core": {"path": "polyspec_orm::Db::with_request_hook", "receiver": "&self"}
+          "core": {"path": "polyspec_orm::Db::with_request_hook", "receiver": "&self", "result": false}
         },
         {
           "id": "db.with_request_log",
