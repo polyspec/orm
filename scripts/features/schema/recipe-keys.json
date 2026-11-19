@@ -813,13 +813,6 @@
     "sql.release_connection": [
       "op"
     ],
-    "sql.user_errors": [
-      "error",
-      "expect",
-      "mark",
-      "op",
-      "user"
-    ],
     "catalog.revision": [
       "as",
       "expect",
