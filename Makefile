@@ -347,7 +347,7 @@ build-php-ext: ## Build legacy/packages/php-ext into var/php-ext/polyspec_orm.so
 lint-php-ext: ## Check the names, the stub and the stub hash of the arginfo header of the extension; offline
 	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php
 test-php-ext: build-php-ext databases-create ## Compare the declarations of the built extension with the PHP library, then run its unit tests with CASES=<pattern>; on the test servers (WITH_TEST_ENV); offline
-	$(WITH_TEST_ENV) $(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php -- --roots legacy/packages/php legacy/packages/php-ext
+	$(WITH_TEST_ENV) $(WITH_DECIMAL_ENV) $(NODE) $(KIT)/php-extension.$(KIT_EXT) test --extension legacy/packages/php-ext --build-dir var/php-ext --skip vendor --skip node_modules --library legacy/packages/php -- --roots legacy/packages/php legacy/packages/php-ext
 
 # The tasks of P29: each runs its target for every runtime of packages/ (go, php, php-ext, python, rust, ts) (kit K1106).
 .PHONY: build test lint build-go build-php build-python build-rust build-ts test-go test-php test-python test-rust test-ts
@@ -921,6 +921,13 @@ commit-msg-check:
 # for PHP, which does not read TZ, adds tests/timezone/date.ini (which sets date.timezone to ${TZ}) to the front of PHP_INI_SCAN_DIR
 # after the separator (PHP's default scan directory is still read).
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers $@ in one command" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers $@ in one command to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
+# WITH_DECIMAL_ENV sources the DECIMAL_ENV of the run when it exists. The make-wide export of the decimal DSNs reads that file
+# when make starts, and a job whose databases-create writes it during the run (the context of kit/runtime) has none then.
+WITH_DECIMAL_ENV = { test ! -f $(abspath $(DECIMAL_ENV)) || . $(abspath $(DECIMAL_ENV)); } &&
+# WITH_MYSQL_PRIVILEGE_ENV sources the environment of the MySQL privilege fixture that make orm-test-mysql-privilege-start
+# writes and holds its shared lease, as scripts/check/run.mts does for the need mysql-privilege-server; a job whose targets
+# kit runs (ci-targets) has no such setup step, so the target starts the fixture as its prerequisite.
+WITH_MYSQL_PRIVILEGE_ENV = . $(abspath .runtime/servers/mysql-privilege.env) && "$(LEASE)" hold "$${ORM_TEST_MYSQL_PRIVILEGE_LEASES:?$(abspath .runtime/servers/mysql-privilege.env) names no lease directory; run make orm-test-mysql-privilege-start}" shared --pid $$$$ &&
 # WITH_MARIADB_ENV is WITH_TEST_ENV for the entries of the database mariadb: it reads MARIADB_ENV and holds the shared lease of the
 # MariaDB servers, ORM_TEST_MARIADB_LEASES of that file.
 WITH_MARIADB_ENV = test -f $(abspath $(MARIADB_ENV)) || { echo "$(abspath $(MARIADB_ENV)) is missing; run make orm-test-mariadb $@ in one command" >&2; exit 1; }; . $(abspath $(MARIADB_ENV)) && ( $(LEASE_READY) ) && "$(LEASE)" hold "$${ORM_TEST_MARIADB_LEASES:?$(abspath $(MARIADB_ENV)) names no lease directory; run make orm-test-mariadb $@ in one command to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
@@ -1240,8 +1247,8 @@ GO_TEST_CHECK_PACKAGES = $$(go list ./legacy/packages/go/cmd/... ./legacy/packag
 # The entries of mariadb, Test<Name>Mariadb, need the MariaDB servers, which a runner of the MySQL servers cannot hold:
 # dialect-facts-mariadb-check runs the MariaDB probes (TestDialectFactsMariadb), and mariadb-recipes-check/go the others.
 go-test-check: RUN_DIR = $(abspath .runtime/run)/go-test-check-$$PPID
-go-test-check: databases-create lease-tool python-venv-check php-vendor-check orm-codes-typescript go-test-check/cross-runtime
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -skip '^Test[A-Za-z]*Mariadb$$' $(GO_TEST_CHECK_PACKAGES)
+go-test-check: databases-create orm-test-mysql-privilege-start lease-tool python-venv-check php-vendor-check orm-codes-typescript go-test-check/cross-runtime
+	$(WITH_TEST_ENV) $(WITH_MYSQL_PRIVILEGE_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -skip '^Test[A-Za-z]*Mariadb$$' $(GO_TEST_CHECK_PACKAGES)
 	rm -rf $(RUN_DIR)
 
 go-test-check/cross-runtime: typescript-current python-venv-check php-vendor-check
