@@ -295,7 +295,11 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
     let (steps, done) = drive(&runtime, &mut machine);
     // A deadlock and its rollback are followed by the next attempt's begin, with no wait step between the attempts (CORE-24).
     let failed = ["Io", "Call", "Io"];
-    assert_eq!(steps, [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(), "begin, call and rollback twice with no wait between attempts, then a commit");
+    assert_eq!(
+        steps,
+        [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(),
+        "begin, call and rollback twice with no wait between attempts, then a commit"
+    );
     assert_eq!(done.expect("the third attempt commits").into_handle().raw(), 3);
     drop(machine);
     assert_eq!(calls, 3);
@@ -385,11 +389,11 @@ fn a_transaction_machine_calls_the_hooks_before_each_opening() {
         TransactionOptions { retry: Some(1), ..TransactionOptions::default() },
     );
     let (steps, done) = drive(&runtime, &mut machine);
-    let failed = ["Call", "Call", "Io", "Call", "Io", "Io"];
+    let failed = ["Call", "Call", "Io", "Call", "Io"];
     assert_eq!(
         steps,
         [&failed[..], &["Call", "Call", "Io", "Call", "Await", "Io", "Done"][..]].concat(),
-        "two hooks, begin, call, rollback and wait, then two hooks again and a commit"
+        "two hooks, begin, call and rollback, with no wait, then two hooks again and a commit"
     );
     assert_eq!(done.expect("the second attempt commits").into_handle().raw(), 2);
     drop(machine);

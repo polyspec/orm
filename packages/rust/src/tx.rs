@@ -723,12 +723,6 @@ pub struct TransactionOptions {
 /// The number of retries of a transaction whose options state none (INT-43).
 pub const DEFAULT_RETRY: u32 = 3;
 
-/// The wait before attempt `attempt` (from 1) of a retried transaction: `50 << (attempt - 1)` milliseconds and `jitter`
-/// (CORE-24).
-fn retry_wait(attempt: u32, jitter: u64) -> std::time::Duration {
-    std::time::Duration::from_millis((50u64 << attempt.saturating_sub(1).min(10)) + jitter)
-}
-
 impl Db {
     /// Runs `callback` in a new transaction on a connection of the pool and passes it the transaction handle (CORE-20). A
     /// callback that succeeds commits. A callback that fails or panics rolls back, and its failure is returned unchanged
@@ -750,6 +744,8 @@ impl Db {
         };
         let record = audit.as_ref().map(|values| audit_record(self, values)).transpose().map_err(native_failure)?.map(Arc::new);
         let mut attempt = 0u32;
+        // The errors of the attempts before the last one, in order, that a deadlock retry ran again (CORE-24).
+        let mut earlier = Vec::new();
         loop {
             // The hooks of the connection are called before each attempt takes a connection (CORE-143).
             call_hooks(self, read_only).await?;
@@ -780,10 +776,12 @@ impl Db {
                 }
             };
             if !failure.is_deadlock() || attempt >= retry {
-                return Err(failure);
+                // The last attempt carries the errors of the attempts before it when it failed with deadlock (CORE-24).
+                return Err(if failure.is_deadlock() { failure.with_attempts(earlier) } else { failure });
             }
+            // The next attempt begins right after the rollback, with no wait between attempts (CORE-24).
+            earlier.push(failure);
             attempt += 1;
-            tokio::time::sleep(retry_wait(attempt, rand::random::<u64>() % 20)).await;
         }
     }
 
@@ -1284,15 +1282,6 @@ mod tests {
         let after = db.transaction_async(|_tx: Tx| async { Ok(()) }, once()).await;
         assert!(matches!(&after, Err(error) if error.kind() == Kind::Closed), "{after:?}");
         db.close_async().await;
-    }
-
-    // The wait before attempt n is 50 << (n - 1) milliseconds and the jitter (CORE-24).
-    #[test]
-    fn the_retry_wait_doubles() {
-        let _case = polyspec_orm_testcase::case!();
-        assert_eq!(retry_wait(1, 0), std::time::Duration::from_millis(50));
-        assert_eq!(retry_wait(2, 19), std::time::Duration::from_millis(119));
-        assert_eq!(retry_wait(3, 0), std::time::Duration::from_millis(200));
     }
 
     /// The calls of the hooks of a test, in order: the name of the hook and whether its transaction is read-only.
