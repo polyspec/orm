@@ -191,6 +191,13 @@ impl Error {
         self.kind == Kind::Deadlock
     }
 
+    /// The errors of the attempts before the last one, in order, that a deadlock retry ran out of its count with (CORE-24).
+    /// Stub: no retry records its attempts yet.
+    #[must_use]
+    pub fn causes(&self) -> &[Error] {
+        &[]
+    }
+
     /// The same error with another kind and its message, keeping its cause.
     #[cfg(feature = "runtime")]
     pub(crate) fn rekind(self, kind: Kind) -> Error {

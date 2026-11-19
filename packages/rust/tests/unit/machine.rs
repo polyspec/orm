@@ -337,12 +337,7 @@ fn an_exhausted_transaction_returns_the_errors_of_its_attempts_as_causes() {
     assert_eq!(calls, 3, "retry 2 runs three attempts");
     let Err(Failure::Kind(error)) = &done else { panic!("{done:?}") };
     assert!(error.is_deadlock(), "{error:?}");
-    let mut causes = Vec::new();
-    let mut source = std::error::Error::source(error);
-    while let Some(cause) = source {
-        causes.push(cause.to_string());
-        source = cause.source();
-    }
+    let causes: Vec<&str> = error.causes().iter().map(crate::Error::text).collect();
     assert_eq!(causes, ["attempt 1", "attempt 2"], "the last error carries the errors of the earlier attempts in order as its causes");
     close(&runtime, &db);
 }
