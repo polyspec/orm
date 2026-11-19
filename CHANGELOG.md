@@ -5,6 +5,9 @@
 
 ## 0.0.34
 
+- `make documents-stamp` stamps the Korean twins again: config/documents.json took every `*.md` file as a document,
+  so the four fixtures of the spec-release check under `scripts/repo/fixtures/spec-release/` were documents without a
+  Korean twin ("released.ko.md is missing", 4 failed) and nothing was stamped; the fixtures are now excluded (T682).
 - `make orm-test-container-run FORM=runner` installs the runner on Apple `container`: the runner unpacked node onto
   the bind mount of its run, where GNU tar writes the `../` symlinks `bin/npm` and `bin/npx` first as placeholder files
   of mode 000, which that mount refuses to open even to root ("tar: bin/npm: Cannot open: Permission denied", the

@@ -6,7 +6,8 @@
   "exclude": [
     "docs/.vitepress/**",
     "**/node_modules/**",
-    "**/vendor/**"
+    "**/vendor/**",
+    "scripts/repo/fixtures/**"
   ],
   "siteLinks": true,
   "changelogs": [

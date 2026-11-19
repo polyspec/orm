@@ -1,11 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c0a988cf31dea73f5c9a66ed18621a5cc93ff9b74051e957de44975f7c6972cf -->
+<!-- source-sha256: fec8bd43d4dd4dc7d8aa745a8d11e9ce2b55998541f7f78b2d3199f2f0231c74 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.34
 
+- `make documents-stamp`가 다시 한국어 짝에 stamp한다. config/documents.json은 모든 `*.md` 파일을 문서로 잡아서
+  `scripts/repo/fixtures/spec-release/` 아래 spec-release check의 fixture 4개가 한국어 짝 없는 문서가 되었고
+  ("released.ko.md is missing", 4 failed) 아무것도 stamp되지 않았다. 이제 fixture를 문서에서 뺀다(T682).
 - `make orm-test-container-run FORM=runner`가 Apple `container`에서 runner를 설치한다. runner는 node를 run의 bind
   mount에 풀었고, GNU tar는 `../` symlink인 `bin/npm`과 `bin/npx`를 먼저 mode 000 placeholder 파일로 쓰는데 그
   mount는 root에게도 그 파일을 열어 주지 않았다("tar: bin/npm: Cannot open: Permission denied", runner 설치가 2로
