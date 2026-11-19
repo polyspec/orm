@@ -293,8 +293,13 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
         TransactionOptions::default(),
     );
     let (steps, done) = drive(&runtime, &mut machine);
-    let failed = ["Io", "Call", "Io", "Io"];
-    assert_eq!(steps, [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(), "begin, call, rollback and wait twice, then a commit");
+    // A deadlock and its rollback are followed by the next attempt's begin, with no wait step between the attempts (CORE-24).
+    let failed = ["Io", "Call", "Io"];
+    assert_eq!(
+        steps,
+        [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(),
+        "begin, call and rollback twice with no wait between attempts, then a commit"
+    );
     assert_eq!(done.expect("the third attempt commits").into_handle().raw(), 3);
     drop(machine);
     assert_eq!(calls, 3);
@@ -313,6 +318,31 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
     assert!(matches!(&done, Err(Failure::Kind(error)) if error.kind() == Kind::Deadlock && error.text() == "always"), "{done:?}");
     drop(machine);
     assert_eq!(calls, 1, "retry 0 calls the callback once");
+    close(&runtime, &db);
+}
+
+// An exhausted retry returns the error of its last attempt, and that error carries the errors of the attempts before it, in
+// their order, as its causes (CORE-24, INT-43): the list has one cause for each retry that ran.
+#[test]
+fn an_exhausted_transaction_returns_the_errors_of_its_attempts_as_causes() {
+    let _case = polyspec_orm_testcase::case!();
+    let scratch = Scratch::new("orm-rust-machine-causes");
+    let (runtime, db) = probe_db(&scratch);
+    let mut calls = 0u32;
+    let mut machine = db.clone().transaction(
+        |_tx: Tx| {
+            calls += 1;
+            Err(Failure::Kind(crate::transaction_conflict(format!("attempt {calls}"))))
+        },
+        TransactionOptions { retry: Some(2), ..TransactionOptions::default() },
+    );
+    let (_steps, done) = drive(&runtime, &mut machine);
+    drop(machine);
+    assert_eq!(calls, 3, "retry 2 runs three attempts");
+    let Err(Failure::Kind(error)) = &done else { panic!("{done:?}") };
+    assert!(error.is_deadlock(), "{error:?}");
+    let causes: Vec<&str> = error.causes().iter().map(crate::Error::text).collect();
+    assert_eq!(causes, ["attempt 1", "attempt 2"], "the last error carries the errors of the earlier attempts in order as its causes");
     close(&runtime, &db);
 }
 
@@ -359,11 +389,11 @@ fn a_transaction_machine_calls_the_hooks_before_each_opening() {
         TransactionOptions { retry: Some(1), ..TransactionOptions::default() },
     );
     let (steps, done) = drive(&runtime, &mut machine);
-    let failed = ["Call", "Call", "Io", "Call", "Io", "Io"];
+    let failed = ["Call", "Call", "Io", "Call", "Io"];
     assert_eq!(
         steps,
         [&failed[..], &["Call", "Call", "Io", "Call", "Await", "Io", "Done"][..]].concat(),
-        "two hooks, begin, call, rollback and wait, then two hooks again and a commit"
+        "two hooks, begin, call and rollback, with no wait, then two hooks again and a commit"
     );
     assert_eq!(done.expect("the second attempt commits").into_handle().raw(), 2);
     drop(machine);

@@ -22,6 +22,12 @@ enum Detail {
         primary: Box<Error>,
         cleanup: Vec<Error>,
     },
+    /// The errors of the attempts that a deadlock retry ran before the last one, in order: the last attempt failed with
+    /// `deadlock` and the retry count was exhausted (CORE-24, INT-43).
+    #[cfg(feature = "runtime")]
+    Attempts {
+        causes: Vec<Error>,
+    },
 }
 
 /// The cause of an error.
@@ -145,6 +151,8 @@ impl Error {
         match &self.detail {
             Detail::RollbackFailed { callback, .. } => Some(callback),
             Detail::None | Detail::Cleanup { .. } => None,
+            #[cfg(feature = "runtime")]
+            Detail::Attempts { .. } => None,
         }
     }
 
@@ -154,6 +162,8 @@ impl Error {
         match &self.detail {
             Detail::RollbackFailed { rollback, .. } => Some(rollback),
             Detail::None | Detail::Cleanup { .. } => None,
+            #[cfg(feature = "runtime")]
+            Detail::Attempts { .. } => None,
         }
     }
 
@@ -163,6 +173,8 @@ impl Error {
         match &self.detail {
             Detail::Cleanup { cleanup, .. } => cleanup,
             Detail::None | Detail::RollbackFailed { .. } => &[],
+            #[cfg(feature = "runtime")]
+            Detail::Attempts { .. } => &[],
         }
     }
 
@@ -172,6 +184,8 @@ impl Error {
         match &self.detail {
             Detail::Cleanup { primary, .. } => Some(primary),
             Detail::None | Detail::RollbackFailed { .. } => None,
+            #[cfg(feature = "runtime")]
+            Detail::Attempts { .. } => None,
         }
     }
 
@@ -189,6 +203,26 @@ impl Error {
     #[must_use]
     pub fn is_deadlock(&self) -> bool {
         self.kind == Kind::Deadlock
+    }
+
+    /// The errors of the attempts before the last one, in order, that a deadlock retry ran out of its count with (CORE-24, INT-43),
+    /// or an empty list for any other error.
+    #[must_use]
+    pub fn causes(&self) -> &[Error] {
+        match &self.detail {
+            #[cfg(feature = "runtime")]
+            Detail::Attempts { causes } => causes,
+            Detail::None | Detail::RollbackFailed { .. } | Detail::Cleanup { .. } => &[],
+        }
+    }
+
+    /// The same error with the errors of the earlier attempts of a deadlock retry as its causes (CORE-24).
+    #[cfg(feature = "runtime")]
+    pub(crate) fn with_attempts(self, causes: Vec<Error>) -> Error {
+        if causes.is_empty() {
+            return self;
+        }
+        Error { detail: Detail::Attempts { causes }, ..self }
     }
 
     /// The same error with another kind and its message, keeping its cause.
@@ -212,6 +246,8 @@ impl fmt::Display for Error {
                 f.write_str(")")
             }
             Detail::None | Detail::RollbackFailed { .. } => write!(f, "{}: {}", self.kind, self.message),
+            #[cfg(feature = "runtime")]
+            Detail::Attempts { .. } => write!(f, "{}: {}", self.kind, self.message),
         }
     }
 }
@@ -223,8 +259,14 @@ impl std::error::Error for Error {
             (Detail::RollbackFailed { rollback, .. }, _) => Some(rollback.as_ref()),
             #[cfg(feature = "runtime")]
             (Detail::None, Source::Driver(error)) => Some(error),
+            #[cfg(feature = "runtime")]
+            (Detail::Attempts { .. }, Source::Driver(error)) => Some(error),
             (Detail::None, Source::Other(error)) => Some(error.as_ref()),
+            #[cfg(feature = "runtime")]
+            (Detail::Attempts { .. }, Source::Other(error)) => Some(error.as_ref()),
             (Detail::None, Source::None) => None,
+            #[cfg(feature = "runtime")]
+            (Detail::Attempts { .. }, Source::None) => None,
         }
     }
 }

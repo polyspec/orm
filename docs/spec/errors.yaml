@@ -161,7 +161,7 @@ codes:
   # ---- driver (mapped) ----
   - code: LOCK_NOT_AVAILABLE      # a NOWAIT lock could not be acquired immediately
     origin: driver
-  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; retries require TransactionOptions
+  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; a transaction retries it with no wait to its retry count, and its last error carries the errors of the earlier attempts in order as its causes
     origin: driver
   - code: DUPLICATE_KEY           # MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
     origin: driver
