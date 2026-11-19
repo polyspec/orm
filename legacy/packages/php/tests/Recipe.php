@@ -3098,7 +3098,7 @@ final class Recipe
                     );
                     $context['causes'] = 0;
                 } catch (\Throwable $error) {
-                    $context['causes'] = count($error->causes ?? []);
+                    $context['causes'] = $error instanceof OrmException ? count($error->getCauses()) : 0;
                     throw $error;
                 } finally {
                     $context['attempts'] = $attempts;

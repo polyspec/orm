@@ -1416,8 +1416,9 @@ final class OrmException extends \RuntimeException
     public readonly string $code_;
     public readonly ?\Throwable $rollback;
     public readonly array $cleanup;
-    /** The errors of the attempts before this one of a transaction whose retry ran out, in their order (CORE-24). */
-    public private(set) array $causes = [];
+    /** The errors of the attempts before this one of a transaction whose retry ran out, in their order (CORE-24); read
+     * through getCauses(). */
+    private array $causes = [];
 
     public function __construct(
         string $code_,
@@ -1429,6 +1430,10 @@ final class OrmException extends \RuntimeException
 
     /** @internal Keeps the errors of the earlier attempts of a retry that ran out on this error (CORE-24). */
     public function keepCauses(array $causes): void {}
+
+    /** The errors of the attempts before this one of a transaction whose retry ran out, in their order, and [] for any
+     * other error (CORE-24). */
+    public function getCauses(): array {}
 
     public static function rollback(\Throwable $cause, \Throwable $rollback): OrmException {}
     public static function withCleanup(\Throwable $primary, \Throwable $cleanup): OrmException {}

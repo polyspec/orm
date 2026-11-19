@@ -220,4 +220,30 @@ trait TransactionFailureCases
                 || str_starts_with($sql, 'RELEASE SAVEPOINT ')
         ));
     }
+
+    // Requirements: CORE-24.
+    // Code outside OrmException reads the causes of an exhausted retry and cannot write them: a write throws Error.
+    public function testTheCausesOfAnExhaustedRetryCannotBeWrittenFromOutside(): void
+    {
+        $db = new Db(new PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
+        try {
+            $db->transaction(static function (): void {
+                throw \Polyspec\Orm\Orm::transactionConflict('conflict');
+            }, retry: 2);
+            self::fail('the retry runs out');
+        } catch (OrmException $error) {
+            $written = null;
+            try {
+                $error->causes = [];
+            } catch (\Error $refused) {
+                $written = $refused;
+            }
+            self::assertInstanceOf(\Error::class, $written, 'a write of causes from outside throws Error');
+            self::assertCount(2, $error->getCauses(), 'the errors of the two earlier attempts');
+            $other = new OrmException(Code::DRIVER, 'other');
+            self::assertSame([], $other->getCauses(), 'an error of no retry has no causes');
+        } finally {
+            $db->close();
+        }
+    }
 }

@@ -8,11 +8,11 @@ final class OrmException extends \RuntimeException
 {
     /**
      * The errors of the attempts before this one of a transaction whose retry ran out, in their order; empty for any
-     * other error (CORE-24).
+     * other error (CORE-24). It is read through getCauses().
      *
      * @var list<OrmException>
      */
-    public private(set) array $causes = [];
+    private array $causes = [];
 
     /**
      * @param ?\Throwable $rollback the rollback error of a ROLLBACK error, whose
@@ -37,6 +37,17 @@ final class OrmException extends \RuntimeException
     public function keepCauses(array $causes): void
     {
         $this->causes = $causes;
+    }
+
+    /**
+     * The errors of the attempts before this one of a transaction whose retry ran out, in their order, and [] for any
+     * other error (CORE-24).
+     *
+     * @return list<OrmException>
+     */
+    public function getCauses(): array
+    {
+        return $this->causes;
     }
 
     /**

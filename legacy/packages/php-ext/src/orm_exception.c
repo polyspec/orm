@@ -122,6 +122,14 @@ ZEND_METHOD(Polyspec_Orm_OrmException, keepCauses)
     write_property(ZEND_THIS, "causes", causes);
 }
 
+ZEND_METHOD(Polyspec_Orm_OrmException, getCauses)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval rv;
+    zval *causes = zend_read_property(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), "causes", sizeof("causes") - 1, true, &rv);
+    RETURN_COPY_DEREF(causes);
+}
+
 ZEND_METHOD(Polyspec_Orm_OrmException, rollback)
 {
     zend_object *cause, *rollback_error;

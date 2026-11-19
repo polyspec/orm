@@ -1381,11 +1381,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return nil
 		}, options...)
 		c.attempts = attempts
-		c.causes = 0
-		var caused interface{ Causes() []error }
-		if errors.As(err, &caused) {
-			c.causes = len(caused.Causes())
-		}
+		c.causes = len(orm.Causes(err))
 		if err != nil {
 			return outcome{}, err
 		}

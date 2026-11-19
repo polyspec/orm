@@ -43,6 +43,7 @@ require_once __DIR__ . '/RecipeIntrospect.php';
 require_once __DIR__ . '/RecipeKeys.php';
 require_once __DIR__ . '/RecipeGenerator.php';
 require_once __DIR__ . '/ConnectRelay.php';
+require_once __DIR__ . '/RetrySleepProbe.php';
 require_once __DIR__ . '/Recipe.php';
 require_once __DIR__ . '/RecipeRecording.php';
 require_once __DIR__ . '/RecipeSubscription.php';

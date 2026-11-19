@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: 26b2159e7d97ce3b3e13d2311df5103794a7e9d746c3f393ac8119c2f4902d44 -->
+<!-- source-sha256: 270694b6f982ba2c99653b94368cb123d3542ca9baa5e99f0b6dbbd1f044f622 -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO 호환 드라이버(`pdo_mysql`, `pdo_pgsql`과 `ext-pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, client는 protocol 취소에 `ext-pgsql`을 쓴다. 라이브러리가
@@ -104,7 +104,7 @@ $db->transaction(function () use ($db): void {
 ```
 
 `connect`가 없는 모델은 요청의 가장 안쪽 transaction을 쓴다. 같은 연결의 중첩 호출은 savepoint이며 `retry`만 받는다.
-deadlock이나 `Orm::transactionConflict()`는 closure를 최대 `retry`번 다시 실행한다. row lock(`forUpdate()`와 다른 lock method)과
+deadlock이나 `Orm::transactionConflict()`는 closure를 최대 `retry`번 다시 실행한다. retry가 다하면 마지막 시도의 오류는 `getCauses()`로 그 앞 시도들의 오류를 순서대로 돌려준다. 이것이 [CORE-24](../../../docs/spec/core.md)의 원인 목록을 PHP에서 읽는 방법이다. 다른 오류에는 `[]`를 돌려주며, library와 extension 모두 같고, 원인은 밖에서 쓸 수 없다. row lock(`forUpdate()`와 다른 lock method)과
 `utils()->lock()`, `setLocal()`, `local()`은 transaction을 요구한다.
 
 `Config(auditSource: fn (): array => [...])`는 연결의 audit record 값, 예를 들어 계정과 요청을 준다.

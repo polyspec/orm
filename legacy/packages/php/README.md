@@ -107,7 +107,10 @@ $db->transaction(function () use ($db): void {
 
 A model without `connect` uses the innermost transaction of the request. A nested call on the same
 connection is a savepoint and accepts only `retry`. A deadlock or `Orm::transactionConflict()`
-runs the closure again, up to `retry` times. Row locks (`forUpdate()` and the other lock methods)
+runs the closure again, up to `retry` times. When the retry runs out, the error of the last attempt
+returns the errors of the attempts before it, in their order, from `getCauses()`, the PHP read of
+the list of causes of [CORE-24](../../../docs/spec/core.md); it returns `[]` for any other error, in
+the library and the extension alike, and the causes cannot be written from outside. Row locks (`forUpdate()` and the other lock methods)
 and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
 
 `Config(auditSource: fn (): array => [...])` gives the audit record values of the connection, such as
