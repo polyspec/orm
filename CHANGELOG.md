@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.34
+
 - A date or datetime parameter reaches the request text hook of `Db::with_request_text_hook` as its canonical text,
   the text the core binds, and the hook takes the parameters as `OrmValue` lists (T600).
 - A transaction retries a deadlock with no wait between its attempts (CORE-24, T670), in every runtime: the
@@ -15,8 +17,6 @@
 - docs/spec/core.md lists the kind of an unknown column per member of the core (CORE-158, T609): `config` for
   the builders of a `Query` and its chain names, `column_unknown` for `query.value`, the engine members and the
   planner; existing members keep their kind and a new member follows the existing member of its sort.
-
-## 0.0.34
 
 - v0.0.34 has no generated typed models (T601): the bindings expose the dynamic `Query`, and only the build crate
   writes Rust models; the typed models of the bindings follow on the lane `lane/models`.
