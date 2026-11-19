@@ -1031,9 +1031,12 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   (CORE-62) and the members of `Query` that take or return it are declared: `where`, `value`, `get_by` and
   `get_count_by`. The members of `Query` of CORE-85 to CORE-91 and the class `StepRunner` of CORE-92 and CORE-93 are
   declared; the cases of `StepRunner` run on a SQLite database (CORE-129). The units and members of
-  [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. `Db::with_request_hook` is declared with its hook as an inline function parameter with `async_allowed: false`, a function
-  that returns no value: the binding calls the host function and does not await it, and the future of the core stays inside the core.
-  The request that the hook receives is the record unit `RequestParams` (CORE-70).
+  [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. `Db::with_request_text_hook` is declared with its hook as an inline function parameter with `keeps: true` and
+  `async_allowed: false`: the hook takes the request as its protocol JSON text (`Request::to_json`, FMS-31) and the record unit
+  `RequestParams` (CORE-70), and returns the changed request text and the parameters, since the hook of each legacy host changes
+  the request and adds parameters (docs/operations/usage.md, Request hook). The core wraps `Db::with_request_hook` around it, and
+  the binding calls the host function synchronously and does not await it. `Db::with_request_hook` itself is not declared, because
+  its hook takes a mutable reference and returns a future.
   Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
   event that borrows its statement), `Key`, `GroupRow`, `GroupRows` and `Statement`

@@ -859,7 +859,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
 - **CORE-70** 코어의 인터페이스 계약은 `packages/rust/interface.json`이다. 계약은 코어가 가지고 있고 시그니처의 모든
   타입이 계약의 타입인 unit과 member만 선언한다. 값 alias `orm_value`(CORE-62)와 그것을 받거나 돌려주는 `Query`의
   member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. CORE-85~CORE-91의 `Query` member와 CORE-92, CORE-93의
-  class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. `Db::with_request_hook`은 hook을 값을 돌려주지 않는 함수로서 `async_allowed: false`인 inline 함수 인자로 선언한다: binding은 host 함수를 호출하고 기다리지 않으며, 코어의 future는 코어 안에 남는다. hook이 받는 request는 record unit `RequestParams`다(CORE-70). 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
+  class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. `Db::with_request_text_hook`은 hook을 `keeps: true`와 `async_allowed: false`인 inline 함수 인자로 선언한다: hook은 request를 protocol JSON text(`Request::to_json`, FMS-31)와 record unit `RequestParams`(CORE-70)로 받고, 바뀐 request text와 parameter를 돌려준다. 각 legacy host의 hook이 request를 바꾸고 parameter를 더하기 때문이다(docs/operations/usage.md, Request hook). 코어는 그 둘레에 `Db::with_request_hook`을 감싸고, binding은 host 함수를 동기로 호출하며 기다리지 않는다. `Db::with_request_hook` 자체는 선언하지 않는다. 그 hook은 가변 참조를 받고 future를 돌려주기 때문이다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다),
   `Db::subscribe`(자기 문장을 빌리는 event), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
   `Param`과 `Key`다). `Utils`와 그 부분은 자기 연결의 handle을 소유하고 CORE-180~CORE-186이 적은 대로 선언하며,
