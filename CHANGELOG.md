@@ -9,6 +9,8 @@
 - docs/spec/core.md lists the kind of an unknown column per member of the core (CORE-158, T609): `config` for
   the builders of a `Query` and its chain names, `column_unknown` for `query.value`, the engine members and the
   planner; existing members keep their kind and a new member follows the existing member of its sort.
+- A date or datetime parameter reaches the request text hook of `Db::with_request_text_hook` as its canonical text,
+  the text the core binds, and the hook takes the parameters as `OrmValue` lists (T600).
 
 ## 0.0.34
 

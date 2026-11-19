@@ -10,6 +10,8 @@
 - docs/spec/core.md가 core의 member마다 모르는 열의 kind를 기록한다(CORE-158, T609): `Query`의 builder와 chain
   이름은 `config`, `query.value`와 engine member와 planner는 `column_unknown`이다. 기존 member는 자기 kind를
   유지하고 새 member는 같은 종류의 기존 member를 따른다.
+- 날짜와 datetime 매개변수는 request text hook(`Db::with_request_text_hook`)에 core가 바인딩하는 정규 텍스트(canonical text)로
+  전달되며, hook은 매개변수를 `OrmValue` 목록으로 받는다(T600).
 
 ## 0.0.34
 
