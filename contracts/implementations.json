@@ -359,6 +359,7 @@
         "legacy/packages/php/tests/OrmGenProcessCase.php",
         "legacy/packages/php/tests/OrmGenTestSupport.php",
         "legacy/packages/php/tests/PageCacheBoundCases.php",
+        "legacy/packages/php/tests/RetrySleepProbe.php",
         "legacy/packages/php/tests/SqliteConcurrencyWriter.php",
         "legacy/packages/php/tests/SqliteLiteralRowsPdo.php",
         "legacy/packages/php/tests/SqliteRowLockPdo.php",
