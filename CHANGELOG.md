@@ -5,6 +5,10 @@
 
 ## 0.0.34
 
+- `make orm-test-container-run FORM=runner` installs the runner on Apple `container`: the runner unpacked node onto
+  the bind mount of its run, where GNU tar writes the `../` symlinks `bin/npm` and `bin/npx` first as placeholder files
+  of mode 000, which that mount refuses to open even to root ("tar: bin/npm: Cannot open: Permission denied", the
+  installation of the runner exited with 2); it now unpacks node in the container and copies it onto the mount (T657).
 - The PHP library and the PHP extension read the causes of an exhausted retry through `OrmException::getCauses()`, and
   `$causes` is private in both: the stub of the extension declared `public private(set) array $causes`, which the
   gen_stub.php of PHP 8.4 does not parse ("The lexer returned an invalid token (id=327, value=private(set))", main CI

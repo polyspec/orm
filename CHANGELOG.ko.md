@@ -6,6 +6,10 @@
 
 ## 0.0.34
 
+- `make orm-test-container-run FORM=runner`가 Apple `container`에서 runner를 설치한다. runner는 node를 run의 bind
+  mount에 풀었고, GNU tar는 `../` symlink인 `bin/npm`과 `bin/npx`를 먼저 mode 000 placeholder 파일로 쓰는데 그
+  mount는 root에게도 그 파일을 열어 주지 않았다("tar: bin/npm: Cannot open: Permission denied", runner 설치가 2로
+  끝났다). 이제 node를 container 안에 풀고 mount로 복사한다(T657).
 - PHP library와 PHP 확장은 다한 retry의 원인을 `OrmException::getCauses()`로 읽고, 두 쪽 모두 `$causes`는 private이다: 확장의 stub은 `public
   private(set) array $causes`를 선언했는데 PHP 8.4의 gen_stub.php는 이를 읽지 못했고("The lexer returned an invalid token (id=327,
   value=private(set))", main CI run 44469829741), 이제 class 밖에서 원인을 쓰면 두 mode 모두 `Error`를 던진다. Go recipe는 lint-go가 도달할

@@ -971,9 +971,13 @@ fetch() {
 
 if [ ! -x "$run/node/bin/node" ]; then
   fetch "https://nodejs.org/dist/v${version}/node-v${version}-$platform.tar.xz" "$node_sum" "$run/node.tar.xz"
-  mkdir -p "$run/node"
-  tar -xJf "$run/node.tar.xz" --strip-components=1 -C "$run/node"
-  rm "$run/node.tar.xz"
+  # GNU tar writes a ../ symlink (bin/npm, bin/npx) first as a placeholder file of mode 000, which the bind mount of
+  # Apple container refuses to open even to root (T657); so node is unpacked in the container and copied, which
+  # creates the symlinks with symlink().
+  mkdir -p /tmp/orm-node "$run/node"
+  tar -xJf "$run/node.tar.xz" --strip-components=1 -C /tmp/orm-node
+  cp -a /tmp/orm-node/. "$run/node"
+  rm -rf /tmp/orm-node "$run/node.tar.xz"
 fi
 if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
   fetch "https://static.rust-lang.org/rustup/archive/${rustup.version}/$processor-unknown-linux-gnu/rustup-init" "$rustup_sum" "$run/rustup-init"
