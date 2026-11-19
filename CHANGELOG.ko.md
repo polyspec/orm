@@ -1,21 +1,44 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b3f6f453bfa6efa36e6e8f6962dd33adbcbcf92e9d029c5597e02f3810255d3 -->
+<!-- source-sha256: c0a988cf31dea73f5c9a66ed18621a5cc93ff9b74051e957de44975f7c6972cf -->
 # 변경 이력
 
 ## Unreleased
 
+## 0.0.34
+
+- PHP library와 PHP 확장은 다한 retry의 원인을 `OrmException::getCauses()`로 읽고, 두 쪽 모두 `$causes`는 private이다: 확장의 stub은 `public
+  private(set) array $causes`를 선언했는데 PHP 8.4의 gen_stub.php는 이를 읽지 못했고("The lexer returned an invalid token (id=327,
+  value=private(set))", main CI run 44469829741), 이제 class 밖에서 원인을 쓰면 두 mode 모두 `Error`를 던진다. Go recipe는 lint-go가 도달할
+  수 없다고 보고한 `orm.Causes`로 원인을 읽는다(T670).
+- PHP suite는 `legacy/packages/php/tests/RetrySleepProbe.php`를 더 이상 시험 파일로 돌리지 않는다: 이 파일은 시험 class를 선언하지 않아 phpunit이
+  "does not extend PHPUnit\Framework\TestCase"로 멈췄고(CI job 135378090168), 이제 php 구현의 support 파일이다(T670).
+- model_queries와 model_writes의 `decimal-typescript-types` 단계는 `node_modules/.bin/tsc`를 돌린다: 이전에는 CI의 PATH에 없는 맨 `tsc`를
+  돌렸다("spawn tsc ENOENT", main CI run 44469829741)(T698).
+- `db.transaction`의 contract case `a_callback_that_declares_no_parameter`는 지우고 T590 행에 남겼다: binding의 시험 생성기가 callback을
+  parameter와 함께 쓰므로 Python, Node, PHP 확장의 생성 시험이 실패하고(binding B2.557), Go와 Rust는 그런 callback을 컴파일 시점에 거부하며, core
+  runner는 이를 표현할 수 없어 아무것도 검증하지 않았다. docs/spec/core.md는 동적 target의 실행 시점 거부가 B2.557 전까지 검증되지 않는다고 적는다(T590).
+- contract case의 core runner는 `db.with_request_text_hook`을 부른다: 이 member의 arm이 없어서
+  `interface_cases::the_core_passes_the_cases_of_its_contract`가 마지막 group에서 panic했고("the case runner calls no member
+  db.with_request_text_hook on that receiver", CI job 135378090290) 그 앞 case들의 실패를 보고하지 못했다(T600).
+- `packages/rust/src/db.rs`(`Db::with_request_text_hook`, T600)와 `packages/rust/src/error.rs`(T670)는 rustfmt 형식을 따른다:
+  `make rust-fmt-check`가 두 파일에서 실패했다.
+- recipe case `refused_retry_after_a_write_session`은 거부된 재연결을 `sql.user_errors`가 아니라 `catalog.reconnect`로 집계한다:
+  MariaDB에는 `performance_schema.events_errors_summary_by_user_by_error`가 없어 그 단계가 1146으로 실패했다(DIA-211, CI job
+  135378090260). 이 case는 `not_through_pooler`를 적는다. ProxySQL을 거치면 GRANT가 1044로 거부되었기 때문이다(clients_pooler_rust).
+  `plain_connect_on_a_held_place_is_refused_once`는 database 간 차이를 server 한도 `MAX_USER_CONNECTIONS`로 적는다(T671).
+- release-spec 검사는 `noUncheckedIndexedAccess` 아래에서 `tsc`를 통과한다: undefined일 수 있는 값에서 실패했고, 이제 그 값을 분명한 오류와 함께 좁힌다(main
+  CI run 44469829741)(T682).
+- `legacy/` 아래의 recipe owner는 다시 그 recipe의 고정된 사본을 따른다: coverage 검사는 그 사본과 다른 case 목록 선언을 거부하는데, 1db7e1a7f가 이를 빠뜨렸었다.
+  고정된 recipe case는 recipe를 `unknown`으로 읽어 선언한 type으로 좁히며, 이전에는 oxlint가 `any`의 안전하지 않은 사용 11개를 보고했다(T695).
 - CI는 더 이상 VS Code integration test를 실행하지 않는다: job editor와 make ci-editor를 지웠고, make
   ci-vscode-integration은 local e2e로 남으며, extension의 build와 manifest test(make dbspec-vscode-check)는 static CI group에서
   실행한다(T704, template T28.147을 따름).
-
-## 0.0.34
-
 - 날짜와 datetime 매개변수는 request text hook(`Db::with_request_text_hook`)에 core가 바인딩하는 정규 텍스트(canonical text)로
   전달되며, hook은 매개변수를 `OrmValue` 목록으로 받는다(T600).
 - transaction은 모든 runtime에서 deadlock을 시도 사이의 기다림 없이 재시도한다(CORE-24, T670): 다음 시도는
   rollback 바로 뒤에 시작한다. 횟수를 다 쓴 재시도의 오류는 마지막 시도의 오류이며, 그 앞 시도들의 오류를 cause로
-  가진다: Rust `Error::causes()`, Go `orm.Causes(err)`, 그리고 PHP, PHP extension, TypeScript, Python 오류의
-  `causes`이다.
+  가진다: Rust `Error::causes()`, Go `orm.Causes(err)`, PHP와 PHP extension 오류의 `getCauses()`, 그리고
+  TypeScript와 Python 오류의 `causes`이다.
 - `Query`에 `avg(column)`과 `get_avg()`가 있다(CORE-207, T610): 열의 평균이며 값이 남지 않으면 null이다.
   `force_index(name)`은 DIA-7의 index 힌트이며, 엔티티의 index도 unique key도 아닌 이름은 다음 terminal에서
   `config`다(CORE-156). 계약이 셋과 그 case를 선언한다.

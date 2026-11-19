@@ -3,18 +3,49 @@
 
 ## Unreleased
 
+## 0.0.34
+
+- The PHP library and the PHP extension read the causes of an exhausted retry through `OrmException::getCauses()`, and
+  `$causes` is private in both: the stub of the extension declared `public private(set) array $causes`, which the
+  gen_stub.php of PHP 8.4 does not parse ("The lexer returned an invalid token (id=327, value=private(set))", main CI
+  run 44469829741), and a write of the causes from outside the class now throws `Error` in both modes. The Go recipe
+  reads them through `orm.Causes`, which lint-go reported unreachable (T670).
+- The PHP suite no longer runs `legacy/packages/php/tests/RetrySleepProbe.php` as a test file: it declares no test
+  class, and phpunit stopped on it with "does not extend PHPUnit\Framework\TestCase" (CI job 135378090168); it is a
+  support file of the php implementation (T670).
+- The `decimal-typescript-types` steps of model_queries and model_writes run `node_modules/.bin/tsc`: they ran a bare
+  `tsc`, which is not on the PATH of CI ("spawn tsc ENOENT", main CI run 44469829741) (T698).
+- The contract case `a_callback_that_declares_no_parameter` of `db.transaction` is removed and kept in the T590 row:
+  its generated tests fail on Python, Node and the PHP extension because the test generator of binding writes the
+  callback with parameters (binding B2.557), Go and Rust refuse such a callback at compile time, and the core runner
+  cannot express it, so it verified nothing; docs/spec/core.md states that the runtime refusal of the dynamic targets
+  is not verified until B2.557 (T590).
+- The core runner of the contract cases calls `db.with_request_text_hook`: it had no arm for the member, so
+  `interface_cases::the_core_passes_the_cases_of_its_contract` panicked at its last group ("the case runner calls no
+  member db.with_request_text_hook on that receiver", CI job 135378090290) before it reported the failures of the
+  cases before it (T600).
+- `packages/rust/src/db.rs` (`Db::with_request_text_hook`, T600) and `packages/rust/src/error.rs` (T670) are in the
+  format of rustfmt: `make rust-fmt-check` failed on both.
+- The recipe case `refused_retry_after_a_write_session` counts the refused reconnect with `catalog.reconnect`, not
+  `sql.user_errors`: on MariaDB the step failed with 1146, as MariaDB has no
+  `performance_schema.events_errors_summary_by_user_by_error` (DIA-211, CI job 135378090260); the case states
+  `not_through_pooler`, since through ProxySQL its GRANT was refused with 1044 (clients_pooler_rust); and
+  `plain_connect_on_a_held_place_is_refused_once` states its difference between databases as the server limit
+  `MAX_USER_CONNECTIONS` (T671).
+- The release-spec check passes `tsc` under `noUncheckedIndexedAccess`: it failed on values that may be undefined,
+  which are now narrowed with a clear error (main CI run 44469829741) (T682).
+- A recipe owner under `legacy/` is held to the frozen copy of its recipe again: the coverage checker refuses a
+  declared list of cases that differs from that copy, which 1db7e1a7f had dropped, and the frozen recipe case parses
+  the recipe as `unknown` narrowed to a declared type, where oxlint reported 11 unsafe uses of `any` (T695).
 - CI no longer runs the VS Code integration test: the job editor and make ci-editor are removed, make
   ci-vscode-integration stays a local e2e, and the extension's build and manifest test (make dbspec-vscode-check) run in the
   static CI group (T704, after template T28.147).
-
-## 0.0.34
-
 - A date or datetime parameter reaches the request text hook of `Db::with_request_text_hook` as its canonical text,
   the text the core binds, and the hook takes the parameters as `OrmValue` lists (T600).
 - A transaction retries a deadlock with no wait between its attempts (CORE-24, T670), in every runtime: the
   next attempt begins right after the rollback. The error of a retry that runs out is the error of its last attempt
   and carries the errors of the attempts before it as its causes: Rust `Error::causes()`, Go `orm.Causes(err)`, and
-  `causes` on the error of PHP, the PHP extension, TypeScript and Python.
+  `getCauses()` on the error of PHP and the PHP extension, and `causes` on that of TypeScript and Python.
 - A `Query` has `avg(column)` and `get_avg()`, the average of a column or null when no value is left (CORE-207,
   T610), and `force_index(name)`, the index hint of DIA-7, whose name that is no index or unique key of the entity is
   `config` at the next terminal (CORE-156); the contract declares the three and their cases.
