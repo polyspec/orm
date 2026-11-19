@@ -282,9 +282,6 @@
       "inputs": [
         "docs/spec/**",
         "scripts/repo/spec-release*.mts"
-      ],
-      "lints": [
-        "**"
       ]
     },
     "orm-test-container-check": {
