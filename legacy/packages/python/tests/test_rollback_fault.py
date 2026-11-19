@@ -451,10 +451,16 @@ class TransactionRetryTest(unittest.TestCase):
             with mock.patch("time.sleep") as sleep:
                 with self.assertRaises(OrmError) as caught:
                     db.transaction(conflict, {"retry": 2})
-            self.assertEqual(attempts, [1, 2, 3], "retry 2 runs the callback three times")
+            self.assertEqual(
+                attempts, [1, 2, 3], "retry 2 runs the callback three times"
+            )
             self.assertEqual(sleep.call_count, 0, "no attempt waits before it runs")
             error = caught.exception
-            self.assertEqual((error.code, str(error)), ("DEADLOCK", "DEADLOCK: attempt 3"), "the error of the last attempt")
+            self.assertEqual(
+                (error.code, str(error)),
+                ("DEADLOCK", "DEADLOCK: attempt 3"),
+                "the error of the last attempt",
+            )
         finally:
             db.close()
 
