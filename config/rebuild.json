@@ -322,6 +322,14 @@
       "kind": "policy",
       "reason": "the source rules of this repository for JavaScript, Rust and PHP files, such as process groups started detached"
     },
+    "scripts/repo/spec-release-tree.mts": {
+      "kind": "policy",
+      "reason": "checks the real spec tree against its tag (T682)"
+    },
+    "scripts/repo/spec-release.mts": {
+      "kind": "policy",
+      "reason": "reads the released spec of this repository by its tag (T682)"
+    },
     "scripts/repo/target.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that a Rust program path comes from the declared CARGO_TARGET_DIR"
