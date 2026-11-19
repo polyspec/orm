@@ -472,16 +472,17 @@ export function sharedTargetErrors(makefile: string): string[] {
   return errors;
 }
 
-// SERVER_ENV_FILES are the env files that the servers write, as scripts/test-servers.mts names them (paths: env and
-// mariadbEnv), relative to the checkout.
-const SERVER_ENV_FILES = [paths('').env, paths('').mariadbEnv];
+// SERVER_ENV_FILES are the env files that the servers write, as scripts/test-servers.mts names them (paths: env,
+// mariadbEnv and mysqlPrivilegeEnv), relative to the checkout.
+const SERVER_ENV_FILES = [paths('').env, paths('').mariadbEnv, paths('').mysqlPrivilegeEnv];
 const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const SERVER_ENV_FILE = new RegExp(`(?:${SERVER_ENV_FILES.map(escaped).join('|')})(?![\\w./-])`, 'g');
 
 // runtimePathErrors returns one error for each line in the Makefile that writes a fixed file of .runtime shared by several runs (or the file beside TEST_ENV)
 // as one file. A run's own file goes in RUN_DIR. What is shared is only the env files that the servers write (SERVER_ENV_FILES:
 // .runtime/servers/env, which TEST_ENV names outside a kit job and a run may override with its own file, KSTD-5-94, and
-// .runtime/servers/mariadb.env, which MARIADB_ENV names), the built tools (.runtime/bin), the root of the run
+// .runtime/servers/mariadb.env, which MARIADB_ENV names, and .runtime/servers/mysql-privilege.env, which make
+// orm-test-mysql-privilege-start writes), the built tools (.runtime/bin), the root of the run
 // directories (.runtime/run), and the lease directories (*.leases). A line is judged by the rule, not by its text: once
 // the env files of the servers and the files of the run directory of a kit job (RUN_CONTEXT_DIR, T645) are taken out,
 // it names no other file of .runtime.
