@@ -129,9 +129,13 @@ implementation is eligible for removal on that evidence.
 - **CORE-24** A transaction retries the whole callback, after its rollback, when the failure has the kind `deadlock`:
   a deadlock of a statement, the error of `transaction_conflict` (INT-48), or an error of the kind `deadlock` that the
   callback raised. A binding hands the core the kind of an error of a category class of orm that the callback raised
-  (`recognize` of the contract); any other failure is returned unchanged after the rollback. The wait before attempt `n`
-  (from 1) is `50 << (n - 1)` milliseconds plus a jitter from 0 to 19 milliseconds. The tests give the core the clock and
-  the source of the jitter, so their results depend on neither.
+  (`recognize` of the contract); any other failure is returned unchanged after the rollback. The retry ends only by its
+  count (INT-43): the next attempt begins right after the rollback, with no wait between attempts. When the last attempt
+  fails with `deadlock`, the error has the kind `deadlock` and is the error of that attempt, and it carries the errors of
+  the attempts before it, in their order, as its list of causes, so the length of the list is the number of retries
+  that ran. A row lock does not order the rows it locks: `for_update` and `for_share` lock in the order of the `ORDER BY`
+  of the caller, or in the order that the database reads the rows when the `Query` has none
+  (packages/rust/src/engine/planner.rs:631-645), so the caller sets the lock order that avoids a deadlock.
 - **CORE-25** When the callback fails and the rollback fails too, the result is an error of kind `rollback_failed` whose
   message names the failure of the rollback, with two properties: `callbackError`, the failure of the callback as it was
   (an error of orm or the exception of the language, which the core does not open), and `rollbackError`, the error of the
@@ -666,7 +670,8 @@ implementation is eligible for removal on that evidence.
   the request, and the last one called holds. A name that is no index and no unique key of the entity is `config` at
   the next terminal with the message `<name> is not an index of <entity>`: the kind by which every builder of a
   `Query` refuses a name that its entity does not have (CORE-82, CORE-87, CORE-89, CORE-91), where the planner alone
-  gives `index_unknown` with the message `<entity>.<name>`. Not implemented: `force_index` of a `Query`.
+  gives `index_unknown` with the message `<entity>.<name>`. The hint is the clause of DIA-7: MySQL `FORCE INDEX`,
+  SQLite `INDEXED BY`, and nothing on PostgreSQL.
 - **CORE-157** Three members set how a `Query` given to `relation` or `relations` is attached (CORE-88, PRT-14), and
   have no effect on a `Query` that is given to neither. `parent_node()` merges the row of a `relation` result into the
   row that holds it (DSL-84): `flatten` of the request, by which the JSON text of the row (CORE-161) writes the
@@ -686,7 +691,13 @@ implementation is eligible for removal on that evidence.
   terminal with the message `possible applies only to a relation child`. A name that is no column of the entity of the
   parent is `config` at the next terminal of the parent with the message `<column> is not a column of <entity>`
   (CORE-130), the kind and the message of every builder of a `Query` for a column that its entity does not have
-  (CORE-87, CORE-89, CORE-91); `value` alone, which reads a row, is `column_unknown` (CORE-83). Not implemented: `possible` of a `Query`.
+  (CORE-87, CORE-89, CORE-91). The members of the core differ in the kind of an unknown column. `config`, with the
+  message `<column> is not a column of <entity>` at the next terminal, is the kind of `group_by`, `sum`, `add_column`,
+  `remove_column`, `key_name`, `set`, `plus`, `minus` and the chain names of `where`, `get_by` and `get_count`.
+  `column_unknown`, with the message `<entity>.<column>`, is the kind of `query.value`, which reads a row (CORE-83),
+  `db.analyze_restore`, `runtime_model.validate`, `param_uses`, `restore_key`, `compile`, `operator_allowed`, and the
+  planner for a column that a request hook added. The existing members keep their kind, because the error handling of
+  callers relies on it; a new member follows the existing member of its sort. Not implemented: `possible` of a `Query`.
 - **CORE-159** `fetch_key(function)` keys the `Collection` of `gets` by what `function` returns for each row, in place
   of the primary key and of `key_name` (CORE-89), and `fetch_value(function)` computes a value for each row, which the
   `Collection` holds beside the row under its key (DSL-70). The function takes the row, a `Query`, and is called once
@@ -864,6 +875,17 @@ implementation is eligible for removal on that evidence.
   (CORE-201). Neither changes the `Query`. In the contract the two results are classes whose `page`, `per_page` and
   `has_next` are properties; `rows` of `lookahead_page` returns the unit `rows` (CORE-170). The `Db` step (CORE-92)
   has no terminal for them.
+- **CORE-207** `avg(column)` names the column whose average `get_avg()` returns: the members `avg<Col>()` and
+  `getAvg()` of the language implementations (DSL-63). The request is `avg` and the column its `agg` (PRT-2); the last
+  `avg` called holds, and the conditions of the `Query` select the rows. The result is a `float` or null: the average,
+  which stays exact until it is converted once to the nearest binary64 value (DSL-66, DSL-161), and null when no value
+  is left, whether no row matches or every value is null. `get_avg` of a `Query` without `avg` is `config` with the
+  message `get_avg requires avg_<col>()`, before the connection is asked for. A name that is no column of the entity
+  is `config` at the next terminal with the message `<column> is not a column of <entity>` (CORE-87), a column that
+  is no number is `operator_not_allowed` with the message `avg on <entity>.<column> (<type>)`, a scalar that is no
+  finite number is `codec_decode` with the message `aggregate scalar is not a finite number`, and a grouped `Query`
+  is `ir_invalid` (CORE-201). `avg` has no effect on another terminal, and `sum` and `avg` replace each other, as
+  one `agg` of the request holds one function. The `Db` step has no call `avg` and no terminal for `get_avg`.
 
 ## State machines
 
@@ -913,7 +935,7 @@ no member gives a `tx` that a case can name.
      (CORE-25), whose `callbackError` is that failure.
   The handle of the callback is ended (CORE-23) before step 4 sends its statement. A `Passthrough` that the machine
   holds when it ends with a failure is dropped, which releases its value in the language.
-- **CORE-104** The retry of CORE-24 is steps 1 to 4 again, after an `Io` step that waits as CORE-24 states: the machine
+- **CORE-104** The retry of CORE-24 is steps 1 to 4 again, with no wait step between attempts: the machine
   calls `callback` once per attempt, which is why `F` is `FnMut`, and drops the value of an attempt whose commit failed
   with `deadlock`. A failure `Failure::Raised` has no kind for the core, so an exception of a statement of the callback
   that the language code does not catch is not retried through a binding, although its kind was `deadlock`: the
@@ -1009,7 +1031,11 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   [the surface that flowmark uses](flowmark-surface.md) FMS-7 are declared as that document states. Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
-  (their values are the Rust values `Param` and `Key`). `Utils` and its parts own a handle of their connection and
+  (their values are the Rust values `Param` and `Key`). `Db::with_request_text_hook` is declared with its hook as an inline function
+  parameter with `keeps: true` and `async_allowed: false`: the hook takes the request as its protocol JSON text (`Request::to_json`, FMS-31)
+  and the list of `orm_value` parameters (CORE-70), and returns the changed request text and the parameters as `orm_value`, since the hook of each legacy host
+  changes the request and adds parameters (docs/operations/usage.md, Request hook). `Db::with_request_hook` itself is not declared, because
+  its hook takes a mutable reference and returns a future. `Utils` and its parts own a handle of their connection and
   are declared as CORE-180 to CORE-186 state, without `Utils::run`, `Utils::local` and `Utils::was_inserted`
   (CORE-180). The terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row are declared, and `gets`
   and `gets_by` return the class `rows` (CORE-170). `Collection`, `Page` and `LookaheadPage` are not declared as types:
@@ -1168,7 +1194,7 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   the condition of `condition_not_met`, so `update`, `delete` and `restore` do not raise it; `restore` returns a row
   that is not deleted unchanged, so only `restore_or_create` raises `row_not_deleted`; `restore_or_create` reads the
   restored row in its own transaction and does not raise `no_rows`; `db.execute` runs on the `Db` and raises neither
-  `busy` nor `transaction_ended`, which only a `Tx` raises. No member of `Query` raises `column_unknown`: the builder
+  `busy` nor `transaction_ended`, which only a `Tx` raises. No builder of `Query` raises `column_unknown`: it
   refuses an unknown column with `config` (CORE-82) before a terminal reads the entity. `db.connect` and
   `db.connect_schema` do not raise `capability_unsupported`: the core asserts at its build that the SQLite it links is
   3.46 or newer (DSL-150), so no connection meets an older one. `db.connect_schema` does not raise `schema_invalid`: a schema of the contract is made by

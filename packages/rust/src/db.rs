@@ -25,7 +25,7 @@ use crate::row::DriverRow;
 use crate::schema::Schema;
 use crate::tx::{AuditKey, TxShared};
 use crate::value::Param;
-use crate::{Error, Result};
+use crate::{Error, OrmValue, Result};
 
 mod machine;
 pub use machine::{Connect, Execute};
@@ -113,8 +113,18 @@ impl BeforeTransactionHook {
 
 /// The parameters of the request a [`RequestHook`] receives: it reads the values that the request binds and adds
 /// parameters.
+#[derive(Default)]
 pub struct RequestParams {
-    params: Vec<Param>,
+    /// The values that the request binds, in the order of their index.
+    pub params: Vec<Param>,
+}
+
+/// What a request text hook returns (CORE-70): the request as its JSON text and the parameters that it binds.
+pub struct RequestChange {
+    /// The request as its JSON text (FMS-31), which replaces the request.
+    pub request: String,
+    /// The parameters of the request after the hook, as the contract's `orm_value` (the core binds them as `Param`).
+    pub params: Vec<OrmValue>,
 }
 
 impl RequestParams {
@@ -1122,6 +1132,31 @@ impl Db {
     /// replaces the hook of a hooked handle.
     pub fn with_request_hook(&self, hook: impl for<'a> Fn(&'a mut crate::ir::Request, &'a mut RequestParams) -> HookFuture<'a> + Send + Sync + 'static) -> Db {
         Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)), cancel: self.cancel.clone(), log: self.log.clone() }
+    }
+
+    /// The synchronous form of [`Db::with_request_hook`] (CORE-70): the hook receives the request as its JSON text and the
+    /// parameters, and returns the changed text and parameters, as the hooks of the legacy hosts change the request in place
+    /// and add parameters (docs/operations/usage.md "Request hook"). A failure of the hook or a text that is no request fails the
+    /// operation.
+    pub fn with_request_text_hook(&self, hook: impl Fn(&str, &[OrmValue]) -> std::result::Result<RequestChange, binding_core::Failure<Error>> + Send + Sync + 'static) -> Db {
+        self.with_request_hook(move |request, params| {
+            let values: Vec<OrmValue> = params.params.iter().map(OrmValue::of_param).collect();
+            let result = hook(&request.to_json(), &values).map_err(|failure| match failure {
+                binding_core::Failure::Kind(error) => error,
+                other => Error::internal(format!("the request hook raised a failure of a language: {other:?}")),
+            }).and_then(|change| {
+                let next = crate::ir::Request::from_json(&change.request)?;
+                let bound = change
+                    .params
+                    .into_iter()
+                    .map(|value| value.scalar().map_err(|rejected| Error::internal(format!("a request parameter of the hook is not a scalar: {rejected:?}"))))
+                    .collect::<Result<Vec<Param>>>()?;
+                *request = next;
+                params.params = bound;
+                Ok(())
+            });
+            Box::pin(std::future::ready(result))
+        })
     }
 
     /// Registers `hook` on the connection and returns what removes it (CORE-143): the member `db.before_transaction` of

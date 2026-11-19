@@ -83,12 +83,12 @@ func TestCTableAgreesWithGo(t *testing.T) {
 }
 
 // TestPythonTableAgreesWithGo compares the Python module's is_word_rune_code_point with Go at every code point.
-// The Python interpreter is ORM_PYTHON if set, otherwise python3 from PATH.
+// ORM_PYTHON names the Python interpreter by its absolute path; the test fails without it and runs no python3 from PATH.
 func TestPythonTableAgreesWithGo(t *testing.T) {
 	testcase.Start(t)
 	python := os.Getenv("ORM_PYTHON")
 	if python == "" {
-		python = "python3"
+		t.Fatal("ORM_PYTHON names no Python interpreter; set it to the absolute path of python3")
 	}
 	module := filepath.Join(repoRoot, "legacy", "packages", "python", "src", "polyspec", "orm", "dbspec", "unicode_word.py")
 	script := "import importlib.util, sys\n" +

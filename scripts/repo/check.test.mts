@@ -3552,3 +3552,10 @@ caseTest('package-check runs its cargo with the flags of PACKAGE_CHECK_CARGO_FLA
   assert.match(cargo(['PACKAGE_CHECK_CARGO_FLAGS=--verbose']), / --verbose$/);
   assert.match(cargo(['PACKAGE_CHECK_CARGO_FLAGS=']), /\/Cargo\.toml$/);
 });
+
+// The unicode test names ORM_PYTHON when it is unset and runs no python3 from PATH: HR-81 names the tools by their absolute path (T684).
+caseTest('T684: the unicode test names ORM_PYTHON when it is unset and runs no python3 from PATH', () => {
+  const source = text('tests/dbspec/unicode/main_test.go');
+  assert.doesNotMatch(source, /"python3"/, 'tests/dbspec/unicode/main_test.go runs python3 from PATH when ORM_PYTHON is unset');
+  assert.match(source, /t\.Fatal[^\n]*ORM_PYTHON/, 'tests/dbspec/unicode/main_test.go does not fail naming ORM_PYTHON when it is unset');
+});

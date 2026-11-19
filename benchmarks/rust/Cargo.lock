@@ -1442,8 +1442,18 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "polyspec-binding-core"
-version = "0.0.22"
-source = "git+https://github.com/polyspec/binding.git?tag=v0.0.22#dfd23b7b3fbb3ff415e51a9c60487fe70bf77f2d"
+version = "0.0.23"
+source = "git+https://github.com/polyspec/binding.git?tag=v0.0.22#8b1cd0c362584088245b6d9b9601c6882006192d"
+dependencies = [
+ "indexmap",
+ "libc",
+ "tokio-util",
+]
+
+[[package]]
+name = "polyspec-binding-core"
+version = "0.0.23"
+source = "git+https://github.com/polyspec/binding.git?tag=v0.0.23#8b1cd0c362584088245b6d9b9601c6882006192d"
 dependencies = [
  "indexmap",
  "libc",
@@ -1455,7 +1465,7 @@ name = "polyspec-json"
 version = "0.0.40"
 source = "git+https://github.com/polyspec/json.git?tag=v0.0.40#de6016c4be5567902e7751909a2f97d081a501d7"
 dependencies = [
- "polyspec-binding-core",
+ "polyspec-binding-core 0.0.23 (git+https://github.com/polyspec/binding.git?tag=v0.0.22)",
  "ryu-js",
  "serde",
  "serde_json",
@@ -1473,7 +1483,7 @@ dependencies = [
  "hmac 0.12.1",
  "indexmap",
  "libsqlite3-sys",
- "polyspec-binding-core",
+ "polyspec-binding-core 0.0.23 (git+https://github.com/polyspec/binding.git?tag=v0.0.23)",
  "polyspec-json",
  "polyspec-orm-schema",
  "rand",

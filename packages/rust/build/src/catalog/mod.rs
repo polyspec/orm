@@ -196,6 +196,7 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::QueryResult, CatalogError> {
+        self.open_stream_killer().await?;
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.query_result_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         self.end_read(connection, result).await
@@ -219,6 +220,7 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::GridQueryResult, CatalogError> {
+        self.open_stream_killer().await?;
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         self.end_read(connection, result).await
@@ -241,14 +243,16 @@ impl CatalogConnection {
     async fn end_read<T>(&mut self, mut connection: Conn, result: Result<T, CatalogError>) -> Result<T, CatalogError> {
         let read_id = self.read_id.take();
         if stopped_by_budget(&result) && self.dialect != "sqlite" {
-            let killed = match read_id {
-                Some(id) => self.kill_query(id).await.is_ok(),
-                None => false,
-            };
-            if !killed {
+            let Some(id) = read_id else {
                 connection.close_now();
                 self.closed_connection();
                 return result;
+            };
+            // A kill that fails returns its own error (CFG-35), such as the driver refusal of max_user_connections, and not the budget error.
+            if let Err(error) = self.kill_query(id).await {
+                connection.close_now();
+                self.closed_connection();
+                return Err(error);
             }
             // The next command on the connection first reads the end of the killed statement, which is the error of the kill,
             // 1317, and sqlx reports it as the error of that command before sending it; a statement that ended before the kill
@@ -291,15 +295,42 @@ impl CatalogConnection {
             }
         }
     }
-    /// Makes sure the kill connection of the catalog is open before a MySQL stream starts (CFG-49). A kill connection that
-    /// no longer answers is closed and opened again; one that cannot open fails the stream before its statement is sent.
+    /// Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens and the
+    /// catalog keeps (CFG-35). A kill connection that failed is closed.
     async fn ensure_killer(&mut self) -> Result<(), CatalogError> {
-        if let Some(killer) = self.killer.as_mut() {
-            if killer.exec("SELECT 1", &[]).await.is_ok() {
-                return Ok(());
+        if self.killer.is_none() {
+            self.killer = Some(self.open_connection().await?);
+        }
+        Ok(())
+    }
+    /// The kill connection of a MySQL stream, opened before the stream's statement and kept (CFG-35). A refused open fails the
+    /// stream with its driver error. The namespace and descriptor reads do not open it, so a reconnect is not refused by it.
+    async fn open_stream_killer(&mut self) -> Result<(), CatalogError> {
+        if self.dialect == "mysql" {
+            // CFG-35: the kill connection is checked before each MySQL stream and opened again when it is missing or dead. The check
+            // is a light statement on it, as the Go catalog reads the connection id of a connection (legacy/packages/go/orm/catalog.go:180-186).
+            let alive = match self.killer.as_mut() {
+                Some(killer) => killer.mysql_connection_id().await.is_ok(),
+                None => true,
+            };
+            if !alive {
+                if let Some(dead) = self.killer.take() {
+                    dead.close_now();
+                }
+                self.closed_connection();
             }
-            if let Some(dead) = self.killer.take() {
-                dead.close_now();
+            self.ensure_killer().await?;
+        }
+        Ok(())
+    }
+    async fn kill_query(&mut self, id: u64) -> Result<(), CatalogError> {
+        self.ensure_killer().await?;
+        let Some(killer) = self.killer.as_mut() else {
+            return Err("CATALOG_CONNECTION: the kill connection is missing".into());
+        };
+        if let Err(error) = killer.exec(&format!("KILL QUERY {id}"), &[]).await {
+            if let Some(killer) = self.killer.take() {
+                killer.close_now();
             }
             self.closed_connection();
         }

@@ -81,7 +81,7 @@
 | `grid_temporal_value` | value | executor | grid의 잘못된 시각 값 |
 | `grid_temporal_precision` | value | executor | grid 시각 값의 정밀도 초과 |
 | `lock_not_available` | store | driver | NOWAIT 잠금을 곧바로 얻지 못함 |
-| `deadlock` | store | driver | MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01, 그리고 transaction_conflict |
+| `deadlock` | store | driver | MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01, 그리고 transaction_conflict; transaction은 기다림 없이 재시도 횟수까지 재시도하고, 마지막 오류는 앞 시도들의 오류를 순서대로 cause로 가진다 |
 | `duplicate_key` | store | driver | MySQL 1062, PostgreSQL 23505, SQLite 2067·1555 |
 | `foreign_key` | store | driver | MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, RESTRICT의 SQLite 1811 |
 | `constraint` | store | driver | MySQL 3819 / MariaDB 4025 / PostgreSQL 23514 / SQLite 275 |

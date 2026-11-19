@@ -83,7 +83,7 @@ pub use self::{
     core::Core,
     db::{
         AuditResult, AuditSource, BeforeTransaction, BeforeTransactionFuture, BeforeTransactionHook, Config, Connect, Db, DbStats, Execute, HookFuture,
-        ObservedRequest, QueryPlanStep, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION, DEFAULT_BLIND_INDEX_KEY,
+        ObservedRequest, QueryPlanStep, RequestChange, RequestHook, RequestParams, Statement, DEFAULT_AES_KEY, DEFAULT_AES_VERSION, DEFAULT_BLIND_INDEX_KEY,
         DEFAULT_PLAN_CACHE_SIZE, DEFAULT_POOL_ACQUIRE_TIMEOUT_MS, DEFAULT_POOL_IDLE_SIZE, DEFAULT_POOL_LIFETIME_MS, DEFAULT_STATEMENT_CACHE_SIZE,
         DEFAULT_STATEMENT_TIMEOUT_MS,
     },
