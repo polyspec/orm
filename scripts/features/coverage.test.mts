@@ -50,6 +50,25 @@ function defined<T>(value: T | undefined): T {
   return value;
 }
 
+/** A frozen recipe as these cases read it: its cases, each with an identifier and an optional language restriction. */
+type RecipeCase = { id: string; only?: unknown };
+type Recipe = { cases: RecipeCase[] };
+
+function isRecipeCase(value: unknown): value is RecipeCase {
+  return typeof value === 'object' && value !== null && 'id' in value && typeof value.id === 'string';
+}
+
+function isRecipe(value: unknown): value is Recipe {
+  return typeof value === 'object' && value !== null && 'cases' in value && Array.isArray(value.cases) && value.cases.every(isRecipeCase);
+}
+
+// parseRecipe reads a recipe and fails when it holds no list of cases with identifiers.
+function parseRecipe(text: string): Recipe {
+  const value: unknown = JSON.parse(text);
+  assert.ok(isRecipe(value), 'the recipe holds no list of cases with identifiers');
+  return value;
+}
+
 // sampleManifest is the manifest of one independent Go feature whose only test is the owner file.
 function sampleManifest(owner: string): SampleManifest {
   return { features: [{ id: 'sample', status: 'partial', tests: testsOf(['go']),
@@ -62,15 +81,15 @@ function sampleManifest(owner: string): SampleManifest {
 caseTest('a legacy owner requires the cases of its frozen recipe, not the cases of the contracts copy', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-requested-')));
   try {
-    const recipe = JSON.parse(await readFile(new URL('../../contracts/fixtures/catalog_connection/catalog_connection.json', import.meta.url), 'utf8'));
-    const plain = recipe.cases.filter((item: { only?: unknown }) => item.only === undefined);
+    const recipe = parseRecipe(await readFile(new URL('../../contracts/fixtures/catalog_connection/catalog_connection.json', import.meta.url), 'utf8'));
+    const plain = recipe.cases.filter(item => item.only === undefined);
     await mkdir(join(root, 'contracts/fixtures/x'), { recursive: true });
     await mkdir(join(root, 'legacy/contracts/fixtures/x'), { recursive: true });
     await writeFile(join(root, 'contracts/fixtures/x/x.json'), JSON.stringify({ ...recipe, cases: plain.slice(0, 2) }));
     await writeFile(join(root, 'legacy/contracts/fixtures/x/x.json'), JSON.stringify({ ...recipe, cases: plain.slice(0, 1) }));
     const path = requestedRecipe(root, 'legacy/packages/go/orm', 'contracts/fixtures/x/x.json');
     const required = recipeCaseIds(await readFile(path, 'utf8'), 'none');
-    assert.deepEqual(required, [plain[0].id]);
+    assert.deepEqual(required, [defined(plain[0]).id]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -20,8 +20,10 @@ caseTest('a released identifier that is retired in the current spec passes', () 
 caseTest('a released identifier absent from the current spec fails and names its tag', () => {
   const errors = releasedSpecErrors(fixture('released.md'), fixture('absent.md'), 'v0.0.33');
   assert.equal(errors.length, 1, `want one error, got ${JSON.stringify(errors)}`);
-  assert.match(errors[0], /CFG-35/);
-  assert.match(errors[0], /v0\.0\.33/);
+  const [error] = errors;
+  assert.ok(error !== undefined, 'want one error');
+  assert.match(error, /CFG-35/);
+  assert.match(error, /v0\.0\.33/);
 });
 
 caseTest('a repository without a version tag is an error, not a pass', async () => {
@@ -41,7 +43,9 @@ caseTest('a repository without a version tag is an error, not a pass', async () 
 caseTest('a changed body is listed for review with its tag and both bodies', () => {
   const entries = releasedSpecReview(fixture('released.md'), fixture('changed.md'), 'v0.0.33');
   assert.equal(entries.length, 1);
-  assert.equal(entries[0].id, 'CFG-35');
-  assert.equal(entries[0].tag, 'v0.0.33');
-  assert.notEqual(entries[0].released, entries[0].current);
+  const [entry] = entries;
+  assert.ok(entry !== undefined, 'want one review entry');
+  assert.equal(entry.id, 'CFG-35');
+  assert.equal(entry.tag, 'v0.0.33');
+  assert.notEqual(entry.released, entry.current);
 });

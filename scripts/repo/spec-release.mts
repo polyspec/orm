@@ -10,11 +10,16 @@ export function latestVersionTag(repo: string): string {
     .filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag));
   if (tags.length === 0) throw new Error(`no version tag (vX.Y.Z) in ${repo}; the release-spec check needs the tags`);
   const key = (tag: string) => tag.slice(1).split('.').map(Number);
-  return tags.sort((a, b) => {
+  const [latest] = tags.sort((a, b) => {
     const [x, y] = [key(a), key(b)];
-    for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return y[i] - x[i];
+    for (let i = 0; i < 3; i++) {
+      const [left, right] = [x[i] ?? 0, y[i] ?? 0];
+      if (left !== right) return right - left;
+    }
     return 0;
-  })[0];
+  });
+  if (latest === undefined) throw new Error(`no version tag (vX.Y.Z) in ${repo}; the release-spec check needs the tags`);
+  return latest;
 }
 
 export function releasedSpecFor(repo: string, path: string): { tag: string; text: string } {
@@ -30,7 +35,10 @@ function statements(text: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const line of text.split('\n')) {
     const match = /^- \*\*([A-Z]+-\d+[a-z]?)\*\* (.*)$/.exec(line);
-    if (match) out.set(match[1], match[2]);
+    if (match === null) continue;
+    const [, id, body] = match;
+    if (id === undefined || body === undefined) throw new Error(`statement line without an identifier or a body: ${line}`);
+    out.set(id, body);
   }
   return out;
 }
