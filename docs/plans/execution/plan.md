@@ -5,6 +5,8 @@
 
 The project checklist of the 0.0.1 completion: every item of the project and its state, from the dbspec schema language to the markdown IR executor. The items are in [the execution checklist](checklist.md), one table in the order of the project. The sections below name the first and the last item of each section of the project. The diagnosis and remedy map for remaining work is in [the remediation plan](../../operations/remediation-plan.md); the checklist remains the sole state and evidence ledger.
 
+The lanes fix/ci-tools-kinds and fix/t675-clock-module go after 0.0.34, because their rows do not name 0.0.34 as the release they ship in.
+
 | Section | First item | Last item | Items |
 |---|---|---|---|
 | dbspec schema language | T8 | T42 | 203 |
