@@ -1033,7 +1033,7 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
   (their values are the Rust values `Param` and `Key`). `Db::with_request_text_hook` is declared with its hook as an inline function
   parameter with `keeps: true` and `async_allowed: false`: the hook takes the request as its protocol JSON text (`Request::to_json`, FMS-31)
-  and the record unit `RequestParams` (CORE-70), and returns the changed request text and the parameters, since the hook of each legacy host
+  and the list of `orm_value` parameters (CORE-70), and returns the changed request text and the parameters as `orm_value`, since the hook of each legacy host
   changes the request and adds parameters (docs/operations/usage.md, Request hook). `Db::with_request_hook` itself is not declared, because
   its hook takes a mutable reference and returns a future. `Utils` and its parts own a handle of their connection and
   are declared as CORE-180 to CORE-186 state, without `Utils::run`, `Utils::local` and `Utils::was_inserted`
