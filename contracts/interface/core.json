@@ -36051,6 +36051,928 @@
       }
     }
   ],
+  "query.avg": [
+    {
+      "id": "a_column",
+      "rule": "CORE-207",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "column": "seq",
+      "result": null,
+      "after": [
+        {
+          "call": "query.entity",
+          "args": {},
+          "result": "clock_event"
+        }
+      ]
+    }
+  ],
+  "query.get_avg": [
+    {
+      "id": "no_avg",
+      "rule": "CORE-207",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        }
+      },
+      "raises": {
+        "category": "value",
+        "kind": "config",
+        "message": "config: get_avg requires avg_<col>()"
+      }
+    },
+    {
+      "id": "no_connection",
+      "rule": "CORE-81",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "seq"
+            }
+          }
+        ]
+      },
+      "raises": {
+        "category": "value",
+        "kind": "config",
+        "message": "config: the model has no connection; connect it to a Db or to the Tx of a transaction"
+      }
+    },
+    {
+      "id": "a_name_that_is_no_column",
+      "rule": "CORE-207",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "missing"
+            }
+          }
+        ]
+      },
+      "raises": {
+        "category": "value",
+        "kind": "config",
+        "message": "config: missing is not a column of clock_event"
+      }
+    },
+    {
+      "id": "empty_list",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "seq"
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "list",
+                  "value": []
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "category": "value",
+        "kind": "empty_in",
+        "message": "empty_in: seq received an empty list"
+      }
+    },
+    {
+      "id": "a_map_is_no_condition_value",
+      "rule": "CORE-82",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 clock\n\ntable clock_event {\n  seq i64 identity\n  label varchar(32)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb"
+            }
+          },
+          "entity": "clock_event"
+        },
+        "then": [
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "seq"
+            }
+          },
+          {
+            "call": "query.where",
+            "args": {
+              "chain": "Seq",
+              "values": [
+                {
+                  "kind": "map",
+                  "value": []
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "raises": {
+        "category": "value",
+        "kind": "codec_encode",
+        "message": "codec_encode: the value of a condition is a map"
+      }
+    }
+  ],
+  "query.get_avg.sqlite": [
+    {
+      "id": "the_average_of_a_column",
+      "rule": "CORE-207",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "qty"
+            }
+          }
+        ]
+      },
+      "result": 2.5,
+      "note": "the rows hold the qty 5 and 0"
+    },
+    {
+      "id": "the_last_avg_called_holds",
+      "rule": "CORE-207",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "qty"
+            }
+          },
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "id"
+            }
+          }
+        ]
+      },
+      "result": 1.5,
+      "note": "the rows hold the id 1 and 2"
+    },
+    {
+      "id": "no_row_averages_to_null",
+      "rule": "CORE-207",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "qty"
+            }
+          },
+          {
+            "call": "query.where_none",
+            "args": {
+              "connector": ""
+            }
+          }
+        ]
+      },
+      "result": null
+    },
+    {
+      "id": "a_column_that_is_no_number",
+      "rule": "CORE-207",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "sku"
+            }
+          }
+        ]
+      },
+      "raises": {
+        "category": "value",
+        "kind": "operator_not_allowed",
+        "message": "operator_not_allowed: avg on stock.sku (varchar(16))"
+      }
+    },
+    {
+      "id": "a_grouped_query",
+      "rule": "CORE-201",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:b30b7ac435f9d91c6a9b75f8869c56e6f48e8dc1a8cfd7aadb09155d7d1f3fcd"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.avg",
+            "args": {
+              "column": "qty"
+            }
+          },
+          {
+            "call": "query.group_by",
+            "args": {
+              "column": "sku"
+            }
+          }
+        ]
+      },
+      "raises": {
+        "category": "value",
+        "kind": "ir_invalid",
+        "message": "ir_invalid: group_by is only valid on count or group_count, not avg"
+      }
+    }
+  ],
+  "query.force_index.sqlite": [
+    {
+      "id": "the_hint_of_an_index",
+      "rule": "CORE-156",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE INDEX ix_stock_qty ON stock (qty)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "note": "the table of the case has the index ix_stock_qty and not ix_stock_note, which SQLite refuses as a hint",
+      "name": "ix_stock_qty",
+      "result": null,
+      "after": [
+        {
+          "call": "query.get_count",
+          "args": {},
+          "result": 2
+        }
+      ]
+    },
+    {
+      "id": "a_name_that_is_no_index",
+      "rule": "CORE-156",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE INDEX ix_stock_qty ON stock (qty)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "name": "nope",
+      "result": null,
+      "after": [
+        {
+          "call": "query.get_count",
+          "args": {},
+          "raises": {
+            "kind": "config"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_statement_has_the_hint",
+      "rule": "CORE-156",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE INDEX ix_stock_qty ON stock (qty)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "note": "the table of the case has the index ix_stock_qty and not ix_stock_note, which SQLite refuses as a hint",
+      "name": "ix_stock_note",
+      "result": null,
+      "after": [
+        {
+          "call": "query.get_count",
+          "args": {},
+          "raises": {
+            "kind": "driver"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_last_force_index_called_holds",
+      "rule": "CORE-156",
+      "receiver": {
+        "new": "query.new",
+        "args": {
+          "schema": {
+            "new": "schema.load",
+            "args": {
+              "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+              "external_text": "",
+              "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+            }
+          },
+          "entity": "stock"
+        },
+        "then": [
+          {
+            "call": "query.connect",
+            "args": {
+              "connection": {
+                "new": "db.connect_schema",
+                "args": {
+                  "dsn": {
+                    "text": [
+                      "sqlite://",
+                      {
+                        "case_path": "depot.db"
+                      }
+                    ]
+                  },
+                  "schema": {
+                    "new": "schema.load",
+                    "args": {
+                      "manifest_text": "dbspec 1 depot\n\ntable stock {\n  id i64 identity\n  sku varchar(16)\n  qty i32\n  note varchar(16) null\n  primary key (id)\n  unique uq_stock_sku (sku)\n  index ix_stock_note (note)\n  index ix_stock_qty (qty)\n}\n",
+                      "external_text": "",
+                      "manifest_hash": "sha256:7d84ab64cd077e06af46483225764855150538bf2314b60fdbff5260e059e827"
+                    }
+                  },
+                  "pool_size": 1,
+                  "cfg": {}
+                },
+                "then": [
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE TABLE stock (id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL CONSTRAINT uq_stock_sku UNIQUE, qty INTEGER NOT NULL, note TEXT NULL)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"CREATE INDEX ix_stock_qty ON stock (qty)\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  },
+                  {
+                    "call": "db.execute",
+                    "args": {
+                      "step": "{\"id\":1,\"role\":\"main\",\"sql\":\"INSERT INTO stock (id, sku, qty, note) VALUES (1, 'a', 5, NULL), (2, 'b', 0, 'low')\",\"tables\":[],\"bind_slots\":[]}",
+                      "params": []
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "call": "query.force_index",
+            "args": {
+              "name": "ix_stock_note"
+            }
+          }
+        ]
+      },
+      "note": "the table of the case has the index ix_stock_qty and not ix_stock_note, which SQLite refuses as a hint",
+      "name": "ix_stock_qty",
+      "result": null,
+      "after": [
+        {
+          "call": "query.get_count",
+          "args": {},
+          "result": 2
+        }
+      ]
+    }
+  ],
   "query.group_limit": [
     {
       "id": "a_count",

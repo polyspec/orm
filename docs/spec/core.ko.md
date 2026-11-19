@@ -111,9 +111,12 @@
   member를 선언하는 generated interface를 생성하지 않기 때문이다(GN-6ap). legacy client는 실행 흐름을 두고 답하며(INT-192) 바뀌지 않는다.
 - **CORE-24** 트랜잭션은 실패의 kind가 `deadlock`이면 롤백 뒤 callback 전체를 다시 실행한다: 문장의 deadlock,
   `transaction_conflict`(INT-48)의 오류, callback이 던진 kind `deadlock`의 오류가 해당한다. 바인딩은 callback이 던진 orm
-  category 클래스 오류의 kind를 코어에 넘기고(계약의 `recognize`), 그 밖의 실패는 롤백 뒤 그대로 돌려준다. 시도 `n`(1부터)
-  전의 기다림은 `50 << (n - 1)` 밀리초에 0~19 밀리초의 jitter를 더한 것이다. 시험은 코어에 시계와 jitter의 근원을 주므로
-  결과가 그 둘에 기대지 않는다.
+  category 클래스 오류의 kind를 코어에 넘기고(계약의 `recognize`), 그 밖의 실패는 롤백 뒤 그대로 돌려준다. 재시도는 그
+  횟수로만 끝난다(INT-43): 다음 시도는 롤백 바로 뒤에 시작하고, 시도 사이에 기다림이 없다. 마지막 시도가 `deadlock`으로
+  실패하면 오류는 kind `deadlock`인 그 시도의 오류이고, 그 앞 시도들의 오류를 순서대로 cause의 list로 가지므로 list의
+  길이가 실행된 재시도의 수다. row lock은 잠그는 행에 순서를 주지 않는다: `for_update`와 `for_share`는 호출자의
+  `ORDER BY` 순서로, `Query`에 그것이 없으면 데이터베이스가 행을 읽는 순서로 잠그므로
+  (packages/rust/src/engine/planner.rs:631-645), deadlock을 피하는 잠금 순서는 호출자가 정한다.
 - **CORE-25** callback이 실패하고 롤백도 실패하면 결과는 kind `rollback_failed`의 오류이고, 메시지는 롤백의 실패를 적으며,
   property 둘을 가진다: `callbackError`는 callback의 실패 그대로(orm 오류이거나 언어 예외이며 코어가 열어 보지 않는다),
   `rollbackError`는 롤백의 오류다. callback만 실패하면 그 실패를 감싸지 않고 그대로 돌려준다. INT-46과 INT-72의
@@ -542,7 +545,8 @@
   member `forceIndex<Name>()`이다(DSL-78). 요청의 query의 `force_index`이고, 마지막에 부른 것이 남는다. 엔티티의
   index도 unique key도 아닌 이름은 다음 terminal에서 `config`이고 메시지는 `<name> is not an index of <entity>`다.
   `Query`의 모든 builder가 엔티티에 없는 이름을 거부하는 kind다(CORE-82, CORE-87, CORE-89, CORE-91). planner만이
-  메시지 `<entity>.<name>`의 `index_unknown`을 준다. 구현되지 않았다: `Query`의 `force_index`.
+  메시지 `<entity>.<name>`의 `index_unknown`을 준다. 힌트는 DIA-7의 절이다: MySQL은 `FORCE INDEX`, SQLite는
+  `INDEXED BY`이고 PostgreSQL에는 없다.
 - **CORE-157** member 셋은 `relation`이나 `relations`에 준 `Query`를 어떻게 붙일지 정하며(CORE-88, PRT-14), 어느
   쪽에도 주지 않은 `Query`에는 효과가 없다. `parent_node()`는 `relation` 결과의 행을 그것을 가진 행에 합친다
   (DSL-84). 요청의 `flatten`이고, 이것에 따라 행의 JSON 텍스트(CORE-161)는 자기 member 뒤에 자식의 member를 쓰며 행이
@@ -559,8 +563,13 @@
   쪽에도 주지 않은 `Query`, 곧 terminal의 root나 `where_in`의 subquery 같은 것에서는 다음 terminal에서 `config`이고
   메시지는 `possible applies only to a relation child`다. 부모 엔티티의 열이 아닌 이름은 부모의 다음 terminal에서
   `config`이고 메시지는 `<column> is not a column of <entity>`다(CORE-130). `Query`의 모든 builder가 엔티티에 없는
-  열에 주는 kind와 메시지다(CORE-87, CORE-89, CORE-91). 행을 읽는 `value`만 `column_unknown`이다(CORE-83). 구현되지
-  않았다: `Query`의 `possible`.
+  열에 주는 kind와 메시지다(CORE-87, CORE-89, CORE-91). core의 member는 모르는 열의 kind가 다르다. 다음 terminal에서
+  메시지 `<column> is not a column of <entity>`와 함께 `config`인 것은 `group_by`, `sum`, `add_column`,
+  `remove_column`, `key_name`, `set`, `plus`, `minus`와 `where`, `get_by`, `get_count`의 chain 이름이다. 메시지
+  `<entity>.<column>`과 함께 `column_unknown`인 것은 행을 읽는 `query.value`(CORE-83), `db.analyze_restore`,
+  `runtime_model.validate`, `param_uses`, `restore_key`, `compile`, `operator_allowed`, 그리고 request hook이 더한 열에
+  대한 planner다. 호출자의 오류 처리가 기대므로 기존 member는 자기 kind를 유지하고, 새 member는 같은 종류의 기존
+  member를 따른다. 구현되지 않았다: `Query`의 `possible`.
 - **CORE-159** `fetch_key(function)`은 `gets`의 `Collection`을 primary key와 `key_name`(CORE-89) 대신 `function`이 각
   행에 대해 돌려주는 값으로 key하고, `fetch_value(function)`은 각 행의 값 하나를 계산하며 `Collection`은 그 값을 행
   옆에 그 key로 가진다(DSL-70). 함수는 행인 `Query`를 받고, 행과 그 relation 결과를 읽은 뒤 행의 순서대로 행마다 한
@@ -717,6 +726,16 @@
   `group_lookahead_paginate needs group_by`이며, group된 `Query`의 `gets_lookahead_page`는 `ir_invalid`다(CORE-201).
   어느 것도 `Query`를 바꾸지 않는다. 계약에서 두 결과는 class이고 `page`, `per_page`, `has_next`는 property다.
   `lookahead_page`의 `rows`는 unit `rows`를 돌려준다(CORE-170). `Db` step(CORE-92)에는 이것들의 terminal이 없다.
+- **CORE-207** `avg(column)`은 `get_avg()`가 그 평균을 돌려줄 열을 정한다. 언어 구현의 member `avg<Col>()`과
+  `getAvg()`다(DSL-63). 요청은 `avg`이고 그 열은 요청의 `agg`다(PRT-2). 마지막에 부른 `avg`가 남고, `Query`의
+  조건이 행을 고른다. 결과는 `float`나 null이다: 평균은 가장 가까운 binary64 값으로 한 번 바뀔 때까지 정확하고
+  (DSL-66, DSL-161), 맞는 행이 없든 모든 값이 null이든 값이 남지 않으면 null이다. `avg`가 없는 `Query`의
+  `get_avg`는 연결을 구하기 전에 `config`이고 메시지는 `get_avg requires avg_<col>()`다. 엔티티의 열이 아닌 이름은
+  다음 terminal에서 `config`이고 메시지는 `<column> is not a column of <entity>`이며(CORE-87), 수가 아닌 열은
+  `operator_not_allowed`이고 메시지는 `avg on <entity>.<column> (<type>)`이고, 유한한 수가 아닌 scalar는
+  `codec_decode`이고 메시지는 `aggregate scalar is not a finite number`이며, group된 `Query`는 `ir_invalid`다
+  (CORE-201). `avg`는 다른 terminal에 효과가 없고, 요청의 `agg` 하나가 함수 하나를 가지므로 `sum`과 `avg`는 서로를
+  대체한다. `Db` step에는 call `avg`도 `get_avg`의 terminal도 없다.
 
 ## 상태 기계
 
@@ -761,7 +780,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
      `rollback_failed`(CORE-25)이고, 그 `callbackError`가 이 실패다.
   콜백의 handle은 4단계가 문장을 보내기 전에 끝난다(CORE-23). 기계가 실패로 끝날 때 가지고 있던 `Passthrough`는 drop되고,
   그 drop이 언어 쪽의 값을 놓아 준다.
-- **CORE-104** CORE-24의 재시도는 CORE-24가 적는 대로 기다리는 `Io` 단계 뒤에 1~4단계를 다시 하는 것이다: 기계는 시도마다
+- **CORE-104** CORE-24의 재시도는 시도 사이에 기다리는 단계 없이 1~4단계를 다시 하는 것이다: 기계는 시도마다
   `callback`을 한 번 호출하며(`F`가 `FnMut`인 이유다), commit이 `deadlock`으로 실패한 시도의 값은 drop한다. 실패
   `Failure::Raised`는 코어에게 kind가 없으므로, 언어 코드가 잡지 않은 콜백 문장의 예외는 kind가 `deadlock`이었어도 바인딩을
   통해서는 재시도되지 않는다: 계약은 `callback`의 함수 타입에 `errors.recognize`를 적지 않는데, 생성기가 `machine`과 함께
@@ -978,7 +997,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   `get_count_by`, `get_by`는 `SELECT` 하나를 보내고 `read_only`를 포함한 쓰기의 kind를 내지 않는다. `condition_not_met`의 조건은 insert만
   검사하므로 `update`, `delete`, `restore`는 그것을 내지 않는다. `restore`는 지워지지 않은 행을 그대로 돌려주므로
   `row_not_deleted`는 `restore_or_create`만 raise한다. `restore_or_create`는 복원한 행을 자기 transaction에서 읽으므로
-  `no_rows`를 내지 않는다. `db.execute`는 `Db`에서 실행되어 `Tx`만 내는 `busy`와 `transaction_ended`를 내지 않는다. `Query`의 어떤 member도 `column_unknown`을 내지 않는다.
+  `no_rows`를 내지 않는다. `db.execute`는 `Db`에서 실행되어 `Tx`만 내는 `busy`와 `transaction_ended`를 내지 않는다. `Query`의 어떤 builder도 `column_unknown`을 내지 않는다.
   builder가 terminal이 entity를 읽기 전에 모르는 열을 `config`로 거부하기 때문이다(CORE-82). `db.connect`와
   `db.connect_schema`는 `capability_unsupported`를 내지 않는다. core는 link한 SQLite가 3.46 이상임을 build 때
   확인하므로(DSL-150) 어떤 연결도 더 오래된 SQLite를 만나지 않는다. `db.connect_schema`는 `schema_invalid`를 내지 않는다. 계약의 schema는 `Schema::load`가 만들고,

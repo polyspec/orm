@@ -88,7 +88,7 @@
 | `grid_temporal_value` | value | executor | see the rule that names it |
 | `grid_temporal_precision` | value | executor | see the rule that names it |
 | `lock_not_available` | store | driver | a NOWAIT lock could not be acquired immediately |
-| `deadlock` | store | driver | MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; retries require TransactionOptions |
+| `deadlock` | store | driver | MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01; a transaction retries it with no wait to its retry count, and its last error carries the errors of the earlier attempts in order as its causes |
 | `duplicate_key` | store | driver | MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555 |
 | `foreign_key` | store | driver | MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action |
 | `constraint` | store | driver | MySQL 3819 / MariaDB 4025 / PostgreSQL 23514 / SQLite 275; a mysql error number is read by the table of its server (DIA-201) |
