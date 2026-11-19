@@ -1,5 +1,5 @@
 <!-- doc-id: core -->
-<!-- source-sha256: b4eabc33aa784b04591be3af198941fa7119e03ef36909c36e50d35d36c005fd -->
+<!-- source-sha256: e9afea742bdd77c825c3ff1fdae5fd60ae33f4c8011041ab2a8c7cbdf7fe51ee -->
 # Rust 코어와 생성 바인딩
 
 `packages/rust`의 crate `polyspec-orm`이 orm 규칙의 유일한 구현이다. 바인딩(PHP, Python, Node, Go)은 그 인터페이스 계약
@@ -88,7 +88,7 @@
   문장이 `Db`를 거쳐 트랜잭션 밖에서 실행되기 때문이다. 선언된 매개변수의 검사는 바인딩의 생성된 호출이 하고(binding
   B2.467), 그 증거는 각 바인딩의 생성된 시험이다: Node의 `GN-6bu: Db.transaction refuses a callback that takes no
   argument`, Python의 `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument`, PHP의
-  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument`. Go에서는 callback의 type이 handle을 받는다. Go에서는 생성된 callback type이 Tx 인자를 요구하므로 이 거절은 컴파일 시점에 일어난다. 현재 이 거절은 go(컴파일 시점)와 rust(core runner)에서 검사된다. db.transaction에는 wasm target이 없다. python, node, php-ext에서의 검사는 binding 행 B2.557을 기다린다. 그 행에서 시험 생성기는 case의 callback을 그 type의 parameter 수로 쓴다. 그래서 contract case `a_callback_that_declares_no_parameter`는 go에서만 돈다(group `db.transaction.no_parameter`). 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
+  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument`. Go에서는 callback의 type이 handle을 받는다. Go에서는 생성된 callback type이 Tx 인자를 요구하므로 이 거절은 컴파일 시점에 일어난다. Go와 Rust는 callback type이 handle을 받으므로(Rust에서는 `F: Fn(Tx) -> Fut`) 그런 callback을 컴파일 시점에 거부한다. db.transaction에는 wasm target이 없다. 동적 target인 Python, Node, PHP 확장의 실행 시점 거부는 binding 행 B2.557 전까지 검증되지 않는다. 그 행에서 시험 생성기는 case의 callback을 그 type의 parameter 수로 쓴다. 그때까지 contract에는 그 case가 없다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
   모델은 `config`로 실패한다. callback 안의 `Db::transaction`은 pool의 다른 연결에서 독립된 트랜잭션을 연다. 그 트랜잭션이
   바깥 트랜잭션이 잡은 행 잠금을 기다리면 대기 한도에서 `canceled`나 `deadlock`으로 끝난다. callback이 `Db`를 거쳐 보내는
   문장은 그 트랜잭션 밖의 문장이다: `Db`는 pool이므로 그 문장은 pool의 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이
