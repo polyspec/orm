@@ -50,7 +50,6 @@ pub struct Error {
     detail: Detail,
 }
 
-
 impl Error {
     /// An error of `kind` with the text of its message (CORE-12).
     #[must_use]
