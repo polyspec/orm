@@ -96,7 +96,7 @@ implementation is eligible for removal on that evidence.
   transaction. The check of the declared parameters is the generated call of the binding (binding B2.467), and its proof
   is the generated test of each binding: `GN-6bu: Db.transaction refuses a callback that takes no argument` of Node,
   `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument` of Python and
-  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument` of PHP; the type of the callback in Go takes the handle. There is no active transaction of an
+  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument` of PHP; the type of the callback in Go takes the handle. In Go the generated callback type requires a Tx argument, so this refusal happens at compile time. There is no active transaction of an
   execution flow: this replaces INT-45, INT-161 and the first sentence of DSL-10. A model with no connection fails with
   `config`. A `Db::transaction` inside a callback opens an independent transaction on another connection of the pool; when
   it waits for a row lock that the outer transaction holds, it ends with `canceled` at the bound of the wait or with

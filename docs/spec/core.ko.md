@@ -86,7 +86,7 @@
   문장이 `Db`를 거쳐 트랜잭션 밖에서 실행되기 때문이다. 선언된 매개변수의 검사는 바인딩의 생성된 호출이 하고(binding
   B2.467), 그 증거는 각 바인딩의 생성된 시험이다: Node의 `GN-6bu: Db.transaction refuses a callback that takes no
   argument`, Python의 `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument`, PHP의
-  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument`. Go에서는 callback의 type이 handle을 받는다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
+  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument`. Go에서는 callback의 type이 handle을 받는다. Go에서는 생성된 callback type이 Tx 인자를 요구하므로 이 거절은 컴파일 시점에 일어난다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
   모델은 `config`로 실패한다. callback 안의 `Db::transaction`은 pool의 다른 연결에서 독립된 트랜잭션을 연다. 그 트랜잭션이
   바깥 트랜잭션이 잡은 행 잠금을 기다리면 대기 한도에서 `canceled`나 `deadlock`으로 끝난다. callback이 `Db`를 거쳐 보내는
   문장은 그 트랜잭션 밖의 문장이다: `Db`는 pool이므로 그 문장은 pool의 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이
