@@ -3428,6 +3428,10 @@ catalog-connection-check/go: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) ./legacy/packages/go/orm -run '^TestRecipeCatalogConnection(Mysql|Postgres|Sqlite|SqliteOnly)$$' -count=1
 catalog-connection-check/rust: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) catalog-connection-check -- $(RECIPE_RUST_TEST) --test all -- catalog_connection_mysql:: catalog_connection_postgres:: catalog_connection_sqlite:: catalog_connection_sqlite_only::
+# catalog-two-cases-check/rust runs the two MySQL catalog cases that CFG-35 names (T702): the budget stop with the kill refused,
+# and the kill connection opened before the stream.
+catalog-two-cases-check/rust: lease-tool
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) catalog-two-cases-check -- $(RECIPE_RUST_TEST) --test all -- catalog_connection_mysql::budget_stop_with_the_kill_refused catalog_connection_mysql::kill_connection_open_before_the_stream
 # statement-events-check runs the recipe contracts/fixtures/statement_events/statement_events.json on the three databases
 # in the six clients (docs/spec/feature-coverage.md FCV-22), as catalog-connection-check does. Each part runs its client's
 # three entries on the servers of TEST_ENV, so one that fails names its client while the others still run (make -k).
