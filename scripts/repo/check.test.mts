@@ -1131,8 +1131,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
   const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
   const own = jobTargets(makefile);
-  assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
-  assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
+  assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
+  assert.ok((targets.static ?? []).includes('dbspec-vscode-check'), 'the VS Code extension check, which needs no VS Code, runs in the static CI group; CI does not run the VS Code integration test (T704)');
   assert.deepEqual(targets.preflight, ['repo-check', 'spec-release-check', 'runner-check', 'docs-rules-check', 'comment-language-check'], 'the group preflight runs the structure checks and the release-spec check (T428, T682)');
   assert.ok((targets.static ?? []).includes('catalog-described-temporal-go-check'), 'the appended owner check runs in the static CI group');
   for (const [group, expected] of Object.entries({
@@ -2974,8 +2974,7 @@ caseTest('the lease tool is built once for two targets of one job', () => {
   }
 });
 
-// The CI jobs case (CR9) checks that no CHECK_TARGETS target runs in two CI jobs: a test group, the kit gates, the docs job (make docs-ci)
-// or the editor job (make ci-vscode-integration). A target that two jobs run is run twice in one CI run.
+// The CI jobs case (CR9) checks that no CHECK_TARGETS target runs in two CI jobs: a test group, the kit gates or the docs job (make docs-ci). A target that two jobs run is run twice in one CI run.
 caseTest('no target of CHECK_TARGETS runs in two CI jobs', () => {
   assert.deepEqual(jobOverlapErrors(text('Makefile')), []);
 });

@@ -1,8 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2faa8c0ec68d6b9b9e910c879dd0e198e79c1207d90053f277ce3e4fb0d23763 -->
+<!-- source-sha256: 0b3f6f453bfa6efa36e6e8f6962dd33adbcbcf92e9d029c5597e02f3810255d3 -->
 # 변경 이력
 
 ## Unreleased
+
+- CI는 더 이상 VS Code integration test를 실행하지 않는다: job editor와 make ci-editor를 지웠고, make
+  ci-vscode-integration은 local e2e로 남으며, extension의 build와 manifest test(make dbspec-vscode-check)는 static CI group에서
+  실행한다(T704, template T28.147을 따름).
 
 ## 0.0.34
 

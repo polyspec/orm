@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- CI no longer runs the VS Code integration test: the job editor and make ci-editor are removed, make
+  ci-vscode-integration stays a local e2e, and the extension's build and manifest test (make dbspec-vscode-check) run in the
+  static CI group (T704, after template T28.147).
+
 ## 0.0.34
 
 - A date or datetime parameter reaches the request text hook of `Db::with_request_text_hook` as its canonical text,
