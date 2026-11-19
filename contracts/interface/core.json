@@ -43074,7 +43074,7 @@
       "result": "sqlite"
     }
   ],
-  "db.with_request_hook": [
+  "db.with_request_text_hook": [
     {
       "id": "a_hook_adds_a_parameter",
       "rule": "CORE-70",

@@ -1384,6 +1384,20 @@
       ]
     },
     {
+      "id": "request_change",
+      "name": ["request", "change"],
+      "module": "",
+      "kind": "record",
+      "visibility": "public",
+      "origin": "generated",
+      "only": {"targets": ["php", "python", "node", "go"], "reason": "CORE-70"},
+      "core_type": "polyspec_orm::RequestChange",
+      "fields": [
+        {"name": ["request"], "type": "text", "required": true},
+        {"name": ["params"], "type": {"list": {"unit": "orm_value"}}, "required": true}
+      ]
+    },
+    {
       "id": "observed_request",
       "name": [
         "observed",
@@ -2050,14 +2064,14 @@
           }
         },
         {
-          "id": "db.with_request_hook",
-          "name": ["with", "request", "hook"],
+          "id": "db.with_request_text_hook",
+          "name": ["with", "request", "text", "hook"],
           "kind": "method",
           "visibility": "public",
           "parameters": [
             {
               "name": ["hook"],
-              "type": {"function": {"parameters": ["text", {"unit": "request_params"}], "returns": "none", "async_allowed": false}},
+              "type": {"function": {"parameters": ["text", {"unit": "request_params"}], "returns": {"unit": "request_change"}, "async_allowed": false}},
               "required": true,
               "keeps": true
             }
@@ -2065,7 +2079,7 @@
           "returns": {"unit": "db"},
           "raises": [],
           "wait": "none",
-          "core": {"path": "polyspec_orm::Db::with_request_hook", "receiver": "&self", "result": false}
+          "core": {"path": "polyspec_orm::Db::with_request_text_hook", "receiver": "&self", "result": false}
         },
         {
           "id": "db.with_request_log",
@@ -9440,9 +9454,9 @@
       }
     },
     {
-      "member": "db.with_request_hook",
+      "member": "db.with_request_text_hook",
       "file": "contracts/interface/core.json",
-      "group": "db.with_request_hook"
+      "group": "db.with_request_text_hook"
     }
   ]
 }

@@ -1136,14 +1136,18 @@ impl Db {
 
     /// The synchronous form of [`Db::with_request_hook`] (CORE-70): the hook receives the request as its JSON text and the
     /// parameters, and returns the changed text and parameters, as the hooks of the legacy hosts change the request in place
-    /// and add parameters (docs/operations/usage.md "Request hook"). A text that is no request fails the operation.
-    pub fn with_request_text_hook(&self, hook: impl Fn(String, RequestParams) -> RequestChange + Send + Sync + 'static) -> Db {
+    /// and add parameters (docs/operations/usage.md "Request hook"). A failure of the hook or a text that is no request fails the
+    /// operation.
+    pub fn with_request_text_hook(&self, hook: impl Fn(&str, &RequestParams) -> std::result::Result<RequestChange, binding_core::Failure<Error>> + Send + Sync + 'static) -> Db {
         self.with_request_hook(move |request, params| {
             let owned = RequestParams { params: std::mem::take(&mut params.params) };
-            let change = hook(request.to_json(), owned);
-            let result = crate::ir::Request::from_json(&change.request).map(|parsed| {
-                *request = parsed;
+            let result = hook(&request.to_json(), &owned).map_err(|failure| match failure {
+                binding_core::Failure::Kind(error) => error,
+                other => Error::internal(format!("the request hook raised a failure of a language: {other:?}")),
+            }).and_then(|change| {
+                *request = crate::ir::Request::from_json(&change.request)?;
                 params.params = change.params;
+                Ok(())
             });
             Box::pin(std::future::ready(result))
         })
