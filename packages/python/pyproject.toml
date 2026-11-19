@@ -8,7 +8,7 @@ name = "polyspec-orm"
 version = "0.0.34"
 requires-python = ">=3.14"
 license = "MIT"
-dependencies = ["polyspec-json==0.0.40"]
+dependencies = ["polyspec-json==0.0.41"]
 
 [tool.maturin]
 module-name = "polyspec.orm._native"
