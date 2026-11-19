@@ -1,10 +1,12 @@
 <!-- doc-id: plan-execution -->
-<!-- source-sha256: ec58eb988ae9129a7d044d536a1350ebaeafa72ebb46b64f0deb797f97317704 -->
+<!-- source-sha256: 2300d04068c6123dafa074ac5f7f48afa2693c4d5765791b8d17d98ed77ed28a -->
 # 실행
 
 [English](plan.md)
 
 0.0.1 완료를 위한 프로젝트 체크리스트다. dbspec schema language부터 markdown IR executor까지 프로젝트의 모든 항목과 상태를 담는다. 항목은 [실행 체크리스트](checklist.ko.md)에 프로젝트 순서대로 하나의 표로 있다. 아래 구간은 프로젝트의 각 구간의 첫 항목과 마지막 항목을 적는다. 남은 작업의 진단과 해결 방안은 [해결 계획](../../operations/remediation-plan.ko.md)에 있으며, 상태와 근거의 유일한 원장은 체크리스트다.
+
+fix/ci-tools-kinds와 fix/t675-clock-module 레인은 0.0.34 이후에 들어간다. 두 레인의 row가 0.0.34를 배포 release로 명시하지 않기 때문이다.
 
 | 구간 | 첫 항목 | 마지막 항목 | 항목 수 |
 |---|---|---|---|

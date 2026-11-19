@@ -10668,28 +10668,9 @@
         },
         {
           "op": "catalog.reconnect",
-          "user_from_database": "o1_"
-        },
-        {
-          "op": "catalog.read_only_query",
-          "sql": "SELECT a.seq FROM `user` a CROSS JOIN `user` b CROSS JOIN `user` c",
-          "max_rows": 3,
-          "expect": {
-            "mysql": {
-              "error": "driver",
-              "message_holds": "max_user_connections"
-            }
-          }
-        },
-        {
-          "op": "catalog.read_only_query",
-          "sql": "SELECT 'answers' AS value",
-          "expect": {
-            "mysql": {
-              "error": "driver",
-              "message_holds": "max_user_connections"
-            }
-          }
+          "user_from_database": "o1_",
+          "refused_code": "driver",
+          "refused_message": "max_user_connections"
         },
         {
           "op": "catalog.close"
@@ -10876,7 +10857,7 @@
               "rows": [
                 [
                   {
-                    "text": "1"
+                    "int": "1"
                   }
                 ]
               ]

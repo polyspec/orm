@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, programCaseModules, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, resultCases, languages, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoModuleFilter, programCaseModules, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, databases, executeCoverage, recipeCaseIds, requestedRecipe, resultCases, languages, run, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readImplementations } from '../json/formats.mts';
 import { cargoLink } from '../cargo-link.mts';
@@ -58,6 +58,23 @@ function sampleManifest(owner: string): SampleManifest {
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbol: 'TestFirst' }] } } },
       dependents: [] } }] };
 }
+
+caseTest('a legacy owner requires the cases of its frozen recipe, not the cases of the contracts copy', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-requested-')));
+  try {
+    const recipe = JSON.parse(await readFile(new URL('../../contracts/fixtures/catalog_connection/catalog_connection.json', import.meta.url), 'utf8'));
+    const plain = recipe.cases.filter((item: { only?: unknown }) => item.only === undefined);
+    await mkdir(join(root, 'contracts/fixtures/x'), { recursive: true });
+    await mkdir(join(root, 'legacy/contracts/fixtures/x'), { recursive: true });
+    await writeFile(join(root, 'contracts/fixtures/x/x.json'), JSON.stringify({ ...recipe, cases: plain.slice(0, 2) }));
+    await writeFile(join(root, 'legacy/contracts/fixtures/x/x.json'), JSON.stringify({ ...recipe, cases: plain.slice(0, 1) }));
+    const path = requestedRecipe(root, 'legacy/packages/go/orm', 'contracts/fixtures/x/x.json');
+    const required = recipeCaseIds(await readFile(path, 'utf8'), 'none');
+    assert.deepEqual(required, [plain[0].id]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 caseTest('coverage diagnostics preserve child output when a process remains', async () => {
   const source = [
@@ -892,22 +909,49 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
 // databases of the run (FCV-9), so the checker reads no DSN and no state of a shared database.
 // Requirements: FCV-4.
 // Requirements: FCV-14.
+// legacyTypescriptFile is the entry file of a database for the typescript owner under legacy/.
+const legacyTypescriptFile = (database: string) => `legacy/packages/ts/tests/${database}.mjs`;
+
+// legacyTypescriptManifest is a manifest whose typescript owner under legacy/ declares cases for each database's entry.
+function legacyTypescriptManifest(recipe: string, cases: string[]): SampleManifest {
+  return { features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
+    coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
+      typescript: { part: 'legacy/packages/ts', tests: databases.map(legacyTypescriptFile), commands: Object.fromEntries(databases.map(database =>
+        [database, [{ runner: 'node', test: legacyTypescriptFile(database), cases, recipe }]])) },
+    } } }] };
+}
+
+// writeLegacyTypescriptRoot writes the contracts copy and the frozen copy of a recipe, and the entry of each database.
+async function writeLegacyTypescriptRoot(root: string, recipe: string, contracts: string, frozen: string): Promise<void> {
+  await mkdir(join(root, 'legacy/packages/ts/tests'), { recursive: true });
+  await mkdir(join(root, 'contracts/fixtures/sample'), { recursive: true });
+  await mkdir(join(root, 'legacy/contracts/fixtures/sample'), { recursive: true });
+  await writeFile(join(root, recipe), contracts);
+  // The owner is under legacy/, so it reads the frozen copy of the recipe (CORE-1).
+  await writeFile(join(root, 'legacy', recipe), frozen);
+  for (const database of databases)
+    await writeFile(join(root, legacyTypescriptFile(database)), reportingEntry([`CASE first [${database}] PASS`]));
+}
+
+caseTest('a legacy owner declares the cases of its frozen recipe, not the cases of the contracts copy', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
+  const recipe = 'contracts/fixtures/sample/sample.json';
+  try {
+    // The features declare two cases; the frozen copy the legacy owner runs has one.
+    await writeLegacyTypescriptRoot(root, recipe, '{"cases":[{"id":"first"},{"id":"second"}]}\n', '{"cases":[{"id":"first"}]}\n');
+    assert.deepEqual(await runSelected(legacyTypescriptManifest(recipe, ['first', 'second']), root, ['owner/typescript']), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 caseTest('a run is the exit status of its entry and the lines it wrote', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
-  const fileOf = (database: string) => `legacy/packages/ts/tests/${database}.mjs`;
+  const fileOf = legacyTypescriptFile;
   const recipe = 'contracts/fixtures/sample/sample.json';
-  const manifest = (): SampleManifest => ({
-    features: [{ id: 'sample', status: 'partial', tests: testsOf(['typescript']),
-      coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
-        typescript: { part: 'legacy/packages/ts', tests: databases.map(fileOf), commands: Object.fromEntries(databases.map(database =>
-          [database, [{ runner: 'node', test: fileOf(database), cases: ['first'], recipe }]])) },
-      } } }] });
+  const manifest = () => legacyTypescriptManifest(recipe, ['first']);
   try {
-    await mkdir(join(root, 'legacy/packages/ts/tests'), { recursive: true });
-    await mkdir(join(root, 'contracts/fixtures/sample'), { recursive: true });
-    await writeFile(join(root, recipe), '{"cases":[{"id":"first"}]}\n');
-    for (const database of databases)
-      await writeFile(join(root, fileOf(database)), reportingEntry([`CASE first [${database}] PASS`]));
+    await writeLegacyTypescriptRoot(root, recipe, '{"cases":[{"id":"first"}]}\n', '{"cases":[{"id":"first"}]}\n');
     assert.deepEqual(await runSelected(manifest(), root, ['owner/typescript']), []);
     // A line of another database, or without its database, is refused: an entry runs on its own database.
     await writeFile(join(root, fileOf('sqlite')), reportingEntry(['CASE first [mysql] PASS']));

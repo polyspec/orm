@@ -94,12 +94,12 @@ implementation is eligible for removal on that evidence.
   `read_only` is false, an absent `timeout_ms` sets no bound (INT-42), an absent `retry` is `3` (INT-43) and an absent
   `audit` gives no audit values; the contract declares these defaults. The handle is the only way into the transaction: a
   model runs in it after `connect(&tx)`, and the statement runner of the transaction is `Tx::run`. A callback that declares
-  no parameter is refused before the transaction opens, with the kind `invalid_callback` of the binding (category `type`),
+  no parameter is refused before the transaction opens, with the kind `invalid_callback` of the binding (category `type`), with the message `invalid_callback: a callback that declares no parameter takes no transaction handle, so it is not called`,
   and is not called: such a callback has no handle, so its statements would run through the `Db`, outside the
   transaction. The check of the declared parameters is the generated call of the binding (binding B2.467), and its proof
   is the generated test of each binding: `GN-6bu: Db.transaction refuses a callback that takes no argument` of Node,
   `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument` of Python and
-  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument` of PHP; the type of the callback in Go takes the handle. There is no active transaction of an
+  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument` of PHP; the type of the callback in Go takes the handle. In Go the generated callback type requires a Tx argument, so this refusal happens at compile time. There is no active transaction of an
   execution flow: this replaces INT-45, INT-161 and the first sentence of DSL-10. A model with no connection fails with
   `config`. A `Db::transaction` inside a callback opens an independent transaction on another connection of the pool; when
   it waits for a row lock that the outer transaction holds, it ends with `canceled` at the bound of the wait or with
@@ -938,7 +938,7 @@ no member gives a `tx` that a case can name.
      (CORE-25), whose `callbackError` is that failure.
   The handle of the callback is ended (CORE-23) before step 4 sends its statement. A `Passthrough` that the machine
   holds when it ends with a failure is dropped, which releases its value in the language.
-- **CORE-104** The retry of CORE-24 is steps 1 to 4 again, after an `Io` step that waits as CORE-24 states: the machine
+- **CORE-104** The retry of CORE-24 is steps 1 to 4 again, with no wait step between attempts: the machine
   calls `callback` once per attempt, which is why `F` is `FnMut`, and drops the value of an attempt whose commit failed
   with `deadlock`. A failure `Failure::Raised` has no kind for the core, so an exception of a statement of the callback
   that the language code does not catch is not retried through a binding, although its kind was `deadlock`: the
@@ -1039,8 +1039,12 @@ The preparation-return helper and its gated actual-lease and closed-pool observa
   its hook takes a mutable reference and returns a future.
   Not declared, because a type of the signature is no type of the contract yet: `Tx::run` (the tables
   are borrowed texts and a row is a list of cells with no column), `Db::subscribe` (an
-  event that borrows its statement), `Key`, `GroupRow`, `GroupRows` and `Statement`
-  (their values are the Rust values `Param` and `Key`). `Utils` and its parts own a handle of their connection and
+  event that borrows its statement), `Db::with_request_hook` (the request of the protocol), `Key`, `GroupRow`, `GroupRows` and `Statement`
+  (their values are the Rust values `Param` and `Key`). `Db::with_request_text_hook` is declared with its hook as an inline function
+  parameter with `keeps: true` and `async_allowed: false`: the hook takes the request as its protocol JSON text (`Request::to_json`, FMS-31)
+  and the list of `orm_value` parameters (CORE-70), and returns the changed request text and the parameters as `orm_value`, since the hook of each legacy host
+  changes the request and adds parameters (docs/operations/usage.md, Request hook). `Db::with_request_hook` itself is not declared, because
+  its hook takes a mutable reference and returns a future. `Utils` and its parts own a handle of their connection and
   are declared as CORE-180 to CORE-186 state, without `Utils::run`, `Utils::local` and `Utils::was_inserted`
   (CORE-180). The terminals `get`, `gets` and `gets_by` of a `Query` and `to_array` of a row are declared, and `gets`
   and `gets_by` return the class `rows` (CORE-170). `Collection`, `Page` and `LookaheadPage` are not declared as types:

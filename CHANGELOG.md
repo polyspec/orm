@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- A date or datetime parameter reaches the request text hook of `Db::with_request_text_hook` as its canonical text,
+  the text the core binds, and the hook takes the parameters as `OrmValue` lists (T600).
 - A transaction retries a deadlock with no wait between its attempts (CORE-24, T670), in every runtime: the
   next attempt begins right after the rollback. The error of a retry that runs out is the error of its last attempt
   and carries the errors of the attempts before it as its causes: Rust `Error::causes()`, Go `orm.Causes(err)`, and

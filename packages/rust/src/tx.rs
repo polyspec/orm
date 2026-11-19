@@ -744,6 +744,7 @@ impl Db {
         };
         let record = audit.as_ref().map(|values| audit_record(self, values)).transpose().map_err(native_failure)?.map(Arc::new);
         let mut attempt = 0u32;
+        // The errors of the attempts before the last one, in order, that a deadlock retry ran again (CORE-24).
         let mut earlier = Vec::new();
         loop {
             // The hooks of the connection are called before each attempt takes a connection (CORE-143).
@@ -774,14 +775,11 @@ impl Db {
                     });
                 }
             };
-            if !failure.is_deadlock() {
-                return Err(failure);
+            if !failure.is_deadlock() || attempt >= retry {
+                // The last attempt carries the errors of the attempts before it when it failed with deadlock (CORE-24).
+                return Err(if failure.is_deadlock() { failure.with_attempts(earlier) } else { failure });
             }
-            // The next attempt begins right after the rollback, with no wait; the error of a retry that runs out
-            // carries the errors of the attempts before it as its causes (CORE-24).
-            if attempt >= retry {
-                return Err(failure.with_causes(earlier));
-            }
+            // The next attempt begins right after the rollback, with no wait between attempts (CORE-24).
             earlier.push(failure);
             attempt += 1;
         }

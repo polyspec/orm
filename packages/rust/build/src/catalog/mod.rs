@@ -58,8 +58,10 @@ pub struct CatalogConnection {
     dialect: String,
     /// The server, which the connection reads once when it connects (DIA-201).
     server: polyspec_orm_schema::dbspec::Server,
-    /// The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it at its first
-    /// stop and keeps it until close, so that no stop closes a connection that a later stop must open again.
+    /// Until when a refused connect is a socket of this catalog still on the server (CFG-35).
+    reopen_until: std::sync::Mutex<std::time::Instant>,
+    /// The MySQL connection that a budget stop kills the statement of a read through (CFG-49). The catalog opens it before its
+    /// first stream and checks it before each stream, so that a stop always has its kill connection.
     killer: Option<Conn>,
     /// The MySQL connection id of the connection of the running read, which its stop kills (CFG-49).
     read_id: Option<u64>,
@@ -181,6 +183,7 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::QueryResult, CatalogError> {
+        self.open_stream_killer().await?;
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.query_result_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         self.end_read(connection, result).await
@@ -204,6 +207,7 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::GridQueryResult, CatalogError> {
+        self.open_stream_killer().await?;
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         self.end_read(connection, result).await
@@ -226,13 +230,15 @@ impl CatalogConnection {
     async fn end_read<T>(&mut self, mut connection: Conn, result: Result<T, CatalogError>) -> Result<T, CatalogError> {
         let read_id = self.read_id.take();
         if stopped_by_budget(&result) && self.dialect != "sqlite" {
-            let killed = match read_id {
-                Some(id) => self.kill_query(id).await.is_ok(),
-                None => false,
-            };
-            if !killed {
+            let Some(id) = read_id else {
                 connection.close_now();
                 return result;
+            };
+            // A kill that fails returns its own error (CFG-35), such as the driver refusal of max_user_connections, and not the budget error.
+            if let Err(error) = self.kill_query(id).await {
+                connection.close_now();
+                self.closed_connection();
+                return Err(error);
             }
             // The next command on the connection first reads the end of the killed statement, which is the error of the kill,
             // 1317, and sqlx reports it as the error of that command before sending it; a statement that ended before the kill
@@ -274,11 +280,35 @@ impl CatalogConnection {
         }
     }
     /// Kills the running statement of the MySQL connection id through the kill connection, which the first stop opens and the
-    /// catalog keeps (CFG-49). A kill connection that failed is closed.
-    async fn kill_query(&mut self, id: u64) -> Result<(), CatalogError> {
+    /// catalog keeps (CFG-35). A kill connection that failed is closed.
+    async fn ensure_killer(&mut self) -> Result<(), CatalogError> {
         if self.killer.is_none() {
             self.killer = Some(self.open_connection().await?);
         }
+        Ok(())
+    }
+    /// The kill connection of a MySQL stream, opened before the stream's statement and kept (CFG-35). A refused open fails the
+    /// stream with its driver error. The namespace and descriptor reads do not open it, so a reconnect is not refused by it.
+    async fn open_stream_killer(&mut self) -> Result<(), CatalogError> {
+        if self.dialect == "mysql" {
+            // CFG-35: the kill connection is checked before each MySQL stream and opened again when it is missing or dead. The check
+            // is a light statement on it, as the Go catalog reads the connection id of a connection (legacy/packages/go/orm/catalog.go:180-186).
+            let alive = match self.killer.as_mut() {
+                Some(killer) => killer.mysql_connection_id().await.is_ok(),
+                None => true,
+            };
+            if !alive {
+                if let Some(dead) = self.killer.take() {
+                    dead.close_now();
+                }
+                self.closed_connection();
+            }
+            self.ensure_killer().await?;
+        }
+        Ok(())
+    }
+    async fn kill_query(&mut self, id: u64) -> Result<(), CatalogError> {
+        self.ensure_killer().await?;
         let Some(killer) = self.killer.as_mut() else {
             return Err("CATALOG_CONNECTION: the kill connection is missing".into());
         };
@@ -286,12 +316,45 @@ impl CatalogConnection {
             if let Some(killer) = self.killer.take() {
                 killer.close_now();
             }
-            return Err(CatalogError::caused(error.to_string(), error));
+            self.closed_connection();
         }
+        self.killer = Some(self.open_connection().await?);
         Ok(())
     }
-    /// Opens a connection. A refused connect fails at once with its error: the server does not say when the place of a closed
-    /// connection frees, so no reopen waits for it (CFG-48).
+    /// Kills the running statement of the MySQL connection id through the kill connection (CFG-49). A kill that fails is
+    /// tried once more on a reopened kill connection; a kill that fails again closes its connection and reports the failure.
+    async fn kill_query(&mut self, id: u64) -> Result<(), CatalogError> {
+        let mut failure: Option<CatalogError> = None;
+        for _ in 0..2 {
+            if let Err(error) = self.ensure_killer().await {
+                failure = Some(error);
+                continue;
+            }
+            let Some(killer) = self.killer.as_mut() else {
+                return Err("CATALOG_CONNECTION: the kill connection is missing".into());
+            };
+            match killer.exec(&format!("KILL QUERY {id}"), &[]).await {
+                Ok(_) => return Ok(()),
+                Err(error) => {
+                    failure = Some(CatalogError::caused(error.to_string(), error));
+                    if let Some(killer) = self.killer.take() {
+                        killer.close_now();
+                    }
+                    self.closed_connection();
+                }
+            }
+        }
+        Err(failure.unwrap_or_else(|| "CATALOG_CONNECTION: the kill failed".into()))
+    }
+    /// Starts the time in which a refused connect of MySQL is the closed connection still on the server.
+    pub(super) fn closed_connection(&self) {
+        if self.dialect == "mysql" {
+            *self.reopen_until.lock().unwrap() = std::time::Instant::now() + REOPEN_AFTER_CLOSE;
+        }
+    }
+    /// Opens a connection. A socket that this catalog closed holds its place in max_user_connections until the server ends
+    /// that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35
+    /// from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
     pub(super) async fn open_connection(&self) -> Result<Conn, CatalogError> {
         Conn::acquire(&self.pool).await.map_err(connect_error)
     }
@@ -299,6 +362,10 @@ impl CatalogConnection {
     /// connection id of that connection, which a stop of the read kills (CFG-49).
     async fn read_only_connection(&mut self, sql: &str) -> Result<Conn, CatalogError> {
         read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
+        // The kill connection comes first, so that a stream whose kill connection cannot open fails before its statement (CFG-49).
+        if self.dialect == "mysql" {
+            self.ensure_killer().await?;
+        }
         let mut connection = self.open_connection().await?;
         connection.discard_on_drop();
         self.read_id = None;

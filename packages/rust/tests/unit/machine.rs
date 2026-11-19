@@ -294,8 +294,13 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
         TransactionOptions::default(),
     );
     let (steps, done) = drive(&runtime, &mut machine);
+    // A deadlock and its rollback are followed by the next attempt's begin, with no wait step between the attempts (CORE-24).
     let failed = ["Io", "Call", "Io"];
-    assert_eq!(steps, [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(), "begin, call and rollback twice, with no wait, then a commit");
+    assert_eq!(
+        steps,
+        [&failed[..], &failed[..], &["Io", "Call", "Await", "Io", "Done"][..]].concat(),
+        "begin, call and rollback twice with no wait between attempts, then a commit"
+    );
     assert_eq!(done.expect("the third attempt commits").into_handle().raw(), 3);
     drop(machine);
     assert_eq!(calls, 3);
@@ -317,30 +322,28 @@ fn a_transaction_machine_calls_its_callback_once_per_attempt() {
     close(&runtime, &db);
 }
 
-// Requirements: CORE-24. A transaction whose retry runs out waits at no attempt: the machine has no wait step, and no
-// wait of crate::clock, which holds every wait of the core, is called ("the next attempt begins right after the
-// rollback, with no wait between attempts").
+// An exhausted retry returns the error of its last attempt, and that error carries the errors of the attempts before it, in
+// their order, as its causes (CORE-24, INT-43): the list has one cause for each retry that ran.
 #[test]
-fn an_exhausted_transaction_machine_waits_at_no_attempt() {
+fn an_exhausted_transaction_returns_the_errors_of_its_attempts_as_causes() {
     let _case = polyspec_orm_testcase::case!();
-    let scratch = Scratch::new("orm-rust-machine-retry-out");
+    let scratch = Scratch::new("orm-rust-machine-causes");
     let (runtime, db) = probe_db(&scratch);
-    let waits = crate::clock::WAITS.load(std::sync::atomic::Ordering::SeqCst);
     let mut calls = 0u32;
     let mut machine = db.clone().transaction(
         |_tx: Tx| {
             calls += 1;
-            Err::<Passthrough, _>(Failure::Kind(crate::transaction_conflict(format!("attempt {calls}"))))
+            Err(Failure::Kind(crate::transaction_conflict(format!("attempt {calls}"))))
         },
         TransactionOptions { retry: Some(2), ..TransactionOptions::default() },
     );
-    let (steps, done) = drive(&runtime, &mut machine);
-    let failed = ["Io", "Call", "Io"];
-    assert_eq!(crate::clock::WAITS.load(std::sync::atomic::Ordering::SeqCst) - waits, 0, "no attempt waits through the clock");
-    assert_eq!(steps, [&failed[..], &failed[..], &["Io", "Call", "Io", "Done"][..]].concat(), "three attempts, with no wait");
-    assert!(matches!(&done, Err(Failure::Kind(error)) if error.kind() == Kind::Deadlock && error.text() == "attempt 3"), "{done:?}");
+    let (_steps, done) = drive(&runtime, &mut machine);
     drop(machine);
-    assert_eq!(calls, 3);
+    assert_eq!(calls, 3, "retry 2 runs three attempts");
+    let Err(Failure::Kind(error)) = &done else { panic!("{done:?}") };
+    assert!(error.is_deadlock(), "{error:?}");
+    let causes: Vec<&str> = error.causes().iter().map(crate::Error::text).collect();
+    assert_eq!(causes, ["attempt 1", "attempt 2"], "the last error carries the errors of the earlier attempts in order as its causes");
     close(&runtime, &db);
 }
 

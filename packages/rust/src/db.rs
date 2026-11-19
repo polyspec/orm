@@ -25,7 +25,7 @@ use crate::row::DriverRow;
 use crate::schema::Schema;
 use crate::tx::{AuditKey, TxShared};
 use crate::value::Param;
-use crate::{Error, Result};
+use crate::{Error, OrmValue, Result};
 
 mod machine;
 pub use machine::{Connect, Execute};
@@ -123,8 +123,8 @@ pub struct RequestParams {
 pub struct RequestChange {
     /// The request as its JSON text (FMS-31), which replaces the request.
     pub request: String,
-    /// The parameters of the request after the hook.
-    pub params: Vec<Param>,
+    /// The parameters of the request after the hook, as the contract's `orm_value` (the core binds them as `Param`).
+    pub params: Vec<OrmValue>,
 }
 
 impl RequestParams {
@@ -1138,15 +1138,21 @@ impl Db {
     /// parameters, and returns the changed text and parameters, as the hooks of the legacy hosts change the request in place
     /// and add parameters (docs/operations/usage.md "Request hook"). A failure of the hook or a text that is no request fails the
     /// operation.
-    pub fn with_request_text_hook(&self, hook: impl Fn(&str, &RequestParams) -> std::result::Result<RequestChange, binding_core::Failure<Error>> + Send + Sync + 'static) -> Db {
+    pub fn with_request_text_hook(&self, hook: impl Fn(&str, &[OrmValue]) -> std::result::Result<RequestChange, binding_core::Failure<Error>> + Send + Sync + 'static) -> Db {
         self.with_request_hook(move |request, params| {
-            let owned = RequestParams { params: std::mem::take(&mut params.params) };
-            let result = hook(&request.to_json(), &owned).map_err(|failure| match failure {
+            let values: Vec<OrmValue> = params.params.iter().map(OrmValue::of_param).collect();
+            let result = hook(&request.to_json(), &values).map_err(|failure| match failure {
                 binding_core::Failure::Kind(error) => error,
                 other => Error::internal(format!("the request hook raised a failure of a language: {other:?}")),
             }).and_then(|change| {
-                *request = crate::ir::Request::from_json(&change.request)?;
-                params.params = change.params;
+                let next = crate::ir::Request::from_json(&change.request)?;
+                let bound = change
+                    .params
+                    .into_iter()
+                    .map(|value| value.scalar().map_err(|rejected| Error::internal(format!("a request parameter of the hook is not a scalar: {rejected:?}"))))
+                    .collect::<Result<Vec<Param>>>()?;
+                *request = next;
+                params.params = bound;
                 Ok(())
             });
             Box::pin(std::future::ready(result))

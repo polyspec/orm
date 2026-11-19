@@ -84,11 +84,11 @@
   false이며, `timeout_ms`가 없으면 한도가 없고(INT-42), `retry`가 없으면 `3`이며(INT-43), `audit`이 없으면 audit
   값을 주지 않는다. 계약이 이 기본값을 선언한다. handle이 트랜잭션에 들어가는 유일한 길이다: 모델은 `connect(&tx)` 뒤에
   그 안에서 실행되고, 트랜잭션의 문장 실행기는 `Tx::run`이다. 매개변수를 선언하지 않은 callback은 트랜잭션이 열리기 전에
-  바인딩의 kind `invalid_callback`(category `type`)으로 거절되고 호출되지 않는다: 그런 callback은 handle을 받지 못하므로 그
+  바인딩의 kind `invalid_callback`(category `type`)과 message `invalid_callback: a callback that declares no parameter takes no transaction handle, so it is not called`로 거절되고 호출되지 않는다: 그런 callback은 handle을 받지 못하므로 그
   문장이 `Db`를 거쳐 트랜잭션 밖에서 실행되기 때문이다. 선언된 매개변수의 검사는 바인딩의 생성된 호출이 하고(binding
   B2.467), 그 증거는 각 바인딩의 생성된 시험이다: Node의 `GN-6bu: Db.transaction refuses a callback that takes no
   argument`, Python의 `test_gn6bu_db_transaction_callback_refuses_what_takes_no_argument`, PHP의
-  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument`. Go에서는 callback의 type이 handle을 받는다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
+  `testGn6buDbTransactionCallbackRefusesWhatTakesNoArgument`. Go에서는 callback의 type이 handle을 받는다. Go에서는 생성된 callback type이 Tx 인자를 요구하므로 이 거절은 컴파일 시점에 일어난다. 실행 흐름의 활성 트랜잭션은 없다: INT-45, INT-161, DSL-10의 첫 문장을 대체한다. 연결이 없는
   모델은 `config`로 실패한다. callback 안의 `Db::transaction`은 pool의 다른 연결에서 독립된 트랜잭션을 연다. 그 트랜잭션이
   바깥 트랜잭션이 잡은 행 잠금을 기다리면 대기 한도에서 `canceled`나 `deadlock`으로 끝난다. callback이 `Db`를 거쳐 보내는
   문장은 그 트랜잭션 밖의 문장이다: `Db`는 pool이므로 그 문장은 pool의 다른 연결을 잡고, 스스로 commit되며, 트랜잭션이
@@ -782,7 +782,7 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
      `rollback_failed`(CORE-25)이고, 그 `callbackError`가 이 실패다.
   콜백의 handle은 4단계가 문장을 보내기 전에 끝난다(CORE-23). 기계가 실패로 끝날 때 가지고 있던 `Passthrough`는 drop되고,
   그 drop이 언어 쪽의 값을 놓아 준다.
-- **CORE-104** CORE-24의 재시도는 CORE-24가 적는 대로 기다리는 `Io` 단계 뒤에 1~4단계를 다시 하는 것이다: 기계는 시도마다
+- **CORE-104** CORE-24의 재시도는 시도 사이에 기다리는 단계 없이 1~4단계를 다시 하는 것이다: 기계는 시도마다
   `callback`을 한 번 호출하며(`F`가 `FnMut`인 이유다), commit이 `deadlock`으로 실패한 시도의 값은 drop한다. 실패
   `Failure::Raised`는 코어에게 kind가 없으므로, 언어 코드가 잡지 않은 콜백 문장의 예외는 kind가 `deadlock`이었어도 바인딩을
   통해서는 재시도되지 않는다: 계약은 `callback`의 함수 타입에 `errors.recognize`를 적지 않는데, 생성기가 `machine`과 함께
@@ -861,8 +861,8 @@ case를 SQLite 데이터베이스에서 가진다(CORE-129). `tx.savepoint`는 c
   member를 선언한다: `where`, `value`, `get_by`, `get_count_by`. CORE-85~CORE-91의 `Query` member와 CORE-92, CORE-93의
   class `StepRunner`를 선언한다. `StepRunner`의 case는 SQLite 데이터베이스에서 실행된다(CORE-129). [flowmark가 쓰는 surface](flowmark-surface.ko.md) FMS-7의 unit과 member는 그 문서가 적은 대로 선언한다. `Db::with_request_text_hook`은 hook을 `keeps: true`와 `async_allowed: false`인 inline 함수 인자로 선언한다: hook은 request를 protocol JSON text(`Request::to_json`, FMS-31)와 record unit `RequestParams`(CORE-70)로 받고, 바뀐 request text와 parameter를 돌려준다. 각 legacy host의 hook이 request를 바꾸고 parameter를 더하기 때문이다(docs/operations/usage.md, Request hook). 코어는 그 둘레에 `Db::with_request_hook`을 감싸고, binding은 host 함수를 동기로 호출하며 기다리지 않는다. `Db::with_request_hook` 자체는 선언하지 않는다. 그 hook은 가변 참조를 받고 future를 돌려주기 때문이다. 시그니처의 타입이 아직 계약의 타입이 아니어서 선언하지
   않는 것: `Tx::run`(table은 빌린 텍스트이고 행은 열이 없는 cell의 list다),
-  `Db::subscribe`(자기 문장을 빌리는 event), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
-  `Param`과 `Key`다). `Utils`와 그 부분은 자기 연결의 handle을 소유하고 CORE-180~CORE-186이 적은 대로 선언하며,
+  `Db::subscribe`(자기 문장을 빌리는 event), `Db::with_request_hook`(protocol의 request), `Key`, `GroupRow`, `GroupRows`, `Statement`(그 값이 Rust 값
+  `Param`과 `Key`다). `Db::with_request_text_hook`은 hook을 `keeps: true`와 `async_allowed: false`인 inline 함수 인자로 선언한다: hook은 request를 protocol JSON text(`Request::to_json`, FMS-31)와 `orm_value`의 list인 parameter(CORE-70)로 받고, 바뀐 request text와 `orm_value` parameter를 돌려준다. 각 legacy host의 hook이 request를 바꾸고 parameter를 더하기 때문이다(docs/operations/usage.md, Request hook). `Db::with_request_hook` 자체는 선언하지 않는다. 그 hook은 가변 참조를 받고 future를 돌려주기 때문이다. `Utils`와 그 부분은 자기 연결의 handle을 소유하고 CORE-180~CORE-186이 적은 대로 선언하며,
   `Utils::run`, `Utils::local`, `Utils::was_inserted`는 뺀다(CORE-180). `Query`의 terminal `get`, `gets`, `gets_by`와 행의
   `to_array`는 선언하고, `gets`와 `gets_by`는 class `rows`를 돌려준다(CORE-170). `Collection`, `Page`, `LookaheadPage`는
   타입으로 선언하지 않는다: 각각 자기 모델에 대해 generic이어서 `core_type`의 Rust 경로가 적을 수 없고, `Query`에서 page를

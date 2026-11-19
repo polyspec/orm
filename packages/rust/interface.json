@@ -1365,25 +1365,6 @@
       ]
     },
     {
-      "id": "request_params",
-      "name": [
-        "request",
-        "params"
-      ],
-      "module": "",
-      "kind": "record",
-      "visibility": "public",
-      "origin": "generated",
-      "only": {
-        "targets": ["php", "python", "node", "go"],
-        "reason": "CORE-70"
-      },
-      "core_type": "polyspec_orm::RequestParams",
-      "fields": [
-        {"name": ["params"], "type": {"list": {"unit": "orm_value"}}, "required": true}
-      ]
-    },
-    {
       "id": "request_change",
       "name": ["request", "change"],
       "module": "",
@@ -2071,7 +2052,7 @@
           "parameters": [
             {
               "name": ["hook"],
-              "type": {"function": {"parameters": ["text", {"unit": "request_params"}], "returns": {"unit": "request_change"}, "async_allowed": false}},
+              "type": {"function": {"parameters": ["text", {"list": {"unit": "orm_value"}}], "returns": {"unit": "request_change"}, "async_allowed": false}},
               "required": true,
               "keeps": true
             }

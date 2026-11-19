@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b0bded7c9076b0289d5c684cbe97f58f4de34ecc6b981dce0c7471e26296f85f -->
+<!-- source-sha256: 4f604a4abf3126c032963fffaa7471ca692510e23a9d7c58c03afc52c838709c -->
 # 변경 이력
 
 ## Unreleased
 
+- 날짜와 datetime 매개변수는 request text hook(`Db::with_request_text_hook`)에 core가 바인딩하는 정규 텍스트(canonical text)로
+  전달되며, hook은 매개변수를 `OrmValue` 목록으로 받는다(T600).
 - transaction은 모든 runtime에서 deadlock을 시도 사이의 기다림 없이 재시도한다(CORE-24, T670): 다음 시도는
   rollback 바로 뒤에 시작한다. 횟수를 다 쓴 재시도의 오류는 마지막 시도의 오류이며, 그 앞 시도들의 오류를 cause로
   가진다: Rust `Error::causes()`, Go `orm.Causes(err)`, 그리고 PHP, PHP extension, TypeScript, Python 오류의

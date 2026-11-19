@@ -320,6 +320,12 @@ export function recipeCaseIds(text: string, database: string): string[] {
   return parseRecipeCases(text, 'recipe').cases.filter(item => item.only === undefined || item.only.includes(database)).map(item => item.id);
 }
 
+// requestedRecipe is the file whose cases an owner must run. An owner under legacy/ runs the frozen copy of the recipe
+// (CORE-1), so its requested cases come from that copy; any other owner reads the recipe at its declared path.
+export function requestedRecipe(root: string, ownerPath: string, recipe: string): string {
+  return ownerPath.startsWith('legacy/') ? resolve(root, 'legacy', recipe) : resolve(root, recipe);
+}
+
 // entryTest plans a test entry (FCV-12). Every runtime runs the entry with its own test runner and the entry appends a
 // `CASE` line for each case that passed to the file of ORM_RECIPE_RESULTS, so that one reader reads every runtime. The entry
 // takes no case argument and no database of the bench: the cases of a recipe are the recipe's and each gets a case database from
@@ -334,7 +340,7 @@ async function entryTest(item: Item, command: NativeCommand, root: string): Prom
   if (!command || typeof command !== 'object' || Array.isArray(command) ||
       Object.keys(command).some(key => !ENTRY_KEYS.includes(key)) || !item.tests.includes(command.test) ||
       command.runner !== RUNNER_OF_LANGUAGE[item.language] || extname(command.test ?? '') !== EXTENSION_OF_RUNNER[command.runner] ||
-      (recipe !== undefined && (!(recipe.startsWith('contracts/fixtures/') || recipe.startsWith('tests/')) || !recipe.endsWith('.json'))) ||
+      (recipe !== undefined && (!(recipe.startsWith('contracts/fixtures/') || recipe.startsWith('legacy/contracts/fixtures/') || recipe.startsWith('tests/')) || !recipe.endsWith('.json'))) ||
       (recipe === undefined && (item.database !== 'none' || command.database !== undefined)) ||
       (named ? !/^[A-Za-z_][A-Za-z0-9_]*$/.test(command.symbol ?? '') : command.symbol !== undefined) ||
       !Array.isArray(command.cases) || new Set(command.cases).size !== command.cases.length ||
@@ -346,10 +352,12 @@ async function entryTest(item: Item, command: NativeCommand, root: string): Prom
   if (command.database !== undefined && (item.database !== 'none' || !databases.includes(command.database)))
     throw new Error('invalid test command');
   const database = command.database ?? item.database;
-  const cases = recipe === undefined ? command.cases : recipeCaseIds(await readFile(resolve(root, recipe), 'utf8'), database);
-  const declared = [...command.cases].sort();
+  const cases = recipe === undefined ? command.cases : recipeCaseIds(await readFile(requestedRecipe(root, item.part, recipe), 'utf8'), database);
+  // A recipe owner under legacy/ declares the cases of its frozen copy (CORE-1), the same copy that gives the requested cases.
+  const declaredCases = recipe !== undefined && item.part.startsWith('legacy/') ? cases : command.cases;
+  const declared = [...declaredCases].sort();
   const listed = [...cases].sort();
-  if (command.cases.some(id => !cases.includes(id)) ||
+  if (declaredCases.some(id => !cases.includes(id)) ||
       (!item.selected && (declared.length !== listed.length || declared.some((id, index) => id !== listed[index]))))
     throw new Error(`cases differ from recipe ${recipe}: declared ${declared.join(',')}; recipe ${listed.join(',')}`);
   const symbol = command.symbol ?? '';
