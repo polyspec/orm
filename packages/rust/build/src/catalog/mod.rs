@@ -307,6 +307,18 @@ impl CatalogConnection {
     /// stream with its driver error. The namespace and descriptor reads do not open it, so a reconnect is not refused by it.
     async fn open_stream_killer(&mut self) -> Result<(), CatalogError> {
         if self.dialect == "mysql" {
+            // CFG-35: the kill connection is checked before each MySQL stream and opened again when it is missing or dead. The check
+            // is a light statement on it, as the Go catalog reads the connection id of a connection (legacy/packages/go/orm/catalog.go:180-186).
+            let alive = match self.killer.as_mut() {
+                Some(killer) => killer.mysql_connection_id().await.is_ok(),
+                None => true,
+            };
+            if !alive {
+                if let Some(dead) = self.killer.take() {
+                    dead.close_now();
+                }
+                self.closed_connection();
+            }
             self.ensure_killer().await?;
         }
         Ok(())
