@@ -10902,7 +10902,7 @@
     },
     {
       "id": "plain_connect_on_a_held_place_is_refused_once",
-      "databases_differ": "Only MySQL counts the refused connects of an account (DIA-211).",
+      "databases_differ": "max_user_connections, the limit that refuses the reconnect, is a limit of the servers of the mysql dialect only (CFG-48, DIA-211).",
       "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "CFG-1",
