@@ -19,7 +19,7 @@ use crate::or_panic::OrPanic as _;
 use crate::test_support::Scratch;
 use crate::{
     AesKeyring, AesUtils, BeforeTransaction, BeforeTransactionHook, BytesValue, Config, Connection, Db, Error, FloatValue, IntegerValue, Isolation, Manifest,
-    MapValue, OrmValue, PrivilegeUtils, Query, Rows, Schema, SchemaUtils, StepRunner, TransactionOptions, Tx, Utils,
+    MapValue, OrmValue, PrivilegeUtils, Query, RequestChange, Rows, Schema, SchemaUtils, StepRunner, TransactionOptions, Tx, Utils,
 };
 
 const CONTRACT: &str = include_str!("../../interface.json");
@@ -154,6 +154,18 @@ impl KeptFunction {
 fn before_transaction_hook(value: &Value, what: &str) -> BeforeTransaction {
     let function = KeptFunction::new(value, what);
     Box::new(move |read_only| function.answer(&serde_json::json!({"0": read_only})))
+}
+
+/// The request text hook of a case (CORE-70): the function of its rows, which gets the request text at the position 0 and
+/// the parameters at the position 1, and returns the request and the parameters as it got them.
+fn request_text_hook(value: &Value, what: &str) -> impl Fn(&str, &[OrmValue]) -> Result<RequestChange, Failure<Error>> + Send + Sync + 'static {
+    let function = KeptFunction::new(value, what);
+    let what = what.to_owned();
+    move |request, params| {
+        let values: Vec<Value> = params.iter().map(|param| case_value(param, &what)).collect();
+        function.answer(&serde_json::json!({"0": request, "1": values}))?;
+        Ok(RequestChange { request: request.to_owned(), params: params.to_vec() })
+    }
 }
 
 /// Another handle of a named instance for an argument `{"bound"}`: a database and a transaction handle share their state, and
@@ -959,6 +971,9 @@ async fn call_db(member: &str, receiver: Option<&mut Instance>, args: &Map<Strin
         ("db.execute", Some(Instance::Db(db))) => {
             db.execute_text(&text(args, "step", member), orm_values(args, "params", member)?).await?;
             Returned::Value(Value::Null)
+        }
+        ("db.with_request_text_hook", Some(Instance::Db(db))) => {
+            Returned::Instance(Instance::Db(db.with_request_text_hook(request_text_hook(field(args, "hook", member), &format!("{member}: hook")))))
         }
         ("db.before_transaction", Some(Instance::Db(db))) => {
             Returned::Instance(Instance::Hook(db.before_transaction(before_transaction_hook(field(args, "hook", member), &format!("{member}: hook")))))
