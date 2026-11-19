@@ -21625,6 +21625,7 @@
     },
     {
       "id": "refused_retry_after_a_write_session",
+      "databases_differ": "max_user_connections, the limit that refuses the reconnect, is a limit of the servers of the mysql dialect only (CFG-48, DIA-211).",
       "only": [
         "mysql"
       ],
@@ -21654,24 +21655,11 @@
           "user_from_database": "o1_"
         },
         {
-          "op": "sql.user_errors",
-          "user": "o1_",
-          "error": 1226,
-          "mark": "start"
-        },
-        {
           "op": "catalog.reconnect",
           "user_from_database": "o1_",
           "refused_code": "driver",
           "refused_message": "max_user_connections",
           "connects": 1
-        },
-        {
-          "op": "sql.user_errors",
-          "user": "o1_",
-          "error": 1226,
-          "mark": "end",
-          "expect": {"mysql": {"increase": 1}}
         },
         {
           "op": "sql.release_connection"
